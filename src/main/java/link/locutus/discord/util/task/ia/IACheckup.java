@@ -99,6 +99,7 @@ public class IACheckup {
     }
 
     private Map<DBNation, Map<ResourceType, Double>> memberStockpile;
+    private Map<DBNation, List<Transaction2>> memberTransfers;
     private final GuildDB db;
 
     private final AllianceList alliance;
@@ -112,6 +113,11 @@ public class IACheckup {
         if (!useCache) {
             memberStockpile = alliance.getMemberStockpile();
         }
+        this.memberTransfers = new HashMap<>();
+    }
+
+    public AllianceList getAlliance() {
+        return alliance;
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
@@ -166,42 +172,15 @@ public class IACheckup {
         if (cities.isEmpty()) {
             return new HashMap<>();
         }
-        List<Transaction2> transactions;
-        try {
-            transactions = nation.getTransactions(fast ? -1L : 1, false);
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            transactions = Locutus.imp().getBankDB().getTransactionsByNation(nation.getNation_id());
-        }
-
+        List<Transaction2> transactions = memberTransfers.computeIfAbsent(nation, f -> {
+            try {
+                return nation.getTransactions(fast ? -1L : 1, false);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                return Locutus.imp().getBankDB().getTransactionsByNation(nation.getNation_id());
+            }
+        });
         Map<ResourceType, Double> stockpile = memberStockpile.get(nation);
-//        Map<ROI.Investment, ROI.ROIResult> roiMap = new HashMap<>();
-//        if (nation.getActive_m() < 2440) {
-//            if (fast) {
-//                if (nation.getCities() < 20) {
-//                    roiMap.put(ROI.Investment.CITY, new ROI.ROIResult(nation, ROI.Investment.CITY, (double) (nation.getCities() + 1), 10, new HashMap<>(), 0, 0));
-//                }
-//                if (!cities.isEmpty()) {
-//                    JavaCity first = cities.entrySet().iterator().next().getValue();
-//                    if (nation.getAvg_infra() < 1600 && first.getRequiredInfra() < 1600) {
-//                        double amt = 1600 - first.getRequiredInfra();
-//                        roiMap.put(ROI.Investment.INFRA, new ROI.ROIResult(nation, ROI.Investment.INFRA, amt, 10, new HashMap<>(), 0, 0));
-//                    }
-//                    if (first.getLand() < first.getInfra()) {
-//                        double amt = first.getInfra() - first.getLand();
-//                        roiMap.put(ROI.Investment.INFRA, new ROI.ROIResult(nation, ROI.Investment.LAND, amt, 10, new HashMap<>(), 0, 0));
-//                    }
-//                }
-//            } else {
-//                List<ROI.ROIResult> roiList = new ArrayList<>();
-//                JavaCity city0 = cities.values().iterator().next();
-//                ROI.roi(nation, pnwNation, pnwNation.getCityprojecttimerturns(), city0, days, roiList, 250);
-//                for (ROI.ROIResult roiResult : roiList) {
-//                    roiMap.putIfAbsent(roiResult.investment, roiResult);
-//                }
-//            }
-//        }
-
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
             long start2 = System.currentTimeMillis();

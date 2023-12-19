@@ -78,6 +78,9 @@ compileJava.options.compilerArgs.add '-parameters'
 compileTestJava.options.compilerArgs.add '-parameters'
 
 dependencies {
+    // https://mvnrepository.com/artifact/org.hsqldb/hsqldb
+    testImplementation 'org.hsqldb:hsqldb:2.7.2'
+
     implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.19.0'
 

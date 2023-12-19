@@ -113,4 +113,6 @@ public interface Building {
     default Set<Continent> getContinents() {
         return Arrays.stream(Continent.values()).filter(this::canBuild).collect(Collectors.toSet());
     }
+
+
 }

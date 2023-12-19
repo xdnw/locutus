@@ -1,0 +1,57 @@
+package link.locutus.discord.commands.manager.v2.binding.bindings;
+
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+public class ScopedPlaceholderCache<T> {
+    private final PlaceholderCache<T> cache;
+    private final String method;
+
+    public ScopedPlaceholderCache(PlaceholderCache<T> cache, String method) {
+        this.cache = cache;
+        this.method = method;
+    }
+
+    public List<T> getList(T def) {
+        return cache == null ? List.of(def) : cache.getList();
+    }
+
+    public <V> V getGlobal(Supplier<V> create) {
+        if (cache == null) {
+            return create.get();
+        }
+        return (V) cache.cacheGlobal.computeIfAbsent(method, k -> create.get());
+    }
+
+    public <V> V get(T obj, Function<List<T>, List<V>> getAll) {
+        return get(obj, getAll, t -> getAll.apply(Collections.singletonList(t)).get(0));
+    }
+
+    public <V> V get(T obj, Function<List<T>, List<V>> getAll, Function<T, V> getSingle) {
+        if (cache == null) {
+            return getSingle.apply(obj);
+        }
+        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(method, o -> new Object2ObjectOpenHashMap<>());
+        if (map.containsKey(obj)) {
+            return (V) map.get(obj);
+        }
+        if (!cache.cached && cache.list != null && !cache.list.isEmpty()) {
+            cache.cached = true;
+            if (cache.list.size() == 1) {
+                T first = cache.list.get(0);
+                map.put(first, getSingle.apply(first));
+            } else {
+                List<V> list = getAll.apply(cache.list);
+                for (int i = 0; i < cache.list.size(); i++) {
+                    map.put(cache.list.get(i), list.get(i));
+                }
+            }
+        }
+        return (V) map.computeIfAbsent(obj, getSingle);
+    }
+}

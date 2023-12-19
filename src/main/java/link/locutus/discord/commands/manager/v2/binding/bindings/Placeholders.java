@@ -74,6 +74,9 @@ public abstract class Placeholders<T> extends BindingHelper {
         this.commands.registerCommandsClass(getType());
         new PWMath2Type().register(math2Type);
         new PWType2Math().register(type2Math);
+        if (this.commands.get("getSelf") == null) {
+            System.out.println("Missing getSelf for " + getType().getSimpleName());
+        }
         return this;
     }
 
@@ -630,6 +633,9 @@ public abstract class Placeholders<T> extends BindingHelper {
     // Helper method to evaluate a function and its arguments
     private TypedFunction<T, ?> evaluateFunction(ValueStore store, String functionContent, int depth, boolean throwError) {
         TypedFunction<T, ?> previousFunc = null;
+        if (functionContent.equalsIgnoreCase("this")) {
+            return TypedFunction.create(getType(), Function.identity(), "this");
+        }
         List<String> split = StringMan.split(functionContent, ".");
         if (split.isEmpty()) {
             throw new IllegalArgumentException("Invalid input: Empty function: `" + functionContent + "`");

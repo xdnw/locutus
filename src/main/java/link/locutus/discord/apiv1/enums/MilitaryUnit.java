@@ -311,6 +311,4 @@ public enum MilitaryUnit {
     }
 
 
-
-
 }

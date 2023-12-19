@@ -17,16 +17,21 @@ import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -38,10 +43,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.event.nation.*;
-import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationScoreMap;
-import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
@@ -51,9 +53,11 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailTask;
+import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
@@ -493,6 +497,47 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "If the nation has a project")
     public boolean hasProject(Project project) {
         return (this.projects & (1L << project.ordinal())) != 0;
+    }
+
+    @Command(desc = "Can build project (meets requirements, free slot, doesn't have project)")
+    public boolean canBuildProject(Project project) {
+        return !hasProject(project) && project.canBuild(this) && getFreeProjectSlots() > 0;
+    }
+
+
+    private Map.Entry<Object, String> getAuditRaw(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getAudit");
+        List<DBNation> nations = scoped.getList(this);
+        AllianceList aaList = db.getAllianceList().subList(nations);
+        IACheckup checkup = scoped.getGlobal((ThrowingSupplier<IACheckup>)
+                () -> new IACheckup(db, aaList, true));
+        if (!aaList.isInAlliance(this)) {
+            throw new IllegalArgumentException("Nation " + nation_id + " not in alliance: " + checkup.getAlliance().getIds());
+        }
+        Map<IACheckup.AuditType, Map.Entry<Object, String>> result =
+                checkup.checkup(this, new IACheckup.AuditType[]{audit}, true, true);
+        return result.get(audit);
+    }
+
+    @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    @Command(desc = "If the nation passes an audit")
+    public boolean passesAudit(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+        Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
+        return result == null || result.getKey() == null;
+    }
+
+    @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    @Command(desc = "Get the Audit result raw value")
+    public Object getAuditResult(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+        Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
+        return result == null ? null : result.getKey();
+    }
+
+    @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    @Command(desc = "Get the Audit result message")
+    public String getAuditResultString(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+        Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
+        return result == null ? null : result.getValue();
     }
 
     @Override
