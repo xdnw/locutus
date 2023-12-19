@@ -33,7 +33,8 @@ public class ValidateBlitzSheet extends Command {
 
     @Override
     public String desc() {
-        return "Check that all nations are in range of their blitz targets and that they have no more than the provided number of offensive wars";
+        return "Check that all nations are in range of their blitz targets and that they have no more than the provided number of offensive wars\n" +
+                "Use `-l` to use leader name instead of nation name";
     }
 
     @Override
@@ -49,6 +50,8 @@ public class ValidateBlitzSheet extends Command {
         Integer maxWars = 3;
         if (args.size() >= 2) maxWars = Integer.parseInt(args.get(1));
 
+        boolean useLeader = flags.contains('l');
+
         Function<DBNation, Boolean> isValidTarget = f -> true;
         if (args.size() >= 3) {
             Set<DBNation> filter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, false);
@@ -58,7 +61,7 @@ public class ValidateBlitzSheet extends Command {
         SpreadSheet sheet = SpreadSheet.create(args.get(0));
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
-        BlitzGenerator.getTargets(sheet, 0, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, useLeader, 0, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");

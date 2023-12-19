@@ -2981,7 +2981,8 @@ public class WarCommands {
                                         @Arg("If the sheet is for attacks at day change")
                                         @Default("false") boolean dayChange,
                                         @Arg("Only allow attacking these nations")
-                                        @Default("*") Set<DBNation> filter) throws GeneralSecurityException, IOException {
+                                        @Default("*") Set<DBNation> filter,
+                                        @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             db.getOrThrow(SheetKey.SPYOP_SHEET);
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
@@ -3000,7 +3001,7 @@ public class WarCommands {
 
         Function<DBNation, Boolean> isValidTarget = n -> filter.contains(n);
 
-        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, useLeader, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
@@ -3030,13 +3031,14 @@ public class WarCommands {
                                @Arg("The row the blitz sheet header is one\n" +
                                        "Defaults to first row")
                                @Switch("h") Integer headerRow,
+                               @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader,
                                @Switch("f") boolean force) {
         if (headerRow == null) headerRow = 0;
 
         IMessageBuilder msg = io.create();
 
         StringBuilder response = new StringBuilder();
-        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
+        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
         if (response.length() != 0) {
             msg = io.create().append("**Errors:**\n").append(response.toString());
             if (!force) {
@@ -3094,6 +3096,7 @@ public class WarCommands {
                               @Arg("Hide the default blurb from the message")
                               @Switch("b") boolean hideDefaultBlurb,
                               @Switch("f") boolean force,
+                              @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader,
                               @Arg("Send instructions as direct message on discord")
                               @Switch("d") boolean dm) throws IOException, GeneralSecurityException {
 
@@ -3125,15 +3128,15 @@ public class WarCommands {
         if (dm && !Roles.MAIL.hasOnRoot(author)) return "You do not have permission to dm users";
 
         if (blitzSheet != null) {
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
         }
 
         if (spySheet != null) {
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 0);
             } catch (NullPointerException e) {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
             }
         }
@@ -3368,6 +3371,7 @@ public class WarCommands {
                                      @Default("3") int maxWars,
                                      @Arg("Only allow attacking these nations")
                                      @Default("*") Set<DBNation> nationsFilter,
+                                     @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader,
                                      @Arg("Which row of the sheet has the header\n" +
                                              "Default: 1st row")
                                      @Switch("h") Integer headerRow) {
@@ -3376,7 +3380,7 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
         if (headerRow == null) headerRow = 0;
-        BlitzGenerator.getTargets(sheet, headerRow, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");

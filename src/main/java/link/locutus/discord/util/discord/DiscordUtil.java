@@ -784,7 +784,15 @@ public class DiscordUtil {
     }
 
     public static DBNation parseNation(String arg, boolean allowDeleted) {
+        return parseNation(arg, allowDeleted, false);
+    }
+
+    public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader) {
         if (arg.toLowerCase().contains("/alliance/") || arg.toLowerCase().startsWith("aa:")) return null;
+        if (useLeader) {
+            DBNation nation = Locutus.imp().getNationDB().getNationByLeader(arg);
+            if (nation != null) return nation;
+        }
         Integer id = parseNationId(arg);
         if (id != null) {
             DBNation nation = Locutus.imp().getNationDB().getNation(id);

@@ -54,6 +54,7 @@ public class WarRoom extends Command {
                 Add `-f` to force create channels (if checks fail)
                 Add `-m` to send standard counter messages
                 Add `-h:1` to change the header row (0 index)
+                Add `-l` to use leader name instead of nation
                 Add `filter:<filter>` to filter nations.""";
     }
 
@@ -76,6 +77,7 @@ public class WarRoom extends Command {
         }
         String filterArg = DiscordUtil.parseArg(args, "filter");
 
+        boolean useLeader = flags.contains('l');
         boolean ping = flags.contains('p');
         boolean addMember = !flags.contains('a');
         boolean addMessage = flags.contains('m');
@@ -98,7 +100,7 @@ public class WarRoom extends Command {
         if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
-            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
+            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
             if (response.length() != 0) {
                 channel.send(response.toString());
                 if (!flags.contains('f')) {

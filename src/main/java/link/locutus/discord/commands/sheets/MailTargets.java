@@ -50,7 +50,8 @@ public class MailTargets extends Command {
 
     @Override
     public String desc() {
-        return "Send war and spy blitz targets to a nation as ingame message";
+        return "Send war and spy blitz targets to a nation as ingame message\n" +
+                "Use `-l` to use leader name instead of nation name";
     }
 
     public static String getStrengthInfo(DBNation nation) {
@@ -71,20 +72,21 @@ public class MailTargets extends Command {
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
         Map<DBNation, Set<Spyop>> spyOps = new HashMap<>();
+        boolean useLeader = flags.contains('l');
 
         if (!args.get(0).equalsIgnoreCase("null")) {
             SpreadSheet blitzSheet = SpreadSheet.create(args.get(0));
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
         }
 
         if (!args.get(1).equalsIgnoreCase("null")) {
             SpreadSheet spySheet = SpreadSheet.create(args.get(1));
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 0);
             } catch (NullPointerException e) {
                 e.printStackTrace();
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
             }
         }

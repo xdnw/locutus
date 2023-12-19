@@ -33,7 +33,8 @@ public class ValidateSpyBlitzSheet extends Command {
     @Override
     public String desc() {
         return "Check that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
-                "Add `true` for the day-change argument to double the offensive op limit";
+                "Add `true` for the day-change argument to double the offensive op limit\n" +
+                "Add `-l` to use leader name instead of nation name";
     }
 
     @Override
@@ -66,7 +67,9 @@ public class ValidateSpyBlitzSheet extends Command {
             isValidTarget = n -> filter.contains(n);
         }
 
-        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        boolean useLeader = flags.contains('l');
+
+        BlitzGenerator.getTargets(sheet, useLeader, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
