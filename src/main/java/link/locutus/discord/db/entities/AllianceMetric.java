@@ -454,6 +454,9 @@ public enum AllianceMetric {
         }
     },
 
+    // war policy over time
+    // project over time
+
     // CITY_BUY_VALUE_DAY
     // PROJECT_BUY_VALUE_DAY
     // INFRA_BUY_VALUE_DAY

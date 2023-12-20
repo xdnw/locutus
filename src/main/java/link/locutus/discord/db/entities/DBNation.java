@@ -5534,6 +5534,19 @@ public class DBNation implements NationOrAlliance {
         return minDate;
     }
 
+    @Command(desc = "Get the update timezone (in hours from UTC)\n" +
+            "-1 = No data available")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public double getUpdateTZ(@Me GuildDB db, ValueStore store) {
+        if (getPositionEnum().id < Rank.APPLICANT.id || !db.isAllianceId(alliance_id)) {
+            return -1;
+        }
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getUpdateTZ");
+        List<DBNation> nations = scoped.getList(this);
+        Map<Integer, Double> update = scoped.getGlobal(() -> db.getAllianceList().subList(nations).fetchUpdateTz(new HashSet<>(nations)));
+        return update.getOrDefault(nation_id, -1d);
+    }
+
     public Map<Integer, Long> findDayChange() {
         MilitaryUnit[] units = new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.MISSILE, MilitaryUnit.NUKE};
         int[] caps = new int[units.length];

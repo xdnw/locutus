@@ -3080,14 +3080,17 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc = "Send spy or war blitz sheets to individual nations")
+    @Command(desc = "Send spy or war blitz sheets to individual nations\n" +
+            "Blitz Sheet Columns: `nation`, `attacker 1`, `attacker 2`, `attacker 3`")
     public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel, @Me DBNation me,
                               @Arg("Url of the war blitz sheet to send")
                               @Default SpreadSheet blitzSheet,
                               @Arg("Url of the spy sheet to send")
                               @Default SpreadSheet spySheet,
-                              @Arg("What nations to send to")
+                              @Arg("What attacker nations to send to")
                               @Default("*") Set<DBNation> allowedNations,
+                              @Arg("What defender nations to include (default: all)")
+                              @Default Set<DBNation> allowedEnemies,
                               @Arg("Text to prepend to the target instructions being sent")
                               @Default("") String header,
                               @Arg("Send from the api key registered to the guild") @Switch("g") boolean sendFromGuildAccount,
@@ -3137,6 +3140,15 @@ public class WarCommands {
             } catch (NullPointerException e) {
                 spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
+            }
+        }
+
+        if (allowedEnemies != null) {
+            for (Map.Entry<DBNation, Set<DBNation>> entry : warDefAttMap.entrySet()) {
+                entry.getValue().removeIf(f -> !allowedEnemies.contains(f));
+            }
+            for (Map.Entry<DBNation, Set<DBNation>> entry : spyDefAttMap.entrySet()) {
+                entry.getValue().removeIf(f -> !allowedEnemies.contains(f));
             }
         }
 
