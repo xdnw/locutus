@@ -782,9 +782,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         String dmStr = resultsInDm ? "true" : null;
         CM.war.find.enemy high = CM.war.find.enemy.cmd.create(
-                "~enemies,#attacking=~allies,#attacking2/3strengthenemyofscore<99999", null, null, null, null, "true", null, "true", null, dmStr, null);
+                "~enemies,#fighting(~allies),#getStrongestEnemy()>0.66", null, null, null, null, "true", null, "true", null, dmStr, null);
         CM.war.find.enemy med = CM.war.find.enemy.cmd.create(
-                "~enemies,#attacking=~allies", null, null, null, null, "true", null, "true", null, dmStr, null);
+                "~enemies,#fighting(~allies)", null, null, null, null, "true", null, "true", null, dmStr, null);
         CM.war.find.enemy low = CM.war.find.enemy.cmd.create(
                 "~enemies", null, null, null, null, "true", null, "true", null, dmStr, null);
         CM.war.find.enemy easy = CM.war.find.enemy.cmd.create(
