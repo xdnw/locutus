@@ -1,15 +1,19 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
 import com.google.common.base.CaseFormat;
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.db.entities.DBNation;
 
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -114,5 +118,97 @@ public interface Building {
         return Arrays.stream(Continent.values()).filter(this::canBuild).collect(Collectors.toSet());
     }
 
+    @Command(desc = "Get the average number of this building across the specified nations")
+    default int getAverage(Set<DBNation> nations) {
+        int sum = 0;
+        Set<Building> buildings = Set.of(this);
+        for (DBNation nation : nations) {
+            sum += nation.getBuildings(buildings);
+        }
+        return sum / nations.size();
+    }
 
+    @Command(desc = "Get the total number of this building across the specified nations")
+    default int getTotal(Set<DBNation> nations) {
+        int sum = 0;
+        Set<Building> buildings = Set.of(this);
+        for (DBNation nation : nations) {
+            sum += nation.getBuildings(buildings);
+        }
+        return sum;
+    }
+
+    @Command(desc = "Get the number of nations that can build this building")
+    default int countCanBuild(Set<DBNation> nations) {
+        int sum = 0;
+        for (DBNation nation : nations) {
+            if (canBuild(nation.getContinent())) sum++;
+        }
+        return sum;
+    }
+
+
+    @Command(desc = "The base infrastructure powered\nOnly applies to power buildings, else 0")
+    default int getInfraBase() {
+        return 0;
+    }
+
+    @Command(desc = "The max infrastructure powered\nOnly applies to power buildings, else 0")
+    default int getInfraMax() {
+        return 0;
+    }
+
+    @Command(desc = "The resource consumed by this building for generating power\nOnly applies to power buildings, else null")
+    default ResourceType getPowerResource() {
+        return null;
+    }
+
+    @Command(desc = "The amount of the resource consumed by this building for generating power\nOnly applies to power buildings, else 0")
+    default double getPowerResourceConsumed(int infra) {
+        return 0;
+    }
+
+    @Command(desc = "The base production of this building\nOnly applies to resource buildings, else 0")
+    default int getBaseProduction() {
+        return 0;
+    }
+
+    @Command(desc = "The resource produced by this building\nOnly applies to resource buildings, else null")
+    default ResourceType getResourceProduced() {
+        return null;
+    }
+
+    @Command(desc = "The resources consumed by this building\nOnly applies to resource buildings, else empty list")
+    default List<ResourceType> getResourceTypesConsumed() {
+        return List.of();
+    }
+
+    @Command(desc = "Get the military unit this building produces\nOnly applies to military buildings, else null")
+    default MilitaryUnit getMilitaryUnit() {
+        return null;
+    }
+
+    // getCitizensPerUnit
+    @Command(desc = "Get the number of citizens required to produce a military unit\nOnly applies to military buildings, else 0")
+    default double getRequiredCitizens() {
+        return 0;
+    }
+
+    @Command(desc = "Get the maximum units that this building can hold\nOnly applies to military buildings, else 0")
+    default int getUnitCap() {
+        return 0;
+    }
+
+    @Command(desc = "Get the number of units that this building can produce per day\nOnly applies to military buildings, else 0")
+    default int getUnitDailyBuy() {
+        return 0;
+    }
+
+    @Command(desc = "Get the commerce from this building\nOnly applies to commerce buildings, else 0")
+    default int getCommerce() {
+        return 0;
+    }
+
+    @Command(desc = "The building type (power, raw, manufacturing, civil, commerce, military)")
+    BuildingType getType();
 }

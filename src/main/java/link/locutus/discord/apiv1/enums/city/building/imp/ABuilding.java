@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -12,7 +13,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-public class ABuilding implements Building {
+public abstract class ABuilding implements Building {
     private final int pollution;
     private final int cap;
     private final double[] costArr;
@@ -95,6 +96,9 @@ public class ABuilding implements Building {
         }
         return profitBuffer;
     }
+
+    @Override
+    public abstract BuildingType getType();
 
     @Override
     public String toString() {

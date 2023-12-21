@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -31,25 +32,29 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
     }
 
     @Override
+    public ResourceType getPowerResource() {
+        return resource;
+    }
+
+    @Override
     public Map<ResourceType, Double> input(int infra) {
-        double levels = (infra + infraLevels - 1) / infraLevels;
+        double levels = (infra + infraLevels - 1d) / infraLevels;
         return PnwUtil.multiply(input, levels);
     }
 
     @Override
-    public int infraBase() {
+    public int getInfraBase() {
         return infraLevels;
     }
 
     @Override
-    public int infraMax() {
+    public int getInfraMax() {
         return infra;
     }
 
     @Override
     public double consumptionConverted(int infra) {
         if (resourceValue == 0) return 0;
-
         int amt;
         if (infra < infraLevels) {
             amt = 1;
@@ -62,9 +67,22 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
     @Override
     public double[] consumption(int infra, double[] profitBuffer, int turns) {
         if (resource != null) {
-            int amt = (Math.min(infra, this.infra) + infraLevels - 1) / infraLevels;
+            double amt = getPowerResourceConsumed(infra);
             profitBuffer[resource.ordinal()] -= amt * inputArr[resource.ordinal()] * turns / 12;
         }
         return profitBuffer;
+    }
+
+    @Override
+    public double getPowerResourceConsumed(int infra) {
+        if (resource != null) {
+            return (Math.min(infra, this.infra) + infraLevels - 1d) / infraLevels;
+        }
+        return 0;
+    }
+
+    @Override
+    public BuildingType getType() {
+        return BuildingType.POWER;
     }
 }

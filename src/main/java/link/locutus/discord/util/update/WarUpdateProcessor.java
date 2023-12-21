@@ -527,7 +527,7 @@ public class WarUpdateProcessor {
                 double enemyStrength = defender.getGroundStrength(true, false);
                 double groundStrength = attacker.getGroundStrength(false, false);
 
-                double maxAir80pct = Buildings.HANGAR.max() * Buildings.HANGAR.cap(attacker::hasProject) * attacker.getCities() * 0.66;
+                double maxAir80pct = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(attacker::hasProject) * attacker.getCities() * 0.66;
                 if (defender.getAircraft() == 0 && root.getDefcas2() == 0 && root.getDefcas3() == 0 && root.getAttcas2() > 0 && root.getMoney_looted() == 0 && defender.getSoldiers() > attacker.getSoldiers() && attacker.getAircraft() > maxAir80pct) {
                     if (defender.getActive_m() < 10000) {
                         String message = "You performed a ground attack using tanks against an enemy with a high amount of soldiers (but no tanks), no loot, and no aircraft. An airstrike may be cheaper at getting the initial soldiers down and avoiding tank losses";

@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
 
@@ -12,7 +13,12 @@ public class ACommerceBuilding extends ABuilding implements CommerceBuilding {
     }
 
     @Override
-    public int commerce() {
+    public int getCommerce() {
         return commerce;
+    }
+
+    @Override
+    public BuildingType getType() {
+        return BuildingType.COMMERCE;
     }
 }

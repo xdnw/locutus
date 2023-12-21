@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.commands.external.guild.WarCat;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -50,7 +49,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
-import org.sqlite.core.DB;
 
 import java.io.IOException;
 import java.util.*;
@@ -447,11 +445,11 @@ public class WarCategory {
                     for (Building value : Buildings.values()) {
                         if (value instanceof MilitaryBuilding) {
                             MilitaryBuilding mB = (MilitaryBuilding) value;
-                            int maxBuy = mB.perDay() * mB.cap(f -> false) * current.getCities();
+                            int maxBuy = mB.getUnitDailyBuy() * mB.cap(f -> false) * current.getCities();
 
-                            int unitDiff = current.getUnits(mB.unit()) - previous.getUnits(mB.unit());
+                            int unitDiff = current.getUnits(mB.getMilitaryUnit()) - previous.getUnits(mB.getMilitaryUnit());
                             if (unitDiff > 0) {
-                                rebuys.put(mB.unit(), new AbstractMap.SimpleEntry<>(unitDiff, unitDiff > maxBuy));
+                                rebuys.put(mB.getMilitaryUnit(), new AbstractMap.SimpleEntry<>(unitDiff, unitDiff > maxBuy));
                             }
                         }
                     }

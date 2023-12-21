@@ -560,6 +560,9 @@ public class Settings extends Config {
         @Create
         public SYNC SYNC;
 
+        @Create
+        public DATA_DUMP DATA_DUMP;
+
         public static final class SQLITE {
             @Comment("Should SQLite be used?")
             public boolean USE = true;
@@ -579,6 +582,17 @@ public class Settings extends Config {
                 return OTHER_BOT_ID != 0 && SYNC_CHANNEL_ID != 0;
             }
         }
+
+        public static class DATA_DUMP {
+            @Comment("The directory to store city data dumps in\n" +
+                    "Note: These are historical csv files  provided by P&W (not a database)")
+            public String CITIES = "data/cities";
+            @Comment("The directory to store nation data dumps in\n" +
+                    "Note: These are historical csv files  provided by P&W (not a database)")
+            public String NATIONS = "data/nations";
+        }
+
+
 //
 //        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
 //        public static final class MYSQL {

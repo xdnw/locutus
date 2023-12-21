@@ -501,7 +501,7 @@ public class OptimalBuild extends Command {
                         if (building == null) continue;
                         int numBuilt = city.get(building);
                         if (numBuilt == 0) continue;
-                        int amt = building.max() * numBuilt;
+                        int amt = building.getUnitCap() * numBuilt;
 
                         double[] upkeep = unit.getUpkeep(true);
                         profitBuffer[0] -= upkeep[0] * amt;

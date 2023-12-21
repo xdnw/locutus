@@ -351,7 +351,7 @@ public class ROI extends Command {
                 output.append("Currently producing without project:");
                 for (Map.Entry<ResourceBuilding, Boolean> entry : manufacturing.entrySet()) {
                     ResourceBuilding building = entry.getKey();
-                    output.append("\n- " + building.resource().name());
+                    output.append("\n- " + building.getResourceProduced().name());
                 }
             }
 
@@ -398,7 +398,7 @@ public class ROI extends Command {
         if (projectTurns2 <= 0) {
             for (Building building : Buildings.values()) {
                 if (!(building instanceof ResourceBuilding)) continue;
-                ResourceType type = ((ResourceBuilding) building).resource();
+                ResourceType type = ((ResourceBuilding) building).getResourceProduced();
                 Project project = type.getProject();
                 if (type == ResourceType.URANIUM && !Buildings.URANIUM_MINE.canBuild(nation.getContinent())) continue;
                 if (project == null) continue;

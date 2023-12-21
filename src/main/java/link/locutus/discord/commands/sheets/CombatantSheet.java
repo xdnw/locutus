@@ -118,10 +118,10 @@ public class CombatantSheet extends Command {
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
 
-            double soldierMMR = (double) nation.getSoldiers() / (Buildings.BARRACKS.max() * nation.getCities());
-            double tankMMR = (double) nation.getTanks() / (Buildings.FACTORY.max() * nation.getCities());
-            double airMMR = (double) nation.getAircraft() / (Buildings.HANGAR.max() * nation.getCities());
-            double navyMMR = (double) nation.getShips() / (Buildings.DRYDOCK.max() * nation.getCities());
+            double soldierMMR = (double) nation.getSoldiers() / (Buildings.BARRACKS.getUnitCap() * nation.getCities());
+            double tankMMR = (double) nation.getTanks() / (Buildings.FACTORY.getUnitCap() * nation.getCities());
+            double airMMR = (double) nation.getAircraft() / (Buildings.HANGAR.getUnitCap() * nation.getCities());
+            double navyMMR = (double) nation.getShips() / (Buildings.DRYDOCK.getUnitCap() * nation.getCities());
 
             header.set(5, soldierMMR);
             header.set(6, tankMMR);

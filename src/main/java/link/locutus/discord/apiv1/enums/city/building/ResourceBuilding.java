@@ -1,14 +1,15 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
 public interface ResourceBuilding extends Building {
-    ResourceType resource();
+    ResourceType getResourceProduced();
 
     default boolean canBuild(Continent continent) {
         for (ResourceType type : continent.getResourceArray()) {
-            if (type == resource()) {
+            if (type == getResourceProduced()) {
                 return true;
             }
         }
@@ -17,5 +18,5 @@ public interface ResourceBuilding extends Building {
 
     ResourceBuilding continents(Continent... continents);
 
-    int baseProduction();
+    int getBaseProduction();
 }

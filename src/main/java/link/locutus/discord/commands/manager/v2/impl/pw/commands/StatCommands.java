@@ -744,10 +744,10 @@ public class StatCommands {
         // max = (min / 0.6)
 
         for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrength(col1MMR);
+            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrengthMMR(col1MMR);
         }
         for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrength(col2MMR);
+            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrengthMMR(col2MMR);
         }
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];
@@ -1150,7 +1150,7 @@ public class StatCommands {
                             pct = arr[i] / unit.getBuilding().cap(nation::hasProject);
                         } else {
                             double amt = nation.getUnits(unit);
-                            double cap = unit.getBuilding().cap(nation::hasProject) * unit.getBuilding().max() * cities;
+                            double cap = unit.getBuilding().cap(nation::hasProject) * unit.getBuilding().getUnitCap() * cities;
                             pct = amt / cap;
                         }
                         pcts[i] = pct;

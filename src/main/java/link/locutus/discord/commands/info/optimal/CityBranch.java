@@ -100,7 +100,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
             if (amt != 0) {
                 if (minBuildingType instanceof ResourceBuilding rssBuild) {
                     if (amt < minBuildingType.cap(hasProject)) {
-                        if (rssBuild.resource().isRaw()) {
+                        if (rssBuild.getResourceProduced().isRaw()) {
                             buildMoreRaws = false;
                         } else {
                             buildMoreManu = false;
@@ -129,7 +129,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
             if (amt >= building.cap(hasProject)) continue;
 
             if (building instanceof ResourceBuilding rssBuild) {
-                ResourceType rss = rssBuild.resource();
+                ResourceType rss = rssBuild.getResourceProduced();
                 if (rss.isRaw()) {
                     if (buildMoreRaws || i == minBuilding) {
                         cities.enqueue(create(originPair, building, i));

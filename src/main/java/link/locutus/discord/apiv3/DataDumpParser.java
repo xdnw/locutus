@@ -33,6 +33,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
+import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.LootEstimateTracker;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
@@ -56,6 +57,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -113,12 +115,12 @@ public class DataDumpParser {
 
     public Map<Long, File> downloadCityFilesByDay() throws IOException, ParseException {
         if (cityFilesByDay != null) return cityFilesByDay;
-        return cityFilesByDay = load("https://politicsandwar.com/data/cities/", new File("data/cities"));
+        return cityFilesByDay = load("https://politicsandwar.com/data/cities/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
     }
 
     public Map<Long, File> downloadNationFilesByDay() throws IOException, ParseException {
         if (nationFilesByDay != null) return nationFilesByDay;
-        return nationFilesByDay = load("https://politicsandwar.com/data/nations/", new File("data/nations"));
+        return nationFilesByDay = load("https://politicsandwar.com/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
     }
 
     public void printActiveCitiesByDay() throws IOException {
@@ -234,7 +236,7 @@ public class DataDumpParser {
             long turnStart = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
             long turnEnd = turnStart + 12;
 
-            List<MetricValue> values = new ArrayList<>();
+            List<AllianceMetric.Value> values = new ArrayList<>();
             for (long turn = turnStart; turn < turnEnd; turn++) {
                 for (Map.Entry<Integer, Double> infraEntry : infraTotal.entrySet()) {
                     int aaId = infraEntry.getKey();
@@ -242,16 +244,11 @@ public class DataDumpParser {
                     double average = total / numCities.get(aaId);
 
                     DBAlliance aa = DBAlliance.getOrCreate(aaId);
-                    values.add(new MetricValue(aaId, AllianceMetric.INFRA, turn, total));
-                    values.add(new MetricValue(aaId, AllianceMetric.INFRA_AVG, turn, average));
+                    values.add(new AllianceMetric.Value(aaId, AllianceMetric.INFRA, turn, total));
+                    values.add(new AllianceMetric.Value(aaId, AllianceMetric.INFRA_AVG, turn, average));
                 }
             }
-            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<MetricValue, PreparedStatement>) (value, stmt) -> {
-                stmt.setInt(1, value.alliance);
-                stmt.setInt(2, value.metric.ordinal());
-                stmt.setLong(3, value.turn);
-                stmt.setDouble(4, value.value);
-            });
+            AllianceMetric.saveAll(values);
         }
     }
 
@@ -446,26 +443,26 @@ public class DataDumpParser {
             long turnStart = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
             long turnEnd = turnStart + 12;
 
-            List<MetricValue> values = new ArrayList<>();
+            List<AllianceMetric.Value> values = new ArrayList<>();
             for (long turn = turnStart; turn < turnEnd; turn++) {
                 for (Map.Entry<Integer, Long> entry2 : missileTotal.entrySet()) {
                     int aaId = entry2.getKey();
                     double total = entry2.getValue();
                     double average = total / numCities.get(aaId);
 
-                    values.add(new MetricValue(aaId, AllianceMetric.MISSILE, turn, total));
-                    values.add(new MetricValue(aaId, AllianceMetric.MISSILE_AVG, turn, average));
+                    values.add(new AllianceMetric.Value(aaId, AllianceMetric.MISSILE, turn, total));
+                    values.add(new AllianceMetric.Value(aaId, AllianceMetric.MISSILE_AVG, turn, average));
                 }
                 for (Map.Entry<Integer, Long> entry2 : nukeTotal.entrySet()) {
                     int aaId = entry2.getKey();
                     double total = entry2.getValue();
                     double average = total / numCities.get(aaId);
 
-                    values.add(new MetricValue(aaId, AllianceMetric.NUKE, turn, total));
-                    values.add(new MetricValue(aaId, AllianceMetric.NUKE_AVG, turn, average));
+                    values.add(new AllianceMetric.Value(aaId, AllianceMetric.NUKE, turn, total));
+                    values.add(new AllianceMetric.Value(aaId, AllianceMetric.NUKE_AVG, turn, average));
                 }
             }
-            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<MetricValue, PreparedStatement>) (value, stmt) -> {
+            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<AllianceMetric.Value, PreparedStatement>) (value, stmt) -> {
                 stmt.setInt(1, value.alliance);
                 stmt.setInt(2, value.metric.ordinal());
                 stmt.setLong(3, value.turn);
@@ -839,6 +836,43 @@ public class DataDumpParser {
         return result;
     }
 
+    public void iterateAll(TriConsumer<Long, NationHeader, CsvRow> nationRows, TriConsumer<Long, CityHeader, CsvRow> cityRows, Consumer<Long> onEach) throws IOException, ParseException {
+        load();
+        for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
+            File nationFile = entry.getValue();
+            File cityFile = cityFilesByDay.get(entry.getKey());
+            if (cityFile == null) continue;
+
+            long day = entry.getKey();
+            long turn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
+            long timestamp = TimeUtil.getTimeFromDay(day);
+
+            if (nationRows != null) {
+                readAll(nationFile, (headerList, rows) -> {
+                    NationHeader header = loadHeader(new NationHeader(), headerList);
+                    while (rows.hasNext()) {
+                        CsvRow row = rows.next();
+                        nationRows.consume(timestamp, header, row);
+                    }
+                });
+            }
+
+            if (cityRows != null) {
+                readAll(cityFile, (headerList, rows) -> {
+                    CityHeader header = loadHeader(new CityHeader(), headerList);
+                    while (rows.hasNext()) {
+                        CsvRow row = rows.next();
+                        cityRows.consume(timestamp, header, row);
+                    }
+                });
+            }
+
+            onEach.accept(day);
+
+        }
+
+    }
+
     public void backCalculateBeigeDamage() throws IOException, ParseException {
         load();
         long min = getMinDate();
@@ -1127,20 +1161,6 @@ public class DataDumpParser {
     private void checkProject(DBNation nation, CsvRow row, int index, Project project) {
         if (index <= 0) return;
         if (Objects.equals(row.getField(index), "1")) nation.setProject(project);
-    }
-
-    private static class MetricValue {
-        int alliance;
-        AllianceMetric metric;
-        long turn;
-        double value;
-
-        public MetricValue(int alliance, AllianceMetric metric, long turn, double value) {
-            this.alliance = alliance;
-            this.metric = metric;
-            this.turn = turn;
-            this.value = value;
-        }
     }
 
     // nation_id,nation_name,leader_name,date_created,continent,latitude,longitude,leader_title,nation_title,score,population,flag_url,color,beige_turns_remaining,portrait_url,cities,gdp,currency,wars_won,wars_lost,alliance,alliance_id,alliance_position,soldiers,tanks,aircraft,ships,missiles,nukes,domestic_policy,war_policy,projects,ironworks_np,bauxiteworks_np,arms_stockpile_np,emergency_gasoline_reserve_np,mass_irrigation_np,international_trade_center_np,missile_launch_pad_np,nuclear_research_facility_np,iron_dome_np,vital_defense_system_np,intelligence_agency_np,center_for_civil_engineering_np,propaganda_bureau_np,uranium_enrichment_program_np,urban_planning_np,advanced_urban_planning_np,space_program_np,moon_landing_np,spy_satellite_np,pirate_economy_np,recycling_initiative_np,telecommunications_satellite_np,green_technologies_np,clinical_research_center_np,specialized_police_training_program_np,arable_land_agency_np,advanced_engineering_corps_np,vm_turns,government_support_agency_np,research_and_development_center_np,resource_production_center_np,metropolitan_planning_np,military_salvage_np,fallout_shelter_np

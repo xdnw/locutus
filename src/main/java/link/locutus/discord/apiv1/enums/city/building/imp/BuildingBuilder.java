@@ -68,8 +68,8 @@ public class BuildingBuilder {
         return new AMilitaryBuilding(this, unit, max, perDay, requiredCitizens);
     }
 
-    public PowerBuilding power(ResourceType input, double inputAmt, int infraBase, int infraMax) {
-        return new APowerBuilding(this, input, inputAmt, infraBase, infraMax);
+    public PowerBuilding power(ResourceType input, double inputAmt, int getInfraBase, int infraMax) {
+        return new APowerBuilding(this, input, inputAmt, getInfraBase, infraMax);
     }
 
     public ResourceBuilding resource(ResourceType output) {

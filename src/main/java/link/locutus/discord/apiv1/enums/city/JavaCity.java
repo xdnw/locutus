@@ -184,7 +184,7 @@ public class JavaCity {
             for (Building building : Buildings.COMMERCE_BUILDINGS) {
                 int amt = city.buildings[building.ordinal()];
                 if (amt == 0) continue;
-                commerce += amt * ((CommerceBuilding) building).commerce();
+                commerce += amt * ((CommerceBuilding) building).getCommerce();
             }
             int maxCommerce;
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
@@ -697,10 +697,10 @@ public class JavaCity {
 
     public int getPoweredInfra() {
         int powered = 0;
-        powered += get(Buildings.WIND_POWER) * Buildings.WIND_POWER.infraMax();
-        powered += get(Buildings.COAL_POWER) * Buildings.COAL_POWER.infraMax();
-        powered += get(Buildings.OIL_POWER) * Buildings.OIL_POWER.infraMax();
-        powered += get(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.infraMax();
+        powered += get(Buildings.WIND_POWER) * Buildings.WIND_POWER.getInfraMax();
+        powered += get(Buildings.COAL_POWER) * Buildings.COAL_POWER.getInfraMax();
+        powered += get(Buildings.OIL_POWER) * Buildings.OIL_POWER.getInfraMax();
+        powered += get(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.getInfraMax();
 
         return powered;
     }
@@ -721,7 +721,7 @@ public class JavaCity {
                 for (int i = 0; i < amt; i++) {
                     if (unpoweredInfra > 0) {
                         profit += ((APowerBuilding) building).consumptionConverted(unpoweredInfra);
-                        unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).infraMax();
+                        unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
                     }
                 }
                 profit += building.profitConverted(continent, rads, hasProject, this, amt);
@@ -785,7 +785,7 @@ public class JavaCity {
             Building building = Buildings.get(ordinal);
 
             if (!powered) {
-                if (building instanceof CommerceBuilding || building instanceof MilitaryBuilding || (building instanceof ResourceBuilding && ((AResourceBuilding) building).resource().isManufactured())) {
+                if (building instanceof CommerceBuilding || building instanceof MilitaryBuilding || (building instanceof ResourceBuilding && ((AResourceBuilding) building).getResourceProduced().isManufactured())) {
                     continue;
                 }
             }
@@ -794,7 +794,7 @@ public class JavaCity {
                 for (int i = 0; i < amt; i++) {
                     if (unpoweredInfra > 0) {
                         profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer, turns);
-                        unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).infraMax();
+                        unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
                     }
                 }
             }
