@@ -2,11 +2,7 @@ package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -32,7 +28,6 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
@@ -684,7 +679,7 @@ public class IACheckup {
         if (!db.getCoalition("enemies").isEmpty()) return null;
         Map<ResourceType, Double> perCity = db.getOrNull(GuildKey.WARCHEST_PER_CITY);
         if (perCity == null) return null;
-        int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.max();
+        int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.getUnitCap();
         double airPct = (double) nation.getAircraft() / airCap;
         if (airPct < 0.8) return null;
         Map<ResourceType, Double> required = PnwUtil.multiply(perCity, (double) nation.getCities());

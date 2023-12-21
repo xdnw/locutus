@@ -2,23 +2,15 @@ package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.io.PagePriority;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,10 +63,10 @@ public interface NationList extends NationFilter {
         double[] total = getTotalMMRUnit();
         double num = total[4];
         return new double[] {
-                total[0] / (num * Buildings.BARRACKS.max()),
-                total[1] / (num * Buildings.FACTORY.max()),
-                total[2] / (num * Buildings.HANGAR.max()),
-                total[3] / (num * Buildings.DRYDOCK.max())
+                total[0] / (num * Buildings.BARRACKS.getUnitCap()),
+                total[1] / (num * Buildings.FACTORY.getUnitCap()),
+                total[2] / (num * Buildings.HANGAR.getUnitCap()),
+                total[3] / (num * Buildings.DRYDOCK.getUnitCap())
         };
     }
 

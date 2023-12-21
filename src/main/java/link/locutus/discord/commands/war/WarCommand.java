@@ -22,10 +22,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -33,7 +30,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -184,7 +180,7 @@ public class WarCommand extends Command {
                 }
 
                 try {
-                    int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.max() * 5 * 2;
+                    int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.getUnitCap() * 5 * 2;
 
                     long currentTurn = TimeUtil.getTurn();
 

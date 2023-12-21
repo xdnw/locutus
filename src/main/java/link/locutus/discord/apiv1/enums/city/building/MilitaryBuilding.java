@@ -1,22 +1,25 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 
 public interface MilitaryBuilding extends Building{
-    MilitaryUnit unit();
+    MilitaryUnit getMilitaryUnit();
 
     /**
      * @return max military this military building can purchase a day
      */
-    int perDay();
+    int getUnitDailyBuy();
 
     /**
      * @return max units this military building can hold
      */
-    int max();
+    int getUnitCap();
 
     /**
      * @return required citizens per unit
      */
-    double requiredCitizens();
+    double getCitizensPerUnit();
+
+
 }

@@ -50,6 +50,7 @@ import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -390,7 +391,7 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.raid ground_2d = CM.war.find.raid.cmd.create(
                 "#tankpct<20,#soldier%<40,*", "25", "2d",  "true", null,null, null, null, null, null, null);
         CM.war.find.raid losing = CM.war.find.raid.cmd.create(
-                "#def>0,#strength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
+                "#def>0,#RelativeStrength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
                 "*", "25", null, "true", null,  null, "90", null, null, null);
 
@@ -1108,7 +1109,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         );
 
         Map.Entry<String, List<String>> priorityEnemies = Map.entry(
-                "#cities>10,~enemies,#active_m<2880,#def<3,#off>0,#strength>0.7,#vm_turns=0,#isbeige=0,#fighting(~allies)",
+                "#cities>10,~enemies,#active_m<2880,#def<3,#off>0,#RelativeStrength>0.7,#vm_turns=0,#isbeige=0,#fighting(~allies)",
                 Arrays.asList(
                         "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
                         "{alliancename}",
@@ -1134,7 +1135,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         );
 
         Map.Entry<String, List<String>> underutilizedAllies = Map.entry(
-                "~allies,#active_m<2880,#freeoffensiveslots>0,#tankpct>0.8,#aircraftpct>0.8,#strength>1.3,#vm_turns=0,#isbeige=0",
+                "~allies,#active_m<2880,#freeoffensiveslots>0,#tankpct>0.8,#aircraftpct>0.8,#RelativeStrength>1.3,#vm_turns=0,#isbeige=0",
                 Arrays.asList(
                         "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
                         "{alliancename}",

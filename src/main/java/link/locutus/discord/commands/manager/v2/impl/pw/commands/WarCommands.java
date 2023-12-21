@@ -53,8 +53,6 @@ import link.locutus.discord.util.scheduler.CachedFunction;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.war.WarCard;
-import com.google.api.services.sheets.v4.model.CellData;
-import com.google.api.services.sheets.v4.model.RowData;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -1164,7 +1162,7 @@ public class WarCommands {
             targetsStorted.remove(war.getNation(false));
         }
 
-        int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.max() * 5 * 2;
+        int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.getUnitCap() * 5 * 2;
 
         long currentTurn = TimeUtil.getTurn();
 
@@ -1995,7 +1993,7 @@ public class WarCommands {
                 double lootValue = PnwUtil.convertedTotal(loot);
 
                 double groundFactor = easyGroundLoot ? 1.1 : canGroundLoot ? 0.8 : 0;
-                double moneyPerGround = Buildings.BARRACKS.max() * 5 * defender.getCities() * groundFactor;
+                double moneyPerGround = Buildings.BARRACKS.getUnitCap() * 5 * defender.getCities() * groundFactor;
                 double moneyRemaining = Math.max(0, ((loot[0] / 0.14) - (moneyPerGround * 10 * totalWars) - 50000 * defender.getCities()) * 0.86);
 
                 int numGround = 10;
@@ -2579,10 +2577,10 @@ public class WarCommands {
 
                 long turn = TimeUtil.getTurn();
                 long dayStart = TimeUtil.getTimeFromTurn(turn - (turn % 12));
-                soldierBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SOLDIER, dayStart) / (Buildings.BARRACKS.perDay() * barracks);
-                tankBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.TANK, dayStart) / (Buildings.FACTORY.perDay() * factories);
-                airBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.AIRCRAFT, dayStart) / (Buildings.HANGAR.perDay() * hangars);
-                navyBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SHIP, dayStart) / (Buildings.DRYDOCK.perDay() * drydocks);
+                soldierBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SOLDIER, dayStart) / (Buildings.BARRACKS.getUnitDailyBuy() * barracks);
+                tankBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.TANK, dayStart) / (Buildings.FACTORY.getUnitDailyBuy() * factories);
+                airBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.AIRCRAFT, dayStart) / (Buildings.HANGAR.getUnitDailyBuy() * hangars);
+                navyBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SHIP, dayStart) / (Buildings.DRYDOCK.getUnitDailyBuy() * drydocks);
 
                 if (!Double.isFinite(soldierBuy)) soldierBuy = 100;
                 if (!Double.isFinite(tankBuy)) tankBuy = 100;
@@ -2647,10 +2645,10 @@ public class WarCommands {
         row.set(6, nation.getOff());
         row.set(7, nation.getDef());
 
-        double soldierPct = (double) nation.getSoldiers() / (Buildings.BARRACKS.max() * nation.getCities());
-        double tankPct = (double) nation.getTanks() / (Buildings.FACTORY.max() * nation.getCities());
-        double airPct = (double) nation.getAircraft() / (Buildings.HANGAR.max() * nation.getCities());
-        double navyPct = (double) nation.getShips() / (Buildings.DRYDOCK.max() * nation.getCities());
+        double soldierPct = (double) nation.getSoldiers() / (Buildings.BARRACKS.getUnitCap() * nation.getCities());
+        double tankPct = (double) nation.getTanks() / (Buildings.FACTORY.getUnitCap() * nation.getCities());
+        double airPct = (double) nation.getAircraft() / (Buildings.HANGAR.getUnitCap() * nation.getCities());
+        double navyPct = (double) nation.getShips() / (Buildings.DRYDOCK.getUnitCap() * nation.getCities());
 
         row.set(8, soldierPct);
         row.set(9, tankPct);
@@ -2866,10 +2864,10 @@ public class WarCommands {
                 header.set(3, nation.getAvg_infra());
                 header.set(4, nation.getScore());
 
-                double soldierMMR = (double) nation.getSoldiers() / (Buildings.BARRACKS.max() * nation.getCities());
-                double tankMMR = (double) nation.getTanks() / (Buildings.FACTORY.max() * nation.getCities());
-                double airMMR = (double) nation.getAircraft() / (Buildings.HANGAR.max() * nation.getCities());
-                double navyMMR = (double) nation.getShips() / (Buildings.DRYDOCK.max() * nation.getCities());
+                double soldierMMR = (double) nation.getSoldiers() / (Buildings.BARRACKS.getUnitCap() * nation.getCities());
+                double tankMMR = (double) nation.getTanks() / (Buildings.FACTORY.getUnitCap() * nation.getCities());
+                double airMMR = (double) nation.getAircraft() / (Buildings.HANGAR.getUnitCap() * nation.getCities());
+                double navyMMR = (double) nation.getShips() / (Buildings.DRYDOCK.getUnitCap() * nation.getCities());
 
                 header.set(5, soldierMMR);
                 header.set(6, tankMMR);

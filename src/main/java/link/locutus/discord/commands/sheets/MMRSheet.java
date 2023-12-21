@@ -155,10 +155,10 @@ public class MMRSheet extends Command {
 
                     long turn = TimeUtil.getTurn();
                     long dayStart = TimeUtil.getTimeFromTurn(turn - (turn % 12));
-                    soldierBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SOLDIER, dayStart) / (Buildings.BARRACKS.perDay() * barracks);
-                    tankBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.TANK, dayStart) / (Buildings.FACTORY.perDay() * factories);
-                    airBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.AIRCRAFT, dayStart) / (Buildings.HANGAR.perDay() * hangars);
-                    navyBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SHIP, dayStart) / (Buildings.DRYDOCK.perDay() * drydocks);
+                    soldierBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SOLDIER, dayStart) / (Buildings.BARRACKS.getUnitDailyBuy() * barracks);
+                    tankBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.TANK, dayStart) / (Buildings.FACTORY.getUnitDailyBuy() * factories);
+                    airBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.AIRCRAFT, dayStart) / (Buildings.HANGAR.getUnitDailyBuy() * hangars);
+                    navyBuy = 100 * Locutus.imp().getNationDB().getMilitaryBuy(nation, MilitaryUnit.SHIP, dayStart) / (Buildings.DRYDOCK.getUnitDailyBuy() * drydocks);
 
                     if (!Double.isFinite(soldierBuy)) soldierBuy = 100;
                     if (!Double.isFinite(tankBuy)) tankBuy = 100;
@@ -228,10 +228,10 @@ public class MMRSheet extends Command {
         row.set(6, nation.getOff());
         row.set(7, nation.getDef());
 
-        double soldierPct = (double) nation.getSoldiers() / (Buildings.BARRACKS.max() * nation.getCities());
-        double tankPct = (double) nation.getTanks() / (Buildings.FACTORY.max() * nation.getCities());
-        double airPct = (double) nation.getAircraft() / (Buildings.HANGAR.max() * nation.getCities());
-        double navyPct = (double) nation.getShips() / (Buildings.DRYDOCK.max() * nation.getCities());
+        double soldierPct = (double) nation.getSoldiers() / (Buildings.BARRACKS.getUnitCap() * nation.getCities());
+        double tankPct = (double) nation.getTanks() / (Buildings.FACTORY.getUnitCap() * nation.getCities());
+        double airPct = (double) nation.getAircraft() / (Buildings.HANGAR.getUnitCap() * nation.getCities());
+        double navyPct = (double) nation.getShips() / (Buildings.DRYDOCK.getUnitCap() * nation.getCities());
 
         row.set(8, soldierPct);
         row.set(9, tankPct);

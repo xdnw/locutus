@@ -900,7 +900,7 @@ public class BlitzGenerator {
     }
 
     public static double getBaseStrength(int cities) {
-        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * cities;
+        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap() * cities;
         return max / 2d;
     }
 
@@ -912,8 +912,8 @@ public class BlitzGenerator {
         double aircraft;
         double tanks;
         if (mmrOverride != null) {
-            aircraft = (mmrOverride.get(MilitaryUnit.AIRCRAFT) / 5d) * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
-            tanks = (mmrOverride.get(MilitaryUnit.TANK) / 5d) * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max() * nation.getCities();
+            aircraft = (mmrOverride.get(MilitaryUnit.AIRCRAFT) / 5d) * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap() * nation.getCities();
+            tanks = (mmrOverride.get(MilitaryUnit.TANK) / 5d) * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.getUnitCap() * nation.getCities();
         } else {
             aircraft = nation.getAircraft();
             tanks = nation.getTanks();
@@ -922,7 +922,7 @@ public class BlitzGenerator {
     }
 
     public static double getAirStrength(DBNation nation, double aircraft, double tanks) {
-        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
+        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap() * nation.getCities();
         double str = aircraft + max / 2d;
         str += tanks / 32d;
 
@@ -930,15 +930,15 @@ public class BlitzGenerator {
     }
 
     public double getGroundStrength(DBNation nation, boolean isAttacker) {
-        int max = Buildings.BARRACKS.cap(nation::hasProject) * Buildings.BARRACKS.max() * nation.getCities();
+        int max = Buildings.BARRACKS.cap(nation::hasProject) * Buildings.BARRACKS.getUnitCap() * nation.getCities();
         double str = nation.getSoldiers() + max / 2d;
         str -= nation.getTanks() * 20;
         return str;
     }
 
     public double getValue(DBNation defender, boolean isAttacker, List<DBNation> attackers) {
-        int airRebuyPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.perDay();
-        int maxAirPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.max();
+        int airRebuyPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.getUnitDailyBuy();
+        int maxAirPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.getUnitCap();
 
 //        double scoreRatio = enemyPlaneRatio.apply(defender.getScore());
 //        double activity = activityFactor(defender, false);

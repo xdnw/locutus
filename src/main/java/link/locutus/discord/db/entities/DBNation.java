@@ -17,7 +17,6 @@ import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
-import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -33,7 +32,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -681,8 +679,8 @@ public class DBNation implements NationOrAlliance {
         }
 
         // value for weak military
-        double soldierPct = (double) getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(this::hasProject) * getCities());
-        double tankPct = (double) getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap(this::hasProject) * getCities());
+        double soldierPct = (double) getSoldiers() / (Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(this::hasProject) * getCities());
+        double tankPct = (double) getTanks() / (Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(this::hasProject) * getCities());
         value = value + value * (2 - soldierPct - tankPct);
 
         return new AbstractMap.SimpleEntry<>(value, loot != null);
@@ -719,7 +717,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc="Military strength (1 plane = 1)")
-    public double getStrength(MMRDouble mmr) {
+    public double getStrengthMMR(MMRDouble mmr) {
         return BlitzGenerator.getAirStrength(this, mmr);
     }
 
@@ -1598,14 +1596,14 @@ public class DBNation implements NationOrAlliance {
         int tanks = this.tanks;
         if (includeRebuy != null && includeRebuy > 0) {
             int barracks = Buildings.BARRACKS.cap(this::hasProject) * cities;
-            int soldierMax = Buildings.BARRACKS.max() * barracks;
-            int soldPerDay = barracks * Buildings.BARRACKS.perDay();
+            int soldierMax = Buildings.BARRACKS.getUnitCap() * barracks;
+            int soldPerDay = barracks * Buildings.BARRACKS.getUnitDailyBuy();
 
             soldiers = Math.min(soldierMax, (int) (soldiers + soldPerDay * includeRebuy));
 
             int factories = Buildings.FACTORY.cap(this::hasProject) * cities;
-            int tankMax = Buildings.FACTORY.max() * barracks;
-            int tankPerDay = barracks * Buildings.FACTORY.perDay();
+            int tankMax = Buildings.FACTORY.getUnitCap() * barracks;
+            int tankPerDay = barracks * Buildings.FACTORY.getUnitDailyBuy();
 
             tanks = Math.min(tankMax, (int) (tanks + tankPerDay * includeRebuy));
         }
@@ -2324,7 +2322,7 @@ public class DBNation implements NationOrAlliance {
             for (Building building : Buildings.values()) {
                 if (building instanceof ResourceBuilding) {
                     ResourceBuilding rssBuilding = (ResourceBuilding) building;
-                    ResourceType rss = rssBuilding.resource();
+                    ResourceType rss = rssBuilding.getResourceProduced();
                     if (rss.isRaw()) {
                         city.set(building, 0);
                     }
@@ -2657,7 +2655,7 @@ public class DBNation implements NationOrAlliance {
         for (MilitaryUnit unit : MilitaryUnit.values) {
             int amt;
             if (mmr != null && unit.getBuilding() != null) {
-                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().max() * unit.getBuilding().cap(f -> false) * cities);
+                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(f -> false) * cities);
             } else {
                 amt = getUnits(unit);
             }
@@ -2833,22 +2831,22 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Decimal ratio of aircraft a nation has out of their maximum (between 0 and 1)")
     public double getAircraftPct() {
-        return getAircraft() / (double) (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap(this::hasProject) * getCities()));
+        return getAircraft() / (double) (Math.max(1, Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(this::hasProject) * getCities()));
     }
 
     @Command(desc = "Decimal ratio of tanks a nation has out of their maximum (between 0 and 1)")
     public double getTankPct() {
-        return getTanks() / (double) (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap(this::hasProject) * getCities()));
+        return getTanks() / (double) (Math.max(1, Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(this::hasProject) * getCities()));
     }
 
     @Command(desc = "Decimal ratio of soldiers a nation has out of their maximum (between 0 and 1)")
     public double getSoldierPct() {
-        return getSoldiers() / (double) (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(this::hasProject) * getCities()));
+        return getSoldiers() / (double) (Math.max(1, Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(this::hasProject) * getCities()));
     }
 
     @Command(desc = "Decimal ratio of ships a nation has out of their maximum (between 0 and 1)")
     public double getShipPct() {
-        return getShips() / (double) (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(this::hasProject) * getCities()));
+        return getShips() / (double) (Math.max(1, Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(this::hasProject) * getCities()));
     }
 
     public void setAircraft(int aircraft) {
@@ -4798,10 +4796,10 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void setMMR(double barracks, double factories, double hangars, double drydocks) {
-        soldiers = (int) (barracks * cities * Buildings.BARRACKS.max());
-        tanks = (int) (factories * cities * Buildings.FACTORY.max());
-        aircraft = (int) (hangars * cities * Buildings.HANGAR.max());
-        ships = (int) (drydocks * cities * Buildings.DRYDOCK.max());
+        soldiers = (int) (barracks * cities * Buildings.BARRACKS.getUnitCap());
+        tanks = (int) (factories * cities * Buildings.FACTORY.getUnitCap());
+        aircraft = (int) (hangars * cities * Buildings.HANGAR.getUnitCap());
+        ships = (int) (drydocks * cities * Buildings.DRYDOCK.getUnitCap());
     }
 
     @Command(desc = "Alliance rank by score")
@@ -4923,10 +4921,10 @@ public class DBNation implements NationOrAlliance {
             "soldiers tanks aircraft ships\n" +
             "Maximum is: 5553")
     public String getMMR() {
-        int soldiers = (int) Math.round(getSoldiers() / ((double) cities * Buildings.BARRACKS.max()));
-        int tanks = (int) Math.round(getTanks() / ((double) cities * Buildings.FACTORY.max()));
-        int aircraft = (int) Math.round(getAircraft() / ((double) cities * Buildings.HANGAR.max()));
-        int ships = (int) Math.round(getShips() / ((double) cities * Buildings.DRYDOCK.max()));
+        int soldiers = (int) Math.round(getSoldiers() / ((double) cities * Buildings.BARRACKS.getUnitCap()));
+        int tanks = (int) Math.round(getTanks() / ((double) cities * Buildings.FACTORY.getUnitCap()));
+        int aircraft = (int) Math.round(getAircraft() / ((double) cities * Buildings.HANGAR.getUnitCap()));
+        int ships = (int) Math.round(getShips() / ((double) cities * Buildings.DRYDOCK.getUnitCap()));
         return soldiers + "" + tanks + "" + aircraft + "" + ships;
     }
 
@@ -5547,13 +5545,26 @@ public class DBNation implements NationOrAlliance {
         return update.getOrDefault(nation_id, -1d);
     }
 
+    @Command(desc = "Get free offensive spy ops available\n" +
+            "-1 = No data available")
+    @RolePermission(Roles.MILCOM)
+    public int getFreeOffSpyOps(@Me GuildDB db, ValueStore store) {
+        if (getPositionEnum().id < Rank.APPLICANT.id || !db.isAllianceId(alliance_id)) {
+            return -1;
+        }
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getUpdateTZ");
+        List<DBNation> nations = scoped.getList(this);
+        Map<DBNation, Integer> update = scoped.getGlobal(() -> db.getAllianceList().subList(nations).updateOffSpyOps());
+        return update.getOrDefault(this, -1);
+    }
+
     public Map<Integer, Long> findDayChange() {
         MilitaryUnit[] units = new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.MISSILE, MilitaryUnit.NUKE};
         int[] caps = new int[units.length];
-        caps[0] = Buildings.BARRACKS.perDay() * Buildings.BARRACKS.cap(this::hasProject) * getCities();
-        caps[1] = Buildings.FACTORY.perDay() * Buildings.FACTORY.cap(this::hasProject) * getCities();
-        caps[2] = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap(this::hasProject) * getCities();
-        caps[3] = Buildings.DRYDOCK.perDay() * Buildings.DRYDOCK.cap(this::hasProject) * getCities();
+        caps[0] = Buildings.BARRACKS.getUnitDailyBuy() * Buildings.BARRACKS.cap(this::hasProject) * getCities();
+        caps[1] = Buildings.FACTORY.getUnitDailyBuy() * Buildings.FACTORY.cap(this::hasProject) * getCities();
+        caps[2] = Buildings.HANGAR.getUnitDailyBuy() * Buildings.HANGAR.cap(this::hasProject) * getCities();
+        caps[3] = Buildings.DRYDOCK.getUnitDailyBuy() * Buildings.DRYDOCK.cap(this::hasProject) * getCities();
         caps[4] = hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
         caps[5] = 1;
 

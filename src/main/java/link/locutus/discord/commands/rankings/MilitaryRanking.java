@@ -149,10 +149,10 @@ public class MilitaryRanking extends Command {
                 row.add(total.getAircraft());
                 row.add(total.getShips());
 
-                double soldierPct = 100 * (double) total.getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(total::hasProject) * total.getCities());
-                double tankPct = 100 * (double) total.getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap(total::hasProject) * total.getCities());
-                double airPct = 100 * (double) total.getAircraft() / (Buildings.HANGAR.max() * Buildings.HANGAR.cap(total::hasProject) * total.getCities());
-                double navyPct = 100 * (double) total.getShips() / (Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(total::hasProject) * total.getCities());
+                double soldierPct = 100 * (double) total.getSoldiers() / (Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(total::hasProject) * total.getCities());
+                double tankPct = 100 * (double) total.getTanks() / (Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(total::hasProject) * total.getCities());
+                double airPct = 100 * (double) total.getAircraft() / (Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(total::hasProject) * total.getCities());
+                double navyPct = 100 * (double) total.getShips() / (Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(total::hasProject) * total.getCities());
 
                 row.add(soldierPct);
                 row.add(tankPct);

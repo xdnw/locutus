@@ -469,7 +469,7 @@ public class NationUpdateProcessor {
                             if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
                             if (attacker.getOff() > 4) continue;
                             if (attacker.hasUnsetMil() || current.hasUnsetMil()) continue;
-                            int planeCap = Buildings.HANGAR.cap(attacker::hasProject) * Buildings.HANGAR.max() * attacker.getCities();
+                            int planeCap = Buildings.HANGAR.cap(attacker::hasProject) * Buildings.HANGAR.getUnitCap() * attacker.getCities();
                             if (attacker.getAircraft() < planeCap * 0.8) continue;
 
                             double attStr = BlitzGenerator.getAirStrength(attacker, true, true);

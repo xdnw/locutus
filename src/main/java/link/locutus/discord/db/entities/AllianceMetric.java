@@ -1,8 +1,11 @@
 package link.locutus.discord.db.entities;
 
+import de.siegmar.fastcsv.reader.CsvRow;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.util.PnwUtil;
@@ -10,16 +13,23 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
+import link.locutus.discord.util.scheduler.TriConsumer;
 
+import java.io.IOException;
+import java.sql.PreparedStatement;
+import java.text.ParseException;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.rankings.table.TableNumberFormat.*;
@@ -35,7 +45,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.max());
+            return (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.getUnitCap());
         }
     },
     TANK(false, SI_UNIT) {
@@ -48,7 +58,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max());
+            return (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.getUnitCap());
         }
     },
     AIRCRAFT(false, SI_UNIT) {
@@ -61,7 +71,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getAircraft() / (total.getCities() * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max());
+            return (double) total.getAircraft() / (total.getCities() * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap());
         }
     },
     SHIP(false, SI_UNIT) {
@@ -74,7 +84,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getShips() / (total.getCities() * Buildings.DRYDOCK.cap(f -> false) * Buildings.DRYDOCK.max());
+            return (double) total.getShips() / (total.getCities() * Buildings.DRYDOCK.cap(f -> false) * Buildings.DRYDOCK.getUnitCap());
         }
     },
     INFRA(false, SI_UNIT) {
@@ -398,7 +408,7 @@ public enum AllianceMetric {
         public double apply(DBAlliance alliance) {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
-                PnwUtil.cityCost(nation, 0, nation.getCities());
+                total += PnwUtil.cityCost(nation, 0, nation.getCities());
             }
             return total;
         }
@@ -448,15 +458,14 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            double tankPct = (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max());
-            double soldierPct = (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.max());
+            double tankPct = (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.getUnitCap());
+            double soldierPct = (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.getUnitCap());
             return (tankPct + soldierPct) / 2d;
         }
     },
 
     // war policy over time
-    // project over time
-
+    // projects over time
     // CITY_BUY_VALUE_DAY
     // PROJECT_BUY_VALUE_DAY
     // INFRA_BUY_VALUE_DAY
@@ -511,6 +520,35 @@ public enum AllianceMetric {
 //        }
 //    }
 
+    public static class Value {
+        public final int alliance;
+        public final AllianceMetric metric;
+        public final long turn;
+        public final double value;
+
+        public Value(int alliance, AllianceMetric metric, long turn, double value) {
+            this.alliance = alliance;
+            this.metric = metric;
+            this.turn = turn;
+            this.value = value;
+        }
+    }
+
+    public static void saveAll(List<Value> values) {
+        if (values.isEmpty()) return;
+        int chunkSize = 10000;
+        for (int i = 0; i < values.size(); i += chunkSize) {
+            int end = Math.min(i + chunkSize, values.size());
+            List<Value> subList = values.subList(i, end);
+            Locutus.imp().getNationDB().executeBatch(subList, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<Value, PreparedStatement>) (value, stmt) -> {
+                stmt.setInt(1, value.alliance);
+                stmt.setInt(2, value.metric.ordinal());
+                stmt.setLong(3, value.turn);
+                stmt.setDouble(4, value.value);
+            });
+        }
+    }
+
     private static Map.Entry<Integer, double[]> aaRevenueCache;
 
     private final boolean average;
@@ -548,18 +586,89 @@ public enum AllianceMetric {
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
         for (DBAlliance alliance : alliances) {
             for (AllianceMetric metric : values) {
-                double value = metric.apply(alliance, turn);
+                double value = metric.apply(alliance);
                 Locutus.imp().getNationDB().addMetric(alliance, metric, turn, value);
             }
         }
     }
 
-    public double apply(DBAlliance alliance) {
-        return apply(alliance, TimeUtil.getTurn());
+    public abstract double apply(DBAlliance alliance);
+
+    public void setupReaders(DataDumpImporter importer) {
+        // sets the reader headers
+        return;
+    }
+    public Map<Integer, Double> getDayValue() {
+        // returns day value or null
+        return null;
     }
 
-    public double apply(DBAlliance alliance, long turn) {
-        return apply(alliance);
+    public List<Value> getAllValues() {
+        // returns all values
+        // resets any caches
+        return null;
+    }
+
+    public synchronized void runDataDump(DataDumpParser parser) throws IOException, ParseException {
+        DataDumpImporter importer = new DataDumpImporter();
+        for (AllianceMetric metric : AllianceMetric.values) {
+            metric.setupReaders(importer);
+        }
+
+        TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> nationRows = importer.getNationReader();
+        TriConsumer<Long, DataDumpParser.CityHeader, CsvRow> cityRows = importer.getCityReader();
+
+        parser.iterateAll(nationRows, cityRows, new Consumer<Long>() {
+            @Override
+            public void accept(Long day) {
+                List<AllianceMetric.Value> values = new ObjectArrayList<>();
+                for (AllianceMetric metric : AllianceMetric.values) {
+                    Map<Integer, Double> value = metric.getDayValue();
+                    if (value != null) {
+                        for (Map.Entry<Integer, Double> entry : value.entrySet()) {
+                            values.add(new AllianceMetric.Value(entry.getKey(), metric, day, entry.getValue()));
+                        }
+                    }
+                }
+                saveAll(values);
+            }
+        });
+
+        List<Value> all = new ObjectArrayList<>();
+        for (AllianceMetric metric : AllianceMetric.values) {
+            all.addAll(metric.getAllValues());
+        }
+        saveAll(all);
+    }
+    private static class DataDumpImporter {
+        Map<AllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, CsvRow>> nationReaders = new LinkedHashMap<>();
+        Map<AllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, CsvRow>> cityReaders = new LinkedHashMap<>();
+
+        public void setNationReader(AllianceMetric metric, TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> nationReader) {
+            this.nationReaders.put(metric, nationReader);
+        }
+
+        public void setCityReader(AllianceMetric metric, TriConsumer<Long, DataDumpParser.CityHeader, CsvRow> cityReader) {
+            this.cityReaders.put(metric, cityReader);
+        }
+
+        public TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> getNationReader() {
+            if (nationReaders.isEmpty()) return null;
+            return (turn, header, row) -> {
+                for (Map.Entry<AllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, CsvRow>> entry : nationReaders.entrySet()) {
+                    entry.getValue().consume(turn, header, row);
+                }
+            };
+        }
+
+        public TriConsumer<Long, DataDumpParser.CityHeader, CsvRow> getCityReader() {
+            if (cityReaders.isEmpty()) return null;
+            return (turn, header, row) -> {
+                for (Map.Entry<AllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, CsvRow>> entry : cityReaders.entrySet()) {
+                    entry.getValue().consume(turn, header, row);
+                }
+            };
+        }
     }
 
     public static TimeNumericTable generateTable(AllianceMetric metric, long cutoffTurn, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {

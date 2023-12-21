@@ -1,12 +1,9 @@
 package link.locutus.discord.apiv1.enums;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -16,7 +13,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 
 import java.util.Collection;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -144,7 +140,7 @@ public enum MilitaryUnit {
         MilitaryBuilding building = getBuilding();
         int cap;
         if (building != null) {
-            cap = building.cap(hasProject) * building.perDay() * cities;
+            cap = building.cap(hasProject) * building.getUnitDailyBuy() * cities;
             if (hasProject.test(Projects.PROPAGANDA_BUREAU)) {
                 cap = (int) Math.round(cap * 1.1);
             }
@@ -189,7 +185,7 @@ public enum MilitaryUnit {
             case SHIP:
                 MilitaryBuilding building = getBuilding();
                 if (building == null) throw new IllegalArgumentException("Unknown building: " + this);
-                return building.max() * building.cap(hasProject) * numCities;
+                return building.getUnitCap() * building.cap(hasProject) * numCities;
             case MISSILE:
             case NUKE:
                 return Integer.MAX_VALUE;
@@ -216,13 +212,13 @@ public enum MilitaryUnit {
                 Collection<JavaCity> cities = citiesSupplier.get();
                 for (JavaCity city : cities) {
                     amt += city.get(building);
-                    if (building.requiredCitizens() > 0) {
+                    if (building.getCitizensPerUnit() > 0) {
                         pop += city.getPopulation(hasProject);
                     }
                 }
                 int cap = building.cap(hasProject) * amt;
-                if (cap > 0 && building.requiredCitizens() > 0) {
-                    cap = (int) Math.min(pop / building.requiredCitizens(), cap);
+                if (cap > 0 && building.getCitizensPerUnit() > 0) {
+                    cap = (int) Math.min(pop / building.getCitizensPerUnit(), cap);
                 }
                 return cap;
             case MISSILE:
@@ -259,7 +255,7 @@ public enum MilitaryUnit {
 
     public MilitaryBuilding getBuilding() {
         for (Building value : Buildings.values()) {
-            if (value instanceof MilitaryBuilding && ((MilitaryBuilding) value).unit() == this) {
+            if (value instanceof MilitaryBuilding && ((MilitaryBuilding) value).getMilitaryUnit() == this) {
                 return (MilitaryBuilding) value;
             }
         }

@@ -455,7 +455,7 @@ public class GrantCmd extends Command {
                     case AIRCRAFT:
                     case SHIP:
                         MilitaryBuilding building = unit.getBuilding();
-                        max = building.cap(f -> false) * building.max() * me.getCities();
+                        max = building.cap(f -> false) * building.getUnitCap() * me.getCities();
                         break;
                     case SPIES:
                         max = Projects.INTELLIGENCE_AGENCY.get(me) > 0 ? 60 : 50;
@@ -545,7 +545,7 @@ public class GrantCmd extends Command {
             MilitaryBuilding building = unit.getBuilding();
             if (building == null) continue;
             double numBuildings = mmr.get(unit) * cities;
-            int numUnitsPerRebuy = (int) (Math.floor(building.max() * numBuildings));
+            int numUnitsPerRebuy = (int) (Math.floor(building.getUnitCap() * numBuildings));
             int numUnits = numUnitsPerRebuy * numBuys;
             resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
             response.append("- " + numUnits + " x " + unit);
@@ -575,7 +575,7 @@ public class GrantCmd extends Command {
             MilitaryBuilding building = unit.getBuilding();
             if (building == null) continue;
             double numBuildings = mmr.get(unit) * cities;
-            int numUnitsPerDay = (int) (Math.floor(building.perDay() * numBuildings));
+            int numUnitsPerDay = (int) (Math.floor(building.getUnitDailyBuy() * numBuildings));
             int numUnits = numUnitsPerDay * numBuys;
             resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
             response.append("- " + numUnits + " x " + unit);

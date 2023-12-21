@@ -296,7 +296,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getCities() > 10) return true;
-            int perDay = me.getCities() * 5 * Buildings.BARRACKS.perDay();
+            int perDay = me.getCities() * 5 * Buildings.BARRACKS.getUnitDailyBuy();
             if (me.getSoldiers() < perDay * 0.3) {
                 if (me.getSoldiers() < perDay * 0.3) {
                     throw new IllegalArgumentException("**You still only have " + me.getSoldiers() + " soldiers**\n\n" + getContent());

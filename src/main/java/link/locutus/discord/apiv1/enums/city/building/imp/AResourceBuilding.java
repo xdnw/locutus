@@ -1,17 +1,15 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.apiv1.domains.Nation;
-import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 
-import java.util.function.Function;
+import java.util.List;
 import java.util.function.Predicate;
 
 public class AResourceBuilding extends ABuilding implements ResourceBuilding {
@@ -43,13 +41,18 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public ResourceType resource() {
+    public ResourceType getResourceProduced() {
         return output;
     }
 
     @Override
-    public int baseProduction() {
+    public int getBaseProduction() {
         return baseInput * 3;
+    }
+
+    @Override
+    public List<ResourceType> getResourceTypesConsumed() {
+        return List.of(inputs);
     }
 
     @Override
@@ -86,7 +89,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, JavaCity city, double[] profitBuffer, int turns) {
         profitBuffer = super.profit(continent, rads, date, hasProjects, city, profitBuffer, turns);
 
-        ResourceType type = resource();
+        ResourceType type = getResourceProduced();
         int improvements = city.get(this);
 
         double production = type.getProduction(continent, rads, hasProjects, city.getLand(), improvements, date);
@@ -117,5 +120,10 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     @Override
     public double getUpkeepConverted(Predicate<Project> hasProject) {
         return super.getUpkeepConverted(hasProject) * (hasProject.test(Projects.GREEN_TECHNOLOGIES) ? 0.9d : 1d);
+    }
+
+    @Override
+    public BuildingType getType() {
+        return getResourceProduced().isRaw() ? BuildingType.RAW : BuildingType.MANUFACTURING;
     }
 }

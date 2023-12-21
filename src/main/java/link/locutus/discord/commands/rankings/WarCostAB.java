@@ -79,7 +79,7 @@ public class WarCostAB extends Command {
             parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess().ordinal()));
         }
 
-        AttackCost cost = parser.toWarCost(!flags.contains('b'), true, flags.contains('s'), flags.contains('w'), false);
+        AttackCost cost = parser.toWarCost(!flags.contains('b'), true, flags.contains('s'), flags.contains('w') || flags.contains('t'), false);
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l'), !flags.contains('b')));
         IMessageBuilder msg = channel.create();

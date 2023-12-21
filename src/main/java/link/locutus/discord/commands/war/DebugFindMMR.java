@@ -9,7 +9,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,10 +33,10 @@ public class DebugFindMMR extends Command {
         for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
             if (nation.getCities() != cities || nation.hasUnsetMil()) continue;
 
-            int reqSoldiers = (mmr.charAt(0) - '0') * cities * Buildings.BARRACKS.max();
-            int reqTanks = (mmr.charAt(1) - '0') * cities * Buildings.FACTORY.max();
-            int reqAircraft = (mmr.charAt(2) - '0') * cities * Buildings.HANGAR.max();
-            int reqShips = (mmr.charAt(3) - '0') * cities * Buildings.DRYDOCK.max();
+            int reqSoldiers = (mmr.charAt(0) - '0') * cities * Buildings.BARRACKS.getUnitCap();
+            int reqTanks = (mmr.charAt(1) - '0') * cities * Buildings.FACTORY.getUnitCap();
+            int reqAircraft = (mmr.charAt(2) - '0') * cities * Buildings.HANGAR.getUnitCap();
+            int reqShips = (mmr.charAt(3) - '0') * cities * Buildings.DRYDOCK.getUnitCap();
 
             if (nation.getSoldiers() != reqSoldiers) continue;
             if (nation.getTanks() != reqTanks) continue;
