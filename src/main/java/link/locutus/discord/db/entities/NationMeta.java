@@ -117,6 +117,8 @@ public enum NationMeta {
 
     GPT_SOURCES,
 
+    BANK_TRANSFER_REQUIRED_AMOUNT,
+
     ;
 
     public static NationMeta[] values = values();

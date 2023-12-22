@@ -1,14 +1,20 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBNation;
@@ -138,6 +144,20 @@ public class PlayerSettingCommands {
         }
         RateLimitUtil.complete(guild.addRoleToMember(member, role));
         return "You have been opted out of " + Roles.WAR_ALERT_OPT_OUT.name() + " alerts";
+    }
+
+    @Command(desc = "Set the required transfer market value required for automatic bank alerts\n" +
+            "Defaults to $100m, minimum value of 100m")
+    @CoalitionPermission(Coalition.RAIDPERMS)
+    public String bankAlertRequiredValue(@Me DBNation me,
+                                         @Arg("Require the bank transfer to be worth this much\n" +
+                                                 "Resources are valued at weekly market average prices")
+                                         double requiredValue) {
+        if (requiredValue < 100_000_000) {
+            throw new IllegalArgumentException("Minimum value is $100m (you entered: `" + MathMan.format(requiredValue) + "`)");
+        }
+        me.setMeta(NationMeta.BANK_TRANSFER_REQUIRED_AMOUNT, requiredValue);
+        return "Set bank alert required value to $" + MathMan.format(requiredValue);
     }
 
 }

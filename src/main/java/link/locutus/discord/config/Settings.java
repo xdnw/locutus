@@ -391,8 +391,8 @@ public class Settings extends Config {
     }
 
     public static class UPDATE_PROCESSOR {
-        public long THRESHOLD_BANK_SUB_ALERT = 10000000;
-        public long THRESHOLD_ALL_BANK_ALERT = 100000000;
+        public long THRESHOLD_BANK_SUB_ALERT = 100_000_000;
+        public long THRESHOLD_ALL_BANK_ALERT = 10_000_000;
     }
 
     public static class DISCORD {

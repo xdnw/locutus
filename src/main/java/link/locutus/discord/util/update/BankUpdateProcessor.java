@@ -8,6 +8,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.event.bank.TransactionEvent;
@@ -24,6 +26,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
+import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.Date;
 import java.util.HashSet;
@@ -33,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.db.guild.GuildKey.BANK_ALERT_CHANNEL;
 import static link.locutus.discord.db.guild.GuildKey.DEPOSIT_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildKey.LARGE_TRANSFERS_CHANNEL;
 import static link.locutus.discord.db.guild.GuildKey.WITHDRAW_ALERT_CHANNEL;
 
 public class BankUpdateProcessor {
@@ -109,6 +113,18 @@ public class BankUpdateProcessor {
             subs.addAll(Locutus.imp().getBankDB().getSubscriptions((int) transfer.getReceiver(), BankDB.BankSubType.of(transfer.isReceiverAA()), true, longValue));
 
             for (BankDB.Subscription sub : subs) {
+                DBNation nation = DiscordUtil.getNation(sub.user);
+                if (nation == null) {
+                    Locutus.imp().getBankDB().unsubscribeAll(sub.user);
+                    continue;
+                }
+                ByteBuffer thresholdBuf = nation.getMeta(NationMeta.BANK_TRANSFER_REQUIRED_AMOUNT);
+                if (thresholdBuf != null) {
+                    long threshold = (long) thresholdBuf.getDouble();
+                    if (threshold > value) {
+                        continue;
+                    }
+                }
                 receiver.add(sub.user);
             }
 
@@ -116,7 +132,7 @@ public class BankUpdateProcessor {
                 Map.Entry<String, String> card = createCard(transfer, nationId);
 
                 for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
-                    MessageChannel channel = guildDB.getOrNull(BANK_ALERT_CHANNEL, false);
+                    MessageChannel channel = guildDB.getOrNull(LARGE_TRANSFERS_CHANNEL, false);
                     if (channel == null) {
                         continue;
                     }

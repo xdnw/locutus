@@ -41,6 +41,7 @@ public class UnsubBank extends Command {
 
         if (args.get(0).equalsIgnoreCase("*")) {
             db.unsubscribe(author, 0, BankDB.BankSubType.ALL);
+            db.unsubscribeAll(author.getIdLong());
         } else {
             Integer nationId = DiscordUtil.parseNationId(args.get(0));
             if (nationId == null || args.get(0).contains("/alliance/")) {

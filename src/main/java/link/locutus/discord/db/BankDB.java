@@ -1155,9 +1155,9 @@ public class BankDB extends DBMainV3 {
         });
     }
 
-    public void unsubscribeAll(User user) {
+    public void unsubscribeAll(long userId) {
         updateLegacy("DELETE FROM `SUBSCRIPTIONS` WHERE user = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, user.getIdLong());
+            stmt.setLong(1, userId);
         });
     }
 

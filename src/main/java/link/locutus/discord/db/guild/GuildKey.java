@@ -1189,9 +1189,22 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "The #channel to receive alerts e.g. for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
+            return "The #channel to receive alerts for transfers when a nation goes into VM";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted());
+    public static GuildSetting<MessageChannel> LARGE_TRANSFERS_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String LARGE_TRANSFERS_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return LARGE_TRANSFERS_CHANNEL.setAndValidate(db, user, channel);
+        }
+
+        @Override
+        public String help() {
+            return "The #channel to receive alerts e.g. for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
+        }
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requiresWhitelisted()); // .requireValidAlliance() TODO FIXME
     public static GuildSetting<MessageChannel> REROLL_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
