@@ -1752,10 +1752,11 @@ public class AdminCommands {
         if (alliance != null) {
             db = alliance.getGuildDB();
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
+
+            channel.send("Syncing banks for " + db.getGuild() + "...");
+            OffshoreInstance bank = alliance.getBank();
+            bank.sync(timestamp, false);
         }
-        channel.send("Syncing banks for " + db.getGuild() + "...");
-        OffshoreInstance bank = alliance.getBank();
-        bank.sync(timestamp, false);
 
         Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         return "Done!";
