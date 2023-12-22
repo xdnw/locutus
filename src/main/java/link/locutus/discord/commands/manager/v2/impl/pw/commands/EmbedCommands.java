@@ -50,6 +50,7 @@ import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -652,7 +653,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         boolean greater = greaterOrLess == Operation.GREATER || greaterOrLess == Operation.GREATER_EQUAL;
         double minScore = greater ? score : 0;
         double maxScore = greater ? Integer.MAX_VALUE : score;
-        String rangeStr = "(" + String.format("%.2f", minScore) + "," + String.format("%.2f", maxScore) + ")=1";
+        String rangeStr = String.format("%.2f", minScore) + "," + String.format("%.2f", maxScore);
 
         String dmStr = resultsInDm ? "true" : null;
         CM.war.find.enemy easy = CM.war.find.enemy.cmd.create(
@@ -665,9 +666,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
         int scoreInt = (int) score;
         CM.war.find.enemy high = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#attackingenemyofscore" + rangeStr + ",#attacking3/4strengthenemyofscore" + rangeStr, null, null, null, null, "true", null, null, null, dmStr, null);
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66", null, null, null, null, "true", null, null, null, dmStr, null);
         CM.war.find.enemy low = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#attackingenemyofscore" + rangeStr + ",#attacking3/4strengthenemyofscore" + rangeStr, null, null, null, null, "true", null, "true", null, dmStr, null);
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66", null, null, null, null, "true", null, "true", null, dmStr, null);
         CM.war.find.enemy weak = CM.war.find.enemy.cmd.create(
                 "~enemies", null, null, "true", "true", null, null, "true", null, dmStr, "true");
         CM.war.find.damage infra = CM.war.find.damage.cmd.create(
