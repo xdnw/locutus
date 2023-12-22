@@ -525,7 +525,7 @@ public class DataDumpParser {
 
         long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> true, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() != SuccessType.UTTER_FAILURE);
-        attacks.sort(Comparator.comparingLong(o -> o.getDate()));
+        attacks.sort(Comparator.comparingLong(AbstractCursor::getDate));
 
         long currTurn = TimeUtil.getTurn();
 
@@ -1027,7 +1027,10 @@ public class DataDumpParser {
         return instance;
     }
 
-    public DBCity loadCity(CityHeader header, CsvRow row, int nationId) throws ParseException {
+    public DBCity loadCity(CityHeader header, CsvRow row, Integer nationId) throws ParseException {
+        if (nationId == null) {
+            nationId = Integer.parseInt(row.getField(header.nation_id));
+        }
         DBCity city = new DBCity(nationId);
         city.id = Integer.parseInt(row.getField(header.city_id));
         Long createdCached = cityDateCache.get(city.id);
@@ -1104,8 +1107,6 @@ public class DataDumpParser {
         }
         nation.setNation_id(nationId);
 
-
-//        nation.setDate();
         nation.setContinent(Continent.parseV3(row.getField(header.continent)));
         nation.setColor(NationColor.valueOf(row.getField(header.color).toUpperCase()));
         nation.setAlliance_id(Integer.parseInt(row.getField(header.alliance_id)));

@@ -3,9 +3,12 @@ package link.locutus.discord.db.entities;
 import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.apiv3.ParsedRow;
@@ -55,6 +58,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int soldiers = row.get(header.soldiers, Integer::parseInt);
                     soldiersByAA.merge(allianceId, soldiers, Integer::sum);
                 }
@@ -93,6 +98,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int soldiers = row.get(header.soldiers, Integer::parseInt);
                     soldiersByAA.merge(allianceId, soldiers, Integer::sum);
                     int cities = row.get(header.cities, Integer::parseInt);
@@ -132,6 +139,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int tanks = row.get(header.tanks, Integer::parseInt);
                     tanksByAA.merge(allianceId, tanks, Integer::sum);
                 }
@@ -170,6 +179,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int tanks = row.get(header.tanks, Integer::parseInt);
                     tanksByAA.merge(allianceId, tanks, Integer::sum);
                     int cities = row.get(header.cities, Integer::parseInt);
@@ -211,6 +222,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int aircraft = row.get(header.aircraft, Integer::parseInt);
                     aircraftByAA.merge(allianceId, aircraft, Integer::sum);
                 }
@@ -249,6 +262,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int aircraft = row.get(header.aircraft, Integer::parseInt);
                     aircraftByAA.merge(allianceId, aircraft, Integer::sum);
                     int cities = row.get(header.cities, Integer::parseInt);
@@ -290,6 +305,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int ships = row.get(header.ships, Integer::parseInt);
                     shipsByAA.merge(allianceId, ships, Integer::sum);
                 }
@@ -328,6 +345,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     int ships = row.get(header.ships, Integer::parseInt);
                     shipsByAA.merge(allianceId, ships, Integer::sum);
                     int cities = row.get(header.cities, Integer::parseInt);
@@ -367,6 +386,8 @@ public enum AllianceMetric {
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
                     if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
                     allianceByNationId.put(row.get(header.nation_id, Integer::parseInt), allianceId);
                 }
             });
@@ -402,6 +423,56 @@ public enum AllianceMetric {
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getAvg_infra();
         }
+
+        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
+        private final Map<Integer, Double> infraByAA = new Int2DoubleOpenHashMap();
+        private final Map<Integer, Integer> citiesByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    allianceByNationId.put(row.get(header.nation_id, Integer::parseInt), allianceId);
+                }
+            });
+
+            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+                @Override
+                public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                    int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
+                    Integer allianceId = allianceByNationId.get(nationId);
+                    if (allianceId == null) return;
+                    double infra = parsedRow.get(header.infrastructure, Double::parseDouble);
+                    infraByAA.merge(allianceId, infra, Double::sum);
+                    citiesByAA.merge(allianceId, 1, Integer::sum);
+                }
+            });
+
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = infraByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> f.getValue() / citiesByAA.get(f.getKey())));
+            infraByAA.clear();
+            allianceByNationId.clear();
+            citiesByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            infraByAA.clear();
+            allianceByNationId.clear();
+            citiesByAA.clear();
+            return null;
+        }
     },
     LAND(false, SI_UNIT) {
         @Override
@@ -412,6 +483,51 @@ public enum AllianceMetric {
                 totalLand += nation.getTotalLand();
             }
             return totalLand;
+        }
+
+        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
+        private final Map<Integer, Double> landByAA = new Int2DoubleOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    allianceByNationId.put(row.get(header.nation_id, Integer::parseInt), allianceId);
+                }
+            });
+
+            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+                @Override
+                public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                    int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
+                    Integer allianceId = allianceByNationId.get(nationId);
+                    if (allianceId == null) return;
+                    double land = parsedRow.get(header.land, Double::parseDouble);
+                    landByAA.merge(allianceId, land, Double::sum);
+                }
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = landByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            landByAA.clear();
+            allianceByNationId.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            landByAA.clear();
+            allianceByNationId.clear();
+            return null;
         }
     },
     LAND_AVG(true, DECIMAL_ROUNDED) {
@@ -426,11 +542,91 @@ public enum AllianceMetric {
             }
             return totalLand / num;
         }
+
+        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
+        private final Map<Integer, Double> landByAA = new Int2DoubleOpenHashMap();
+        private final Map<Integer, Integer> citiesByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    allianceByNationId.put(row.get(header.nation_id, Integer::parseInt), allianceId);
+                }
+            });
+
+            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+                @Override
+                public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                    int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
+                    Integer allianceId = allianceByNationId.get(nationId);
+                    if (allianceId == null || allianceId == 0) return;
+                    double land = parsedRow.get(header.land, Double::parseDouble);
+                    landByAA.merge(allianceId, land, Double::sum);
+                    citiesByAA.merge(allianceId, 1, Integer::sum);
+                }
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = landByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> f.getValue() / citiesByAA.get(f.getKey())));
+            landByAA.clear();
+            allianceByNationId.clear();
+            citiesByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            landByAA.clear();
+            allianceByNationId.clear();
+            citiesByAA.clear();
+            return null;
+        }
     },
     SCORE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getScore();
+        }
+
+        private final Map<Integer, Double> scoreByAlliance = new Int2DoubleOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    double score = row.get(header.score, Double::parseDouble);
+                    scoreByAlliance.merge(allianceId, score, Double::sum);
+                }
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = scoreByAlliance.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            scoreByAlliance.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            return null;
         }
     },
     SCORE_AVG(true, DECIMAL_ROUNDED) {
@@ -438,11 +634,76 @@ public enum AllianceMetric {
         public double apply(DBAlliance alliance) {
             return alliance.getScore() / alliance.getNations(true, 0, true).size();
         }
+
+        private final Map<Integer, Double> scoreByAlliance = new Int2DoubleOpenHashMap();
+        private final Map<Integer, Integer> nationsByAlliance = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    double score = row.get(header.score, Double::parseDouble);
+                    scoreByAlliance.merge(allianceId, score, Double::sum);
+                    nationsByAlliance.merge(allianceId, 1, Integer::sum);
+                }
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = scoreByAlliance.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> f.getValue() / nationsByAlliance.get(f.getKey())));
+            scoreByAlliance.clear();
+            nationsByAlliance.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            scoreByAlliance.clear();
+            nationsByAlliance.clear();
+            return null;
+        }
     },
     CITY(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getCities();
+        }
+
+        private final Map<Integer, Integer> citiesByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, (day, header, row) -> {
+                int position = row.get(header.alliance_position, Integer::parseInt);
+                if (position <= Rank.APPLICANT.id) return;
+                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                if (allianceId == 0) return;
+                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                if (vmTurns > 0) return;
+                int numCities = row.get(header.cities, Integer::parseInt);
+                citiesByAA.merge(allianceId, numCities, Integer::sum);
+            });
+
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = citiesByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue()));
+            citiesByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            return null;
         }
     },
     CITY_AVG(true, SI_UNIT) {
@@ -453,11 +714,72 @@ public enum AllianceMetric {
             for (DBNation nation : nations) total += nation.getCities();
             return (double) total / nations.size();
         }
+
+        private final Map<Integer, Integer> citiesByAA = new Int2IntOpenHashMap();
+        private final Map<Integer, Integer> nationsByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, (day, header, row) -> {
+                int position = row.get(header.alliance_position, Integer::parseInt);
+                if (position <= Rank.APPLICANT.id) return;
+                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                if (allianceId == 0) return;
+                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                if (vmTurns > 0) return;
+                int numCities = row.get(header.cities, Integer::parseInt);
+                citiesByAA.merge(allianceId, numCities, Integer::sum);
+                nationsByAA.merge(allianceId, 1, Integer::sum);
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = citiesByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / nationsByAA.get(f.getKey())));
+            citiesByAA.clear();
+            nationsByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            citiesByAA.clear();
+            nationsByAA.clear();
+            return null;
+        }
     },
     MEMBERS(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getNations(true, 0, true).size();
+        }
+
+        private final Map<Integer, Integer> nationsByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, (day, header, row) -> {
+                int position = row.get(header.alliance_position, Integer::parseInt);
+                if (position <= Rank.APPLICANT.id) return;
+                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                if (allianceId == 0) return;
+                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                if (vmTurns > 0) return;
+                nationsByAA.merge(allianceId, 1, Integer::sum);
+            });
+
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = nationsByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue()));
+            nationsByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            return null;
         }
     },
     MEMBERS_ACTIVE_1W(false, SI_UNIT) {
@@ -471,6 +793,33 @@ public enum AllianceMetric {
         public double apply(DBAlliance alliance) {
             return alliance.getNations().stream().filter(f -> f.getVm_turns() != 0 && f.getPosition() > Rank.APPLICANT.id).count();
         }
+
+        private final Map<Integer, Integer> vmByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, (day, header, row) -> {
+                int position = row.get(header.alliance_position, Integer::parseInt);
+                if (position <= Rank.APPLICANT.id) return;
+                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                if (allianceId == 0) return;
+                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                if (vmTurns == 0) return;
+                vmByAA.merge(allianceId, 1, Integer::sum);
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = vmByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue()));
+            vmByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            return null;
+        }
     },
     INACTIVE_1W(false, SI_UNIT) {
         @Override
@@ -483,6 +832,33 @@ public enum AllianceMetric {
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
             return nations.stream().filter(f -> f.getVm_turns() != 0 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
+        }
+
+        private final Map<Integer, Integer> vmByAA = new Int2IntOpenHashMap();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, (day, header, row) -> {
+                int position = row.get(header.alliance_position, Integer::parseInt);
+                if (position <= Rank.APPLICANT.id) return;
+                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                if (allianceId == 0) return;
+                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                if (vmTurns == 0) return;
+                vmByAA.merge(allianceId, 1, Integer::sum);
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, Double> result = vmByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue()));
+            vmByAA.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            return null;
         }
     },
     INACTIVE_PCT(true, PERCENTAGE_ONE) {
@@ -521,6 +897,72 @@ public enum AllianceMetric {
             aaRevenueCache = new AbstractMap.SimpleEntry<>(alliance.getAlliance_id(), totalRss);
 
             return PnwUtil.convertedTotal(totalRss);
+        }
+
+
+        private final Map<Integer, DBNation> nationMap = new Int2ObjectOpenHashMap<>();
+        private final Map<Integer, List<DBCity>> cityMap = new Int2ObjectOpenHashMap<>();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, (day, header, row) -> {
+                int position = row.get(header.alliance_position, Integer::parseInt);
+                if (position <= Rank.APPLICANT.id) return;
+                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                if (allianceId == 0) return;
+                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                if (vmTurns > 0) return;
+                String color = row.get(header.color, String::toString);
+                if (color.equalsIgnoreCase("gray") || color.equalsIgnoreCase("beige")) return;
+                DBNation nation = row.getNation(header, false, true);
+                nationMap.put(nation.getNation_id(), nation);
+            });
+
+            importer.setCityReader(this, (day, header, row) -> {
+                int nationId = row.get(header.nation_id, Integer::parseInt);
+                DBNation nation = nationMap.get(nationId);
+                if (nation == null) return;
+                DBCity city = row.getCity(header, nationId);
+                List<DBCity> cities = cityMap.computeIfAbsent(nationId, f -> new ObjectArrayList<>());
+                cities.add(city);
+            });
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue() {
+            Map<Integer, double[]> result = new Int2ObjectOpenHashMap<>();
+
+
+            for (Map.Entry<Integer, DBNation> entry : nationMap.entrySet()) {
+                DBNation nation = entry.getValue();
+                int allianceId = nation.getAlliance_id();
+                List<DBCity> cities = cityMap.get(nation.getNation_id());
+                List<JavaCity> javaCities = cities.stream().map(f -> f.toJavaCity(nation)).toList();
+
+                double[] buffer = result.computeIfAbsent()
+
+            }
+
+
+            for (Map.Entry<Integer, List<DBCity>> entry : cityMap.entrySet()) {
+                int nationId = entry.getKey();
+                List<DBCity> cities = entry.getValue();
+                double[] totalRss = ResourceType.getBuffer();
+
+                for (DBCity city : cities) {
+                    double[] revenue = city.getRevenue();
+                    ResourceType.add(totalRss, revenue);
+                }
+                result.put(nationId, PnwUtil.convertedTotal(totalRss));
+            }
+            cityMap.clear();
+            nationMap.clear();
+            return result;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            return null;
         }
     },
     OFFENSIVE_WARS(false, SI_UNIT) {
@@ -898,20 +1340,20 @@ public enum AllianceMetric {
 
     public abstract double apply(DBAlliance alliance);
 
-    public void setupReaders(DataDumpImporter importer) {
-        // sets the reader headers
-        return;
-    }
-    public Map<Integer, Double> getDayValue() {
-        // returns day value or null
-        return null;
-    }
+    public abstract void setupReaders(DataDumpImporter importer);// {
+//        // sets the reader headers
+//        return;
+//    }
+    public abstract Map<Integer, Double> getDayValue();// {
+//        // returns day value or null
+//        return null;
+//    }
 
-    public List<Value> getAllValues() {
-        // returns all values
-        // resets any caches
-        return null;
-    }
+    public abstract List<Value> getAllValues();// {
+//        // returns all values
+//        // resets any caches
+//        return null;
+//    }
 
     public synchronized void runDataDump(DataDumpParser parser) throws IOException, ParseException {
         DataDumpImporter importer = new DataDumpImporter();
@@ -945,6 +1387,16 @@ public enum AllianceMetric {
         saveAll(all);
     }
     private static class DataDumpImporter {
+        private final DataDumpParser parser;
+
+        public DataDumpImporter(DataDumpParser parser) {
+            this.parser = parser;
+        }
+
+        public DataDumpParser getParser() {
+            return parser;
+        }
+
         Map<AllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> nationReaders = new LinkedHashMap<>();
         Map<AllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> cityReaders = new LinkedHashMap<>();
 
