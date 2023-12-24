@@ -734,7 +734,7 @@ public enum AllianceMetric {
                 total += nation.getNukes();
                 num += nation.getCities();
             }
-            return total / num;
+            return total / (double) num;
         }
     },
 
