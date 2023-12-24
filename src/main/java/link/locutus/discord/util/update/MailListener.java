@@ -129,7 +129,7 @@ public class MailListener {
         List<String> args = StringMan.split(msg, " ");
         LocalValueStore locals = createLocals(db, guild, io, event, msg);
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-        Object response = commands.call(stack);
+        Object response = callable.call(stack);
         if (response != null) {
             io.sendMessage(response.toString());
             String html = MarkupUtil.markdownToHTML(response.toString());

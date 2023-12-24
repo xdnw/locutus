@@ -396,7 +396,7 @@ public abstract class GuildSetting<T> {
         this.requiresFunction.add((guildDB, throwError) -> {
             try {
                 predicate.accept(guildDB);
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException | UnsupportedOperationException e) {
                 if (throwError) throw e;
                 return false;
             }

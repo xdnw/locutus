@@ -2295,13 +2295,11 @@ public class BankCommands {
                 "grant",
                 "total",
                 "last_deposit_day",
+                "last_self_withdraw_day",
                 "flow_internal",
                 "flow_withdrawal",
                 "flow_deposit"
         ));
-//            header.add("flow_internal");
-//            header.add("flow_withdrawal");
-//            header.add("flow_deposit");
 
         for (ResourceType type : ResourceType.values()) {
             if (type == ResourceType.CREDITS) continue;
@@ -2408,10 +2406,14 @@ public class BankCommands {
             }
             header.set(7, String.format("%.2f", PnwUtil.convertedTotal(total)));
             long lastDeposit = 0;
+            long lastSelfWithdrawal = 0;
             for (Map.Entry<Integer, Transaction2> entry : transactions) {
                 Transaction2 transaction = entry.getValue();
                 if (transaction.sender_id == nation.getNation_id()) {
                     lastDeposit = Math.max(transaction.tx_datetime, lastDeposit);
+                }
+                if (transaction.isSelfWithdrawal(nation)) {
+                    lastSelfWithdrawal = Math.max(transaction.tx_datetime, lastSelfWithdrawal);
                 }
             }
             if (lastDeposit == 0) {
@@ -2420,11 +2422,17 @@ public class BankCommands {
                 long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastDeposit);
                 header.set(8, days);
             }
-            header.set(9, PnwUtil.resourcesToString(internal));
-            header.set(10, PnwUtil.resourcesToString(withdrawal));
-            header.set(11, PnwUtil.resourcesToString(deposit));
+            if (lastSelfWithdrawal == 0) {
+                header.set(9, "NEVER");
+            } else {
+                long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastSelfWithdrawal);
+                header.set(9, days);
+            }
+            header.set(10, PnwUtil.resourcesToString(internal));
+            header.set(11, PnwUtil.resourcesToString(withdrawal));
+            header.set(12, PnwUtil.resourcesToString(deposit));
 
-            int i = 12;
+            int i = 13;
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 header.set((i++), MathMan.format(total[type.ordinal()]));
@@ -3127,6 +3135,10 @@ public class BankCommands {
 
         Map.Entry<Boolean, String> result;
         if (amount != null) {
+            Double money = amount.get(ResourceType.MONEY);
+            if (money != null && money < 100000) {
+                throw new IllegalArgumentException("Minimum amount is $100,000");
+            }
             result = receiver.tradeAndOffshoreDeposit(db, me, PnwUtil.resourcesToArray(amount));
         } else if (!useLogin) {
             result = receiver.acceptAndOffshoreTrades(db, me);

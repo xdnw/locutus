@@ -119,6 +119,7 @@ public class BlitzGenerator {
         List<List<Object>> rows = sheet.fetchAll(null);
         List<Object> header = rows.get(headerRow);
 
+        boolean useLeader = isLeader;
         Integer targetI = null;
         Integer allianceI = null;
         Integer attI = null;
@@ -136,6 +137,10 @@ public class BlitzGenerator {
             }
             if (title.equalsIgnoreCase("nation") || title.equalsIgnoreCase("nation name") || (title.equalsIgnoreCase("link") && targetI == null)) {
                 targetI = i;
+            }
+            if (title.equalsIgnoreCase("leader") && targetI == null) {
+                targetI = i;
+                useLeader = true;
             }
             if (title.equalsIgnoreCase("att1") || title.equalsIgnoreCase("Fighter #1") || title.equalsIgnoreCase("Attacker 1")) {
                 attI = i;
@@ -168,7 +173,7 @@ public class BlitzGenerator {
             if (cell == null || cell.toString().isEmpty()) continue;
             String nationStr = cell.toString();
             if (nationStr.contains(" / ")) nationStr = nationStr.split(" / ")[0];
-            DBNation nation = DiscordUtil.parseNation(nationStr, false, isLeader);
+            DBNation nation = DiscordUtil.parseNation(nationStr, false, useLeader);
 
             DBNation attacker = isReverse ? nation : null;
             DBNation defender = !isReverse ? nation : null;
@@ -195,6 +200,7 @@ public class BlitzGenerator {
                 boolean finalIsReverse = isReverse;
                 DBNation finalDefender = defender;
                 DBNation finalAttacker = attacker;
+                boolean finalUseLeader = useLeader;
                 Consumer<Integer> onRow = new Consumer<>() {
                     @Override
                     public void accept(Integer j) {
@@ -203,7 +209,7 @@ public class BlitzGenerator {
                         DBNation attackerMutable = finalAttacker;
                         Object cell = row.get(j);
                         if (cell == null || cell.toString().isEmpty()) return;
-                        DBNation other = DiscordUtil.parseNation(cell.toString().split("\\|")[0], false, isLeader);
+                        DBNation other = DiscordUtil.parseNation(cell.toString().split("\\|")[0], false, finalUseLeader);
 
                         if (finalIsReverse) {
                             defenderMutable = other;
@@ -240,7 +246,7 @@ public class BlitzGenerator {
                 for (Integer j : targetsIndexesRoseFormat) {
                     cell = row.get(j);
                     if (cell == null || cell.toString().isEmpty()) continue;
-                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false, isLeader);
+                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false, useLeader);
                     if (isReverse) {
                         defender = other;
                     } else {

@@ -671,7 +671,6 @@ public class Auth {
                                 response.setMessage("Trade must be sent as a sell offer").setResult(TradeResultType.NOT_A_SELL_OFFER);
                                 continue;
                             }
-
                         } else if (ppu >= 100000) {
                             if (type != ResourceType.FOOD) {
                                 response.setMessage("Money trades must be sent as a food trade").setResult(TradeResultType.NOT_A_FOOD_TRADE);

@@ -789,6 +789,10 @@ public class DiscordUtil {
 
     public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader) {
         if (arg.toLowerCase().contains("/alliance/") || arg.toLowerCase().startsWith("aa:")) return null;
+        if (arg.startsWith("leader:")) {
+            arg = arg.substring(7);
+            useLeader = true;
+        }
         if (useLeader) {
             DBNation nation = Locutus.imp().getNationDB().getNationByLeader(arg);
             if (nation != null) return nation;

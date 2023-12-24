@@ -46,7 +46,7 @@ public class FindProducer extends Command {
                 "Use `-m` to not include military upkeep\n" +
                 "Use `-t` to not include trade bonus\n" +
                 "Use `-b` to not include new nation bonus\n" +
-                "Use `-n` to include food consumption\n" +
+                "Use `-n` to include consumption\n" +
                 "Use `-a` to list by nation instead of alliance\n" +
                 "Use `-s` to list the average instead of the sum\n" +
                 "Use `-i` to include gray/beige";

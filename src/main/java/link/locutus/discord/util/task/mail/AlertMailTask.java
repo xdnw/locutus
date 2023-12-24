@@ -128,60 +128,60 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
 
 
             }
-
-            if (nation == null) return;
-
-            if (strings.isEmpty()) return;
-            String msg = strings.get(0);
-
-            if (mail.subject.toLowerCase().startsWith("targets-")) {
-                if (msg.toLowerCase().startsWith("more")) {
-
-                    Set<Integer> tracked = new HashSet<>();
-
-
-                    String targets = null;
-                    GuildDB db = null;
-                    if (channel != null) {
-                        db = Locutus.imp().getGuildDB(channel.getGuild());
-                    }
-                    if (db == null) {
-                        db = Locutus.imp().getGuildDB(nation.getAlliance_id());
-                    }
-//                    if (rootDB != null && rootDB.getCoalition("spyops").contains(nation.getAlliance_id())) {
-//                        db = rootDB;
+//
+//            if (nation == null) return;
+//
+//            if (strings.isEmpty()) return;
+//            String msg = strings.get(0);
+//
+//            if (mail.subject.toLowerCase().startsWith("targets-")) {
+//                if (msg.toLowerCase().startsWith("more")) {
+//
+//                    Set<Integer> tracked = new HashSet<>();
+//
+//
+//                    String targets = null;
+//                    GuildDB db = null;
+//                    if (channel != null) {
+//                        db = Locutus.imp().getGuildDB(channel.getGuild());
 //                    }
-                    try {
-                        if (db != null && !db.getCoalition(Coalition.ENEMIES).isEmpty()) {
-                            Spyops cmd = new Spyops();
-
-                            split = msg.split(" ");
-                            String type = "*";
-                            if (split.length >= 2) {
-                                try {
-                                    type = MilitaryUnit.valueOf(split[1].toUpperCase()).name();
-                                } catch (IllegalArgumentException igniore) {
-                                }
-                            }
-                            ArrayList<String> args = new ArrayList<>(Arrays.asList("#wars>0,enemies", type));
-                            Set<Character> flags = new HashSet<>(Arrays.asList('s', 'r'));
-                            targets = cmd.run(null, nation.getUser(), nation, nation, db, args, flags);
-                        } else if (db == null) {
-                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() +  "";
-                        } else {
-                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() + "";
-                        }
-                        if (targets != null) {
-                            String response = new MailRespondTask(auth, mail.leader, mail.id, MarkupUtil.bbcodeToHTML(targets), null).call();
-                            if (channel != null) {
-                                RateLimitUtil.queueWhenFree(channel.sendMessage("Sending target messages to " + nation.getNation() + ": " + response));
-                            }
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+//                    if (db == null) {
+//                        db = Locutus.imp().getGuildDB(nation.getAlliance_id());
+//                    }
+////                    if (rootDB != null && rootDB.getCoalition("spyops").contains(nation.getAlliance_id())) {
+////                        db = rootDB;
+////                    }
+//                    try {
+//                        if (db != null && !db.getCoalition(Coalition.ENEMIES).isEmpty()) {
+//                            Spyops cmd = new Spyops();
+//
+//                            split = msg.split(" ");
+//                            String type = "*";
+//                            if (split.length >= 2) {
+//                                try {
+//                                    type = MilitaryUnit.valueOf(split[1].toUpperCase()).name();
+//                                } catch (IllegalArgumentException igniore) {
+//                                }
+//                            }
+//                            ArrayList<String> args = new ArrayList<>(Arrays.asList("#wars>0,enemies", type));
+//                            Set<Character> flags = new HashSet<>(Arrays.asList('s', 'r'));
+//                            targets = cmd.run(null, nation.getUser(), nation, nation, db, args, flags);
+//                        } else if (db == null) {
+//                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() +  "";
+//                        } else {
+//                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() + "";
+//                        }
+//                        if (targets != null) {
+//                            String response = new MailRespondTask(auth, mail.leader, mail.id, MarkupUtil.bbcodeToHTML(targets), null).call();
+//                            if (channel != null) {
+//                                RateLimitUtil.queueWhenFree(channel.sendMessage("Sending target messages to " + nation.getNation() + ": " + response));
+//                            }
+//                        }
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
         } catch (Throwable e) {
             e.printStackTrace();
         }
