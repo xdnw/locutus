@@ -112,6 +112,17 @@ public class Transaction2 {
         return tx;
     }
 
+    public boolean isSelfWithdrawal(DBNation nation) {
+        if (this.isSenderAA() && this.note != null) {
+            Map<String, String> notes = PnwUtil.parseTransferHashNotes(this.note);
+            if (notes.containsKey("#deposit")) {
+                String banker = notes.get("#banker");
+                return MathMan.isInteger(banker) && Long.parseLong(banker) == nation.getNation_id();
+            }
+        }
+        return false;
+    }
+
     public static Transaction2 fromTX2Table(Transactions_2Record record) {
         Transaction2 tx = new Transaction2(
                 record.getTxId(),

@@ -784,9 +784,7 @@ public class SpreadSheet {
         Set<String> tabsLower = tabs.stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
         for (Sheet subSheet : sheets) {
             String title = subSheet.getProperties().getTitle().toLowerCase();
-            if (tabsLower.contains(title)) {
-                tabsLower.remove(title);
-            }
+            tabsLower.remove(title);
             result.put(title, false);
         }
         for (String tab : tabsLower) {

@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CustomSheet {
     private final String sheetId;
@@ -83,10 +84,12 @@ public class CustomSheet {
         Map<String, Boolean> tabsCreated = new LinkedHashMap<>();
         Future<?> createTabsFuture = executor.submit(() -> {
             try {
-                Map<String, Boolean> result = sheet.updateCreateTabsIfAbsent(customTabs.keySet());
+                Set<String> customTabsKeys = customTabs.keySet();
+                Set<String> customTabsKeysLower = customTabsKeys.stream().map(String::toLowerCase).collect(Collectors.toSet());
+                Map<String, Boolean> result = sheet.updateCreateTabsIfAbsent(customTabsKeys);
                 tabsCreated.putAll(result);
                 for (Map.Entry<String, Boolean> entry : result.entrySet()) {
-                    if (!entry.getValue()) {
+                    if (!entry.getValue() && customTabsKeysLower.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
                         sheet.clearAllButFirstRow(entry.getKey());
                     }
                 }

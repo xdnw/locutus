@@ -44,6 +44,7 @@ import link.locutus.discord.util.task.mail.Mail;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -129,7 +130,7 @@ public class MailListener {
             List<String> args = StringMan.split(msg, " ");
             LocalValueStore locals = createLocals(db, guild, io, event, msg);
             ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-            Object response = commands.call(stack);
+            Object response = callable.call(stack);
             if (response != null) {
                 io.sendMessage(response.toString());
                 String html = MarkupUtil.markdownToHTML(response.toString());

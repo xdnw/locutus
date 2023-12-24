@@ -584,11 +584,11 @@ public class Settings extends Config {
         }
 
         public static class DATA_DUMP {
-            @Comment("The directory to store city data dumps in\n" +
-                    "Note: These are historical csv files  provided by P&W (not a database)")
+            @Comment({"The directory to store city data dumps in",
+                    "These are historical csv files  provided by P&W (not a database)"})
             public String CITIES = "data/cities";
-            @Comment("The directory to store nation data dumps in\n" +
-                    "Note: These are historical csv files  provided by P&W (not a database)")
+            @Comment({"The directory to store nation data dumps in",
+                    "These are historical csv files  provided by P&W (not a database)"})
             public String NATIONS = "data/nations";
         }
 

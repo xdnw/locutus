@@ -1182,10 +1182,10 @@ public class BankDB extends DBMainV3 {
     }
 
     public enum BankSubType {
-        ALL(0),
+        ALL(7),
         ALLIANCE(1),
         NATION(2),
-        GUILD(3);
+        GUILD(4);
 
         public static final BankSubType[] values = values();
         public static final BankSubType of(boolean isAA) {

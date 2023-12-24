@@ -1846,6 +1846,24 @@ public class DBNation implements NationOrAlliance {
         return max;
     }
 
+    @Command(desc = "Days since they last withdrew from their own deposits")
+    public double daysSinceLastSelfWithdrawal() {
+        return (System.currentTimeMillis() - lastSelfWithdrawal()) / (double) TimeUnit.DAYS.toMillis(1);
+    }
+
+    @Command(desc = "Unix timestamp when they last withdrew from their own deposits")
+    public long lastSelfWithdrawal() {
+        if (getPositionEnum().id <= Rank.APPLICANT.id) return 0;
+        List<Transaction2> transactions = getTransactions(Long.MAX_VALUE, false);
+        long max = 0;
+        for (Transaction2 transaction : transactions) {
+            if (transaction.isSelfWithdrawal(this)) {
+                max = Math.max(max, transaction.tx_datetime);
+            }
+        }
+        return max;
+    }
+
     /**
      * get transactions
      * @param updateThreshold = -1 is no update, 0 = always update
