@@ -3942,7 +3942,7 @@ public class WarCommands {
         return response.toString();
     }
 
-    @RolePermission(value = Roles.MILCOM)
+    @RolePermission(value = {Roles.MEMBER, Roles.MILCOM}, any = true)
     @Command(desc="Get a list of nations to counter a war\n" +
             "Add `-o` to ignore nations with 5 offensive slots\n" +
             "Add `-w` to filter out weak attackers\n" +

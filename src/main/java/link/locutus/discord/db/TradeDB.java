@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.QueryConditions;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
@@ -706,9 +707,16 @@ public class TradeDB extends DBMainV2 {
     }
 
     public List<DBTrade> getTrades(long startDate) {
-        return getTrades(f ->
-                f.where(QueryCondition.greater("date", startDate).and(QueryCondition.notEquals("seller", 0).and(QueryCondition.notEquals("buyer", 0)))
-        ));
+        return getTrades(startDate, Long.MAX_VALUE);
+    }
+
+    public List<DBTrade> getTrades(long startDate, long endDate) {
+        return getTrades(f -> {
+            QueryConditions condition = QueryCondition.notEquals("seller", 0).and(QueryCondition.notEquals("buyer", 0));
+            if (startDate != 0) condition = QueryCondition.greater("date", startDate).and(condition);
+            if (endDate != Long.MAX_VALUE) condition = QueryCondition.less("date", endDate).and(condition);
+            f.where(condition);
+        });
     }
 
     public List<DBTrade> getTrades(ResourceType type, long startDate, long endDate) {
@@ -723,18 +731,24 @@ public class TradeDB extends DBMainV2 {
     }
 
     public List<DBTrade> getTrades(Set<Integer> nationIds, long startDate) {
+        return getTrades(nationIds, startDate, Long.MAX_VALUE);
+    }
+
+    public List<DBTrade> getTrades(Set<Integer> nationIds, long startDate, long endDate) {
         if (nationIds.isEmpty()) return Collections.emptyList();
         if (nationIds.size() == 1) {
             int nationId = nationIds.iterator().next();
             return getTrades(nationId, startDate);
         }
-        // sorted
         List<Integer> sorted = new ArrayList<>(nationIds);
         sorted.sort(Comparator.naturalOrder());
         Object[] nationIdsArr = sorted.toArray();
-        List<DBTrade> result = getTrades(f -> f.where(
-                QueryCondition.greater("date", startDate)
-                        .and(QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr)))));
+        List<DBTrade> result = getTrades(f -> {
+            QueryConditions condition = QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr));
+            if (startDate > 0) condition = QueryCondition.greater("date", startDate).and(condition);
+            if (endDate != Long.MAX_VALUE) condition = QueryCondition.less("date", endDate).and(condition);
+            f.where(condition);
+        });
         return result;
     }
 

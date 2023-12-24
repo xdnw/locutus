@@ -48,7 +48,8 @@ import java.util.stream.Collectors;
 public class NewsletterCommands {
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    @Command()
+    @Command(desc = "Create a new newsletter with a name\n" +
+            "After creating, you need to add channels to the newsletter, and subscribe users")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String create(NewsletterManager manager, String name) {
         Newsletter existing = manager.getNewsletter(name);
@@ -71,7 +72,7 @@ public class NewsletterCommands {
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    @Command()
+    @Command(desc = "Add a channel to a newsletter")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String channelAdd(@Me GuildDB db, @Me Member author, NewsletterManager manager, Newsletter newsletter, TextChannel channel) {
         if (!channel.canTalk(author)) {
@@ -90,7 +91,7 @@ public class NewsletterCommands {
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    @Command()
+    @Command(desc = "Remove a channel from a newsletter")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String channelRemove(NewsletterManager manager, Newsletter newsletter, TextChannel channel) {
         if (!newsletter.getChannelIds().contains(channel.getIdLong())) {
@@ -103,7 +104,7 @@ public class NewsletterCommands {
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    @Command
+    @Command(desc = "Delete a newsletter")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String delete(@Me IMessageIO io, @Me JSONObject command, NewsletterManager manager, Newsletter newsletter, @Switch("f") boolean force) {
         if (!force) {
@@ -116,7 +117,7 @@ public class NewsletterCommands {
         return "Newsletter `" + newsletter.getName() + "` deleted";
     }
 
-    @Command()
+    @Command(desc = "View information about a newsletter")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String info(@Me User user, NewsletterManager manager, @Me IMessageIO io, @Me GuildDB db, @Me Guild guild, Newsletter newsletter, @Switch("u") boolean listNations) {
         if (listNations && !Roles.INTERNAL_AFFAIRS.has(user, guild)) {
@@ -141,7 +142,7 @@ public class NewsletterCommands {
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    @Command()
+    @Command(desc = "Setup a reminder to send a newsletter at an interval")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String autosend(NewsletterManager manager, @Me IMessageIO channel, Newsletter newsletter, @Timediff long interval, @Default Role pingRole) {
         if (interval == 0) {
@@ -173,11 +174,14 @@ public class NewsletterCommands {
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MAIL})
-    @Command()
+    @Command(desc = "Compile and send a newsletter to the subscribed nations\n" +
+            "If no time period is specified, the newsletter will be compiled from the messages since the last compilation\n" +
+            "If there is no previous compilation, the newsletter creation date will be used")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String send(NewsletterManager manager, @Me DBNation me, @Me User author, @Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io,
                        Newsletter newsletter, @Default @Timediff Long sendSince , @Switch("d") GoogleDoc document, @Switch("e") Long endDate) throws IOException, GeneralSecurityException {
         if (sendSince == null) sendSince = newsletter.getLastSent();
+        if (sendSince == 0) sendSince = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         long now = endDate == null ? System.currentTimeMillis() : endDate;
 
         String fromStr = TimeUtil.DD_MM_YYYY_HH.format(new Date(sendSince));
@@ -297,7 +301,7 @@ public class NewsletterCommands {
         return null;
     }
 
-    @Command()
+    @Command(desc = "List all newsletters")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String list(NewsletterManager manager, @Me User user, @Me DBNation nation) {
         Map<Integer, Newsletter> newsletters = manager.getNewsletters();
@@ -323,7 +327,7 @@ public class NewsletterCommands {
         return body.toString();
     }
 
-    @Command()
+    @Command(desc = "Subscribe yourself or a set of nations to a newsletter")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String subscribe(NewsletterManager manager, @Me Guild guild, @Me User user, @Me DBNation nation, Newsletter newsletter, @Default Set<DBNation> nations) {
         if (nations == null) {
@@ -340,7 +344,7 @@ public class NewsletterCommands {
                 + "\n- Unsubscribe with " + CM.newsletter.unsubscribe.cmd.create(newsletter.getName(), null);
     }
 
-    @Command
+    @Command(desc = "Unsubscribe yourself or a set of nations from a newsletter")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String unsubscribe(NewsletterManager manager, @Me Guild guild, @Me User user, @Me DBNation me, @Default Newsletter newsletter, @Default Set<DBNation> nations) {
         if (nations == null) {

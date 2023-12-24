@@ -269,6 +269,11 @@ public class GuildHandler {
         Guild guild = getGuild();
         GuildDB db = getDb();
         Set<Integer> aaIds = db.getAllianceIds();
+        DBNation nation = DiscordUtil.getNation(author);
+        if (nation != null && nation.active_m() > 1440) {
+            db.setMeta(author.getIdLong(), NationMeta.DISCORD_APPLICANT, new byte[]{1});
+            return false;
+        }
 
         MessageChannel alertChannel = db.getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return false;
@@ -288,7 +293,6 @@ public class GuildHandler {
 
         StringBuilder body = new StringBuilder();
         body.append("User: " + author.getAsMention() + "\n");
-        DBNation nation = DiscordUtil.getNation(author);
         if (nation != null) {
             if (nation.getActive_m() > 7200) return false;
 

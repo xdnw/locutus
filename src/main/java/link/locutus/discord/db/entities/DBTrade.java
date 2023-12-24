@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.TradeType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.ResultSet;
@@ -63,46 +64,67 @@ public class DBTrade implements Comparable<DBTrade> {
         this.parent_id = rs.getInt("parent_id");
     }
 
+    @Command
     public int getTradeId() {
         return tradeId;
     }
 
+    @Command
     public int getSeller() {
         return seller;
     }
 
+    @Command
+    public DBNation getSellerNation() {
+        return DBNation.getById(seller);
+    }
+
+    @Command
     public int getBuyer() {
         return buyer;
     }
 
+    @Command
+    public DBNation getBuyerNation() {
+        return DBNation.getById(buyer);
+    }
+
+    @Command
     public int getQuantity() {
         return quantity;
     }
 
+    @Command
     public int getPpu() {
         return ppu;
     }
 
+    @Command
     public int getParent_id() {
         return parent_id;
     }
 
+    @Command
     public TradeType getType() {
         return type;
     }
 
+    @Command
     public ResourceType getResource() {
         return resource;
     }
 
+    @Command
     public long getDate() {
         return date;
     }
 
+    @Command
     public long getDate_accepted() {
         return date_accepted;
     }
 
+    @Command
     public boolean isBuy() {
         return isBuy;
     }

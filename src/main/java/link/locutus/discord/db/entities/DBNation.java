@@ -4984,6 +4984,114 @@ public class DBNation implements NationOrAlliance {
         return estimateScore(getInfra());
     }
 
+    @Command(desc = "Get resource quantity for this nation")
+    public long getTradeQuantity(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter, @Switch("n") boolean net) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
+
+        if (dateEnd == null) dateEnd = Long.MAX_VALUE;
+        List<DBNation> nations = scoped.getList(this);
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+        List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
+        if (nationIds.size() > 1000) {
+            trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
+        }
+        if (filter != null) trades.removeIf(filter.negate());
+        if (types != null) {
+            trades.removeIf(t -> !types.contains(t.getResource()));
+        }
+        Long quantity = scoped.getMap(this, new Function<List<DBNation>, Map<DBNation, Long>>() {
+            @Override
+            public Map<DBNation, Long> apply(List<DBNation> nations) {
+                Map<DBNation, Long> quantity = new LinkedHashMap<>();
+                for (DBTrade trade : trades) {
+                    DBNation buyer = trade.getBuyerNation();
+                    DBNation seller = trade.getSellerNation();
+                    if (buyer != null && nationIds.contains(buyer.getNation_id())) {
+                        quantity.put(buyer, quantity.getOrDefault(buyer, 0L) + trade.getQuantity());
+                    }
+                    if (seller != null && nationIds.contains(seller.getNation_id())) {
+                        int change = net ? trade.getQuantity() * -1 : trade.getQuantity();
+                        quantity.put(seller, quantity.getOrDefault(seller, 0L) + change);
+                    }
+                }
+                return quantity;
+            }
+        });
+        return quantity == null ? 0 : quantity;
+    }
+
+    @Command(desc = "Get resource quantity for this nation")
+    public long getTradeAvgPpu(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
+
+        if (dateEnd == null) dateEnd = Long.MAX_VALUE;
+        List<DBNation> nations = scoped.getList(this);
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+        List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
+        if (nationIds.size() > 1000) {
+            trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
+        }
+        if (filter != null) trades.removeIf(filter.negate());
+        if (types != null) {
+            trades.removeIf(t -> !types.contains(t.getResource()));
+        }
+        Long avgPPU = scoped.getMap(this, new Function<List<DBNation>, Map<DBNation, Long>>() {
+            @Override
+            public Map<DBNation, Long> apply(List<DBNation> nations) {
+                Map<DBNation, Long> quantity = new LinkedHashMap<>();
+                Map<DBNation, Long> price = new LinkedHashMap<>();
+                for (DBTrade trade : trades) {
+                    DBNation buyer = trade.getBuyerNation();
+                    DBNation seller = trade.getSellerNation();
+                    if (buyer != null && nationIds.contains(buyer.getNation_id())) {
+                        quantity.put(buyer, quantity.getOrDefault(buyer, 0L) + trade.getQuantity());
+                        price.put(buyer, price.getOrDefault(buyer, 0L) + trade.getPpu() * (long) trade.getQuantity());
+                    }
+                    if (seller != null && nationIds.contains(seller.getNation_id())) {
+                        quantity.put(seller, quantity.getOrDefault(seller, 0L) + trade.getQuantity());
+                        price.put(seller, price.getOrDefault(seller, 0L) + trade.getPpu() * (long) trade.getQuantity());
+                    }
+                }
+                return price.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue() / quantity.get(e.getKey())));
+            }
+        });
+        return avgPPU == null ? 0 : avgPPU;
+    }
+
+    @Command(desc = "Get resource quantity for this nation")
+    public double getTradeValue(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
+
+        if (dateEnd == null) dateEnd = Long.MAX_VALUE;
+        List<DBNation> nations = scoped.getList(this);
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+        List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
+        if (nationIds.size() > 1000) {
+            trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
+        }
+        if (filter != null) trades.removeIf(filter.negate());
+        if (types != null) {
+            trades.removeIf(t -> !types.contains(t.getResource()));
+        }
+        Double value = scoped.getMap(this, new Function<List<DBNation>, Map<DBNation, Double>>() {
+            @Override
+            public Map<DBNation, Double> apply(List<DBNation> nations) {
+                Map<DBNation, Double> value = new LinkedHashMap<>();
+                for (DBTrade trade : trades) {
+                    DBNation buyer = trade.getBuyerNation();
+                    DBNation seller = trade.getSellerNation();
+                    if (buyer != null && nationIds.contains(buyer.getNation_id())) {
+                        value.put(buyer, value.getOrDefault(buyer, 0d) + PnwUtil.convertedTotal(trade.getResource(), trade.getQuantity()));
+                    }
+                    if (seller != null && nationIds.contains(seller.getNation_id())) {
+                        value.put(seller, value.getOrDefault(seller, 0d) + PnwUtil.convertedTotal(trade.getResource(), trade.getQuantity()));
+                    }
+                }
+                return value;
+            }
+        });
+        return value == null ? 0 : value;
+    }
 
     public double infraCost(double from, double to) {
         return PnwUtil.calculateInfra(from, to,

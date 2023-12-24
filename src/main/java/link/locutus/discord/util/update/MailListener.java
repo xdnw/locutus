@@ -107,38 +107,41 @@ public class MailListener {
     }
 
     private void processCommands(GuildDB db, Guild guild, IMessageIO io, MailReceivedEvent event) throws IOException {
+        try {
+            DBNation nation = event.getNation();
+            List<String> messages = event.getMessages();
 
-        DBNation nation = event.getNation();
-        List<String> messages = event.getMessages();
+            if (nation == null || messages.isEmpty()) return;
 
-        if (nation == null || messages.isEmpty()) return;
+            Mail mail = event.getMail();
 
-        Mail mail = event.getMail();
+            String subject = mail.subject;
+            String msg = messages.get(0).trim();
+            if (msg.isEmpty()) return;
 
-        String subject = mail.subject;
-        String msg = messages.get(0).trim();
-        if (msg.isEmpty()) return;
-
-        StringBuilder remaining = new StringBuilder();
-        CommandCallable callable = commands.getCallable(msg, remaining);
-        if (callable == null) {
-            System.out.println("No command found for: `" + msg + "`");
-            return;
-        }
-
-        List<String> args = StringMan.split(msg, " ");
-        LocalValueStore locals = createLocals(db, guild, io, event, msg);
-        ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-        Object response = commands.call(stack);
-        if (response != null) {
-            io.sendMessage(response.toString());
-            String html = MarkupUtil.markdownToHTML(response.toString());
-            try {
-                event.reply(html);
-            } catch (Throwable e) {
-                AlertUtil.error(e.getMessage(), e);
-                e.printStackTrace();
+            StringBuilder remaining = new StringBuilder();
+            CommandCallable callable = commands.getCallable(msg, remaining);
+            if (callable == null) {
+                System.out.println("No command found for: `" + msg + "`");
+                return;
             }
+
+            List<String> args = StringMan.split(msg, " ");
+            LocalValueStore locals = createLocals(db, guild, io, event, msg);
+            ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
+            Object response = commands.call(stack);
+            if (response != null) {
+                io.sendMessage(response.toString());
+                String html = MarkupUtil.markdownToHTML(response.toString());
+                try {
+                    event.reply(html);
+                } catch (Throwable e) {
+                    AlertUtil.error(e.getMessage(), e);
+                    e.printStackTrace();
+                }
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
@@ -165,10 +168,4 @@ public class MailListener {
             return "No targets found";
         }
     }
-
-    // raid
-    // balance
-    // withdraw
-    // subscribe
-    // unsubscribe all
 }

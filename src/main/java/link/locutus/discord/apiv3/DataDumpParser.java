@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
@@ -541,7 +542,7 @@ public class DataDumpParser {
         System.out.println("Diff " + diff + "ms | " + diff1);
     }
 
-    private Set<Integer> getNationsAtWar(long timestamp, Map<DBWar, Long> getWarEndDates) {
+    public Set<Integer> getNationsAtWar(long timestamp, Map<DBWar, Long> getWarEndDates) {
         Set<Integer> nationsAtWar = new HashSet<>();
         for (Map.Entry<DBWar, Long> entry : getWarEndDates.entrySet()) {
             DBWar war = entry.getKey();
@@ -554,7 +555,7 @@ public class DataDumpParser {
     }
 
     public Map<DBWar, Long> getWarEndDates(Map<Integer, DBWar> wars, Collection<AbstractCursor> attacks) {
-        Map<DBWar, Long> warEndDates = new HashMap<>();
+        Map<DBWar, Long> warEndDates = new Object2LongOpenHashMap<>();
         for (AbstractCursor attack : attacks) {
             switch (attack.getAttack_type()) {
                 case VICTORY, A_LOOT, PEACE -> {
