@@ -9,8 +9,11 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -265,6 +268,7 @@ public class StatCommands {
                         DBWar war = wars.get(attack.getWar_id());
                         int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
                         DBNation nation = DBNation.getById(nationId);
+                        if (nation == null) return 0d;
                         return scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationId, attack), scalePerCity, groupByAlliance);
                     });
         } else {
@@ -274,6 +278,7 @@ public class StatCommands {
                         DBWar war = wars.get(attack.getWar_id());
                         int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
                         DBNation nation = parser.getNation(nationId, war);
+                        if (nation == null) return 0d;
                         boolean primary = (attack.getAttacker_id() != nationId) == netProfit;
                         double totalVal = valueFunc.apply(primary, attack);
                         if (netTotal) {
@@ -1696,7 +1701,12 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "War cost (for each nation) broken down by war type")
+    @Command(desc = "War cost (for each nation) broken down by war type\n" +
+            "The sheet is divided into groups for:\n" +
+            "- Raids: Attacking nations which do not fight back\n" +
+            "- Defenses: Attacked by a nation and fighting back\n" +
+            "- Offenses: Attacking a nation which fights back\n" +
+            "- Wars: Combination of defensive and offensive wars (not raids)")
     @RolePermission(Roles.MILCOM)
     public String WarCostSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
@@ -1716,23 +1726,24 @@ public class StatCommands {
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "alliance",
-                "raids",
-                "profit",
 
-                "avg",
-                "def",
-                "loss",
-                "dmg",
+                "#raids",
+                "profit_total",
+                "proft_avg",
+
+                "#def",
+                "loss_avg",
+                "dmg_avg",
                 "ratio",
 
-                "off",
-                "loss",
-                "dmg",
+                "#off",
+                "loss_avg",
+                "dmg_avg",
                 "ratio",
 
-                "total wars",
-                "loss",
-                "dmg",
+                "#wars",
+                "loss_avg",
+                "dmg_avg",
                 "ratio"
         ));
 
@@ -1751,9 +1762,27 @@ public class StatCommands {
             }
         }).get();
 
-        List<AbstractCursor> allAttacks = new ArrayList<>(parser1.getAttacks());
         Set<Integer> aaIds = attackers.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
         Set<Integer> natIds = attackers.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+
+        allWars.entrySet().removeIf(entry -> {
+            int nationId = entry.getKey();
+            DBNation nation = DBNation.getById(nationId);
+            if (nation == null) return true;
+            if (!natIds.contains(nation.getId()) && !aaIds.contains(nation.getAlliance_id())) return true;
+            return false;
+        });
+
+        Map<Integer, List<AbstractCursor>> attacksByNation = new Int2ObjectOpenHashMap<>();
+        for (AbstractCursor attack : parser1.getAttacks()) {
+            if (allWars.containsKey(attack.getAttacker_id())) {
+                attacksByNation.computeIfAbsent(attack.getAttacker_id(), f -> new ObjectArrayList<>()).add(attack);
+            }
+            if (allWars.containsKey(attack.getDefender_id())) {
+                attacksByNation.computeIfAbsent(attack.getDefender_id(), f -> new ObjectArrayList<>()).add(attack);
+            }
+        }
+
         for (Map.Entry<Integer, List<DBWar>> entry : warsByNation.entrySet()) {
             int nationId = entry.getKey();
             DBNation nation = DBNation.getById(nationId);
@@ -1769,10 +1798,8 @@ public class StatCommands {
 
             {
                 List<DBWar> wars = entry.getValue();
-                Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<AbstractCursor> attacks = new ArrayList<>();
-                for (AbstractCursor attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
-                Map<Integer, List<AbstractCursor>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
+                List<AbstractCursor> attacks = attacksByNation.remove(nationId);
+                Map<Integer, List<AbstractCursor>> attacksByWar = attacks == null ? new HashMap<>() : new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
 
                 for (DBWar war : wars) {
                     List<AbstractCursor> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
