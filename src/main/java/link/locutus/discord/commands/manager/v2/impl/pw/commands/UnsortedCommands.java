@@ -36,6 +36,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
+import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBTrade;
@@ -46,6 +47,7 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
@@ -787,7 +789,8 @@ public class UnsortedCommands {
         return builder.buildAndSend(me, hasEcon);
     }
 
-    @Command(desc = "Get the revenue of nations or alliances")
+    @Command(desc = "Get the revenue of nations or alliances\n" +
+            "Equilibrium taxrate is where the value of raws consumed matches the value taxed")
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User user, @Me DBNation me,
                           NationList nations,
                           @Arg("Include the revenue of nations unable to be taxed")
@@ -796,7 +799,10 @@ public class UnsortedCommands {
                           @Switch("b") boolean excludeNationBonus,
                           @Switch("r") Double rads,
                           @Switch("w") boolean forceAtWar,
-                            @Switch("p") boolean forceAtPeace
+                            @Switch("p") boolean forceAtPeace,
+                          @Arg("The amount of time to use to add average DAILY war cost\n" +
+                                  "This includes raid profit")
+                          @Timediff Long includeWarCosts
                           ) throws Exception {
         if (forceAtWar && forceAtPeace) {
             throw new IllegalArgumentException("Cannot set both `forceAtWar` and `forceAtPeace` (pick one)");
@@ -837,9 +843,18 @@ public class UnsortedCommands {
             ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, rads, forceAtWar, false));
             long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * me.getGrossModifier());
             tradeBonusTotal += nationColorBonus;
-
         }
-        double[] total = ResourceType.builder().add(cityProfit).add(milUp).addMoney(tradeBonusTotal).build();
+
+        double[] warsCost = ResourceType.getBuffer();
+
+        if (includeWarCosts != null) {
+            long start = System.currentTimeMillis() - includeWarCosts;
+            WarParser parser = WarParser.of((Collection) nations, null, start, Long.MAX_VALUE);
+            AttackCost cost = parser.toWarCost(true, false, false, false, false);
+            warsCost = PnwUtil.resourcesToArray(cost.getNetCost(true));
+        }
+
+        double[] total = ResourceType.builder().add(cityProfit).add(milUp).addMoney(tradeBonusTotal).add(warsCost).build();
 
         IMessageBuilder response = channel.create();
         double equilibriumTaxrate = 100 * ResourceType.getEquilibrium(total);
@@ -853,6 +868,10 @@ public class UnsortedCommands {
                 .append("```").append(PnwUtil.resourcesToString(milUp)).append("```");
 
         response.append("\nTrade bonus: ```" + MathMan.format(tradeBonusTotal) + "```");
+
+        if (!ResourceType.isZero(warsCost)) {
+            response.append("\nWar cost: ```" + PnwUtil.resourcesToString(warsCost) + "```");
+        }
 
         response.append("\nCombined Total:")
                 .append("```").append(PnwUtil.resourcesToString(total)).append("```")

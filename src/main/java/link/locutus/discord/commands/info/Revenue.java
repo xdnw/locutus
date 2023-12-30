@@ -42,7 +42,8 @@ public class Revenue extends Command {
         return """
                 Get revenue. Use `-bonus` to ignore new nation bonuses
                 Add `-b` to exclude nation bonus
-                Add `-i` to include inactive/beige/gray/vm/apps""";
+                Add `-i` to include inactive/beige/gray/vm/apps
+                Equilibrium taxrate is the rate at which raws consumed equals taxed income in value""";
     }
 
     @Override
