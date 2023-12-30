@@ -1214,7 +1214,7 @@ public class BankDB extends DBMainV3 {
                 .where(SUBSCRIPTIONS.ALLIANCEORNATION.eq(allianceOrNation))
                 .and(SUBSCRIPTIONS.ISNATION.bitAnd(type.mask).gt(0))
                 .and(SUBSCRIPTIONS.ISRECEIVE.eq(isReceive ? 1 : 0))
-                .and(SUBSCRIPTIONS.AMOUNT.eq(amount))
+                .and(SUBSCRIPTIONS.AMOUNT.le(amount))
                 .and(SUBSCRIPTIONS.DATE.gt(date))
                 .fetch().forEach(rs -> {
                     try {
