@@ -303,8 +303,10 @@ public class DBCity {
                     new Exception().printStackTrace();
                     AlertUtil.error("Invalid city create", "city for " + nationId + " | " + this);
                 }
-                Locutus.imp().getNationDB().setNationActive(nationId, fetched, eventConsumer);
-                eventConsumer.accept(new CityCreateEvent(nationId, this));
+                if (this.created > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
+                    Locutus.imp().getNationDB().setNationActive(nationId, this.created, eventConsumer);
+                    eventConsumer.accept(new CityCreateEvent(nationId, this));
+                }
             }
             return true;
         }
