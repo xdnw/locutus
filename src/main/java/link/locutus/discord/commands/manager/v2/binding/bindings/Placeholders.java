@@ -56,8 +56,8 @@ public abstract class Placeholders<T> extends BindingHelper {
     private final Class<T> instanceType;
     private final ValueStore store;
 
-    private final ValueStore math2Type;
-    private final ValueStore type2Math;
+//    private final ValueStore math2Type;
+//    private final ValueStore type2Math;
 
     public Placeholders(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         this.instanceType = type;
@@ -67,14 +67,14 @@ public abstract class Placeholders<T> extends BindingHelper {
 
         this.commands = CommandGroup.createRoot(store, validators);
         this.store = store;
-        this.math2Type = new SimpleValueStore();
-        this.type2Math = new SimpleValueStore();
+//        this.math2Type = new SimpleValueStore();
+//        this.type2Math = new SimpleValueStore();
     }
 
     public Placeholders<T> init() {
         this.commands.registerCommandsClass(getType());
-        new PWMath2Type().register(math2Type);
-        new PWType2Math().register(type2Math);
+//        new PWMath2Type().register(math2Type);
+//        new PWType2Math().register(type2Math);
         return this;
     }
 
@@ -582,7 +582,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (param != null) {
             LocalValueStore locals = new LocalValueStore<>(store);
             locals.addProvider(param);
-            Parser typeFunc = math2Type.get(param.getBinding().getKey());
+            Parser typeFunc = store.get(param.getBinding().getKey());
             if (typeFunc == null) {
                 throw new IllegalArgumentException("Unknown type function (1): `" + param.getBinding().getKey() + "`");
             }
@@ -592,7 +592,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             return parsed;
         }
-        throw new IllegalArgumentException("Cannot parse math expression to object: len:" + arr.length + " | " + StringMan.getString(arr));
+        throw new IllegalArgumentException("Cannot parse math expression to object: " + expr + " | " + expr.getClass().getSimpleName() + " (expected type: " + type.getSimpleName() + ")");
     }
 
     private Object parseMath(Object s, ParameterData param, boolean throwForUnknown) {
@@ -613,7 +613,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                 if (param != null) {
                     LocalValueStore locals = new LocalValueStore<>(store);
                     locals.addProvider(param);
-                    Parser mathFunc = type2Math.get(param.getBinding().getKey());
+                    Parser mathFunc = store.get(param.getBinding().getKey());
                     if (mathFunc == null) {
                         throw new IllegalArgumentException("Unknown function (2): `" + str + "`");
                     }
@@ -631,13 +631,9 @@ public abstract class Placeholders<T> extends BindingHelper {
                 throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
             }
         } else if (s instanceof double[]) {
-            return new ArrayUtil.DoubleArray((double[]) s);
+            return s;
         } else if (s instanceof int[]) {
-            double[] copy = new double[((int[]) s).length];
-            for (int i = 0; i < copy.length; i++) {
-                copy[i] = ((int[]) s)[i];
-            }
-            return new ArrayUtil.DoubleArray(copy);
+            throw new IllegalArgumentException("Cannot parse int[] to DoubleArray for " + param);
         } else if (s instanceof ArrayUtil.DoubleArray) {
             return s;
         }
