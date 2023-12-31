@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.entities.Member;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class DelegateAutoRoleTask implements IAutoRoleTask {
@@ -43,6 +44,11 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     @Override
     public AutoRoleInfo autoRole(Member member, DBNation nation) {
         return task.autoRole(member, nation);
+    }
+
+    @Override
+    public Function<Integer, Boolean> getAllowedAlliances() {
+        return task.getAllowedAlliances();
     }
 
     @Override

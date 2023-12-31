@@ -1765,7 +1765,7 @@ public class StatCommands {
         Set<Integer> aaIds = attackers.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
         Set<Integer> natIds = attackers.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
 
-        allWars.entrySet().removeIf(entry -> {
+        warsByNation.entrySet().removeIf(entry -> {
             int nationId = entry.getKey();
             DBNation nation = DBNation.getById(nationId);
             if (nation == null) return true;
@@ -1775,10 +1775,10 @@ public class StatCommands {
 
         Map<Integer, List<AbstractCursor>> attacksByNation = new Int2ObjectOpenHashMap<>();
         for (AbstractCursor attack : parser1.getAttacks()) {
-            if (allWars.containsKey(attack.getAttacker_id())) {
+            if (warsByNation.containsKey(attack.getAttacker_id())) {
                 attacksByNation.computeIfAbsent(attack.getAttacker_id(), f -> new ObjectArrayList<>()).add(attack);
             }
-            if (allWars.containsKey(attack.getDefender_id())) {
+            if (warsByNation.containsKey(attack.getDefender_id())) {
                 attacksByNation.computeIfAbsent(attack.getDefender_id(), f -> new ObjectArrayList<>()).add(attack);
             }
         }

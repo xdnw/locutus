@@ -83,6 +83,10 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.setNickname = value == null ? GuildDB.AutoNickOption.FALSE : value;
     }
 
+    public Function<Integer, Boolean> getAllowedAlliances() {
+        return allowedAAs;
+    }
+
     public synchronized String syncDB() {
         Map<String, String> info = new LinkedHashMap<>();
 
