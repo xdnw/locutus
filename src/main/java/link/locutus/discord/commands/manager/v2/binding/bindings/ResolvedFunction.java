@@ -19,6 +19,16 @@ public class ResolvedFunction<T, V> extends TypedFunction<T, V> {
     }
 
     @Override
+    public V get(T t) {
+        return object;
+    }
+
+    @Override
+    public V applyCached(T t) {
+        return object;
+    }
+
+    @Override
     public Type getType() {
         return type;
     }

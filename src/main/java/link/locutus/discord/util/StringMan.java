@@ -369,6 +369,63 @@ public class StringMan {
                 .toLowerCase();
     }
 
+    public static String wrapHashFunctions(String str, Predicate<String> isValidFunction) {
+        StringBuilder result = new StringBuilder();
+        boolean inFunction = false;
+        StringBuilder function = new StringBuilder();
+        int functionStart = -1;
+
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (inFunction) {
+                if (isBracketForwards(c)) {
+                    int matchingBracketIndex = StringMan.findMatchingBracket(str, i);
+                    if (matchingBracketIndex != -1) {
+                        String functionName = function.toString();
+                        if (isValidFunction.test(functionName)) {
+                            String formatted = wrapHashFunctions(str.substring(i, matchingBracketIndex + 1), isValidFunction);
+                            function.append(formatted);
+                            i = matchingBracketIndex;
+                            inFunction = false;
+                            result.append('{').append(function).append('}');
+                            function.setLength(0);
+                        } else {
+                            result.append('#').append(function).append(str.substring(i, matchingBracketIndex + 1));
+                            i = matchingBracketIndex;
+                            inFunction = false;
+                            function.setLength(0);
+                        }
+                        continue;
+                    }
+                }
+                if (!(Character.isLetterOrDigit(c) || c == '_')) {
+                    inFunction = false;
+                    if (isValidFunction.test(function.toString())) {
+                        result.append('{').append(function).append('}');
+                    } else {
+                        result.append('#').append(function);
+                    }
+                    function.setLength(0);
+                    if (c == '#') {
+                        inFunction = true;
+                        continue;
+                    }
+                } else {
+                    function.append(c);
+                    continue;
+                }
+            } else {
+                if (c == '#' && i + 1 < str.length() && Character.isLetter(str.charAt(i + 1))) {
+                    inFunction = true;
+                    continue;
+                }
+            }
+            result.append(c);
+        }
+
+        return result.toString();
+    }
+
     public static int findMatchingBracket(CharSequence sequence, int index) {
         char startC = sequence.charAt(index);
         char lookC = getMatchingBracket(startC);
@@ -389,13 +446,6 @@ public class StringMan {
         return -1;
     }
 
-    public static String prettyFormat(double d) {
-        if (d == Double.MIN_VALUE) return "-∞";
-        if (d == Double.MAX_VALUE) return "∞";
-        if (d == (long) d) return String.format("%d", (long) d);
-        else return String.format("%s", d);
-    }
-
     public static boolean isBracketForwards(char c) {
         switch (c) {
             case '[':
@@ -406,6 +456,13 @@ public class StringMan {
             default:
                 return false;
         }
+    }
+
+    public static String prettyFormat(double d) {
+        if (d == Double.MIN_VALUE) return "-∞";
+        if (d == Double.MAX_VALUE) return "∞";
+        if (d == (long) d) return String.format("%d", (long) d);
+        else return String.format("%s", d);
     }
 
     public static char getMatchingBracket(char c) {

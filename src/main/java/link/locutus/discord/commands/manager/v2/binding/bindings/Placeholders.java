@@ -412,9 +412,21 @@ public abstract class Placeholders<T> extends BindingHelper {
         };
     }
 
+    private String wrapHashLegacy(String input) {
+        return StringMan.wrapHashFunctions(input, new Predicate<String>() {
+            @Override
+            public boolean test(String s) {
+                int dot = s.indexOf('.');
+                String firstMethod = dot == -1 ? s : s.substring(0, dot);
+                return get(firstMethod) != null || firstMethod.equalsIgnoreCase("this");
+            }
+        });
+    }
+
     @Binding(value = "A comma separated list of filters")
     public Predicate<T> parseFilter(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
+        input = wrapHashLegacy(input);
         return ArrayUtil.parseFilter(input,
                 f -> parseSingleFilter(store2, f),
                 s -> getSingleFilter(store2, s, cache));
@@ -426,6 +438,7 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
+        input = wrapHashLegacy(input);
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f),
@@ -454,11 +467,13 @@ public abstract class Placeholders<T> extends BindingHelper {
                     case '+', '-', '*', '/', '^', '%', '=', '>', '<', '?' -> {
                         hasMath = true;
                     }
-                    case '(', ')', ' ', '!' -> {
+                    case '(', ')', ' ', '!', 'e', 'E', '.' -> {
 
                     }
                     default -> {
-                        hasNonMath = true;
+                        if (!Character.isDigit(currentChar)) {
+                            hasNonMath = true;
+                        }
                     }
                 };
             } else {
@@ -500,9 +515,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                     return ResolvedFunction.create(Object.class, parseMath(s, param, true), s);
                 };
 
-                System.out.println("Calculate " + input);
                 LazyMathEntity<T> lazy = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser));
-
                 Object array = lazy.getOrNull();
                 Class type = param == null ? Double.class : (Class) param.getType();
                 if (array != null) {
