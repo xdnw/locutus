@@ -1,5 +1,6 @@
 package link.locutus.discord.util.math;
 
+import it.unimi.dsi.fastutil.doubles.Double2DoubleFunction;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
 import link.locutus.discord.util.MathMan;
@@ -96,9 +97,9 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return addMap((Map<?, ?>) a, b);
+            return mathMap((Map<?, ?>) a, b, (x, y) -> x + y, f -> f, f -> f);
         } else if (b instanceof Map) {
-            return addMap((Map<?, ?>) b, a);
+            return mathMap((Map<?, ?>) b, a, (x, y) -> x + y, f -> f, f -> f);
         }
         if (a instanceof double[]) {
             return mathDoubleArray((double[]) a, b, (x, y) -> x + y);
@@ -108,17 +109,6 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // List
         // Set
         throw new IllegalArgumentException("Cannot add " + a.getClass() + " to " + b.getClass());
-    }
-
-    private Object powerMap(Map a, Object b) {
-        return mathMap(a, b, Math::pow);
-    }
-
-    private Map<?, ?> addMap(Map a, Object b) {
-        return mathMap(a, b, (x, y) -> x + y);
-    }
-    private Map<?, ?> multiplyMap(Map a, Object b) {
-        return mathMap(a, b, (x, y) -> x * y);
     }
 
     private Object power(Object a, Object b) {
@@ -132,9 +122,9 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return powerMap((Map<?, ?>) a, b);
+            return mathMap((Map<?, ?>) a, b, Math::pow, f -> 1, null);
         } else if (b instanceof Map) {
-            return powerMap((Map<?, ?>) b, a);
+            return mathMap((Map<?, ?>) b, a, (y, x) -> Math.pow(x, y), null, f -> 1);
         }
         // double[]
         if (a instanceof double[]) {
@@ -158,9 +148,9 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return multiplyMap((Map) a, b);
+            return mathMap((Map) a, b, (x, y) -> x * y, null, null);
         } else if (b instanceof Map) {
-            return multiplyMap((Map) b, a);
+            return mathMap((Map) b, a, (x, y) -> x * y, null, null);
         }
         // double[]
         if (a instanceof double[]) {
@@ -171,10 +161,6 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // List
         // Set
         throw new IllegalArgumentException("Cannot multiply " + a.getClass() + " by " + b.getClass());
-    }
-
-    private Map<?, ?> divideMap(Map a, Object b) {
-        return mathMap(a, b, (x, y) -> x / y);
     }
 
     private Object divide(Object a, Object b) {
@@ -188,9 +174,9 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return divideMap((Map) a, b);
+            return mathMap((Map) a, b, (x, y) -> x / y, null, null);
         } else if (b instanceof Map) {
-            return divideMap((Map) b, a);
+            return mathMap((Map) b, a, (y, x) -> x / y, null, null);
         }
         // double[]
         if (a instanceof double[]) {
@@ -203,15 +189,29 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         return null;
     }
 
-    private Map<?, ?> subtractMap(Map a, Object b) {
-        return mathMap(a, b, (x, y) -> x - y);
+    private Number cast(double value, Number type) {
+        if (type instanceof Integer) {
+            return (int) value;
+        } else if (type instanceof Long) {
+            return (long) value;
+        } else if (type instanceof Float) {
+            return (float) value;
+        } else if (type instanceof Short) {
+            return (short) value;
+        } else if (type instanceof Byte) {
+            return (byte) value;
+        } else {
+            return value;
+        }
     }
 
-    private Map<?, ?> mathMap(Map a, Object b, DoubleBinaryOperator operator) {
+    private Map<?, ?> mathMap(Map a, Object b, DoubleBinaryOperator operator, Double2DoubleFunction includeA, Double2DoubleFunction includeB) {
         if (b instanceof Number) {
             Map<?, Number> copy = new LinkedHashMap<>(a);
             for (Map.Entry<?, Number> entry : copy.entrySet()) {
-                entry.setValue(operator.applyAsDouble(entry.getValue().doubleValue(), ((Number) b).doubleValue()));
+                Number aValue = entry.getValue();
+                Number bValue = (Number) b;
+                entry.setValue(cast(operator.applyAsDouble(aValue.doubleValue(), bValue.doubleValue()), aValue));
             }
             return copy;
         } else if (b instanceof Map) {
@@ -221,7 +221,18 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
                 if (bMap.containsKey(key)) {
                     Number aValue = (Number) a.get(key);
                     Number bValue = (Number) bMap.get(key);
-                    result.put(key, operator.applyAsDouble(aValue.doubleValue(), bValue.doubleValue()));
+                    result.put(key, cast(operator.applyAsDouble(aValue.doubleValue(), bValue.doubleValue()), bValue));
+                } else if (includeA != null) {
+                    Number aValue = (Number) a.get(key);
+                    result.put(key, cast(includeA.applyAsDouble(aValue.doubleValue()), aValue));
+                }
+            }
+            if (includeB != null) {
+                for (Object key : bMap.keySet()) {
+                    if (!a.containsKey(key)) {
+                        Number bValue = (Number) bMap.get(key);
+                        result.put(key, cast(includeB.applyAsDouble(bValue.doubleValue()), bValue));
+                    }
                 }
             }
             return result;
@@ -264,9 +275,9 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return subtractMap((Map) a, b);
+            return mathMap((Map) a, b, (x, y) -> x - y, f -> f, f -> -f);
         } else if (b instanceof Map) {
-            return subtractMap((Map) b, a);
+            return mathMap((Map) b, a, (y, x) -> x - y, f -> -f, f -> f);
         }
         // double[]
         if (a instanceof double[]) {
@@ -287,9 +298,9 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return mathMap((Map) a, b, (x, y) -> x % y);
+            return mathMap((Map) a, b, (x, y) -> x % y, null, null);
         } else if (b instanceof Map) {
-            return mathMap((Map) b, a, (x, y) -> x % y);
+            return mathMap((Map) b, a, (y, x) -> x % y, null, null);
         }
         // double[]
         if (a instanceof double[]) {
