@@ -373,7 +373,6 @@ public class StringMan {
         StringBuilder result = new StringBuilder();
         boolean inFunction = false;
         StringBuilder function = new StringBuilder();
-        int functionStart = -1;
 
         for (int i = 0; i < str.length(); i++) {
             char c = str.charAt(i);

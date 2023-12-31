@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.ScriptUtil;
+import link.locutus.discord.util.math.ScriptUtil;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.User;
 

@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -10,7 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.ScriptUtil;
+import link.locutus.discord.util.math.ScriptUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 

@@ -6,6 +6,8 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -13,6 +15,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.apiv3.ParsedRow;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
@@ -2024,61 +2027,202 @@ public enum AllianceMetric {
         }
     },
 
-//    PROJECT_BUY_10D(false, SI_UNIT) {
-//
-//        @Override
-//        public double apply(DBAlliance alliance) {
-//            int total = 0;
-//            for (DBNation nation : alliance.getMemberDBNations()) {
-//                if (nation.getProjectTurns() > 0) {
-//                    total++;
-//                }
-//            }
-//            return total;
-//        }
-//
-//        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
-//        private final Map<Integer, Long> nationJoinDay = new Int2LongOpenHashMap();
-//        private Map<Integer, Map<Byte, Long>> projectsByDate = new Int2ObjectOpenHashMap<>();
-//
-//        @Override
-//        public void setupReaders(DataDumpImporter importer) {
-////            importer.setProjectReader(this, new TriConsumer<Long, DataDumpParser.ProjectHeader, ParsedRow>() {
-////                @Override
-////                public void consume(Long day, DataDumpParser.ProjectHeader header, ParsedRow row) {
-////                    int nationId = row.get(header.nation_id, Integer::parseInt);
-////                    Integer allianceId = allianceByNationId.get(nationId);
-////                    if (allianceId == null || allianceId == 0) return;
-////                    long dayJoinedAlliance = nationJoinDay.get(nationId);
-////                    long joinedAllianceMs = TimeUtil.getTimeFromDay(dayJoinedAlliance);
-////
-////                    String dateStr = row.get(header.date_created, String::toString);
-////                    try {
-////                        Date date = TimeUtil.DD_MM_YYYY.parse(dateStr);
-////                        long createdMs = date.getTime();
-////                        if (createdMs < joinedAllianceMs) return;
-////                    } catch (ParseException e) {
-////                        throw new RuntimeException(e);
-////                    }
-////                    byte projectType = row.get(header.project_type, Byte::parseByte);
-////                    projectsByDate.computeIfAbsent(allianceId, f -> new HashMap<>()).merge(projectType, 1L, Long::sum);
-////                }
-////            });
-////            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
-////                @Override
-////                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
-////                    int position = row.get(header.alliance_position, Integer::parseInt);
-////                    if (position <= Rank.APPLICANT.id) return;
-////                    int nationId = row.get(header.nation_id, Integer::parseInt);
-////                    Integer previousAlliance = allianceByNationId.get(nationId);
-////                    if (previousAlliance == null || (previousAlliance != nationId)) {
-////                        nationJoinDay.put(nationId, day);
-////                    }
-////                    allianceByNationId.put(nationId, nationId);
-////                }
-////            });
-////        }
-//    }
+    PROJECT_BUY_10D(false, SI_UNIT) {
+
+        @Override
+        public double apply(DBAlliance alliance) {
+            int total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                if (nation.getProjectTurns() > 0) {
+                    total++;
+                }
+            }
+            return total;
+        }
+
+        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
+        private final Map<Integer, Long> nationJoinDay = new Int2LongOpenHashMap();
+        private Map<Integer, Map<Long, Long>> projectsByDate = new Int2ObjectOpenHashMap<>();
+        private Set<Integer> nationsToday = new IntOpenHashSet();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    int nationId = row.get(header.nation_id, Integer::parseInt);
+                    Integer previousAlliance = allianceByNationId.get(nationId);
+                    if (previousAlliance == null || (previousAlliance != allianceId)) {
+                        nationJoinDay.put(nationId, day);
+                    }
+                    allianceByNationId.put(nationId, allianceId);
+                    int numProjects = row.get(header.projects, Integer::parseInt);
+                    if (numProjects == 0) return;
+                    DBNation nation = row.getNation(header, false, true);
+                    if (nation == null) {
+                        projectsByDate.computeIfAbsent(nationId, f -> new Long2LongOpenHashMap()).put(day, 0L);
+                    } else {
+                        long projectBits = nation.getProjectBitMask();
+                        projectsByDate.computeIfAbsent(nationId, f -> new Long2LongOpenHashMap()).put(day, projectBits);
+                        nationsToday.add(nationId);
+                    }
+                }
+            });
+        }
+
+        private long getProjects(int nationId, long day) {
+            Map<Long, Long> projectMap = projectsByDate.get(nationId);
+            if (projectMap == null) return 0;
+            return projectMap.getOrDefault(day, 0L);
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
+            Map<Integer, Double> numBoughtByAA = new Int2DoubleOpenHashMap();
+            for (int nationId : nationsToday) {
+                long dayJoinedAlliance = nationJoinDay.get(nationId);
+                long dayCheck = Math.max(dayJoinedAlliance, day - 10);
+                if (dayCheck == day) continue;
+
+                long projectsToday = getProjects(nationId, day);
+                long projects10Ago = getProjects(nationId, dayCheck);
+
+                int numToday = Long.bitCount(projectsToday);
+                int num10Ago = Long.bitCount(projects10Ago);
+                int allianceId = allianceByNationId.get(nationId);
+                numBoughtByAA.merge(allianceId, (double) (numToday - num10Ago), Double::sum);
+            }
+            projectsByDate.entrySet().removeIf(entry -> {
+                Map<Long, Long> nationProjectByDay = entry.getValue();
+                nationProjectByDay.remove(day - 10);
+                return nationProjectByDay.isEmpty();
+            });
+            nationsToday.clear();
+            return numBoughtByAA;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            nationJoinDay.clear();
+            allianceByNationId.clear();
+            projectsByDate.clear();
+            nationsToday.clear();
+            return null;
+        }
+    },
+
+    PROJECT_VALUE_10D(false, SI_UNIT) {
+
+        @Override
+        public double apply(DBAlliance alliance) {
+            return null;
+        }
+
+        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
+        private final Map<Integer, Long> nationJoinDay = new Int2LongOpenHashMap();
+        private Map<Integer, Map<Long, Long>> projectsByDate = new Int2ObjectOpenHashMap<>();
+        private Set<Integer> nationsToday = new IntOpenHashSet();
+
+        @Override
+        public void setupReaders(DataDumpImporter importer) {
+            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+                @Override
+                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                    int position = row.get(header.alliance_position, Integer::parseInt);
+                    if (position <= Rank.APPLICANT.id) return;
+                    int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                    if (allianceId == 0) return;
+                    int vmTurns = row.get(header.vm_turns, Integer::parseInt);
+                    if (vmTurns > 0) return;
+                    int nationId = row.get(header.nation_id, Integer::parseInt);
+                    Integer previousAlliance = allianceByNationId.get(nationId);
+                    if (previousAlliance == null || (previousAlliance != allianceId)) {
+                        nationJoinDay.put(nationId, day);
+                    }
+                    allianceByNationId.put(nationId, allianceId);
+                    int numProjects = row.get(header.projects, Integer::parseInt);
+                    if (numProjects == 0) return;
+                    DBNation nation = row.getNation(header, false, true);
+                    if (nation == null) {
+                        projectsByDate.computeIfAbsent(nationId, f -> new Long2LongOpenHashMap()).put(day, 0L);
+                    } else {
+                        long projectBits = nation.getProjectBitMask();
+                        projectsByDate.computeIfAbsent(nationId, f -> new Long2LongOpenHashMap()).put(day, projectBits);
+                        nationsToday.add(nationId);
+                    }
+                }
+            });
+        }
+
+        private long getProjects(int nationId, long day) {
+            Map<Long, Long> projectMap = projectsByDate.get(nationId);
+            if (projectMap == null) return 0;
+            return projectMap.getOrDefault(day, 0L);
+        }
+
+        @Override
+        public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
+            Map<Integer, Double> numBoughtByAA = new Int2DoubleOpenHashMap();
+            for (int nationId : nationsToday) {
+                long dayJoinedAlliance = nationJoinDay.get(nationId);
+                long dayCheck = Math.max(dayJoinedAlliance, day - 10);
+                if (dayCheck == day) continue;
+
+                long projectsToday = getProjects(nationId, day);
+                long projects10Ago = getProjects(nationId, dayCheck);
+
+                double valueBought = 0;
+
+                for (Project project : Projects.values) {
+                    boolean hasNow = (projectsToday & (1L << project.ordinal())) != 0;
+                    boolean had10Ago = (projects10Ago & (1L << project.ordinal())) != 0;
+                    if (hasNow && !had10Ago) {
+                        int allianceId = allianceByNationId.get(nationId);
+                        valueBought += project.getMarketValue();
+                    }
+                }
+                if (valueBought > 0) {
+                    int allianceId = allianceByNationId.get(nationId);
+                    numBoughtByAA.merge(allianceId, valueBought, Double::sum);
+                }
+            }
+            projectsByDate.entrySet().removeIf(entry -> {
+                Map<Long, Long> nationProjectByDay = entry.getValue();
+                nationProjectByDay.remove(day - 10);
+                return nationProjectByDay.isEmpty();
+            });
+            nationsToday.clear();
+            return numBoughtByAA;
+        }
+
+        @Override
+        public List<Value> getAllValues() {
+            nationJoinDay.clear();
+            allianceByNationId.clear();
+            projectsByDate.clear();
+            nationsToday.clear();
+            return null;
+        }
+    },
+
+    PROJECTS_ADVANCED_URBAN_PLANNING(false, SI_UNIT) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            int total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                if (nation.hasProject(Projects.ADVANCED_URBAN_PLANNING)) {
+                    total++;
+                }
+            }
+            return total;
+        }
+    }
 
     // war policy over time
     // projects over time

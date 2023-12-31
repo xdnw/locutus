@@ -1,4 +1,4 @@
-package link.locutus.discord.util;
+package link.locutus.discord.util.math;
 
 import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 
@@ -6,6 +6,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.util.List;
 
 public class ScriptUtil {
     private static final NashornScriptEngineFactory manager = new NashornScriptEngineFactory();
@@ -20,5 +21,25 @@ public class ScriptUtil {
             return getEngine().eval(input);
         }
         throw new IllegalArgumentException("Invalid number or math expression: `" + input + "`");
+    }
+
+    public static void main(String[] args) {
+        List<TestClass> tests = List.of(new TestClass(), new TestClass(), new TestClass());
+
+        ScriptEngine engine = getEngine();
+        try {
+            engine.put("tests", tests);
+            engine.eval(
+                    """
+                    for(var i = 0; i < tests.length; i++) {
+                        var test = tests[i];
+                        print(test.myMethod());
+                        print(test.myPrivateValue);
+                    }
+                    """
+            );
+        } catch (ScriptException e) {
+            e.printStackTrace();
+        }
     }
 }
