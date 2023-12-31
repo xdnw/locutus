@@ -311,11 +311,14 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     public static String getSlashMention(String path) {
-        SlashCommandManager slash = Locutus.imp().getSlashCommands();
-        if (slash != null) {
-            Long id = slash.getCommandId(path);
-            if (id != null && id > 0) {
-                return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
+        Locutus lc = Locutus.imp();
+        if (lc != null) {
+            SlashCommandManager slash = lc.getSlashCommands();
+            if (slash != null) {
+                Long id = slash.getCommandId(path);
+                if (id != null && id > 0) {
+                    return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
+                }
             }
         }
         return getSlashCommand(path, Collections.emptyMap(), true);

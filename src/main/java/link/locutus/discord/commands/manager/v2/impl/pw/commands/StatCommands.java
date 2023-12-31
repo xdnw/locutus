@@ -318,7 +318,7 @@ public class StatCommands {
                          @Switch("a") Set<AttackType> allowedAttackTypes) {
         return warsCost(channel, Collections.singleton(nation), coalition2, timeStart, timeEnd,
                 ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, ignoreBuildings, listWarIds, showWarTypes,
-                allowedWarTypes, allowedWarStatus, allowedAttackTypes);
+                allowedWarTypes, allowedWarStatus, allowedAttackTypes, false, false, false, false);
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)")
@@ -351,12 +351,41 @@ public class StatCommands {
 
                            @Switch("w") Set<WarType> allowedWarTypes,
                            @Switch("s") Set<WarStatus> allowedWarStatus,
-                           @Switch("a") Set<AttackType> allowedAttackTypes) {
+                           @Switch("a") Set<AttackType> allowedAttackTypes,
+                           @Switch("o") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars,
+                           @Switch("d") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars,
+                           @Switch("oa") @Arg("Only include attacks done by coalition1") boolean onlyOffensiveAttacks,
+                            @Switch("da") @Arg("Only include attacks done by coalition2") boolean onlyDefensiveAttacks
+                           ) {
+        if (onlyOffensiveWars && onlyDefensiveWars) throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
+        if (onlyOffensiveAttacks && onlyDefensiveAttacks) throw new IllegalArgumentException("Cannot combine `onlyOffensiveAttacks` and `onlyDefensiveAttacks`");
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
         WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
                 .allowWarStatuses(allowedWarStatus)
                 .allowedWarTypes(allowedWarTypes)
                 .allowedAttackTypes(allowedAttackTypes);
+        if (onlyOffensiveWars) {
+            parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
+        }
+        if (onlyDefensiveWars) {
+            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
+        }
+        if (onlyOffensiveAttacks) {
+            parser.getAttacks().removeIf(f -> {
+                DBWar war = f.getWar();
+                if (war == null) return true;
+                boolean warDeclarerCol1 = parser.getIsPrimary().apply(war);
+                return warDeclarerCol1 != (f.getAttacker_id() == war.getAttacker_id());
+            });
+        }
+        if (onlyDefensiveAttacks) {
+            parser.getAttacks().removeIf(f -> {
+                DBWar war = f.getWar();
+                if (war == null) return true;
+                boolean warDeclarerCol2 = parser.getIsSecondary().apply(war);
+                return warDeclarerCol2 != (f.getAttacker_id() == war.getAttacker_id());
+            });
+        }
         AttackCost cost = parser.toWarCost(true, true, listWarIds, listWarIds || showWarTypes, false);
 
         IMessageBuilder msg = channel.create();

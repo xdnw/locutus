@@ -1,5 +1,6 @@
 package link.locutus.discord.util.math;
 
+import com.github.javaparser.ParseResult;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -22,6 +23,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.ia.IACheckup;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.math3.util.DoubleArray;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
@@ -34,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -50,6 +53,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -65,9 +69,9 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class ArrayUtil {
-    public static final DoubleBinaryOperator DOUBLE_ADD = (x, y) -> x + y;
+    public static final DoubleBinaryOperator DOUBLE_ADD = Double::sum;
     public static final DoubleBinaryOperator DOUBLE_SUBTRACT = (x, y) -> x - y;
-    public static final IntBinaryOperator INT_ADD = (x, y) -> x + y;
+    public static final IntBinaryOperator INT_ADD = Integer::sum;
 
     public static double cosineSimilarity(double[] vectorA, double[] vectorB) {
         double dotProduct = 0.0;
@@ -599,6 +603,22 @@ public class ArrayUtil {
     }
     public interface MathToken<T extends MathToken<T>> {
         T create(String input);
+        default T apply(MathOperator operator, T value) {
+            return switch (operator) {
+                case TERNARY -> throw new IllegalArgumentException("Cannot apply ternary operator to " + this.getClass().getSimpleName());
+                case GREATER_EQUAL -> this.greaterEqual(value);
+                case GREATER -> this.greater(value);
+                case LESS_EQUAL -> this.lessEqual(value);
+                case LESS -> this.less(value);
+                case NOT_EQUAL -> this.notEqual(value);
+                case EQUAL -> this.equal(value);
+                case PLUS -> this.add(value);
+                case MINUS -> this.subtract(value);
+                case MULTIPLY -> this.multiply(value);
+                case DIVIDE -> this.divide(value);
+                case POWER -> this.power(value);
+            };
+        }
         T add(T other);
         T power(double value);
         T power(T value);
@@ -609,6 +629,14 @@ public class ArrayUtil {
         T divide(T other);
         T divide(double value);
         T subtract(T other);
+
+        T greaterEqual(T other);
+        T greater(T other);
+        T lessEqual(T other);
+        T less(T other);
+        T notEqual(T other);
+        T equal(T other);
+        T ternary(T a, T b);
     }
 
     public static class DoubleArray implements MathToken<DoubleArray> {
@@ -657,6 +685,188 @@ public class ArrayUtil {
                 result[i] = array[i] - other.array[i];
             }
             return new DoubleArray(result);
+        }
+
+        @Override
+        public DoubleArray greaterEqual(DoubleArray other) {
+            if (other.array.length == 1) {
+                for (double v : array) {
+                    if (v < other.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (this.array.length == 1) {
+                for (double v : other.array) {
+                    if (v < this.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (other.array.length != this.array.length) {
+                throw new IllegalArgumentException("Arrays must be same length");
+            }
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] < other.array[i]) {
+                    return new DoubleArray(0);
+                }
+            }
+            return new DoubleArray(1);
+        }
+
+        @Override
+        public DoubleArray greater(DoubleArray other) {
+            if (other.array.length == 1) {
+                for (double v : array) {
+                    if (v <= other.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (this.array.length == 1) {
+                for (double v : other.array) {
+                    if (v <= this.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (other.array.length != this.array.length) {
+                throw new IllegalArgumentException("Arrays must be same length");
+            }
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] <= other.array[i]) {
+                    return new DoubleArray(0);
+                }
+            }
+            return new DoubleArray(1);
+        }
+
+        @Override
+        public DoubleArray lessEqual(DoubleArray other) {
+            if (other.array.length == 1) {
+                for (double v : array) {
+                    if (v > other.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (this.array.length == 1) {
+                for (double v : other.array) {
+                    if (v > this.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (other.array.length != this.array.length) {
+                throw new IllegalArgumentException("Arrays must be same length");
+            }
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] > other.array[i]) {
+                    return new DoubleArray(0);
+                }
+            }
+            return new DoubleArray(1);
+        }
+
+        @Override
+        public DoubleArray less(DoubleArray other) {
+            if (other.array.length == 1) {
+                for (double v : array) {
+                    if (v >= other.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (this.array.length == 1) {
+                for (double v : other.array) {
+                    if (v >= this.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (other.array.length != this.array.length) {
+                throw new IllegalArgumentException("Arrays must be same length");
+            }
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] >= other.array[i]) {
+                    return new DoubleArray(0);
+                }
+            }
+            return new DoubleArray(1);
+        }
+
+        @Override
+        public DoubleArray notEqual(DoubleArray other) {
+            if (other.array.length == 1) {
+                for (double v : array) {
+                    if (v == other.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (this.array.length == 1) {
+                for (double v : other.array) {
+                    if (v == this.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (other.array.length != this.array.length) {
+                throw new IllegalArgumentException("Arrays must be same length");
+            }
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] == other.array[i]) {
+                    return new DoubleArray(0);
+                }
+            }
+            return new DoubleArray(1);
+        }
+
+        @Override
+        public DoubleArray equal(DoubleArray other) {
+            if (other.array.length == 1) {
+                for (double v : array) {
+                    if (v != other.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (this.array.length == 1) {
+                for (double v : other.array) {
+                    if (v != this.array[0]) {
+                        return new DoubleArray(0);
+                    }
+                }
+                return new DoubleArray(1);
+            }
+            if (other.array.length != this.array.length) {
+                throw new IllegalArgumentException("Arrays must be same length");
+            }
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] != other.array[i]) {
+                    return new DoubleArray(0);
+                }
+            }
+            return new DoubleArray(1);
+        }
+
+        @Override
+        public DoubleArray ternary(DoubleArray a, DoubleArray b) {
+            if (this.array.length != 1) {
+                throw new IllegalArgumentException("Ternary operator requires first argument to be a single value");
+            }
+            return this.array[0] > 0 ? a : b;
         }
 
         @Override
@@ -770,7 +980,67 @@ public class ArrayUtil {
         }
     }
 
-    private static final String OPERATORS = "+-*/^";
+    public enum MathOperator {
+        TERNARY("?", 1),
+        GREATER_EQUAL(">=", 5),
+        GREATER(">", 6),
+        LESS_EQUAL("<=", 5),
+        LESS("<", 6),
+        NOT_EQUAL("!=", 4),
+        EQUAL("=", 2),
+        PLUS("+", 9),
+        MINUS("-", 9),
+        MULTIPLY("*", 8),
+        DIVIDE("/", 8),
+        POWER("^", 7);
+
+        private static final Map<Character, List<MathOperator>> OPERATORS_CHAR = new TreeMap<>();
+        private static final Map<String, MathOperator> OPERATORS_FULL = new HashMap<>();
+
+        static {
+            for (MathOperator op : values()) {
+                char firstChar = op.symbol.charAt(0);
+                if (!OPERATORS_CHAR.containsKey(firstChar)) {
+                    OPERATORS_CHAR.put(firstChar, new ArrayList<>());
+                }
+                OPERATORS_CHAR.get(firstChar).add(op);
+                OPERATORS_FULL.put(op.symbol, op);
+            }
+        }
+
+        private final String symbol;
+        private final int precedence;
+
+        MathOperator(String symbol, int precedence) {
+            this.symbol = symbol;
+            this.precedence = precedence;
+        }
+
+        public static MathOperator getOperator(String input) {
+            return OPERATORS_FULL.get(input);
+        }
+
+        public static MathOperator readOperator(String input, int index) {
+            List<MathOperator> possibleOperators = OPERATORS_CHAR.get(input.charAt(index));
+            if (possibleOperators != null) {
+                for (MathOperator op : possibleOperators) {
+                    if (input.startsWith(op.symbol, index)) {
+                        return op;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public String getSymbol() {
+            return symbol;
+        }
+
+        public int getPrecedence() {
+            return precedence;
+        }
+    }
+
     private static final String LEFT_PAREN = "(";
     private static final String RIGHT_PAREN = ")";
 
@@ -780,21 +1050,6 @@ public class ArrayUtil {
         }
         return calculate(input, parseOrigin);
     }
-
-    public static void main(String[] args) {
-        String input = "{test{blah}}*{test{blah}}";
-
-        DoubleArray value = calculate(input, new Function<String, DoubleArray>() {
-            @Override
-            public DoubleArray apply(String s) {
-                System.out.println("Parse " + s);
-                return new DoubleArray(new double[]{5});
-            }
-        });
-        System.out.println(value.toString());
-    }
-
-
 
 
 
@@ -921,6 +1176,63 @@ public class ArrayUtil {
             }
             return new LazyMathArray<>(t -> this.resolve(t).modulo(value.resolve(t)), parser);
         }
+
+        @Override
+        public LazyMathArray<T> greaterEqual(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.greaterEqual(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).greaterEqual(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> greater(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.greater(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).greater(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> lessEqual(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.lessEqual(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).lessEqual(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> less(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.less(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).less(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> notEqual(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.notEqual(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).notEqual(other.resolve(t)), parser);
+        }
+
+
+        @Override
+        public LazyMathArray<T> equal(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.equal(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).equal(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> ternary(LazyMathArray<T> a, LazyMathArray<T> b) {
+            if (this.resolved != null && a.resolved != null && b.resolved != null) {
+                return new LazyMathArray<>(this.resolved.ternary(a.resolved, b.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).ternary(a.resolve(t), b.resolve(t)), parser);
+        }
     }
 
     public static <T extends MathToken<T>> T calculate(String input, Function<String, T> parseOrigin) {
@@ -930,8 +1242,8 @@ public class ArrayUtil {
         String[] tokens = splitMathExpression(input);
 
         for (String token : tokens) {
-            if (isOperator(token)) {
-                while (!operatorStack.isEmpty() && isOperator(operatorStack.peek())) {
+            if (MathOperator.getOperator(token) != null) {
+                while (!operatorStack.isEmpty() && MathOperator.getOperator(operatorStack.peek()) != null) {
                     if ((isLeftAssociative(token) && comparePrecedence(token, operatorStack.peek()) <= 0)
                             || (comparePrecedence(token, operatorStack.peek()) < 0)) {
                         outputQueue.offer(operatorStack.pop());
@@ -958,28 +1270,17 @@ public class ArrayUtil {
 
         Deque<T> stack = new ArrayDeque<>();
         for (String token : outputQueue) {
-            if (isOperator(token)) {
-                T right = stack.pop();
-                T left = stack.pop();
-                switch (token) {
-                    case "+":
-                        stack.push(left.add(right));
-                        break;
-                    case "-":
-                        stack.push(left.subtract(right));
-                        break;
-                    case "*":
-                        stack.push(left.multiply(right));
-                        break;
-                    case "/":
-                        stack.push(left.divide(right));
-                        break;
-                    case "^":
-                        stack.push(left.power(right));
-                        break;
-                    case "%":
-                        stack.push(left.modulo(right));
-                        break;
+            MathOperator operator = MathOperator.getOperator(token);
+            if (operator != null) {
+                if (operator == MathOperator.TERNARY) {
+                    T b = stack.pop();
+                    T a = stack.pop();
+                    T condition = stack.pop();
+                    stack.push(condition.ternary(a, b));
+                } else {
+                    T right = stack.pop();
+                    T left = stack.pop();
+                    stack.push(left.apply(operator, right));
                 }
             } else {
                 T arr = parseOrigin.apply(token);
@@ -990,16 +1291,16 @@ public class ArrayUtil {
         return stack.pop();
     }
 
-    private static boolean isOperator(String token) {
-        return OPERATORS.contains(token);
-    }
-
     private static boolean isLeftAssociative(String token) {
         return !token.equals("^");
     }
 
     private static int comparePrecedence(String token1, String token2) {
-        return getPrecedence(token1) - getPrecedence(token2);
+        MathOperator operator1 = MathOperator.getOperator(token1);
+        MathOperator operator2 = MathOperator.getOperator(token2);
+        int precedence1 = operator1 == null ? 0 : operator1.getPrecedence();
+        int precedence2 = operator2 == null ? 0 : operator2.getPrecedence();
+        return precedence1 - precedence2;
     }
 
     public static String[] splitMathExpression(String input) {
@@ -1007,6 +1308,8 @@ public class ArrayUtil {
 
         StringBuilder currentToken = new StringBuilder();
         int curlBracketLevel = 0;
+        int roundBracketLevel = 0;
+        boolean isTernary = false;
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
@@ -1023,49 +1326,89 @@ public class ArrayUtil {
                 }
             } else if (curlBracketLevel > 0) {
                 currentToken.append(c);
-            } else if (c == '(' || isNonNegOperator(c)) {
-                if (currentToken.length() > 0) {
+            } else {
+                if (roundBracketLevel > 0) {
+                    if (c == '(') {
+                        roundBracketLevel++;
+                    } else if (c == ')') {
+                        roundBracketLevel--;
+                    }
+                    currentToken.append(c);
+                    if (roundBracketLevel == 0) {
+                        tokens.add(currentToken.toString());
+                        currentToken = new StringBuilder();
+                    }
+                    continue;
+                }
+                if (c == '(') {
+                    if (!currentToken.isEmpty()) {
+                        String tokenStr = currentToken.toString();
+                        if (Character.isLetter(tokenStr.charAt(0))) {
+                            currentToken.append(c);
+                            roundBracketLevel++;
+                            continue;
+                        }
+                        tokens.add(currentToken.toString());
+                        currentToken = new StringBuilder();
+                    }
+                    currentToken.append(c);
                     tokens.add(currentToken.toString());
                     currentToken = new StringBuilder();
-                }
-                currentToken.append(c);
-                tokens.add(currentToken.toString());
-                currentToken = new StringBuilder();
 
-                // Check if next character is a negative sign
-                if (i + 1 < input.length() && input.charAt(i + 1) == '-') {
-                    currentToken.append('-');
-                    i++; // Skip the negative sign
+                    // Check if next character is a negative sign
+                    if (i + 1 < input.length() && input.charAt(i + 1) == '-') {
+                        currentToken.append('-');
+                        i++; // Skip the negative sign
+                    }
+                } else if (c == ')' || c == '-') {
+                    System.out.println("- )" + currentToken);
+                    if (!currentToken.isEmpty()) {
+                        tokens.add(currentToken.toString());
+                        currentToken = new StringBuilder();
+                    }
+                    tokens.add(String.valueOf(c));
+                } else if (Character.isWhitespace(c)) {
+//                    System.out.println("Whitespace");
+                    continue;
+                } else if (isTernary) {
+                    if (c == ':') {
+                        if (!currentToken.isEmpty()) {
+                            tokens.add(currentToken.toString());
+                            currentToken = new StringBuilder();
+                        }
+                        isTernary = false;
+                    } else {
+                        currentToken.append(c);
+                    }
+                    continue;
+                } else {
+                    MathOperator operator = MathOperator.readOperator(input, i);
+                    if (operator != null) {
+                        if (!currentToken.isEmpty()) {
+                            tokens.add(currentToken.toString());
+                            currentToken = new StringBuilder();
+                        }
+                        if (operator == MathOperator.TERNARY) {
+                            isTernary = true;
+                        }
+                        currentToken.append(operator.getSymbol());
+                        tokens.add(currentToken.toString());
+                        currentToken = new StringBuilder();
+                        i += operator.getSymbol().length() - 1;
+                        continue;
+                    } else{
+                        System.out.println("Found character " + c);
+                    }
+                    currentToken.append(c);
                 }
-            } else if (c == ')' || c == '-') {
-                if (currentToken.length() > 0) {
-                    tokens.add(currentToken.toString());
-                    currentToken = new StringBuilder();
-                }
-                tokens.add(String.valueOf(c));
-            } else if (!Character.isWhitespace(c)) {
-                currentToken.append(c);
             }
         }
 
-        if (currentToken.length() > 0) {
+        if (!currentToken.isEmpty()) {
             tokens.add(currentToken.toString());
         }
 
         return tokens.toArray(new String[0]);
-    }
-
-    private static boolean isNonNegOperator(char c) {
-        return c == '+' || c == '*' || c == '/' || c == '^';
-    }
-
-    private static int getPrecedence(String token) {
-        return switch (token) {
-            case "+", "-" -> 1;
-            case "*", "/" -> 2;
-            case "^" -> 3;
-            default -> 0;
-        };
     }
 
     public static class ParseResult<T> {
@@ -1207,16 +1550,29 @@ public class ArrayUtil {
         return predicates.stream().reduce(Predicate::or).orElseThrow();
     }
 
+    public static void main(String[] args) {
+        Function<String, DoubleArray> func = s -> {
+            System.out.println("Parse " + s);
+            if (s.equalsIgnoreCase("{blah}")) {
+                return new DoubleArray(new double[]{5});
+            }
+            else if (s.equalsIgnoreCase("{test}")) {
+                return new DoubleArray(new double[]{3});
+            } else if (s.equalsIgnoreCase("blah(test(3))")) {
+                return new DoubleArray(new double[]{1});
+            }
+            return DoubleArray.parse(s);
+        };
+//        System.out.println(calculate("blah(test(3))+5*(3*(2*4))", func));
+        System.out.println(calculate("(1=1?5+1:(10+2+2))/2", func));
+    }
+
     private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         if ((parseSet2 != null) == (parseElemPredicate != null)) {
             throw new IllegalArgumentException("Only one of parseSet2 and parseElemPredicate can be null");
         }
 
-        System.out.println("Input `" + input + "`");
-
         List<String> splitAnd = StringMan.split(input, ',');
-
-        System.out.println("Split " + splitAnd);
 
         List<ParseResult<T>> andResults = new ArrayList<>();
 
@@ -1247,9 +1603,11 @@ public class ArrayUtil {
                         throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Empty group");
                     }
                     char char0 = elem.charAt(0);
-
                     if (char0 == '#') {
                         elem = elem.substring(1);
+                        Predicate<T> filter = parseFilter.apply(elem);
+                        orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
+                    } else if (elem.contains("{")) {
                         Predicate<T> filter = parseFilter.apply(elem);
                         orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else if (char0 == '(') {
@@ -1339,7 +1697,6 @@ public class ArrayUtil {
     public static <T> Predicate<T> parseFilter(String input, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         ParseResult<T> result = parseQuery(input, null, parseElemPredicate, parseFilter);
         if (result.hadNonFilter.get()) {
-            // resolve
             Set<T> allowed = result.resolve();
             return allowed::contains;
         }

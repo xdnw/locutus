@@ -5040,7 +5040,8 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get resource quantity for this nation")
     public long getTradeAvgPpu(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
+        String funcStr = "getTradeAvgPpu(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
         if (dateEnd == null) dateEnd = Long.MAX_VALUE;
         List<DBNation> nations = scoped.getList(this);
@@ -5078,6 +5079,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get resource quantity for this nation")
     public double getTradeValue(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
+        String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
 
         if (dateEnd == null) dateEnd = Long.MAX_VALUE;

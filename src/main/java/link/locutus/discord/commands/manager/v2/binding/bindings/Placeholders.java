@@ -26,6 +26,7 @@ import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -74,9 +75,6 @@ public abstract class Placeholders<T> extends BindingHelper {
         this.commands.registerCommandsClass(getType());
         new PWMath2Type().register(math2Type);
         new PWType2Math().register(type2Math);
-        if (this.commands.get("getSelf") == null) {
-            System.out.println("Missing getSelf for " + getType().getSimpleName());
-        }
         return this;
     }
 
@@ -344,65 +342,73 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     private Predicate<T> getSingleFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
-        Triple<String, Operation, String> pairs = opSplit(input);
-        boolean isDefault = false;
-        if (pairs == null) {
-            pairs = Triple.of(input, Operation.EQUAL, "1");
-            isDefault = true;
-        }
-        String part1 = pairs.getLeft();
-        Operation op = pairs.getMiddle();
-        String part2 = pairs.getRight();
-
-        TypedFunction<T, ?> placeholder = evaluateFunction(store, part1, 0, true);
+        TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, true);
         if (placeholder == null) {
-            throw throwUnknownCommand(part1);
+            throw throwUnknownCommand(input);
         }
         Function<T, ?> func = placeholder;
         Type type = placeholder.getType();
-        Predicate adapter;
-        boolean toString;
-
-        if (Enum.class.isAssignableFrom((Class<?>) type)) {
-            if (isDefault) {
-                throw new IllegalArgumentException("Please provide an operation for the filter: `" + part1 + "` e.g. " + StringMan.getString(Operation.values()));
-            }
-            adapter = op.getStringPredicate(part2);
-            toString = true;
+        Predicate<T> adapter;
+        if (type == String.class) {
+            throw new IllegalArgumentException("Cannot use String as filter: `" + input + "`. Please provide a condition e.g. `" + input + "=blah`");
+        } else if (type == boolean.class || type == Boolean.class) {
+            adapter = f -> {
+                Object value = func.apply(f);
+                if (value == null) return false;
+                return (Boolean) value;
+            };
+        } else if (type == byte.class || type == Byte.class || type == short.class || type == Short.class || type == int.class || type == Integer.class || type == long.class || type == Long.class || type == float.class || type == Float.class || type == double.class || type == Double.class || type == Number.class) {
+            adapter = f -> {
+                Object value = func.apply(f);
+                if (value == null) return false;
+                return ((Number) value).doubleValue() > 0;
+            };
         } else {
-            toString = false;
-            if (type == String.class) {
-                if (isDefault) {
-                    part2 = "";
-                    op = Operation.NOT_EQUAL;
-                }
-                adapter = op.getStringPredicate(part2);
-            } else if (type == boolean.class || type == Boolean.class) {
-                boolean val2 = PrimitiveBindings.Boolean(part2);
-                adapter = op.getBooleanPredicate(val2);
-            } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
-                if (isDefault) {
-                    part2 = "0";
-                    op = Operation.GREATER;
-                }
-                double val2 = PrimitiveBindings.Number(part2).doubleValue();
-                adapter = op.getNumberPredicate(val2);
-            } else {
-                throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
-            }
+            throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
         }
+//
+//
+//
+//        Predicate adapter;
+//        boolean toString;
+//
+//        if (Enum.class.isAssignableFrom((Class<?>) type)) {
+//            if (isDefault) {
+//                throw new IllegalArgumentException("Please provide an operation for the filter: `" + part1 + "` e.g. " + StringMan.getString(Operation.values()));
+//            }
+//            adapter = op.getStringPredicate(part2);
+//            toString = true;
+//        } else {
+//            toString = false;
+//            if (type == String.class) {
+//                if (isDefault) {
+//                    part2 = "";
+//                    op = Operation.NOT_EQUAL;
+//                }
+//                adapter = op.getStringPredicate(part2);
+//            } else if (type == boolean.class || type == Boolean.class) {
+//                boolean val2 = PrimitiveBindings.Boolean(part2);
+//                adapter = op.getBooleanPredicate(val2);
+//            } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
+//                if (isDefault) {
+//                    part2 = "0";
+//                    op = Operation.GREATER;
+//                }
+//                double val2 = PrimitiveBindings.Number(part2).doubleValue();
+//                adapter = op.getNumberPredicate(val2);
+//            } else {
+//                throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
+//            }
+//        }
 
-        return nation -> {
+        return f -> {
             Object value;
             if (cache != null) {
-                value = cache.computeIfAbsent(part1, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(nation, k -> func.apply(nation));
+                value = cache.computeIfAbsent(input, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(f, k -> func.apply(f));
             } else {
-                value = func.apply(nation);
+                value = func.apply(f);
             }
-            if (toString && value != null) {
-                value = value.toString();
-            }
-            return adapter.test(value);
+            return adapter.test((T) value);
         };
     }
 
@@ -445,10 +451,10 @@ public abstract class Placeholders<T> extends BindingHelper {
                 sections.add("" +currentChar);
                 currentIndex++;
                 switch (currentChar) {
-                    case '+', '-', '*', '/', '^', '%' -> {
+                    case '+', '-', '*', '/', '^', '%', '=', '>', '<', '?' -> {
                         hasMath = true;
                     }
-                    case '(', ')', ' ' -> {
+                    case '(', ')', ' ', '!' -> {
 
                     }
                     default -> {
@@ -484,29 +490,25 @@ public abstract class Placeholders<T> extends BindingHelper {
 
         if (hasMath && !hasNonMath) {
             if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
-                Function<String, Function<T, ArrayUtil.DoubleArray>> stringToParser = s -> {
+                Function<String, Function<T, Object>> stringToParser = s -> {
                     if (s.startsWith("{") && s.endsWith("}")) {
                         TypedFunction<T, ?> function = functions.get(s);
                         if (function != null) {
-                            return function.andThen(o -> parseDoubleArray(o, param, true));
+                            return function.andThen(o -> parseMath(o, param, true));
                         }
                     }
-                    return ResolvedFunction.create(ArrayUtil.DoubleArray.class, parseDoubleArray(s, param, true), s);
+                    return ResolvedFunction.create(Object.class, parseMath(s, param, true), s);
                 };
 
-                ArrayUtil.LazyMathArray<T> lazy = ArrayUtil.calculate(input, new Function<String, ArrayUtil.LazyMathArray<T>>() {
-                    @Override
-                    public ArrayUtil.LazyMathArray<T> apply(String s) {
-                        return new ArrayUtil.LazyMathArray<>(s, stringToParser);
-                    }
-                });
+                System.out.println("Calculate " + input);
+                LazyMathEntity<T> lazy = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser));
 
-                ArrayUtil.DoubleArray array = lazy.getOrNull();
-                Type type = param == null ? Double.class : param.getType();
+                Object array = lazy.getOrNull();
+                Class type = param == null ? Double.class : (Class) param.getType();
                 if (array != null) {
-                    return TypedFunction.create(type, toObject(array, param), input);
+                    return TypedFunction.create(type, toObject(array, type, param), input);
                 }
-                return TypedFunction.create(type, f -> toObject(lazy.resolve(f), param), input);
+                return TypedFunction.create(type, f -> toObject(lazy.resolve(f), type, param), input);
             } else if (hasCurlyBracket) {
                 if (throwError) {
                     throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
@@ -558,10 +560,24 @@ public abstract class Placeholders<T> extends BindingHelper {
         return TypedFunction.create(String.class, result, input);
     }
 
-    private Object toObject(ArrayUtil.DoubleArray expr, ParameterData param) {
-        double[] arr = expr.toArray();
-        if (arr.length == 1) {
-            return arr[0];
+    private Object toObject(Object expr, Class type, ParameterData param) {
+        if (type.isAssignableFrom(expr.getClass())) {
+            return expr;
+        }
+        if (expr instanceof Number num) {
+            if (type == int.class || type == Integer.class) {
+                return num.intValue();
+            } else if (type == double.class || type == Double.class) {
+                return num.doubleValue();
+            } else if (type == long.class || type == Long.class) {
+                return num.longValue();
+            } else if (type == float.class || type == Float.class) {
+                return num.floatValue();
+            } else if (type == short.class || type == Short.class) {
+                return num.shortValue();
+            } else if (type == byte.class || type == Byte.class) {
+                return num.byteValue();
+            }
         }
         if (param != null) {
             LocalValueStore locals = new LocalValueStore<>(store);
@@ -570,7 +586,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             if (typeFunc == null) {
                 throw new IllegalArgumentException("Unknown type function (1): `" + param.getBinding().getKey() + "`");
             }
-            Object parsed = typeFunc.apply(locals, expr);
+            Object parsed = typeFunc.apply(locals, expr.toString());
             if (parsed == null) {
                 throw new IllegalArgumentException("Null parsed " + typeFunc.getKey() + " for Math Expression->Type");
             }
@@ -579,13 +595,19 @@ public abstract class Placeholders<T> extends BindingHelper {
         throw new IllegalArgumentException("Cannot parse math expression to object: len:" + arr.length + " | " + StringMan.getString(arr));
     }
 
-    private ArrayUtil.DoubleArray parseDoubleArray(Object s, ParameterData param, boolean throwForUnknown) {
+    private Object parseMath(Object s, ParameterData param, boolean throwForUnknown) {
+        if (s == null) {
+            return null;
+        }
         if (s instanceof Number n) {
-            return new ArrayUtil.DoubleArray(n.doubleValue());
+            return n;
+        }
+        if (param != null && ((Class) param.getType()).isAssignableFrom(s.getClass())) {
+            return s;
         }
         if (s instanceof String str) {
             if (NumberUtils.isParsable(str)) {
-                return new ArrayUtil.DoubleArray(NumberUtils.createDouble(str));
+                return NumberUtils.createDouble(str);
             }
             if (str.startsWith("{") && str.endsWith("}")) {
                 if (param != null) {
@@ -608,6 +630,16 @@ public abstract class Placeholders<T> extends BindingHelper {
             if (throwForUnknown) {
                 throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
             }
+        } else if (s instanceof double[]) {
+            return new ArrayUtil.DoubleArray((double[]) s);
+        } else if (s instanceof int[]) {
+            double[] copy = new double[((int[]) s).length];
+            for (int i = 0; i < copy.length; i++) {
+                copy[i] = ((int[]) s)[i];
+            }
+            return new ArrayUtil.DoubleArray(copy);
+        } else if (s instanceof ArrayUtil.DoubleArray) {
+            return s;
         }
         throw new IllegalArgumentException("Unknown numeric `" + s.toString() + "` of type " + s.getClass() + " cannot parse to DoubleArray for " + param);
     }

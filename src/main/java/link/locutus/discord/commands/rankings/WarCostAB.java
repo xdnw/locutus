@@ -56,6 +56,7 @@ public class WarCostAB extends Command {
                 "Add -t to list the war types\n" +
                 "Add `-s` to list war status\n" +
                 "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type\n" +
+                "Add `war_type:RAID` to filter by war type\n" +
                 "Add `success:0` to filter by e.g. `utter failure`";
     }
 
@@ -63,6 +64,7 @@ public class WarCostAB extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
         String attackSuccesStr = DiscordUtil.parseArg(args, "success");
+        String warTypeStr = DiscordUtil.parseArg(args, "war_type");
         if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
             return usage(args.size(), 1, 4, channel);
         }
@@ -77,6 +79,13 @@ public class WarCostAB extends Command {
         if (attackSuccesStr != null) {
             Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
             parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess().ordinal()));
+        }
+        if (warTypeStr != null) {
+            Set<WarType> options = new HashSet<>(BindingHelper.emumList(WarType.class, warTypeStr.toUpperCase(Locale.ROOT)));
+            parser.getAttacks().removeIf(f -> {
+                DBWar war = f.getWar();
+                return war == null || !options.contains(war.getWarType());
+            });
         }
 
         AttackCost cost = parser.toWarCost(!flags.contains('b'), true, flags.contains('s'), flags.contains('w') || flags.contains('t'), false);

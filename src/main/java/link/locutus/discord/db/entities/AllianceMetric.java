@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -2023,18 +2024,61 @@ public enum AllianceMetric {
         }
     },
 
-    PROJECT_BUY_10D(false, SI_UNIT) {
-        @Override
-        public double apply(DBAlliance alliance) {
-            int total = 0;
-            for (DBNation nation : alliance.getMemberDBNations()) {
-                if (nation.getProjectTurns() > 0) {
-                    total++;
-                }
-            }
-            return total;
-        }
-    }
+//    PROJECT_BUY_10D(false, SI_UNIT) {
+//
+//        @Override
+//        public double apply(DBAlliance alliance) {
+//            int total = 0;
+//            for (DBNation nation : alliance.getMemberDBNations()) {
+//                if (nation.getProjectTurns() > 0) {
+//                    total++;
+//                }
+//            }
+//            return total;
+//        }
+//
+//        private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
+//        private final Map<Integer, Long> nationJoinDay = new Int2LongOpenHashMap();
+//        private Map<Integer, Map<Byte, Long>> projectsByDate = new Int2ObjectOpenHashMap<>();
+//
+//        @Override
+//        public void setupReaders(DataDumpImporter importer) {
+////            importer.setProjectReader(this, new TriConsumer<Long, DataDumpParser.ProjectHeader, ParsedRow>() {
+////                @Override
+////                public void consume(Long day, DataDumpParser.ProjectHeader header, ParsedRow row) {
+////                    int nationId = row.get(header.nation_id, Integer::parseInt);
+////                    Integer allianceId = allianceByNationId.get(nationId);
+////                    if (allianceId == null || allianceId == 0) return;
+////                    long dayJoinedAlliance = nationJoinDay.get(nationId);
+////                    long joinedAllianceMs = TimeUtil.getTimeFromDay(dayJoinedAlliance);
+////
+////                    String dateStr = row.get(header.date_created, String::toString);
+////                    try {
+////                        Date date = TimeUtil.DD_MM_YYYY.parse(dateStr);
+////                        long createdMs = date.getTime();
+////                        if (createdMs < joinedAllianceMs) return;
+////                    } catch (ParseException e) {
+////                        throw new RuntimeException(e);
+////                    }
+////                    byte projectType = row.get(header.project_type, Byte::parseByte);
+////                    projectsByDate.computeIfAbsent(allianceId, f -> new HashMap<>()).merge(projectType, 1L, Long::sum);
+////                }
+////            });
+////            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+////                @Override
+////                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+////                    int position = row.get(header.alliance_position, Integer::parseInt);
+////                    if (position <= Rank.APPLICANT.id) return;
+////                    int nationId = row.get(header.nation_id, Integer::parseInt);
+////                    Integer previousAlliance = allianceByNationId.get(nationId);
+////                    if (previousAlliance == null || (previousAlliance != nationId)) {
+////                        nationJoinDay.put(nationId, day);
+////                    }
+////                    allianceByNationId.put(nationId, nationId);
+////                }
+////            });
+////        }
+//    }
 
     // war policy over time
     // projects over time

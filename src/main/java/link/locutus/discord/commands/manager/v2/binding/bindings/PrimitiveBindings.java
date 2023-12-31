@@ -154,7 +154,11 @@ public class PrimitiveBindings extends BindingHelper {
         try {
             Double parsed = MathMan.parseDouble(input);
             if (parsed != null) return parsed;
-        } catch (NumberFormatException ignored) {
+        } catch (NumberFormatException ignored) {}
+        if ((input.charAt(0) == 't' || input.charAt(0) == 'T') && input.equalsIgnoreCase("true")) {
+            return 1.0;
+        } else if ((input.charAt(0) == 'f' || input.charAt(0) == 'F') && input.equalsIgnoreCase("false")) {
+            return 0.0;
         }
         try {
             Object result = ScriptUtil.evalNumber(input);

@@ -128,6 +128,11 @@ public enum Continent {
         return Locutus.imp().getNationDB().getNationsMatching(f -> f.getContinent() == this && (filter2 == null || filter2.test(f)));
     }
 
+    @Command(desc = "The ordinal of this continent")
+    public int getOrdinal() {
+        return ordinal();
+    }
+
     @Command(desc = "Number of nations on this continent")
     public int getNumNations(@Default NationFilter filter) {
         return getNations(filter).size();
