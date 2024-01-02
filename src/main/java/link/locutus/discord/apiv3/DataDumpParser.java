@@ -251,7 +251,7 @@ public class DataDumpParser {
                     values.add(new AllianceMetricValue(aaId, AllianceMetric.INFRA_AVG, turn, average));
                 }
             }
-            AllianceMetric.saveAll(values);
+            AllianceMetric.saveAll(values, true);
         }
     }
 
@@ -839,7 +839,7 @@ public class DataDumpParser {
         return result;
     }
 
-    public void iterateAll(TriConsumer<Long, NationHeader, CsvRow> nationRows, TriConsumer<Long, CityHeader, CsvRow> cityRows, Consumer<Long> onEach) throws IOException, ParseException {
+    public void iterateAll(Predicate<Long> acceptDay, TriConsumer<Long, NationHeader, CsvRow> nationRows, TriConsumer<Long, CityHeader, CsvRow> cityRows, Consumer<Long> onEach) throws IOException, ParseException {
         load();
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
             File nationFile = entry.getValue();

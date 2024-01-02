@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.rankings.table.TableNumberFormat.*;
@@ -1046,13 +1047,14 @@ public enum AllianceMetric implements IAllianceMetric {
 //        }
 //    }
 
-    public static void saveAll(List<AllianceMetricValue> values) {
+    public static void saveAll(List<AllianceMetricValue> values, boolean replace) {
         if (values.isEmpty()) return;
         int chunkSize = 10000;
         for (int i = 0; i < values.size(); i += chunkSize) {
             int end = Math.min(i + chunkSize, values.size());
             List<AllianceMetricValue> subList = values.subList(i, end);
-            Locutus.imp().getNationDB().executeBatch(subList, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<AllianceMetricValue, PreparedStatement>) (value, stmt) -> {
+            String keyWord = replace ? "REPLACE" : "IGNORE";
+            Locutus.imp().getNationDB().executeBatch(subList, "INSERT OR " + keyWord + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<AllianceMetricValue, PreparedStatement>) (value, stmt) -> {
                 stmt.setInt(1, value.alliance);
                 stmt.setInt(2, value.metric.ordinal());
                 stmt.setLong(3, value.turn);
@@ -1115,7 +1117,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 }
             }
         }
-        saveAll(toAdd);
+        saveAll(toAdd, false);
     }
 
     public Double apply(DBAlliance alliance) {
@@ -1142,13 +1144,18 @@ public enum AllianceMetric implements IAllianceMetric {
         return null;
     }
 
-    public static synchronized void saveDataDump(DataDumpParser parser) throws IOException, ParseException {
+    public static synchronized void saveDataDump(DataDumpParser parser, Predicate<Long> acceptDay, boolean overwrite) throws IOException, ParseException {
+        saveDataDump(parser, Arrays.asList(AllianceMetric.values), acceptDay, overwrite);
+    }
+
+    public static synchronized void saveDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, boolean overwrite) throws IOException, ParseException {
+        if (acceptDay == null) acceptDay = f -> true;
         List<AllianceMetricValue> values = new ArrayList<>();
         Runnable save = () -> {
-            saveAll(values);
+            saveAll(values, overwrite);
             values.clear();
         };
-        runDataDump(parser, Arrays.asList(AllianceMetric.values), (metric, day, value) -> {
+        runDataDump(parser, metrics, acceptDay, (metric, day, value) -> {
             for (Map.Entry<Integer, Double> entry : value.entrySet()) {
                 values.add(new AllianceMetricValue(entry.getKey(), (AllianceMetric) metric, day, entry.getValue()));
             }
@@ -1159,7 +1166,7 @@ public enum AllianceMetric implements IAllianceMetric {
         save.run();
     }
 
-    public static synchronized void runDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, TriConsumer<IAllianceMetric, Long, Map<Integer, Double>> metricDayData) throws IOException, ParseException {
+    public static synchronized void runDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, TriConsumer<IAllianceMetric, Long, Map<Integer, Double>> metricDayData) throws IOException, ParseException {
         DataDumpImporter importer = new DataDumpImporter(parser);
         for (AllianceMetric metric : AllianceMetric.values) {
             metric.setupReaders(importer);
@@ -1168,10 +1175,9 @@ public enum AllianceMetric implements IAllianceMetric {
         TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> nationRows = importer.getNationReader();
         TriConsumer<Long, DataDumpParser.CityHeader, CsvRow> cityRows = importer.getCityReader();
 
-        parser.iterateAll(nationRows, cityRows, new Consumer<Long>() {
+        parser.iterateAll(acceptDay, nationRows, cityRows, new Consumer<Long>() {
             @Override
             public void accept(Long day) {
-                List<AllianceMetricValue> values = new ObjectArrayList<>();
                 for (IAllianceMetric metric : metrics) {
                     Map<Integer, Double> value = metric.getDayValue(importer, day);
                     if (value != null) {
@@ -1185,7 +1191,6 @@ public enum AllianceMetric implements IAllianceMetric {
         for (AllianceMetric metric : AllianceMetric.values) {
             all.addAll(metric.getAllValues());
         }
-        saveAll(all);
     }
 
     public static TimeNumericTable generateTable(AllianceMetric metric, long cutoffTurn, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {
