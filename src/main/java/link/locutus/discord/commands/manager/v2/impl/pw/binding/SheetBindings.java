@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -84,6 +85,16 @@ public class SheetBindings extends BindingHelper {
             throw new IllegalArgumentException("No selection alias found with name `" + name + "`. Options: " + StringMan.getString(options));
         }
         return alias;
+    }
+
+    @Binding("A comma separated list of spreadsheets")
+    public Set<SpreadSheet> sheets(String input) throws GeneralSecurityException, IOException {
+        List<String> split = StringMan.split(input, ",");
+        Set<SpreadSheet> sheets = new LinkedHashSet<>();
+        for (String s : split) {
+            sheets.add(sheet(s));
+        }
+        return sheets;
     }
 
     @Binding(value = "A custom sheet name that has been created in this guild\n" +
