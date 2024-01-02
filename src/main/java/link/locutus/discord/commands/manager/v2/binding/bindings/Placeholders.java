@@ -424,7 +424,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                     case '+', '-', '*', '/', '^', '%', '=', '>', '<', '?' -> {
                         hasMath = true;
                     }
-                    case '(', ')', ' ', '!', 'e', 'E', '.' -> {
+                    case '(', ')', ' ', '!', 'e', 'E', '.', ':' -> {
 
                     }
                     default -> {
@@ -460,7 +460,9 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
         }
 
-        if (hasMath && !hasNonMath) {
+        System.out.println("Input " + input + " | " + hasMath + " | " + hasNonMath);
+
+        if (hasMath) {
             if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
                 Function<String, Function<T, Object>> stringToParser = s -> {
                     System.out.println("Parse " + s);
@@ -470,7 +472,8 @@ public abstract class Placeholders<T> extends BindingHelper {
                             return function.andThen(o -> parseMath(o, param, true));
                         }
                     }
-                    return ResolvedFunction.create(Object.class, parseMath(s, param, true), s);
+                    Object parsed = parseMath(s, param, true);
+                    return ResolvedFunction.create(parsed != null ? parsed.getClass() : Object.class, parsed, s);
                 };
 
                 System.out.println("Input2 " + input + " | " + " | " + param);
@@ -486,13 +489,15 @@ public abstract class Placeholders<T> extends BindingHelper {
                 return TypedFunction.create(type, f -> {
                     return toObject(lazy.resolve(f), type, param);
                 }, input);
-            } else if (hasCurlyBracket) {
-                if (throwError) {
-                    throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
+            } else if (!hasNonMath) {
+                if (hasCurlyBracket) {
+                    if (throwError) {
+                        throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
+                    }
+                } else {
+                    double val = PrimitiveBindings.Double(input);
+                    return new ResolvedFunction<>(Double.class, val, input);
                 }
-            } else {
-                double val = PrimitiveBindings.Double(input);
-                return new ResolvedFunction<>(Double.class, val, input);
             }
         }
         if (param != null) {
@@ -601,18 +606,20 @@ public abstract class Placeholders<T> extends BindingHelper {
                     }
                     throw new IllegalArgumentException("Cannot parse `" + mathFunc.getKey() + "` invalid type: " + parsed.getClass() + " (expected DoubleArray)");
                 }
+                if (throwForUnknown) {
+                    throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
+                }
             }
-            if (throwForUnknown) {
-                throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
-            }
+            return str;
         } else if (s instanceof double[]) {
             return s;
         } else if (s instanceof int[]) {
             throw new IllegalArgumentException("Cannot parse int[] to DoubleArray for " + param);
         } else if (s instanceof ArrayUtil.DoubleArray) {
             return s;
+        } else {
+            return s;
         }
-        throw new IllegalArgumentException("Unknown numeric `" + s.toString() + "` of type " + s.getClass() + " cannot parse to DoubleArray for " + param);
     }
 
     private Map<String, String> explodeArguments(ValueStore store, ParametricCallable command, String argumentString, Set<String> arguments) {
