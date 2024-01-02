@@ -44,6 +44,7 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
 
     public Object resolve(T input) {
         if (resolver3 == null) return resolved2;
+        System.out.println("Resolve " + input);
         return resolver3.apply(input);
     }
 

@@ -353,15 +353,13 @@ public abstract class Placeholders<T> extends BindingHelper {
             throw new IllegalArgumentException("Cannot use String as filter: `" + input + "`. Please provide a condition e.g. `" + input + "=blah`");
         } else if (type == boolean.class || type == Boolean.class) {
             adapter = f -> {
-                Object value = func.apply(f);
-                if (value == null) return false;
-                return (Boolean) value;
+                if (f == null) return false;
+                return (Boolean) f;
             };
         } else if (type == byte.class || type == Byte.class || type == short.class || type == Short.class || type == int.class || type == Integer.class || type == long.class || type == Long.class || type == float.class || type == Float.class || type == double.class || type == Double.class || type == Number.class) {
             adapter = f -> {
-                Object value = func.apply(f);
-                if (value == null) return false;
-                return ((Number) value).doubleValue() > 0;
+                if (f == null) return false;
+                return ((Number) f).doubleValue() > 0;
             };
         } else {
             throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
@@ -465,6 +463,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (hasMath && !hasNonMath) {
             if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
                 Function<String, Function<T, Object>> stringToParser = s -> {
+                    System.out.println("Parse " + s);
                     if (s.startsWith("{") && s.endsWith("}")) {
                         TypedFunction<T, ?> function = functions.get(s);
                         if (function != null) {
@@ -474,7 +473,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                     return ResolvedFunction.create(Object.class, parseMath(s, param, true), s);
                 };
 
-                System.out.println("Input " + input + " | " + " | " + param);
+                System.out.println("Input2 " + input + " | " + " | " + param);
                 if (param != null) {
                     System.out.println(" | " + param.getType());
                 }
@@ -484,7 +483,9 @@ public abstract class Placeholders<T> extends BindingHelper {
                 if (array != null) {
                     return TypedFunction.create(type, toObject(array, type, param), input);
                 }
-                return TypedFunction.create(type, f -> toObject(lazy.resolve(f), type, param), input);
+                return TypedFunction.create(type, f -> {
+                    return toObject(lazy.resolve(f), type, param);
+                }, input);
             } else if (hasCurlyBracket) {
                 if (throwError) {
                     throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
