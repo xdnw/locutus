@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.external.guild.WarRoom;
@@ -2275,14 +2276,24 @@ public class WarCommands {
                            @Switch("f") boolean forceUpdate,
                            @Arg("Check the defensive spy slots")
                            @Switch("e") boolean checkEspionageSlots,
-//                           @Switch("r") Integer requiredSpies,
                            @Arg("Prioritize unit kills instead of damage")
                            @Switch("k") boolean prioritizeKills,
                            @Switch("s") SpreadSheet sheet,
                            @Arg("Max Attackers to assign per defender")
-                           @Range(min=1) @Switch("d") @Default("3") Integer maxDef,
+                               @Range(min=1) @Switch("d") @Default("3") Integer maxDef,
+                           @Arg("Double the offensive spy ops, e.g. two sets of ops at day change\n" +
+                                   "Note: You should also set maxDef to e.g. `6`")
+                               @Switch("o") boolean doubleOps,
+                           @Arg("Remove the available spy ops in another spreadsheet")
+                            @Switch("r") Set<SpreadSheet> removeSheet,
                            @Arg("Prioritize defenders in these alliances")
-                           @Switch("p") Set<DBAlliance> prioritizeAlliances) throws GeneralSecurityException, IOException {
+                           @Switch("p") Set<DBAlliance> prioritizeAlliances,
+                           @Arg("Fine grained control over attacker priority\n" +
+                                   "e.g. `(#warpolicy=ARCANE?1.2:1)*(#active_m<1440?1.2:1)*(#hasProject(SS)?1.2:1)`")
+                           @Switch("aw") NationAttributeDouble attackerWeighting,
+                           @Arg("Fine grained control over defender priority")
+                           @Switch("dw") NationAttributeDouble defenderWeighting
+                           ) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
         }
@@ -2292,9 +2303,33 @@ public class WarCommands {
             for (DBAlliance alliance : prioritizeAlliances) {
                 generator.setAllianceWeighting(alliance, 1.2);
             }
-
+            if (attackerWeighting != null) {
+                generator.setAttackerWeighting(attackerWeighting);
+            }
+            if (defenderWeighting != null) {
+                generator.setDefenderWeighting(defenderWeighting);
+            }
         }
-        Map<DBNation, List<Spyop>> targets = generator.assignTargets();
+
+        Map<DBNation, Integer> subtractDefensiveSlots = new HashMap<>();
+        Map<DBNation, Integer> subtractOffensiveSlots = new HashMap<>();
+
+        if (subtractSheet != null && !subtractSheet.isEmpty()) {
+            for (SpreadSheet subSheet : subtractSheet) {
+                Map<DBNation, Set<Spyop>> spyOps = SpyBlitzGenerator.getTargets(subSheet, 0, true);
+                for (Map.Entry<DBNation, Set<Spyop>> entry : spyOps.entrySet()) {
+                    DBNation attacker = entry.getKey();
+                    for (Spyop op : entry.getValue()) {
+                        DBNation defender = op.defender;
+                        subtractOffensiveSlots.merge(attacker, 1, Integer::sum);
+                        subtractDefensiveSlots.merge(defender, 1, Integer::sum);
+                    }
+                }
+
+            }
+        }
+
+        Map<DBNation, List<Spyop>> targets = generator.assignTargets(doubleOps, subtractOffensiveSlots, subtractDefensiveSlots);
 
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
