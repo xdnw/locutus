@@ -377,7 +377,7 @@ public class StringMan {
         for (int i = 0; i < str.length(); i++) {
             char c = str.charAt(i);
             if (inFunction) {
-                if (isBracketForwards(c)) {
+                if (c == '(') {
                     int matchingBracketIndex = StringMan.findMatchingBracket(str, i);
                     if (matchingBracketIndex != -1) {
                         String functionName = function.toString();
