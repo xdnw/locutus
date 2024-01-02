@@ -478,12 +478,12 @@ public class BankDB extends DBMainV3 {
 
         @Command(desc = "Get an attribute for the nation of this tax record")
         public String getNationInfo(TypedFunction<DBNation, String> nationFunction) {
-            return nationFunction.apply(DBNation.getOrCreate(nationId));
+            return nationFunction.applyCached(DBNation.getOrCreate(nationId));
         }
 
         @Command(desc = "Get an attribute for the alliance of this tax record")
         public String getAllianceInfo(TypedFunction<DBAlliance, String> allianceFunction) {
-            return allianceFunction.apply(DBAlliance.getOrCreate(allianceId));
+            return allianceFunction.applyCached(DBAlliance.getOrCreate(allianceId));
         }
 
         @Command(desc = "The alliance id of the tax deposit")

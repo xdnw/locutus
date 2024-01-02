@@ -2285,7 +2285,7 @@ public class WarCommands {
                                    "Note: You should also set maxDef to e.g. `6`")
                                @Switch("o") boolean doubleOps,
                            @Arg("Remove the available spy ops in another spreadsheet")
-                            @Switch("r") Set<SpreadSheet> removeSheets,
+                           @Switch("r") Set<SpreadSheet> removeSheets,
                            @Arg("Prioritize defenders in these alliances")
                            @Switch("p") Set<DBAlliance> prioritizeAlliances,
                            @Arg("Fine grained control over attacker priority\n" +

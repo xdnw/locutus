@@ -16,21 +16,19 @@ import java.util.function.Function;
 
 public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>> {
 
-    private Object resolved2;
-    private Function<T, Object> resolver3;
-    private final Function<String, Function<T, Object>> parser;
+    private final Object resolved2;
+    private final Function<T, Object> resolver3;
 
-    public LazyMathEntity(Object resolved, Function<String, Function<T, Object>> parser) {
+    public LazyMathEntity(Object resolved) {
         this.resolved2 = resolved;
         this.resolver3 = null;
-        this.parser = parser;
     }
 
     public LazyMathEntity(String input, Function<String, Function<T, Object>> parser) {
-        this(parser.apply(input), parser);
+        this((Function<T, Object>) parser.apply(input));
     }
 
-    public LazyMathEntity(Function<T, Object> resolver, Function<String, Function<T, Object>> parser) {
+    public LazyMathEntity(Function<T, Object> resolver) {
         if (resolver instanceof TypedFunction typed && typed.isResolved()) {
             this.resolved2 = typed.get(null);
             this.resolver3 = null;
@@ -38,27 +36,15 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
             this.resolved2 = null;
             this.resolver3 = resolver;
         }
-        this.parser = parser;
     }
 
     public boolean isResolved() {
         return resolver3 == null;
     }
 
-    @Override
-    public LazyMathEntity<T> create(String input) {
-        Function<T, Object> newResolver = parser.apply(input);
-        if (newResolver instanceof ResolvedFunction<T, Object> f) {
-            return new LazyMathEntity<>(f.get(), parser);
-        }
-        return new LazyMathEntity<T>(newResolver, parser);
-    }
-
     public Object resolve(T input) {
         if (resolver3 == null) return resolved2;
-        resolved2 = resolver3.apply(input);
-        resolver3 = null;
-        return resolved2;
+        return resolver3.apply(input);
     }
 
     public Object getOrNull() {
@@ -523,136 +509,136 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
     @Override
     public LazyMathEntity<T> add(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(add(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(add(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> add(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> add(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> power(double value) {
         if (this.resolved2 != null) {
-            return new LazyMathEntity<>(power(this.resolved2, value), parser);
+            return new LazyMathEntity<>(power(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> power(this.resolve(t), value), parser);
+        return new LazyMathEntity<>(t -> power(this.resolve(t), value));
     }
 
     @Override
     public LazyMathEntity<T> power(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(power(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(power(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> power(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> power(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> multiply(double value) {
         if (this.resolved2 != null) {
-            return new LazyMathEntity<>(multiply(this.resolved2, value), parser);
+            return new LazyMathEntity<>(multiply(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> multiply(this.resolve(t), value), parser);
+        return new LazyMathEntity<>(t -> multiply(this.resolve(t), value));
     }
 
     @Override
     public LazyMathEntity<T> divide(double value) {
         if (this.resolved2 != null) {
-            return new LazyMathEntity<>(divide(this.resolved2, value), parser);
+            return new LazyMathEntity<>(divide(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> divide(this.resolve(t), value), parser);
+        return new LazyMathEntity<>(t -> divide(this.resolve(t), value));
     }
 
     @Override
     public LazyMathEntity<T> subtract(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(subtract(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(subtract(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> subtract(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> subtract(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> multiply(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(multiply(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(multiply(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> multiply(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> multiply(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> divide(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(divide(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(divide(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> divide(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> divide(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> modulo(double value) {
         if (this.resolved2 != null) {
-            return new LazyMathEntity<>(modulo(this.resolved2, value), parser);
+            return new LazyMathEntity<>(modulo(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> modulo(this.resolve(t), value), parser);
+        return new LazyMathEntity<>(t -> modulo(this.resolve(t), value));
     }
 
     @Override
     public LazyMathEntity<T> modulo(LazyMathEntity<T> value) {
         if (this.resolved2 != null && value.resolved2 != null) {
-            return new LazyMathEntity<>(modulo(this.resolved2, value.resolved2), parser);
+            return new LazyMathEntity<>(modulo(this.resolved2, value.resolved2));
         }
-        return new LazyMathEntity<>(t -> modulo(this.resolve(t), value.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> modulo(this.resolve(t), value.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> greaterEqual(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(greaterEqual(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(greaterEqual(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> greaterEqual(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> greaterEqual(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> greater(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(greater(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(greater(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> greater(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> greater(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> lessEqual(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(lessEqual(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(lessEqual(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> lessEqual(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> lessEqual(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> less(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(less(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(less(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> less(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> less(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> notEqual(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(notEqual(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(notEqual(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> notEqual(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> notEqual(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> equal(LazyMathEntity<T> other) {
         if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(equal(this.resolved2, other.resolved2), parser);
+            return new LazyMathEntity<>(equal(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> equal(this.resolve(t), other.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> equal(this.resolve(t), other.resolve(t)));
     }
 
     @Override
     public LazyMathEntity<T> ternary(LazyMathEntity<T> a, LazyMathEntity<T> b) {
         if (this.resolved2 != null && a.resolved2 != null && b.resolved2 != null) {
-            return new LazyMathEntity<>(ternary(this.resolved2, a.resolved2, b.resolved2), parser);
+            return new LazyMathEntity<>(ternary(this.resolved2, a.resolved2, b.resolved2));
         }
-        return new LazyMathEntity<>(t -> ternary(this.resolve(t), a.resolve(t), b.resolve(t)), parser);
+        return new LazyMathEntity<>(t -> ternary(this.resolve(t), a.resolve(t), b.resolve(t)));
     }
 }
