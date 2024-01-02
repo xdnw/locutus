@@ -2285,7 +2285,7 @@ public class WarCommands {
                                    "Note: You should also set maxDef to e.g. `6`")
                                @Switch("o") boolean doubleOps,
                            @Arg("Remove the available spy ops in another spreadsheet")
-                            @Switch("r") Set<SpreadSheet> removeSheet,
+                            @Switch("r") Set<SpreadSheet> removeSheets,
                            @Arg("Prioritize defenders in these alliances")
                            @Switch("p") Set<DBAlliance> prioritizeAlliances,
                            @Arg("Fine grained control over attacker priority\n" +
@@ -2314,8 +2314,8 @@ public class WarCommands {
         Map<DBNation, Integer> subtractDefensiveSlots = new HashMap<>();
         Map<DBNation, Integer> subtractOffensiveSlots = new HashMap<>();
 
-        if (subtractSheet != null && !subtractSheet.isEmpty()) {
-            for (SpreadSheet subSheet : subtractSheet) {
+        if (removeSheets != null && !removeSheets.isEmpty()) {
+            for (SpreadSheet subSheet : removeSheets) {
                 Map<DBNation, Set<Spyop>> spyOps = SpyBlitzGenerator.getTargets(subSheet, 0, true);
                 for (Map.Entry<DBNation, Set<Spyop>> entry : spyOps.entrySet()) {
                     DBNation attacker = entry.getKey();

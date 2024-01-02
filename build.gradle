@@ -447,7 +447,7 @@ jar {
 shadowJar {
 //    minimize()
     zip64=true
-    archiveName = "${name}-${project.name}-${version}.jar"
+    archiveBaseName = "${name}-${project.name}"
 }
 
 build.dependsOn(shadowJar);

@@ -3,7 +3,7 @@ package link.locutus.discord.config.yaml.file;
 import link.locutus.discord.config.yaml.Configuration;
 import link.locutus.discord.config.yaml.ConfigurationSection;
 import link.locutus.discord.config.yaml.InvalidConfigurationException;
-import org.slf4j.LoggerFactory;;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;

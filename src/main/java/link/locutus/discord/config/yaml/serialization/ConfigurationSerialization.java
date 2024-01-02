@@ -1,7 +1,7 @@
 package link.locutus.discord.config.yaml.serialization;
 
 import link.locutus.discord.config.yaml.Configuration;
-import org.slf4j.LoggerFactory;;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Constructor;

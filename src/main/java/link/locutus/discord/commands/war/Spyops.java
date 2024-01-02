@@ -255,7 +255,7 @@ public class Spyops extends Command {
             if (best != null) {
                 double netDamageCost = best.getValue().getValue();
 
-                double valueModifier = SpyBlitzGenerator.estimateValue(nation, false);
+                double valueModifier = SpyBlitzGenerator.estimateValue(nation, false, null);
                 netDamageCost *= valueModifier;
 
                 best.getValue().setValue(netDamageCost);

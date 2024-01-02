@@ -53,7 +53,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import org.slf4j.LoggerFactory;;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
 import java.io.IOException;
