@@ -18,6 +18,7 @@ import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.db.entities.DBAlliance;

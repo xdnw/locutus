@@ -35,7 +35,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.db.entities.AllianceMetric;
+import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
