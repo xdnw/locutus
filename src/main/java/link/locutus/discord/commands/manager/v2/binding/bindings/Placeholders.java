@@ -515,6 +515,10 @@ public abstract class Placeholders<T> extends BindingHelper {
                     return ResolvedFunction.create(Object.class, parseMath(s, param, true), s);
                 };
 
+                System.out.println("Input " + input + " | " + " | " + param);
+                if (param != null) {
+                    System.out.println(" | " + param.getType());
+                }
                 LazyMathEntity<T> lazy = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser));
                 Object array = lazy.getOrNull();
                 Class type = param == null ? Double.class : (Class) param.getType();
