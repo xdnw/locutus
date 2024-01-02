@@ -602,7 +602,6 @@ public class ArrayUtil {
         return sortedMap;
     }
     public interface MathToken<T extends MathToken<T>> {
-        T create(String input);
         default T apply(MathOperator operator, T value) {
             return switch (operator) {
                 case TERNARY -> throw new IllegalArgumentException("Cannot apply ternary operator to " + this.getClass().getSimpleName());
@@ -644,11 +643,6 @@ public class ArrayUtil {
 
         public DoubleArray(double... array) {
             this.array = array;
-        }
-
-        @Override
-        public DoubleArray create(String input) {
-            return parse(input);
         }
 
         public static DoubleArray parse(String input) {
@@ -1078,15 +1072,15 @@ public class ArrayUtil {
             }
             this.parser = parser;
         }
-
-        @Override
-        public LazyMathArray<T> create(String input) {
-            Function<T, DoubleArray> newResolver = parser.apply(input);
-            if (newResolver instanceof ResolvedFunction<T, DoubleArray> f) {
-                return new LazyMathArray<>(f.get(), parser);
-            }
-            return new LazyMathArray<T>(newResolver, parser);
-        }
+//
+//        @Override
+//        public LazyMathArray<T> create(String input) {
+//            Function<T, DoubleArray> newResolver = parser.apply(input);
+//            if (newResolver instanceof ResolvedFunction<T, DoubleArray> f) {
+//                return new LazyMathArray<>(f.get(), parser);
+//            }
+//            return new LazyMathArray<T>(newResolver, parser);
+//        }
 
         public DoubleArray resolve(T input) {
             if (resolved != null) return resolved;

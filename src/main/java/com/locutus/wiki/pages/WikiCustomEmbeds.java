@@ -48,6 +48,7 @@ public class WikiCustomEmbeds extends BotWikiGen {
                 CM.embed.remove.button.cmd.create("", "button name").toString(),
                 "# Add a button to an embed",
                 commandMarkdownSpoiler(CM.embed.add.command.cmd),
+                "Example: " + CM.embed.add.command.cmd.create("<url>", "Blah", CommandBehavior.EPHEMERAL.name(), CM.who.cmd.getPath(), "nationoralliances", null, null).toString(),
                 "# Add a modal (prompt button) to an embed",
                 commandMarkdownSpoiler(CM.embed.add.modal.cmd),
                 "Example with default:",

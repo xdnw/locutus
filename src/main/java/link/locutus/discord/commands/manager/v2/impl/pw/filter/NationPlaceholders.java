@@ -147,17 +147,17 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         Function<DBNation, Double> func;
         Type type = typeFunction.getType();
         if (type == int.class || type == Integer.class) {
-            func = nation -> ((Integer) genericFunc.apply(nation)).doubleValue();
+            func = nation -> ((Integer) genericFunc.applyCached(nation)).doubleValue();
         } else if (type == double.class || type == Double.class) {
-            func = nation -> (Double) genericFunc.apply(nation);
+            func = nation -> (Double) genericFunc.applyCached(nation);
         } else if (type == short.class || type == Short.class) {
-            func = nation -> ((Short) genericFunc.apply(nation)).doubleValue();
+            func = nation -> ((Short) genericFunc.applyCached(nation)).doubleValue();
         } else if (type == byte.class || type == Byte.class) {
-            func = nation -> ((Byte) genericFunc.apply(nation)).doubleValue();
+            func = nation -> ((Byte) genericFunc.applyCached(nation)).doubleValue();
         } else if (type == long.class || type == Long.class) {
-            func = nation -> ((Long) genericFunc.apply(nation)).doubleValue();
+            func = nation -> ((Long) genericFunc.applyCached(nation)).doubleValue();
         } else if (type == boolean.class || type == Boolean.class) {
-            func = nation -> ((Boolean) genericFunc.apply(nation)) ? 1d : 0d;
+            func = nation -> ((Boolean) genericFunc.applyCached(nation)) ? 1d : 0d;
         } else {
             return null;
         }

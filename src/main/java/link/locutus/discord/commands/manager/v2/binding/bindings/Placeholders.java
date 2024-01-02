@@ -341,7 +341,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         return null;
     }
 
-    private Predicate<T> getSingleFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
+    private Predicate<T> getSingleFilter(ValueStore store, String input) {
         TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, true);
         if (placeholder == null) {
             throw throwUnknownCommand(input);
@@ -366,48 +366,9 @@ public abstract class Placeholders<T> extends BindingHelper {
         } else {
             throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
         }
-//
-//
-//
-//        Predicate adapter;
-//        boolean toString;
-//
-//        if (Enum.class.isAssignableFrom((Class<?>) type)) {
-//            if (isDefault) {
-//                throw new IllegalArgumentException("Please provide an operation for the filter: `" + part1 + "` e.g. " + StringMan.getString(Operation.values()));
-//            }
-//            adapter = op.getStringPredicate(part2);
-//            toString = true;
-//        } else {
-//            toString = false;
-//            if (type == String.class) {
-//                if (isDefault) {
-//                    part2 = "";
-//                    op = Operation.NOT_EQUAL;
-//                }
-//                adapter = op.getStringPredicate(part2);
-//            } else if (type == boolean.class || type == Boolean.class) {
-//                boolean val2 = PrimitiveBindings.Boolean(part2);
-//                adapter = op.getBooleanPredicate(val2);
-//            } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
-//                if (isDefault) {
-//                    part2 = "0";
-//                    op = Operation.GREATER;
-//                }
-//                double val2 = PrimitiveBindings.Number(part2).doubleValue();
-//                adapter = op.getNumberPredicate(val2);
-//            } else {
-//                throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
-//            }
-//        }
-
         return f -> {
-            Object value;
-            if (cache != null) {
-                value = cache.computeIfAbsent(input, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(f, k -> func.apply(f));
-            } else {
-                value = func.apply(f);
-            }
+            Object value = func.apply(f);
+            System.out.println("Value " + f + " | " + value);
             return adapter.test((T) value);
         };
     }
@@ -425,11 +386,10 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     @Binding(value = "A comma separated list of filters")
     public Predicate<T> parseFilter(ValueStore store2, String input) {
-        Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         input = wrapHashLegacy(input);
         return ArrayUtil.parseFilter(input,
                 f -> parseSingleFilter(store2, f),
-                s -> getSingleFilter(store2, s, cache));
+                s -> getSingleFilter(store2, s));
     }
 
     public Set<T> parseSet(Guild guild, User author, DBNation nation, String input) {
@@ -439,10 +399,9 @@ public abstract class Placeholders<T> extends BindingHelper {
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
         input = wrapHashLegacy(input);
-        Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f),
-                s -> getSingleFilter(store2, s, cache));
+                s -> getSingleFilter(store2, s));
     }
 
     public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth, boolean throwError) {
@@ -529,8 +488,6 @@ public abstract class Placeholders<T> extends BindingHelper {
             } else if (hasCurlyBracket) {
                 if (throwError) {
                     throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
-                } else {
-//                    return null;
                 }
             } else {
                 double val = PrimitiveBindings.Double(input);
@@ -566,7 +523,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                 if (function == null) {
                     resultStr.append(section);
                 } else {
-                    resultStr.append(function.apply(f));
+                    resultStr.append(function.applyCached(f));
                 }
             }
             return resultStr.toString();
@@ -740,10 +697,10 @@ public abstract class Placeholders<T> extends BindingHelper {
             if (previousFunc == null) {
                 previousFunc = function;
             } else if (function.isResolved()){
-                previousFunc = ResolvedFunction.create(function.getType(), function.apply(null), functionContent);
+                previousFunc = ResolvedFunction.create(function.getType(), function.applyCached(null), functionContent);
             } else if (previousFunc.isResolved()) {
-                Object value = previousFunc.apply(null);
-                previousFunc = ResolvedFunction.create(function.getType(), function.apply(value), functionContent);
+                Object value = previousFunc.applyCached(null);
+                previousFunc = ResolvedFunction.create(function.getType(), function.applyCached(value), functionContent);
             } else {
                 previousFunc = TypedFunction.create(function.getType(), previousFunc.andThen(function), functionContent);
             }
@@ -769,7 +726,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                 for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
                     String argName = entry.getKey();
                     if (!resolvedArgs.containsKey(argName)) {
-                        resolvedArgs.put(argName, entry.getValue().apply(f));
+                        resolvedArgs.put(argName, entry.getValue().applyCached(f));
                     }
                 }
             }
@@ -827,11 +784,11 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     public String format2(Guild callerGuild, DBNation callerNation, User callerUser, String arg, T elem, boolean throwError) {
         LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
-        return getFormatFunction(locals, arg, throwError).apply(elem);
+        return getFormatFunction(locals, arg, throwError).applyCached(elem);
     }
 
     public String format2(ValueStore store, String arg, T elem, boolean throwError) {
-        return getFormatFunction(store, arg, throwError).apply(elem);
+        return getFormatFunction(store, arg, throwError).applyCached(elem);
     }
 
 
@@ -872,12 +829,12 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (cache != null) store.addProvider(cache);
         TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, throwError);
         if (result.isResolved()) {
-            Object value = result.apply(null);
+            Object value = result.applyCached(null);
             String valueStr = value == null ? null : value.toString();
             return TypedFunction.create(String.class, valueStr, result.getName());
         } else {
             return TypedFunction.create(String.class, f -> {
-                Object value = result.apply((T) f);
+                Object value = result.applyCached((T) f);
                 return value == null ? null : value.toString();
             }, result.getName());
         }
