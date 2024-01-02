@@ -1,5 +1,6 @@
 package link.locutus.discord.util.battle;
 
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -48,6 +49,8 @@ public class SpyBlitzGenerator {
     private boolean forceUpdate;
 
     private Map<Integer, Double> allianceWeighting = new HashMap<>();
+    private NationAttributeDouble attackerPriority;
+    private NationAttributeDouble defenderPriority;
 
     public SpyBlitzGenerator setAllianceWeighting(DBAlliance alliance, double weight) {
         allianceWeighting.put(alliance.getAlliance_id(), weight);
@@ -66,7 +69,7 @@ public class SpyBlitzGenerator {
         this.defList = sortNations(defenders, false);
     }
 
-    public Map<DBNation, List<Spyop>> assignTargets() {
+    public Map<DBNation, List<Spyop>> assignTargets(boolean isDayChange, Map<DBNation, Integer> subtractOffensiveSlots, Map<DBNation, Integer> subtractDefensiveSlots) {
         BiFunction<Double, Double, Integer> attRange = PnwUtil.getIsNationsInSpyRange(attList.keySet());
         BiFunction<Double, Double, Integer> defSpyRange = PnwUtil.getIsNationsInSpyRange(defList.keySet());
 
@@ -106,16 +109,12 @@ public class SpyBlitzGenerator {
         for (Map.Entry<DBNation, Double> entry : attList.entrySet()) {
             DBNation attacker = entry.getKey();
             int mySpies = attacker.getSpies();
-            double attValue = entry.getValue();
-
-            Double attWeight = allianceWeighting.get(attacker.getAlliance_id());
-            if (attWeight != null && (attacker.getActive_m() < 1440 || attWeight < 1)) {
-                attValue *= attWeight;
-            }
-
-            if (mySpies <= 1) {
-
-            }
+//            double attValue = entry.getValue();
+//
+//            Double attWeight = allianceWeighting.get(attacker.getAlliance_id());
+//            if (attWeight != null && (attacker.getActive_m() < 1440 || attWeight < 1)) {
+//                attValue *= attWeight;
+//            }
 
             for (Map.Entry<DBNation, Double> entry2 : defList.entrySet()) {
                 DBNation defender = entry2.getKey();
@@ -228,7 +227,12 @@ public class SpyBlitzGenerator {
         Function<DBNation, Integer> getNumOps = new Function<DBNation, Integer>() {
             @Override
             public Integer apply(DBNation nation) {
-                return nation.hasProject(Projects.INTELLIGENCE_AGENCY) ? 2 : 1;
+                int numOps = (nation.hasProject(Projects.INTELLIGENCE_AGENCY) ? 2 : 1);
+                if (isDayChange) numOps *= 2;
+                if (subtractOffensiveSlots != null) {
+                    numOps -= subtractOffensiveSlots.getOrDefault(nation, 0);
+                }
+                return numOps;
             }
         };
 
@@ -238,10 +242,14 @@ public class SpyBlitzGenerator {
                 continue;
             }
             List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new ArrayList<>());
-            if (defOps.size() >= maxDef) {
+            int numFree = maxDef - defOps.size();
+            if (subtractDefensiveSlots != null) {
+                numFree -= subtractDefensiveSlots.getOrDefault(op.defender, 0);
+            }
+            if (numFree <= 0) {
                 continue;
             }
-            if (defOps.size() > 0) {
+            if (!defOps.isEmpty()) {
                 int units = op.defender.getUnits(op.operation.unit);
                 for (Spyop other : defOps) {
                     if (other.operation != op.operation) continue;
@@ -259,8 +267,8 @@ public class SpyBlitzGenerator {
         return opsAgainstNations;
     }
 
-    public static double estimateValue(DBNation nation, boolean isAttacker) {
-        Integer spies = nation.getSpies();
+    public static double estimateValue(DBNation nation, boolean isAttacker, NationAttributeDouble priority) {
+        int spies = nation.getSpies();
         String mmrBuilding = nation.getMMRBuildingStr();
         int barracks = (mmrBuilding.charAt(0) - '0');
         int factories = (mmrBuilding.charAt(1) - '0');
@@ -351,6 +359,14 @@ public class SpyBlitzGenerator {
         if (nation.getWarPolicy() == WarPolicy.ARCANE) {
             perSpyValue *= (1 + arcane_value);
         }
+
+        if (priority != null) {
+            Double modifier = priority.apply(nation);
+            if (modifier != null) {
+                perSpyValue *= modifier;
+            }
+        }
+
         return perSpyValue;
     }
 
@@ -358,7 +374,7 @@ public class SpyBlitzGenerator {
         List<DBNation> list = new ArrayList<>(nations);
 
         list.removeIf(DBNation::hasUnsetMil);
-        list.removeIf(f -> f.getActive_m() > 1440);
+        list.removeIf(f -> f.getActive_m() > 2880);
         list.removeIf(f -> f.getVm_turns() > 0);
         list.removeIf(f -> f.getSpies() <= 0);
         list.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
@@ -369,7 +385,7 @@ public class SpyBlitzGenerator {
 
         Map<DBNation, Double> spyValueMap = new LinkedHashMap<>();
         for (DBNation nation : list) {
-            double perSpyValue = estimateValue(nation, isAttacker);
+            double perSpyValue = estimateValue(nation, isAttacker, isAttacker ? attackerPriority : defenderPriority);
 
             spyValueMap.put(nation, perSpyValue);
         }
@@ -631,8 +647,13 @@ public class SpyBlitzGenerator {
         List<List<Object>> rows = sheet.fetchAll(null);
         List<Object> header = rows.get(headerRow);
 
-        Integer targetI = null;
-        Integer attI = null;
+        Integer target1 = null;
+        Integer att1 = null;
+        Integer att2 = null;
+        Integer att3 = null;
+        Integer att4 = null;
+        Integer att5 = null;
+        Integer att6 = null;
         List<Integer> targetsIndexesRoseFormat = new ArrayList<>();
 
         boolean isReverse = false;
@@ -640,18 +661,67 @@ public class SpyBlitzGenerator {
             Object obj = header.get(i);
             if (obj == null) continue;
             String title = obj.toString();
+            switch (title.toLowerCase(Locale.ROOT)) {
+                // att1,op 1,attacker 1,fighter #1
+                case "att1":
+                case "op 1":
+                case "attacker 1":
+                case "fighter #1":
+                    att1 = i;
+                    break;
+                // att2,op 2,attacker 2,fighter #2
+                case "att2":
+                case "op 2":
+                case "attacker 2":
+                case "fighter #2":
+                    att2 = i;
+                    break;
+                // att3,op 3,attacker 3,fighter #3
+                case "att3":
+                case "op 3":
+                case "attacker 3":
+                case "fighter #3":
+                    att3 = i;
+                    break;
+                // att4,op 4,attacker 4,fighter #4
+                case "att4":
+                case "op 4":
+                case "attacker 4":
+                case "fighter #4":
+                    att4 = i;
+                    break;
+                    // 5
+                case "att5":
+                case "op 5":
+                case "attacker 5":
+                case "fighter #5":
+                    att5 = i;
+                    break;
+                    // 6
+                case "att6":
+                case "op 6":
+                case "attacker 6":
+                case "fighter #6":
+                    att6 = i;
+                    break;
+                case "nation":
+                    target1 = i;
+                    break;
+                case "def1":
+                case "target 1":
+                case "defender 1":
+                case "target #1":
+                    att1 = i;
+                    isReverse = true;
+                    break;
+                case "spy slot 1":
+                    targetsIndexesRoseFormat.add(i);
+                    target1 = 0;
+                    break;
+                default:
+            }
             if (title.equalsIgnoreCase("nation")) {
-                targetI = i;
-            }
-            if (title.equalsIgnoreCase("att1")) {
-                attI = i;
-            }
-            else if (title.equalsIgnoreCase("def1")) {
-                attI = i;
-                isReverse = true;
-            } else if (title.toLowerCase().startsWith("spy slot ")) {
-                targetsIndexesRoseFormat.add(i);
-                targetI = 0;
+                target1 = i;
             }
         }
 
@@ -659,11 +729,11 @@ public class SpyBlitzGenerator {
 
         for (int i = headerRow + 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
-            if (row.isEmpty() || row.size() <= targetI) {
+            if (row.isEmpty()) {
                 continue;
             }
 
-            Object cell = row.get(targetI);
+            Object cell = row.get(target1);
             if (cell == null || cell.toString().isEmpty()) {
                 continue;
             }
@@ -679,8 +749,9 @@ public class SpyBlitzGenerator {
                 continue;
             }
 
-            if (attI != null) {
-                for (int j = attI; j < row.size(); j++) {
+            if (att1 != null) {
+                Integer[] indexes = new Integer[]{att1, att2, att3, att4, att5, att6};
+                for (int j : indexes) {
                     cell = row.get(j);
                     if (cell == null || cell.toString().isEmpty()) continue;
 
@@ -798,5 +869,13 @@ public class SpyBlitzGenerator {
             }
         }
         return targets;
+    }
+
+    public void setAttackerWeighting(NationAttributeDouble weighting) {
+        this.attackerPriority = weighting;
+    }
+
+    public void setDefenderWeighting(NationAttributeDouble defenderWeighting) {
+        this.defenderPriority = defenderWeighting;
     }
 }
