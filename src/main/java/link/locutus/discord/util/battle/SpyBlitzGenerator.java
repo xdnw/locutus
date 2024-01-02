@@ -751,7 +751,8 @@ public class SpyBlitzGenerator {
 
             if (att1 != null) {
                 Integer[] indexes = new Integer[]{att1, att2, att3, att4, att5, att6};
-                for (int j : indexes) {
+                for (Integer j : indexes) {
+                    if (j == null || row.size() <= j) continue;
                     cell = row.get(j);
                     if (cell == null || cell.toString().isEmpty()) continue;
 

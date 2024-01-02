@@ -1248,7 +1248,11 @@ public class IACommands {
         } else {
             result = api.assignAlliancePosition(nation.getId(), position.getId());
         }
-        nation.setAlliancePositionId(result.getId());
+        if (result == null) {
+            nation.setAlliancePositionId(0);
+        } else {
+            nation.setAlliancePositionId(result.getId());
+        }
         db.getHandler().onSetRank(author, channel, nation, position);
         response.append("Set to " + position.getName());
 
