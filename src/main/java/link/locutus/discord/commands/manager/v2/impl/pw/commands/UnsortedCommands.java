@@ -919,6 +919,7 @@ public class UnsortedCommands {
                           @Switch("r") Double rads,
                           @Switch("w") boolean forceAtWar,
                             @Switch("p") boolean forceAtPeace,
+                          @Switch("c")
                           @Arg("The amount of time to use to add average DAILY war cost\n" +
                                   "This includes raid profit")
                           @Timediff Long includeWarCosts

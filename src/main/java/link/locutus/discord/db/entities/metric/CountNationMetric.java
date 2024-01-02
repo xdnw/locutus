@@ -48,10 +48,20 @@ public class CountNationMetric implements IAllianceMetric {
     @Override
     public Double apply(DBAlliance alliance) {
         double total = 0;
+        int nations = 0;
+        int cities = 0;
         for (DBNation nation : alliance.getMemberDBNations()) {
-            total += nation.getNumProjects();
+            if (filter != null && !filter.test(nation)) continue;
+            nations++;
+            cities += nation.getCities();
+            total += this.countNation.apply(nation).doubleValue();
         }
-        return total;
+        if (total == 0) return 0d;
+        return switch (mode) {
+            case TOTAL -> total;
+            case PER_NATION -> total / nations;
+            case PER_CITY -> total / cities;
+        };
     }
 
     private final Map<Integer, Double> countByAA = new Int2DoubleOpenHashMap();
@@ -73,7 +83,7 @@ public class CountNationMetric implements IAllianceMetric {
                     amt = row.get(getHeader.apply(header), Double::parseDouble);
                 } else {
                     DBNation nation = row.getNation(header, false, true);
-                    if (!filter.test(nation)) return;
+                    if (filter != null && !filter.test(nation)) return;
                     amt = countNation.apply(nation).doubleValue();
                 }
                 countByAA.merge(allianceId, amt, Double::sum);

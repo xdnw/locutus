@@ -51,7 +51,7 @@ public class CountCityMetric implements IAllianceMetric {
         int nations = 0;
         int cities = 0;
         for (DBNation nation : alliance.getMemberDBNations()) {
-            if (!filter.test(nation)) continue;
+            if (filter != null && !filter.test(nation)) continue;
             nations++;
             for (DBCity city : nation._getCitiesV3().values()) {
                 cities++;

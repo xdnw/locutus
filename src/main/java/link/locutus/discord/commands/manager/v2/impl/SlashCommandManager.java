@@ -226,26 +226,36 @@ public class SlashCommandManager extends ListenerAdapter {
             CommandCallable callable = entry.getValue();
             String id = entry.getKey();
             AtomicInteger size = new AtomicInteger();
-            SlashCommandData cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, true, true, true);
-            if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, true, true);
+            try {
+                SlashCommandData cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, true, true, true);
+                if (getSize(cmd) > 4000) {
+                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, true, true);
+                }
+                if (getSize(cmd) > 4000) {
+                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, false, true);
+                }
+                if (getSize(cmd) > 4000) {
+                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, false, false, false, true);
+                }
+                if (getSize(cmd) > 4000) {
+                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, true);
+                }
+                if (getSize(cmd) > 4000) {
+                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, false);
+                }
+                if (getSize(cmd) > 4000) {
+                    cmd = adaptCommands(commandNames, callable, id, null, null, 0, 0, true, true, false, false, false, false);
+                }
+                toRegister.add(cmd);
+            } catch (Throwable e) {
+                // print command
+                System.out.println("Error: " + id + " | " + callable.getFullPath());
+                if (callable instanceof ParametricCallable parametric) {
+                    // print method and class
+                    System.out.println(parametric.getMethod().getName() + " | " + parametric.getMethod().getDeclaringClass());
+                }
+                throw e;
             }
-            if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, false, true);
-            }
-            if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, false, false, false, true);
-            }
-            if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, true);
-            }
-            if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, false);
-            }
-            if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(commandNames, callable, id, null, null, 0, 0, true, true, false, false, false, false);
-            }
-            toRegister.add(cmd);
         }
 
         for (SlashCommandData cmd : toRegister) {

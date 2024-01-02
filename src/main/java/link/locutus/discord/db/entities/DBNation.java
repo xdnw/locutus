@@ -692,13 +692,28 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Days since joining the alliance")
     @RolePermission(Roles.MEMBER)
-    public int allianceSeniority() {
+    public double allianceSeniority() {
+        long result = allianceSeniorityMs();
+        if (result == 0 || result == Long.MAX_VALUE) return result;
+        return result / (double) TimeUnit.MILLISECONDS.toDays(1);
+    }
+
+    @Command(desc = "Days since joining the alliance")
+    @RolePermission(Roles.MEMBER)
+        public double allianceSeniorityApplicant() {
+        long result = allianceSeniorityApplicantMs();
+        if (result == 0 || result == Long.MAX_VALUE) return result;
+        return result / (double) TimeUnit.MILLISECONDS.toDays(1);
+    }
+
+    @Command(desc = "Milliseconds since joining the alliance")
+    @RolePermission(Roles.MEMBER)
+    public long allianceSeniorityApplicantMs() {
         if (alliance_id == 0) return 0;
-        long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
+        long timestamp = Locutus.imp().getNationDB().getAllianceApplicantSeniorityTimestamp(this, getSnapshot());
         long now = System.currentTimeMillis();
         if (timestamp > now) return 0;
-
-        return (int) TimeUnit.MILLISECONDS.toDays(now - timestamp);
+        return (now - timestamp);
     }
 
     @Command(desc = "Milliseconds since joining the alliance")

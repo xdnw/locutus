@@ -3937,8 +3937,24 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
+    public long getAllianceApplicantSeniorityTimestamp(DBNation nation, Long snapshotDate) {
+        if (nation.getAlliance_id() == 0) return Long.MAX_VALUE;
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND alliance = ? ORDER BY date DESC LIMIT 1")) {
+            stmt.setInt(1, nation.getNation_id());
+            stmt.setInt(2, nation.getAlliance_id());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    return rs.getLong("date");
+                }
+            }
+            return Long.MAX_VALUE;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public long getAllianceMemberSeniorityTimestamp(DBNation nation, Long snapshotDate) {
-        long now = System.currentTimeMillis();
         if (nation.getPosition() < Rank.MEMBER.id) return Long.MAX_VALUE;
         try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
