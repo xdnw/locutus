@@ -37,6 +37,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.AttackCost;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBTrade;
@@ -77,6 +78,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -95,6 +97,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class UnsortedCommands {
@@ -639,7 +642,14 @@ public class UnsortedCommands {
     public enum ClearRolesEnum {
         UNUSED("Alliance name roles which have no members"),
         ALLIANCE("All alliance name roles"),
-        UNREGISTERED("Alliance name roles with no valid in-game alliance");
+        DELETED_ALLIANCES("Alliance name roles with no valid in-game alliance"),
+        INACTIVE_ALLIANCES("Alliance name roles with no active members"),
+        NOT_ALLOW_LISTED("Alliance name roles not in the allow list (defined by settings:`" + GuildKey.AUTOROLE_ALLIANCES.name() + "," + GuildKey.AUTOROLE_TOP_X.name() + "` and coalition:`" + Coalition.MASKEDALLIANCES.name() + "`"),
+
+        NON_MEMBERS("Users who are not in the alliance in-game"),
+        NON_ALLIES("Users who are not in the alliance, or the `allies` / `offshore` coalition in-game")
+
+        ;
 
         private final String desc;
 
@@ -653,41 +663,150 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc = "Clear the bot managed roles on discord")
+    public String clearAllianceRolesDesc() {
+        StringBuilder resposne = new StringBuilder("Clear the bot managed alliance roles on discord\n");
+        for (ClearRolesEnum value : ClearRolesEnum.values()) {
+            resposne.append(value.toString()).append("\n");
+        }
+        return resposne.toString();
+    }
+
+    @Command(descMethod = "clearAllianceRolesDesc")
     @RolePermission(Roles.ADMIN)
-    public String clearAllianceRoles(@Me GuildDB db, @Me Guild guild,
+    public String clearAllianceRoles(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild,
                                      @Arg("What role types do you want to remove")
                                      ClearRolesEnum type) throws ExecutionException, InterruptedException {
         List<Future<?>> tasks = new ArrayList<>();
         try {
             switch (type) {
                 case UNUSED: {
+                    List<String> log = new ArrayList<>();
                     Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
                     for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                         if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
                             tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                            log.add("Removed " + entry.getValue().getName());
                         }
                     }
-                    return "Cleared unused Alliance roles!";
+                    if (log.isEmpty()) {
+                        return "No unused roles found!";
+                    }
+                    io.create().append("Cleared " + log.size() + " roles").file("role_changes.txt", StringMan.join(log, "\n")).send();
+                    return null;
                 }
-                case UNREGISTERED: {
-                    Set<Integer> aaIds = db.getAllianceIds();
+                case NOT_ALLOW_LISTED: {
+                    IAutoRoleTask task = db.getAutoRoleTask();
+                    task.syncDB();
+                    Function<Integer, Boolean> allowed = task.getAllowedAlliances();
+                    Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
+                    List<String> log = new ArrayList<>();
+                    for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
+                        if (!allowed.apply(entry.getKey())) {
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                            log.add("Removed " + entry.getValue().getName());
+                        }
+                    }
+                    if (log.isEmpty()) {
+                        return "No roles found!";
+                    }
+                    io.create().append("Cleared " + log.size() + " roles").file("role_changes.txt", StringMan.join(log, "\n")).send();
+                    return null;
+                }
+                case INACTIVE_ALLIANCES:
+                case DELETED_ALLIANCES: {
 
-                    Role memberRole = Roles.MEMBER.toRole(guild);
+                    Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
+                    List<String> log = new ArrayList<>();
+                    for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
+                        int aaId = entry.getKey();
+                        DBAlliance alliance = DBAlliance.get(aaId);
+                        boolean active = alliance != null;
+                        if (active && type == ClearRolesEnum.INACTIVE_ALLIANCES) {
+                            active = !alliance.getNations(f -> f.getPositionEnum().id >= Rank.APPLICANT.id && f.getVm_turns() == 0 && f.active_m() < TimeUnit.DAYS.toMinutes(7)).isEmpty();
+                        }
+                        if (!active) {
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                            String reason = alliance != null ? "Inactive" : "Deleted";
+                            log.add("Removed " + entry.getValue().getName() + "(" + reason + ")");
+                        }
+                    }
+                    if (log.isEmpty()) {
+                        return "No roles found!";
+                    }
+                    io.create().append("Cleared " + log.size() + " roles").file("role_changes.txt", StringMan.join(log, "\n")).send();
+                    return null;
+                }
+                case NON_ALLIES:
+                case NON_MEMBERS: {
+                    Map<Long, Role> roles = Roles.MEMBER.toRoleMap(db);
+                    List<String> log = new ArrayList<>();
+                    List<String> errors = new ArrayList<>();
 
-                    StringBuilder response = new StringBuilder();
-                    for (Member member : guild.getMembers()) {
-                        DBNation nation = DiscordUtil.getNation(member.getIdLong());
-                        List<Role> roles = member.getRoles();
-                        if (roles.contains(memberRole)) {
-                            if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
-                                response.append("\nRemove member from " + member.getEffectiveName());
-                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole)));
+                    Set<Integer> allIds = new HashSet<>(db.getAllianceIds());
+                    if (type == ClearRolesEnum.NON_ALLIES) {
+                        allIds.addAll(db.getCoalition(Coalition.ALLIES));
+                        allIds.addAll(db.getCoalition(Coalition.OFFSHORE));
+                    }
+                    Map<Role, Predicate<DBNation>> allowedRole = new HashMap<>();
+                    Map<Role, Long> isAll = new HashMap<>();
+
+                    for (Map.Entry<Long, Role> entry : roles.entrySet()) {
+                        long aaId = entry.getKey();
+                        Role role = entry.getValue();
+                        if (aaId == 0) {
+                            isAll.put(role, 0L);
+                            allowedRole.put(role, f -> allIds.contains(f.getAlliance_id()));
+                        } else {
+                            isAll.put(role, aaId);
+                            if (allIds.contains((int) aaId)) {
+                                allowedRole.put(role, f -> f.getAlliance_id() == aaId);
+                            } else {
+                                String footer = type == ClearRolesEnum.NON_ALLIES ? " | " + CM.coalition.add.cmd.toSlashMention() + " with `" + Coalition.ALLIES.name() + "`" : "";
+                                errors.add("Role " + role.getName() + " is bound to the alliance id: `" + aaId + "` which is not registered to this guild. See: " + CM.role.setAlias.cmd.toSlashMention() + " | " + CM.settings_default.registerAlliance.cmd.toSlashMention() + footer);
                             }
                         }
                     }
-                    response.append("\nDone!");
-                    return response.toString();
+
+                    if (allowedRole.isEmpty()) {
+                        return "No member roles found!";
+                    }
+                    for (Map.Entry<Role, Predicate<DBNation>> entry : allowedRole.entrySet()) {
+                        Role role = entry.getKey();
+                        Predicate<DBNation> predicate = entry.getValue();
+                        for (Member member : guild.getMembersWithRoles(role)) {
+                            DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                            String reason = null;
+                            if (nation == null) {
+                                reason = "Not registered to nation";
+                            } else if (nation.getAlliance_id() == 0) {
+                                reason = "Not in alliance";
+                            } else if (nation.getPositionEnum() == Rank.APPLICANT) {
+                                reason = "Applicant";
+                            } else if (!predicate.test(nation)) {
+                                if (isAll.get(role) == 0) {
+                                    reason = "Not in alliance";
+                                } else {
+                                    reason = "Not in alliance id " + isAll.get(role);
+                                }
+                            }
+                            if (reason != null) {
+                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role)));
+                                log.add("Removed " + role.getName() + " from " + member.getEffectiveName() + "(" + reason + ")");
+                            }
+                        }
+                    }
+                    IMessageBuilder msg = io.create();
+                    if (log.isEmpty()) {
+                        msg.append("No roles found!");
+                    } else {
+                        msg.append("Cleared " + log.size() + " roles").file("role_changes.txt", StringMan.join(log, "\n"));
+                        // add errors
+                        if (!errors.isEmpty()) {
+                            msg.append("\n\nErrors:\n- " + StringMan.join(errors, "\n- "));
+                        }
+                    }
+                    msg.send();
+                    return null;
                 }
                 case ALLIANCE: {
                     Map<Integer, Set<Role>> aaRoles = DiscordUtil.getAARolesIncDuplicates(guild.getRoles());

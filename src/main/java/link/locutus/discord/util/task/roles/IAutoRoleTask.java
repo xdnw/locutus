@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.entities.Member;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public interface IAutoRoleTask {
@@ -21,6 +22,8 @@ public interface IAutoRoleTask {
     AutoRoleInfo autoRoleAll();
 
     AutoRoleInfo autoRole(Member member, DBNation nation);
+
+    Function<Integer, Boolean> getAllowedAlliances();
 
     String syncDB();
 }
