@@ -462,42 +462,47 @@ public abstract class Placeholders<T> extends BindingHelper {
 
         System.out.println("Input " + input + " | " + hasMath + " | " + hasNonMath);
 
+        String errorMsg = null;
         if (hasMath) {
-            if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
-                Function<String, Function<T, Object>> stringToParser = s -> {
-                    System.out.println("Parse " + s);
-                    if (s.startsWith("{") && s.endsWith("}")) {
-                        TypedFunction<T, ?> function = functions.get(s);
-                        if (function != null) {
-                            return function.andThen(o -> parseMath(o, param, true));
+            try {
+                if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
+                    Function<String, Function<T, Object>> stringToParser = s -> {
+                        System.out.println("Parse " + s);
+                        if (s.startsWith("{") && s.endsWith("}")) {
+                            TypedFunction<T, ?> function = functions.get(s);
+                            if (function != null) {
+                                return function.andThen(o -> parseMath(o, param, true));
+                            }
                         }
-                    }
-                    Object parsed = parseMath(s, param, true);
-                    return ResolvedFunction.create(parsed != null ? parsed.getClass() : Object.class, parsed, s);
-                };
+                        Object parsed = parseMath(s, param, true);
+                        return ResolvedFunction.create(parsed != null ? parsed.getClass() : Object.class, parsed, s);
+                    };
 
-                System.out.println("Input2 " + input + " | " + " | " + param);
-                if (param != null) {
-                    System.out.println(" | " + param.getType());
-                }
-                LazyMathEntity<T> lazy = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser));
-                Object array = lazy.getOrNull();
-                Class type = param == null ? Double.class : (Class) param.getType();
-                if (array != null) {
-                    return TypedFunction.create(type, toObject(array, type, param), input);
-                }
-                return TypedFunction.create(type, f -> {
-                    return toObject(lazy.resolve(f), type, param);
-                }, input);
-            } else if (!hasNonMath) {
-                if (hasCurlyBracket) {
-                    if (throwError) {
-                        throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
+                    System.out.println("Input2 " + input + " | " + " | " + param);
+                    if (param != null) {
+                        System.out.println(" | " + param.getType());
                     }
-                } else {
-                    double val = PrimitiveBindings.Double(input);
-                    return new ResolvedFunction<>(Double.class, val, input);
+                    LazyMathEntity<T> lazy = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser));
+                    Object array = lazy.getOrNull();
+                    Class type = param == null ? Double.class : (Class) param.getType();
+                    if (array != null) {
+                        return TypedFunction.create(type, toObject(array, type, param), input);
+                    }
+                    return TypedFunction.create(type, f -> {
+                        return toObject(lazy.resolve(f), type, param);
+                    }, input);
+                } else if (!hasNonMath) {
+                    if (hasCurlyBracket) {
+                        if (throwError) {
+                            throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
+                        }
+                    } else {
+                        double val = PrimitiveBindings.Double(input);
+                        return new ResolvedFunction<>(Double.class, val, input);
+                    }
                 }
+            } catch (RuntimeException e) {
+                errorMsg = e.getMessage();
             }
         }
         if (param != null) {
