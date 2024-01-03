@@ -1038,15 +1038,6 @@ public class ArrayUtil {
     private static final String LEFT_PAREN = "(";
     private static final String RIGHT_PAREN = ")";
 
-    public static DoubleArray calculateDouble(String input, @Nullable Function<String, DoubleArray> parseOrigin) {
-        if (parseOrigin == null) {
-            parseOrigin = DoubleArray::parse;
-        }
-        return calculate(input, parseOrigin);
-    }
-
-
-
     public static class LazyMathArray<T> implements MathToken<LazyMathArray<T>> {
         private final DoubleArray resolved;
         private final Function<T, DoubleArray> resolver;
@@ -1229,7 +1220,7 @@ public class ArrayUtil {
         }
     }
 
-    public static <T extends MathToken<T>> T calculate(String input, Function<String, T> parseOrigin) {
+    public static <T extends MathToken<T>> List<T> calculate(String input, Function<String, T> parseOrigin) {
         Queue<String> outputQueue = new ArrayDeque<>();
         Deque<String> operatorStack = new ArrayDeque<>();
 
@@ -1282,7 +1273,15 @@ public class ArrayUtil {
             }
         }
 
-        return stack.pop();
+        T last = stack.pop();
+        if (stack.isEmpty()) {
+            return List.of(last);
+        } else {
+            ArrayList<T> remainder = new ArrayList<>(stack);
+            Collections.reverse(remainder);
+            remainder.add(last);
+            return remainder;
+        }
     }
 
     private static boolean isLeftAssociative(String token) {
@@ -1545,20 +1544,19 @@ public class ArrayUtil {
     }
 
     public static void main(String[] args) {
-        Function<String, DoubleArray> func = s -> {
-            System.out.println("Parse " + s);
-            if (s.equalsIgnoreCase("{blah}")) {
-                return new DoubleArray(new double[]{5});
-            }
-            else if (s.equalsIgnoreCase("{test}")) {
-                return new DoubleArray(new double[]{3});
-            } else if (s.equalsIgnoreCase("blah(test(3))")) {
-                return new DoubleArray(new double[]{1});
-            }
-            return DoubleArray.parse(s);
+        Function<String, LazyMathEntity> func = s -> {
+            return new LazyMathEntity(s);
         };
-//        System.out.println(calculate("blah(test(3))+5*(3*(2*4))", func));
-        System.out.println(calculate("(1=1?5+1:(10+2+2))/2", func));
+        System.out.println(calculate("5+3>1?55:30", func));
+        System.out.println("---");
+        List<LazyMathEntity> result = (calculate("HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")", func));
+        if (result.size() == 1) {
+            System.out.println(result.get(0).resolve(null));
+        } else {
+            for (LazyMathEntity entity : result) {
+                System.out.println(entity.resolve(null));
+            }
+        }
     }
 
     private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {

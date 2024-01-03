@@ -15,6 +15,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -1955,7 +1956,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
         AtomicBoolean isDirty = new AtomicBoolean();
         if (timestamp > 0) {
-            Locutus.imp().getPusher().getSpyTracker().updateCasualties(nation, timestamp);
+            PnwPusherShardManager pusher = Locutus.imp().getPusher();
+            if (pusher != null) {
+                Locutus.imp().getPusher().getSpyTracker().updateCasualties(nation, timestamp);
+            }
         }
         DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
         if (isDirty.get()) {

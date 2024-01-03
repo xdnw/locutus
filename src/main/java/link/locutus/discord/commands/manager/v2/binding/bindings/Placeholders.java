@@ -455,7 +455,6 @@ public abstract class Placeholders<T> extends BindingHelper {
                     if (throwError) {
                         throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
                     }
-//                    return ResolvedFunction.create(String.class, input);
                 }
             }
         }
@@ -467,7 +466,6 @@ public abstract class Placeholders<T> extends BindingHelper {
             try {
                 if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
                     Function<String, Function<T, Object>> stringToParser = s -> {
-                        System.out.println("Parse " + s);
                         if (s.startsWith("{") && s.endsWith("}")) {
                             TypedFunction<T, ?> function = functions.get(s);
                             if (function != null) {
@@ -477,20 +475,18 @@ public abstract class Placeholders<T> extends BindingHelper {
                         Object parsed = parseMath(s, param, true);
                         return ResolvedFunction.create(parsed != null ? parsed.getClass() : Object.class, parsed, s);
                     };
-
-                    System.out.println("Input2 " + input + " | " + " | " + param);
-                    if (param != null) {
-                        System.out.println(" | " + param.getType());
+                    List<LazyMathEntity<T>> lazies = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser, false));
+                    if (lazies.size() == 1) {
+                        LazyMathEntity<T> lazy = lazies.get(0);
+                        Object array = lazy.getOrNull();
+                        Class type = param == null ? Double.class : (Class) param.getType();
+                        if (array != null) {
+                            return TypedFunction.create(type, toObject(array, type, param), input);
+                        }
+                        return TypedFunction.create(type, f -> {
+                            return toObject(lazy.resolve(f), type, param);
+                        }, input);
                     }
-                    LazyMathEntity<T> lazy = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser));
-                    Object array = lazy.getOrNull();
-                    Class type = param == null ? Double.class : (Class) param.getType();
-                    if (array != null) {
-                        return TypedFunction.create(type, toObject(array, type, param), input);
-                    }
-                    return TypedFunction.create(type, f -> {
-                        return toObject(lazy.resolve(f), type, param);
-                    }, input);
                 } else if (!hasNonMath) {
                     if (hasCurlyBracket) {
                         if (throwError) {
@@ -577,7 +573,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             return parsed;
         }
-        throw new IllegalArgumentException("Cannot parse math expression to object: " + expr + " | " + expr.getClass().getSimpleName() + " (expected type: " + type.getSimpleName() + ")");
+        return expr;
     }
 
     private Object parseMath(Object s, ParameterData param, boolean throwForUnknown) {
@@ -839,16 +835,25 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg, PlaceholderCache cache, boolean throwError) {
+        boolean startsWithEquals = arg.startsWith("=");
+        if (startsWithEquals) {
+            arg = arg.substring(1);
+        }
         if (cache != null) store.addProvider(cache);
         TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, throwError);
         if (result.isResolved()) {
             Object value = result.applyCached(null);
             String valueStr = value == null ? null : value.toString();
+            if (startsWithEquals) valueStr = "=" + valueStr;
             return TypedFunction.create(String.class, valueStr, result.getName());
         } else {
             return TypedFunction.create(String.class, f -> {
                 Object value = result.applyCached((T) f);
-                return value == null ? null : value.toString();
+                String str = value == null ? null : value.toString();
+                if (startsWithEquals && str != null) {
+                    str = "=" + value;
+                }
+                return str;
             }, result.getName());
         }
     }

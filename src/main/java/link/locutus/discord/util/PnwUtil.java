@@ -499,14 +499,15 @@ public class PnwUtil {
             };
             if (allowBodmas) {
                 System.out.println("Input " + arg);
-                result = PnwUtil.resourcesToMap(ArrayUtil.calculate(arg, arg1 -> {
+                List<ArrayUtil.DoubleArray> resources = (ArrayUtil.calculate(arg, arg1 -> {
                     if (!arg1.contains("{")) {
                         return new ArrayUtil.DoubleArray(PrimitiveBindings.Double(arg1));
                     }
                     Map<ResourceType, Double> map = parse.apply(arg1);
                     double[] arr = resourcesToArray(map);
                     return new ArrayUtil.DoubleArray(arr);
-                }).toArray());
+                }));
+                result = resourcesToMap(resources.get(0).toArray());
             } else {
                 result = parse.apply(arg);
             }

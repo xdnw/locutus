@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunctio
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import org.aopalliance.intercept.MethodInterceptor;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -18,17 +19,28 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
 
     private final Object resolved2;
     private final Function<T, Object> resolver3;
+    private final boolean returnError;
+    private final Function<T, String> getInput;
 
     public LazyMathEntity(Object resolved) {
+        System.out.println("Resolved " + resolved);
         this.resolved2 = resolved;
         this.resolver3 = null;
+        this.returnError = false;
+        this.getInput = f -> String.valueOf(resolved);
     }
 
-    public LazyMathEntity(String input, Function<String, Function<T, Object>> parser) {
-        this((Function<T, Object>) parser.apply(input));
+    @Override
+    public String toString() {
+        return getInput.apply(null);
     }
 
-    public LazyMathEntity(Function<T, Object> resolver) {
+    public LazyMathEntity(String input, Function<String, Function<T, Object>> parser, boolean returnError) {
+        this((Function<T, Object>) parser.apply(input), returnError, f -> input);
+    }
+
+    private LazyMathEntity(Function<T, Object> resolver, boolean returnError, Function<T, String> getInput) {
+        this.returnError = returnError;
         if (resolver instanceof TypedFunction typed && typed.isResolved()) {
             this.resolved2 = typed.get(null);
             this.resolver3 = null;
@@ -36,6 +48,17 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
             this.resolved2 = null;
             this.resolver3 = resolver;
         }
+        this.getInput = f -> {
+            if (resolver3 != null) {
+                try {
+                    return String.valueOf(resolver.apply(f));
+                } catch (RuntimeException e) {
+                }
+            } else {
+                return String.valueOf(resolved2);
+            }
+            return getInput.apply(f);
+        };
     }
 
     public boolean isResolved() {
@@ -44,8 +67,14 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
 
     public Object resolve(T input) {
         if (resolver3 == null) return resolved2;
-        System.out.println("Resolve " + input);
-        return resolver3.apply(input);
+        try {
+            Object result = resolver3.apply(input);
+            System.out.println(getInput.apply(input) + " -> " + result);
+            return result;
+        } catch (RuntimeException e) {
+            System.out.println("Result " + getInput.apply(input));
+            return getInput.apply(input) + (returnError ? ": " + e.getMessage() : "");
+        }
     }
 
     public Object getOrNull() {
@@ -507,139 +536,208 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Set
     }
 
+    private Function<T, String> combine(LazyMathEntity<T> other, String operator) {
+        return f -> getInput.apply(f) + operator + other.getInput.apply(f);
+    }
+
+    private Function<T, String> combine(double value, String operator) {
+        return f -> getInput.apply(f) + operator + value;
+    }
+
     @Override
     public LazyMathEntity<T> add(LazyMathEntity<T> other) {
-        if (this.resolved2 != null && other.resolved2 != null) {
-            return new LazyMathEntity<>(add(this.resolved2, other.resolved2));
-        }
-        return new LazyMathEntity<>(t -> add(this.resolve(t), other.resolve(t)));
+        try{
+            if (this.resolved2 != null && other.resolved2 != null) {
+                return new LazyMathEntity<>(add(this.resolved2, other.resolved2));
+            }
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "+");
+        return new LazyMathEntity<>(fallback(t -> add(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> power(double value) {
+        try {
         if (this.resolved2 != null) {
             return new LazyMathEntity<>(power(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> power(this.resolve(t), value));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(value, "^");
+        return new LazyMathEntity<>(fallback(t -> power(this.resolve(t), value), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> power(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(power(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> power(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "^");
+        return new LazyMathEntity<>(fallback(t -> power(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> multiply(double value) {
+        try {
         if (this.resolved2 != null) {
             return new LazyMathEntity<>(multiply(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> multiply(this.resolve(t), value));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(value, "*");
+        return new LazyMathEntity<>(fallback(t -> multiply(this.resolve(t), value), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> divide(double value) {
+        try {
         if (this.resolved2 != null) {
             return new LazyMathEntity<>(divide(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> divide(this.resolve(t), value));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(value, "/");
+        return new LazyMathEntity<>(fallback(t -> divide(this.resolve(t), value), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> subtract(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(subtract(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> subtract(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "-");
+        return new LazyMathEntity<>(fallback(t -> subtract(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> multiply(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(multiply(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> multiply(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "*");
+        return new LazyMathEntity<>(fallback(t -> multiply(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> divide(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(divide(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> divide(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "/");
+        return new LazyMathEntity<>(fallback(t -> divide(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> modulo(double value) {
+        try {
         if (this.resolved2 != null) {
             return new LazyMathEntity<>(modulo(this.resolved2, value));
         }
-        return new LazyMathEntity<>(t -> modulo(this.resolve(t), value));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(value, "%");
+        return new LazyMathEntity<>(fallback(t -> modulo(this.resolve(t), value), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> modulo(LazyMathEntity<T> value) {
+        try {
         if (this.resolved2 != null && value.resolved2 != null) {
             return new LazyMathEntity<>(modulo(this.resolved2, value.resolved2));
         }
-        return new LazyMathEntity<>(t -> modulo(this.resolve(t), value.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(value, "%");
+        return new LazyMathEntity<>(fallback(t -> modulo(this.resolve(t), value.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> greaterEqual(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(greaterEqual(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> greaterEqual(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, ">=");
+        return new LazyMathEntity<>(fallback(t -> greaterEqual(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> greater(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(greater(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> greater(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, ">");
+        return new LazyMathEntity<>(fallback(t -> greater(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> lessEqual(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(lessEqual(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> lessEqual(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "<=");
+        return new LazyMathEntity<>(fallback(t -> lessEqual(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> less(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(less(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> less(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "<");
+        return new LazyMathEntity<>(fallback(t -> less(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> notEqual(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(notEqual(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> notEqual(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "!=");
+        return new LazyMathEntity<>(fallback(t -> notEqual(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> equal(LazyMathEntity<T> other) {
+        try{
         if (this.resolved2 != null && other.resolved2 != null) {
             return new LazyMathEntity<>(equal(this.resolved2, other.resolved2));
         }
-        return new LazyMathEntity<>(t -> equal(this.resolve(t), other.resolve(t)));
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = combine(other, "=");
+        return new LazyMathEntity<>(fallback(t -> equal(this.resolve(t), other.resolve(t)), fallback), returnError, fallback);
     }
 
     @Override
     public LazyMathEntity<T> ternary(LazyMathEntity<T> a, LazyMathEntity<T> b) {
-        if (this.resolved2 != null && a.resolved2 != null && b.resolved2 != null) {
-            return new LazyMathEntity<>(ternary(this.resolved2, a.resolved2, b.resolved2));
-        }
-        return new LazyMathEntity<>(t -> ternary(this.resolve(t), a.resolve(t), b.resolve(t)));
+        try {
+            if (this.resolved2 != null && a.resolved2 != null && b.resolved2 != null) {
+                return new LazyMathEntity<>(ternary(this.resolved2, a.resolved2, b.resolved2));
+            }
+        } catch (RuntimeException e) {}
+        Function<T, String> fallback = f -> getInput.apply(f) + "?" + a.getInput.apply(f) + ":" + b.getInput.apply(f);
+        return new LazyMathEntity<>(fallback(t -> ternary(this.resolve(t), a.resolve(t), b.resolve(t)), fallback), returnError, fallback);
+    }
+
+    public Function<T, Object> fallback(Function<T, Object> child, Function<T, String> fallbackFunc) {
+        return t -> {
+            try {
+                return child.apply(t);
+            } catch (RuntimeException e) {
+                return fallbackFunc.apply(t);
+            }
+        };
     }
 }
