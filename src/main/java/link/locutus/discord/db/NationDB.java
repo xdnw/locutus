@@ -3939,7 +3939,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public long getAllianceApplicantSeniorityTimestamp(DBNation nation, Long snapshotDate) {
         if (nation.getAlliance_id() == 0) return Long.MAX_VALUE;
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND alliance = ? ORDER BY date DESC LIMIT 1")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND alliance != ? ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
             stmt.setInt(2, nation.getAlliance_id());
             try (ResultSet rs = stmt.executeQuery()) {

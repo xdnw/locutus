@@ -695,7 +695,7 @@ public class DBNation implements NationOrAlliance {
     public double allianceSeniority() {
         long result = allianceSeniorityMs();
         if (result == 0 || result == Long.MAX_VALUE) return result;
-        return result / (double) TimeUnit.MILLISECONDS.toDays(1);
+        return result / (double) TimeUnit.DAYS.toMillis(1);
     }
 
     @Command(desc = "Days since joining the alliance")
@@ -703,7 +703,7 @@ public class DBNation implements NationOrAlliance {
         public double allianceSeniorityApplicant() {
         long result = allianceSeniorityApplicantMs();
         if (result == 0 || result == Long.MAX_VALUE) return result;
-        return result / (double) TimeUnit.MILLISECONDS.toDays(1);
+        return result / (double) TimeUnit.DAYS.toMillis(1);
     }
 
     @Command(desc = "Milliseconds since joining the alliance")

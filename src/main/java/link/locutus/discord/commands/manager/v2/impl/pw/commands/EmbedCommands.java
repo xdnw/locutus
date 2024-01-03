@@ -581,11 +581,11 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.damage damageNoNavy = CM.war.find.damage.cmd.create(
                 "~enemies", null, null, null, "true", null, null, null, null, null, null);
         CM.war.find.damage damageNoVDS = CM.war.find.damage.cmd.create(
-                "~enemies,#vds=0", null, null, null, null, null, null, null, null, null, null);
+                "~enemies,#hasProject(vital_defense_system)=0", null, null, null, null, null, null, null, null, null, null);
         CM.war.find.damage damageNoID = CM.war.find.damage.cmd.create(
-                "~enemies,#iron_dome=0", null, null, null, null, null, null, null, null, null, null);
+                "~enemies,#hasProject(iron_dome)=0", null, null, null, null, null, null, null, null, null, null);
         CM.war.find.damage damageNoVDSID = CM.war.find.damage.cmd.create(
-                "~enemies,#iron_dome=0,#vds=0", null, null, null, null, null, null, null, null, null, null);
+                "~enemies,#hasProject(iron_dome)=0,#hasProject(vital_defense_system)=0", null, null, null, null, null, null, null, null, null, null);
 
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, damage, "active")
