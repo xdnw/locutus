@@ -692,8 +692,12 @@ public class BankCommands {
     @HasOffshore
     @IsAlliance
     public static String offshore(@Me User user, @Me GuildDB db, @Me IMessageIO io,
-                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> warchest,
-                                  @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account) throws IOException {
+                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> keepAmount,
+                                  @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account,
+                                  @Arg("Send a specific amount of resources\n" +
+                                          "Defaults to all resources\n" +
+                                          "The send amount is auto capped by the resources available and `keepAmount`")
+                                  @Default Map<ResourceType, Double> sendAmount) throws IOException {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
@@ -729,12 +733,18 @@ public class BankCommands {
         List<TransferResult> results = new ArrayList<>();
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
-            Map<ResourceType, Double> resources = from.getStockpile(true);
+            Map<ResourceType, Double> resources = sendAmount != null ? sendAmount : from.getStockpile(true);
+            Map<ResourceType, Double> stockpile = sendAmount != null ? from.getStockpile(true) : new HashMap<>(resources);
             Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
             while (iterator.hasNext()) {
-                Map.Entry<ResourceType, Double> entry = iterator.next();
-                double newAmount = Math.max(0, entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d));
-                entry.setValue(newAmount);
+                Map.Entry<ResourceType, Double> sendAmt = iterator.next();
+                ResourceType type = sendAmt.getKey();
+                double amt = sendAmt.getValue();
+                double stockpileAmt = stockpile.getOrDefault(type, 0d);
+                double maxSend = Math.max(0, stockpileAmt - keepAmount.getOrDefault(type, 0d));
+                if (amt > maxSend) {
+                    sendAmt.setValue(maxSend);
+                }
             }
             OffshoreInstance bank = from.getBank();
             String note;
