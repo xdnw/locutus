@@ -1109,12 +1109,9 @@ public class OffshoreInstance {
                 }
             }
 
-            boolean isZero = true;
-            for (double i : amount) if (i != 0) isZero = false;
-            if (isZero) throw new IllegalArgumentException("No funds need to be sent");
+            if (ResourceType.isZero(amount)) throw new IllegalArgumentException("No funds need to be sent");
 
-            OffshoreInstance senderOffshore = senderDB.getOffshore();
-            if (senderOffshore != this)
+            if (!senderDB.isAllianceId(allianceId) && senderDB.getOffshore() != this)
                 throw new IllegalArgumentException("Sender does not have " + allianceId + " as an offshore");
             GuildDB offshoreDB = getGuildDB();
             if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
