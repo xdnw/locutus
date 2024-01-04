@@ -1109,15 +1109,20 @@ public class OffshoreInstance {
                 }
             }
 
-            if (ResourceType.isZero(amount)) throw new IllegalArgumentException("No funds need to be sent");
+            if (ResourceType.isZero(amount)) {
+                return new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, amount, note).addMessage("No funds need to be sent");
+            }
 
-            if (!senderDB.isAllianceId(allianceId) && senderDB.getOffshore() != this)
-                throw new IllegalArgumentException("Sender does not have " + allianceId + " as an offshore");
+            if (!senderDB.isAllianceId(allianceId) && senderDB.getOffshore() != this) {
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Sender does not have " + PnwUtil.getMarkdownUrl(allianceId, true) + " as an offshore");
+            }
             GuildDB offshoreDB = getGuildDB();
-            if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
+            if (offshoreDB == null) {
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("No guild is registered with this offshore");
+            }
 
             if (isDisabled(senderDB.getGuild().getIdLong())) {
-                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server (" + getGuildDB().getIdLong() + ")");
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server (" + getGuildDB().getIdLong() + ")");
             }
 
             boolean hasAdmin = false;
@@ -1125,7 +1130,12 @@ public class OffshoreInstance {
             if (bankerUser != null) hasAdmin = Roles.ECON.has(bankerUser, offshoreDB.getGuild());
 
             // Ensure sufficient deposits
-            Map.Entry<Map<NationOrAllianceOrGuild, double[]>, double[]> depositsEntry = checkDeposits(senderDB, allowedAlliances, amount, false);
+            Map.Entry<Map<NationOrAllianceOrGuild, double[]>, double[]> depositsEntry;
+            try {
+                depositsEntry = checkDeposits(senderDB, allowedAlliances, amount, false);
+            } catch (IllegalArgumentException e) {
+                return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, note).addMessage(e.getMessage());
+            }
             Map<NationOrAllianceOrGuild, double[]> depositsByAA = depositsEntry.getKey();
             double[] deposits = depositsEntry.getValue();
 
@@ -1141,7 +1151,7 @@ public class OffshoreInstance {
             if (route) {
                 boolean hasNonAlliance = depositsByAA.keySet().stream().anyMatch(n -> !n.isAlliance());
                 if (hasNonAlliance || depositsByAA.isEmpty()) {
-                    throw new IllegalArgumentException("`" + GuildKey.ROUTE_ALLIANCE_BANK.name() + "` is enabled, but this server is not registered to an alliance. Disable with " + CM.settings.delete.cmd.create(GuildKey.ROUTE_ALLIANCE_BANK.name()));
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("`" + GuildKey.ROUTE_ALLIANCE_BANK.name() + "` is enabled, but this server is not registered to an alliance. Disable with " + CM.settings.delete.cmd.create(GuildKey.ROUTE_ALLIANCE_BANK.name()));
                 }
             }
 
