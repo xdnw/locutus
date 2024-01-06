@@ -95,7 +95,7 @@ public class Deposits extends Command {
                 cutOff != 0 ? cutOff : null,
                 flags.contains('b'),
                 flags.contains('o'),
-                flags.contains('t'),
+                flags.contains('t') ? true : null,
                 flags.contains('d'),
                 includeExpired,
                 includeIgnored,

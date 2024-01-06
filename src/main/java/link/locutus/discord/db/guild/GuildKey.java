@@ -2664,7 +2664,12 @@ public class GuildKey {
             return toJson(value).toString(4);
         }
 
-    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requiresCoalition("recruit"));
+    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requiresCoalition("recruit")
+        .requireFunction((db) -> {
+        if (!Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
+            throw new IllegalArgumentException("This setting is disabled. Enable it in the settings file");
+        }
+    }));
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

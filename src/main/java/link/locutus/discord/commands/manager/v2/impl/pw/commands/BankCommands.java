@@ -3363,7 +3363,7 @@ public class BankCommands {
         if (!nationOrAllianceOrGuild.isNation() && !nationOrAllianceOrGuild.isTaxid()) {
             showCategories = false;
         }
-        if (showCategories == null) {
+            if (showCategories == null) {
             showCategories = (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE);
         }
         if (timeCutoff == null) timeCutoff = 0L;
