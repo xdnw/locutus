@@ -1550,4 +1550,9 @@ public class PWBindings extends BindingHelper {
         return placeholders.parseFilter(store, input);
     }
 
+    @Binding
+    public MessageTrigger trigger(String trigger) {
+        return emum(MessageTrigger.class, trigger);
+    }
+
 }

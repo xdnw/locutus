@@ -119,6 +119,10 @@ public enum NationMeta {
 
     BANK_TRANSFER_REQUIRED_AMOUNT,
 
+    LAST_SENT_CREATION,
+    LAST_SENT_LEAVE,
+    LAST_SENT_ACTIVE,
+
     ;
 
     public static NationMeta[] values = values();

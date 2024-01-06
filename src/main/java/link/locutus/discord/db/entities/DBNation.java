@@ -706,6 +706,16 @@ public class DBNation implements NationOrAlliance {
         return result / (double) TimeUnit.DAYS.toMillis(1);
     }
 
+    @Command
+    @RolePermission(Roles.MEMBER)
+    public long allianceSeniorityNoneMs() {
+        if (alliance_id != 0) return 0;
+        long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
+        long now = System.currentTimeMillis();
+        if (timestamp > now) return 0;
+        return now - timestamp;
+    }
+
     @Command(desc = "Milliseconds since joining the alliance")
     @RolePermission(Roles.MEMBER)
     public long allianceSeniorityApplicantMs() {
@@ -5283,18 +5293,18 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getWarsByNation(nation_id);
     }
 
-    public Map<Integer, Map.Entry<Long, Rank>> getAllianceHistory() {
-        return Locutus.imp().getNationDB().getRemovesByNation(getNation_id());
+    public Map<Integer, Map.Entry<Long, Rank>> getAllianceHistory(Long date) {
+        return Locutus.imp().getNationDB().getRemovesByNation(getNation_id(), date);
     }
 
-    public Map.Entry<Integer, Rank> getPreviousAlliance() {
+    public Map.Entry<Integer, Rank> getPreviousAlliance(boolean ignoreApplicant, Long date) {
         Long lastTime = null;
         Rank lastRank = null;
         Integer lastAAId = null;
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : getAllianceHistory().entrySet()) {
+        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : getAllianceHistory(date).entrySet()) {
             Map.Entry<Long, Rank> timeRank = entry.getValue();
             Rank rank = timeRank.getValue();
-            if (rank.id <= Rank.APPLICANT.id) continue;
+            if (rank.id == 0 || (ignoreApplicant && rank.id <= Rank.APPLICANT.id)) continue;
             int aaId = entry.getKey();
             if (aaId == 0 || aaId == alliance_id) continue;
             if (lastTime == null || timeRank.getKey() >= lastTime) {
@@ -5308,7 +5318,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map.Entry<Integer, Rank> getAlliancePosition(long date) {
-        Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistory();
+        Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistory(date);
         return getAlliancePosition(history);
     }
 

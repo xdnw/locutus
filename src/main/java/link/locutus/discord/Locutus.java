@@ -26,6 +26,7 @@ import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.handlers.GuildCustomMessageHandler;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.network.ProxyHandler;
@@ -132,6 +133,7 @@ public final class Locutus extends ListenerAdapter {
     private SlashCommandManager slashCommands;
 
     private ProxyHandler proxyHandler;
+    private GuildCustomMessageHandler messageHandler;
 
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
@@ -478,6 +480,14 @@ public final class Locutus extends ListenerAdapter {
                     System.out.println("Subscribed to default events");
                 }
             });
+        }
+
+        if (Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
+            this.messageHandler = new GuildCustomMessageHandler();
+            // run every 5m
+            addTaskSeconds(() -> {
+                messageHandler.run();
+            }, 5 * 60);
         }
 
         return this;
@@ -1471,5 +1481,9 @@ public final class Locutus extends ListenerAdapter {
 
             System.exit(1);
         }
+    }
+
+    public GuildCustomMessageHandler getMessageHandler() {
+        return messageHandler;
     }
 }

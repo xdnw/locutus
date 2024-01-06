@@ -317,7 +317,7 @@ public class AllianceListener {
 
         for (DBNation member : members) {
             if (member.getPosition() < Rank.HEIR.id || member.getVm_turns() > 0) continue;
-            Map.Entry<Integer, Rank> lastAA = member.getPreviousAlliance();
+            Map.Entry<Integer, Rank> lastAA = member.getPreviousAlliance(true, null);
 
             body.append("Leader: " + MarkupUtil.markdownUrl(member.getNation(), member.getNationUrl()) + "\n");
 

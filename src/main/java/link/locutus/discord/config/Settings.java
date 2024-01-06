@@ -254,6 +254,9 @@ public class Settings extends Config {
         @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
         public boolean AUTO_FETCH_UID = false;
 
+        @Comment({"The task for conditional messages (default: disabled)"})
+        public boolean CUSTOM_MESSAGE_HANDLER = false;
+
         @Create
         public TURN_TASKS TURN_TASKS;
 

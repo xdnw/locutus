@@ -46,7 +46,7 @@ import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 
 public abstract class GuildSetting<T> {
     private final Set<GuildSetting> requires = new LinkedHashSet<>();
-    private final Set<Coalition> requiresCoalition = new LinkedHashSet<>();
+    private final Set<String> requiresCoalitionStr = new LinkedHashSet<>();
 
     private final Set<BiPredicate<GuildDB, Boolean>> requiresFunction = new LinkedHashSet<>();
     private final Map<Roles, Boolean> requiresRole = new LinkedHashMap<>();
@@ -105,7 +105,12 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requiresCoalition(Coalition coalition) {
-        requiresCoalition.add(coalition);
+        requiresCoalitionStr.add(coalition.getNameLower());
+        return this;
+    }
+
+    public GuildSetting<T> requiresCoalition(String coalition) {
+        requiresCoalitionStr.add(coalition.toLowerCase());
         return this;
     }
 
@@ -253,10 +258,10 @@ public abstract class GuildSetting<T> {
                 }
             }
         }
-        for (Coalition coalition : requiresCoalition) {
+        for (String coalition : requiresCoalitionStr) {
             if (db.getCoalition(coalition).isEmpty()) {
                 if (throwException) {
-                    errors.add("Missing required coalition " + coalition.name() + " (see: " + CM.coalition.create.cmd.create(null, coalition.name()).toSlashCommand() + ")");
+                    errors.add("Missing required coalition `" + coalition + "` (see: " + CM.coalition.add.cmd.create(null, coalition).toSlashCommand() + ")");
                 } else {
                     return false;
                 }

@@ -6,6 +6,8 @@ import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 
 import java.util.ArrayList;
@@ -31,6 +33,15 @@ public class GPTUtil {
                         "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
                 throw new IllegalArgumentException(message);
             }
+        }
+    }
+
+    public static void checkThrowModeration(String text) {
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        if (gpt != null) {
+            GptHandler handler = gpt.getHandler();
+            List<ModerationResult> result = handler.getModerator().moderate(text);
+            GPTUtil.checkThrowModeration(result, "<redacted>");
         }
     }
 

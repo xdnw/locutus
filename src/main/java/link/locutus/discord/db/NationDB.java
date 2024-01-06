@@ -3975,7 +3975,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Map<Integer, Map.Entry<Long, Rank>> getRemovesByNation(int nationId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? ORDER BY date DESC")) {
+        return getRemovesByNation(nationId, null);
+    }
+    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByNation(int nationId, Long date) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (date != null ? " AND date < ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
 
             Map<Integer, Map.Entry<Long, Rank>> kickDates = new LinkedHashMap<>();
@@ -3983,11 +3986,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int alliance = rs.getInt("alliance");
-                    long date = rs.getLong("date");
+                    long timestamp = rs.getLong("date");
                     int type = rs.getInt("type");
                     Rank rank = Rank.byId(type);
 
-                    AbstractMap.SimpleEntry<Long, Rank> dateRank = new AbstractMap.SimpleEntry<>(date, rank);
+                    AbstractMap.SimpleEntry<Long, Rank> dateRank = new AbstractMap.SimpleEntry<>(timestamp, rank);
 
                     kickDates.putIfAbsent(alliance, dateRank);
                 }

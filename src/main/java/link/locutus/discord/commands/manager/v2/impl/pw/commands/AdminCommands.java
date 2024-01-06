@@ -34,6 +34,7 @@ import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.db.handlers.GuildCustomMessageHandler;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
@@ -1970,6 +1971,18 @@ public class AdminCommands {
             }
         }
         return "Done!";
-
     }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String conditionalMessageSettings(boolean setMeta, boolean sendMessages, boolean run) {
+        GuildCustomMessageHandler messageHandler = Locutus.imp().getMessageHandler();
+        messageHandler.setMeta(setMeta);
+        messageHandler.setSendMessages(sendMessages);
+        if (run) {
+            messageHandler.run();
+        }
+        return "Done!";
+    }
+
 }

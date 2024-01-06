@@ -11,6 +11,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
@@ -21,12 +22,15 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.CustomConditionMessage;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EnemyAlertChannelMode;
 import link.locutus.discord.db.entities.MMRMatcher;
+import link.locutus.discord.db.entities.MessageTrigger;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.gpt.GPTModerator;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
 import link.locutus.discord.gpt.imps.CopilotText2Text;
@@ -50,6 +54,8 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,6 +65,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1642,7 +1649,7 @@ public class GuildKey {
             }
             allowedAndValidate(db, user, Collections.singletonMap(range, reasons));
             existing.put(range, reasons);
-            return response.toString() + set(db, existing);
+            return response + set(db, existing);
         }
 
         @NoFormat
@@ -1949,7 +1956,7 @@ public class GuildKey {
         public String removeResourceChannel(@Me GuildDB db, @Me User user, MessageChannel channel) {
             Map<Long, MessageChannel> existing = RESOURCE_REQUEST_CHANNEL.getOrNull(db, false);
             existing = existing == null ? new HashMap<>() : new LinkedHashMap<>(existing);
-            if (!existing.values().contains(channel)) {
+            if (!existing.containsValue(channel)) {
                 return "This channel is not set as a resource request channel";
             }
             existing.entrySet().removeIf(f -> f.getValue().equals(channel));
@@ -2514,6 +2521,150 @@ public class GuildKey {
             return "If true, all transfers from the offshore will send via the alliance bank";
         }
     }.requireValidAlliance().requiresOffshore();
+
+
+    public static GuildSetting<List<CustomConditionMessage>> TIMED_MESSAGES = new GuildSetting<List<CustomConditionMessage>>(GuildSettingCategory.RECRUIT, Key.of(List.class, CustomConditionMessage.class)) {
+        @Override
+        public List<CustomConditionMessage> parse(GuildDB db, String input) {
+            JSONArray jsonArray = new JSONArray(input);
+            List<CustomConditionMessage> result = new ArrayList<>();
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                CustomConditionMessage message = CustomConditionMessage.fromJson(jsonObject);
+                result.add(message);
+            }
+            return result;
+        }
+
+        @NoFormat
+        @Command(desc = "Remove a timed message with a specific time-delay for a trigger")
+        @RolePermission(Roles.ADMIN)
+        public String remove_timed_message(@Me GuildDB db, @Me User user,
+                                           @Arg("The type of message to remove\n" +
+                                                   "The default type is `CREATION`") MessageTrigger trigger,
+                                           @Arg("The time delay of the message to remove") @Timediff long timeDelay) {
+            List<CustomConditionMessage> existing = TIMED_MESSAGES.getOrNull(db, false);
+            if (existing == null) {
+                return "No timed messages found.";
+            }
+
+            List<CustomConditionMessage> copiedMessages = new ArrayList<>(existing);
+            CustomConditionMessage foundMessage = null;
+            for (CustomConditionMessage msg : copiedMessages) {
+                if (msg.getTrigger() == trigger && Math.abs(msg.getDelay() - timeDelay) <= 1000) {
+                    foundMessage = msg;
+                    break;
+                }
+            }
+
+            if (foundMessage != null) {
+                copiedMessages.remove(foundMessage);
+                TIMED_MESSAGES.set(db, copiedMessages);
+                return "Removed the timed message\n" +
+                        "Subject:\n```" + foundMessage.getSubject() + "\n" + "```" +
+                        "Message:\n```" + foundMessage.getBody() + "\n" + "```";
+            } else {
+                for (CustomConditionMessage msg : copiedMessages) {
+                    if (Math.abs(msg.getDelay() - timeDelay) <= 1000) {
+                        return "Did you mean? Trigger: " + msg.getTrigger() + ", Time: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, msg.getDelay()) + ", Subject: " + msg.getSubject() + ", Creation Date: " + new Date(msg.getDateCreated());
+                    }
+                }
+                if (copiedMessages.isEmpty()) {
+                    return "No timed messages are set.";
+                }
+                List<CustomConditionMessage> filteredMessages = copiedMessages.stream()
+                        .filter(msg -> msg.getTrigger() == trigger)
+                        .toList();
+
+                if (filteredMessages.isEmpty()) {
+                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: TODO CM REF";
+                }
+                StringBuilder messageSignatures = new StringBuilder("No message found with delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. Did you mean?:\n");
+                for (CustomConditionMessage msg : filteredMessages) {
+                    messageSignatures.append("- `").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, msg.getDelay()))
+                            .append("` - Subject: `").append(msg.getSubject())
+                            .append("`:  Created: ").append(new Date(msg.getDateCreated()))
+                            .append("\n");
+                }
+                return messageSignatures.toString();
+
+            }
+        }
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String add_timed_message(@Me GuildDB db, @Me User user, @Timediff long timeDelay, String subject, String message, @Switch("t") @Default("CREATION") MessageTrigger trigger) {
+            GPTUtil.checkThrowModeration(subject + "\n" + message);
+
+            switch (trigger) {
+                case MEMBER_DEPARTURE, CREATION -> {
+                    if (timeDelay >= TimeUnit.DAYS.toMillis(30)) {
+                        throw new IllegalArgumentException("The delay must be less than 30 days, not: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`");
+                    }
+                }
+                case GRAVEYARD_ACTIVE -> {
+                    if (timeDelay < TimeUnit.DAYS.toMillis(7)) {
+                        throw new IllegalArgumentException("The delay must be at least 7 days, not: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`");
+                    }
+                }
+            }
+
+            CustomConditionMessage newMessage = new CustomConditionMessage(subject, message, trigger, timeDelay, System.currentTimeMillis());
+
+            List<CustomConditionMessage> existing = TIMED_MESSAGES.getOrNull(db, false);
+            if (existing == null) existing = new ArrayList<>();
+            else {
+                for (CustomConditionMessage msg : existing) {
+                    if (msg.getTrigger() == trigger && Math.abs(msg.getDelay() - timeDelay) <= 1000) {
+                        return "A message with this time (`" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`) and trigger (`" + trigger.name() + "`) already exists. Delete it with TODO CM REF, or use a different time/trigger";
+                    }
+                }
+            }
+            existing.add(newMessage);
+                return TIMED_MESSAGES.setAndValidate(db, user, existing);
+        }
+
+        @Override
+        public List<CustomConditionMessage> validate(GuildDB db, List<CustomConditionMessage> value) {
+            for (CustomConditionMessage msg : value) {
+                if (msg.getSubject().length() >= 50) {
+                    throw new IllegalArgumentException("Subject must be less than 50 characters");
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public String help() {
+            StringBuilder desc = new StringBuilder("Add a timed message to be sent to new members after a delay");
+            for (MessageTrigger trigger : MessageTrigger.values()) {
+                desc.append("\n- ").append(trigger.name()).append("\n - ").append(trigger.getDesc().replace("\n", "\n - "));
+            }
+            desc.append("\n\nNote: If multiple messages qualify, only the last one will be sent. This task runs every 5 minutes");
+            return desc.toString();
+        }
+
+        @Override
+        public String toString(List<CustomConditionMessage> value) {
+            return toJson(value).toString();
+        }
+
+        private JSONArray toJson(List<CustomConditionMessage> value) {
+            JSONArray jsonArray = new JSONArray();
+            for (CustomConditionMessage message : value) {
+                JSONObject jsonObject = message.toJson();
+                jsonArray.put(jsonObject);
+            }
+            return jsonArray;
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, List<CustomConditionMessage> value) {
+            return toJson(value).toString(4);
+        }
+
+    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requiresCoalition("recruit"));
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

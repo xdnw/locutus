@@ -1287,7 +1287,7 @@ public class UnsortedCommands {
         boolean showCurrentAA = false;
         if (nationOrAlliance.isNation()) {
             DBNation nation = nationOrAlliance.asNation();
-            removes = nation.getAllianceHistory();
+            removes = nation.getAllianceHistory(null);
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
                 DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
                 DBNation tmp = nation;

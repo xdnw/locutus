@@ -1309,7 +1309,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
 
         for (DBNation member : members) {
-            Map.Entry<Integer, Rank> lastAAInfo = member.getPreviousAlliance();
+            Map.Entry<Integer, Rank> lastAAInfo = member.getPreviousAlliance(true, null);
             if (lastAAInfo == null) continue;
             int aaId = lastAAInfo.getKey();
 

@@ -478,7 +478,7 @@ public class UtilityCommands {
                 Set<String> previousOfficer = new HashSet<>();
                 for (DBNation member : members) {
                     if (member.getVm_turns() != 0) continue;
-                    for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : member.getAllianceHistory().entrySet()) {
+                    for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : member.getAllianceHistory(null).entrySet()) {
                         int previousAA = aaEntry.getKey();
                         Map.Entry<Long, Rank> timeRank = aaEntry.getValue();
 
