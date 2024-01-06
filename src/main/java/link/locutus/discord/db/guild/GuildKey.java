@@ -1700,7 +1700,7 @@ public class GuildKey {
         @Override
         public String help() {
             return "Whether to send a mail to the nation when a beige violation occurs\n" +
-                    "Default: True";
+                    "Default: False";
         }
     }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance().requires(ALLOWED_BEIGE_REASONS));
 
