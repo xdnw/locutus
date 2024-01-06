@@ -409,7 +409,7 @@ public class DiscordCommands {
     public String unregister(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Default("%user%") DBNation nation, @Switch("f") boolean force) {
         User nationUser = nation.getUser();
 //        if (nationUser == null) return "That nation is not registered.";
-        if (force && !Roles.ADMIN.hasOnRoot(user)) return "You do not have permission to force un-register.";
+        if (force && !Roles.INTERNAL_AFFAIRS.hasOnRoot(user)) return "You do not have permission to force un-register.";
         if (!user.equals(nationUser) && !force) {
             String title = "Unregister another user.";
             String body = nation.getNationUrlMarkup(true) + " | " + nationUser.getAsMention() + " | " + nationUser.getName();
