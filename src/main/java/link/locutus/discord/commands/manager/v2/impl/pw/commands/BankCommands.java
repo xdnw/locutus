@@ -692,8 +692,12 @@ public class BankCommands {
     @HasOffshore
     @IsAlliance
     public static String offshore(@Me User user, @Me GuildDB db, @Me IMessageIO io,
-                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> warchest,
-                                  @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account) throws IOException {
+                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> keepAmount,
+                                  @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account,
+                                  @Arg("Send a specific amount of resources\n" +
+                                          "Defaults to all resources\n" +
+                                          "The send amount is auto capped by the resources available and `keepAmount`")
+                                  @Default Map<ResourceType, Double> sendAmount) throws IOException {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
@@ -729,12 +733,18 @@ public class BankCommands {
         List<TransferResult> results = new ArrayList<>();
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
-            Map<ResourceType, Double> resources = from.getStockpile(true);
+            Map<ResourceType, Double> resources = sendAmount != null ? sendAmount : from.getStockpile(true);
+            Map<ResourceType, Double> stockpile = sendAmount != null ? from.getStockpile(true) : new HashMap<>(resources);
             Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
             while (iterator.hasNext()) {
-                Map.Entry<ResourceType, Double> entry = iterator.next();
-                double newAmount = Math.max(0, entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d));
-                entry.setValue(newAmount);
+                Map.Entry<ResourceType, Double> sendAmt = iterator.next();
+                ResourceType type = sendAmt.getKey();
+                double amt = sendAmt.getValue();
+                double stockpileAmt = stockpile.getOrDefault(type, 0d);
+                double maxSend = Math.max(0, stockpileAmt - keepAmount.getOrDefault(type, 0d));
+                if (amt > maxSend) {
+                    sendAmt.setValue(maxSend);
+                }
             }
             OffshoreInstance bank = from.getBank();
             String note;
@@ -3837,10 +3847,12 @@ public class BankCommands {
     @Command(desc = "Set the bot managed offshore for this guild\n" +
             "The alliance must use a guild with locutus settings `ALLIANCE_ID` and `API_KEY` set, and the coalitions `offshore` and `offshoring` set to include the offshore alliance")
     @RolePermission(value = Roles.ADMIN)
-    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance offshoreAlliance, @Switch("f") boolean force) throws IOException {
+    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, @Me JSONObject command, DBAlliance offshoreAlliance, @Switch("n") boolean newAccount, @Switch("i") boolean importAccount, @Switch("f") boolean force) throws IOException {
+        if (importAccount && newAccount) {
+            throw new IllegalArgumentException("Cannot specify both `newAccount` and `importAccount` (pick one)");
+        }
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
-
-        IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(offshoreAlliance.getId() + "", null));
+        IMessageBuilder confirmButton = io.create().confirmation(command);
         GuildDB offshoreDB = offshoreAlliance.getGuildDB();
 
         if (offshoreDB != null) {
@@ -4020,6 +4032,8 @@ public class BankCommands {
             return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + GuildKey.PUBLIC_OFFSHORING.getCommandMention() + " is not enabled on that guild.";
         }
 
+        boolean hasAdmin = Roles.ECON.has(user, offshoreDB.getGuild());
+
         StringBuilder response = new StringBuilder();
         // check public offshoring is enabled
         synchronized (OffshoreInstance.BANK_LOCK) {
@@ -4039,32 +4053,73 @@ public class BankCommands {
 
                 OffshoreInstance offshoreInstance = offshoreDB.getOffshore();
                 Map<NationOrAllianceOrGuild, double[]> depoByAccount = offshoreInstance.getDepositsByAA(root, f -> true, true);
+
+                boolean hasDepoToReset = depoByAccount.values().stream().anyMatch(depo -> !ResourceType.isZero(depo));
+                if (hasDepoToReset && !hasAdmin && importAccount) {
+                    throw new IllegalArgumentException("Missing " + Roles.ADMIN.toDiscordRoleNameElseInstructions(offshoreDB.getGuild()));
+                }
+
+                if (hasDepoToReset && !newAccount && !importAccount) {
+                    String title = "Reset Balance for " + root.getName();
+                    StringBuilder body = new StringBuilder("**__!! WARNING !!__**\n");
+                    if (hasAdmin) {
+                        body.append("Press `New` to make a new account with the offshore\n");
+                        body.append("Press `Import` to import your previous account holdings\n");
+                    } else {
+                        body.append("> This will open a new account and reset your balance with the offshore.\nTo import your previous account holdings, please contact an administrator of the offshore");
+                        body.append("\n\n**Offshore Owner:** <@" + offshoreDB.getGuild().getOwnerId() + ">\n");
+                    }
+                    body.append("**Offshore:** " + offshoreDB.getGuild().toString() + " | " + offshoreAlliance.getMarkdownUrl() + "\n");
+                    for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depoByAccount.entrySet()) {
+                        NationOrAllianceOrGuild account = entry.getKey();
+                        double[] depo = entry.getValue();
+                        body.append("**Resetting Accounts:**\n");
+                        if (!ResourceType.isZero(depo)) {
+                            body.append("- " + account.getQualifiedId() + " - worth: `~$" + PnwUtil.convertedTotal(depo) + "`\n");
+                            body.append(" - Balance: `" + PnwUtil.resourcesToString(depo) + "`\n");
+                        }
+                    }
+
+                    JSONObject newAccountCmd = new JSONObject(command).put("force", "true");
+
+                    IMessageBuilder msg = io.create().embed(title, body.toString());
+                    msg = msg.commandButton(newAccountCmd.put("newAccount", true), "New");
+                    if (hasAdmin) {
+                        JSONObject importAccountCmd = new JSONObject(command).put("force", "true");
+                        msg = msg.commandButton(importAccountCmd.put("importAccount", true), "Import");
+                    }
+                    msg.send();
+                    return null;
+                }
+
                 for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depoByAccount.entrySet()) {
                     NationOrAllianceOrGuild account = entry.getKey();
-                    double[] depo = entry.getValue();
-                    if (!ResourceType.isZero(depo)) {
-                        long tx_datetime = System.currentTimeMillis();
-                        long receiver_id = 0;
-                        int receiver_type = 0;
-                        int banker = nation.getNation_id();
+                    if (!importAccount) {
+                        double[] depo = entry.getValue();
+                        if (!ResourceType.isZero(depo)) {
+                            long tx_datetime = System.currentTimeMillis();
+                            long receiver_id = 0;
+                            int receiver_type = 0;
+                            int banker = nation.getNation_id();
 
-                        String note = "#deposit";
-                        double[] amount = depo;
-                        for (int i = 0; i < amount.length; i++) amount[i] = -amount[i];
-                        if (!ResourceType.isZero(amount)) {
-                            if (account.isGuild()) {
-                                offshoreDB.addTransfer(tx_datetime, account.asGuild().getIdLong(), account.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
-                            } else {
-                                offshoreDB.addTransfer(tx_datetime, account.asAlliance(), receiver_id, receiver_type, banker, note, amount);
+                            String note = "#deposit";
+                            double[] amount = depo;
+                            for (int i = 0; i < amount.length; i++) amount[i] = -amount[i];
+                            if (!ResourceType.isZero(amount)) {
+                                if (account.isGuild()) {
+                                    offshoreDB.addTransfer(tx_datetime, account.asGuild().getIdLong(), account.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
+                                } else {
+                                    offshoreDB.addTransfer(tx_datetime, account.asAlliance(), receiver_id, receiver_type, banker, note, amount);
+                                }
                             }
-                        }
 
 
-                        MessageChannel output = offshoreDB.getResourceChannel(0);
-                        if (output != null) {
-                            String msg = "Added " + PnwUtil.resourcesToString(amount) + " to " + account.getTypePrefix() + ":" + account.getName() + "/" + account.getIdLong();
-                            RateLimitUtil.queue(output.sendMessage(msg));
-                            response.append("Reset deposit for " + root.getGuild() + "\n");
+                            MessageChannel output = offshoreDB.getResourceChannel(0);
+                            if (output != null) {
+                                String msg = "Added " + PnwUtil.resourcesToString(amount) + " to " + account.getTypePrefix() + ":" + account.getName() + "/" + account.getIdLong();
+                                RateLimitUtil.queue(output.sendMessage(msg));
+                                response.append("Reset deposit for " + root.getGuild() + "\n");
+                            }
                         }
                     }
 
