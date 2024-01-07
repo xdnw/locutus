@@ -83,7 +83,6 @@ public abstract class TimeNumericTable<T> {
         double[] buffer = new double[labels.length];
 
         TimeNumericTable<Void> table = new TimeNumericTable<>(title, "turn", "Radiation", labels) {
-
             @Override
             public void add(long turn, Void ignore) {
                 int turnRelative = (int) (turn - turnStart);

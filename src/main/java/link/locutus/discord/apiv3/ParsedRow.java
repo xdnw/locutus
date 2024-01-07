@@ -35,6 +35,7 @@ public class ParsedRow {
         }
         nation = null;
         city = null;
+        nationLoaded = 0;
     }
 
     public <T> T get(int index, Function<String, T> parse) {
@@ -54,7 +55,7 @@ public class ParsedRow {
             if (!allowDeleted && (nationLoaded & ALLOW_DELETED) != 0 && !nation.isValid()) return null;
             return nation;
         }
-        if ((nationLoaded & LOADED) != 0 && (!allowVM || (nationLoaded & ALLOW_VM) != 0) && (!allowDeleted || (nationLoaded & ALLOW_DELETED) != 0)) return null;
+        if ((nationLoaded & LOADED) != 0 && (!allowVM || (nationLoaded & ALLOW_VM) == 0) && (!allowDeleted || (nationLoaded & ALLOW_DELETED) == 0)) return null;
         nationLoaded |= LOADED | (allowVM ? ALLOW_VM : 0) | (allowDeleted ? ALLOW_DELETED : 0);
         try {
             nation = parser.loadNation(header, row, allowAll, allowVM, allowDeleted);

@@ -2682,7 +2682,12 @@ public class GuildHandler {
                     body += "\n\nSee: " + CM.escrow.withdraw.cmd.toSlashMention();
 
                     IMessageIO io = new DiscordChannelIO(channel);
-                    io.create().embed(title, body).send();
+                    IMessageBuilder msg = io.create().embed(title, body);
+                    msg = msg.commandButton(CM.escrow.withdraw.cmd.create(receiver.getQualifiedId(), PnwUtil.resourcesToString(escrowed), "true"), "send");
+                    if (!mentions.isEmpty()) {
+                        msg = msg.append(StringMan.join(mentions, ", "));
+                    }
+                    msg.send();
                 }
 
             } catch (IOException e) {

@@ -22,14 +22,14 @@ class DataDumpImporter {
         return parser;
     }
 
-    Map<AllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> nationReaders = new LinkedHashMap<>();
-    Map<AllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> cityReaders = new LinkedHashMap<>();
+    Map<IAllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> nationReaders = new LinkedHashMap<>();
+    Map<IAllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> cityReaders = new LinkedHashMap<>();
 
-    public void setNationReader(AllianceMetric metric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow> nationReader) {
+    public void setNationReader(IAllianceMetric metric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow> nationReader) {
         this.nationReaders.put(metric, nationReader);
     }
 
-    public void setCityReader(AllianceMetric metric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow> cityReader) {
+    public void setCityReader(IAllianceMetric metric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow> cityReader) {
         this.cityReaders.put(metric, cityReader);
     }
 
@@ -38,7 +38,7 @@ class DataDumpImporter {
         ParsedRow parsedRow = new ParsedRow(parser);
         return (turn, header, row) -> {
             parsedRow.setRow(row);
-            for (Map.Entry<AllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> entry : nationReaders.entrySet()) {
+            for (Map.Entry<IAllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> entry : nationReaders.entrySet()) {
                 entry.getValue().consume(turn, header, parsedRow);
             }
         };
@@ -49,7 +49,7 @@ class DataDumpImporter {
         ParsedRow parsedRow = new ParsedRow(parser);
         return (turn, header, row) -> {
             parsedRow.setRow(row);
-            for (Map.Entry<AllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> entry : cityReaders.entrySet()) {
+            for (Map.Entry<IAllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> entry : cityReaders.entrySet()) {
                 entry.getValue().consume(turn, header, parsedRow);
             }
         };

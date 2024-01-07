@@ -123,7 +123,7 @@ public class DataDumpParser {
 
     public Map<Long, File> downloadNationFilesByDay() throws IOException, ParseException {
         if (nationFilesByDay != null) return nationFilesByDay;
-        return nationFilesByDay = load("https://politicsandwar.com/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
+        return nationFilesByDay = load("https://politicsandwar.com/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
     }
 
     public void printActiveCitiesByDay() throws IOException {
@@ -842,12 +842,13 @@ public class DataDumpParser {
     public void iterateAll(Predicate<Long> acceptDay, TriConsumer<Long, NationHeader, CsvRow> nationRows, TriConsumer<Long, CityHeader, CsvRow> cityRows, Consumer<Long> onEach) throws IOException, ParseException {
         load();
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
+            if (!acceptDay.test(entry.getKey())) continue;
             File nationFile = entry.getValue();
             File cityFile = cityFilesByDay.get(entry.getKey());
             if (cityFile == null) continue;
 
             long day = entry.getKey();
-            long turn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
+//            long turn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
             long timestamp = TimeUtil.getTimeFromDay(day);
 
             if (nationRows != null) {
@@ -995,13 +996,13 @@ public class DataDumpParser {
         for (Element a : dom.select("a")) {
             String subUrl = a.attr("href");
             if (subUrl != null && subUrl.contains(".zip")) {
-                String fileUrl = url + subUrl;
-                File saveAs = new File(savePath, subUrl.replace(".zip", ""));
-                filesByDate.put(TimeUtil.getDay(getDate(saveAs)), saveAs);
-                if (saveAs.exists()) continue;
-
-                download(fileUrl, saveAs);
-                System.out.println(subUrl);
+                synchronized (this) {
+                    String fileUrl = url + subUrl;
+                    File saveAs = new File(savePath, subUrl.replace(".zip", ""));
+                    filesByDate.put(TimeUtil.getDay(getDate(saveAs)), saveAs);
+                    if (saveAs.exists()) continue;
+                    download(fileUrl, saveAs);
+                }
             }
         }
         return filesByDate;
@@ -1121,50 +1122,65 @@ public class DataDumpParser {
         nation.setNukes(Integer.parseInt(row.getField(header.nukes)));
         nation.setDomesticPolicy(DomesticPolicy.parse(row.getField(header.domestic_policy)));
         nation.setWarPolicy(WarPolicy.parse(row.getField(header.war_policy)));
+        nation.setCities(Integer.parseInt(row.getField(header.cities)));
+        nation.setScore(Double.parseDouble(row.getField(header.score)));
+        if (header.wars_won > 0) {
+            nation.setWars_won(Integer.parseInt(row.getField(header.wars_won)));
+        }
+        if (header.wars_lost > 0) {
+            nation.setWars_lost(Integer.parseInt(row.getField(header.wars_lost)));
+        }
+//        nation.setBeigeTimer();
 
-
-        checkProject(nation, row, header.ironworks_np, Projects.IRON_WORKS);
-        checkProject(nation, row, header.bauxiteworks_np, Projects.BAUXITEWORKS);
-        checkProject(nation, row, header.arms_stockpile_np, Projects.ARMS_STOCKPILE);
-        checkProject(nation, row, header.emergency_gasoline_reserve_np, Projects.EMERGENCY_GASOLINE_RESERVE);
-        checkProject(nation, row, header.mass_irrigation_np, Projects.MASS_IRRIGATION);
-        checkProject(nation, row, header.international_trade_center_np, Projects.INTERNATIONAL_TRADE_CENTER);
-        checkProject(nation, row, header.missile_launch_pad_np, Projects.MISSILE_LAUNCH_PAD);
-        checkProject(nation, row, header.nuclear_research_facility_np, Projects.NUCLEAR_RESEARCH_FACILITY);
-        checkProject(nation, row, header.iron_dome_np, Projects.IRON_DOME);
-        checkProject(nation, row, header.vital_defense_system_np, Projects.VITAL_DEFENSE_SYSTEM);
-        checkProject(nation, row, header.intelligence_agency_np, Projects.INTELLIGENCE_AGENCY);
-        checkProject(nation, row, header.center_for_civil_engineering_np, Projects.CENTER_FOR_CIVIL_ENGINEERING);
-        checkProject(nation, row, header.propaganda_bureau_np, Projects.PROPAGANDA_BUREAU);
-        checkProject(nation, row, header.uranium_enrichment_program_np, Projects.URANIUM_ENRICHMENT_PROGRAM);
-        checkProject(nation, row, header.urban_planning_np, Projects.URBAN_PLANNING);
-        checkProject(nation, row, header.advanced_urban_planning_np, Projects.ADVANCED_URBAN_PLANNING);
-        checkProject(nation, row, header.space_program_np, Projects.SPACE_PROGRAM);
-        checkProject(nation, row, header.moon_landing_np, Projects.MOON_LANDING);
-        checkProject(nation, row, header.spy_satellite_np, Projects.SPY_SATELLITE);
-        checkProject(nation, row, header.pirate_economy_np, Projects.PIRATE_ECONOMY);
-        checkProject(nation, row, header.recycling_initiative_np, Projects.RECYCLING_INITIATIVE);
-        checkProject(nation, row, header.telecommunications_satellite_np, Projects.TELECOMMUNICATIONS_SATELLITE);
-        checkProject(nation, row, header.green_technologies_np, Projects.GREEN_TECHNOLOGIES);
-        checkProject(nation, row, header.clinical_research_center_np, Projects.CLINICAL_RESEARCH_CENTER);
-        checkProject(nation, row, header.specialized_police_training_program_np, Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
-        checkProject(nation, row, header.arable_land_agency_np, Projects.ARABLE_LAND_AGENCY);
-        checkProject(nation, row, header.advanced_engineering_corps_np, Projects.ADVANCED_ENGINEERING_CORPS);
-        checkProject(nation, row, header.government_support_agency_np, Projects.GOVERNMENT_SUPPORT_AGENCY);
-        checkProject(nation, row, header.research_and_development_center_np, Projects.RESEARCH_AND_DEVELOPMENT_CENTER);
-        checkProject(nation, row, header.resource_production_center_np, Projects.ACTIVITY_CENTER);
-        checkProject(nation, row, header.metropolitan_planning_np, Projects.METROPOLITAN_PLANNING);
-        checkProject(nation, row, header.military_salvage_np, Projects.MILITARY_SALVAGE);
-        checkProject(nation, row, header.fallout_shelter_np, Projects.FALLOUT_SHELTER);
-
-        checkProject(nation, row, header.ironworks_np, Projects.IRON_WORKS);
+        long projectBits = 0;
+        projectBits |= checkProject(nation, row, header.ironworks_np, Projects.IRON_WORKS);
+        projectBits |= checkProject(nation, row, header.bauxiteworks_np, Projects.BAUXITEWORKS);
+        projectBits |= checkProject(nation, row, header.arms_stockpile_np, Projects.ARMS_STOCKPILE);
+        projectBits |= checkProject(nation, row, header.emergency_gasoline_reserve_np, Projects.EMERGENCY_GASOLINE_RESERVE);
+        projectBits |= checkProject(nation, row, header.mass_irrigation_np, Projects.MASS_IRRIGATION);
+        projectBits |= checkProject(nation, row, header.international_trade_center_np, Projects.INTERNATIONAL_TRADE_CENTER);
+        projectBits |= checkProject(nation, row, header.missile_launch_pad_np, Projects.MISSILE_LAUNCH_PAD);
+        projectBits |= checkProject(nation, row, header.nuclear_research_facility_np, Projects.NUCLEAR_RESEARCH_FACILITY);
+        projectBits |= checkProject(nation, row, header.iron_dome_np, Projects.IRON_DOME);
+        projectBits |= checkProject(nation, row, header.vital_defense_system_np, Projects.VITAL_DEFENSE_SYSTEM);
+        projectBits |= checkProject(nation, row, header.intelligence_agency_np, Projects.INTELLIGENCE_AGENCY);
+        projectBits |= checkProject(nation, row, header.center_for_civil_engineering_np, Projects.CENTER_FOR_CIVIL_ENGINEERING);
+        projectBits |= checkProject(nation, row, header.propaganda_bureau_np, Projects.PROPAGANDA_BUREAU);
+        projectBits |= checkProject(nation, row, header.uranium_enrichment_program_np, Projects.URANIUM_ENRICHMENT_PROGRAM);
+        projectBits |= checkProject(nation, row, header.urban_planning_np, Projects.URBAN_PLANNING);
+        projectBits |= checkProject(nation, row, header.advanced_urban_planning_np, Projects.ADVANCED_URBAN_PLANNING);
+        projectBits |= checkProject(nation, row, header.space_program_np, Projects.SPACE_PROGRAM);
+        projectBits |= checkProject(nation, row, header.moon_landing_np, Projects.MOON_LANDING);
+        projectBits |= checkProject(nation, row, header.spy_satellite_np, Projects.SPY_SATELLITE);
+        projectBits |= checkProject(nation, row, header.pirate_economy_np, Projects.PIRATE_ECONOMY);
+        projectBits |= checkProject(nation, row, header.recycling_initiative_np, Projects.RECYCLING_INITIATIVE);
+        projectBits |= checkProject(nation, row, header.telecommunications_satellite_np, Projects.TELECOMMUNICATIONS_SATELLITE);
+        projectBits |= checkProject(nation, row, header.green_technologies_np, Projects.GREEN_TECHNOLOGIES);
+        projectBits |= checkProject(nation, row, header.clinical_research_center_np, Projects.CLINICAL_RESEARCH_CENTER);
+        projectBits |= checkProject(nation, row, header.specialized_police_training_program_np, Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
+        projectBits |= checkProject(nation, row, header.arable_land_agency_np, Projects.ARABLE_LAND_AGENCY);
+        projectBits |= checkProject(nation, row, header.advanced_engineering_corps_np, Projects.ADVANCED_ENGINEERING_CORPS);
+        projectBits |= checkProject(nation, row, header.government_support_agency_np, Projects.GOVERNMENT_SUPPORT_AGENCY);
+        projectBits |= checkProject(nation, row, header.research_and_development_center_np, Projects.RESEARCH_AND_DEVELOPMENT_CENTER);
+        projectBits |= checkProject(nation, row, header.resource_production_center_np, Projects.ACTIVITY_CENTER);
+        projectBits |= checkProject(nation, row, header.metropolitan_planning_np, Projects.METROPOLITAN_PLANNING);
+        projectBits |= checkProject(nation, row, header.military_salvage_np, Projects.MILITARY_SALVAGE);
+        projectBits |= checkProject(nation, row, header.fallout_shelter_np, Projects.FALLOUT_SHELTER);
+        projectBits |= checkProject(nation, row, header.advanced_pirate_economy_np, Projects.ADVANCED_PIRATE_ECONOMY);
+        projectBits |= checkProject(nation, row, header.bureau_of_domestic_affairs_np, Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+        projectBits |= checkProject(nation, row, header.mars_landing_np, Projects.MARS_LANDING);
+        projectBits |= checkProject(nation, row, header.surveillance_network_np, Projects.SURVEILLANCE_NETWORK);
+        nation.setProjectsRaw(projectBits);
 
         return nation;
     }
 
-    private void checkProject(DBNation nation, CsvRow row, int index, Project project) {
-        if (index <= 0) return;
-        if (Objects.equals(row.getField(index), "1")) nation.setProject(project);
+    private long checkProject(DBNation nation, CsvRow row, int index, Project project) {
+        if (index <= 0) return 0;
+        if (Objects.equals(row.getField(index), "1")) {
+            return 1L << project.ordinal();
+        }
+        return 0;
     }
 
     // nation_id,nation_name,leader_name,date_created,continent,latitude,longitude,leader_title,nation_title,score,population,flag_url,color,beige_turns_remaining,portrait_url,cities,gdp,currency,wars_won,wars_lost,alliance,alliance_id,alliance_position,soldiers,tanks,aircraft,ships,missiles,nukes,domestic_policy,war_policy,projects,ironworks_np,bauxiteworks_np,arms_stockpile_np,emergency_gasoline_reserve_np,mass_irrigation_np,international_trade_center_np,missile_launch_pad_np,nuclear_research_facility_np,iron_dome_np,vital_defense_system_np,intelligence_agency_np,center_for_civil_engineering_np,propaganda_bureau_np,uranium_enrichment_program_np,urban_planning_np,advanced_urban_planning_np,space_program_np,moon_landing_np,spy_satellite_np,pirate_economy_np,recycling_initiative_np,telecommunications_satellite_np,green_technologies_np,clinical_research_center_np,specialized_police_training_program_np,arable_land_agency_np,advanced_engineering_corps_np,vm_turns,government_support_agency_np,research_and_development_center_np,resource_production_center_np,metropolitan_planning_np,military_salvage_np,fallout_shelter_np
