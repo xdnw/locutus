@@ -97,7 +97,7 @@ public class CountCityMetric implements IAllianceMetric {
 
         importer.setCityReader(metric, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
             @Override
-            public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+            public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
                 int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                 Integer allianceId = allianceByNationId.get(nationId);
                 if (allianceId == null) return;

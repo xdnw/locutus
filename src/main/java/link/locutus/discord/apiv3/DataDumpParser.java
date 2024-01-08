@@ -894,17 +894,13 @@ public class DataDumpParser {
             File nationFile = entry.getValue();
             File cityFile = cityFilesByDay.get(entry.getKey());
             if (cityFile == null) continue;
-
             long day = entry.getKey();
-//            long turn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
-            long timestamp = TimeUtil.getTimeFromDay(day);
-
             if (nationRows != null) {
                 readAll(nationFile, (headerList, rows) -> {
                     NationHeader header = loadHeader(new NationHeader(), headerList);
                     while (rows.hasNext()) {
                         CsvRow row = rows.next();
-                        nationRows.consume(timestamp, header, row);
+                        nationRows.consume(day, header, row);
                     }
                 });
             }
@@ -914,7 +910,7 @@ public class DataDumpParser {
                     CityHeader header = loadHeader(new CityHeader(), headerList);
                     while (rows.hasNext()) {
                         CsvRow row = rows.next();
-                        cityRows.consume(timestamp, header, row);
+                        cityRows.consume(day, header, row);
                     }
                 });
             }

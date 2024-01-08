@@ -472,7 +472,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
             importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -531,7 +531,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
             importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -679,7 +679,7 @@ public enum AllianceMetric implements IAllianceMetric {
             });
             importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long aLong, DataDumpParser.CityHeader cityHeader, ParsedRow parsedRow) {
+                public void consume(Long day, DataDumpParser.CityHeader cityHeader, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(cityHeader.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -770,7 +770,7 @@ public enum AllianceMetric implements IAllianceMetric {
             });
             importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long aLong, DataDumpParser.CityHeader cityHeader, ParsedRow parsedRow) {
+                public void consume(Long day, DataDumpParser.CityHeader cityHeader, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(cityHeader.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
