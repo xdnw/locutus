@@ -489,7 +489,6 @@ public class ParametricCallable implements ICommand {
 
     public Object call(Object instance, ValueStore store, Object[] paramVals) {
         try {
-            System.out.println("Instance | " + instance + " | " + method.getDeclaringClass() + " | " + method.getDeclaringClass().isInstance(instance));
             Object callOn = isStatic ? null : (!method.getDeclaringClass().isInstance(instance) ? this.object : instance);
             return method.invoke(callOn, paramVals);
         } catch (IllegalArgumentException e) {

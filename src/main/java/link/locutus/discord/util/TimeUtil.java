@@ -255,7 +255,8 @@ public class TimeUtil {
         return (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
     }
 
-    public static long getTurn(long timestamp) {
+    public static long getTurn(Long timestamp) {
+        if (timestamp == null) return getTurn();
         Instant instant = Instant.ofEpochMilli(timestamp);
         return getTurn(instant.atZone(ZoneOffset.UTC));
     }

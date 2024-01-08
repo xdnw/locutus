@@ -207,8 +207,6 @@ public final class Locutus extends ListenerAdapter {
 
         this.commandManager = new CommandManager(this);
         System.out.println("remove:|| commandmanager " + (((-start)) + (start = System.currentTimeMillis())));
-        this.commandManager.registerCommands(discordDB);
-        System.out.println("remove:|| registercommands " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.BOT_TOKEN.isEmpty()) {
             throw new IllegalStateException("Please set BOT_TOKEN in " + Settings.INSTANCE.getDefaultFile());
         }
@@ -257,6 +255,9 @@ public final class Locutus extends ListenerAdapter {
         ApiKeyPool v3Pool = ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY,Settings.INSTANCE.ACCESS_KEY).build();
         this.v3 = new PoliticsAndWarV3(v3Pool);
         System.out.println("remove:|| v3 " + (((-start)) + (start = System.currentTimeMillis())));
+
+        this.commandManager.registerCommands(discordDB);
+        System.out.println("remove:|| registercommands " + (((-start)) + (start = System.currentTimeMillis())));
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
             this.registerEvents();

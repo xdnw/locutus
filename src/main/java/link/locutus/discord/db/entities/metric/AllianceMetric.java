@@ -211,6 +211,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 String color = row.get(header.color, String::toString);
                 if (color.equalsIgnoreCase("gray") || color.equalsIgnoreCase("beige")) return;
                 DBNation nation = row.getNation(header, false, true);
+                if (nation == null) return;
                 nationMap.put(nation.getNation_id(), nation);
             });
 
@@ -1126,7 +1127,7 @@ public enum AllianceMetric implements IAllianceMetric {
     }
 
     @Override
-    public void setupReaders(AllianceMetric metric, DataDumpImporter importer) {
+    public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
         if (delegate != null) delegate.setupReaders(metric, importer);
         else setupReaders(importer);
     }
@@ -1168,8 +1169,8 @@ public enum AllianceMetric implements IAllianceMetric {
 
     public static synchronized void runDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, TriConsumer<IAllianceMetric, Long, Map<Integer, Double>> metricDayData) throws IOException, ParseException {
         DataDumpImporter importer = new DataDumpImporter(parser);
-        for (AllianceMetric metric : AllianceMetric.values) {
-            metric.setupReaders(importer);
+        for (IAllianceMetric metric : metrics) {
+            metric.setupReaders(metric, importer);
         }
 
         TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> nationRows = importer.getNationReader();
@@ -1187,9 +1188,8 @@ public enum AllianceMetric implements IAllianceMetric {
             }
         });
 
-        List<AllianceMetricValue> all = new ObjectArrayList<>();
-        for (AllianceMetric metric : AllianceMetric.values) {
-            all.addAll(metric.getAllValues());
+        for (IAllianceMetric metric : metrics) {
+            List<AllianceMetricValue> allValues = metric.getAllValues();
         }
     }
 

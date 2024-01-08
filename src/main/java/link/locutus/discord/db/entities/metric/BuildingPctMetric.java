@@ -43,7 +43,7 @@ public class BuildingPctMetric implements IAllianceMetric {
     private final Map<Integer, Integer> buildingsByAA = new Int2IntOpenHashMap();
 
     @Override
-    public void setupReaders(AllianceMetric metric, DataDumpImporter importer) {
+    public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
         importer.setNationReader(metric, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
             @Override
             public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {

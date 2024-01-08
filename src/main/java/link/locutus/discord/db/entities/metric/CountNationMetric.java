@@ -20,6 +20,7 @@ public class CountNationMetric implements IAllianceMetric {
     private final AllianceMetricMode mode;
     private final Predicate<DBNation> filter;
     private final Function<DataDumpParser.NationHeader, Integer> getHeader;
+    private Predicate<Integer> allianceFilter;
 
 
     public CountNationMetric(Function<DBNation, Number> countNation, AllianceMetricMode mode) {
@@ -45,8 +46,14 @@ public class CountNationMetric implements IAllianceMetric {
         this.filter = filter;
     }
 
+    public CountNationMetric allianceFilter(Predicate<Integer> filter) {
+        this.allianceFilter = filter;
+        return this;
+    }
+
     @Override
     public Double apply(DBAlliance alliance) {
+        if (allianceFilter != null && !allianceFilter.test(alliance.getId())) return null;
         double total = 0;
         int nations = 0;
         int cities = 0;
@@ -68,7 +75,7 @@ public class CountNationMetric implements IAllianceMetric {
     private final Map<Integer, Integer> countAllianceMetricModeByAA = new Int2IntOpenHashMap();
 
     @Override
-    public void setupReaders(AllianceMetric metric, DataDumpImporter importer) {
+    public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
         importer.setNationReader(metric, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
             @Override
             public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
@@ -76,11 +83,12 @@ public class CountNationMetric implements IAllianceMetric {
                 if (position <= Rank.APPLICANT.id) return;
                 int allianceId = row.get(header.alliance_id, Integer::parseInt);
                 if (allianceId == 0) return;
+                if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
                 int vmTurns = row.get(header.vm_turns, Integer::parseInt);
                 if (vmTurns > 0) return;
                 double amt;
                 if (getHeader != null) {
-                    amt = row.get(getHeader.apply(header), Double::parseDouble);
+                    amt = ((Number) row.get(getHeader.apply(header), Double::parseDouble)).doubleValue();
                 } else {
                     DBNation nation = row.getNation(header, false, true);
                     if (filter != null && !filter.test(nation)) return;

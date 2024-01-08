@@ -18,16 +18,15 @@ import java.util.stream.Collectors;
 public class UnitPctMetric implements IAllianceMetric {
     private final MilitaryUnit unit;
     private final Function<DataDumpParser.NationHeader, Integer> getHeader;
-    private final MilitaryBuilding building;
 
     public UnitPctMetric(MilitaryUnit unit, Function<DataDumpParser.NationHeader, Integer> getHeader) {
         this.unit = unit;
         this.getHeader = getHeader;
-        this.building = unit.getBuilding();
     }
     @Override
     public Double apply(DBAlliance alliance) {
         DBNation total = alliance.getMembersTotal();
+        MilitaryBuilding building = unit.getBuilding();
         return (double) total.getUnits(unit) / (total.getCities() * building.cap(f -> false) * building.getUnitCap());
     }
 
@@ -35,7 +34,7 @@ public class UnitPctMetric implements IAllianceMetric {
     private final Map<Integer, Integer> citiesByAA = new Int2IntOpenHashMap();
 
     @Override
-    public void setupReaders(AllianceMetric metric, DataDumpImporter importer) {
+    public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
         importer.setNationReader(metric, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
             @Override
             public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
@@ -55,6 +54,7 @@ public class UnitPctMetric implements IAllianceMetric {
 
     @Override
     public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
+        MilitaryBuilding building = unit.getBuilding();
         int unitsPerCity = building.cap(f -> false) * building.getUnitCap();
         Map<Integer, Double> result = unitsByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (citiesByAA.get(f.getKey()) * unitsPerCity)));
         unitsByAA.clear();

@@ -163,7 +163,7 @@ public class CommandManager {
         this.commandMap = new LinkedHashMap<>();
         this.executor = new ScheduledThreadPoolExecutor(256);
 
-        modernized = new CommandManager2().registerDefaults();
+        modernized = new CommandManager2();
     }
 
     public boolean isModernPrefix(char prefix) {
@@ -530,6 +530,9 @@ public class CommandManager {
     }
 
     public void registerCommands(DiscordDB db) {
+        if (modernized != null) {
+            modernized.registerDefaults();
+        }
         this.register(new RaidCommand());
         this.register(new PendingCommand());
         this.register(new ForumScrape());

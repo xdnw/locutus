@@ -8,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.MethodParser;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -16,8 +15,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
@@ -239,9 +236,11 @@ public abstract class Placeholders<T> extends BindingHelper {
             Method methodSet = this.getClass().getMethod("parseSet", ValueStore.class, String.class);
             Method methodPredicate = this.getClass().getMethod("parseFilter", ValueStore.class, String.class);
             Method methodFormat = this.getClass().getMethod("getFormatFunction", ValueStore.class, String.class);
+            Method methodDouble = this.getClass().getMethod("getDoubleFunction", ValueStore.class, String.class);
             registerCustom(methodSet, TypeToken.getParameterized(Set.class, this.instanceType).getType());
             registerCustom(methodPredicate, TypeToken.getParameterized(Predicate.class, this.instanceType).getType());
             registerCustom(methodFormat, TypeToken.getParameterized(TypedFunction.class, this.instanceType, String.class).getType());
+            registerCustom(methodDouble, TypeToken.getParameterized(TypedFunction.class, this.instanceType, Double.class).getType());
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -366,7 +365,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
         return f -> {
             Object value = func.apply(f);
-            System.out.println("Value " + f + " | " + value);
+            if (value instanceof String) return false;
             return adapter.test((T) value);
         };
     }
@@ -473,7 +472,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                             }
                         }
                         Object parsed = parseMath(s, param, true);
-                        return ResolvedFunction.create(parsed != null ? parsed.getClass() : Object.class, parsed, s);
+                        return ResolvedFunction.createConstant(parsed != null ? parsed.getClass() : Object.class, parsed, s);
                     };
                     List<LazyMathEntity<T>> lazies = ArrayUtil.calculate(input, s -> new LazyMathEntity<>(s, stringToParser, false));
                     if (lazies.size() == 1) {
@@ -481,11 +480,11 @@ public abstract class Placeholders<T> extends BindingHelper {
                         Object array = lazy.getOrNull();
                         Class type = param == null ? Double.class : (Class) param.getType();
                         if (array != null) {
-                            return TypedFunction.create(type, toObject(array, type, param), input);
+                            return TypedFunction.createConstant(type, toObject(array, type, param), input);
                         }
-                        return TypedFunction.create(type, f -> {
+                        return TypedFunction.createParents(type, f -> {
                             return toObject(lazy.resolve(f), type, param);
-                        }, input);
+                        }, input, functions.values());
                     }
                 } else if (!hasNonMath) {
                     if (hasCurlyBracket) {
@@ -518,10 +517,13 @@ public abstract class Placeholders<T> extends BindingHelper {
             // get function
             TypedFunction<T, ?> function = functions.get(section);
             if (function != null) {
+                System.out.println("Return function 1" + function.getName() + " | " + function.getType());
                 return function;
             }
+            System.out.println("Return non function section " + section);
             return new ResolvedFunction<>(String.class, section, section);
         }
+        System.out.println("Multiple sections " + sections);
         boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ResolvedFunction.class::isInstance);
         Function<T, Object> result = f -> {
             StringBuilder resultStr = new StringBuilder();
@@ -538,7 +540,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (isResolved) {
             return new ResolvedFunction<>(String.class, result.apply(null), input);
         }
-        return TypedFunction.create(String.class, result, input);
+        return TypedFunction.createParents(String.class, result, input, functions.values());
     }
 
     private Object toObject(Object expr, Class type, ParameterData param) {
@@ -645,7 +647,7 @@ public abstract class Placeholders<T> extends BindingHelper {
     private TypedFunction<T, ?> evaluateFunction(ValueStore store, String functionContent, int depth, boolean throwError) {
         TypedFunction<T, ?> previousFunc = null;
         if (functionContent.equalsIgnoreCase("this")) {
-            return TypedFunction.create(getType(), Function.identity(), "this");
+            return TypedFunction.createParents(getType(), Function.identity(), "this", null);
         }
         List<String> split = StringMan.split(functionContent, ".");
         if (split.isEmpty()) {
@@ -706,12 +708,12 @@ public abstract class Placeholders<T> extends BindingHelper {
             if (previousFunc == null) {
                 previousFunc = function;
             } else if (function.isResolved()){
-                previousFunc = ResolvedFunction.create(function.getType(), function.applyCached(null), functionContent);
+                previousFunc = ResolvedFunction.createConstant(function.getType(), function.applyCached(null), functionContent);
             } else if (previousFunc.isResolved()) {
                 Object value = previousFunc.applyCached(null);
-                previousFunc = ResolvedFunction.create(function.getType(), function.applyCached(value), functionContent);
+                previousFunc = ResolvedFunction.createConstant(function.getType(), function.applyCached(value), functionContent);
             } else {
-                previousFunc = TypedFunction.create(function.getType(), previousFunc.andThen(function), functionContent);
+                previousFunc = TypedFunction.createParent(function.getType(), previousFunc.andThen(function), functionContent, previousFunc);
             }
         }
         return previousFunc;
@@ -757,9 +759,9 @@ public abstract class Placeholders<T> extends BindingHelper {
         BiFunction<T, Object[], Object> format = (object, paramVals) -> command.call(object, store, paramVals);
         if (isResolved) {
             Object[] argArr = resolved.apply(null);
-            return TypedFunction.create(command.getReturnType(), f -> format.apply(f, argArr), "{" + full.toString() + "}");
+            return TypedFunction.createParents(command.getReturnType(), f -> format.apply(f, argArr), "{" + full.toString() + "}", null);
         }
-        return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)), "{" + full.toString() + "}");
+        return TypedFunction.createParents(command.getReturnType(), f -> format.apply(f, resolved.apply(f)), "{" + full.toString() + "}", null);
     }
 
     public abstract String getName(T o);
@@ -830,6 +832,25 @@ public abstract class Placeholders<T> extends BindingHelper {
         return getFormatFunction(store, arg, true);
     }
 
+    @Binding(value = "Format text containing placeholders")
+    public TypedFunction<T, Double> getDoubleFunction(ValueStore store, String arg) {
+        TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, true);
+        Class type = (Class) result.getType();
+        if (type == boolean.class || type == Boolean.class) {
+            return TypedFunction.createParent(Double.class, t -> {
+                Object value = result.applyCached(t);
+                return value == null ? 0 : ((Boolean) value) ? 1d : 0d;
+            }, result.getName(), result);
+        } else if (type == byte.class || type == Byte.class || type == short.class || type == Short.class || type == int.class || type == Integer.class || type == long.class || type == Long.class || type == float.class || type == Float.class || type == double.class || type == Double.class || type == Number.class) {
+            return TypedFunction.createParent(Double.class, f -> {
+                Object value = result.applyCached((T) f);
+                return value == null ? 0 : ((Number) value).doubleValue();
+            }, result.getName(), result);
+        } else {
+            throw new IllegalArgumentException("Only the following filter types are supported: Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "` | input: `" + result.getName() + "`");
+        }
+    }
+
     public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg, boolean throwError) {
         return getFormatFunction(store, arg, null, throwError);
     }
@@ -845,16 +866,16 @@ public abstract class Placeholders<T> extends BindingHelper {
             Object value = result.applyCached(null);
             String valueStr = value == null ? null : value.toString();
             if (startsWithEquals) valueStr = "=" + valueStr;
-            return TypedFunction.create(String.class, valueStr, result.getName());
+            return TypedFunction.createConstant(String.class, valueStr, result.getName());
         } else {
-            return TypedFunction.create(String.class, f -> {
+            return TypedFunction.createParent(String.class, f -> {
                 Object value = result.applyCached((T) f);
                 String str = value == null ? null : value.toString();
                 if (startsWithEquals && str != null) {
                     str = "=" + value;
                 }
                 return str;
-            }, result.getName());
+            }, result.getName(), result);
         }
     }
 

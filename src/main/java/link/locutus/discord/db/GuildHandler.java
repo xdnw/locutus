@@ -2203,13 +2203,14 @@ public class GuildHandler {
 
         Role milcom = Roles.ENEMY_BEIGE_ALERT_AUDITOR.toRole(db.getGuild());
         if (!allowed) {
-            boolean sendMail = GuildKey.BEIGE_VIOLATION_MAIL.getOrNull(db) != Boolean.FALSE;
+            boolean sendMail = GuildKey.BEIGE_VIOLATION_MAIL.getOrNull(db) == Boolean.TRUE;
 
             String ping = "";
             if (milcom != null) ping += milcom.getAsMention();
             if (user != null) ping += user.getAsMention();
 
             String explanation = getBeigeCyclingInfo(allowedReasons, !allowed);
+            explanation += "\n\nSent from " + guild.toString();
 
             if (!ping.isEmpty()) {
                 RateLimitUtil.queueWhenFree(channel.sendMessage("^" + ping));
@@ -2682,7 +2683,12 @@ public class GuildHandler {
                     body += "\n\nSee: " + CM.escrow.withdraw.cmd.toSlashMention();
 
                     IMessageIO io = new DiscordChannelIO(channel);
-                    io.create().embed(title, body).send();
+                    IMessageBuilder msg = io.create().embed(title, body);
+                    msg = msg.commandButton(CM.escrow.withdraw.cmd.create(receiver.getQualifiedId(), PnwUtil.resourcesToString(escrowed), "true"), "send");
+                    if (!mentions.isEmpty()) {
+                        msg = msg.append(StringMan.join(mentions, ", "));
+                    }
+                    msg.send();
                 }
 
             } catch (IOException e) {

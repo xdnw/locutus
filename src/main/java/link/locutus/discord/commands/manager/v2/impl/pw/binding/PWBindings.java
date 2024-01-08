@@ -46,6 +46,7 @@ import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.db.entities.metric.AllianceMetricMode;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -1553,6 +1554,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public MessageTrigger trigger(String trigger) {
         return emum(MessageTrigger.class, trigger);
+    }
+
+    @Binding
+    public AllianceMetricMode AllianceMetricMode(String mode) {
+        return emum(AllianceMetricMode.class, mode);
     }
 
 }

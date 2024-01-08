@@ -557,7 +557,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         body.append("**Deposits:**\n`" + PnwUtil.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
 
-        body.append("**Total:**\n`" + PnwUtil.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalPair.getKey())) + "\n");
+        body.append("**To Withdraw:**\n`" + PnwUtil.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalPair.getKey())) + "\n");
         if (totalPair.getValue() > 0) {
             body.append("Expires: " + DiscordUtil.timestamp(totalPair.getValue(), null) + "\n");
         }

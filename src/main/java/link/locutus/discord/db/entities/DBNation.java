@@ -93,6 +93,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -457,17 +458,17 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "The number of turns until the color timer expires")
     public long getColorTurns() {
-        return Math.max(0, colorTimer - TimeUtil.getTurn());
+        return Math.max(0, getColorAbsoluteTurn() - TimeUtil.getTurn(getSnapshot()));
     }
 
     @Command(desc = "The number of turns until the domestic policy timer expires")
             public long getDomesticPolicyTurns() {
-        return Math.max(0, domesticPolicyTimer - TimeUtil.getTurn());
+        return Math.max(0, getDomesticPolicyAbsoluteTurn() - TimeUtil.getTurn(getSnapshot()));
     }
 
     @Command(desc = "The number of turns until the war policy timer expires")
     public long getWarPolicyTurns() {
-        return Math.max(0, warPolicyTimer - TimeUtil.getTurn());
+        return Math.max(0, getWarPolicyAbsoluteTurn() - TimeUtil.getTurn(getSnapshot()));
     }
 
     //    public boolean addBalance(GuildDB db, ResourceType type, double amt, String note) {
@@ -686,7 +687,7 @@ public class DBNation implements NationOrAlliance {
         return new AbstractMap.SimpleEntry<>(value, loot != null);
     }
 
-    public Long getSnapshot() {
+    public @Nullable Long getSnapshot() {
         return null;
     }
 
@@ -1771,7 +1772,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long cutOff, boolean priority) throws IOException {
-        long start = System.currentTimeMillis();
         Map<DepositType, double[]> result = getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
         double[] total = new double[ResourceType.values.length];
         for (Map.Entry<DepositType, double[]> entry : result.entrySet()) {
@@ -1839,7 +1839,7 @@ public class DBNation implements NationOrAlliance {
     public long daysSinceConsecutiveLogins(long checkPastXDays, int sequentialDays) {
         long currentDay = TimeUtil.getDay();
         long turns = checkPastXDays * 12 + 11;
-        List<Long> logins = new ArrayList<>(Locutus.imp().getNationDB().getActivityByDay(nation_id, TimeUtil.getTurn() - turns));
+        List<Long> logins = new ArrayList<>(Locutus.imp().getNationDB().getActivityByDay(nation_id, TimeUtil.getTurn(getSnapshot()) - turns));
         Collections.reverse(logins);
         int tally = 0;
         long last = 0;
@@ -1899,7 +1899,7 @@ public class DBNation implements NationOrAlliance {
         if (!update && updateThreshold > 0) {
             Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
             if (updateThreshold < Long.MAX_VALUE) {
-                if (tx == null || tx.tx_datetime < last_active) update = true;
+                if (tx == null || tx.tx_datetime < lastActiveMs()) update = true;
                 else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
             }
         }
@@ -2939,7 +2939,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Number of turns in Vacation Mode (VM)")
     public int getVm_turns() {
         if (leaving_vm == 0) return 0;
-        long currentTurn = TimeUtil.getTurn();
+        long currentTurn = TimeUtil.getTurn(getSnapshot());
         if (leaving_vm <= currentTurn) return 0;
         return (int) (leaving_vm - currentTurn);
     }
@@ -3045,17 +3045,17 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Number of offensive and defensive wars since date")
     public int getNumWarsSince(long date) {
-        return Locutus.imp().getWarDb().countWarsByNation(nation_id, date);
+        return Locutus.imp().getWarDb().countWarsByNation(nation_id, date, getSnapshot());
     }
 
     @Command(desc = "Number of offensive wars since date")
     public int getNumOffWarsSince(long date) {
-        return Locutus.imp().getWarDb().countOffWarsByNation(nation_id, date);
+        return Locutus.imp().getWarDb().countOffWarsByNation(nation_id, date, getSnapshot() == null ? Long.MAX_VALUE : getSnapshot());
     }
 
     @Command(desc = "Number of defensive wars since date")
     public int getNumDefWarsSince(long date) {
-        return Locutus.imp().getWarDb().countDefWarsByNation(nation_id, date);
+        return Locutus.imp().getWarDb().countDefWarsByNation(nation_id, date, getSnapshot() == null ? Long.MAX_VALUE : getSnapshot());
     }
 
     @Command(desc = "Number of active defensive wars")
@@ -3204,7 +3204,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public int active_m() {
-        return (int) TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - last_active);
+        return (int) TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - lastActiveMs());
     }
 
     @Override
@@ -3311,7 +3311,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, DBCity> cityObj = _getCitiesV3();
         if (cityObj == null) cityObj = Collections.emptyMap();
 
-        if (nation_id > 0) {
+        if (nation_id > 0 && getSnapshot() == null) {
             if (updateNewCities && cityObj.size() != cities) force = true;
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
@@ -3732,6 +3732,9 @@ public class DBNation implements NationOrAlliance {
         } else {
             bans = Locutus.imp().getNationDB().getBansForNation(nation_id);
         }
+        if (getSnapshot() != null) {
+            bans.removeIf(ban -> ban.date < getSnapshot());
+        }
         return bans;
     }
 
@@ -3993,7 +3996,11 @@ public class DBNation implements NationOrAlliance {
     @Command
     public int getNumReports() {
         ReportManager reportManager = Locutus.imp().getNationDB().getReportManager();
-        return reportManager.loadReports(getId(), getUserId(), null, null).size();
+        List<ReportManager.Report> reports = reportManager.loadReports(getId(), getUserId(), null, null);
+        if (getSnapshot() != null) {
+            reports.removeIf(report -> report.date < getSnapshot());
+        }
+        return reports.size();
     }
 
     public int getRemainingUnitBuy(MilitaryUnit unit, long timeSince) {
@@ -4723,7 +4730,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Game turns left on the beige color bloc")
     public int getBeigeTurns() {
         if (!isBeige()) return 0;
-        long turn = TimeUtil.getTurn();
+        long turn = TimeUtil.getTurn(getSnapshot());
         if (turn >= beigeTimer) {
             return 24;
         } else {
@@ -4815,7 +4822,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "If this nation is not daily active and lost their most recent war")
     public boolean lostInactiveWar() {
         if (getActive_m() < 2880) return false;
-        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id);
+        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, getSnapshot());
         if (lastWar != null && lastWar.getDefender_id() == nation_id && lastWar.getStatus() == WarStatus.ATTACKER_VICTORY) {
             long lastActiveCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(Math.max(active_m() + 1220, 7200));
             if (lastWar.getDate() > lastActiveCutoff) return true;
@@ -4825,7 +4832,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Turns left on the city timer")
     public long getCityTurns() {
-        return (cityTimer - TimeUtil.getTurn());
+        return (getCityTimerAbsoluteTurn() - TimeUtil.getTurn(getSnapshot()));
     }
 
     @Command(desc = "Absolute turn the city time ends before being able to buy a city")
@@ -4835,7 +4842,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Turns left on the project timer before being able to buy a project")
     public long getProjectTurns() {
-        return (projectTimer - TimeUtil.getTurn());
+        return (getProjectAbsoluteTurn() - TimeUtil.getTurn(getSnapshot()));
     }
 
     public void setMMR(double barracks, double factories, double hangars, double drydocks) {
@@ -5031,7 +5038,7 @@ public class DBNation implements NationOrAlliance {
     public long getTradeQuantity(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter, @Switch("n") boolean net) {
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
 
-        if (dateEnd == null) dateEnd = Long.MAX_VALUE;
+        if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
@@ -5068,7 +5075,7 @@ public class DBNation implements NationOrAlliance {
         String funcStr = "getTradeAvgPpu(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
-        if (dateEnd == null) dateEnd = Long.MAX_VALUE;
+        if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
@@ -5107,7 +5114,7 @@ public class DBNation implements NationOrAlliance {
         String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
 
-        if (dateEnd == null) dateEnd = Long.MAX_VALUE;
+        if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
@@ -5232,10 +5239,6 @@ public class DBNation implements NationOrAlliance {
         return new HashMap<>();
     }
 
-    public Set<DBWar> getActiveWarsByStatus(WarStatus... statuses) {
-        return Locutus.imp().getWarDb().getWarsByNation(nation_id, statuses);
-    }
-
     @Command(desc = "If fighting a war against another active nation")
     public boolean isFightingActive() {
         if (getDef() > 0) return true;
@@ -5270,6 +5273,21 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Set<DBWar> getActiveWars() {
+        if (getSnapshot() != null) {
+            long end = getSnapshot();
+            long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(end) - 59);
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation_id, f -> f.getDate() > start && f.getDate() < end);
+            if (wars.isEmpty()) {
+                return wars;
+            }
+            Locutus.imp().getWarDb().getAttacksByWar(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE, f -> {
+                if (f.getDate() <= end) {
+                    wars.remove(new ArrayUtil.IntKey(f.getWar_id()));
+                }
+                return false;
+            }, f -> false);
+            return wars;
+        }
         return Locutus.imp().getWarDb().getActiveWars(nation_id);
     }
 
@@ -5290,6 +5308,9 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Set<DBWar> getWars() {
+        if (getSnapshot() != null) {
+            return Locutus.imp().getWarDb().getWarsByNationMatching(nation_id, f -> f.getDate() < getSnapshot());
+        }
         return Locutus.imp().getWarDb().getWarsByNation(nation_id);
     }
 
@@ -5377,8 +5398,14 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "If there is remaining purchase for a unit today")
     public boolean hasUnitBuyToday(MilitaryUnit unit) {
-        long turnDayStart = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - TimeUtil.getDayTurn());
-        return Locutus.imp().getNationDB().hasBought(this, unit, turnDayStart);
+        long turnDayStart;
+        if (getSnapshot() != null) {
+            long turn = TimeUtil.getTurn(getSnapshot());
+            turnDayStart = TimeUtil.getTimeFromTurn(turn - turn % 12);
+        } else {
+            turnDayStart = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - TimeUtil.getDayTurn());
+        }
+        return Locutus.imp().getNationDB().hasBought(this, unit, turnDayStart, getSnapshot());
     }
 
     @Command(desc = "purchased soldiers today")
@@ -5913,7 +5940,7 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(Roles.MILCOM)
     public double getMoneyLooted() {
         double total = 0;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0, getSnapshot() == null ? Long.MAX_VALUE : getSnapshot());
         for (AbstractCursor attack : attacks) {
             if (attack.getAttacker_id() == nation_id) {
                 double[] loot = attack.getLoot();
@@ -5938,7 +5965,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "If espionage slots are full")
     public boolean isEspionageFull() {
-        return this.getVm_turns() > 0 || this.espionageFull > TimeUtil.getTurn();
+        return this.getVm_turns() > 0 || this.getEspionageFullTurn() > TimeUtil.getTurn(getSnapshot());
     }
 
     @Command(desc = "If there are remaining espionage slots")
@@ -6009,7 +6036,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since their last offensive war")
     public double daysSinceLastOffensive() {
         if (getOff() > 0) return 0;
-        DBWar last = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id);
+        DBWar last = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, getSnapshot());
         if (last != null) {
             long diff = System.currentTimeMillis() - last.getDate();
             return ((double) diff) / TimeUnit.DAYS.toMillis(1);
@@ -6020,7 +6047,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since last defensive war")
     public double daysSinceLastDefensiveWarLoss() {
         long maxDate = 0;
-        for (DBWar war : Locutus.imp().getWarDb().getWarsByNation(nation_id)) {
+        for (DBWar war : getWars()) {
             if (war.getDefender_id() == nation_id && war.getStatus() == WarStatus.ATTACKER_VICTORY) {
                 maxDate = Math.max(maxDate, war.getDate());
             }
@@ -6031,7 +6058,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since last war")
     public double daysSinceLastWar() {
         if (getNumWars() > 0) return 0;
-        DBWar last = Locutus.imp().getWarDb().getLastWar(nation_id);
+        DBWar last = Locutus.imp().getWarDb().getLastWar(nation_id, getSnapshot());
         if (last != null) {
             long diff = System.currentTimeMillis() - last.getDate();
             return ((double) diff) / TimeUnit.DAYS.toMillis(1);
@@ -6331,22 +6358,22 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Has any bounties placed on them to defeat them in war or detonate a nuke")
     public boolean hasBounty() {
-        return !Locutus.imp().getWarDb().getBounties(nation_id).isEmpty();
+        return !getBounties().isEmpty();
     }
 
     @Command(desc = "Has any bounties placed on them to defeat them in war")
     public boolean hasWarBounty() {
-        return !Locutus.imp().getWarDb().getBounties(nation_id).isEmpty();
+        return !getBounties().isEmpty();
     }
 
     @Command(desc = "Has any bounties placed on them to detonate a nuke")
     public boolean hasNukeBounty() {
-        return Locutus.imp().getWarDb().getBounties(nation_id).stream().anyMatch(f -> f.getType() == WarType.NUCLEAR);
+        return getBounties().stream().anyMatch(f -> f.getType() == WarType.NUCLEAR);
     }
 
     @Command(desc = "Maximum total bounty placed on them of any type")
     public double maxBountyValue() {
-        Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(nation_id);
+        Set<DBBounty> bounties = getBounties();
         if (bounties.isEmpty()) return 0;
         if (bounties.size() == 1) return bounties.iterator().next().getAmount();
         Map<WarType, Double> sumByType = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingDouble(DBBounty::getAmount)));
@@ -6382,24 +6409,4 @@ public class DBNation implements NationOrAlliance {
     public double attritionBountyValue() {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ATT).mapToLong(DBBounty::getAmount).sum();
     }
-
-
-//    public double getWarDamageValue(Predicate<DBWar> warFilter, Predicate<AttackType> typeFilter, Predicate<AbstractCursor> attackFilter) {
-//        Set<DBWar> wars = new ObjectOpenHashSet<>();
-//        for (DBWar war : getWars()) {
-//            if (warFilter.test(war)) {
-//                wars.add(war);
-//            }
-//        }
-//
-//        AttackCost cost = new AttackCost()
-//
-//        Locutus.imp().getWarDb().iterateAttacks(wars, typeFilter, attackFilter, new Consumer<AbstractCursor>() {
-//            @Override
-//            public void accept(AbstractCursor abstractCursor) {
-//
-//            }
-//        });
-//
-//    }
 }
