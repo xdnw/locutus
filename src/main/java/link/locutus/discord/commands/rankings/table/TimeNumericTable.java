@@ -21,12 +21,18 @@ import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
@@ -66,6 +72,59 @@ public abstract class TimeNumericTable<T> {
     public TimeNumericTable<T> setBar(boolean bar) {
         isBar = bar;
         return this;
+    }
+
+    public static TimeNumericTable metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
+        Set<DBNation> coalitionNations = new HashSet<>();
+        for (NationOrAlliance natOrAA : coalition) {
+            coalitionNations.addAll(natOrAA.getDBNations());
+        }
+        coalitionNations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        NationAttributeDouble[] metricsArr = metrics.toArray(new NationAttributeDouble[0]);
+        String[] labels = metrics.stream().map(NationAttribute::getName).toArray(String[]::new);
+
+        NationList coalitionList = new SimpleNationList(coalitionNations);
+
+        Function<DBNation, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
+        Map<Integer, NationList> byTier = coalitionList.groupBy(groupByInt);
+        int min = coalitionList.stream(groupByInt).min(Integer::compare).get();
+        int max = coalitionList.stream(groupByInt).max(Integer::compare).get();
+
+        double[] buffer = new double[metricsArr.length];
+        String labelY = labels.length == 1 ? labels[0] : "metric";
+        String title = (total ? "Total" : "Average") + " " + labelY + " by " + groupBy.getName();
+        TimeNumericTable<NationList> table = new TimeNumericTable<>(title, groupBy.getName(), labelY, labels) {
+            @Override
+            public void add(long key, NationList nations) {
+                if (nations == null) {
+                    Arrays.fill(buffer, 0);
+                } else {
+                    for (int i = 0; i < metricsArr.length; i++) {
+                        NationAttributeDouble metric = metricsArr[i];
+                        double valueTotal = 0;
+                        int count = 0;
+
+                        for (DBNation nation : nations.getNations()) {
+                            if (nation.hasUnsetMil()) continue;
+                            count++;
+                            valueTotal += metric.apply(nation);
+                        }
+                        if (count > 1 && !total) {
+                            valueTotal /= count;
+                        }
+
+                        buffer[i] = valueTotal;
+                    }
+                }
+                add(key, buffer);
+            }
+        };
+
+        for (int key = min; key <= max; key++) {
+            NationList nations = byTier.get(key);
+            table.add(key, nations);
+        }
+        return table;
     }
 
     public static TimeNumericTable<Void> createForContinents(Set<Continent> continents, long start, long end) {

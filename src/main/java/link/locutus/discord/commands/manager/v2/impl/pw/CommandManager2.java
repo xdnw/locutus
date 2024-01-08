@@ -174,7 +174,7 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("admin", "sync"), "saveMetrics", "saveMetrics");
-
+        getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_tier", "metricByGroup"), "metricByGroup", "metricByGroup");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_other", "data_csv"), "AlliancesDataByDay", "AlliancesDataByDay");
 
         getCommands().registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertRequiredValue", "min_value");

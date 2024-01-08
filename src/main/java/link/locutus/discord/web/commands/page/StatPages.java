@@ -94,59 +94,9 @@ public class StatPages {
 
     @Command()
     public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
-        Set<DBNation> coalitionNations = new HashSet<>();
-        for (NationOrAlliance natOrAA : coalition) {
-            coalitionNations.addAll(natOrAA.getDBNations());
-        }
-        coalitionNations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        NationAttributeDouble[] metricsArr = metrics.toArray(new NationAttributeDouble[0]);
-        String[] labels = metrics.stream().map(NationAttribute::getName).toArray(String[]::new);
-
-        NationList coalitionList = new SimpleNationList(coalitionNations);
-
-        Function<DBNation, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
-        Map<Integer, NationList> byTier = coalitionList.groupBy(groupByInt);
-        int min = coalitionList.stream(groupByInt).min(Integer::compare).get();
-        int max = coalitionList.stream(groupByInt).max(Integer::compare).get();
-
-        double[] buffer = new double[metricsArr.length];
-        String labelY = labels.length == 1 ? labels[0] : "metric";
-        String title = (total ? "Total" : "Average") + " " + labelY + " by " + groupBy.getName();
-        TimeNumericTable<NationList> table = new TimeNumericTable<>(title, groupBy.getName(), labelY, labels) {
-            @Override
-            public void add(long key, NationList nations) {
-                if (nations == null) {
-                    Arrays.fill(buffer, 0);
-                } else {
-                    for (int i = 0; i < metricsArr.length; i++) {
-                        NationAttributeDouble metric = metricsArr[i];
-                        double valueTotal = 0;
-                        int count = 0;
-
-                        for (DBNation nation : nations.getNations()) {
-                            if (nation.hasUnsetMil()) continue;
-                            count++;
-                            valueTotal += metric.apply(nation);
-                        }
-                        if (count > 1 && !total) {
-                            valueTotal /= count;
-                        }
-
-                        buffer[i] = valueTotal;
-                    }
-                }
-                add(key, buffer);
-            }
-        };
-
-        for (int key = min; key <= max; key++) {
-            NationList nations = byTier.get(key);
-            table.add(key, nations);
-        }
-
+        TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         JsonObject json = table.toHtmlJson();
-
-        return rocker.data.barchartsingle.template(title, json, false).render().toString();
+        return rocker.data.barchartsingle.template(table.getName(), json, false).render().toString();
     }
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")

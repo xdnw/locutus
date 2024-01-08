@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
@@ -25,6 +26,7 @@ import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricMode;
 import link.locutus.discord.db.entities.metric.CountNationMetric;
 import link.locutus.discord.db.entities.metric.IAllianceMetric;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import org.jooq.meta.derby.sys.Sys;
@@ -55,6 +57,17 @@ public class AllianceMetricCommands {
             long time = TimeUtil.getTimeFromDay(day);
             return time >= finalStart && time <= finalEnd;
         };
+    }
+
+    @Command()
+    public void metricByGroup(@Me IMessageIO io, Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy,
+                                @Switch("i") boolean includeInactives,
+                                @Switch("a") boolean includeApplicants,
+                                @Switch("t") boolean total,
+                                @Switch("j") boolean attachJson,
+                                @Switch("c") boolean attachCsv) throws IOException {
+        TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
+        table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, false, false);
     }
 
     @Command
