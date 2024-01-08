@@ -270,7 +270,7 @@ public class RaidCommand extends Command {
 
         CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
 
-        double minScore = score * 0.75;
+        double minScore = score * PnwUtil.WAR_RANGE_MIN_MODIFIER;
         double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
         int count = 0;

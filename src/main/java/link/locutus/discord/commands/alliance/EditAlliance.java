@@ -10,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -55,7 +56,10 @@ public class EditAlliance extends Command {
         StringBuilder response = new StringBuilder();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        int allianceId = Integer.parseInt(args.get(0));
+        Integer allianceId = PnwUtil.parseAllianceId(args.get(0));
+        if (allianceId == null) {
+
+        }
         if (!db.isAllianceId(allianceId)) return "Alliance: " + allianceId + " is not registered to this guild.";
         DBAlliance aa = DBAlliance.getOrCreate(allianceId);
         Auth auth = aa.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
@@ -82,7 +86,7 @@ public class EditAlliance extends Command {
                     post.put(attr, value);
                     response.append("Attribute has been set.");
                 } else {
-                    response.append("Invalid key: " + attr + ". Options: " + StringMan.getString(post));
+                    response.append("Invalid key: " + attr + ". Options: " + StringMan.getString(post.keySet()));
                 }
             }
         });
