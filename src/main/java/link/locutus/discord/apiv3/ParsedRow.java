@@ -58,7 +58,7 @@ public class ParsedRow {
         if ((nationLoaded & LOADED) != 0 && (!allowVM || (nationLoaded & ALLOW_VM) == 0) && (!allowDeleted || (nationLoaded & ALLOW_DELETED) == 0)) return null;
         nationLoaded |= LOADED | (allowVM ? ALLOW_VM : 0) | (allowDeleted ? ALLOW_DELETED : 0);
         try {
-            nation = parser.loadNation(header, row, allowAll, allowVM, allowDeleted);
+            nation = parser.loadNation(header, row, allowAll, allowAll, allowVM, allowDeleted);
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }

@@ -53,10 +53,12 @@ import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class WarDB extends DBMainV2 {
 
@@ -1944,12 +1946,27 @@ public class WarDB extends DBMainV2 {
         return getWarsByNation(nation).stream().filter(f -> f.getAttacker_id() == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
+    public DBWar getLastOffensiveWar(int nation, Long beforeDate) {
+        Stream<DBWar> filter = getWarsByNation(nation).stream().filter(f -> f.getAttacker_id() == nation);
+        if (beforeDate != null) filter = filter.filter(f -> f.getDate() < beforeDate);
+        return filter.max(Comparator.comparingInt(o -> o.warId)).orElse(null);
+    }
+
     public DBWar getLastDefensiveWar(int nation) {
         return getWarsByNation(nation).stream().filter(f -> f.getDefender_id() == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
-    public DBWar getLastWar(int nationId) {
-        return getWarsByNation(nationId).stream().max(Comparator.comparingInt(o -> o.warId)).orElse(null);
+    public DBWar getLastDefensiveWar(int nation, Long beforeDate) {
+        Stream<DBWar> filter = getWarsByNation(nation).stream().filter(f -> f.getDefender_id() == nation);
+        if (beforeDate != null) filter = filter.filter(f -> f.getDate() < beforeDate);
+        return filter.max(Comparator.comparingInt(o -> o.warId)).orElse(null);
+
+    }
+
+    public DBWar getLastWar(int nationId, Long snapshot) {
+        Stream<DBWar> filter = getWarsByNation(nationId).stream();
+        if (snapshot != null) filter = filter.filter(f -> f.getDate() < snapshot);
+        return filter.max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
     public Set<DBWar> getWarsByNation(int nation, WarStatus... statuses) {
@@ -2686,34 +2703,41 @@ public class WarDB extends DBMainV2 {
         return ((start != 0 || end != Long.MAX_VALUE) ? query.between(start, end) : query).getList();
     }
 
+    public int countWarsByNation(int nation_id, long date, Long endDate) {
+        if (endDate == null || endDate == Long.MAX_VALUE) return countWarsByNation(nation_id, date);
+        synchronized (warsByNationId) {
+            Object wars = warsByNationId.get(nation_id);
+            return ArrayUtil.countElements(DBWar.class, wars, f -> f.getDate() >= date && f.getDate() <= endDate);
+        }
+    }
+
     public int countWarsByNation(int nation_id, long date) {
         if (date == 0) {
-            synchronized (warsByAllianceId) {
-                Object wars = warsByAllianceId.get(nation_id);
+            synchronized (warsByNationId) {
+                Object wars = warsByNationId.get(nation_id);
                 return ArrayUtil.countElements(DBWar.class, wars);
             }
         }
         synchronized (warsByNationId) {
             Object wars = warsByNationId.get(nation_id);
             if (wars == null) return 0;
-
             return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDate() > date);
         }
     }
 
-    public int countOffWarsByNation(int nation_id, long date) {
+    public int countOffWarsByNation(int nation_id, long startDate, long endDate) {
         synchronized (warsByNationId) {
             Object wars = warsByNationId.get(nation_id);
             if (wars == null) return 0;
-            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getAttacker_id() == nation_id && war.getDate() > date);
+            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getAttacker_id() == nation_id && war.getDate() > startDate && war.getDate() < endDate);
         }
     }
 
-    public int countDefWarsByNation(int nation_id, long date) {
+    public int countDefWarsByNation(int nation_id, long startDate, long endDate) {
         synchronized (warsByNationId) {
             Object wars = warsByNationId.get(nation_id);
             if (wars == null) return 0;
-            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDefender_id() == nation_id && war.getDate() > date);
+            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDefender_id() == nation_id && war.getDate() > startDate && war.getDate() < endDate);
         }
     }
 

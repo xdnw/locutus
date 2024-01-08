@@ -3586,11 +3586,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return getMilitary(nation, unit, time, true);
     }
 
-    public boolean hasBought(DBNation nation, MilitaryUnit unit, long time) {
+    public boolean hasBought(DBNation nation, MilitaryUnit unit, long time, Long snapshot) {
         int last = nation.getUnits(unit);
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_MIL_HISTORY WHERE id = ? AND unit = ? ORDER BY date DESC")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_MIL_HISTORY WHERE id = ? AND unit = ?" + (snapshot != null ? " AND date < ?" : "") + " ORDER BY date DESC")) {
             stmt.setInt(1, nation.getNation_id());
             stmt.setInt(2, unit.ordinal());
+            if (snapshot != null) stmt.setLong(3, snapshot);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int amt = rs.getInt("amount");

@@ -23,6 +23,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.DBNationSnapshot;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricValue;
@@ -75,6 +76,53 @@ public class DataDumpParser {
 
     public DataDumpParser() {
 
+    }
+
+    private File getNearest(Map<Long, File> map, long day) {
+        File nearest = null;
+        long nearestDiff = Long.MAX_VALUE;
+        for (Map.Entry<Long, File> entry : map.entrySet()) {
+            long diff = Math.abs(entry.getKey() - day);
+            if (diff < nearestDiff) {
+                nearestDiff = diff;
+                nearest = entry.getValue();
+            }
+        }
+        return nearest;
+    }
+
+    private File getNearestNationFile(long day) {
+        return getNearest(nationFilesByDay, day);
+    }
+
+    private File getNearestCityFile(long day) {
+        return getNearest(cityFilesByDay, day);
+    }
+
+    public Map<Integer, DBNation> getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, Predicate<DBNation> nationFilter) throws IOException, ParseException {
+        load();
+        File nationsFile = getNearestNationFile(day);
+        File citiesFile = getNearestCityFile(day);
+
+        Map<Integer, DBNation> nationsById = parseNationFile(nationsFile, allowedNations, allowedAlliances, includeVM, true);
+        Map<Integer, Map<Integer, DBCity>> dayCities = parseCitiesFile(citiesFile, nationsById::containsKey);
+        if (loadCities) {
+            Iterator<Map.Entry<Integer, DBNation>> iter = nationsById.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<Integer, DBNation> entry = iter.next();
+                DBNationSnapshot nation = (DBNationSnapshot) entry.getValue();
+                if (nationFilter != null && !nationFilter.test(nation)) {
+                    iter.remove();
+                    continue;
+                }
+                Map<Integer, DBCity> cityMap = dayCities.get(entry.getKey());
+                if (cityMap == null) continue;
+                nation.setCityMap(cityMap);
+            }
+        } else if (nationFilter != null) {
+            nationsById.entrySet().removeIf(entry -> !nationFilter.test(entry.getValue()));
+        }
+        return nationsById;
     }
 
     public static void main(String[] args) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
@@ -682,7 +730,7 @@ public class DataDumpParser {
             Map<Integer, DBNation> dayNations = parseNationFile(nationFile, id -> {
                 LootEntry minEntry = minLootDate.get(id);
                 return minEntry == null || minEntry.getDate() - twoDays <= currentTimestamp;
-            }, true, false);
+            }, f -> true, true, false);
             Map<Integer, Map<Integer, DBCity>> dayCities = parseCitiesFile(cityFile, dayNations::containsKey);
             Map<Integer, Map<Integer, JavaCity>> javaCities = new Int2ObjectOpenHashMap<>();
             for (Map.Entry<Integer, Map<Integer, DBCity>> nationCityEntry : dayCities.entrySet()) {
@@ -970,13 +1018,13 @@ public class DataDumpParser {
         }
     }
 
-    public Map<Integer, DBNation> parseNationFile(File file, Predicate<Integer> allowedNationIds, boolean allowVm, boolean allowDeleted) throws IOException {
+    public Map<Integer, DBNation> parseNationFile(File file, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted) throws IOException {
         Map<Integer, DBNation> result = new Int2ObjectOpenHashMap<>();
         readAll(file, (headerList, rows) -> {
             NationHeader header = loadHeader(new NationHeader(), headerList);
             while (rows.hasNext()) {
                 CsvRow row = rows.next();
-                DBNation nation = loadNation(header, row, allowedNationIds, allowVm, allowDeleted);
+                DBNation nation = loadNation(header, row, allowedNationIds, allowedAllianceIds, allowVm, allowDeleted);
                 if (nation != null) {
                     result.put(nation.getId(), nation);
                 }
@@ -1079,7 +1127,7 @@ public class DataDumpParser {
         return city;
     }
 
-    public DBNation loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, boolean allowVm, boolean allowDeleted) throws ParseException {
+    public DBNation loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted) throws ParseException {
         int vm_turns = Integer.MAX_VALUE;
         if (!allowVm) {
             vm_turns = Integer.parseInt(row.getField(header.vm_turns));
@@ -1108,11 +1156,13 @@ public class DataDumpParser {
                 nation.setLeaving_vm(TimeUtil.getTurn() + vm);
             }
         }
+        int aaId = Integer.parseInt(row.getField(header.alliance_id));
+        if (!allowedAllianceIds.test(aaId)) return null;
+        nation.setAlliance_id(aaId);
         nation.setNation_id(nationId);
 
         nation.setContinent(Continent.parseV3(row.getField(header.continent)));
         nation.setColor(NationColor.valueOf(row.getField(header.color).toUpperCase()));
-        nation.setAlliance_id(Integer.parseInt(row.getField(header.alliance_id)));
         nation.setPosition(Rank.byId(Integer.parseInt(row.getField(header.alliance_position))));
         nation.setSoldiers(Integer.parseInt(row.getField(header.soldiers)));
         nation.setTanks(Integer.parseInt(row.getField(header.tanks)));
