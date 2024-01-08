@@ -1719,6 +1719,7 @@ public class WarCommands {
         enemies.removeIf(nation -> {
             if (!isInSpyRange.apply(nation)) return true;
             if (nation.getVm_turns() > 0) return true;
+            if (nation.isEspionageFull()) return true;
             return false;
         });
 
