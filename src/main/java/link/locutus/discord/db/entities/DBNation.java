@@ -1469,14 +1469,9 @@ public class DBNation implements NationOrAlliance {
         }
         if (nation.getEspionage_available() != null) {
             if (nation.getEspionage_available() != (this.isEspionageAvailable())) {
-                if (nation.getEspionage_available()) {
-                    this.setEspionageFull(false);
-                } else {
-                    this.setEspionageFull(true);
-                }
+                this.setEspionageFull(!nation.getEspionage_available());
                 if (eventConsumer != null && this.getVm_turns() > 0) eventConsumer.accept(new NationChangeSpyFullEvent(copyOriginal, this));
             } else {
-                // Set to same so that last update can be tracked
                 this.setEspionageFull(this.isEspionageFull());
             }
         }
@@ -6169,8 +6164,11 @@ public class DBNation implements NationOrAlliance {
                 }
             }
             espionageFull = 0;
-        } else if (espionageFull == 0) {
-            espionageFull = TimeUtil.getTurn() + getTurnsTillDC();
+        } else {
+            long turn = TimeUtil.getTurn();
+            if (espionageFull == 0 || espionageFull <= turn) {
+                espionageFull = turn + getTurnsTillDC();
+            }
         }
     }
 
