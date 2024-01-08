@@ -72,13 +72,13 @@ public class AllianceMetricCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String saveMetrics(Set<AllianceMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end, @Switch("o") boolean overwrite) throws IOException, ParseException {
+    public String saveMetrics(Set<AllianceMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end, @Switch("o") boolean overwrite, @Switch("t") boolean saveAllTurns) throws IOException, ParseException {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (start == null) start = 0L;
         if (end == null) end = Long.MAX_VALUE;
         DataDumpParser parser = Locutus.imp().getDataDumper(true);
         Predicate<Long> dayFilter = dayFilter(start, end);
-        Map.Entry<Integer, Integer> changesDays = AllianceMetric.saveDataDump(parser, new ArrayList<>(metrics), dayFilter, overwrite);
+        Map.Entry<Integer, Integer> changesDays = AllianceMetric.saveDataDump(parser, new ArrayList<>(metrics), dayFilter, overwrite, saveAllTurns);
         return "Done. " + changesDays.getKey() + " changes made for " + changesDays.getValue() + " days.";
     }
 

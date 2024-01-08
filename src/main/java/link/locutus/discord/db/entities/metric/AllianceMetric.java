@@ -1145,11 +1145,11 @@ public enum AllianceMetric implements IAllianceMetric {
         return null;
     }
 
-    public static synchronized void saveDataDump(DataDumpParser parser, Predicate<Long> acceptDay, boolean overwrite) throws IOException, ParseException {
-        saveDataDump(parser, Arrays.asList(AllianceMetric.values), acceptDay, overwrite);
+    public static synchronized void saveDataDump(DataDumpParser parser, Predicate<Long> acceptDay, boolean overwrite, boolean saveAllTurns) throws IOException, ParseException {
+        saveDataDump(parser, Arrays.asList(AllianceMetric.values), acceptDay, overwrite, saveAllTurns);
     }
 
-    public static synchronized Map.Entry<Integer, Integer> saveDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, boolean overwrite) throws IOException, ParseException {
+    public static synchronized Map.Entry<Integer, Integer> saveDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, boolean overwrite, boolean saveAllTurns) throws IOException, ParseException {
         int[] count = {0, 0};
         if (acceptDay == null) acceptDay = f -> true;
         List<AllianceMetricValue> values = new ArrayList<>();
@@ -1159,7 +1159,14 @@ public enum AllianceMetric implements IAllianceMetric {
         };
         runDataDump(parser, metrics, acceptDay, (metric, day, value) -> {
             for (Map.Entry<Integer, Double> entry : value.entrySet()) {
-                values.add(new AllianceMetricValue(entry.getKey(), (AllianceMetric) metric, day * 12, entry.getValue()));
+                if (saveAllTurns) {
+                    for (int i = 0; i < 12; i++) {
+                        values.add(new AllianceMetricValue(entry.getKey(), (AllianceMetric) metric, day * 12 + i, entry.getValue()));
+                    }
+                } else {
+                    values.add(new AllianceMetricValue(entry.getKey(), (AllianceMetric) metric, day * 12, entry.getValue()));
+                }
+
             }
             if (values.size() > 10000) {
                 count[0] += values.size();
