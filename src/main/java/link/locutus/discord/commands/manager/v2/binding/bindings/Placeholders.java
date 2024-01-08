@@ -365,7 +365,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
         return f -> {
             Object value = func.apply(f);
-            System.out.println("Value " + f + " | " + value);
+            if (value instanceof String) return false;
             return adapter.test((T) value);
         };
     }

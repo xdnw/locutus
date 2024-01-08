@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonParseException;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -708,6 +709,11 @@ public class PnwUtil {
             }
         }
         return Map.entry(balance, response.toString());
+    }
+
+    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filter, Long snapshotDate, Guild guild, boolean loadCities) {
+        if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
+        throw new IllegalArgumentException("Not implemented");
     }
 
     private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {

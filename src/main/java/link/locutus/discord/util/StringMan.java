@@ -381,7 +381,7 @@ public class StringMan {
                     int matchingBracketIndex = StringMan.findMatchingBracket(str, i);
                     if (matchingBracketIndex != -1) {
                         String functionName = function.toString();
-                        if (isValidFunction.test(functionName)) {
+                        if (isValidFunction.test(functionName.split("\\.")[0])) {
                             String formatted = wrapHashFunctions(str.substring(i, matchingBracketIndex + 1), isValidFunction);
                             function.append(formatted);
                             i = matchingBracketIndex;
@@ -397,7 +397,7 @@ public class StringMan {
                         continue;
                     }
                 }
-                if (!(Character.isLetterOrDigit(c) || c == '_')) {
+                if (!(Character.isLetterOrDigit(c) || c == '_' || c == '.')) {
                     inFunction = false;
                     if (isValidFunction.test(function.toString())) {
                         result.append('{').append(function).append('}');

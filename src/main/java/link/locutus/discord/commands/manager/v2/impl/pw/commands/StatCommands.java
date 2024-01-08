@@ -1286,18 +1286,21 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions")
-    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList coalition1, NationList coalition2,
+    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList XXXcoalition1, NationList XXXcoalition2,
                                 @Switch("i") boolean includeInactives,
                                 @Switch("b") boolean barGraph,
                                 @Switch("a") boolean includeApplicants,
                                 @Switch("j") boolean attachJson,
-                                @Switch("c") boolean attachCsv) throws IOException {
+                                @Switch("c") boolean attachCsv,
+                                @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+        Set<DBNation> coalition1 = PnwUtil.getNationsSnapshot(XXXcoalition1.getNations(), XXXcoalition1.getFilter(), snapshotDate, db.getGuild(), true);
+        Set<DBNation> coalition2 = PnwUtil.getNationsSnapshot(XXXcoalition1.getNations(), XXXcoalition2.getFilter(), snapshotDate, db.getGuild(), true);
         Set<DBNation> allNations = new HashSet<>();
-        coalition1.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        coalition2.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        allNations.addAll(coalition1.getNations());
-        allNations.addAll(coalition2.getNations());
-        if (coalition1.getNations().isEmpty() || coalition2.getNations().isEmpty())
+        coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        allNations.addAll(coalition1);
+        allNations.addAll(coalition2);
+        if (coalition1.isEmpty() || coalition2.isEmpty())
             throw new IllegalArgumentException("No nations provided");
         int min = 0;
         int max = 0;
@@ -1305,9 +1308,9 @@ public class StatCommands {
         max++;
         int[] count1 = new int[max + 1];
         int[] count2 = new int[max + 1];
-        for (DBNation nation : coalition1.getNations()) count1[nation.getCities()]++;
-        for (DBNation nation : coalition2.getNations()) count2[nation.getCities()]++;
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by city count", "city", "nations", coalition1.getFilter(), coalition2.getFilter()) {
+        for (DBNation nation : coalition1) count1[nation.getCities()]++;
+        for (DBNation nation : coalition2) count2[nation.getCities()]++;
+        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by city count", "city", "nations", XXXcoalition1.getFilter(), XXXcoalition2.getFilter()) {
             @Override
             public void add(long cities, Void ignore) {
                 add(cities, count1[(int) cities], count2[(int) cities]);

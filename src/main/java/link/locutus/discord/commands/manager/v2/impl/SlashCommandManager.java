@@ -249,7 +249,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 toRegister.add(cmd);
             } catch (Throwable e) {
                 // print command
-                System.out.println("Error: " + id + " | " + callable.getFullPath());
+                System.out.println("Slash command error: " + id + " | " + callable.getFullPath());
                 if (callable instanceof ParametricCallable parametric) {
                     // print method and class
                     System.out.println(parametric.getMethod().getName() + " | " + parametric.getMethod().getDeclaringClass());
