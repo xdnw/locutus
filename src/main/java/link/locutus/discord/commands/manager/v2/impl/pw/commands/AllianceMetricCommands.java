@@ -73,12 +73,29 @@ public class AllianceMetricCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String saveMetrics(Set<AllianceMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end, @Switch("o") boolean overwrite) throws IOException, ParseException {
+        if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (start == null) start = 0L;
         if (end == null) end = Long.MAX_VALUE;
-        DataDumpParser parser = new DataDumpParser().load();
+        DataDumpParser parser = Locutus.imp().getDataDumper(true);
         Predicate<Long> dayFilter = dayFilter(start, end);
-        AllianceMetric.saveDataDump(parser, new ArrayList<>(metrics), dayFilter, overwrite);
-        return "Done";
+        Map.Entry<Integer, Integer> changesDays = AllianceMetric.saveDataDump(parser, new ArrayList<>(metrics), dayFilter, overwrite);
+        return "Done. " + changesDays.getKey() + " changes made for " + changesDays.getValue() + " days.";
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Turn " + TimeUtil.getTurn());
+
+        int turnsTillDC = getTurnsTillDC();
+        long newTurn = TimeUtil.getTurn() + getTurnsTillDC();
+        System.out.println("New turn " + newTurn + " > " + TimeUtil.getTurn());
+
+    }
+
+    private static int getTurnsTillDC() {
+        int dc_turn = 6;//-1;
+        int currentTurn = (int) TimeUtil.getDayTurn();
+        if (currentTurn >= dc_turn) return ((dc_turn + 12) - currentTurn);
+        return ( dc_turn - currentTurn);
     }
 
     @Command
@@ -114,7 +131,7 @@ public class AllianceMetricCommands {
         AtomicLong timer = new AtomicLong(System.currentTimeMillis());
         AtomicLong counter = new AtomicLong(0);
 
-        DataDumpParser parser = new DataDumpParser().load();
+        DataDumpParser parser = Locutus.imp().getDataDumper(true);
         Map<Long, double[]> valuesByDay = new Long2ObjectOpenHashMap<>();
         Set<DBAlliance> finalAlliances = alliances;
         AllianceMetric.runDataDump(parser, metrics, dayFilter, (imetric, day, value) -> {

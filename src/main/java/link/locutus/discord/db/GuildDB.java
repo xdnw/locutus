@@ -3396,27 +3396,26 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     private void loadRoles() {
-        if (!cachedRoleAliases) {
-            synchronized (roleToAccountToDiscord) {
-                if (cachedRoleAliases) return;
-                cachedRoleAliases = true;
-                try (PreparedStatement stmt = prepareQuery("select * FROM ROLES2")) {
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        while (rs.next()) {
-                            try {
-                                Roles role = Roles.getRoleById(rs.getInt("role"));
-                                if (role == null) continue;
-                                long alias = rs.getLong("alias");
-                                long alliance = rs.getLong("alliance");
-                                roleToAccountToDiscord.computeIfAbsent(role, f -> new ConcurrentHashMap<>()).put(alliance, alias);
-                            } catch (IllegalArgumentException ignore) {
-                                ignore.printStackTrace();
-                            }
+        if (cachedRoleAliases) return;
+        synchronized (roleToAccountToDiscord) {
+            if (cachedRoleAliases) return;
+            cachedRoleAliases = true;
+            try (PreparedStatement stmt = prepareQuery("select * FROM ROLES2")) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        try {
+                            Roles role = Roles.getRoleById(rs.getInt("role"));
+                            if (role == null) continue;
+                            long alias = rs.getLong("alias");
+                            long alliance = rs.getLong("alliance");
+                            roleToAccountToDiscord.computeIfAbsent(role, f -> new ConcurrentHashMap<>()).put(alliance, alias);
+                        } catch (IllegalArgumentException ignore) {
+                            ignore.printStackTrace();
                         }
                     }
-                } catch (SQLException e) {
-                    e.printStackTrace();
                 }
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
     }

@@ -1149,7 +1149,8 @@ public enum AllianceMetric implements IAllianceMetric {
         saveDataDump(parser, Arrays.asList(AllianceMetric.values), acceptDay, overwrite);
     }
 
-    public static synchronized void saveDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, boolean overwrite) throws IOException, ParseException {
+    public static synchronized Map.Entry<Integer, Integer> saveDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, boolean overwrite) throws IOException, ParseException {
+        int[] count = {0, 0};
         if (acceptDay == null) acceptDay = f -> true;
         List<AllianceMetricValue> values = new ArrayList<>();
         Runnable save = () -> {
@@ -1158,13 +1159,17 @@ public enum AllianceMetric implements IAllianceMetric {
         };
         runDataDump(parser, metrics, acceptDay, (metric, day, value) -> {
             for (Map.Entry<Integer, Double> entry : value.entrySet()) {
-                values.add(new AllianceMetricValue(entry.getKey(), (AllianceMetric) metric, day, entry.getValue()));
+                values.add(new AllianceMetricValue(entry.getKey(), (AllianceMetric) metric, day * 12, entry.getValue()));
             }
             if (values.size() > 10000) {
+                count[0] += values.size();
                 save.run();
             }
+            count[1]++;
         });
+        count[0] += values.size();
         save.run();
+        return Map.entry(count[0], count[1]);
     }
 
     public static synchronized void runDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, TriConsumer<IAllianceMetric, Long, Map<Integer, Double>> metricDayData) throws IOException, ParseException {
