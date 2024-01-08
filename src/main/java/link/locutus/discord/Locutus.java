@@ -134,6 +134,8 @@ public final class Locutus extends ListenerAdapter {
 
     private ProxyHandler proxyHandler;
     private GuildCustomMessageHandler messageHandler;
+    private DataDumpParser dataDumpParser;
+    private Object dataDumpParserLock = new Object();
 
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
@@ -1486,5 +1488,26 @@ public final class Locutus extends ListenerAdapter {
 
     public GuildCustomMessageHandler getMessageHandler() {
         return messageHandler;
+    }
+
+    public DataDumpParser getDataDumper(boolean throwError) {
+        if (!Settings.INSTANCE.DATABASE.DATA_DUMP.ENABLED) {
+            if (throwError) {
+                throw new RuntimeException("Data CSV parser not enabled. See: `config/config.yaml` setting `database.data-dump.enabled`");
+            }
+            return null;
+        }
+        synchronized (dataDumpParserLock) {
+            if (dataDumpParser == null) {
+                try {
+                    dataDumpParser = new DataDumpParser();
+                    dataDumpParser.load();
+                } catch (Throwable e) {
+                    Settings.INSTANCE.DATABASE.DATA_DUMP.ENABLED = false;
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return dataDumpParser;
     }
 }

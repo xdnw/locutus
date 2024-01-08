@@ -2267,6 +2267,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
 
         executeStmt("CREATE TABLE IF NOT EXISTS ALLIANCE_METRICS (alliance_id INT NOT NULL, metric INT NOT NULL, turn BIGINT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(alliance_id, metric, turn))");
+        executeStmt("DELETE FROM ALLIANCE_METRICS WHERE turn < " + TimeUtil.getTurn(TimeUtil.getOrigin()));
         executeStmt("CREATE TABLE IF NOT EXISTS RADIATION_BY_TURN (continent INT NOT NULL, radiation INT NOT NULL, turn BIGINT NOT NULL, PRIMARY KEY(continent, turn))");
 
         executeStmt("CREATE TABLE IF NOT EXISTS NATION_DESCRIPTIONS (id INT NOT NULL PRIMARY KEY, description TEXT NOT NULL)");

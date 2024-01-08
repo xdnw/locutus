@@ -7,6 +7,7 @@ import com.google.gson.JsonParseException;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
@@ -713,6 +714,7 @@ public class PnwUtil {
 
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filter, Long snapshotDate, Guild guild, boolean loadCities) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
         throw new IllegalArgumentException("Not implemented");
     }
 

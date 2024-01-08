@@ -587,6 +587,9 @@ public class Settings extends Config {
         }
 
         public static class DATA_DUMP {
+            @Comment("If the data csv parser is enabled (~25gb of raw csv data)")
+            public boolean ENABLED = false;
+
             @Comment({"The directory to store city data dumps in",
                     "These are historical csv files  provided by P&W (not a database)"})
             public String CITIES = "data/cities";
