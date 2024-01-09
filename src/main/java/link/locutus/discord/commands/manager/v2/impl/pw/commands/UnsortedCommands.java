@@ -1167,7 +1167,7 @@ public class UnsortedCommands {
                                @Switch("u") boolean uploadFile,
                                @Arg("Include inactive nations (2 days)")
                                @Switch("i") boolean includeInactive,
-                               @Switch("d") @Timestamp Long snapshotDate) throws Exception {
+                               @Switch("d") @Timestamp Long snapshotDate) {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values()).setFilter("*");
         Set<DBNation> nations = PnwUtil.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild, false);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
