@@ -8,7 +8,9 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.DataDumpParser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
@@ -35,8 +37,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -712,10 +716,24 @@ public class PnwUtil {
         return Map.entry(balance, response.toString());
     }
 
-    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filter, Long snapshotDate, Guild guild, boolean loadCities) {
+    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild, boolean includeVM) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);
-        throw new IllegalArgumentException("Not implemented");
+
+        long day = TimeUtil.getDay(snapshotDate);
+        boolean loadCities = true;
+        Predicate<Integer> allowedNations = f -> true;
+        Predicate<Integer> allowedAlliances = f -> f > 0;
+        NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
+        ValueStore store = ph.createLocals(guild, null, null);
+        Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
+        // getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, Predicate<DBNation> nationFilter) throws IOException, ParseException {
+        try {
+            Map<Integer, DBNation> nationMap = dumper.getNations(day, loadCities, includeVM, allowedNations, allowedAlliances, filter);
+            return new ObjectOpenHashSet<>(nationMap.values());
+        } catch (IOException | ParseException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {

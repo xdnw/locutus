@@ -3438,6 +3438,54 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return getActivity(nationId, 0);
     }
 
+    public Map<Integer, Long> getLastActiveTurns(Set<Integer> nationIds, long turn) {
+        if (nationIds.isEmpty()) return Collections.emptyMap();
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            return Map.of(nationId, getLastActiveTurn(nationId, turn));
+        }
+
+        String query = "SELECT * " +
+                "FROM Activity " +
+                "WHERE (nation, turn) IN (SELECT nation, MAX(turn) " +
+                "FROM Activity " +
+                "WHERE turn <= CURRENT_TURN " +
+                "AND nation in " + StringMan.getString(nationIds) + " " +
+                "GROUP BY nation)";
+        Map<Integer, Long> result = new Int2LongOpenHashMap();
+        query(query, new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws Exception {
+                while (rs.next()) {
+                    int nationId = rs.getInt("nation");
+                    long turn = rs.getLong("turn");
+                    result.put(nationId, turn);
+                }
+            }
+        });
+        return result;
+    }
+
+    public long getLastActiveTurn(int nationId, long turn) {
+        try (PreparedStatement stmt = prepareQuery("SELECT * FROM Activity WHERE nation = ? AND turn <= ? ORDER BY turn DESC LIMIT 1")) {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, turn);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    return rs.getLong("turn");
+                }
+            }
+            return 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public Set<Long> getActivityByDay(int nationId, long minTurn) {
         Set<Long> result = new LinkedHashSet<>();
         for (long turn : getActivity(nationId, minTurn)) {
@@ -3562,11 +3610,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         });
     }
 
-    public List<Map.Entry<Long, Integer>> getMilitaryHistory(DBNation nation, MilitaryUnit unit) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_MIL_HISTORY WHERE id = ? AND unit = ? ORDER BY date DESC")) {
+    public List<Map.Entry<Long, Integer>> getMilitaryHistory(DBNation nation, MilitaryUnit unit, Long snapshot) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_MIL_HISTORY WHERE id = ? AND unit = ?"+ (snapshot == null ? "" : " AND date < ?") + " ORDER BY date DESC")) {
             stmt.setInt(1, nation.getNation_id());
             stmt.setInt(2, unit.ordinal());
-
+            if (snapshot != null) stmt.setLong(3, snapshot);
             List<Map.Entry<Long, Integer>> result = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

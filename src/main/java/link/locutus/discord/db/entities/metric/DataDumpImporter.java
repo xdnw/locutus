@@ -36,10 +36,10 @@ class DataDumpImporter {
     public TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> getNationReader() {
         if (nationReaders.isEmpty()) return null;
         ParsedRow parsedRow = new ParsedRow(parser);
-        return (turn, header, row) -> {
-            parsedRow.setRow(row);
+        return (day, header, row) -> {
+            parsedRow.setRow(row, day);
             for (Map.Entry<IAllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> entry : nationReaders.entrySet()) {
-                entry.getValue().consume(turn, header, parsedRow);
+                entry.getValue().consume(day, header, parsedRow);
             }
         };
     }
@@ -47,10 +47,10 @@ class DataDumpImporter {
     public TriConsumer<Long, DataDumpParser.CityHeader, CsvRow> getCityReader() {
         if (cityReaders.isEmpty()) return null;
         ParsedRow parsedRow = new ParsedRow(parser);
-        return (turn, header, row) -> {
-            parsedRow.setRow(row);
+        return (day, header, row) -> {
+            parsedRow.setRow(row, day);
             for (Map.Entry<IAllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> entry : cityReaders.entrySet()) {
-                entry.getValue().consume(turn, header, parsedRow);
+                entry.getValue().consume(day, header, parsedRow);
             }
         };
     }
