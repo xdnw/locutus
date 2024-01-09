@@ -690,10 +690,11 @@ public enum AllianceMetric implements IAllianceMetric {
 
                     String dateStr = parsedRow.get(cityHeader.date_created, String::toString);
                     try {
-                        Date date = TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr);
+                        Date date = TimeUtil.DD_MM_YYYY.parse(dateStr);
                         long createdMs = date.getTime();
                         if (createdMs < joinedAllianceMs) return;
                     } catch (ParseException e) {
+                        System.out.println("Invalid date: " + dateStr);
                         throw new RuntimeException(e);
                     }
                     citiesBuyByNation.merge(nationId, 1, Integer::sum);
