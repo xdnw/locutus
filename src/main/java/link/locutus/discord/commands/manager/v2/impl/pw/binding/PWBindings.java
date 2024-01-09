@@ -173,6 +173,11 @@ public class PWBindings extends BindingHelper {
         return emumSet(BeigeReason.class, input);
     }
 
+    @Binding(value = "A comma separated list of attack success types")
+    public Set<SuccessType> SuccessTypes(String input) {
+        return emumSet(SuccessType.class, input);
+    }
+
     @Binding(value = "A comma separated list of deposit types")
     public Set<DepositType> DepositTypes(String input) {
         return emumSet(DepositType.class, input);

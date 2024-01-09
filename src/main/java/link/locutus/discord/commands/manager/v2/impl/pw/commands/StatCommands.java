@@ -1151,7 +1151,7 @@ public class StatCommands {
                                NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("s") SpreadSheet sheet,
                                 @Arg("Graph the average military buildings instead of units")
                                @Switch("b") boolean buildings,
-                               @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+                               @Switch("t") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> nations1 = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> nations2 = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
 

@@ -93,7 +93,7 @@ public class StatPages {
     }
 
     @Command()
-    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
+    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         JsonObject json = table.toHtmlJson();
         return rocker.data.barchartsingle.template(table.getName(), json, false).render().toString();

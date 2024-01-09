@@ -911,7 +911,7 @@ public class UnsortedCommands {
     @Command(desc = "Get the revenue of nations or alliances\n" +
             "Equilibrium taxrate is where the value of raws consumed matches the value taxed")
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User user, @Me DBNation me,
-                          NationList nations,
+                          NationList nations2,
                           @Arg("Include the revenue of nations unable to be taxed")
                           @Switch("t") boolean includeUntaxable,
                           @Arg("Exclude the new nation bonus")
@@ -922,15 +922,17 @@ public class UnsortedCommands {
                           @Switch("c")
                           @Arg("The amount of time to use to add average DAILY war cost\n" +
                                   "This includes raid profit")
-                          @Timediff Long includeWarCosts
+                          @Timediff Long includeWarCosts,
+                          @Switch("s") @Timestamp Long snapshotDate
                           ) throws Exception {
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations2.getNations(), nations2.getFilter(), snapshotDate, db.getGuild(), false);
         if (forceAtWar && forceAtPeace) {
             throw new IllegalArgumentException("Cannot set both `forceAtWar` and `forceAtPeace` (pick one)");
         }
         Boolean forceWarFlag = forceAtWar ? Boolean.TRUE : forceAtPeace ? Boolean.FALSE : null;
-        if (nations.getNations().size() == 1) includeUntaxable = true;
+        if (nationSet.size() == 1) includeUntaxable = true;
 
-        ArrayList<DBNation> filtered = new ArrayList<>(nations.getNations());
+        ArrayList<DBNation> filtered = new ArrayList<>(nationSet);
         int removed = 0;
         if (!includeUntaxable) {
             int size = filtered.size();
@@ -948,10 +950,12 @@ public class UnsortedCommands {
         double[] milUp = new double[ResourceType.values.length];
         int tradeBonusTotal = 0;
         Map<Integer, Integer> treasureByAA = new HashMap<>();
-        for (DBNation nation : filtered) {
-            if (nation.getAlliance_id() == 0) continue;
-            for (DBTreasure treasure : nation.getTreasures()) {
-                treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+        if (snapshotDate == null) {
+            for (DBNation nation : filtered) {
+                if (nation.getAlliance_id() == 0) continue;
+                for (DBTreasure treasure : nation.getTreasures()) {
+                    treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+                }
             }
         }
         for (DBNation nation : filtered) {
@@ -959,7 +963,7 @@ public class UnsortedCommands {
             Set<DBTreasure> natTreasures = nation.getTreasures();
             double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
-            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, rads,  forceWarFlag, false));
+            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, rads, forceWarFlag, false));
             ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, rads, forceAtWar, false));
             long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * me.getGrossModifier());
             tradeBonusTotal += nationColorBonus;
@@ -969,7 +973,7 @@ public class UnsortedCommands {
 
         if (includeWarCosts != null) {
             long start = System.currentTimeMillis() - includeWarCosts;
-            WarParser parser = WarParser.of((Collection) nations, null, start, Long.MAX_VALUE);
+            WarParser parser = WarParser.of((Collection) nationSet, null, start, snapshotDate == null ? Long.MAX_VALUE : snapshotDate);
             AttackCost cost = parser.toWarCost(true, false, false, false, false);
             warsCost = ResourceType.negative(PnwUtil.resourcesToArray(cost.getNetCost(true)));
         }
