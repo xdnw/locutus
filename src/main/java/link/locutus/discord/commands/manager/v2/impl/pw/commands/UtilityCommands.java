@@ -1289,7 +1289,7 @@ public class UtilityCommands {
                                    @TextArea List<String> columns,
                                    @Switch("t") @Timestamp Long snapshotTime,
                                    @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), true);
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
