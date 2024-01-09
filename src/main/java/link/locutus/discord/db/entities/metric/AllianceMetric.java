@@ -236,6 +236,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 DBNation nation = entry.getValue();
                 int allianceId = nation.getAlliance_id();
                 List<DBCity> cities = cityMap.get(nation.getNation_id());
+                if (cities == null) continue;
                 List<JavaCity> javaCities = cities.stream().map(f -> f.toJavaCity(nation)).toList();
                 double[] buffer = result.computeIfAbsent(allianceId, f -> ResourceType.getBuffer());
                 double rads = radsMap.getOrDefault(nation.getContinent(), 0d);
@@ -590,7 +591,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 if (vmTurns > 0) return;
                 soldiersByAA.merge(allianceId, row.get(header.soldiers, Integer::parseInt), Integer::sum);
                 tanksByAA.merge(allianceId, row.get(header.tanks, Integer::parseInt), Integer::sum);
-                citiesByAA.merge(allianceId, row.get(header.cities, Integer::parseInt), Integer::sum);
+                citiesByAA.merge(allianceId, row.getNumber(header.cities, Integer::parseInt).intValue(), Integer::sum);
             });
 
         }
@@ -623,8 +624,9 @@ public enum AllianceMetric implements IAllianceMetric {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
+            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
             for (DBNation nation : alliance.getMemberDBNations()) {
-                long ms = nation.allianceSeniorityMs();
+                long ms = Math.max(cutoff, nation.allianceSeniorityMs());
                 int currentCity = nation.getCities();
                 int previousCities = nation.getCitiesSince(ms);
                 if (currentCity > previousCities) {
@@ -661,7 +663,7 @@ public enum AllianceMetric implements IAllianceMetric {
                         nationJoinDay.put(nationId, day);
                     }
                     allianceByNationId.put(nationId, allianceId);
-                    citiesByNation.put(nationId, row.get(header.cities, Integer::parseInt));
+                    citiesByNation.put(nationId, row.getNumber(header.cities, Integer::parseInt).intValue());
                     manifestDestiny.put(nationId, row.get(header.domestic_policy, String::toString).equalsIgnoreCase("manifest destiny"));
                     if (header.urban_planning_np > 0) {
                         urbanPlanningByNation.put(nationId, row.get(header.urban_planning_np, Integer::parseInt) > 0);
@@ -688,7 +690,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
                     String dateStr = parsedRow.get(cityHeader.date_created, String::toString);
                     try {
-                        Date date = TimeUtil.DD_MM_YYYY.parse(dateStr);
+                        Date date = TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr);
                         long createdMs = date.getTime();
                         if (createdMs < joinedAllianceMs) return;
                     } catch (ParseException e) {
@@ -705,7 +707,8 @@ public enum AllianceMetric implements IAllianceMetric {
             Map<Integer, Double> cities10D = new Int2DoubleOpenHashMap();
             for (Map.Entry<Integer, Integer> entry : citiesBuyByNation.entrySet()) {
                 int nationId = entry.getKey();
-                int totalCities = citiesByNation.get(nationId);
+                Integer totalCities = citiesByNation.get(nationId);
+                if (totalCities == null) continue;
                 int previousCities = totalCities - entry.getValue();
                 boolean md = manifestDestiny.get(nationId);
                 boolean up = urbanPlanningByNation.getOrDefault(nationId, false);
@@ -738,8 +741,9 @@ public enum AllianceMetric implements IAllianceMetric {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
+            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
             for (DBNation nation : alliance.getMemberDBNations()) {
-                long ms = nation.allianceSeniorityMs();
+                long ms = Math.max(cutoff, nation.allianceSeniorityMs());
                 total += nation.getCitiesSince(ms);
             }
             return total;
@@ -779,7 +783,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
                     String dateStr = parsedRow.get(cityHeader.date_created, String::toString);
                     try {
-                        Date date = TimeUtil.DD_MM_YYYY.parse(dateStr);
+                        Date date = TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr);
                         long createdMs = date.getTime();
                         if (createdMs < joinedAllianceMs) return;
                     } catch (ParseException e) {
@@ -1158,6 +1162,7 @@ public enum AllianceMetric implements IAllianceMetric {
             values.clear();
         };
         runDataDump(parser, metrics, acceptDay, (metric, day, value) -> {
+            System.out.println("Run day " + day);
             for (Map.Entry<Integer, Double> entry : value.entrySet()) {
                 if (saveAllTurns) {
                     for (int i = 0; i < 12; i++) {

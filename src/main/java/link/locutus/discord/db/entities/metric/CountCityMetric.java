@@ -86,7 +86,7 @@ public class CountCityMetric implements IAllianceMetric {
                         countModeByAA.merge(allianceId, 1, Integer::sum);
                         break;
                     case PER_CITY:
-                        int cities = row.get(header.cities, Integer::parseInt);
+                        int cities = row.getNumber(header.cities, Integer::parseInt).intValue();
                         countModeByAA.merge(allianceId, cities, Integer::sum);
                         break;
                     case TOTAL:
@@ -116,7 +116,7 @@ public class CountCityMetric implements IAllianceMetric {
 
     @Override
     public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
-        Map<Integer, Double> result = countByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (double) countModeByAA.get(f.getKey())));
+        Map<Integer, Double> result = countByAA.entrySet().stream().filter(f -> countModeByAA.containsKey(f.getKey())).collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (double) countModeByAA.get(f.getKey())));
         countByAA.clear();
         countModeByAA.clear();
         return result;
