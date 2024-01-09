@@ -323,10 +323,11 @@ public class StatCommands {
 
                          @Switch("w") Set<WarType> allowedWarTypes,
                          @Switch("s") Set<WarStatus> allowedWarStatus,
-                         @Switch("a") Set<AttackType> allowedAttackTypes) {
+                         @Switch("a") Set<AttackType> allowedAttackTypes,
+                         @Switch("v") Set<SuccessType> allowedVictoryTypes) {
         return warsCost(channel, Collections.singleton(nation), coalition2, timeStart, timeEnd,
                 ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, ignoreBuildings, listWarIds, showWarTypes,
-                allowedWarTypes, allowedWarStatus, allowedAttackTypes, false, false, false, false);
+                allowedWarTypes, allowedWarStatus, allowedAttackTypes, allowedVictoryTypes, false, false, false, false);
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)")
@@ -360,6 +361,7 @@ public class StatCommands {
                            @Switch("w") Set<WarType> allowedWarTypes,
                            @Switch("s") Set<WarStatus> allowedWarStatus,
                            @Switch("a") Set<AttackType> allowedAttackTypes,
+                           @Switch("v") Set<SuccessType> allowedVictoryTypes,
                            @Switch("o") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars,
                            @Switch("d") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars,
                            @Switch("oa") @Arg("Only include attacks done by coalition1") boolean onlyOffensiveAttacks,
@@ -371,7 +373,8 @@ public class StatCommands {
         WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
                 .allowWarStatuses(allowedWarStatus)
                 .allowedWarTypes(allowedWarTypes)
-                .allowedAttackTypes(allowedAttackTypes);
+                .allowedAttackTypes(allowedAttackTypes)
+                .allowedSuccessTypes(allowedVictoryTypes);
         if (onlyOffensiveWars) {
             parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
         }

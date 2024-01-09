@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.PnwUtil;
@@ -153,6 +154,11 @@ public class WarParser {
 
     public WarParser allowedAttackTypes(Set<AttackType> attackTypes) {
         if (attackTypes != null) getAttacks().removeIf(f -> !attackTypes.contains(f.getAttack_type()));
+        return this;
+    }
+
+    public WarParser allowedSuccessTypes(Set<SuccessType> successTypes) {
+        if (successTypes != null) getAttacks().removeIf(f -> !successTypes.contains(f.getSuccess()));
         return this;
     }
 
