@@ -24,6 +24,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -511,9 +512,17 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank nations by an attribute")
-    public void nationRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, NationAttributeDouble attribute, @Switch("a") boolean groupByAlliance, @Switch("r") boolean reverseOrder, @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
+    public void nationRanking(@Me IMessageIO channel, @Me GuildDB db,
+                              @Me JSONObject command,
+                              NationList nations,
+                              NationAttributeDouble attribute,
+                              @Switch("a") boolean groupByAlliance,
+                              @Switch("r") boolean reverseOrder,
+                              @Switch("s") @Timestamp Long snapshotDate,
+                              @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
+        Set<DBNation> nationsSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         Map<DBNation, Double> attributeByNation = new HashMap<>();
-        for (DBNation nation : nations) {
+        for (DBNation nation : nationsSet) {
             Double value = attribute.apply(nation);
             if (!Double.isFinite(value)) continue;
             attributeByNation.put(nation, value);
@@ -612,15 +621,17 @@ public class StatCommands {
 
     @Command(desc = "Graph the attributes of the nations of two coalitions by city count\n" +
             "e.g. How many nations, soldiers etc. are at each city")
-    public String attributeTierGraph(@Me IMessageIO channel,
+    public String attributeTierGraph(@Me IMessageIO channel, @Me GuildDB db,
                                      NationAttributeDouble metric,
                                      NationList coalition1,
                                      NationList coalition2,
                                      @Switch("i") boolean includeInactives,
                                      @Switch("a") boolean includeApplicants,
-                                     @Arg("Compare the sum of each nation's attribute in the coalition instead of average") @Switch("t") boolean total) throws IOException {
-        Collection<DBNation> coalition1Nations = coalition1.getNations();
-        Collection<DBNation> coalition2Nations = coalition2.getNations();
+                                     @Arg("Compare the sum of each nation's attribute in the coalition instead of average")
+                                         @Switch("t") boolean total,
+                                     @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+        Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         int num1 = coalition1Nations.size();
         int num2 = coalition2Nations.size();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -753,11 +764,12 @@ public class StatCommands {
                                     @Arg("Use the score/strength of coalition 2 nations at specific military unit levels") @Switch("b") MMRDouble col2MMR,
                                     @Arg("Use the score of coalition 1 nations at specific average infrastructure levels") @Switch("c") Double col1Infra,
                                     @Arg("Use the score of coalition 2 nations at specific average infrastructure levels") @Switch("d") Double col2Infra,
+                                    @Switch("s") @Timestamp Long snapshotDate,
                                     @Switch("j") boolean attachJson,
                                     @Switch("v") boolean attachCsv) throws IOException {
+        Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> allNations = new HashSet<>();
-        Collection<DBNation> coalition1Nations = coalition1.getNations();
-        Collection<DBNation> coalition2Nations = coalition2.getNations();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         allNations.addAll(coalition1Nations);
@@ -807,7 +819,6 @@ public class StatCommands {
             }
         }
 
-        double[] buffer = new double[2];
         TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Effective military strength by score range", "score", "strength", coalition1.getFilter(), coalition2.getFilter()) {
             @Override
             public void add(long score, Void ignore) {
@@ -886,10 +897,11 @@ public class StatCommands {
                                  NationList coalition2,
                                  @Switch("i") boolean includeInactives,
                                  @Switch("a") boolean includeApplicants,
+                                 @Switch("s") @Timestamp Long snapshotDate,
                                  @Switch("j") boolean attachJson,
                                  @Switch("c") boolean attachCsv) throws IOException {
-        Collection<DBNation> coalition1Nations = coalition1.getNations();
-        Collection<DBNation> coalition2Nations = coalition2.getNations();
+        Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -1132,21 +1144,25 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions")
     public String mmrTierGraph(@Me GuildDB db, @Me IMessageIO channel,
-                               Set<DBNation> coalition1,
-                               Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("s") SpreadSheet sheet,
+                               NationList coalition1,
+                               NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("s") SpreadSheet sheet,
                                 @Arg("Graph the average military buildings instead of units")
-                               @Switch("b") boolean buildings) throws IOException {
-        coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+                               @Switch("b") boolean buildings,
+                               @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+        Set<DBNation> nations1 = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations2 = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
 
-        if (coalition1.isEmpty() || coalition2.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        if (coalition1.size() < 3 || coalition2.size() < 3) return "Coalitions are too small to compare";
+        nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+
+        if (nations1.isEmpty() || nations2.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        if (nations1.size() < 3 || nations2.size() < 3) return "Coalitions are too small to compare";
 
         Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
         Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
 
-        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
-        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : nations1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : nations2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
 
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
@@ -1294,7 +1310,7 @@ public class StatCommands {
                                 @Switch("c") boolean attachCsv,
                                 @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> nations1 = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> nations2 = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations2 = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> allNations = new HashSet<>();
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));

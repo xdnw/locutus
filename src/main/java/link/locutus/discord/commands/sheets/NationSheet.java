@@ -4,13 +4,17 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
@@ -35,7 +39,8 @@ public class NationSheet extends Command implements Noformat {
     public String desc() {
         return "Create a nation sheet, with the following column placeholders\n" +
                 "<https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
-                "Add `-s` to force update spies";
+                "Add `-s` to force update spies\n" +
+                "Add `snapshot:20/10/2022` to use a snapshot";
     }
 
     @Override
@@ -45,7 +50,11 @@ public class NationSheet extends Command implements Noformat {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        String snapshotStr = DiscordUtil.parseArg(args, "snapshot");
+        Long snapshot = snapshotStr == null ? null : PrimitiveBindings.timestamp(snapshotStr);
         if (args.size() < 2) return usage(args.size(), 2, channel);
+
+
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         SpreadSheet sheet = null;
@@ -76,7 +85,8 @@ public class NationSheet extends Command implements Noformat {
             sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKey.NATION_SHEET);
         }
 
-        UtilityCommands.NationSheet(placeholders, channel, me, author, db, nations, args.subList(1, args.size()), flags.contains('s'), sheet);
+        SimpleNationList nationList = new SimpleNationList(nations).setFilter(formatted);
+        UtilityCommands.NationSheet(placeholders, channel, me, author, db, nationList, args.subList(1, args.size()), snapshot, flags.contains('s'), sheet);
         return null;
     }
 }
