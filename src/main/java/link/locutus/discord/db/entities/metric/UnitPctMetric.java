@@ -46,7 +46,7 @@ public class UnitPctMetric implements IAllianceMetric {
                 if (vmTurns > 0) return;
                 int units = row.get(getHeader.apply(header), Integer::parseInt);
                 unitsByAA.merge(allianceId, units, Integer::sum);
-                int cities = row.get(header.cities, Integer::parseInt);
+                int cities = row.getNumber(header.cities, Integer::parseInt).intValue();
                 citiesByAA.merge(allianceId, cities, Integer::sum);
             }
         });

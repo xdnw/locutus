@@ -43,6 +43,10 @@ public class ParsedRow {
         nationLoaded = 0;
     }
 
+    public <T extends Number> Number getNumber(int index, Function<String, T> parse) {
+        return ((Number) get(index, parse));
+    }
+
     public <T> T get(int index, Function<String, T> parse) {
         Object o = data[index];
         if (o == null) {

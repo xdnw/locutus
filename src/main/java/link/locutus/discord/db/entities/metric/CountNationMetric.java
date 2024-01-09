@@ -100,7 +100,7 @@ public class CountNationMetric implements IAllianceMetric {
                         countAllianceMetricModeByAA.merge(allianceId, 1, Integer::sum);
                         break;
                     case PER_CITY:
-                        int cities = row.get(header.cities, Integer::parseInt);
+                        int cities = row.getNumber(header.cities, Integer::parseInt).intValue();
                         countAllianceMetricModeByAA.merge(allianceId, cities, Integer::sum);
                         break;
                     case TOTAL:

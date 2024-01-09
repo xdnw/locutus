@@ -49,8 +49,8 @@ public class ProjectileAvg implements IAllianceMetric {
                 if (allianceId == 0) return;
                 int vmTurns = row.get(header.vm_turns, Integer::parseInt);
                 if (vmTurns > 0) return;
-                unitsByAA.merge(allianceId, row.get(getHeader.apply(header), Integer::parseInt), Integer::sum);
-                citiesByAA.merge(allianceId, row.get(header.cities, Integer::parseInt), Integer::sum);
+                unitsByAA.merge(allianceId, row.get(getHeader.apply(header), Integer::parseInt), (a, b) -> ((Number) a).intValue() + ((Number) b).intValue());
+                citiesByAA.merge(allianceId, row.getNumber(header.cities, Integer::parseInt).intValue(), (a, b) -> ((Number) a).intValue() + ((Number) b).intValue());
             }
         });
     }

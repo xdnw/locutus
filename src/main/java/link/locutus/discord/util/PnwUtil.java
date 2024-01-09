@@ -979,7 +979,7 @@ public class PnwUtil {
     public static double calculateInfra(double from, double to) {
         if (from < 0) return 0;
         if (to <= from) return (from - to) * -150;
-        if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
+        if (to > 20000) throw new IllegalArgumentException("Infra cannot exceed 10,000 (" + to + ")");
         long total_cents = 0;
         int to_cents = (int) Math.round(to * 100);
         int from_cents = (int) Math.round(from * 100);

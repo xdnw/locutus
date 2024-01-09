@@ -54,14 +54,14 @@ public class BuildingPctMetric implements IAllianceMetric {
                 int vmTurns = row.get(header.vm_turns, Integer::parseInt);
                 if (vmTurns > 0) return;
                 allianceByNationId.put(row.get(header.nation_id, Integer::parseInt), allianceId);
-                int cities = row.get(header.cities, Integer::parseInt);
+                int cities = row.getNumber(header.cities, Integer::parseInt).intValue();
                 citiesByAA.merge(allianceId, cities, Integer::sum);
             }
         });
 
         importer.setCityReader(metric, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
             @Override
-            public void consume(Long aLong, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+            public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
                 int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                 Integer allianceId = allianceByNationId.get(nationId);
                 if (allianceId == null || allianceId == 0) return;
@@ -75,7 +75,7 @@ public class BuildingPctMetric implements IAllianceMetric {
     @Override
     public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
         int buildingsPerCity = building.cap(f -> false);
-        Map<Integer, Double> result = buildingsByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (citiesByAA.get(f.getKey()) * buildingsPerCity)));
+        Map<Integer, Double> result = buildingsByAA.entrySet().stream().filter(f -> citiesByAA.containsKey(f.getKey())).collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (citiesByAA.get(f.getKey()) * buildingsPerCity)));
         allianceByNationId.clear();
         citiesByAA.clear();
         buildingsByAA.clear();
