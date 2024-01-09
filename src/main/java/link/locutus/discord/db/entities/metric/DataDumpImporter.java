@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.apiv3.ParsedRow;
 import link.locutus.discord.util.scheduler.TriConsumer;
+import retrofit2.http.HEAD;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,7 +38,7 @@ class DataDumpImporter {
         if (nationReaders.isEmpty()) return null;
         ParsedRow parsedRow = new ParsedRow(parser);
         return (day, header, row) -> {
-            parsedRow.setRow(row);
+            parsedRow.setRow(row, day);
             for (Map.Entry<IAllianceMetric, TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>> entry : nationReaders.entrySet()) {
                 entry.getValue().consume(day, header, parsedRow);
             }
@@ -48,7 +49,7 @@ class DataDumpImporter {
         if (cityReaders.isEmpty()) return null;
         ParsedRow parsedRow = new ParsedRow(parser);
         return (day, header, row) -> {
-            parsedRow.setRow(row);
+            parsedRow.setRow(row, day);
             for (Map.Entry<IAllianceMetric, TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>> entry : cityReaders.entrySet()) {
                 entry.getValue().consume(day, header, parsedRow);
             }

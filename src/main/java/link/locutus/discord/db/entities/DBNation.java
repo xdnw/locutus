@@ -139,7 +139,7 @@ public class DBNation implements NationOrAlliance {
     private long projects;
     private long cityTimer;
     private long projectTimer;
-    private long beigeTimer;
+    protected long beigeTimer;
     private long warPolicyTimer;
     private long domesticPolicyTimer;
     private long colorTimer;
@@ -283,7 +283,7 @@ public class DBNation implements NationOrAlliance {
         spies = -1;
         rank = Rank.BAN;
         continent = Continent.ANTARCTICA;
-        leaving_vm = Long.MAX_VALUE;
+//        leaving_vm = Long.MAX_VALUE;
     }
 
     public DBNation(DBNation other) {
@@ -712,7 +712,7 @@ public class DBNation implements NationOrAlliance {
     public long allianceSeniorityNoneMs() {
         if (alliance_id != 0) return 0;
         long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
-        long now = System.currentTimeMillis();
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         if (timestamp > now) return 0;
         return now - timestamp;
     }
@@ -722,7 +722,7 @@ public class DBNation implements NationOrAlliance {
     public long allianceSeniorityApplicantMs() {
         if (alliance_id == 0) return 0;
         long timestamp = Locutus.imp().getNationDB().getAllianceApplicantSeniorityTimestamp(this, getSnapshot());
-        long now = System.currentTimeMillis();
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         if (timestamp > now) return 0;
         return (now - timestamp);
     }
@@ -732,7 +732,7 @@ public class DBNation implements NationOrAlliance {
     public long allianceSeniorityMs() {
         if (alliance_id == 0) return 0;
         long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
-        long now = System.currentTimeMillis();
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         if (timestamp > now) return 0;
         return now - timestamp;
     }
@@ -2528,7 +2528,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
-        long start = System.currentTimeMillis();
         if (tracked == null) {
             tracked = db.getTrackedBanks();
 //        } else {
@@ -3199,7 +3198,8 @@ public class DBNation implements NationOrAlliance {
     }
 
     public int active_m() {
-        return (int) TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - lastActiveMs());
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return (int) TimeUnit.MILLISECONDS.toMinutes(now - lastActiveMs());
     }
 
     @Override
@@ -3594,7 +3594,7 @@ public class DBNation implements NationOrAlliance {
 //            Map<ResourceType, Double> bank = new HashMap<>();
 //            Map<ResourceType, Double> trade = new HashMap<>();
 //
-//            long now = System.currentTimeMillis();
+//            long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
 //            for (Transaction2 transfer : transfers) {
 //                if (transfer.getDate() > now) continue;
 //                int sign = transfer.getReceiver() == nation_id ? 1 : -1;
@@ -3819,7 +3819,6 @@ public class DBNation implements NationOrAlliance {
     public Map.Entry<Long, String> getUnblockadeRequest() {
         ByteBuffer request = getMeta(NationMeta.UNBLOCKADE_REASON);
         if (request == null) return null;
-        long now = System.currentTimeMillis();
         long cutoff = request.getLong();
         byte[] noteBytes = new byte[request.remaining()];
         request.get(noteBytes);
@@ -4819,7 +4818,8 @@ public class DBNation implements NationOrAlliance {
         if (getActive_m() < 2880) return false;
         DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, getSnapshot());
         if (lastWar != null && lastWar.getDefender_id() == nation_id && lastWar.getStatus() == WarStatus.ATTACKER_VICTORY) {
-            long lastActiveCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(Math.max(active_m() + 1220, 7200));
+            long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+            long lastActiveCutoff = now - TimeUnit.MINUTES.toMillis(Math.max(active_m() + 1220, 7200));
             if (lastWar.getDate() > lastActiveCutoff) return true;
         }
         return false;
@@ -5441,47 +5441,54 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since last soldier purchase")
     public double daysSinceLastSoldierBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.SOLDIER);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last tank purchase")
     public double daysSinceLastTankBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.TANK);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last aircraft purchase")
     public double daysSinceLastAircraftBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.AIRCRAFT);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last ship purchase")
     public double daysSinceLastShipBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.SHIP);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last spy purchase")
     public double daysSinceLastSpyBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.SPIES);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last ship purchase")
     public double daysSinceLastNukeBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.NUKE);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last missile purchase")
     public double daysSinceLastMissileBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.MISSILE);
-        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     public List<Map.Entry<Long, Integer>> getUnitHistory(MilitaryUnit unit) {
-        return Locutus.imp().getNationDB().getMilitaryHistory(this, unit);
+        return Locutus.imp().getNationDB().getMilitaryHistory(this, unit, getSnapshot());
     }
 
     @Command(desc = "Get unix timestamp of when a unit was purchased last")
@@ -5880,7 +5887,7 @@ public class DBNation implements NationOrAlliance {
 //    }
 //
 //    public void setSpy_casualties(int spy_casualties) {
-//        long now = System.currentTimeMillis();
+//        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
 ////        if (spy_casualties > this.spy_casualties) {
 ////            int diff = spy_casualties - this.spy_casualties;
 ////            if (getCache().lastCheckSpyCasualtiesMs > getCache().lastUpdateSpiesMs) {
@@ -6033,7 +6040,8 @@ public class DBNation implements NationOrAlliance {
         if (getOff() > 0) return 0;
         DBWar last = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, getSnapshot());
         if (last != null) {
-            long diff = System.currentTimeMillis() - last.getDate();
+            long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+            long diff = now - last.getDate();
             return ((double) diff) / TimeUnit.DAYS.toMillis(1);
         }
         return Integer.MAX_VALUE;
@@ -6047,7 +6055,8 @@ public class DBNation implements NationOrAlliance {
                 maxDate = Math.max(maxDate, war.getDate());
             }
         }
-        return maxDate == 0 ? Integer.MAX_VALUE : ((double) (System.currentTimeMillis() - maxDate)) / TimeUnit.DAYS.toMillis(1);
+        long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+        return maxDate == 0 ? Integer.MAX_VALUE : ((double) (now - maxDate)) / TimeUnit.DAYS.toMillis(1);
     }
 
     @Command(desc = "Days since last war")
@@ -6055,7 +6064,8 @@ public class DBNation implements NationOrAlliance {
         if (getNumWars() > 0) return 0;
         DBWar last = Locutus.imp().getWarDb().getLastWar(nation_id, getSnapshot());
         if (last != null) {
-            long diff = System.currentTimeMillis() - last.getDate();
+            long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
+            long diff = now - last.getDate();
             return ((double) diff) / TimeUnit.DAYS.toMillis(1);
         }
         return Integer.MAX_VALUE;

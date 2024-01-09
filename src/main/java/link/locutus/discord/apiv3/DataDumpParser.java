@@ -104,7 +104,7 @@ public class DataDumpParser {
         File nationsFile = getNearestNationFile(day);
         File citiesFile = getNearestCityFile(day);
 
-        Map<Integer, DBNation> nationsById = parseNationFile(nationsFile, allowedNations, allowedAlliances, includeVM, true);
+        Map<Integer, DBNation> nationsById = parseNationFile(nationsFile, day, allowedNations, allowedAlliances, includeVM, true);
         Map<Integer, Map<Integer, DBCity>> dayCities = parseCitiesFile(citiesFile, nationsById::containsKey);
         if (loadCities) {
             Iterator<Map.Entry<Integer, DBNation>> iter = nationsById.entrySet().iterator();
@@ -727,7 +727,7 @@ public class DataDumpParser {
             long currentTurn = TimeUtil.getTurn(currentTimestamp);
             System.out.println("Loading " + nationFile);
 
-            Map<Integer, DBNation> dayNations = parseNationFile(nationFile, id -> {
+            Map<Integer, DBNation> dayNations = parseNationFile(nationFile, day, id -> {
                 LootEntry minEntry = minLootDate.get(id);
                 return minEntry == null || minEntry.getDate() - twoDays <= currentTimestamp;
             }, f -> true, true, false);
@@ -1014,13 +1014,14 @@ public class DataDumpParser {
         }
     }
 
-    public Map<Integer, DBNation> parseNationFile(File file, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted) throws IOException {
+    public Map<Integer, DBNation> parseNationFile(File file, long day, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted) throws IOException {
         Map<Integer, DBNation> result = new Int2ObjectOpenHashMap<>();
+        long currentTimeMs = TimeUtil.getTimeFromDay(day);
         readAll(file, (headerList, rows) -> {
             NationHeader header = loadHeader(new NationHeader(), headerList);
             while (rows.hasNext()) {
                 CsvRow row = rows.next();
-                DBNation nation = loadNation(header, row, allowedNationIds, allowedAllianceIds, allowVm, allowDeleted);
+                DBNationSnapshot nation = loadNation(header, row, allowedNationIds, allowedAllianceIds, allowVm, allowDeleted, currentTimeMs);
                 if (nation != null) {
                     result.put(nation.getId(), nation);
                 }
@@ -1123,7 +1124,7 @@ public class DataDumpParser {
         return city;
     }
 
-    public DBNation loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted) throws ParseException {
+    public DBNationSnapshot loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted, long currentTimeMs) throws ParseException {
         int vm_turns = Integer.MAX_VALUE;
         if (!allowVm) {
             vm_turns = Integer.parseInt(row.getField(header.vm_turns));
@@ -1136,7 +1137,7 @@ public class DataDumpParser {
         if (existing == null && !allowDeleted) {
             return null;
         }
-        DBNation nation = new DBNation();
+        DBNationSnapshot nation = new DBNationSnapshot(currentTimeMs);
         if (existing == null) {
             Long date = nationDateCache.get(nationId);
             if (date == null) {
@@ -1147,10 +1148,10 @@ public class DataDumpParser {
             nation.setDate(existing.getDate());
         }
         if (vm_turns == Integer.MAX_VALUE) {
-            int vm = Integer.parseInt(row.getField(header.vm_turns));
-            if (vm > 0) {
-                nation.setLeaving_vm(TimeUtil.getTurn() + vm);
-            }
+            vm_turns = Integer.parseInt(row.getField(header.vm_turns));
+        }
+        if (vm_turns > 0) {
+            nation.setLeaving_vm(TimeUtil.getTurn(currentTimeMs) + vm_turns);
         }
         int aaId = Integer.parseInt(row.getField(header.alliance_id));
         if (!allowedAllianceIds.test(aaId)) return null;

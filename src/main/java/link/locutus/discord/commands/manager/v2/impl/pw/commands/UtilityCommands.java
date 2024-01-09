@@ -28,6 +28,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -1280,12 +1281,15 @@ public class UtilityCommands {
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @NoFormat
-    public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, Set<DBNation> nations,
+    public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
+                                   NationList nations,
                                    @Arg("A space separated list of columns to use in the sheet\n" +
                                            "Can include NationAttribute as placeholders in columns\n" +
                                            "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
                                    @TextArea List<String> columns,
-                              @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+                                   @Switch("t") @Timestamp Long snapshotTime,
+                                   @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
@@ -1298,12 +1302,12 @@ public class UtilityCommands {
 
         sheet.setHeader(header);
 
-        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
+        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nationSet);
         List<Function<DBNation, String>> formatFunction = new ArrayList<>();
         for (String arg : columns) {
             formatFunction.add(placeholders.getFormatFunction(db.getGuild(), me, author, arg, cache, true));
         }
-        for (DBNation nation : nations) {
+        for (DBNation nation : nationSet) {
             if (updateSpies) {
                 nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
             }

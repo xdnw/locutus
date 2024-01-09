@@ -3,6 +3,7 @@ package link.locutus.discord.apiv3;
 import de.siegmar.fastcsv.reader.CsvRow;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;
 import java.util.Arrays;
@@ -21,18 +22,22 @@ public class ParsedRow {
     private static final int LOADED = 1;
     private static final int ALLOW_VM = 2;
     private static final int ALLOW_DELETED = 4;
+    private long currentTimeMs;
+    private long day;
 
     public ParsedRow(DataDumpParser parser) {
         this.parser = parser;
     }
 
-    public void setRow(CsvRow row) {
+    public void setRow(CsvRow row, long day) {
         this.row = row;
         if (data.length != row.getFieldCount()) {
             data = new Object[row.getFieldCount()];
         } else {
             Arrays.fill(data, null);
         }
+        this.day = day;
+        this.currentTimeMs = TimeUtil.getTimeFromDay(day);
         nation = null;
         city = null;
         nationLoaded = 0;
@@ -62,7 +67,7 @@ public class ParsedRow {
         if ((nationLoaded & LOADED) != 0 && (!allowVM || (nationLoaded & ALLOW_VM) == 0) && (!allowDeleted || (nationLoaded & ALLOW_DELETED) == 0)) return null;
         nationLoaded |= LOADED | (allowVM ? ALLOW_VM : 0) | (allowDeleted ? ALLOW_DELETED : 0);
         try {
-            nation = parser.loadNation(header, row, allowAll, allowAll, allowVM, allowDeleted);
+            nation = parser.loadNation(header, row, allowAll, allowAll, allowVM, allowDeleted, currentTimeMs);
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }

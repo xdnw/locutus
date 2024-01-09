@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
@@ -26,8 +27,10 @@ import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricMode;
 import link.locutus.discord.db.entities.metric.CountNationMetric;
 import link.locutus.discord.db.entities.metric.IAllianceMetric;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import org.jooq.meta.derby.sys.Sys;
 
@@ -60,14 +63,19 @@ public class AllianceMetricCommands {
     }
 
     @Command()
-    public void metricByGroup(@Me IMessageIO io, Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy,
+    public void metricByGroup(@Me IMessageIO io, @Me GuildDB db,
+                                Set<NationAttributeDouble> metrics,
+                                NationList nations,
+                                @Default("getCities") NationAttributeDouble groupBy,
                                 @Switch("i") boolean includeInactives,
                                 @Switch("a") boolean includeApplicants,
                                 @Switch("t") boolean total,
+                                @Switch("s") @Timestamp Long snapshotDate,
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv) throws IOException {
-        TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
-        table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, false, false);
+        Set<DBNation> nationsSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total);
+        table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
     }
 
     @Command

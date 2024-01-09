@@ -1,9 +1,12 @@
 package link.locutus.discord.db;
 
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBBounty;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 
 import java.util.Map;
 import java.util.Set;
@@ -15,6 +18,7 @@ public class DBNationSnapshot extends DBNation {
 
     public DBNationSnapshot(long date) {
         this.snapshotDate = date;
+        this.beigeTimer = 0;
     }
 
     @Override
@@ -65,7 +69,13 @@ public class DBNationSnapshot extends DBNation {
 
     @Override
     public long lastActiveMs() {
-        throw unsupported();
+        long currentTurn = TimeUtil.getTurn(snapshotDate);
+        long lastTurn = Locutus.imp().getNationDB().getLastActiveTurn(getId(), currentTurn);
+        long diffTurn = currentTurn - lastTurn;
+        if (getColor() != NationColor.GRAY && getColor() != NationColor.BEIGE) {
+            diffTurn = Math.min(diffTurn, 12 * 5);
+        }
+        return TimeUtil.getTimeFromTurn(currentTurn - diffTurn);
     }
 
     @Override

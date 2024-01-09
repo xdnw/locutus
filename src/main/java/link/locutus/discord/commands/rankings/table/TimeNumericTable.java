@@ -74,11 +74,7 @@ public abstract class TimeNumericTable<T> {
         return this;
     }
 
-    public static TimeNumericTable metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
-        Set<DBNation> coalitionNations = new HashSet<>();
-        for (NationOrAlliance natOrAA : coalition) {
-            coalitionNations.addAll(natOrAA.getDBNations());
-        }
+    public static TimeNumericTable metricByGroup(Set<NationAttributeDouble> metrics, Set<DBNation> coalitionNations, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         coalitionNations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         NationAttributeDouble[] metricsArr = metrics.toArray(new NationAttributeDouble[0]);
         String[] labels = metrics.stream().map(NationAttribute::getName).toArray(String[]::new);
