@@ -2510,10 +2510,12 @@ public class WarCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of alliance/nation/city military unit and building counts (MMR)")
-    public String MMRSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet,
+    public String MMRSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
                            @Switch("f") boolean forceUpdate,
                            @Arg("List the military building count of each city instead of each nation")
-                           @Switch("c") boolean showCities) throws GeneralSecurityException, IOException {
+                           @Switch("c") boolean showCities,
+                           @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "city",
@@ -2542,11 +2544,11 @@ public class WarCommands {
         ));
 
         sheet.setHeader(header);
-        nations.removeIf(n -> n.hasUnsetMil());
+        nationSet.removeIf(n -> n.hasUnsetMil());
 
         Map<Integer, Set<DBNation>> byAlliance = new HashMap<>();
 
-        for (DBNation nation : nations) {
+        for (DBNation nation : nationSet) {
             byAlliance.computeIfAbsent(nation.getAlliance_id(), f -> new HashSet<>()).add(nation);
         }
 
@@ -2565,12 +2567,12 @@ public class WarCommands {
         double airBuyTotal = 0;
         double navyBuyTotal= 0;
 
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Set<Integer> nationIds = nationSet.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         long dayCutoff = TimeUtil.getDay() - 2;
 //        Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
 
         if (forceUpdate) {
-            new SimpleNationList(nations).updateCities(true);
+            new SimpleNationList(nationSet).updateCities(true);
         }
 
         for (Map.Entry<Integer, Set<DBNation>> entry : byAlliance.entrySet()) {

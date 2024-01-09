@@ -1166,9 +1166,10 @@ public class UnsortedCommands {
                                @Switch("s") boolean listAverage,
                                @Switch("u") boolean uploadFile,
                                @Arg("Include inactive nations (2 days)")
-                               @Switch("i") boolean includeInactive) throws Exception {
-        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values());
-        ArrayList<DBNation> nations = new ArrayList<>(nationList.getNations());
+                               @Switch("i") boolean includeInactive,
+                               @Switch("d") @Timestamp Long snapshotDate) throws Exception {
+        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values()).setFilter("*");
+        Set<DBNation> nations = PnwUtil.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild, false);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
 
         Map<DBNation, Number> profitByNation = new HashMap<>();

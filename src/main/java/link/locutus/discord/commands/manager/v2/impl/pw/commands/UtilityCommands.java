@@ -1902,14 +1902,16 @@ public class UtilityCommands {
     }
 
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
-    public String allianceCost(@Me IMessageIO channel, Set<DBNation> nations, @Switch("u") boolean update) {
+    public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
+                               NationList nations, @Switch("u") boolean update, @Switch("s") @Timestamp Long snapshotDate) {
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;
         Map<ResourceType, Double> projectCost = new HashMap<>();
         Map<ResourceType, Double> militaryCost = new HashMap<>();
         Map<ResourceType, Double> buildingCost = new HashMap<>();
-        for (DBNation nation : nations) {
+        for (DBNation nation : nationSet) {
             Set<Project> projects = nation.getProjects();
             for (Project project : projects) {
                 projectCost = PnwUtil.addResourcesToA(projectCost, project.cost());
@@ -1955,7 +1957,7 @@ public class UtilityCommands {
         total = PnwUtil.add(total, militaryCost);
         total = PnwUtil.add(total, buildingCost);
         double totalConverted = PnwUtil.convertedTotal(total);
-        String title = nations.size() + " nations worth ~$" + MathMan.format(totalConverted);
+        String title = nationSet.size() + " nations worth ~$" + MathMan.format(totalConverted);
 
         StringBuilder response = new StringBuilder();
         response.append("**Infra**: $" + MathMan.format(infraCost));

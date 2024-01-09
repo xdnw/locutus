@@ -1420,17 +1420,18 @@ public class BankCommands {
     @Command(desc = "Get a sheet of members and their revenue (compared to optimal city builds)")
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON})
     @IsAlliance
-    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
         }
 
         Set<Integer> ids = db.getAllianceIds(false);
-        int sizeOriginal = nations.size();
-        nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || !ids.contains(f.getAlliance_id()));
-        nations.removeIf(f -> f.getActive_m() > 7200 || f.isGray() || f.isBeige() || f.getVm_turns() > 0);
-        int numRemoved = sizeOriginal - nations.size();
-        if (nations.isEmpty()) {
+        int sizeOriginal = nationSet.size();
+        nationSet.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || !ids.contains(f.getAlliance_id()));
+        nationSet.removeIf(f -> f.getActive_m() > 7200 || f.isGray() || f.isBeige() || f.getVm_turns() > 0);
+        int numRemoved = sizeOriginal - nationSet.size();
+        if (nationSet.isEmpty()) {
             return "No nations to process. " + numRemoved + " nations were removed from the list. Please ensure they are members of your alliance";
         }
 
@@ -1536,7 +1537,7 @@ public class BankCommands {
 
         List<Future<List<String>>> addRowFutures = new ArrayList<>();
 
-        for (DBNation nation : nations) {
+        for (DBNation nation : nationSet) {
             Future<List<String>> future = Locutus.imp().getExecutor().submit(() -> addRowTask.apply(nation));
             addRowFutures.add(future);
         }
@@ -2127,7 +2128,8 @@ public class BankCommands {
 
     @Command(desc = "Sheet of projects each nation has")
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.PROJECT_SHEET);
         }
@@ -2145,7 +2147,7 @@ public class BankCommands {
 
         sheet.setHeader(header);
 
-        for (DBNation nation : nations) {
+        for (DBNation nation : nationSet) {
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
             header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
