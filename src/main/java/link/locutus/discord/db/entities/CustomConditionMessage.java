@@ -94,12 +94,12 @@ public class CustomConditionMessage {
                     NationPlaceholders ph = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
                     String subjectFormat = ph.format2(db.getGuild(), null, null, subject, nation, false);
                     String bodyFormat = ph.format2(db.getGuild(), null, null, body, nation, false);
-                    String message = getTitle();
+                    String message = getTitle() + "\n- To: " + nation.getMarkdownUrl();
                     if (sendEnabled) {
                         JsonObject result = nation.sendMail(mailKey, subjectFormat, bodyFormat, false);
                         message += "\n" + result.toString();
                     } else {
-                        message += "\n- Sending disabled. Use TODO CM REF";
+                        message += "\n- Sending disabled. `/admin queue custom_messages setmeta:True sendmessages:True run:true`";
                     }
                     RateLimitUtil.queue(output.sendMessage(message));
                 } catch (IOException e) {

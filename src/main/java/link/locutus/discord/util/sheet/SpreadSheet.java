@@ -913,6 +913,7 @@ public class SpreadSheet {
             if (values == null) {
                 return Collections.emptyList();
             }
+            valuesByTab.put(tab.toLowerCase(Locale.ROOT), values);
             return values;
         } catch (IOException e) {
             throw new RuntimeException(e);

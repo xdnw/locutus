@@ -2,6 +2,7 @@ package link.locutus.discord.db.handlers;
 
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.longs.LongArraySet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -43,9 +44,8 @@ public class GuildCustomMessageHandler implements Runnable {
     public GuildCustomMessageHandler() {
         // get the scheduler
         // schedule this to run every 5 minutes
-        this.sendEnabled = false;
-        this.updateMeta = false;
-
+        this.sendEnabled = true;
+        this.updateMeta = true;
     }
 
     public void init() {
@@ -66,7 +66,7 @@ public class GuildCustomMessageHandler implements Runnable {
     private void updateMessages() {
         Map<Long, List<CustomConditionMessage>> newMessagesByGuild = new ConcurrentHashMap<>();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            List<CustomConditionMessage> messages = GuildKey.TIMED_MESSAGES.getOrNull(db);
+            List<CustomConditionMessage> messages = GuildKey.TIMED_MESSAGES.getOrNull(db, false);
             if (messages == null || messages.isEmpty()) continue;
             // ensure output channel is set
             MessageChannel output = GuildKey.RECRUIT_MESSAGE_OUTPUT.getOrNull(db);
@@ -100,6 +100,7 @@ public class GuildCustomMessageHandler implements Runnable {
             // sort messages by delay desc
             messages.sort(Comparator.comparingLong(CustomConditionMessage::getDelay).reversed());
             newMessagesByGuild.put(db.getIdLong(), messages);
+            System.out.println("Messages " + messages.size() + " " + db.getGuild());
         }
         messagesByGuild = newMessagesByGuild;
     }
@@ -210,24 +211,37 @@ public class GuildCustomMessageHandler implements Runnable {
     }
 
     public List<Map.Entry<GuildDB, CustomConditionMessage>> getMessagesBetween(List<Map.Entry<GuildDB, CustomConditionMessage>> messages, long min, long max) {
-        int start = ArrayUtil.binarySearchGreater(messages, o -> o.getValue().getDelay() >= min);
-        if (start == -1) {
-            return Collections.emptyList();
+        List<Map.Entry<GuildDB, CustomConditionMessage>> result = new ObjectArrayList<>();
+        for (Map.Entry<GuildDB, CustomConditionMessage> message : messages) {
+            long delay = message.getValue().getDelay();
+            if (delay >= min && delay <= max) {
+                result.add(message);
+            }
         }
-        if (max == Long.MAX_VALUE) {
-            return messages.subList(start, messages.size());
-        }
-        int end = ArrayUtil.binarySearchGreater(messages, o -> o.getValue().getDelay() <= max, start, messages.size());
-        if (end == -1) {
-            return messages.subList(start, messages.size());
-        }
-        return messages.subList(start, end);
+        return result;
+
+//        return messages.stream().filter(f -> f.getValue().getDelay() >= min && f.getValue().getDelay() <= max).toList();
+//        int start = ArrayUtil.binarySearchGreater(messages, o -> o.getValue().getDelay() >= min);
+//        if (start == -1) {
+//            return Collections.emptyList();
+//        }
+//        if (max == Long.MAX_VALUE) {
+//            return new ObjectArrayList<>(messages.subList(start, messages.size()));
+//        }
+//        int end = ArrayUtil.binarySearchGreater(messages, o -> o.getValue().getDelay() <= max, start, messages.size());
+//        if (end == -1) {
+//            return new ObjectArrayList<>(messages.subList(start, messages.size()));
+//        }
+//        return new ObjectArrayList<>(messages.subList(start, end));
     }
 
     @Override
     public void run() {
         // Check it is NOT near turn change
-        if (TimeUtil.checkTurnChange()) return;
+        if (!TimeUtil.checkTurnChange()) {
+            System.out.println("Turn change");
+            return;
+        }
         updateMessages();
         // creation messages
         long now = System.currentTimeMillis();
@@ -240,15 +254,18 @@ public class GuildCustomMessageHandler implements Runnable {
 
         List<DBNation> nationsNone = new ArrayList<>(Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == 0 && f.active_m() < 1440 && f.getVm_turns() == 0));
 
-        List<DBNation> nationsCreated = nationsNone.stream().filter(f -> f.getDate() < createCutoff).toList();
+        List<DBNation> nationsCreated = nationsNone.stream().filter(f -> f.getDate() > createCutoff).toList();
 
+        System.out.println("Creation = " + nationsCreated.size());
         for (DBNation nation : nationsCreated) {
             long date = nation.getDate();
             long ageMs = now - date;
 
             // get the messages which are below ageMs but above the lastSent
             List<Map.Entry<GuildDB, CustomConditionMessage>> messages = getMessagesBetween(creation, 0, ageMs);
-            messages.removeIf(f -> f.getValue().getOriginDate() > date || Math.abs(date - ageMs) > TimeUnit.DAYS.toMillis(7));
+            System.out.println("Messages 1  = " + messages.size());
+            messages.removeIf(f -> f.getValue().getOriginDate() > date || Math.abs(ageMs - f.getValue().getDelay()) > TimeUnit.DAYS.toMillis(7));
+            System.out.println("Messages 2  = " + messages.size());
             if (!messages.isEmpty()) {
                 Set<Long> guildsSent = new LongArraySet();
                 for (Map.Entry<GuildDB, CustomConditionMessage> entry : messages) {
@@ -259,8 +276,12 @@ public class GuildCustomMessageHandler implements Runnable {
 
                         long lastMs = getMeta(nation, db, NationMeta.LAST_SENT_CREATION, -1L);
                         long lastAge = Math.max(lastMs - date + 1, 0);
-                        if (lastAge > message.getDelay()) continue;
+                        if (lastAge > message.getDelay()) {
+                            System.out.println("Last sent > delay");
+                            continue;
+                        }
 
+                        System.out.println("Send 1");
                         message.send(db, nation, sendEnabled);
                     } finally {
                         if (updateMeta) {
@@ -274,7 +295,7 @@ public class GuildCustomMessageHandler implements Runnable {
         List<DBNation> nationsLeave = nationsNone.stream().filter(f -> {
             Long leftDate = allianceLeave.get(f.getId());
             if (leftDate == null) return false;
-            if (leftDate < now - TimeUnit.DAYS.toMillis(30)) {
+            if (leftDate > now - TimeUnit.DAYS.toMillis(30)) {
                 if (f.getDate() == 0 || f.getAgeDays() <= 3) return false;
                 return true;
             }
