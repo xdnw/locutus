@@ -1603,10 +1603,13 @@ public class ArrayUtil {
                         elem = elem.substring(1, elem.length() - 1);
                         ParseResult<T> result = parseTokens(elem, parseSet2, parseElemPredicate, parseFilter);
                         orResults.add(result);
-                    } else if (char0 == '#' || elem.contains("{")) {
+                    } else if (char0 == '#') {
                         elem = elem.substring(1);
                         Predicate<T> filter = parseFilter.apply(elem);
                         orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
+                    } else if (elem.contains("{")) {
+                        Set<T> set = parseSet2.apply(elem);
+                        orResults.add(new ParseResult<>(elem, List.of(), new AtomicBoolean()));
                     } else {
                         ParseResult<T> result = new ParseResult<>(elem, List.of(), new AtomicBoolean());
                         if (parseSet2 != null) {
