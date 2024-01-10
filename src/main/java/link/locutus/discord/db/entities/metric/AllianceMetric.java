@@ -630,7 +630,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 int currentCity = nation.getCities();
                 int previousCities = nation.getCitiesSince(ms);
                 if (currentCity > previousCities) {
-                    total += PnwUtil.cityCost(nation, previousCities, currentCity);
+                    total += PnwUtil.cityCost(nation, currentCity - previousCities, currentCity);
                 }
             }
             return total;
@@ -686,16 +686,15 @@ public enum AllianceMetric implements IAllianceMetric {
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
                     long dayJoinedAlliance = nationJoinDay.get(nationId);
-                    long joinedAllianceMs = TimeUtil.getTimeFromDay(dayJoinedAlliance);
-
+                    long joinedAllianceMs = TimeUtil.getTimeFromDay(Math.max(dayJoinedAlliance, day - 10));
                     String dateStr = parsedRow.get(cityHeader.date_created, String::toString);
                     try {
-                        Date date = TimeUtil.DD_MM_YYYY.parse(dateStr);
+                        Date date = TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr);
                         long createdMs = date.getTime();
                         if (createdMs < joinedAllianceMs) return;
-                    } catch (ParseException e) {
+                    } catch (ParseException| ArrayIndexOutOfBoundsException e) {
                         System.out.println("Invalid date: " + dateStr);
-                        throw new RuntimeException(e);
+                        return;
                     }
                     citiesBuyByNation.merge(nationId, 1, Integer::sum);
                 }
@@ -780,15 +779,15 @@ public enum AllianceMetric implements IAllianceMetric {
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
                     long dayJoinedAlliance = nationJoinDay.get(nationId);
-                    long joinedAllianceMs = TimeUtil.getTimeFromDay(dayJoinedAlliance);
-
+                    long joinedAllianceMs = TimeUtil.getTimeFromDay(Math.max(dayJoinedAlliance, day - 10));
                     String dateStr = parsedRow.get(cityHeader.date_created, String::toString);
                     try {
                         Date date = TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr);
                         long createdMs = date.getTime();
                         if (createdMs < joinedAllianceMs) return;
-                    } catch (ParseException e) {
-                        throw new RuntimeException(e);
+                    } catch (ParseException | ArrayIndexOutOfBoundsException e) {
+                        System.out.println("Invalid date: " + dateStr);
+                        return;
                     }
                     cities10D.merge(allianceId, 1, Integer::sum);
                 }

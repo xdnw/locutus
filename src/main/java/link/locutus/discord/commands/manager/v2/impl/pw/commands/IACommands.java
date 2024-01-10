@@ -52,6 +52,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.attribute.IMemberContainer;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -1409,7 +1410,13 @@ public class IACommands {
             "Other bulk mail commands forward to this command")
     @HasApi
     @RolePermission(Roles.ADMIN)
-    public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean confirm) {
+    public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean force, @Switch("d") boolean dm, @Switch("m") boolean skipMail) {
+        if (skipMail && !dm) {
+            throw new IllegalArgumentException("Must specify `dm` if `skipMail` is true");
+        }
+        if (dm && !Roles.MAIL.hasOnRoot(author)) {
+            throw new IllegalArgumentException("Missing role: " + Roles.MAIL.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
+        }
         List<List<Object>> data = sheet.fetchAll(null);
 
         List<Object> nationNames = sheet.findColumn(0, "nation", "id");
@@ -1461,7 +1468,7 @@ public class IACommands {
             return "Max allowed: 1000 messages.";
         }
 
-        if (!confirm) {
+        if (!force) {
             String title = "Send " + messageMap.size() + " to nations in " + alliances.size() + " alliances";
             StringBuilder body = new StringBuilder("Messages:");
             IMessageBuilder msg = io.create();
@@ -1473,7 +1480,7 @@ public class IACommands {
             if (applicants > 0) body.append("applicant receivers: " + applicants + "\n");
 
             body.append("\nPress to confirm");
-            msg.confirmation(title, body.toString(), command, "confirm").send();
+            msg.confirmation(title, body.toString(), command, "force").send();
             return null;
         }
 
@@ -1489,19 +1496,35 @@ public class IACommands {
             String subject = msgEntry.getKey();
             String body = msgEntry.getValue();
 
-            String result;
-            try {
-                JsonObject json = nation.sendMail(keys, subject, body, false);
-                result = json + "";
-            } catch (IOException e) {
-                errors++;
-                if (errors > 50) {
-                    throw new IllegalArgumentException(">50 Errors. Aborting at `" + nation.getNation() + "`");
+            List<String> result = new ArrayList<>();
+            if (!skipMail) {
+                try {
+                    JsonObject json = nation.sendMail(keys, subject, body, false);
+                    result.add(json + "");
+                } catch (IOException e) {
+                    errors++;
+                    if (errors > 50) {
+                        throw new IllegalArgumentException(">50 Errors. Aborting at `" + nation.getNation() + "`");
+                    }
+                    e.printStackTrace();
+                    result.add("IOException: " + e.getMessage());
                 }
-                e.printStackTrace();
-                result = "IOException: " + e.getMessage();
             }
-            response.add(nation.getNationUrl() + " -> " + result);
+            if (dm) {
+                User user = nation.getUser();
+                if (user == null) {
+                    result.add("\n- **dm**: No discord user set. See " + CM.register.cmd.toSlashMention());
+                } else {
+                    try {
+                        PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
+                        RateLimitUtil.queue(channel.sendMessage(body.toString()));
+                        result.add("\n- **dm**: Sent dm");
+                    } catch (Throwable e) {
+                        result.add("\n- **dm**: Failed to send dm (`" + e.getMessage() + "`)");
+                    }
+                }
+            }
+            response.add(nation.getNationUrl() + " -> " + StringMan.getString(result));
         }
         return "Done!\n- " + StringMan.join(response, "\n- ");
     }
