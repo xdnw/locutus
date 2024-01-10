@@ -20,6 +20,7 @@ import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.ia.IACheckup;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -1595,20 +1596,17 @@ public class ArrayUtil {
                         throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Empty group");
                     }
                     char char0 = elem.charAt(0);
-                    if (char0 == '#') {
-                        elem = elem.substring(1);
-                        Predicate<T> filter = parseFilter.apply(elem);
-                        orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
-                    } else if (elem.contains("{")) {
-                        Predicate<T> filter = parseFilter.apply(elem);
-                        orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
-                    } else if (char0 == '(') {
+                    if (char0 == '(') {
                         if (!elem.endsWith(")")) {
                             throw new IllegalArgumentException("Invalid group: `" + elem + "`: No end bracket found");
                         }
                         elem = elem.substring(1, elem.length() - 1);
                         ParseResult<T> result = parseTokens(elem, parseSet2, parseElemPredicate, parseFilter);
                         orResults.add(result);
+                    } else if (char0 == '#' || elem.contains("{")) {
+                        elem = elem.substring(1);
+                        Predicate<T> filter = parseFilter.apply(elem);
+                        orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else {
                         ParseResult<T> result = new ParseResult<>(elem, List.of(), new AtomicBoolean());
                         if (parseSet2 != null) {

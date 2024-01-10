@@ -90,22 +90,6 @@ public class AllianceMetricCommands {
         return "Done. " + changesDays.getKey() + " changes made for " + changesDays.getValue() + " days.";
     }
 
-    public static void main(String[] args) {
-        System.out.println("Turn " + TimeUtil.getTurn());
-
-        int turnsTillDC = getTurnsTillDC();
-        long newTurn = TimeUtil.getTurn() + getTurnsTillDC();
-        System.out.println("New turn " + newTurn + " > " + TimeUtil.getTurn());
-
-    }
-
-    private static int getTurnsTillDC() {
-        int dc_turn = 6;//-1;
-        int currentTurn = (int) TimeUtil.getDayTurn();
-        if (currentTurn >= dc_turn) return ((dc_turn + 12) - currentTurn);
-        return ( dc_turn - currentTurn);
-    }
-
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat

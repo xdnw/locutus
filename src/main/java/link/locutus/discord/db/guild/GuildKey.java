@@ -2664,10 +2664,13 @@ public class GuildKey {
             return toJson(value).toString(4);
         }
 
-    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requiresCoalition("recruit")
+    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT)
         .requireFunction((db) -> {
         if (!Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
             throw new IllegalArgumentException("This setting is disabled. Enable it in the settings file");
+        }
+        if (!db.hasCoalitionPermsOnRoot("recruit")) {
+            throw new IllegalArgumentException("You must have `recruit` permissions on the root channel to use this setting");
         }
     }));
 
