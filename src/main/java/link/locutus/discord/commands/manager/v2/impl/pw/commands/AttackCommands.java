@@ -130,7 +130,7 @@ public class AttackCommands {
                 response.append("\n");
                 Project project = attack == AttackType.NUKE ? Projects.VITAL_DEFENSE_SYSTEM : Projects.IRON_DOME;
                 if (defender.hasProject(project)) {
-                    response.append("Defender has project " + Projects.IRON_DOME.name() + " (50% interception)\n");
+                    response.append("Defender has project " + Projects.IRON_DOME.name() + " (30% interception)\n");
                 }
                 Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
                         = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);

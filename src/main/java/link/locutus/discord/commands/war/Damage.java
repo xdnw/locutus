@@ -180,11 +180,11 @@ public class Damage extends Command {
         double numCities = 0;
         if (me.hasProject(Projects.MISSILE_LAUNCH_PAD)) {
             numCities += 0.5;
-            if (nation.hasProject(Projects.IRON_DOME)) numCities -= 0.25;
+            if (nation.hasProject(Projects.IRON_DOME)) numCities -= 0.15;
         }
         if (me.hasProject(Projects.NUCLEAR_RESEARCH_FACILITY)) {
             numCities += 1.5;
-            if (nation.hasProject(Projects.VITAL_DEFENSE_SYSTEM)) numCities -= 0.3;
+            if (nation.hasProject(Projects.VITAL_DEFENSE_SYSTEM)) numCities -= 0.375;
         }
         if (nation.getGroundStrength(true, false) < me.getGroundStrength(true, false) * 0.4) {
             numCities++;
