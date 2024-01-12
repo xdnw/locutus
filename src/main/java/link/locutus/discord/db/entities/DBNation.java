@@ -5031,22 +5031,24 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get resource quantity for this nation")
     public long getTradeQuantity(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter, @Switch("n") boolean net) {
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
+        String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
         if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
-        if (nationIds.size() > 1000) {
-            trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
-        }
-        if (filter != null) trades.removeIf(filter.negate());
-        if (types != null) {
-            trades.removeIf(t -> !types.contains(t.getResource()));
-        }
+        Long finalDateEnd = dateEnd;
         Long quantity = scoped.getMap(this, new Function<List<DBNation>, Map<DBNation, Long>>() {
             @Override
             public Map<DBNation, Long> apply(List<DBNation> nations) {
+                List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, finalDateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, finalDateEnd);
+                if (nationIds.size() > 1000) {
+                    trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
+                }
+                if (filter != null) trades.removeIf(filter.negate());
+                if (types != null) {
+                    trades.removeIf(t -> !types.contains(t.getResource()));
+                }
                 Map<DBNation, Long> quantity = new LinkedHashMap<>();
                 for (DBTrade trade : trades) {
                     DBNation buyer = trade.getBuyerNation();
@@ -5073,17 +5075,18 @@ public class DBNation implements NationOrAlliance {
         if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
-        if (nationIds.size() > 1000) {
-            trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
-        }
-        if (filter != null) trades.removeIf(filter.negate());
-        if (types != null) {
-            trades.removeIf(t -> !types.contains(t.getResource()));
-        }
+        Long finalDateEnd = dateEnd;
         Long avgPPU = scoped.getMap(this, new Function<List<DBNation>, Map<DBNation, Long>>() {
             @Override
             public Map<DBNation, Long> apply(List<DBNation> nations) {
+                List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, finalDateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, finalDateEnd);
+                if (nationIds.size() > 1000) {
+                    trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
+                }
+                if (filter != null) trades.removeIf(filter.negate());
+                if (types != null) {
+                    trades.removeIf(t -> !types.contains(t.getResource()));
+                }
                 Map<DBNation, Long> quantity = new LinkedHashMap<>();
                 Map<DBNation, Long> price = new LinkedHashMap<>();
                 for (DBTrade trade : trades) {
@@ -5107,22 +5110,23 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Get resource quantity for this nation")
     public double getTradeValue(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
         String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getTradeQuantity");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
         if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, dateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, dateEnd);
-        if (nationIds.size() > 1000) {
-            trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
-        }
-        if (filter != null) trades.removeIf(filter.negate());
-        if (types != null) {
-            trades.removeIf(t -> !types.contains(t.getResource()));
-        }
+        Long finalDateEnd = dateEnd;
         Double value = scoped.getMap(this, new Function<List<DBNation>, Map<DBNation, Double>>() {
             @Override
             public Map<DBNation, Double> apply(List<DBNation> nations) {
+                List<DBTrade> trades = nations.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(dateStart, finalDateEnd) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, dateStart, finalDateEnd);
+                if (nationIds.size() > 1000) {
+                    trades.removeIf(t -> !nationIds.contains(t.getBuyer()) || !nationIds.contains(t.getSeller()));
+                }
+                if (filter != null) trades.removeIf(filter.negate());
+                if (types != null) {
+                    trades.removeIf(t -> !types.contains(t.getResource()));
+                }
                 Map<DBNation, Double> value = new LinkedHashMap<>();
                 for (DBTrade trade : trades) {
                     DBNation buyer = trade.getBuyerNation();
