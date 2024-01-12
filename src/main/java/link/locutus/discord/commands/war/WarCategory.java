@@ -183,6 +183,12 @@ public class WarCategory {
                         }
                     }
                 }
+                if (to != null && (to.getStatus() == WarStatus.PEACE || to.getStatus() == WarStatus.ATTACKER_VICTORY || to.getStatus() == WarStatus.ATTACKER_VICTORY|| to.getStatus() == WarStatus.EXPIRED)) {
+                    if (!room.hasOtherWar(to.warId)) {
+                        room.delete("War ended: " + to.getStatus());
+                        return;
+                    }
+                }
                 if ((from == null || to.getStatus() != from.getStatus())) {
                     room.updateParticipants(from, to, from == null);
                 }
@@ -345,13 +351,24 @@ public class WarCategory {
                 message = name1 + " fortified against " + name2;
                 break;
             case VICTORY:
-                room.setPlanning(false);
+                if (!room.hasOtherWar(attack.getWar_id())) {
+                    room.delete("Victory");
+                    return;
+                } else {
+                    room.setPlanning(false);
+                }
                 message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + name2;
                 break;
             case A_LOOT:
                 message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
                 break;
             case PEACE:
+                if (!room.hasOtherWar(attack.getWar_id())) {
+                    room.delete("Peace");
+                    return;
+                } else {
+                    room.setPlanning(false);
+                }
                 message = name1 + " agreed to peace with " + name2;
                 break;
             default:
@@ -1172,6 +1189,19 @@ public class WarCategory {
                 addInitialParticipants(false);
             }
             return participants.contains(nation);
+        }
+
+        private boolean hasOtherWar(int warId) {
+            boolean hasWar = false;
+            for (DBWar war : target.getWars()) {
+                if (war.getWarId() == warId) continue;
+                DBNation other = war.getNation(!war.isAttacker(target));
+                if (other != null && isActive(other) && allianceIds.contains(other.getAlliance_id())) {
+                    hasWar = true;
+                    break;
+                }
+            }
+            return hasWar;
         }
     }
 

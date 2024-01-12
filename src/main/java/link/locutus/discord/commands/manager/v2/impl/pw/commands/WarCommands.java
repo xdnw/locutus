@@ -1509,18 +1509,18 @@ public class WarCommands {
         double numCities = 0;
         if (me.hasProject(Projects.MISSILE_LAUNCH_PAD)) {
             numCities += 0.5;
-            if (nation.hasProject(Projects.IRON_DOME)) numCities -= 0.25;
+            if (nation.hasProject(Projects.IRON_DOME)) numCities -= 0.15;
         }
         if (me.hasProject(Projects.NUCLEAR_RESEARCH_FACILITY)) {
             numCities += 1.5;
-            if (nation.hasProject(Projects.VITAL_DEFENSE_SYSTEM)) numCities -= 0.3;
+            if (nation.hasProject(Projects.VITAL_DEFENSE_SYSTEM)) numCities -= 0.375;
         }
         if (nation.getGroundStrength(true, false) < me.getGroundStrength(true, false) * 0.4) {
             numCities++;
             if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
         }
-        if (nation.getActive_m() > 2440) numCities+=0.5;
-        if (nation.getActive_m() > 4880) numCities+=0.5;
+//        if (nation.getActive_m() > 2440) numCities += 0.5;
+//        if (nation.getActive_m() > 4880) numCities += 0.5;
         if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
         if (nation.getCities() <= me.getCities() * 0.5) numCities++;
         if (nation.getActive_m() > 10000) numCities += 10;

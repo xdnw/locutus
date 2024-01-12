@@ -1517,7 +1517,7 @@ public class IACommands {
                 } else {
                     try {
                         PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
-                        RateLimitUtil.queue(channel.sendMessage(body.toString()));
+                        RateLimitUtil.queue(channel.sendMessage(body));
                         result.add("\n- **dm**: Sent dm");
                     } catch (Throwable e) {
                         result.add("\n- **dm**: Failed to send dm (`" + e.getMessage() + "`)");

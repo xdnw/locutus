@@ -1265,7 +1265,14 @@ public class ArrayUtil {
                     stack.push(condition.ternary(a, b));
                 } else {
                     T right = stack.pop();
-                    T left = stack.pop();
+                    T left = stack.poll();
+                    if (left == null) {
+                        if (operator == MathOperator.MINUS) {
+                            left = parseOrigin.apply("0");
+                        } else {
+                            throw new IllegalArgumentException("Missing left operand for " + operator.symbol + " " + right.toString());
+                        }
+                    }
                     stack.push(left.apply(operator, right));
                 }
             } else {
@@ -1355,14 +1362,12 @@ public class ArrayUtil {
                         i++; // Skip the negative sign
                     }
                 } else if (c == ')' || c == '-') {
-                    System.out.println("- )" + currentToken);
                     if (!currentToken.isEmpty()) {
                         tokens.add(currentToken.toString());
                         currentToken = new StringBuilder();
                     }
                     tokens.add(String.valueOf(c));
                 } else if (Character.isWhitespace(c)) {
-//                    System.out.println("Whitespace");
                     continue;
                 } else if (isTernary) {
                     if (c == ':') {
@@ -1545,25 +1550,43 @@ public class ArrayUtil {
     }
 
     public static void main(String[] args) {
-        Function<String, LazyMathEntity> func = s -> {
-            return new LazyMathEntity(s);
-        };
-        System.out.println(calculate("5+3>1?55:30", func));
-        System.out.println("---");
-        List<LazyMathEntity> result = (calculate("HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")", func));
-        if (result.size() == 1) {
-            System.out.println(result.get(0).resolve(null));
-        } else {
-            for (LazyMathEntity entity : result) {
-                System.out.println(entity.resolve(null));
+//        Function<String, LazyMathEntity> func = s -> {
+//            return new LazyMathEntity(s);
+//        };
+//        System.out.println(calculate("5+3>1?55:30", func));
+//        System.out.println("---");
+//        List<LazyMathEntity> result = (calculate("HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")", func));
+//        if (result.size() == 1) {
+//            System.out.println(result.get(0).resolve(null));
+//        } else {
+//            for (LazyMathEntity entity : result) {
+//                System.out.println(entity.resolve(null));
+//            }
+//        }
+
+        String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", f -> true);
+        System.out.println(input);
+        // private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
+        ParseResult<Object> test = parseTokens(input, null, new Function<String, Predicate<Object>>() {
+            @Override
+            public Predicate<Object> apply(String s) {
+                System.out.println("Parse elem predicate " + s);
+                return f -> true;
             }
-        }
+        }, new Function<String, Predicate<Object>>() {
+            @Override
+            public Predicate<Object> apply(String s) {
+                System.out.println("Parse filter " + s);
+                return f -> true;
+            }
+        });
     }
 
     private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         if ((parseSet2 != null) == (parseElemPredicate != null)) {
             throw new IllegalArgumentException("Only one of parseSet2 and parseElemPredicate can be null");
         }
+
 
         List<String> splitAnd = StringMan.split(input, ',');
 
