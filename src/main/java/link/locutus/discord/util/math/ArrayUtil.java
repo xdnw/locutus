@@ -1631,8 +1631,8 @@ public class ArrayUtil {
                         Predicate<T> filter = parseFilter.apply(elem);
                         orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else if (elem.contains("{")) {
-                        Set<T> set = parseSet2.apply(elem);
-                        orResults.add(new ParseResult<>(elem, List.of(), new AtomicBoolean()));
+                        Predicate<T> filter = parseFilter.apply(elem);
+                        orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else {
                         ParseResult<T> result = new ParseResult<>(elem, List.of(), new AtomicBoolean());
                         if (parseSet2 != null) {
