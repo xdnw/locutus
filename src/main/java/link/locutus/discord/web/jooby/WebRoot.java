@@ -95,7 +95,7 @@ public class WebRoot {
         });
 
 
-        this.app = Javalin.create(config -> {
+        Javalin appCreate = Javalin.create(config -> {
             config.plugins.register(plugin);
 //            config.enableCorsForOrigin();
             config.compression.gzipOnly(3);
@@ -115,7 +115,15 @@ public class WebRoot {
                     }
                 });
             }
-        }).start();
+        });
+
+        if (portHTTPS > 0) {
+            this.app = appCreate.start(portHTTPS);
+        } else if (portMain > 0) {
+            this.app = appCreate.start(portMain);
+        } else {
+            this.app = appCreate.start();
+        }
 
         this.pageHandler = new PageHandler(this);
 

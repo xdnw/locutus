@@ -263,9 +263,7 @@ public class GuildCustomMessageHandler implements Runnable {
 
             // get the messages which are below ageMs but above the lastSent
             List<Map.Entry<GuildDB, CustomConditionMessage>> messages = getMessagesBetween(creation, 0, ageMs);
-            System.out.println("Messages 1  = " + messages.size());
             messages.removeIf(f -> f.getValue().getOriginDate() > date || Math.abs(ageMs - f.getValue().getDelay()) > TimeUnit.DAYS.toMillis(7));
-            System.out.println("Messages 2  = " + messages.size());
             if (!messages.isEmpty()) {
                 Set<Long> guildsSent = new LongArraySet();
                 for (Map.Entry<GuildDB, CustomConditionMessage> entry : messages) {
