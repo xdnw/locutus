@@ -39,6 +39,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.awt.Desktop;
@@ -287,7 +288,11 @@ public class WarUpdateProcessor {
                         }
                     }
                     for (WarCategory warCat : toUpdate) {
-                        warCat.update(pair.getKey(), pair.getValue());
+                        try {
+                            warCat.update(pair.getKey(), pair.getValue());
+                        } catch (ErrorResponseException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }

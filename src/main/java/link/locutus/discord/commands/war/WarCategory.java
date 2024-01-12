@@ -47,6 +47,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
 
@@ -1274,6 +1275,7 @@ public class WarCategory {
         ROOM_ACTIVE_INVALID_CHANNEL("War room is registered and active but has an invalid channel", true),
         ROOM_ACTIVE_EXISTS("War room is registered and active and has a valid channel", true),
         NOT_CREATED("War room is not created yet, but active wars were found", true),
+        ROOM_ACTIVE_NO_FREE_CATEGORY("War room is active, but not free category is found", true),
         ;
 
         private final boolean isActive;
@@ -1335,7 +1337,14 @@ public class WarCategory {
 
             if (reason.isActive()) {
                 long createStart = System.currentTimeMillis();
-                WarRoom room = get(targetNation, create, create, create);
+                WarRoom room;
+                try {
+                    room = get(targetNation, create, create, create);
+                } catch (ErrorResponseException e) {
+                    if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.ROOM_ACTIVE_NO_FREE_CATEGORY);
+                    continue;
+//                    room = get(targetNation, false, false, false);
+                }
                 createDiff += (System.currentTimeMillis() - createStart);
 
                 long updateStart = System.currentTimeMillis();
