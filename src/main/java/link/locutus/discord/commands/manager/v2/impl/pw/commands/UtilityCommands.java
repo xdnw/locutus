@@ -1386,15 +1386,15 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get info about your own nation")
-    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db) throws IOException {
-        return who(command, guild, channel, author, db, Collections.singleton(me), null, false, false, false, false, false, false, null);
+    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+        return who(command, guild, channel, author, db, me, Collections.singleton(me), null, false, false, false, false, false, false, snapshotDate, null);
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
             desc = "Get detailed information about a nation\n" +
                     "Nation argument can be nation name, id, link, or discord tag\n" +
                     "e.g. `{prefix}who @borg`")
-    public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
+    public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db, @Me @Default DBNation me,
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
@@ -1411,11 +1411,14 @@ public class UtilityCommands {
                       @Switch("i") boolean listInfo,
                       @Arg("List all interview channels of each nation")
                       @Switch("c") boolean listChannels,
+                      @Switch("s") @Timestamp Long snapshotDate,
                       @Switch("p") Integer page) throws IOException {
         DBNation myNation = DiscordUtil.getNation(author.getIdLong());
         int perpage = 15;
         StringBuilder response = new StringBuilder();
-        final Collection<DBNation> nations = SimpleNationList.from(nationOrAlliances).getNations();
+        String filter = command.getString("nationOrAlliances");
+        if (filter == null && me != null) filter = me.getQualifiedId();
+        final Set<DBNation> nations = PnwUtil.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild(), true);
 
         String arg0;
         String title;
@@ -1481,6 +1484,9 @@ public class UtilityCommands {
 
                 msg.send();
             } else {
+                if (snapshotDate != null) {
+                    throw new IllegalArgumentException("You specified a `snapshotDate`, but alliance snapshots are not currently supported.");
+                }
                 DBAlliance alliance = nationOrAA.asAlliance();
                 title = alliance.getName();
                 StringBuilder markdown = new StringBuilder(alliance.toMarkdown() + "\n");
@@ -1541,6 +1547,7 @@ public class UtilityCommands {
                 msg.send();
             }
         } else {
+            NationList nationList = new SimpleNationList(nations);
             int allianceId = -1;
             for (DBNation nation : nations) {
                 if (allianceId == -1 || allianceId == nation.getAlliance_id()) {
@@ -1560,17 +1567,11 @@ public class UtilityCommands {
             }
             if (nations.isEmpty()) return "No nations found";
             title = "(" + nations.size() + " nations) " + title;
+            IMessageBuilder msg = channel.create().embed(title, nationList.toMarkdown());
 
-            DBNation total = new DBNation(arg0, nations, false);
-            DBNation average = new DBNation(arg0, nations, true);
+            // todo
 
-            response.append("Total for " + arg0 + ":").append('\n');
-
-            printAA(response, total, true);
-
-            response.append("Average for " + arg0 + ":").append('\n');
-
-            printAA(response, average, true);
+            msg.send();
         }
         if (!listInfo && page == null && !response.isEmpty()) {
             channel.create().embed(title, response.toString()).send();
