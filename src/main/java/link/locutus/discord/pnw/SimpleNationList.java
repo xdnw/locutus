@@ -11,11 +11,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SimpleNationList implements NationList {
-    private final Collection<DBNation> nations;
+    private final Set<DBNation> nations;
     public String filter;
 
     public SimpleNationList(Collection<DBNation> nations) {
-        this.nations = nations;
+        this.nations = nations instanceof Set ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
     }
 
     public NationFilter toFilter() {
@@ -56,7 +56,7 @@ public class SimpleNationList implements NationList {
     }
 
     @Override
-    public Collection<DBNation> getNations() {
+    public Set<DBNation> getNations() {
         return nations;
     }
 

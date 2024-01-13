@@ -119,7 +119,7 @@ public enum  NationColor implements NationList {
     }
 
     @Override
-    public Collection<DBNation> getNations() {
+    public Set<DBNation> getNations() {
         return getNationsMatching(null);
     }
 }
