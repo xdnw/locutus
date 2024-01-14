@@ -99,6 +99,7 @@ public class Who extends Command {
                 channel,
                 author,
                 db,
+                me,
                 nations,
                 null,
                 flags.contains('l'),
@@ -107,6 +108,7 @@ public class Who extends Command {
                 flags.contains('m'),
                 flags.contains('i'),
                 flags.contains('c'),
+                null,
                 page);
 
 //
