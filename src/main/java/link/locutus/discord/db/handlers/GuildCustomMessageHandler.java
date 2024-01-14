@@ -256,7 +256,6 @@ public class GuildCustomMessageHandler implements Runnable {
 
         List<DBNation> nationsCreated = nationsNone.stream().filter(f -> f.getDate() > createCutoff).toList();
 
-        System.out.println("Creation = " + nationsCreated.size());
         for (DBNation nation : nationsCreated) {
             long date = nation.getDate();
             long ageMs = now - date;
