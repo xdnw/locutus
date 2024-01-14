@@ -85,11 +85,11 @@ public class PermissionBinding extends BindingHelper {
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
                 if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
-                    String markdown = PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true);
                     if (offshoreInfo.getValue() == Settings.INSTANCE.ALLIANCE_ID()) {
+                        String markdown = PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true);
                         markdown += " (Bot Owner)";
+                        publicOffshores.add(markdown);
                     }
-                    publicOffshores.add(markdown);
                 }
             }
             if (!publicOffshores.isEmpty()) {
