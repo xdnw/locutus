@@ -102,7 +102,7 @@ dependencies {
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.7.2'
     implementation 'com.nixxcode.jvmbrotli:jvmbrotli:0.2.0'
 
-    implementation 'io.javalin:javalin:5.6.2'
+    implementation 'io.javalin:javalin:5.6.3'
     implementation 'io.javalin.community.ssl:ssl-plugin:5.6.1'
     implementation 'com.aayushatharva.brotli4j:brotli4j:1.12.0'
 

@@ -31,7 +31,9 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.bytedeco.librealsense.context;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -44,6 +46,7 @@ import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,10 +95,14 @@ public class WebRoot {
             } else {
                 conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH, Settings.INSTANCE.WEB.PRIVKEY_PASSWORD);
             }
+            conf.securePort = Settings.INSTANCE.WEB.PORT_HTTPS;
+            if (Settings.INSTANCE.WEB.PORT_HTTP > 0) {
+                conf.insecurePort = Settings.INSTANCE.WEB.PORT_HTTP;
+            }
         });
 
 
-        Javalin appCreate = Javalin.create(config -> {
+        this.app = Javalin.create(config -> {
             config.plugins.register(plugin);
 //            config.enableCorsForOrigin();
             config.compression.gzipOnly(3);
@@ -115,15 +122,7 @@ public class WebRoot {
                     }
                 });
             }
-        });
-
-        if (portHTTPS > 0) {
-            this.app = appCreate.start(portHTTPS);
-        } else if (portMain > 0) {
-            this.app = appCreate.start(portMain);
-        } else {
-            this.app = appCreate.start();
-        }
+        }).start();
 
         this.pageHandler = new PageHandler(this);
 
