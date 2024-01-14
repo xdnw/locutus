@@ -4415,7 +4415,7 @@ public class DBNation implements NationOrAlliance {
         }
         //Domestic/War policy | beige turns | score
         String colorStr = getColor().name();
-        if (color == NationColor.BEIGE) colorStr += "=" + getBeigeTurns();
+        if (color == NationColor.BEIGE && getSnapshot() == null) colorStr += "=" + getBeigeTurns();
         body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `")
                 .append(getContinent().name()).append("` | `" + colorStr).append("` | ").append(DiscordUtil.timestamp(lastActiveMs(), null)).append(" \u23F0\n");
         //MMR[Building]: 1/2/3 | MMR[Unit]: 5/6/7
@@ -4465,20 +4465,22 @@ public class DBNation implements NationOrAlliance {
         }
         body.append("\n");
         //
-        Map<String, Integer> timerStr = new LinkedHashMap<>();
-        //(optional) Timers: city=1, project=1, color=1, war=, domestic=1
-        long cityTurns = getCityTurns();
-        if (cityTurns > 0) timerStr.put("city", (int) cityTurns);
-        long projectTurns = getProjectTurns();
-        if (projectTurns > 0) timerStr.put("project", (int) projectTurns);
-        long colorTurns = getColorTurns();
-        if (colorTurns > 0) timerStr.put("color", (int) colorTurns);
-        long warTurns = getWarPolicyTurns();
-        if (warTurns > 0) timerStr.put("war", (int) warTurns);
-        long domesticTurns = getDomesticPolicyTurns();
-        if (domesticTurns > 0) timerStr.put("domestic", (int) domesticTurns);
-        if (!timerStr.isEmpty()) {
-            body.append("**Timers:** `" + timerStr.toString() + "`\n");
+        if (getSnapshot() == null) {
+            Map<String, Integer> timerStr = new LinkedHashMap<>();
+            //(optional) Timers: city=1, project=1, color=1, war=, domestic=1
+            long cityTurns = getCityTurns();
+            if (cityTurns > 0) timerStr.put("city", (int) cityTurns);
+            long projectTurns = getProjectTurns();
+            if (projectTurns > 0) timerStr.put("project", (int) projectTurns);
+            long colorTurns = getColorTurns();
+            if (colorTurns > 0) timerStr.put("color", (int) colorTurns);
+            long warTurns = getWarPolicyTurns();
+            if (warTurns > 0) timerStr.put("war", (int) warTurns);
+            long domesticTurns = getDomesticPolicyTurns();
+            if (domesticTurns > 0) timerStr.put("domestic", (int) domesticTurns);
+            if (!timerStr.isEmpty()) {
+                body.append("**Timers:** `" + timerStr.toString() + "`\n");
+            }
         }
         //(optional) Active wars
         //
@@ -4500,21 +4502,22 @@ public class DBNation implements NationOrAlliance {
                     String name = toAcronym.apply(f.name());
                     return (f == Projects.IRON_DOME || f == Projects.VITAL_DEFENSE_SYSTEM ? "**" + name + "**" : name);
                 }).collect(Collectors.joining(", "))).append("\n");
-
-        Set<Integer> blockaded = this.getBlockadedBy();
-        if (!blockaded.isEmpty()) {
-            // DBNation.byId(id)
-            // if not null, append nation.getMarkdownUrl(true) else, append id. comma separated
-            body.append("Blockaded By: ").append(blockaded.stream().map(id -> {
-                DBNation nation = DBNation.getById(id);
-                return nation != null ? nation.getMarkdownUrl() : String.valueOf(id);
-            }).collect(Collectors.joining(","))).append("\n");
-        }
-        // use MathMan.format to turn into Map<WarType, String> from Map<WarType, Long>
-        Map<WarType, String> bounties = getBountySums().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> MathMan.format(e.getValue())));
-        //(optional) Bounties: {}
-        if (!bounties.isEmpty()) {
-            body.append("Bounties: `").append(bounties.toString()).append("`\n");
+        if (getSnapshot() == null) {
+            Set<Integer> blockaded = this.getBlockadedBy();
+            if (!blockaded.isEmpty()) {
+                // DBNation.byId(id)
+                // if not null, append nation.getMarkdownUrl(true) else, append id. comma separated
+                body.append("Blockaded By: ").append(blockaded.stream().map(id -> {
+                    DBNation nation = DBNation.getById(id);
+                    return nation != null ? nation.getMarkdownUrl() : String.valueOf(id);
+                }).collect(Collectors.joining(","))).append("\n");
+            }
+            // use MathMan.format to turn into Map<WarType, String> from Map<WarType, Long>
+            Map<WarType, String> bounties = getBountySums().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> MathMan.format(e.getValue())));
+            //(optional) Bounties: {}
+            if (!bounties.isEmpty()) {
+                body.append("Bounties: `").append(bounties.toString()).append("`\n");
+            }
         }
         return body.toString();
     }

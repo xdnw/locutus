@@ -473,8 +473,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Set<DBNation> applicants = nations.stream().filter(n -> n.getPosition() == Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
         Set<DBNation> activeApplicants = applicants.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
         // 5 members (3 active/2 taxable) | 2 applicants (1 active)
-        body.append(members.size()).append(" members (").append(activeMembers.size()).append(" active/").append(taxableMembers.size()).append(" taxable) | ")
-                .append(applicants.size()).append(" applicants (").append(activeApplicants.size()).append(" active)\n");
+        body.append(members.size()).append(" members (").append(activeMembers.size()).append(" active/").append(taxableMembers.size()).append(" taxable)");
+        if (!applicants.isEmpty()) {
+            body.append(" | ").append(applicants.size()).append(" applicants (").append(activeApplicants.size()).append(" active)");
+        }
+        body.append("\n");
         // Off, Def, Cities (total/average), Score, Color
         int off = nations.stream().mapToInt(DBNation::getOff).sum();
         int def = nations.stream().mapToInt(DBNation::getDef).sum();
@@ -519,9 +522,17 @@ public class DBAlliance implements NationList, NationOrAlliance {
                     .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                     .toList();
             body.append("\n**Alliance Wars:**\n");
+            String cappedMsg = null;
+            if (sorted.size() > 20) {
+                cappedMsg = "- +" + (sorted.size() - 20) + " more";
+                sorted = sorted.stream().limit(20).collect(Collectors.toList());
+            }
             for (Map.Entry<DBAlliance, Integer> entry : sorted) {
                 body.append("- ").append(PnwUtil.getMarkdownUrl(entry.getKey().getId(), true))
                         .append(": ").append(entry.getValue()).append(" wars\n");
+            }
+            if (cappedMsg != null) {
+                body.append(cappedMsg).append("\n");
             }
         }
         Map<Integer, Treaty> treaties = this.getTreaties();
@@ -529,6 +540,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
             body.append("`No treaties`\n");
         } else {
             body.append("\n**Treaties:**\n");
+            String cappedMsg = null;
+            if (treaties.size() > 20) {
+                cappedMsg = "- +" + (treaties.size() - 20) + " more";
+                treaties = treaties.entrySet().stream().limit(20).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            }
             for (Treaty treaty : treaties.values()) {
                 int otherId = treaty.getToId() == allianceId ? treaty.getFromId() : treaty.getToId();
                 body.append("- ").append(treaty.getType())
@@ -536,11 +552,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
                         .append(" (").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(treaty.getTurnEnds()), null))
                         .append(")\n");
             }
+            if (cappedMsg != null) {
+                body.append(cappedMsg).append("\n");
+            }
         }
         // Revenue
         Map<ResourceType, Double> revenue = getRevenue();
         if (revenue.isEmpty()) {
-            body.append("`No revenue`\n");
+            body.append("`No taxable revenue`\n");
         } else {
             body.append("\n**Taxable Nation Revenue:**");
             body.append("`").append(PnwUtil.resourcesToString(revenue)).append("`\n");
