@@ -1,0 +1,4 @@
+@args(String title, String endpoint)
+@rocker.main.template(title) -> {
+    @rocker.data.timechartendpoint.template(title, endpoint)
+}
