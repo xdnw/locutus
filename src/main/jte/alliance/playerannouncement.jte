@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.announce.Announcement
 @import link.locutus.discord.db.entities.DBNation
@@ -50,9 +51,9 @@ bg-secondary border-dark
     </figure>
     @if(showFooter)
         @if(plrAnn.isActive())
-        <button cmd="$readannouncement ${plrAnn.getParent().id}" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button cmd="${CM.announcement.read.cmd.create(plrAnn.getParent().id + "", null).toSlashCommand(false)}" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         @else
-        <button cmd="$readannouncement ${plrAnn.getParent().id} false" type="button" class="btn btn-danger">Mark Unread</button>
+        <button cmd="${CM.announcement.read.cmd.create(plrAnn.getParent().id + "", "false").toSlashCommand(false)}" type="button" class="btn btn-danger">Mark Unread</button>
         @endif
     @endif
 </div>

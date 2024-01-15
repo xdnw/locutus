@@ -44,7 +44,7 @@
 
 <script>
 var nationNames = $unsafe{nationNames.toString()};
-var nationIds = $$unsafe{nationIds.toString()};
+var nationIds = $unsafe{nationIds.toString()};
 var baseUrl = "${WebRoot.REDIRECT}";
 
 // JavaScript

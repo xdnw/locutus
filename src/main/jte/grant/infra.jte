@@ -38,7 +38,7 @@
                 </ul>
             @endif
 
-            <p class="lead">${MarkupUtil.transformURLIntoLinks(grant.getInstructions())}</p>
+            <p class="lead">$unsafe{MarkupUtil.transformURLIntoLinks(grant.getInstructions())}</p>
             <p class="">${costFull} worth: ~$${costWorth}</p>
             <p class="">${grant.getNote()}</p>
             @if(failed != null)

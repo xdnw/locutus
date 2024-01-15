@@ -25,6 +25,6 @@
 @template.command.commandgroup(store = store, command = pages, subcommands = pages.getAllowedCommands(store, permHandler), endpoint = pageEndpoint)
 
 @template.command.commandgroup(store = store, command = commands, subcommands = commands.getAllowedCommands(store, permHandler), endpoint = commandEndpoint)
-`, navbar = null) -> {
+`, navbar = null)
 
 

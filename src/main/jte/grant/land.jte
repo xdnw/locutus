@@ -44,12 +44,12 @@
             <p class="">${costFull} worth: ~$${costWorth}</p>
             <p class="">${grant.getNote()}</p>
             @if(failed != null)
-                @for (String message : failed) {
+                @for (String message : failed)
                     <div class="alert p-1 my-1 alert-danger border border-danger" role="alert">${message}</div>
                 @endfor
             @endif
-            @if(override != null) {
-                @for (String message : override) {
+            @if(override != null)
+                @for (String message : override)
                     <div class="alert p-1 my-1 alert-warning border border-warning" role="alert">${message}</div>
                 @endfor
             @endif

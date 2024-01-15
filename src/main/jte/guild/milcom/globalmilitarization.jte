@@ -22,7 +22,7 @@
 <h2 class="text-white">Search</h2>
 <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
 
-@for (Integer sphereId : spheres.getSpheres()) {
+@for (Integer sphereId : spheres.getSpheres())
     @if(!Collections.disjoint(metricMap.keySet(), spheres.getAlliances(sphereId)))
     <div class="bg-white mt-3 rounded shadow py-1 searchable accordion" id="Accordion${sphereId}">
         <div class="accordion-item">

@@ -4,7 +4,7 @@
 @param long userId
 @param User user
 @param DBNation nation
-@if(user != null) {
+@if(user != null)
 <a href="javascript:void(0)" type="button" data-bs-toggle="modal" data-bs-target="#modal-${userId}">${user.getName()}#${user.getDiscriminator()}</a>
 <div class="modal fade" id="modal-${userId}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog">

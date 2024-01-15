@@ -66,8 +66,8 @@
             </div>
             <div id="collapse${entry.getKey()}" class="accordion-collapse collapse" aria-labelledby="heading${entry.getKey()}" data-bs-parent="#Accordion${entry.getKey()}">
                 <div class="accordion-body bg-light">
-                    @for (ResourceType type : ResourceType.values) {
-                        @if(type != ResourceType.CREDITS) {
+                    @for (ResourceType type : ResourceType.values)
+                        @if(type != ResourceType.CREDITS)
                             <div class="bg-light border border-3 border-secondary rounded">
                                 @template.data.timechartdatasrc(title = type.name(),
                                 data = categorized.createTable(type.name(), entry.getValue(),

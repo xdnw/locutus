@@ -3,6 +3,7 @@
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
+@import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Transaction2
 @import link.locutus.discord.db.entities.DBAlliance
@@ -54,8 +55,8 @@
     <div class="container">
     <div class="bg-white mt-3 rounded shadow py-1 row">
         <div class="col-auto">
-            <button type="button" cmd="$sortInterviews" refresh="1" class="btn btn-primary">Sort channels</button>
-            <button type="button" cmd="$syncInterviews" refresh="1" class="btn btn-primary">List old channels</button>
+            <button type="button" cmd="${CM.interview.sortInterviews.cmd.create(null).toSlashCommand(false)}" refresh="1" class="btn btn-primary">Sort channels</button>
+            <button type="button" cmd="${CM.interview.syncInterviews.cmd.create().toSlashCommand(false)}" refresh="1" class="btn btn-primary">List old channels</button>
         </div>
         <div class="col">
             <input class="form-control form-control-sm d-inline" id="myInput" type="text" placeholder="Search..">
@@ -87,7 +88,7 @@ function msgTemplate(channelId, messageEntry) {
     var avatar = getAvatarUrl(userId, avatarId);
     var username = usernames[userId];
 
-    return &grave;<div class="card mb-4">
+    return ${"`"}<div class="card mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between">
                 <div class="d-flex flex-row align-items-center">
@@ -108,7 +109,7 @@ function msgTemplate(channelId, messageEntry) {
             </div>
             <p>${"${message}"}</p>
         </div>
-    </div>&grave;
+    </div>${"`"}
 }
 </script>
 

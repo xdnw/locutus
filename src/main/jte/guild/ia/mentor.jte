@@ -58,7 +58,7 @@
 @endif
 @if(lastMentorTxByNationId.getOrDefault(mentor.getNation_id(), 0L) == 0)
 <div class="alert alert-danger p-1 m-1"><b>Mentor has not mentored</b></div>
-@elseif(lastMentorTxByNationId.getOrDefault(mentor.getNation_id(), 0L) < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(8)) {
+@elseif(lastMentorTxByNationId.getOrDefault(mentor.getNation_id(), 0L) < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(8))
 <div class="alert alert-warning p-1 m-1"><b>Mentor has not mentored in: </b>${TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lastMentorTxByNationId.getOrDefault(mentor.getNation_id(), 0L))}</div>
 @endif
 <div class="alert alert-info p-1 m-1">

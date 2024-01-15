@@ -3,6 +3,7 @@
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
+@import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Transaction2
 @import link.locutus.discord.db.entities.DBAlliance
@@ -52,7 +53,7 @@
         @endif
     </td>
     <td>
-        <button class="btn btn-sm btn-primary" cmd="$unassignMentee ${mentee.getNation_id()} -f">Unassign</button>
+        <button class="btn btn-sm btn-primary" cmd="${CM.interview.unassignMentee.cmd.create(mentee.getNation_id() + "").toSlashCommand(false)}">Unassign</button>
     </td>
 </tr>
 @if(checkup != null && !checkup.isEmpty())
@@ -70,7 +71,7 @@
         @for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())
             @if(entry.getValue() != null && entry.getValue().getValue() != null)
                 <div role="alert" class="alert p-1 my-1 border alert-dismissible fade show
-                @if(entry.getKey().severity == IACheckup.AuditSeverity.INFO) {
+                @if(entry.getKey().severity == IACheckup.AuditSeverity.INFO)
                     alert-info border-info">
                 @endif
                 @if(entry.getKey().severity == IACheckup.AuditSeverity.WARNING)

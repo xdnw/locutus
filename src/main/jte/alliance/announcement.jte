@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.announce.Announcement
@@ -21,7 +22,7 @@ bg-secondary border-dark
             <p class="markup">${announcement.body}</p>
         </blockquote>
         <figcaption class="blockquote-footer text-dark">
-            By <cite title="Author">@template.user.userlinkid(announcement.sender)</cite> on <span id="date-${announcement.id}">announcement.date</span>
+            By <cite title="Author">@template.user.userlinkid(userId = announcement.sender)</cite> on <span id="date-${announcement.id}">announcement.date</span>
         </figcaption>
         <script>
             document.getElementById("date-${announcement.id}").innerHTML = new Date(${announcement.date}).toString()
@@ -31,9 +32,9 @@ bg-secondary border-dark
     Replacements: <kbd>${announcement.replacements}</kbd><br>
 
     @if(announcement.active)
-        <button cmd="$archiveAnnouncement ${announcement.id}" type="button" class="btn btn-danger">Archive</button>
+        <button cmd="${CM.announcement.archive.cmd.create(announcement.id + "", null).toSlashCommand(false)}" type="button" class="btn btn-danger">Archive</button>
     @else
-        <button cmd="$archiveAnnouncement ${announcement.id} false" type="button" class="btn btn-danger">Unarchive</button>
+        <button cmd="${CM.announcement.archive.cmd.create(announcement.id + "", "false").toSlashCommand(false)}" type="button" class="btn btn-danger">Unarchive</button>
     @endif
     <a href="${WebRoot.REDIRECT}/announcementvariations/${announcement.id}" type="button" class="btn btn-primary">View Variations</a>
 </div>

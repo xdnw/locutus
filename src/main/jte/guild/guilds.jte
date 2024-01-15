@@ -87,9 +87,9 @@ $(document).ready(function(){
         <!--  Add argument to the guildentry template which sets the highlight flag and additional note -->
         <!-- if current is not null and matches db, set the highlight to "primary" and note to "Currently Selected"  -->
         <!-- if allianceGuild is not null and matches db, set the highlight to "secondary" and note to "Your Alliance"  -->
-        @if(current != null && db.getIdLong() == current.getIdLong()) {
+        @if(current != null && db.getIdLong() == current.getIdLong())
             @template.guild.guildentry(guild = db.getGuild(), db = db, highlight = true, note = "Currently Selected")
-        @elseif(allianceGuild != null && db.getIdLong() == allianceGuild.getIdLong()) {
+        @elseif(allianceGuild != null && db.getIdLong() == allianceGuild.getIdLong())
             @template.guild.guildentry(guild = db.getGuild(), db = db, highlight = true, note = "Your Alliance")
         @else
             @template.guild.guildentry(guild = db.getGuild(), db = db, highlight = false, note = null)

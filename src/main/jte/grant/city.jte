@@ -27,7 +27,7 @@
     <div class="col-md-10 p-2">
         <div id="body${grantToken + ""}">
             <h4 class="">City ${nation.getCities()}->${nation.getCities() + MathMan.parseInt(grant.getAmount())}</h4>
-            <p class="lead">${MarkupUtil.transformURLIntoLinks(grant.getInstructions())}</p>
+            <p class="lead">$unsafe{MarkupUtil.transformURLIntoLinks(grant.getInstructions())}</p>
             <p class="">${costFull} worth: ~$${costWorth}</p>
             <p class="">${grant.getNote()}</p>
             @if(failed != null)

@@ -3,6 +3,7 @@
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
+@import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Transaction2
 @import link.locutus.discord.db.entities.DBAlliance
@@ -50,8 +51,8 @@
         <div class="bg-white container mt-3 rounded shadow py-1">
             <div class=""></div>
         </div>
-@for (Map.Entry<DBNation, List<DBNation>> entry : mentorsSorted) {
-    @if(!entry.getValue().isEmpty()) {
+@for (Map.Entry<DBNation, List<DBNation>> entry : mentorsSorted)
+    @if(!entry.getValue().isEmpty())
         <div class="bg-white container mt-3 rounded shadow py-1">
             @template.guild.ia.mentor(mentor = entry.getKey(), myMentees = entry.getValue(), iaCat = iaCat, db = db, categoryMap= categoryMap, passedMap= passedMap,
             lastMentorTxByNationId = lastMentorTxByNationId,
@@ -108,7 +109,7 @@
                 ${categoryMap.get(nation)}
             </td>
             <td>
-                <button class="btn btn-sm btn-primary" cmd="$mentee ${nation.getNation_id()} -f">Assign Self</button>
+                <button class="btn btn-sm btn-primary" cmd="${CM.interview.mentee.cmd.create(nation.getNation_id() + "", "true").toSlashCommand(false)}">Assign Self</button>
             </td>
         </tr>
         @endfor

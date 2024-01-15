@@ -7,7 +7,7 @@
 @param List<SearchResult> results
 
 @template.main(title = "Search Results", content = @`
-@if(results.isEmpty()) {
+@if(results.isEmpty())
     <div class="alert alert-danger">No results found for <kbd>${term}</kbd></div>
 @else
     <div id="results">
@@ -15,7 +15,7 @@
     <div class="bg-white container mt-1 rounded shadow">
         <h3>${WordUtils.capitalizeFully(result.type.name())}: <a href="${result.url}">${result.title}</a></h3>
         <hr>
-        ${result.body}
+        $unsafe{result.body}
     </div>
 @endfor
     </div>

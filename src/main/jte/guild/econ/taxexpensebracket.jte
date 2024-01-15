@@ -52,7 +52,7 @@
     @endif
     <h4>Bracket Income/Expense breakdown</h4>
     @template.guild.econ.taxexpensesbreakdown(id = id, a = income, b = expense, showByResource = true)
-    @if(!nationsByBracket.isEmpty()) {
+    @if(!nationsByBracket.isEmpty())
     <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseNations${id + ""}" role="button" aria-expanded="false" aria-controls="collapseNations${id + ""}">
         Show ${nationsByBracket.size()} nations
     </a>
