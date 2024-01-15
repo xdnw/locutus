@@ -1,0 +1,25 @@
+@import link.locutus.discord.util.MathMan
+@import link.locutus.discord.util.PnwUtil
+@import com.fizzed.rocker.RenderingException
+@import com.fizzed.rocker.runtime.DefaultRockerTemplate
+@import com.fizzed.rocker.runtime.PlainTextUnloadedClassLoader
+@import link.locutus.discord.apiv1.enums.SuccessType
+
+
+@param double odds
+@param int success
+@if(odds > 0)
+<div class="overflow-hidden progress-bar @if(success == 0)
+        bg-danger
+    @elseif(success == 1)
+        bg-warning
+    @elseif(success == 2)
+        bg-info
+    @elseif(success == 3)
+        bg-primary
+    @endif" role="progressbar" style="width: ${odds}%" aria-valuenow="${odds}" aria-valuemin="0" aria-valuemax="100">
+    <div style="width:0!important">
+        ${(int) odds}% ${SuccessType.values[success]}
+    </div>
+    </div>
+@endif

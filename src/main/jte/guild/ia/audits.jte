@@ -1,0 +1,60 @@
+@import link.locutus.discord.commands.manager.v2.binding.annotation.Command
+@import link.locutus.discord.commands.manager.v2.binding.annotation.Default
+@import link.locutus.discord.commands.manager.v2.binding.annotation.Me
+@import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
+@import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
+@import link.locutus.discord.db.GuildDB
+@import link.locutus.discord.db.entities.Transaction2
+@import link.locutus.discord.db.entities.DBAlliance
+@import link.locutus.discord.db.entities.DBNation
+@import link.locutus.discord.user.Roles
+@import link.locutus.discord.util.StringMan
+@import link.locutus.discord.util.TimeUtil
+@import link.locutus.discord.util.discord.DiscordUtil
+@import link.locutus.discord.util.offshore.test.IACategory
+@import link.locutus.discord.util.offshore.test.IAChannel
+@import link.locutus.discord.util.task.ia.IACheckup
+@import net.dv8tion.jda.api.entities.Guild
+@import net.dv8tion.jda.api.entities.Member
+@import net.dv8tion.jda.api.entities.Role
+@import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
+@import java.io.IOException
+@import java.util.ArrayList
+@import java.util.Collections
+@import java.util.Comparator
+@import java.util.HashMap
+@import java.util.HashSet
+@import java.util.List
+@import java.util.Map
+@import java.util.Set
+@import java.util.concurrent.TimeUnit
+@import java.util.stream.Collectors
+
+@param GuildDB db
+@param Map<IACheckup.AuditType, Map<DBNation, String>> nationsByAudit
+
+@template.main(title = "Alliance audit results", content = @`
+<script>
+$(document).ready(function(){
+  $("#myInput").on("keyup", function() {
+    var value = $(this).val().toLowerCase();
+    $(".searchable").filter(function() {
+        var show = $(this).text().toLowerCase().indexOf(value) > -1;
+        $(this).toggle(show);
+        if (this.nodeName == "TR") {
+            $(this.nextElementSibling).toggle(show);
+        }
+    });
+  });
+});
+</script>
+<div class="container">
+<h2 class="text-white">Search</h2>
+<input class="form-control form-control-sm" id="myInput" type="text" placeholder="nation..">
+</div>
+<div class="container">
+@for (Map.Entry<IACheckup.AuditType, Map<DBNation, String>> entry : nationsByAudit.entrySet())
+    @template.guild.ia.auditlist(type = entry.getKey(), nationMap = entry.getValue())
+@endfor
+</div>
+`, navbar = null)

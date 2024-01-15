@@ -9,12 +9,12 @@ import java.nio.file.Path;
 
 public class Test {
     public static void main(String[] args) {
-        CodeResolver codeResolver = new DirectoryCodeResolver(Path.of("src/main/java/jte")); // This is the directory where your .jte files are located.
-        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html); // Two choices: Plain or Html
-        templateEngine.precompileAll();
+        CodeResolver codeResolver = new DirectoryCodeResolver(Path.of("src/main/jte")); // This is the directory where your .jte files are located.
+        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Plain); // Two choices: Plain or Html
+//        templateEngine.precompileAll();
 
         TemplateOutput output = new StringOutput();
-        templateEngine.render("example.jte", "Testing", output);
+        templateEngine.render("test.jte", "Testing", output);
         System.out.println(output);
 
     }
