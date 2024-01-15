@@ -40,10 +40,8 @@
 @param User author
 @param IACategory iaCat
 @param List<IACategory.SortedCategory> categories
-@param Map<GuildMessageChannel
-@param IACategory.SortedCategory> categoryMap
-@param Map<IACategory.SortedCategory
-@param List<GuildMessageChannel>> channelsByCategory
+@param Map<GuildMessageChannel, IACategory.SortedCategory> categoryMap
+@param Map<IACategory.SortedCategory, List<GuildMessageChannel>> channelsByCategory
 @param Map<GuildMessageChannel, DBNation> interviewNation
 @param Map<GuildMessageChannel, User> interviewUsers
 @param JsonElement avatarsJson
@@ -78,7 +76,6 @@ function getAvatarUrl(userId, avatarId) {
 }
 
 function msgTemplate(channelId, messageEntry) {
-
     var messageId = messageEntry[0];
     var userId = messageEntry[1];
     var dateLong = messageEntry[2];
@@ -88,7 +85,7 @@ function msgTemplate(channelId, messageEntry) {
     var avatar = getAvatarUrl(userId, avatarId);
     var username = usernames[userId];
 
-    return ${"`"}<div class="card mb-4">
+    return ${"&#96;"}<div class="card mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between">
                 <div class="d-flex flex-row align-items-center">
@@ -109,7 +106,7 @@ function msgTemplate(channelId, messageEntry) {
             </div>
             <p>${"${message}"}</p>
         </div>
-    </div>${"`"}
+    </div>${"&#96;"}
 }
 </script>
 

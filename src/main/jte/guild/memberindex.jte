@@ -32,8 +32,7 @@
 @param  DBNation nation
 @param  User author
 @param  double[] deposits
-@param  Map<IACheckup.AuditType
-@param  Map.Entry<Object, String>> checkup
+@param  Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
 @param  Collection<JavaCity> cities
 @param  boolean isFightingActives
 @param  Map<DBWar, DBNation> offensives

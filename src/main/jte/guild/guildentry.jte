@@ -6,12 +6,11 @@
 @param GuildDB db
 @param boolean highlight
 @param String note
-@if(highlight)
-    <div class="row p-2 m-3 guild-icon guild-entry bg-secondary bg-gradient" style="border-radius:10px">
+
+<div class="row p-2 m-3 guild-icon guild-entry bg-${highlight?"secondary":"primary"} bg-gradient" style="border-radius:10px">
+    @if(highlight)
         <h6>Example heading <span class="badge bg-secondary">${note}</span></h6>
-@else
-    <div class="row p-2 m-3 guild-icon guild-entry bg-primary bg-gradient" style="border-radius:10px">
-@endif
+    @endif
     <div class="col-md-2">
         <img alt="guild-icon" class="img-fluid guild-icon" src="${guild.getIconUrl()}">
     </div>

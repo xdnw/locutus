@@ -34,8 +34,7 @@
 @param List<DBNation> myMentees
 @param IACategory iaCat
 @param GuildDB db
-@param Map<DBNation
-@param IACategory.SortedCategory> categoryMap
+@param Map<DBNation, IACategory.SortedCategory> categoryMap
 @param Map<DBNation, Boolean> passedMap
 @param Map<Integer, Long> lastMentorTxByNationId
 @param List<DBNation> mentorsWithRole
