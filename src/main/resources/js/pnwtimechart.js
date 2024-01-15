@@ -18,7 +18,9 @@ $(document).ready(function() {
 
     let barcharts = document.getElementsByClassName("locutus-barchart");
     for (var container of barcharts) {
-        var stacked = container.hasAttribute("stacked");
+        let stackedAttribute = container.getAttribute("stacked");
+        let isStacked = stackedAttribute !== null && stackedAttribute.toLowerCase()
+
         let dataSrc = container.getAttribute("data-src");
         if (dataSrc != null) {
             var json = JSON.parse(dataSrc);
@@ -56,14 +58,14 @@ $(document).ready(function() {
                 },
                 scales: {
                     x: {
-                      stacked: stacked,
+                      stacked: isStacked,
                       title: {
                         display: json["x"],
                         text: json["x"]
                       }
                     },
                     y: {
-                      stacked: stacked,
+                      stacked: isStacked,
                       title: {
                         display: json["y"],
                         text: json["y"]

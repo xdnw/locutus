@@ -3,7 +3,7 @@
 
 # Log file
 *.log
-data/
+
 
 # BlueJ files
 *.ctxt
@@ -30,7 +30,7 @@ build/*
 build/generated-src/views
 !build/generated-src/
 
-
+/data/
 database/
 database2/
 /config/
@@ -41,7 +41,6 @@ _test
 src/main/resources/alliance_pages
 credentials-drive.json
 credentials-sheets.json
-data/
 bin/
 /images
 /wiki

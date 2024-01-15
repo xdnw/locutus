@@ -6,7 +6,7 @@
 
 @param String discordUrl
 @param String mailUrl
-@template.main(title = "Pick a login method", contnet = @`
+@template.main(title = "Pick a login method", content = @`
 <div class="container rounded shadow bg-white p-1">
     <h3>How would you like to login?</h3>
     <a class="btn btn-primary" href="${discordUrl}" role="button">
