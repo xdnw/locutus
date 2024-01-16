@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunctio
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import org.aopalliance.intercept.MethodInterceptor;
 
 import java.util.Arrays;
 import java.util.HashMap;

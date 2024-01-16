@@ -1,12 +1,14 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.user.Roles
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.User
 @import link.locutus.discord.db.entities.DBAlliance
 
+@param WebStore ws
 @param String discordUrl
 @param String mailUrl
-@template.main(title = "Pick a login method", content = @`
+@template.main(ws = ws, title = "Pick a login method", content = @`
 <div class="container rounded shadow bg-white p-1">
     <h3>How would you like to login?</h3>
     <a class="btn btn-primary" href="${discordUrl}" role="button">

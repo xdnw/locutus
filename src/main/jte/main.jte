@@ -1,9 +1,11 @@
 @import java.util.List
 @import java.util.Map
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.config.Settings
 @import gg.jte.Content
 
+@param WebStore ws
 @param Content content
 @param String title
 @param List<Map.Entry<String, String>> navbar

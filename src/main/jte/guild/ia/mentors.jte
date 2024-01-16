@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -31,6 +32,7 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 
+@param WebStore ws
 @param IACategory iaCat
 @param GuildDB db
 @param List<Map.Entry<DBNation, List<DBNation>>> mentorsSorted
@@ -47,14 +49,14 @@
 @param List<DBNation> idleMentors
 @param IACheckup checkup
 
-@template.main(title = "Mentors", navbar = null, content = @`
+@template.main(ws = ws, title = "Mentors", navbar = null, content = @`
         <div class="bg-white container mt-3 rounded shadow py-1">
             <div class=""></div>
         </div>
 @for (Map.Entry<DBNation, List<DBNation>> entry : mentorsSorted)
     @if(!entry.getValue().isEmpty())
         <div class="bg-white container mt-3 rounded shadow py-1">
-            @template.guild.ia.mentor(mentor = entry.getKey(), myMentees = entry.getValue(), iaCat = iaCat, db = db, categoryMap= categoryMap, passedMap= passedMap,
+            @template.guild.ia.mentor(ws = ws, mentor = entry.getKey(), myMentees = entry.getValue(), iaCat = iaCat, db = db, categoryMap= categoryMap, passedMap= passedMap,
             lastMentorTxByNationId = lastMentorTxByNationId,
             mentorsWithRole= mentorsWithRole, numPassedMap = numPassedMap,
             checkup2 = checkup)

@@ -1778,7 +1778,9 @@ public class DBNation implements NationOrAlliance {
         return total;
     }
 
-    public double getNetDepositsConverted(GuildDB db) throws IOException {
+    @Command
+    @RolePermission(Roles.ECON_STAFF)
+    public double getNetDepositsConverted(@Me GuildDB db) throws IOException {
         return getNetDepositsConverted(db, 0);
     }
 

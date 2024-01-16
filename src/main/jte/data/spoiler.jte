@@ -1,5 +1,7 @@
 @import gg.jte.Content
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 
+@param WebStore ws
 @param String title
 @param Content content
 @param String id

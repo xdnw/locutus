@@ -1,5 +1,6 @@
 @import link.locutus.discord.Locutus
 @import java.util.ArrayList
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
@@ -30,6 +31,7 @@
 @import java.util.Set
 @import java.util.UUID
 
+@param WebStore ws
 @param Object id
 @param String title
 @param GuildDB db
@@ -37,7 +39,8 @@
 @param Map<Integer, TaxBracket> bracketsByNation
 @param List<DBNation> nationsByBracket
 @param Map<Integer, Integer> bracketToNationDepositCount
-@param double[] income, Map<Integer,double[]> incomeByNation
+@param double[] income
+@param Map<Integer,double[]> incomeByNation
 @param Map<Integer, List<Transaction2>> transactionsByNation
 @param List<Transaction2> transactions
 @param double[] expense
@@ -51,7 +54,7 @@
         <h3>${title}</h3>
     @endif
     <h4>Bracket Income/Expense breakdown</h4>
-    @template.guild.econ.taxexpensesbreakdown(id = id, a = income, b = expense, showByResource = true)
+    @template.guild.econ.taxexpensesbreakdown(ws = ws, id = id, a = income, b = expense, showByResource = true)
     @if(!nationsByBracket.isEmpty())
     <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseNations${id + ""}" role="button" aria-expanded="false" aria-controls="collapseNations${id + ""}">
         Show ${nationsByBracket.size()} nations
@@ -116,7 +119,7 @@
                         <b># transactions (AA -&gt; nation): </b> ${transactionsByNation.getOrDefault(nation.getNation_id(), new ArrayList<>()).size()}<br>
                         <hr>
                         <b>nation income/expense breakdown:</b>
-                        @template.guild.econ.taxexpensesbreakdown(id = id + "" + nation.getNation_id(), a = incomeByNation.computeIfAbsent(nation.getNation_id(), f -> ResourceType.getBuffer()), b = expensesByNation.computeIfAbsent(nation.getNation_id(), f -> ResourceType.getBuffer()), showByResource = true)
+                        @template.guild.econ.taxexpensesbreakdown(ws = ws, id = id + "" + nation.getNation_id(), a = incomeByNation.computeIfAbsent(nation.getNation_id(), f -> ResourceType.getBuffer()), b = expensesByNation.computeIfAbsent(nation.getNation_id(), f -> ResourceType.getBuffer()), showByResource = true)
                         @if(transactionsByNation.containsKey(nation.getNation_id()))
                         <hr>
                         <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapseTX${id + ""}${nation.getNation_id()}" role="button" aria-expanded="false" aria-controls="collapseTX${id + ""}${nation.getNation_id()}">

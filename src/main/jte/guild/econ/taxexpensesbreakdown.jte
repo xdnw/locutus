@@ -1,4 +1,5 @@
 @import link.locutus.discord.Locutus
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
@@ -29,12 +30,13 @@
 @import link.locutus.discord.apiv1.enums.ResourceType
 @import java.util.UUID
 
+@param WebStore ws
 @param Object id
 @param double[] a
 @param double[] b
 @param boolean showByResource
 
-@template.guild.econ.incomeexpensebar(titleA = "Monetary Income", titleB = "Monetary Expense", a = PnwUtil.convertedTotal(a), b = PnwUtil.convertedTotal(b))
+@template.guild.econ.incomeexpensebar(ws = ws, titleA = "Monetary Income", titleB = "Monetary Expense", a = PnwUtil.convertedTotal(a), b = PnwUtil.convertedTotal(b))
 @if(showByResource)
     <div class="accordion" id="Accordion${id + ""}">
         <div class="accordion-item">
@@ -49,7 +51,7 @@
                 <div class="accordion-body bg-light">
                     @for (ResourceType type : ResourceType.values)
                         @if(a[type.ordinal()] != 0 || b[type.ordinal()] != 0)
-                            @template.guild.econ.incomeexpensebar(titleA = type + " income", titleB = type + " expense", a = a[type.ordinal()], b = b[type.ordinal()])
+                            @template.guild.econ.incomeexpensebar(ws = ws, titleA = type + " income", titleB = type + " expense", a = a[type.ordinal()], b = b[type.ordinal()])
                         @endif
                     @endfor
                 </div>

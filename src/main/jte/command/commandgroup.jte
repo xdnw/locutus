@@ -1,10 +1,11 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.command.CommandCallable
 @import link.locutus.discord.commands.manager.v2.command.CommandGroup
 @import java.util.*
 @import link.locutus.discord.commands.manager.v2.binding.ValueStore
 @import link.locutus.discord.util.StringMan
 
-@param ValueStore store
+@param WebStore ws
 @param CommandGroup command
 @param Map<String, CommandCallable> subcommands
 @param String endpoint
@@ -15,14 +16,14 @@
     </div>
 @endif
 <div class="bg-white container mt-3 rounded shadow py-1">
-@if(command.help(store) != null)
+@if(command.help(ws.store()) != null)
 <h2>Help</h2>
-<p>${command.help(store)}</p>
+<p>${command.help(ws.store())}</p>
 @endif
 
-@if(command.desc(store) != null)
+@if(command.desc(ws.store()) != null)
 <h2>Description</h2>
-<p>${command.desc(store)}</p>
+<p>${command.desc(ws.store())}</p>
 @endif
 <h2>Subcommands</h2>
 <ul class="list-group">

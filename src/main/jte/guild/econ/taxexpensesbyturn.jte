@@ -1,4 +1,5 @@
 @import link.locutus.discord.Locutus
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
@@ -32,6 +33,7 @@
 @import java.util.HashMap
 @import link.locutus.discord.db.entities.TaxRecordCategorizer2
 
+@param WebStore ws
 @param String title
 @param GuildDB db
 @param long start
@@ -40,7 +42,7 @@
 @param Map<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> categorizedByTurnByBracket
 @param Map<Integer, TaxBracket> brackets
 
-@template.main(title = title, content = @`
+@template.main(ws = ws, title = title, content = @`
 @for (Map.Entry<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> entry : categorizedByTurnByBracket.entrySet())
 <div class="bg-white container mt-3 rounded shadow py-1">
     @if(entry.getKey() == -1)
@@ -52,7 +54,7 @@
             Nations: ${brackets.get(entry.getKey()).getNations().size()}<br>
         </p>
     @endif
-    @template.data.timechartdatasrc(title = "",
+    @template.data.timechartdatasrc(ws = ws, title = "",
         data = categorized.createTable("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(),
     time = true)
 
@@ -69,7 +71,7 @@
                     @for (ResourceType type : ResourceType.values)
                         @if(type != ResourceType.CREDITS)
                             <div class="bg-light border border-3 border-secondary rounded">
-                                @template.data.timechartdatasrc(title = type.name(),
+                                @template.data.timechartdatasrc(ws = ws, title = type.name(),
                                 data = categorized.createTable(type.name(), entry.getValue(),
                                 type).convertTurnsToEpochSeconds(start).toHtmlJson(),
                                 time = true)

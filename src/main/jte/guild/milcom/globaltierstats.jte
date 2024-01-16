@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble
 @import link.locutus.discord.commands.rankings.SphereGenerator
 @import link.locutus.discord.db.entities.DBAlliance
@@ -6,6 +7,7 @@
 @import java.util.Set
 @import link.locutus.discord.commands.rankings.table.TimeNumericTable
 
+@param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
 @param Set<NationAttributeDouble> metrics
@@ -15,7 +17,7 @@
 @param int removeActiveM
 @param boolean removeApps
 
-@template.main(title = "Global Stats", navbar = null, content = @`
+@template.main(ws = ws, title = "Global Stats", navbar = null, content = @`
 <h2 class="text-white">Search</h2>
 <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
 
@@ -31,7 +33,7 @@
                 <div class="accordion-body bg-light">
                     @if(spheres.getAlliances(sphereId).size() > 1)
                     <div class="bg-light border border-3 border-secondary rounded searchable">
-                        @template.data.barchartdatasrc(title = spheres.getSphereName(sphereId) + " total",
+                        @template.data.barchartdatasrc(ws = ws, title = spheres.getSphereName(sphereId) + " total",
                         data = TimeNumericTable.create(spheres.getSphereName(sphereId) + ": ", metrics,
                         spheres.getAlliances(sphereId), groupBy, total, removeVM, removeActiveM, removeApps
                         ).toHtmlJson(),
@@ -41,7 +43,7 @@
                     @endif
                     @for (DBAlliance alliance : spheres.getAlliances(sphereId))
                         <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
-                            @template.data.barchartdatasrc(title = alliance.getName(),
+                            @template.data.barchartdatasrc(ws = ws, title = alliance.getName(),
                             data = TimeNumericTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance),
                             groupBy, total, removeVM, removeActiveM, removeApps
                             ).toHtmlJson(),

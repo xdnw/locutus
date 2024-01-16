@@ -4,7 +4,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
-import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -301,7 +300,8 @@ public final class FileUtil {
                         check409Error(http);
                         try (InputStream is = http.getErrorStream()) {
                             if (is != null) {
-                                throw new IOException(StringMan.stripApiKey(e.getMessage()) + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
+                                String error = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                                throw new IOException(StringMan.stripApiKey(e.getMessage()) + ":\n" + error);
                             }
                         }
                         System.out.println("URL " + urlStr);

@@ -1,4 +1,5 @@
 @import java.util.*
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.db.guild.GuildKey
 @import link.locutus.discord.apiv1.enums.MilitaryUnit
 @import link.locutus.discord.apiv1.enums.city.project.Projects
@@ -24,6 +25,7 @@
 @import link.locutus.discord.apiv1.enums.city.JavaCity
 @import link.locutus.discord.pnw.BeigeReason
 
+@param WebStore ws
 @param GuildDB db
 @param DBNation nation
 @param User author
@@ -98,16 +100,16 @@
     <h4 class="">Offensives</h4>
         @for (Map.Entry<DBWar, DBNation> entry : offensives.entrySet())
             @if(db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS) != null && db.isEnemyAlliance(entry.getKey().getDefender_aa()))
-                @template.guild.mywartr(db = db, nation = nation, author = author, war = entry.getKey(), enemy = entry.getValue(), warCard = warCards.get(entry.getKey()), recommendedAttack = recommendedAttacks.get(entry.getKey()), isAttacker = true, permitted = BeigeReason.getAllowedBeigeReasons(db, nation, entry.getKey(), null))
+                @template.guild.mywartr(ws = ws, db = db, nation = nation, author = author, war = entry.getKey(), enemy = entry.getValue(), warCard = warCards.get(entry.getKey()), recommendedAttack = recommendedAttacks.get(entry.getKey()), isAttacker = true, permitted = BeigeReason.getAllowedBeigeReasons(db, nation, entry.getKey(), null))
             @else
-                @template.guild.mywartr(db = db, nation = nation, author = author, war = entry.getKey(), enemy = entry.getValue(), warCard = warCards.get(entry.getKey()), recommendedAttack = recommendedAttacks.get(entry.getKey()), isAttacker = true, permitted = null)
+                @template.guild.mywartr(ws = ws, db = db, nation = nation, author = author, war = entry.getKey(), enemy = entry.getValue(), warCard = warCards.get(entry.getKey()), recommendedAttack = recommendedAttacks.get(entry.getKey()), isAttacker = true, permitted = null)
             @endif
         @endfor
     @endif
     @if(!defensives.isEmpty())
         <h4 class="">Defensives</h4>
         @for (Map.Entry<DBWar, DBNation> entry : defensives.entrySet())
-            @template.guild.mywartr(db = db, nation = nation, author = author, war = entry.getKey(), enemy = entry.getValue(), warCard = warCards.get(entry.getKey()), recommendedAttack = recommendedAttacks.get(entry.getKey()), isAttacker = false, permitted = null)
+            @template.guild.mywartr(ws = ws, db = db, nation = nation, author = author, war = entry.getKey(), enemy = entry.getValue(), warCard = warCards.get(entry.getKey()), recommendedAttack = recommendedAttacks.get(entry.getKey()), isAttacker = false, permitted = null)
         @endfor
     @endif
 </div>

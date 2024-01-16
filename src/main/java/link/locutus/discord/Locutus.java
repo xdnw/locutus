@@ -83,7 +83,6 @@ import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import org.apache.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
@@ -147,17 +146,15 @@ public final class Locutus extends ListenerAdapter {
     }
 
     private void setInfoLogging() {
-        org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
+//        org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
 //        Configurator.setRootLevel(org.apache.logging.log4j.Level.INFO);
-
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Configuration config = ctx.getConfiguration();
         LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
         loggerConfig.setLevel(org.apache.logging.log4j.Level.INFO);
         ctx.updateLoggers();
-
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-        root.setLevel(ch.qos.logback.classic.Level.INFO);
+//        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+//        root.setLevel(ch.qos.logback.classic.Level.INFO);
     }
 
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {

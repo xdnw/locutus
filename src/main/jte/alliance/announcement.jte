@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.db.GuildDB
@@ -7,6 +8,7 @@
 @import java.util.Date
 @import link.locutus.discord.config.Settings
 
+@param WebStore ws
 @param GuildDB db
 @param Announcement announcement
 <div class="alert alert-dismissible fade show container-fluid mt-1 shadow border-start border-3 @if(announcement.active)
@@ -22,7 +24,7 @@ bg-secondary border-dark
             <p class="markup">${announcement.body}</p>
         </blockquote>
         <figcaption class="blockquote-footer text-dark">
-            By <cite title="Author">@template.user.userlinkid(userId = announcement.sender)</cite> on <span id="date-${announcement.id}">announcement.date</span>
+            By <cite title="Author">@template.user.userlinkid(ws = ws, userId = announcement.sender)</cite> on <span id="date-${announcement.id}">announcement.date</span>
         </figcaption>
         <script>
             document.getElementById("date-${announcement.id}").innerHTML = new Date(${announcement.date}).toString()

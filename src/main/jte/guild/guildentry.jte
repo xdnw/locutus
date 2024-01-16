@@ -1,7 +1,9 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
 @import link.locutus.discord.db.entities.DBAlliance
 
+@param WebStore ws
 @param Guild guild
 @param GuildDB db
 @param boolean highlight

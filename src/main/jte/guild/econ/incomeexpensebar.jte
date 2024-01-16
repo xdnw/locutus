@@ -1,6 +1,8 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.PnwUtil
 @import link.locutus.discord.util.MathMan
 
+@param WebStore ws
 @param String titleA
 @param String titleB
 @param double a

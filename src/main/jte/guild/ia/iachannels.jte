@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -35,6 +36,7 @@
 @import com.google.gson.JsonElement
 @import rocker.guild.ia.message
 
+@param WebStore ws
 @param GuildDB db
 @param DBNation me
 @param User author
@@ -49,7 +51,7 @@
 @param JsonElement messagesJson
 @param Set<GuildMessageChannel> myChannels
 
-@template.main(title = "Alliance interview channels", navbar = null, content = @`
+@template.main(ws = ws, title = "Alliance interview channels", navbar = null, content = @`
     <div class="container">
     <div class="bg-white mt-3 rounded shadow py-1 row">
         <div class="col-auto">

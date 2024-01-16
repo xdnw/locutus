@@ -19,6 +19,9 @@ public class LocalValueStore<T> extends DelegateValueStore<T> {
         if (key.getType() == ValueStore.class) {
             return new ProviderParser<>((Key) key, this);
         }
+        if (key.getType() == WebStore.class) {
+            return new ProviderParser<>((Key) key, new WebStore(this));
+        }
         ValueStore<T> local = getParent();
         Parser<V> value = local.get(key);
 

@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -30,10 +31,11 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 
+@param WebStore ws
 @param GuildDB db
 @param Map<IACheckup.AuditType, Map<DBNation, String>> nationsByAudit
 
-@template.main(title = "Alliance audit results", content = @`
+@template.main(ws = ws, title = "Alliance audit results", content = @`
 <script>
 $(document).ready(function(){
   $("#myInput").on("keyup", function() {
@@ -54,7 +56,7 @@ $(document).ready(function(){
 </div>
 <div class="container">
 @for (Map.Entry<IACheckup.AuditType, Map<DBNation, String>> entry : nationsByAudit.entrySet())
-    @template.guild.ia.auditlist(type = entry.getKey(), nationMap = entry.getValue())
+    @template.guild.ia.auditlist(ws = ws, type = entry.getKey(), nationMap = entry.getValue())
 @endfor
 </div>
 `, navbar = null)

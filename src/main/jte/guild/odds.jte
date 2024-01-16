@@ -2,6 +2,7 @@
 @import link.locutus.discord.apiv1.enums.MilitaryUnit
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import net.dv8tion.jda.api.entities.User
 @import net.dv8tion.jda.api.entities.Guild
 @import link.locutus.discord.db.entities.DBNation
@@ -25,6 +26,7 @@
 @import link.locutus.discord.util.TimeUtil
 @import link.locutus.discord.pnw.BeigeReason
 
+@param WebStore ws
 @param String title
 @param double attStr
 @param  double defStr
@@ -32,7 +34,7 @@
 <h5>Odds ${title}:${MathMan.format(attStr)} vs ${MathMan.format(defStr)}</h5>
 <div class="progress">
     @for (int success = 0; success <= 3; success++)
-    @template.guild.oddssuccess(odds = (PnwUtil.getOdds(attStr, defStr, success) * 100), success = success)
+    @template.guild.oddssuccess(ws = ws, odds = (PnwUtil.getOdds(attStr, defStr, success) * 100), success = success)
     @endfor
 </div>
 </div>

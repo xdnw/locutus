@@ -2,6 +2,7 @@
 @import link.locutus.discord.apiv1.enums.MilitaryUnit
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import net.dv8tion.jda.api.entities.User
 @import net.dv8tion.jda.api.entities.Guild
 @import link.locutus.discord.db.entities.DBNation
@@ -25,6 +26,7 @@
 @import link.locutus.discord.util.TimeUtil
 @import link.locutus.discord.pnw.BeigeReason
 
+@param WebStore ws
 @param GuildDB db
 @param DBNation nation
 @param User author
@@ -146,19 +148,19 @@
                         <div><div class="bg-info align-middle d-inline-block m-1 border border-2 border-dark" style="width:1.5em;height:1.5em"></div>Moderate Success</div>
                         <div><div class="bg-primary align-middle d-inline-block m-1 border border-2 border-dark" style="width:1.5em;height:1.5em"></div>Immense Triumph</div>
                         @if(nation.getSoldiers() > enemy.getGroundStrength(true, false) * 0.3 && enemy.getGroundStrength(true, false) > 0)
-                            @template.guild.odds(title = "Soldiers (unarmed) v Enemy", attStr = nation.getSoldiers(), defStr = enemy.getGroundStrength(true, false))
+                            @template.guild.odds(ws = ws, title = "Soldiers (unarmed) v Enemy", attStr = nation.getSoldiers(), defStr = enemy.getGroundStrength(true, false))
                         @endif
                         @if(nation.getSoldiers() * 1.7_5 > enemy.getGroundStrength(true, false) * 0.3 && enemy.getGroundStrength(true, false) > 0)
-                            @template.guild.odds(title = "Soldiers (munitions) v Enemy", attStr = nation.getSoldiers() * 1.7_5, defStr = enemy.getGroundStrength(true, false))
+                            @template.guild.odds(ws = ws, title = "Soldiers (munitions) v Enemy", attStr = nation.getSoldiers() * 1.7_5, defStr = enemy.getGroundStrength(true, false))
                         @endif
                         @if(nation.getGroundStrength(true, false) > 0 && enemy.getGroundStrength(true, false) > 0)
-                            @template.guild.odds(title = "Ground", attStr = nation.getGroundStrength(true, false), defStr = enemy.getGroundStrength(true, false))
+                            @template.guild.odds(ws = ws, title = "Ground", attStr = nation.getGroundStrength(true, false), defStr = enemy.getGroundStrength(true, false))
                         @endif
                         @if(nation.getAircraft() > 0 && enemy.getAircraft() > 0)
-                            @template.guild.odds(title = "Airstrike", attStr = nation.getAircraft(), defStr = enemy.getAircraft())
+                            @template.guild.odds(ws = ws, title = "Airstrike", attStr = nation.getAircraft(), defStr = enemy.getAircraft())
                         @endif
                         @if(nation.getShips() > 0 && enemy.getShips() > 0)
-                            @template.guild.odds(title = "Naval", attStr = nation.getShips(), defStr = enemy.getShips())
+                            @template.guild.odds(ws = ws, title = "Naval", attStr = nation.getShips(), defStr = enemy.getShips())
                         @endif
                     </div>
                 </div>

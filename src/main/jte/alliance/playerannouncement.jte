@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.announce.Announcement
@@ -5,6 +6,7 @@
 @import java.util.List
 @import java.util.Date
 
+@param WebStore ws
 @param GuildDB db
 @param Announcement.PlayerAnnouncement plrAnn
 @param boolean showFooter
@@ -27,7 +29,7 @@ bg-secondary border-dark
         </blockquote>
         @if(showFooter)
             <figcaption class="blockquote-footer text-dark">
-                By <cite title="Author">@template.user.userlinkid(userId = plrAnn.getParent().sender)</cite>@if(includeDate) on <span id="date-${plrAnn.receiverNation}-${plrAnn.getParent().id}">plrAnn.getParent().date</span>@endif
+                By <cite title="Author">@template.user.userlinkid(ws = ws, userId = plrAnn.getParent().sender)</cite>@if(includeDate) on <span id="date-${plrAnn.receiverNation}-${plrAnn.getParent().id}">plrAnn.getParent().date</span>@endif
             </figcaption>
             @if(includeDate)
             <script>
@@ -37,7 +39,7 @@ bg-secondary border-dark
         @endif
         @if(showReceiver)
             <figcaption class="blockquote-footer text-dark">
-                Received By <cite title="Author">@template.user.userlinknatid(nationId = plrAnn.receiverNation)</cite>@if(includeDate) on <span id="date-${plrAnn.receiverNation}">plrAnn.receiverNation</span> @endif
+                Received By <cite title="Author">@template.user.userlinknatid(ws = ws, nationId = plrAnn.receiverNation)</cite>@if(includeDate) on <span id="date-${plrAnn.receiverNation}">plrAnn.receiverNation</span> @endif
             </figcaption>
             @if(includeDate)
             <script>

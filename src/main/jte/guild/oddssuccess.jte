@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.MathMan
 @import link.locutus.discord.util.PnwUtil
 @import com.fizzed.rocker.RenderingException
@@ -6,6 +7,7 @@
 @import link.locutus.discord.apiv1.enums.SuccessType
 
 
+@param WebStore ws
 @param double odds
 @param int success
 @if(odds > 0)

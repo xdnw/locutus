@@ -39,7 +39,6 @@ import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.LootEstimateTracker;
-import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -49,6 +48,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -1060,7 +1060,7 @@ public class DataDumpParser {
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry = in.getNextEntry();
             byte[] data = in.readNBytes((int) Objects.requireNonNull(entry).getSize());
-            FileUtils.writeByteArrayToFile(savePath, data);
+            Files.write(savePath.toPath(), data);
         }
     }
 

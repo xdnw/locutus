@@ -1,7 +1,9 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
 @import java.util.*
 
+@param WebStore ws
 @param Set<GuildDB> guildDbs
 @param GuildDB current
 @param GuildDB allianceGuild
@@ -9,7 +11,7 @@
 @param String locutusInvite
 @param String joinLink
 
-@template.main(title = "Guilds", navbar = null, content = @`
+@template.main(ws = ws, title = "Guilds", navbar = null, content = @`
 <script>
 $(document).ready(function(){
   $("#myInput").on("keyup", function() {
@@ -88,11 +90,11 @@ $(document).ready(function(){
         <!-- if current is not null and matches db, set the highlight to "primary" and note to "Currently Selected"  -->
         <!-- if allianceGuild is not null and matches db, set the highlight to "secondary" and note to "Your Alliance"  -->
         @if(current != null && db.getIdLong() == current.getIdLong())
-            @template.guild.guildentry(guild = db.getGuild(), db = db, highlight = true, note = "Currently Selected")
+            @template.guild.guildentry(ws = ws, guild = db.getGuild(), db = db, highlight = true, note = "Currently Selected")
         @elseif(allianceGuild != null && db.getIdLong() == allianceGuild.getIdLong())
-            @template.guild.guildentry(guild = db.getGuild(), db = db, highlight = true, note = "Your Alliance")
+            @template.guild.guildentry(ws = ws, guild = db.getGuild(), db = db, highlight = true, note = "Your Alliance")
         @else
-            @template.guild.guildentry(guild = db.getGuild(), db = db, highlight = false, note = null)
+            @template.guild.guildentry(ws = ws, guild = db.getGuild(), db = db, highlight = false, note = null)
         @endif
     @endfor
 </div>

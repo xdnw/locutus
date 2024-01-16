@@ -1,0 +1,71 @@
+package gg.jte.generated.ondemand.guild.ia;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.offshore.test.IAChannel;
+import link.locutus.discord.util.task.ia.IACheckup;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import link.locutus.discord.db.entities.InterviewMessage;
+import net.dv8tion.jda.api.entities.User;
+public final class JteiachannelGenerated {
+	public static final String JTE_NAME = "guild/ia/iachannel.jte";
+	public static final int[] JTE_LINE_INFO = {0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,35,35,35,49,49,50,51,52,53,54,56,57,58,59,60,61,62,63,64,65,65,65,35,36,37,38,39,40,41,42,43,44,45,45,45,45};
+	public static void render(gg.jte.TemplateOutput jteOutput, gg.jte.html.HtmlInterceptor jteHtmlInterceptor, WebStore ws, GuildDB db, DBNation me, User author, IACategory iaCat, IACategory.SortedCategory category, GuildMessageChannel channel, DBNation interviewNation, User interviewUser, List<InterviewMessage> messages, boolean isMyChannel) {
+		jteOutput.writeContent("\r\n<div  class=\"bg-primary p-3 rounded border border-2 border-light\">\r\n    <div class=\"row\">\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n    </div>\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n");
+		jteOutput.writeContent("\r\n</div>");
+	}
+	public static void renderMap(gg.jte.TemplateOutput jteOutput, gg.jte.html.HtmlInterceptor jteHtmlInterceptor, java.util.Map<String, Object> params) {
+		WebStore ws = (WebStore)params.get("ws");
+		GuildDB db = (GuildDB)params.get("db");
+		DBNation me = (DBNation)params.get("me");
+		User author = (User)params.get("author");
+		IACategory iaCat = (IACategory)params.get("iaCat");
+		IACategory.SortedCategory category = (IACategory.SortedCategory)params.get("category");
+		GuildMessageChannel channel = (GuildMessageChannel)params.get("channel");
+		DBNation interviewNation = (DBNation)params.get("interviewNation");
+		User interviewUser = (User)params.get("interviewUser");
+		List<InterviewMessage> messages = (List<InterviewMessage>)params.get("messages");
+		boolean isMyChannel = (boolean)params.get("isMyChannel");
+		render(jteOutput, jteHtmlInterceptor, ws, db, me, author, iaCat, category, channel, interviewNation, interviewUser, messages, isMyChannel);
+	}
+}

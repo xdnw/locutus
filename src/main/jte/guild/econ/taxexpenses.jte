@@ -1,4 +1,5 @@
 @import link.locutus.discord.Locutus
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
@@ -31,6 +32,7 @@
 @import java.util.ArrayList
 @import java.util.HashMap
 
+@param WebStore ws
 @param GuildDB db
 @param Set<Integer> alliances
 @param boolean requireGrant
@@ -56,7 +58,7 @@
 @param Map<Integer,double[]> expensesByNation
 @param Map<Integer, Map<Integer,double[]>> expensesByNationByBracket
 
-@template.main(title = "Tax Expenses", navbar = null, content = @`
+@template.main(ws = ws, title = "Tax Expenses", navbar = null, content = @`
 <div class="bg-white container mt-3 rounded shadow py-1">
 @if(requireGrant)
     <kbd>requireGrant</kbd>
@@ -77,7 +79,7 @@
 </div>
 
 <!--Total-->
-@template.guild.econ.taxexpensebracket(-1, "Total Tax", db, null,
+@template.guild.econ.taxexpensebracket(ws, -1, "Total Tax", db, null,
 bracketsByNation, nations,
 allNationDepositCount,
 incomeTotal,
@@ -90,7 +92,7 @@ expensesByNation
 
 @for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet())
     @if(expensesByBracket.get(entry.getKey()) != null || incomeByBracket.get(entry.getKey()) != null)
-        @template.guild.econ.taxexpensebracket(entry.getKey(), "Bracket", db, entry.getValue(),
+        @template.guild.econ.taxexpensebracket(ws, entry.getKey(), "Bracket", db, entry.getValue(),
                 bracketsByNation, nationsByBracket.getOrDefault(entry.getKey(), new ArrayList<>()),
                 bracketToNationDepositCount.getOrDefault(entry.getKey(), new HashMap<>()),
                 incomeByBracket.getOrDefault(entry.getKey(), ResourceType.getBuffer()),

@@ -1,10 +1,15 @@
 package link.locutus.discord.web.jooby;
 
 
+import gg.jte.ContentType;
+import gg.jte.TemplateEngine;
 import io.javalin.community.ssl.SSLPlugin;
 import io.javalin.compression.CompressionStrategy;
 import io.javalin.http.Handler;
 import io.javalin.http.staticfiles.StaticFileConfig;
+import io.javalin.rendering.FileRenderer;
+import io.javalin.rendering.JavalinRenderer;
+import io.javalin.rendering.template.JavalinJte;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.PNWUser;
@@ -42,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -67,6 +73,10 @@ public class WebRoot {
     private final BankRequestHandler legacyBankHandler;
 
 
+    private TemplateEngine createTemplateEngine() {
+        return TemplateEngine.createPrecompiled(Path.of("src/main/jte"), ContentType.Plain);
+    }
+
     public WebRoot(int portMain, int portHTTPS) {
         if (Settings.INSTANCE.CLIENT_SECRET.isEmpty()) throw new IllegalArgumentException("Please set CLIENT_SECRET in " + Settings.INSTANCE.getDefaultFile());
         if (INSTANCE != null) throw new IllegalArgumentException("Already initialized");
@@ -77,7 +87,6 @@ public class WebRoot {
         } else {
             REDIRECT = Settings.INSTANCE.WEB.REDIRECT;
         }
-
         INSTANCE = this;
 
         RockerRuntime.getInstance().setReloading(true);
@@ -100,7 +109,8 @@ public class WebRoot {
                 conf.insecurePort = Settings.INSTANCE.WEB.PORT_HTTP;
             }
         });
-
+        JavalinJte.init(createTemplateEngine());
+        JavalinRenderer.INSTANCE.loadFileRenderers$javalin();
 
         this.app = Javalin.create(config -> {
             config.plugins.register(plugin);

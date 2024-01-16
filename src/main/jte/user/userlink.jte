@@ -1,6 +1,8 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.db.entities.DBNation
 @import net.dv8tion.jda.api.entities.User
 
+@param WebStore ws
 @param long userId
 @param User user
 @param DBNation nation

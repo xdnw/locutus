@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.offshore.Grant
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
@@ -9,6 +10,7 @@
 @import java.util.UUID
 @import link.locutus.discord.util.MarkupUtil
 
+@param WebStore ws
 @param Project project
 @param Grant grant
 @param User user

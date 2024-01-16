@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -30,6 +31,7 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 
+@param WebStore ws
 @param DBNation mentor
 @param List<DBNation> myMentees
 @param IACategory iaCat
@@ -80,7 +82,7 @@
     <tbody>
     @for (DBNation myMentee : myMentees)
         !{var checkupResult = checkup2 == null ? null : checkup2.checkupSafe(myMentee, true, true);}
-        @template.guild.ia.mentee(mentee = myMentee, myChan = iaCat.get(myMentee), category = categoryMap.get(myMentee), checkup = checkupResult)
+        @template.guild.ia.mentee(ws = ws, mentee = myMentee, myChan = iaCat.get(myMentee), category = categoryMap.get(myMentee), checkup = checkupResult)
     @endfor
     </tbody>
 </table>

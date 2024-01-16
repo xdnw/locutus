@@ -1,4 +1,5 @@
 @import java.util.*
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.offshore.Grant
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
@@ -9,6 +10,7 @@
 @import link.locutus.discord.apiv1.enums.DomesticPolicy
 @import link.locutus.discord.util.TimeUtil
 
+@param WebStore ws
 @param Collection<Grant> grants
 @param User user
 @param DBNation nation
@@ -16,10 +18,10 @@
 @param Map<Grant, List<String>> overrideRequirements
 @param Map<Grant, UUID> grantTokens
 
-@template.grant.grants(title = "Land", content = @`
+@template.grant.grants(ws = ws, title = "Land", content = @`
     <div class="row">
         <div class="col-lg-3">
-            @template.grant.nation(nation = nation)
+            @template.grant.nation(ws = ws, nation = nation)
         </div>
         <div class="col-lg-9">
             <div class="alert p-1 my-1 alert-info border border-info alert-dismissible fade show" role="alert">
@@ -45,7 +47,7 @@
             <h2>Search</h2>
             <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
             @for (Grant grant : grants)
-                @template.grant.land(grant = grant, user = user, nation = nation, failed = failedRequirements.get(grant), override = overrideRequirements.get(grant), grantToken = grantTokens.get(grant))
+                @template.grant.land(ws = ws, grant = grant, user = user, nation = nation, failed = failedRequirements.get(grant), override = overrideRequirements.get(grant), grantToken = grantTokens.get(grant))
             @endfor
         </div>
     </div>

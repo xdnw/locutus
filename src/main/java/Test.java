@@ -11,7 +11,7 @@ public class Test {
     public static void main(String[] args) {
         CodeResolver codeResolver = new DirectoryCodeResolver(Path.of("src/main/jte")); // This is the directory where your .jte files are located.
         TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Plain); // Two choices: Plain or Html
-//        templateEngine.precompileAll();
+        templateEngine.precompileAll();
 
         TemplateOutput output = new StringOutput();
         templateEngine.render("test.jte", "Testing", output);

@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -31,6 +32,7 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 
+@param WebStore ws
 @param DBNation mentee
 @param IAChannel myChan
 @param IACategory.SortedCategory category

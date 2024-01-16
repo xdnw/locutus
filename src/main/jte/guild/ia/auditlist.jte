@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -30,6 +31,7 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 
+@param WebStore ws
 @param IACheckup.AuditType type
 @param Map<DBNation, String> nationMap
 
@@ -53,7 +55,7 @@
                     </thead>
                     <tbody>
                     @for (Map.Entry<DBNation, String> entry : nationMap.entrySet())
-                        @template.guild.ia.auditentry(type = type, nation = entry.getKey(), message = entry.getValue())
+                        @template.guild.ia.auditentry(ws = ws, type = type, nation = entry.getKey(), message = entry.getValue())
                     @endfor
                     </tbody>
                 </table>

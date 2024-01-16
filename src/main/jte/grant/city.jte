@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.offshore.Grant
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
@@ -10,6 +11,7 @@
 @import link.locutus.discord.util.MarkupUtil
 @import link.locutus.discord.util.MathMan
 
+@param WebStore ws
 @param Grant grant
 @param User user
 @param DBNation nation

@@ -1,6 +1,7 @@
 @import java.util.*
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import net.dv8tion.jda.api.entities.User
 @import net.dv8tion.jda.api.entities.Guild
 @import link.locutus.discord.db.entities.DBNation
@@ -19,13 +20,14 @@
 @import link.locutus.discord.util.PnwUtil
 @import link.locutus.discord.web.jooby.WebRoot
 
+@param WebStore ws
 @param Guild guild
 @param GuildDB db
 @param DBNation nation
 @param User author
 @param Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
 
-@template.main(title = "Guild Gov index", navbar = null, content = @`
+@template.main(ws = ws, title = "Guild Gov index", navbar = null, content = @`
 
 @if(Roles.MILCOM.has(author, db.getGuild()))
 <div class="bg-white container mt-3 rounded shadow py-1">

@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.announce.Announcement
@@ -6,11 +7,12 @@
 @import link.locutus.discord.config.Settings
 @import java.util.Date
 
+@param WebStore ws
 @param GuildDB db
 @param Announcement announcement
 @param List<Announcement.PlayerAnnouncement> announcements
 
-@template.main(content = @`
+@template.main(ws = ws, content = @`
 <div class="alert alert-dismissible fade show container-fluid mt-1 shadow border-start border-3 @if(announcement.active)
 bg-white border-danger
 @else
@@ -24,7 +26,7 @@ bg-secondary border-dark
             <p class="markup">${announcement.body}</p>
         </blockquote>
         <figcaption class="blockquote-footer text-dark">
-            By <cite title="Author">@template.user.userlinkid(userId = announcement.sender)</cite> on <span id="date-${announcement.id}">announcement.date</span>
+            By <cite title="Author">@template.user.userlinkid(ws = ws, userId = announcement.sender)</cite> on <span id="date-${announcement.id}">announcement.date</span>
         </figcaption>
         <script>
             document.getElementById("date-${announcement.id}").innerHTML = new Date(${announcement.date}).toString()
@@ -40,7 +42,7 @@ bg-secondary border-dark
 </div>
 @for (Announcement.PlayerAnnouncement plrAnn : announcements)
     <div class="variation-entry">
-        @template.alliance.playerannouncement(db = db, plrAnn = plrAnn, showFooter = false, showReceiver = true, includeDate = false)
+        @template.alliance.playerannouncement(ws = ws, db = db, plrAnn = plrAnn, showFooter = false, showReceiver = true, includeDate = false)
     </div>
 @endfor
 

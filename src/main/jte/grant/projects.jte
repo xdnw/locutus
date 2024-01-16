@@ -1,4 +1,5 @@
 @import java.util.*
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.offshore.Grant
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
@@ -9,6 +10,7 @@
 @import link.locutus.discord.apiv1.enums.DomesticPolicy
 @import link.locutus.discord.util.TimeUtil
 
+@param WebStore ws
 @param Set<Project> recommendedProjects
 @param Collection<Grant> grants
 @param User user
@@ -17,7 +19,7 @@
 @param Map<Grant, List<String>> overrideRequirements
 @param Map<Grant, UUID> grantTokens
 
-@template.grant.grants(title = "Project", content = @`
+@template.grant.grants(ws = ws, title = "Project", content = @`
     <div class="row">
         <div class="col-lg-3">
             @if(nation.projectSlots() <= nation.getNumProjects())
@@ -75,7 +77,7 @@
                     The urban planning can purchased at city 11 and reduces future cities by $50M
                 </div>
             @endif
-            @template.grant.nation(nation = nation)
+            @template.grant.nation(ws = ws, nation = nation)
             @if(nation.getNumProjects() > 0 || !recommendedProjects.isEmpty())
                 <div class="bg-white card mt-3 rounded shadow py-1">
                     @if(nation.getNumProjects() > 0)
@@ -105,7 +107,7 @@
                 <input class="form-control form-control-lg" id="myInput" type="text" placeholder="Filter..">
             </div>
             @for (Grant grant : grants)
-                @template.grant.project(project = Projects.get(grant.getAmount()), grant = grant, user = user, nation = nation, failed = failedRequirements.get(grant), override = overrideRequirements.get(grant), grantToken = grantTokens.get(grant))
+                @template.grant.project(ws = ws, project = Projects.get(grant.getAmount()), grant = grant, user = user, nation = nation, failed = failedRequirements.get(grant), override = overrideRequirements.get(grant), grantToken = grantTokens.get(grant))
             @endfor
         </div>
     </div>

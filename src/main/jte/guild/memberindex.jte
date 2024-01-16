@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.web.commands.page.IndexPages
 @import java.util.*
@@ -27,6 +28,7 @@
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.db.entities.announce.Announcement
 
+@param WebStore ws
 @param Guild guild
 @param GuildDB db
 @param  DBNation nation
@@ -40,11 +42,11 @@
 @param  Map<DBWar, WarCard> warCards
 @param  Map<DBWar, AttackType> recommendedAttacks
 @param  List<Announcement.PlayerAnnouncement> announcements
-@template.main(title = "Guild Alliance index", navbar = null, content = @`
+@template.main(ws = ws, title = "Guild Alliance index", navbar = null, content = @`
 @if(checkup != null)
     <div class="container">
         @for (Announcement.PlayerAnnouncement plrAnn : announcements)
-            @template.alliance.playerannouncement(db = db, plrAnn = plrAnn, showFooter = true, showReceiver = false, includeDate = true)
+            @template.alliance.playerannouncement(ws = ws, db = db, plrAnn = plrAnn, showFooter = true, showReceiver = false, includeDate = true)
         @endfor
         <a class="btn btn-primary btn-sm" href="${WebRoot.REDIRECT}/announcements/-a">View All Announcements</a>
         @if(Roles.ADMIN.has(author, guild))
@@ -55,7 +57,7 @@
         <h2 class=""><i class="bi bi-exclamation-diamond-fill text-danger px-1 me-2"></i>${checkup.size()} Audits</h2>
         <div>
     @for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())
-        @if(entry.getValue() != null && !entry.getValue().getValue() == null)
+        @if(entry.getValue() != null && entry.getValue().getValue() != null)
         <div role="alert" class="alert p-1 my-1 border alert-dismissible fade show
         @if(entry.getKey().severity == IACheckup.AuditSeverity.INFO)
             alert-info border-info">
@@ -87,7 +89,7 @@
     <a href="https://politicsandwar.com/alliance/id=${nation.getAlliance_id()}&display=bank" class="btn btn-primary btn">Deposit Funds <i class="bi bi-box-arrow-up-right text-light"></i></a>
 </div>
 @if(offensives.size() + defensives.size() > 0)
-    @template.guild.mywars(db = db, nation = nation, author = author, cities = cities, isFightingActives = isFightingActives, offensives = offensives, defensives = defensives, warCards = warCards, recommendedAttacks = recommendedAttacks)
+    @template.guild.mywars(ws = ws, db = db, nation = nation, author = author, cities = cities, isFightingActives = isFightingActives, offensives = offensives, defensives = defensives, warCards = warCards, recommendedAttacks = recommendedAttacks)
 @endif
 @if(!db.getCoalition(Coalition.ENEMIES).isEmpty())
     <div class="bg-white container mt-3 rounded shadow py-1">

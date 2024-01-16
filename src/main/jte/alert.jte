@@ -1,3 +1,4 @@
+@param link.locutus.discord.commands.manager.v2.binding.WebStore ws
 @param String title
 @param String message
 

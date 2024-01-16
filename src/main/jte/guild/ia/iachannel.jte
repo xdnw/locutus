@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
@@ -32,6 +33,7 @@
 @import link.locutus.discord.db.entities.InterviewMessage
 @import net.dv8tion.jda.api.entities.User
 
+@param WebStore ws
 @param GuildDB db
 @param DBNation me
 @param User author
@@ -59,6 +61,6 @@
 <%--<!--    //      outline-->--%>
 <%--<!--    // remove padding-->--%>
 <%--    @for (InterviewMessage message : messages)--%>
-<%--<!--        @template.guild.ia.message(db.getGuild(), channel, interviewUser, message, isMyChannel)-->--%>
+<%--<!--        @template.guild.ia.message(ws, db.getGuild(), channel, interviewUser, message, isMyChannel)-->--%>
 <%--        @endfor--%>
 </div>

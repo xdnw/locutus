@@ -4,11 +4,13 @@
 @import java.util.HashSet
 @import java.util.Map
 @import java.util.Set
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.rankings.SphereGenerator
 @import link.locutus.discord.db.entities.metric.AllianceMetric
 @import link.locutus.discord.db.entities.DBAlliance
 @import java.util.Collections
 
+@param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
 @param Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap
@@ -16,7 +18,7 @@
 @param long startTurn
 @param long endTurn
 
-@template.main(title = "Global Stats", navbar = null, content = @`
+@template.main(ws = ws, title = "Global Stats", navbar = null, content = @`
 
 
 <h2 class="text-white">Search</h2>
@@ -35,7 +37,7 @@
                 <div class="accordion-body bg-light">
                     @if(spheres.getAlliances(sphereId).size() > 1)
                     <div class="bg-light border border-3 border-secondary rounded searchable">
-                        @template.data.timechartdatasrc(title = spheres.getSphereName(sphereId) + " total",
+                        @template.data.timechartdatasrc(ws = ws, title = spheres.getSphereName(sphereId) + " total",
                         data = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn,
                         spheres.getSphereName(sphereId),
                         new HashSet<>(spheres.getAlliances(sphereId))
@@ -47,7 +49,7 @@
                     @for (DBAlliance alliance : spheres.getAlliances(sphereId))
                     @if(metricMap.containsKey(alliance))
                     <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
-                        @template.data.timechartdatasrc(title = alliance.getName(),
+                        @template.data.timechartdatasrc(ws = ws, title = alliance.getName(),
                         data = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(),
                         Collections.singleton(alliance)
                         ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(),
