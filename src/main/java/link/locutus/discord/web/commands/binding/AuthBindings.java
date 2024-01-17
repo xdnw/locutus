@@ -514,7 +514,7 @@ public class AuthBindings extends WebBindingHelper {
                 nationIdArray.add(id);
             }
             if (requireNation) {
-                String html = rocker.auth.nationpicker.template(errors, nationArray, nationIdArray).render().toString();
+                String html = "";//rocker.auth.nationpicker.template(errors, nationArray, nationIdArray).render().toString();
                 throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
             } else {
                 allowRedirect = true;
@@ -525,7 +525,7 @@ public class AuthBindings extends WebBindingHelper {
             String discordAuthUrl = getDiscordAuthUrl();
             String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
 
-            String html = rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
+            String html = "";//rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
             throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
         }
         return null;

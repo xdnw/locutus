@@ -1,6 +1,8 @@
 package link.locutus.discord.web.jooby;
 
 import com.google.common.hash.Hashing;
+import gg.jte.generated.precompiled.JtealertGenerated;
+import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.Header;
 import io.javalin.http.RedirectResponse;
 import link.locutus.discord.Locutus;
@@ -9,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
@@ -424,7 +427,6 @@ public class PageHandler implements Handler {
             ArgumentStack stack = createStack(ctx);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
-            System.out.println("Current " + path);
             switch (path.toLowerCase(Locale.ROOT)) {
                 case "command" -> {
                     stack.consumeNext();
@@ -438,7 +440,7 @@ public class PageHandler implements Handler {
 
                     cmd.validatePermissions(stack.getStore(), permisser);
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                    ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint, true));
+                    ctx.result(cmd.toHtml(new WebStore(stack.getStore()), stack.getPermissionHandler(), endpoint, true));
                     break;
                 }
                 // case "page" ->
@@ -459,9 +461,9 @@ public class PageHandler implements Handler {
                         }
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
                         Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
-                        result = wrap(cmdResult, ctx);
+                        result = wrap(new WebStore(stack.getStore()), cmdResult, ctx);
                     } else {
-                        result = cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), false);
+                        result = cmd.toHtml(new WebStore(stack.getStore()), stack.getPermissionHandler(), false);
                     }
 
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
@@ -504,10 +506,10 @@ public class PageHandler implements Handler {
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
 
-        ctx.result(rocker.error.template(entry.getKey(), entry.getValue()).render().toString());
+        ctx.result(WebStore.render(f -> JteerrorGenerated.render(f, null, null, entry.getKey(), entry.getValue())));
     }
 
-    private Object wrap(Object call, Context ctx) {
+    private Object wrap(WebStore ws, Object call, Context ctx) {
         String contentType = ctx.header("Content-Type");
         if (contentType == null || contentType.contains("text/html")) {
             if (call instanceof String) {
@@ -526,7 +528,8 @@ public class PageHandler implements Handler {
                     ctx.header("Content-Type", "application/json");
                     return str;
                 }
-                return rocker.alert.template("Response", str).render().toString();
+                String finalStr = str;
+                return ws.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
             }
         }
         return call;

@@ -20,7 +20,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.TaxRecordCategorizer2;
 import net.dv8tion.jda.api.entities.Guild;
-import rocker.guild.econ.taxexpensesbyturn;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -106,7 +105,7 @@ public class EconPages {
 
         Map<Integer, TaxBracket> t = categorized.getBrackets();
 
-        String pageHtml = taxexpensesbyturn.template(title, db, turnStart, turnEnd, categorized, categorizedByTurnByBracket, categorized.getBrackets()).render().toString();
+        String pageHtml = "";//rocker.taxexpensesbyturn.template(title, db, turnStart, turnEnd, categorized, categorizedByTurnByBracket, categorized.getBrackets()).render().toString();
         return pageHtml;
     }
 
@@ -129,13 +128,13 @@ public class EconPages {
         }
         TaxRecordCategorizer2 categorized = new TaxRecordCategorizer2(db, start, end, dontRequireGrant, dontRequireTagged, dontRequireExpiry, includeDeposits, allowedNations, errors::add);
 
-        return rocker.guild.econ.taxexpenses.template(
-                db, categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
-                categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
-                categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),
-                categorized.getIncomeTotal(), categorized.getIncomeByBracket(), categorized.getIncomeByNation(), categorized.getIncomeByNationByBracket(),
-                categorized.getTransactionsByNation(), categorized.getTransactionsByBracket(), categorized.getTransactionsByNationByBracket(), categorized.getExpenseTransfers(),
-                categorized.getExpenseTotal(), categorized.getExpensesByBracket(), categorized.getExpensesByNation(), categorized.getExpensesByNationByBracket()
-                ).render().toString();
+        return "";//rocker.guild.econ.taxexpenses.template(
+//                db, categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
+//                categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
+//                categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),
+//                categorized.getIncomeTotal(), categorized.getIncomeByBracket(), categorized.getIncomeByNation(), categorized.getIncomeByNationByBracket(),
+//                categorized.getTransactionsByNation(), categorized.getTransactionsByBracket(), categorized.getTransactionsByNationByBracket(), categorized.getExpenseTransfers(),
+//                categorized.getExpenseTotal(), categorized.getExpensesByBracket(), categorized.getExpensesByNation(), categorized.getExpensesByNationByBracket()
+//                ).render().toString();
     }
 }

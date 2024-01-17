@@ -1,5 +1,10 @@
 package link.locutus.discord.web.builder;
 
+import gg.jte.Content;
+import gg.jte.generated.precompiled.JtemainGenerated;
+import gg.jte.generated.precompiled.data.JtealertGenerated;
+import gg.jte.generated.precompiled.data.JtespoilerGenerated;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 
 import java.util.AbstractMap;
@@ -10,10 +15,12 @@ import java.util.UUID;
 
 public class PageBuilder {
     private final StringBuilder output;
+    private final WebStore ws;
     private String title = "";
     private final List<Map.Entry<String, String>> navbar;
 
-    public PageBuilder() {
+    public PageBuilder(WebStore ws) {
+        this.ws = ws;
         this.output = new StringBuilder();
         this.navbar = new ArrayList<>();
     }
@@ -30,7 +37,7 @@ public class PageBuilder {
     }
 
     public PageBuilder spoiler(String title, String content) {
-        output.append(rocker.data.spoiler.template(title + " \u25BC", content, "S" + UUID.randomUUID().getMostSignificantBits()).render().toString()).append("\n");
+        output.append(ws.render(f -> JtespoilerGenerated.render(f, null, ws, title + " \u25BC", ws.unsafe(content), "S" + UUID.randomUUID().getMostSignificantBits()))).append("\n");
         return this;
     }
 
@@ -40,35 +47,35 @@ public class PageBuilder {
     }
 
     public PageBuilder danger(String content) {
-        output.append(rocker.data.alert.template("danger", content).render().toString());
+        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "danger", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder warning(String content) {
-        output.append(rocker.data.alert.template("warning", content).render().toString());
+        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "warning", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder info(String content) {
-        output.append(rocker.data.alert.template("info", content).render().toString());
+        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "info", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder alertPrimary(String content) {
-        output.append(rocker.data.alert.template("primary", content).render().toString());
+        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "primary", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder alertSecondary(String content) {
-        output.append(rocker.data.alert.template("secondary", content).render().toString());
+        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "secondary", ws.unsafe(content))));
         return this;
     }
 
     public String buildWithContainer() {
-        return rocker.main_raw.template(title, navbar, "<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>").render().toString();
+        return ws.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe("<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>"), title, navbar));
     }
 
     public String build() {
-        return rocker.main_raw.template(title, navbar, output.toString()).render().toString();
+        return ws.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe(output.toString()), title, navbar));
     }
 }

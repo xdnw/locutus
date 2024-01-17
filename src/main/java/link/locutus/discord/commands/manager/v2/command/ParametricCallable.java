@@ -1,10 +1,13 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import gg.jte.Content;
+import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
@@ -643,17 +646,16 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint, boolean sse) {
-        validatePermissions(store, permHandler);
+    public String toHtml(WebStore ws, PermissionHandler permHandler, String endpoint, boolean sse) {
+        validatePermissions(ws.store(), permHandler);
 
         String response = "<form id='command-form' " + (endpoint != null ? "endpoint=\"" + endpoint + "\" " : "") + "onsubmit=\"return executeCommandFromArgMap(this, " + sse + ")\" method=\"post\">" +
                 "<div class=\"\">" +
-                toBasicHtml(store) +
+                toBasicHtml(ws.store()) +
                 "</div>" +
                 "<button type=\"submit\" class=\"btn btn-primary\">Submit</button>" +
                 "</form>";
-
-        return rocker.command.parametriccallable.template(store, this, response).render().toString();
+        return ws.render(f -> JteparametriccallableGenerated.render(f, null, ws,  this, ws.unsafe(response)));
     }
 
     public String stringifyArgumentMap(Map<String, String> combined, String delim) {

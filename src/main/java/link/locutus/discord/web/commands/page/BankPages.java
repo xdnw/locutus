@@ -1,6 +1,9 @@
 package link.locutus.discord.web.commands.page;
 
+import gg.jte.generated.precompiled.JtebasictableGenerated;
+import gg.jte.generated.precompiled.bank.JtebankindexGenerated;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
@@ -36,12 +39,12 @@ public class BankPages {
 //
 //
 //
-//        return rocker.basictable.template("Deposits", header, rows).render().toString();
+//        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, rows));
 //    }
 
     @Command
     @RolePermission(Roles.ECON)
-    public Object memberDeposits(@Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
+    public Object memberDeposits(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
         if (true) return nation2 + "<br><br>" + author + "<br><br>" + guild;
         Set<Long> tracked = db.getTrackedBanks();
 
@@ -56,6 +59,7 @@ public class BankPages {
                 "total",
                 "last_deposit_day"
         ));
+
         for (ResourceType type : ResourceType.values()) {
             if (type == ResourceType.CREDITS) continue;
             header.add(type.name());
@@ -79,18 +83,18 @@ public class BankPages {
 
         double[] buffer = ResourceType.getBuffer();
 
-        List<List<Object>> rows = new ArrayList<>();
+        List<List<String>> rows = new ArrayList<>();
         for (DBNation nation : nations) {
             long start2 = System.currentTimeMillis();
 
-            List<Object> row = new ArrayList<>(header);
+            List<String> row = new ArrayList<>(header);
             long start = System.currentTimeMillis();
             Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, true);
             long diff = System.currentTimeMillis() - start;
 
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getNationUrl()));
-            row.set(1, nation.getCities());
-            row.set(2, nation.getAgeDays());
+            row.set(1, MathMan.format(nation.getCities()));
+            row.set(2, MathMan.format(nation.getAgeDays()));
             row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
             row.set(4, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
             row.set(5, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
@@ -112,7 +116,7 @@ public class BankPages {
                 row.set(8, "NEVER");
             } else {
                 long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastDeposit);
-                row.set(8, days);
+                row.set(8, MathMan.format(days));
             }
             int i = 9;
             for (ResourceType type : ResourceType.values) {
@@ -124,12 +128,12 @@ public class BankPages {
             rows.add(row);
         }
 
-        return rocker.basictable.template("Deposits", header, rows).render().toString();
+        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, ws.table(rows)));
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public Object bankIndex(@Me GuildDB db, @Me DBNation me, @Me User author) {
-        return rocker.bank.bankindex.template(db, db.getGuild(), author).render().toString();
+    public Object bankIndex(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author) {
+        return ws.render(f -> JtebankindexGenerated.render(f, null, ws, db, db.getGuild(), author));
     }
 }

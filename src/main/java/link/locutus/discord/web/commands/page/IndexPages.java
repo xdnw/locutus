@@ -1,10 +1,15 @@
 package link.locutus.discord.web.commands.page;
 
 import com.google.gson.Gson;
+import gg.jte.generated.precompiled.alliance.JteallianceindexGenerated;
+import gg.jte.generated.precompiled.command.JteguildindexGenerated;
+import gg.jte.generated.precompiled.command.JtesearchGenerated;
+import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -40,7 +45,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
-import rocker.guild.memberindex;
 
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -76,7 +80,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
-    public Object search(@Me GuildDB db, String term) {
+    public Object search(WebStore ws, @Me GuildDB db, String term) {
         // TODO simplify the code
         term = URLDecoder.decode(term).trim();
 
@@ -200,7 +204,8 @@ public class IndexPages extends PageHelper {
 
         PageHandler pageHandler = WebRoot.getInstance().getPageHandler();
 //        pageHandler.getCommands()
-        return rocker.command.search.template(term, results).render().toString();
+        String finalTerm = term;
+        return ws.render(f -> JtesearchGenerated.render(f, null, ws, finalTerm, results));
     }
 
     private void recursive(CommandCallable root, Consumer<CommandCallable> onEach) {
@@ -214,7 +219,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object guildindex(@Me GuildDB db, @Me User user, ArgumentStack stack) {
+    public Object guildindex(WebStore ws, @Me GuildDB db, @Me User user, ArgumentStack stack) {
         CommandGroup commands = Locutus.imp().getCommandManager().getV2().getCommands();
         CommandGroup pages = WebRoot.getInstance().getPageHandler().getCommands();
 
@@ -223,13 +228,13 @@ public class IndexPages extends PageHelper {
         String pageEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
 
         result.append(
-                commands.toHtml(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, false)
+                commands.toHtml(ws, stack.getPermissionHandler(), cmdEndpoint, false)
         );
         result.append(
-                pages.toHtml(stack.getStore(), stack.getPermissionHandler(), pageEndpoint, false)
+                pages.toHtml(ws, stack.getPermissionHandler(), pageEndpoint, false)
         );
 
-        return rocker.command.guildindex.template(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages).render().toString();
+        return ws.render(f -> JteguildindexGenerated.render(f, null, ws, stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages));
     }
 
     @Command()
@@ -278,7 +283,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object guildselect(Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
+    public Object guildselect(WebStore ws, Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
         if (user == null && nation == null) {
             new Exception().printStackTrace();
             // need to login
@@ -320,7 +325,9 @@ public class IndexPages extends PageHelper {
                 dbs.add(db);
             }
         }
-        return rocker.guild.guilds.template(dbs, current, allianceDb, registerLink, locutusInvite, joinLink).render().toString();
+        GuildDB finalAllianceDb = allianceDb;
+        String finalLocutusInvite = locutusInvite;
+        return ws.render(f -> JteguildsGenerated.render(f, null, ws, dbs, current, finalAllianceDb, registerLink, finalLocutusInvite, joinLink));
     }
 
     @Command()
@@ -395,14 +402,14 @@ public class IndexPages extends PageHelper {
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);
 
-        String result = memberindex.template(guild, db, nation, author, deposits, checkupResult, cities, isFightingActives, offensiveWars, defensiveWars, warCards, recommendedAttack, announcements).render().toString();
+        String result = "";//rocker.memberindex.template(guild, db, nation, author, deposits, checkupResult, cities, isFightingActives, offensiveWars, defensiveWars, warCards, recommendedAttack, announcements).render().toString();
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (8)");
         return result;
     }
 
     @Command()
     @RolePermission(Roles.MEMBER)
-    public Object allianceIndex(@Me User user, int allianceId) {
+    public Object allianceIndex(WebStore ws, @Me User user, int allianceId) {
         DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
         GuildDB db = alliance.getGuildDB();
         Guild guild = db != null ? db.getGuild() : null;
@@ -413,6 +420,6 @@ public class IndexPages extends PageHelper {
         // 1 view wars
         // 2 view members
 
-        return rocker.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
+        return ws.render(f -> JteallianceindexGenerated.render(f, null, ws, db, guild, alliance, user));
     }
 }

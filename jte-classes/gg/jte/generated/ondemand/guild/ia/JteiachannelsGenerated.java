@@ -35,10 +35,9 @@ import java.util.stream.Collectors;
 import link.locutus.discord.db.entities.InterviewMessage;
 import net.dv8tion.jda.api.entities.User;
 import com.google.gson.JsonElement;
-import rocker.guild.ia.message;
 public final class JteiachannelsGenerated {
 	public static final String JTE_NAME = "guild/ia/iachannels.jte";
-	public static final int[] JTE_LINE_INFO = {0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,38,38,38,53,53,53,53,57,57,58,58,68,68,69,69,71,71,72,72,73,73,89,89,94,94,99,99,101,101,105,105,108,108,110,110,123,123,123,123,123,38,39,40,41,42,43,44,45,46,47,48,49,50,51,51,51,51};
+	public static final int[] JTE_LINE_INFO = {0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,37,37,37,52,52,52,52,56,56,57,57,67,67,68,68,70,70,71,71,72,72,88,88,93,93,98,98,100,100,104,104,107,107,109,109,122,122,122,122,122,37,38,39,40,41,42,43,44,45,46,47,48,49,50,50,50,50};
 	public static void render(gg.jte.TemplateOutput jteOutput, gg.jte.html.HtmlInterceptor jteHtmlInterceptor, WebStore ws, GuildDB db, DBNation me, User author, IACategory iaCat, List<IACategory.SortedCategory> categories, Map<GuildMessageChannel, IACategory.SortedCategory> categoryMap, Map<IACategory.SortedCategory, List<GuildMessageChannel>> channelsByCategory, Map<GuildMessageChannel, DBNation> interviewNation, Map<GuildMessageChannel, User> interviewUsers, JsonElement avatarsJson, JsonElement usersJson, JsonElement messagesJson, Set<GuildMessageChannel> myChannels) {
 		jteOutput.writeContent("\r\n");
 		gg.jte.generated.ondemand.JtemainGenerated.render(jteOutput, jteHtmlInterceptor, ws, new gg.jte.Content() {

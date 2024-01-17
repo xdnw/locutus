@@ -186,12 +186,7 @@ public class AllianceMetricCommands {
 //
 //    }
 
-    public static void main(String[] args) {
-        String input = "-1*{food=10,coal=3}";
-        System.out.println(PnwUtil.parseResources(input));
-    }
-
-    public static void main2(String[] args) throws IOException, ParseException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
+    public static void main(String[] args) throws IOException, ParseException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.WEB.PORT_HTTPS = 0;
         Settings.INSTANCE.WEB.PORT_HTTP = 8000;

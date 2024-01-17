@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands.page;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -52,7 +53,7 @@ public class WarPages {
 
     @Command(desc = "Wars which are currently uncountered")
     @RolePermission(Roles.MILCOM)
-    public String counter(@Me GuildDB db) {
+    public String counter(WebStore ws, @Me GuildDB db) {
         Set<Integer> offshore = db.getCoalition(Coalition.OFFSHORE);
         Set<Integer> allies = db.getAllies();
         Set<Integer> aaIds = db.getAllianceIds();
@@ -249,7 +250,7 @@ public class WarPages {
         // slotted/beiged targets
         // protectorate apps
         // ally apps
-        PageBuilder builder = new PageBuilder();
+        PageBuilder builder = new PageBuilder(ws);
         builder.title("Uncountered wars");
         if (!partial.isEmpty()) {
             builder.spoiler("Partially countered (" + partial.size() + ")", table.buildHtml("", partial));

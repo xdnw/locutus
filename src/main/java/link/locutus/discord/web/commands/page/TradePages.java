@@ -1,5 +1,8 @@
 package link.locutus.discord.web.commands.page;
 
+import gg.jte.generated.precompiled.JtebasictableGenerated;
+import gg.jte.generated.precompiled.trade.JtetradepriceGenerated;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -21,18 +24,18 @@ import java.util.concurrent.TimeUnit;
 
 public class TradePages {
     @Command
-    public Object tradePrice(TradeManager manager) {
+    public Object tradePrice(WebStore ws, TradeManager manager) {
         List<String> header = new ArrayList<>(Arrays.asList("Resource", "Low", "High"));
-        List<List<Object>> rows = new ArrayList<>();
+        List<List<String>> rows = new ArrayList<>();
         for (ResourceType type : ResourceType.values()) {
-            List<Object> row = new ArrayList<>();
+            List<String> row = new ArrayList<>();
             row.add(type.name());
             row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getLow(type)), PnwUtil.getTradeUrl(type, true)));
             row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getHigh(type)), PnwUtil.getTradeUrl(type, false)));
             rows.add(row);
         }
 
-        return rocker.basictable.template("Trade Price", header, rows).render().toString();
+        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, "Trade Price", header, ws.table(rows)));
     }
 
     @Command
@@ -95,11 +98,11 @@ public class TradePages {
     }
 
     @Command
-    public Object tradePriceByDay(TradeManager manager, List<ResourceType> resources, int days) {
+    public Object tradePriceByDay(WebStore ws, TradeManager manager, List<ResourceType> resources, int days) {
         String query = StringMan.join(resources, ",") + "/" + days;
         String endpoint = "/tradepricebydayjson/" + query;
 
         String title = "Trade Price By Day";
-        return rocker.trade.tradeprice.template(title, endpoint).render().toString();
+        return ws.render(f -> JtetradepriceGenerated.render(f, null, ws, title, endpoint));
     }
 }

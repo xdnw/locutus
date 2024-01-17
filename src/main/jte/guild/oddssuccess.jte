@@ -1,9 +1,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.MathMan
 @import link.locutus.discord.util.PnwUtil
-@import com.fizzed.rocker.RenderingException
-@import com.fizzed.rocker.runtime.DefaultRockerTemplate
-@import com.fizzed.rocker.runtime.PlainTextUnloadedClassLoader
 @import link.locutus.discord.apiv1.enums.SuccessType
 
 

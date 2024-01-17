@@ -34,7 +34,6 @@
 @import link.locutus.discord.db.entities.InterviewMessage
 @import net.dv8tion.jda.api.entities.User
 @import com.google.gson.JsonElement
-@import rocker.guild.ia.message
 
 @param WebStore ws
 @param GuildDB db

@@ -3,62 +3,31 @@ package link.locutus.discord.web.jooby;
 
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
+import io.javalin.Javalin;
 import io.javalin.community.ssl.SSLPlugin;
-import io.javalin.compression.CompressionStrategy;
+import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import io.javalin.http.staticfiles.Location;
 import io.javalin.http.staticfiles.StaticFileConfig;
-import io.javalin.rendering.FileRenderer;
 import io.javalin.rendering.JavalinRenderer;
 import io.javalin.rendering.template.JavalinJte;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
-import link.locutus.discord.web.test.WebDB;
-import com.fizzed.rocker.runtime.RockerRuntime;
-import com.google.common.hash.Hashing;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import io.javalin.Javalin;
-import io.javalin.http.Context;
-import io.javalin.http.staticfiles.Location;
-import org.apache.http.HttpHeaders;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.methods.RequestBuilder;
-import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
-import org.bytedeco.librealsense.context;
-import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
 import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class WebRoot {
@@ -89,8 +58,6 @@ public class WebRoot {
         }
         INSTANCE = this;
 
-        RockerRuntime.getInstance().setReloading(true);
-
         this.legacyBankHandler = new BankRequestHandler();
 
         Map<String, String> staticFileMap = new LinkedHashMap<>();
@@ -110,12 +77,11 @@ public class WebRoot {
             }
         });
         JavalinJte.init(createTemplateEngine());
-        JavalinRenderer.INSTANCE.loadFileRenderers$javalin();
-
+//        BrotliLoader.isBrotliAvailable();
         this.app = Javalin.create(config -> {
             config.plugins.register(plugin);
 //            config.enableCorsForOrigin();
-            config.compression.gzipOnly(3);
+            config.compression.brotliAndGzip();
 //            config.server(() -> {
 //                Server server = new Server(); // configure this however you want
 //                LocutusSSLHandler.configureServer(server, portMain, portHTTPS);
@@ -133,6 +99,8 @@ public class WebRoot {
                 });
             }
         }).start();
+
+        System.out.println("Started");
 
         this.pageHandler = new PageHandler(this);
 

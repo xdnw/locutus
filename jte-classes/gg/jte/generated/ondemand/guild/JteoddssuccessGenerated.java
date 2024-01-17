@@ -2,13 +2,10 @@ package gg.jte.generated.ondemand.guild;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import com.fizzed.rocker.RenderingException;
-import com.fizzed.rocker.runtime.DefaultRockerTemplate;
-import com.fizzed.rocker.runtime.PlainTextUnloadedClassLoader;
 import link.locutus.discord.apiv1.enums.SuccessType;
 public final class JteoddssuccessGenerated {
 	public static final String JTE_NAME = "guild/oddssuccess.jte";
-	public static final int[] JTE_LINE_INFO = {0,0,1,2,3,4,5,6,9,9,9,12,12,13,13,15,15,17,17,19,19,21,21,21,21,21,21,23,23,23,23,26,26,26,26,9,10,11,11,11,11};
+	public static final int[] JTE_LINE_INFO = {0,0,1,2,3,6,6,6,9,9,10,10,12,12,14,14,16,16,18,18,18,18,18,18,20,20,20,20,23,23,23,23,6,7,8,8,8,8};
 	public static void render(gg.jte.TemplateOutput jteOutput, gg.jte.html.HtmlInterceptor jteHtmlInterceptor, WebStore ws, double odds, int success) {
 		if (odds > 0) {
 			jteOutput.writeContent("\r\n<div class=\"overflow-hidden progress-bar ");

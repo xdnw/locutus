@@ -6,8 +6,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import org.apache.commons.lang3.StringUtils;
-import rocker.guild.ia.message;
 
 import java.util.ArrayList;
 import java.util.Arrays;
