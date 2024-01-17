@@ -32,7 +32,7 @@ public class SimpleValueStore<T> implements ValueStore<T> {
             return new ProviderParser<>((Key) key, this);
         }
         if (key.getType() == WebStore.class) {
-            return new ProviderParser<>((Key) key, new WebStore(this));
+            return new SupplierParser<>((Key) key, () -> new WebStore(this));
         }
         if (!key.getAnnotationTypes().isEmpty()) {
             Set<Class<?>> types = new LinkedHashSet<>(key.getAnnotationTypes());

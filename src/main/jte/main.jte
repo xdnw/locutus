@@ -4,12 +4,10 @@
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.config.Settings
 @import gg.jte.Content
-
 @param WebStore ws
 @param Content content
 @param String title
 @param List<Map.Entry<String, String>> navbar
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

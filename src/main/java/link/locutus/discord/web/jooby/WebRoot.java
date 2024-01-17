@@ -1,6 +1,7 @@
 package link.locutus.discord.web.jooby;
 
 
+import com.aayushatharva.brotli4j.Brotli4jLoader;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
 import io.javalin.Javalin;
@@ -81,12 +82,12 @@ public class WebRoot {
         this.app = Javalin.create(config -> {
             config.plugins.register(plugin);
 //            config.enableCorsForOrigin();
-            config.compression.brotliAndGzip();
-//            config.server(() -> {
-//                Server server = new Server(); // configure this however you want
-//                LocutusSSLHandler.configureServer(server, portMain, portHTTPS);
-//                return server;
-//            });
+            // check if brotli available
+            if (Brotli4jLoader.isAvailable()) {
+                config.compression.brotliAndGzip();
+            } else {
+                config.compression.gzipOnly();
+            }
             for (Map.Entry<String, String> entry : staticFileMap.entrySet()) {
                 config.staticFiles.add(new Consumer<StaticFileConfig>() {
                     @Override
@@ -98,7 +99,7 @@ public class WebRoot {
                     }
                 });
             }
-        }).start();
+        }).start(Settings.INSTANCE.WEB.PORT_HTTPS > 0 ? Settings.INSTANCE.WEB.PORT_HTTPS : Settings.INSTANCE.WEB.PORT_HTTP);
 
         System.out.println("Started");
 
@@ -107,6 +108,7 @@ public class WebRoot {
         this.app.get("/test", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
+                System.out.println("Test");
                 pageHandler.handle(context);
             }
         });
