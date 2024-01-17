@@ -1,5 +1,9 @@
 package link.locutus.discord.web.commands.page;
 
+import gg.jte.generated.precompiled.auth.JtepickerGenerated;
+import gg.jte.generated.precompiled.guild.econ.JtetaxexpensesGenerated;
+import gg.jte.generated.precompiled.guild.econ.JtetaxexpensesbyturnGenerated;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -35,10 +39,11 @@ public class EconPages {
     @Command(desc = "Show running tax expenses by day by bracket")
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
-    public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch("s") @Range(min=1) Integer movingAverageTurns, @Switch("c") boolean cumulative,
+    public Object taxExpensesByTime(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch("s") @Range(min = 1) Integer movingAverageTurns, @Switch("c") boolean cumulative,
                                     @Switch("t") boolean dontRequireTagged) throws Exception {
 
-        if (movingAverageTurns != null && cumulative) throw new IllegalArgumentException("Please pick either a moving average, or cumulative, not both");
+        if (movingAverageTurns != null && cumulative)
+            throw new IllegalArgumentException("Please pick either a moving average, or cumulative, not both");
 
         Predicate<Integer> isNationIdPermitted;
         if (nationFilter == null) isNationIdPermitted = f -> true;
@@ -105,21 +110,22 @@ public class EconPages {
 
         Map<Integer, TaxBracket> t = categorized.getBrackets();
 
-        String pageHtml = "";//rocker.taxexpensesbyturn.template(title, db, turnStart, turnEnd, categorized, categorizedByTurnByBracket, categorized.getBrackets()).render().toString();
+        String finalTitle = title;
+        String pageHtml = WebStore.render(f -> JtetaxexpensesbyturnGenerated.render(f, null, ws, finalTitle, db, turnStart, turnEnd, categorized, categorizedByTurnByBracket, categorized.getBrackets()));
         return pageHtml;
     }
 
     @Command(desc = "Show cumulative tax expenses over a period by nation/bracket")
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
-    public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch("n") NationList nationList,
+    public Object taxExpensesIndex(WebStore ws, @Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch("n") NationList nationList,
                                    @Switch("g") boolean dontRequireGrant, @Switch("t") boolean dontRequireTagged, @Switch("e") boolean dontRequireExpiry,
                                    @Switch("d") boolean includeDeposits) throws Exception {
 
         List<String> errors = new ArrayList<>();
         Predicate<Integer> allowedNations;
-        if(nationList == null) {
-            allowedNations =  f -> true;
+        if (nationList == null) {
+            allowedNations = f -> true;
         } else {
             allowedNations = id -> {
                 DBNation nation = DBNation.getById(id);
@@ -127,14 +133,13 @@ public class EconPages {
             };
         }
         TaxRecordCategorizer2 categorized = new TaxRecordCategorizer2(db, start, end, dontRequireGrant, dontRequireTagged, dontRequireExpiry, includeDeposits, allowedNations, errors::add);
-
-        return "";//rocker.guild.econ.taxexpenses.template(
-//                db, categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
-//                categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
-//                categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),
-//                categorized.getIncomeTotal(), categorized.getIncomeByBracket(), categorized.getIncomeByNation(), categorized.getIncomeByNationByBracket(),
-//                categorized.getTransactionsByNation(), categorized.getTransactionsByBracket(), categorized.getTransactionsByNationByBracket(), categorized.getExpenseTransfers(),
-//                categorized.getExpenseTotal(), categorized.getExpensesByBracket(), categorized.getExpensesByNation(), categorized.getExpensesByNationByBracket()
-//                ).render().toString();
+        return WebStore.render(f -> JtetaxexpensesGenerated.render(f, null, ws,
+                db, categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
+                categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
+                categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),
+                categorized.getIncomeTotal(), categorized.getIncomeByBracket(), categorized.getIncomeByNation(), categorized.getIncomeByNationByBracket(),
+                categorized.getTransactionsByNation(), categorized.getTransactionsByBracket(), categorized.getTransactionsByNationByBracket(), categorized.getExpenseTransfers(),
+                categorized.getExpenseTotal(), categorized.getExpensesByBracket(), categorized.getExpensesByNation(), categorized.getExpensesByNationByBracket()
+        ));
     }
 }

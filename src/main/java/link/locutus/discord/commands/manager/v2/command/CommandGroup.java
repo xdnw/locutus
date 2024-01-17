@@ -201,7 +201,7 @@ public class CommandGroup implements ICommandGroup {
     @Override
     public String toHtml(WebStore ws, PermissionHandler permHandler, String endpoint, boolean sse) {
         Map<String, CommandCallable> allowed = getAllowedCommands(ws.store(), permHandler);
-        return ws.render(f -> JtecommandgroupGenerated.render(f, null, ws, this, allowed, endpoint == null ? "" : endpoint));
+        return WebStore.render(f -> JtecommandgroupGenerated.render(f, null, ws, this, allowed, endpoint == null ? "" : endpoint));
     }
 
     public CommandCallable get(String arg0) {

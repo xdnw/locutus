@@ -37,7 +37,7 @@ public class PageBuilder {
     }
 
     public PageBuilder spoiler(String title, String content) {
-        output.append(ws.render(f -> JtespoilerGenerated.render(f, null, ws, title + " \u25BC", ws.unsafe(content), "S" + UUID.randomUUID().getMostSignificantBits()))).append("\n");
+        output.append(WebStore.render(f -> JtespoilerGenerated.render(f, null, ws, title + " \u25BC", ws.unsafe(content), "S" + UUID.randomUUID().getMostSignificantBits()))).append("\n");
         return this;
     }
 
@@ -47,35 +47,35 @@ public class PageBuilder {
     }
 
     public PageBuilder danger(String content) {
-        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "danger", ws.unsafe(content))));
+        output.append(WebStore.render(f -> JtealertGenerated.render(f, null, ws, "danger", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder warning(String content) {
-        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "warning", ws.unsafe(content))));
+        output.append(WebStore.render(f -> JtealertGenerated.render(f, null, ws, "warning", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder info(String content) {
-        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "info", ws.unsafe(content))));
+        output.append(WebStore.render(f -> JtealertGenerated.render(f, null, ws, "info", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder alertPrimary(String content) {
-        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "primary", ws.unsafe(content))));
+        output.append(WebStore.render(f -> JtealertGenerated.render(f, null, ws, "primary", ws.unsafe(content))));
         return this;
     }
 
     public PageBuilder alertSecondary(String content) {
-        output.append(ws.render(f -> JtealertGenerated.render(f, null, ws, "secondary", ws.unsafe(content))));
+        output.append(WebStore.render(f -> JtealertGenerated.render(f, null, ws, "secondary", ws.unsafe(content))));
         return this;
     }
 
     public String buildWithContainer() {
-        return ws.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe("<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>"), title, navbar));
+        return WebStore.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe("<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>"), title, navbar));
     }
 
     public String build() {
-        return ws.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe(output.toString()), title, navbar));
+        return WebStore.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe(output.toString()), title, navbar));
     }
 }

@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands.page;
 
 import gg.jte.generated.precompiled.guild.ia.JteauditsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JteiachannelsGenerated;
+import gg.jte.generated.precompiled.guild.ia.JtementorsGenerated;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -152,7 +153,7 @@ public class IAPages {
         long diff = System.currentTimeMillis() - start;
         System.out.println("Diff " + diff + "ms");
 
-        return ws.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels));
+        return WebStore.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels));
     }
 
     @Command()
@@ -191,13 +192,13 @@ public class IAPages {
         }
 
 
-        return ws.render(f -> JteauditsGenerated.render(f, null, ws, db, allianceAuditResultsSorted));
+        return WebStore.render(f -> JteauditsGenerated.render(f, null, ws, db, allianceAuditResultsSorted));
     }
 
     @Command()
     @IsAlliance
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
-    public Object mentorIndex(IACategory iaCat, @Me Guild guild, @Me GuildDB db, @Me DBNation me) throws IOException {
+    public Object mentorIndex(WebStore ws, IACategory iaCat, @Me Guild guild, @Me GuildDB db, @Me DBNation me) throws IOException {
         List<DBNation> mentors = new ArrayList<>();
         Roles[] mentorRoles = new Roles[]{Roles.INTERVIEWER, Roles.MENTOR};
         for (Roles mentorRole : mentorRoles) {
@@ -340,8 +341,12 @@ public class IAPages {
             }
         }
 
-        return "";//rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+//        return "";//rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
 //                mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
 //                checkup).render().toString();
+
+        return WebStore.render(f -> JtementorsGenerated.render(f, null, ws, iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+                mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
+                checkup));
     }
 }

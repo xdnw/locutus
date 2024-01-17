@@ -78,7 +78,7 @@ public class GrantPages {
         Set<Project> recommendedProjects = db.getHandler().getRecommendedProjects(nation);
 
             DBNation finalNation = nation;
-            return ws.render(f -> JteprojectsGenerated.render(f, null, ws, recommendedProjects, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
+            return WebStore.render(f -> JteprojectsGenerated.render(f, null, ws, recommendedProjects, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
@@ -95,7 +95,7 @@ public class GrantPages {
         try {
         Set<Grant> grants = fetchGrants(db, user, nation, DepositType.CITY, failedRequirements, overrideRequirements, grantTokens);
             DBNation finalNation = nation;
-            return ws.render(f -> JtecitiesGenerated.render(f, null, ws, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
+            return WebStore.render(f -> JtecitiesGenerated.render(f, null, ws, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
@@ -112,7 +112,7 @@ public class GrantPages {
         try {
             Set<Grant> grants = fetchGrants(db, user, nation, DepositType.INFRA, failedRequirements, overrideRequirements, grantTokens);
             DBNation finalNation = nation;
-            return ws.render(f -> JteinfrasGenerated.render(f, null, ws, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
+            return WebStore.render(f -> JteinfrasGenerated.render(f, null, ws, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
@@ -129,7 +129,7 @@ public class GrantPages {
         try {
             Set<Grant> grants = fetchGrants(db, user, nation, DepositType.LAND, failedRequirements, overrideRequirements, grantTokens);
             DBNation finalNation = nation;
-            return ws.render(f -> JtelandsGenerated.render(f, null, ws, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
+            return WebStore.render(f -> JtelandsGenerated.render(f, null, ws, grants, user, finalNation, failedRequirements, overrideRequirements, grantTokens));
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }

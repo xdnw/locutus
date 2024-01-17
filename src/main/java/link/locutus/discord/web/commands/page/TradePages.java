@@ -35,7 +35,7 @@ public class TradePages {
             rows.add(row);
         }
 
-        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, "Trade Price", header, ws.table(rows)));
+        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Trade Price", header, ws.table(rows)));
     }
 
     @Command
@@ -103,6 +103,6 @@ public class TradePages {
         String endpoint = "/tradepricebydayjson/" + query;
 
         String title = "Trade Price By Day";
-        return ws.render(f -> JtetradepriceGenerated.render(f, null, ws, title, endpoint));
+        return WebStore.render(f -> JtetradepriceGenerated.render(f, null, ws, title, endpoint));
     }
 }

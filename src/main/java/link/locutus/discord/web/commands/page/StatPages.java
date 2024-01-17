@@ -56,7 +56,7 @@ public class StatPages {
         Set<DBAlliance> alliances = spheres.getAlliances();
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap = AllianceMetric.getMetrics(metrics, startTurn, endTurn, alliances);
 
-        return ws.render(f -> JteglobalmilitarizationGenerated.render(f, null, ws, spheres, alliances, metricMap, metrics, startTurn, endTurn));
+        return WebStore.render(f -> JteglobalmilitarizationGenerated.render(f, null, ws, spheres, alliances, metricMap, metrics, startTurn, endTurn));
     }
 
     @Command()
@@ -64,7 +64,7 @@ public class StatPages {
         long startTurn = TimeUtil.getTurn(start);
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, start, end);
         JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
-        return ws.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
+        return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
     }
 
     @Command()
@@ -80,7 +80,7 @@ public class StatPages {
 
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
         JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
-        return ws.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
+        return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
     }
 
     @Command()
@@ -94,14 +94,14 @@ public class StatPages {
         SphereGenerator spheres = new SphereGenerator(topX);
         Set<DBAlliance> alliances = spheres.getAlliances();
 
-        return ws.render(f -> JteglobaltierstatsGenerated.render(f, null, ws, spheres, alliances, metrics, groupBy, total, removeVM, removeActiveM, removeApps));
+        return WebStore.render(f -> JteglobaltierstatsGenerated.render(f, null, ws, spheres, alliances, metrics, groupBy, total, removeVM, removeActiveM, removeApps));
     }
 
     @Command()
     public Object metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         JsonObject json = table.toHtmlJson();
-        return ws.render(f -> JtebarchartsingleGenerated.render(f, null, ws, table.getName(), json, false));
+        return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, table.getName(), json, false));
     }
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
@@ -149,9 +149,9 @@ public class StatPages {
 
         String finalTitle = title;
         if (coalitions.size() <= 2 || barGraph) {
-            return ws.render(f -> JtebarchartsingleGenerated.render(f, null, ws, finalTitle, data, false));
+            return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, finalTitle, data, false));
         } else {
-            return ws.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, data, false));
+            return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, data, false));
         }
     }
 
@@ -203,6 +203,6 @@ public class StatPages {
         JsonObject json = table.toHtmlJson();
         title = table.getName();
         String finalTitle = title;
-        return ws.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, json, true));
+        return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, json, true));
     }
 }

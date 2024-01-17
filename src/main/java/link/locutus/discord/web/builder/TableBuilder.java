@@ -2,6 +2,8 @@ package link.locutus.discord.web.builder;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import gg.jte.generated.precompiled.data.Jtetable_dataGenerated;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 import java.util.ArrayList;
@@ -15,8 +17,10 @@ public class TableBuilder<T> {
     private final Map<String, Function<T, Object>> valueFunctions;
     private final Map<String, Boolean> visibleColumns;
     private final Map<String, Boolean> searchableColumns;
+    private final WebStore ws;
 
-    public TableBuilder() {
+    public TableBuilder(WebStore ws) {
+        this.ws = ws;
         this.columns = new ArrayList<>();
         this.valueFunctions = new HashMap<>();
         this.visibleColumns = new HashMap<>();
@@ -24,6 +28,7 @@ public class TableBuilder<T> {
     }
 
     public TableBuilder(TableBuilder<T> other) {
+        this.ws = other.ws;
         this.columns = new ArrayList<>(other.columns);
         this.valueFunctions = new HashMap<>(other.valueFunctions);
         this.visibleColumns = new HashMap<>(other.visibleColumns);
@@ -76,7 +81,7 @@ public class TableBuilder<T> {
     }
 
     public String buildHtml(String title, List<T> entries) {
-        return "";//rocker.data.table_data.template(title, buildJsonEncodedString(entries)).render().toString();
+        return WebStore.render(f -> Jtetable_dataGenerated.render(f, null, ws, title, buildJsonEncodedString(entries)));
     }
 
     public TableBuilder<T> clone() {

@@ -55,7 +55,7 @@ public class WebStore {
     public AuthBindings.Auth auth(boolean allowRedirect, boolean requireNation, boolean requireUser) {
         if (this.auth != null) return this.auth;
         try {
-            this.auth = AuthBindings.getAuth(context, allowRedirect, requireNation, requireUser);
+            this.auth = AuthBindings.getAuth(this, context, allowRedirect, requireNation, requireUser);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

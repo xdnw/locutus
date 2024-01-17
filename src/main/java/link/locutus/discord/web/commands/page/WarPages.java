@@ -91,7 +91,7 @@ public class WarPages {
             }
         });
 
-        TableBuilder<DBWar> table = new TableBuilder<>();
+        TableBuilder<DBWar> table = new TableBuilder<>(ws);
 
         WarCategory warCat = db.getWarChannel();
         if (warCat != null) {

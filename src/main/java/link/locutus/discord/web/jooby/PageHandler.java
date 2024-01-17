@@ -529,7 +529,7 @@ public class PageHandler implements Handler {
                     return str;
                 }
                 String finalStr = str;
-                return ws.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
+                return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
             }
         }
         return call;
@@ -539,7 +539,7 @@ public class PageHandler implements Handler {
         if (locals == null) {
             locals = new LocalValueStore<>(store);
         }
-        AuthBindings.Auth auth = AuthBindings.getAuth(ctx);
+        AuthBindings.Auth auth = AuthBindings.getAuth(new WebStore(locals), ctx);
         if (auth != null) {
             locals.addProvider(Key.of(AuthBindings.Auth.class, Me.class), auth);
             User user = auth.getUser();

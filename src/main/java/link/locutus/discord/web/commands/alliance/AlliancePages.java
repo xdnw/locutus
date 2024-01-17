@@ -63,7 +63,7 @@ public class AlliancePages {
             }
             rows.add(row);
         }
-        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, title, header, ws.table(rows)));
+        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, title, header, ws.table(rows)));
     }
 
     @Command
@@ -71,14 +71,14 @@ public class AlliancePages {
     public String announcements(WebStore ws, @Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), !showArchived);
 
-        return ws.render(f -> JteplayerannouncementsGenerated.render(f, null, ws, db, nation, announcements));
+        return WebStore.render(f -> JteplayerannouncementsGenerated.render(f, null, ws, db, nation, announcements));
     }
 
     @Command
     @RolePermission(Roles.ADMIN)
     public String manageAnnouncements(WebStore ws, @Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement> announcements = db.getAnnouncements();
-        return ws.render(f -> JtemanageannouncementsGenerated.render(f, null, ws, db, announcements));
+        return WebStore.render(f -> JtemanageannouncementsGenerated.render(f, null, ws, db, announcements));
     }
 
     @Command
@@ -86,6 +86,6 @@ public class AlliancePages {
     public String announcementVariations(WebStore ws, @Me GuildDB db, @Me DBNation nation, int announcementId) {
         Announcement announcement = db.getAnnouncement(announcementId);
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByAnnId(announcementId);
-        return ws.render(f -> JteannouncementvariationsGenerated.render(f, null, ws, db, announcement, announcements));
+        return WebStore.render(f -> JteannouncementvariationsGenerated.render(f, null, ws, db, announcement, announcements));
     }
 }

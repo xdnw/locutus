@@ -655,7 +655,7 @@ public class ParametricCallable implements ICommand {
                 "</div>" +
                 "<button type=\"submit\" class=\"btn btn-primary\">Submit</button>" +
                 "</form>";
-        return ws.render(f -> JteparametriccallableGenerated.render(f, null, ws,  this, ws.unsafe(response)));
+        return WebStore.render(f -> JteparametriccallableGenerated.render(f, null, ws,  this, ws.unsafe(response)));
     }
 
     public String stringifyArgumentMap(Map<String, String> combined, String delim) {

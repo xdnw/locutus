@@ -3,6 +3,7 @@ package link.locutus.discord.web.commands.page;
 import com.google.gson.Gson;
 import io.javalin.http.Context;
 import io.javalin.http.RedirectResponse;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
@@ -20,7 +21,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @NoForm
-    public String login(Context context, @Default Integer nation, @Default Long user) throws IOException {
+    public String login(WebStore ws, Context context, @Default Integer nation, @Default Long user) throws IOException {
         System.out.println("method " + context.method());
         System.out.println("headers " + context.res().getHeaderNames());
         Iterator<String> iter = context.req().getHeaderNames().asIterator();
@@ -40,7 +41,7 @@ public class EndpointPages extends PageHelper {
         boolean requireUser = queryMap.containsKey("user");
 
         try {
-            AuthBindings.Auth auth = AuthBindings.getAuth(context, requireNation || requireUser, requireNation, requireUser);
+            AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
             if (auth != null && (auth.userId() != null || auth.nationId() != null)) {
                 Map<String, Object> data = auth.toMap();
                 Guild guild = AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
@@ -58,8 +59,8 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @NoForm
-    public String logout(Context context) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(context, false, false, false);
+    public String logout(WebStore ws, Context context) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, false, false, false);
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
         AuthBindings.logout(context, false);
         if (auth != null) {

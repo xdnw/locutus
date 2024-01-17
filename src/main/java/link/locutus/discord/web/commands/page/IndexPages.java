@@ -5,6 +5,7 @@ import gg.jte.generated.precompiled.alliance.JteallianceindexGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
+import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -64,8 +65,8 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
-    public Object index(Context context) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(context, false, false, false);
+    public Object index(WebStore ws, Context context) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, false, false, false);
         if (auth == null) {
             return "Not logged in";
         }
@@ -205,7 +206,7 @@ public class IndexPages extends PageHelper {
         PageHandler pageHandler = WebRoot.getInstance().getPageHandler();
 //        pageHandler.getCommands()
         String finalTerm = term;
-        return ws.render(f -> JtesearchGenerated.render(f, null, ws, finalTerm, results));
+        return WebStore.render(f -> JtesearchGenerated.render(f, null, ws, finalTerm, results));
     }
 
     private void recursive(CommandCallable root, Consumer<CommandCallable> onEach) {
@@ -234,24 +235,24 @@ public class IndexPages extends PageHelper {
                 pages.toHtml(ws, stack.getPermissionHandler(), pageEndpoint, false)
         );
 
-        return ws.render(f -> JteguildindexGenerated.render(f, null, ws, stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages));
+        return WebStore.render(f -> JteguildindexGenerated.render(f, null, ws, stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages));
     }
 
     @Command()
-    public Object register(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+    public Object register(WebStore ws, Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
         if (user == null) {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
-        AuthBindings.Auth auth = AuthBindings.getAuth(context, true, true, true);
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, true, true);
         return "You are already registered";
     }
 
     @Command()
-    public Object login(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+    public Object login(WebStore ws, Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
         Map<String, List<String>> queries = context.queryParamMap();
         boolean requireNation = queries.containsKey("nation");
         boolean requireUser = queries.containsKey("discord");
-        AuthBindings.Auth auth = AuthBindings.getAuth(context, true, requireNation, requireUser);
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
             String url = AuthBindings.getRedirect(context, false);
@@ -327,7 +328,7 @@ public class IndexPages extends PageHelper {
         }
         GuildDB finalAllianceDb = allianceDb;
         String finalLocutusInvite = locutusInvite;
-        return ws.render(f -> JteguildsGenerated.render(f, null, ws, dbs, current, finalAllianceDb, registerLink, finalLocutusInvite, joinLink));
+        return WebStore.render(f -> JteguildsGenerated.render(f, null, ws, dbs, current, finalAllianceDb, registerLink, finalLocutusInvite, joinLink));
     }
 
     @Command()
@@ -338,7 +339,7 @@ public class IndexPages extends PageHelper {
 
     @Command()
     @RolePermission(Roles.MEMBER)
-    public Object guildMemberIndex(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default DBNation nation) throws IOException {
+    public Object guildMemberIndex(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default DBNation nation) throws IOException {
         System.out.println("NATION " + nation);
         if (nation == null) nation = me;
         if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.MILCOM.has(author, guild)) {
@@ -402,9 +403,10 @@ public class IndexPages extends PageHelper {
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);
 
-        String result = "";//rocker.memberindex.template(guild, db, nation, author, deposits, checkupResult, cities, isFightingActives, offensiveWars, defensiveWars, warCards, recommendedAttack, announcements).render().toString();
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (8)");
-        return result;
+        DBNation finalNation = nation;
+        Map<IACheckup.AuditType, Map.Entry<Object, String>> finalCheckupResult = checkupResult;
+        boolean finalIsFightingActives = isFightingActives;
+        return WebStore.render(f -> JtememberindexGenerated.render(f, null, ws, db.getGuild(), db, finalNation, author, deposits, finalCheckupResult, cities, finalIsFightingActives, offensiveWars, defensiveWars, warCards, recommendedAttack, announcements));
     }
 
     @Command()
@@ -420,6 +422,6 @@ public class IndexPages extends PageHelper {
         // 1 view wars
         // 2 view members
 
-        return ws.render(f -> JteallianceindexGenerated.render(f, null, ws, db, guild, alliance, user));
+        return WebStore.render(f -> JteallianceindexGenerated.render(f, null, ws, db, guild, alliance, user));
     }
 }

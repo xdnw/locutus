@@ -39,7 +39,7 @@ public class BankPages {
 //
 //
 //
-//        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, rows));
+//        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, rows));
 //    }
 
     @Command
@@ -128,12 +128,12 @@ public class BankPages {
             rows.add(row);
         }
 
-        return ws.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, ws.table(rows)));
+        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, ws.table(rows)));
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
     public Object bankIndex(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author) {
-        return ws.render(f -> JtebankindexGenerated.render(f, null, ws, db, db.getGuild(), author));
+        return WebStore.render(f -> JtebankindexGenerated.render(f, null, ws, db, db.getGuild(), author));
     }
 }
