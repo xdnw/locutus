@@ -25,8 +25,7 @@ public class GPTTest {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
 
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.WEB.PORT_HTTPS = 0;
-        Settings.INSTANCE.WEB.PORT_HTTP = 8000;
+        Settings.INSTANCE.WEB.PORT = 0;
         Settings.INSTANCE.WEB.REDIRECT = "http://localhost";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();

@@ -489,10 +489,12 @@ public class Settings extends Config {
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
         public String PRIVKEY_PASSWORD = "";
-        @Comment("Port used for HTTP. Set to 0 to disable")
-        public int PORT_HTTP = 80;
+        @Comment({"Port used for listening. Set to 0 to disable",
+        "80 = default unsecure http",
+        "443 = default secure https"})
+        public int PORT = 443;
         @Comment("Port used for secure HTTPS. Set to 0 to disable")
-        public int PORT_HTTPS = 443;
+        public boolean ENABLE_SSL = true;
         @Comment("If set to true, web content is not compressed/minified")
         public boolean DEVELOPMENT = true;
 

@@ -440,7 +440,7 @@ public class PageHandler implements Handler {
 
                     cmd.validatePermissions(stack.getStore(), permisser);
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                    ctx.result(cmd.toHtml(new WebStore(stack.getStore()), stack.getPermissionHandler(), endpoint, true));
+                    ctx.result(cmd.toHtml(new WebStore(stack.getStore(), ctx), stack.getPermissionHandler(), endpoint, true));
                     break;
                 }
                 // case "page" ->
@@ -461,9 +461,9 @@ public class PageHandler implements Handler {
                         }
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
                         Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
-                        result = wrap(new WebStore(stack.getStore()), cmdResult, ctx);
+                        result = wrap(new WebStore(stack.getStore(), ctx), cmdResult, ctx);
                     } else {
-                        result = cmd.toHtml(new WebStore(stack.getStore()), stack.getPermissionHandler(), false);
+                        result = cmd.toHtml(new WebStore(stack.getStore(), ctx), stack.getPermissionHandler(), false);
                     }
 
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
@@ -539,7 +539,7 @@ public class PageHandler implements Handler {
         if (locals == null) {
             locals = new LocalValueStore<>(store);
         }
-        AuthBindings.Auth auth = AuthBindings.getAuth(new WebStore(locals), ctx);
+        AuthBindings.Auth auth = AuthBindings.getAuth(new WebStore(locals, ctx), ctx);
         if (auth != null) {
             locals.addProvider(Key.of(AuthBindings.Auth.class, Me.class), auth);
             User user = auth.getUser();

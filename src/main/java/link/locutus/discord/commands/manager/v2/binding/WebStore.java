@@ -25,6 +25,11 @@ public class WebStore {
         this.context = (Context) store.getProvided(Context.class);
     }
 
+    public WebStore(ValueStore store, Context context) {
+        this.store = store;
+        this.context = context;
+    }
+
     public static String render(Consumer<OwaspHtmlTemplateOutput> task) {
         TemplateOutput output = new StringOutput();
         OwaspHtmlTemplateOutput htmlOutput = new OwaspHtmlTemplateOutput(output);

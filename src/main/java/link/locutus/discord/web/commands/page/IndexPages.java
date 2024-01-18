@@ -66,7 +66,7 @@ public class IndexPages extends PageHelper {
 
     @Command
     public Object index(WebStore ws, Context context) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, false, false, false);
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, false, false);
         if (auth == null) {
             return "Not logged in";
         }
@@ -82,7 +82,6 @@ public class IndexPages extends PageHelper {
 
     @Command
     public Object search(WebStore ws, @Me GuildDB db, String term) {
-        // TODO simplify the code
         term = URLDecoder.decode(term).trim();
 
         double nameEquals = 100;

@@ -188,8 +188,7 @@ public class AllianceMetricCommands {
 
     public static void main(String[] args) throws IOException, ParseException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.WEB.PORT_HTTPS = 0;
-        Settings.INSTANCE.WEB.PORT_HTTP = 8000;
+        Settings.INSTANCE.WEB.PORT = 0;
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
         Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
