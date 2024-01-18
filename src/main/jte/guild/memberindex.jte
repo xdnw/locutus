@@ -53,7 +53,7 @@
             <a class="btn btn-danger btn-sm" href="${WebRoot.REDIRECT}/manageannouncements">Manage Announcements</a>
         @endif
     </div>
-    <div class="bg-white container mt-3 rounded shadow py-1">
+    <div class="bg-lightcontainer mt-3 rounded shadow py-1">
         <h2 class=""><i class="bi bi-exclamation-diamond-fill text-danger px-1 me-2"></i>${checkup.size()} Audits</h2>
         <div>
     @for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())

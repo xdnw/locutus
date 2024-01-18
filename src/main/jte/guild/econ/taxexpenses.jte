@@ -59,7 +59,7 @@
 @param Map<Integer, Map<Integer,double[]>> expensesByNationByBracket
 
 @template.main(ws = ws, title = "Tax Expenses", navbar = null, content = @`
-<div class="bg-white container mt-3 rounded shadow py-1">
+<div class="bg-lightcontainer mt-3 rounded shadow py-1">
 @if(requireGrant)
     <kbd>requireGrant</kbd>
 @endif

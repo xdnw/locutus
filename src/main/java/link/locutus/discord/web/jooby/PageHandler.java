@@ -506,7 +506,7 @@ public class PageHandler implements Handler {
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
 
-        ctx.result(WebStore.render(f -> JteerrorGenerated.render(f, null, null, entry.getKey(), entry.getValue())));
+        ctx.result(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue())));
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx) {

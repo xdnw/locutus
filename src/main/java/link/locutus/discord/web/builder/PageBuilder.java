@@ -72,7 +72,7 @@ public class PageBuilder {
     }
 
     public String buildWithContainer() {
-        return WebStore.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe("<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>"), title, navbar));
+        return WebStore.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe("<div class=\"bg-lightcontainer-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>"), title, navbar));
     }
 
     public String build() {

@@ -1288,7 +1288,7 @@ public class PWBindings extends BindingHelper {
         return emumSet(AlliancePermission.class, input);
     }
 
-    @Binding(value = "Locutus guild settings")
+    @Binding(value = "Bot guild settings")
     public static GuildSetting key(String input) {
         input = input.replaceAll("_", " ").toLowerCase();
         GuildSetting[] constants = GuildKey.values();
@@ -1335,12 +1335,12 @@ public class PWBindings extends BindingHelper {
         return emum(SpyCount.Safety.class, input);
     }
 
-    @Binding(value = "One of the default Locutus coalition names")
+    @Binding(value = "One of the default Bot coalition names")
     public Coalition coalition(String input) {
         return emum(Coalition.class, input);
     }
 
-    @Binding(value = "A name for a default or custom Locutus coalition")
+    @Binding(value = "A name for a default or custom Bot coalition")
     @GuildCoalition
     public String guildCoalition(@Me GuildDB db, String input) {
         input = input.toLowerCase();
@@ -1404,7 +1404,7 @@ public class PWBindings extends BindingHelper {
         return project;
     }
 
-    @Binding(value = "A locutus metric for alliances")
+    @Binding(value = "A Bot metric for alliances")
     public AllianceMetric AllianceMetric(String input) {
         return StringMan.parseUpper(AllianceMetric.class, input);
     }

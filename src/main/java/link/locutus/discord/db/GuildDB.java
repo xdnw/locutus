@@ -1853,7 +1853,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                     throw new IllegalArgumentException("No Alliance not found for nation: " + receiverNation.getNation());
                 receiverDB = receiverAlliance.getGuildDB();
                 if (receiverDB == null)
-                    throw new IllegalArgumentException("No GuildDB found for: " + receiverAlliance + " (Are you sure Locutus is setup for this AA?)");
+                    throw new IllegalArgumentException("No GuildDB found for: " + receiverAlliance + " (Are you sure this Bot is setup for this Alliance?)");
             }
 
             if (receiverAlliance == null) {

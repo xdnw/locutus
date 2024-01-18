@@ -37,7 +37,7 @@
 @param Map<DBWar, AttackType> recommendedAttacks
 
 @if(nation.getNumWars() > 0)
-<div class="bg-white container mt-3 rounded shadow py-1">
+<div class="bg-lightcontainer mt-3 rounded shadow py-1">
     <h3 class="">Current Wars</h3>
     <hr>
     <a href="https://politicsandwar.com/nation/war/" class="btn btn-primary btn">War Page <i class="bi bi-box-arrow-up-right text-light"></i></a>

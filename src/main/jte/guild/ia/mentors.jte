@@ -50,7 +50,7 @@
 @param IACheckup checkup
 
 @template.main(ws = ws, title = "Mentors", navbar = null, content = @`
-        <div class="bg-white container mt-3 rounded shadow py-1">
+        <div class="bg-lightcontainer mt-3 rounded shadow py-1">
             <div class=""></div>
         </div>
 @for (Map.Entry<DBNation, List<DBNation>> entry : mentorsSorted)

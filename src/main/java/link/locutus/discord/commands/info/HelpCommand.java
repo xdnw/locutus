@@ -62,7 +62,7 @@ public class HelpCommand extends Command {
             response.append("\n").append("**For help on a specific command, use: `").append(Settings.commandPrefix(true)).append("? <command>`**");
             response.append("\n").append("**To search for a cmd, use: `").append(Settings.commandPrefix(true)).append("? <search>`**");
             String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.commandPrefix(true) + "invite` and follow the summoning ritual instructions.";
-            channel.create().embed("Locutus Cats", response.toString().trim(), footer).send();
+            channel.create().embed("Categories", response.toString().trim(), footer).send();
         } else {
             Integer page = DiscordUtil.parseArgInt(args, "page");
 

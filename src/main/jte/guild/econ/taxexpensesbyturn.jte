@@ -44,7 +44,7 @@
 
 @template.main(ws = ws, title = title, content = @`
 @for (Map.Entry<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> entry : categorizedByTurnByBracket.entrySet())
-<div class="bg-white container mt-3 rounded shadow py-1">
+<div class="bg-lightcontainer mt-3 rounded shadow py-1">
     @if(entry.getKey() == -1)
         <h3>Total</h3>
     @else

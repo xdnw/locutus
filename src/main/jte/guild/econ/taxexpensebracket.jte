@@ -46,7 +46,7 @@
 @param double[] expense
 @param Map<Integer,double[]> expensesByNation
 
-<div class="bg-white container mt-3 rounded shadow py-1">
+<div class="bg-lightcontainer mt-3 rounded shadow py-1">
     @if(bracket != null)
         <h3><a href="https://politicsandwar.com/index.php?id=15&tax_id=${bracket.taxId}">${title} #${bracket.taxId} ${bracket.getName()}</a></h3>
         <p>Taxrate: ${bracket.moneyRate}/${bracket.rssRate}</p><br>

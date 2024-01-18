@@ -41,7 +41,7 @@ public class WikiBeigeCyclingPage extends BotWikiGen {
                 CM.settings_beige_alerts.ENEMY_BEIGED_ALERT_VIOLATIONS.cmd.toSlashCommand(),
                 "You can set a role to be pinged",
                 CM.role.setAlias.cmd.create(Roles.ENEMY_BEIGE_ALERT_AUDITOR.name(), "@someRole",null, null).toSlashCommand(true),
-                "# Using Locutus to check if an enemy can be beiged",
+                "# Using the Bot to check if an enemy can be beiged",
                 CM.nation.canIBeige.cmd.toSlashCommand(true),
                 commandMarkdownSpoiler(CM.nation.canIBeige.cmd),
                 """

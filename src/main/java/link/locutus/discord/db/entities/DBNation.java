@@ -430,7 +430,7 @@ public class DBNation implements NationOrAlliance {
                     }
                 }
             } catch (HierarchyException e) {
-                output.append("\nCannot add role (Make sure Locutus' role is high enough and has add role perms)\n- " + e.getMessage());
+                output.append("\nCannot add role (Make sure the Bot's role is high enough and has add role perms)\n- " + e.getMessage());
             }
         }
         return output.toString();
@@ -3751,7 +3751,7 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getDiscordDB().getUserFromNationId(nation_id);
     }
 
-    @Command(desc = "If registered with Locutus")
+    @Command(desc = "If registered with this Bot")
     public boolean isVerified() {
         return getDBUser() != null;
     }
@@ -4063,7 +4063,7 @@ public class DBNation implements NationOrAlliance {
             OffshoreInstance offshore = currentDB.getOffshore();
 
             GuildDB authDb = Locutus.imp().getGuildDBByAA(getAlliance_id());
-            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with locutus: " + getAlliance_id());
+            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with this Bot: " + getAlliance_id());
             OffshoreInstance receiverOffshore = authDb.getOffshore();
             if (receiverOffshore == null) {
                 throw new IllegalArgumentException("Receiver does not have a registered offshore");

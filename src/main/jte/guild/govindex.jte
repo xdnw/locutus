@@ -30,7 +30,7 @@
 @template.main(ws = ws, title = "Guild Gov index", navbar = null, content = @`
 
 @if(Roles.MILCOM.has(author, db.getGuild()))
-<div class="bg-white container mt-3 rounded shadow py-1">
+<div class="bg-lightcontainer mt-3 rounded shadow py-1">
     <h2 class="">Milcom</h2>
 </div>
 @endif

@@ -26,7 +26,7 @@
 
 @for (Integer sphereId : spheres.getSpheres())
     @if(!Collections.disjoint(metricMap.keySet(), spheres.getAlliances(sphereId)))
-    <div class="bg-white mt-3 rounded shadow py-1 searchable accordion" id="Accordion${sphereId}">
+    <div class="bg-lightmt-3 rounded shadow py-1 searchable accordion" id="Accordion${sphereId}">
         <div class="accordion-item">
             <div class="accordion-header" id="heading${sphereId}">
                 <button class="accordion-button p-1 btn-lg" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${sphereId}" aria-expanded="true" aria-controls="collapse${sphereId}">

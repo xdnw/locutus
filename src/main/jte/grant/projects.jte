@@ -79,7 +79,7 @@
             @endif
             @template.grant.nation(ws = ws, nation = nation)
             @if(nation.getNumProjects() > 0 || !recommendedProjects.isEmpty())
-                <div class="bg-white card mt-3 rounded shadow py-1">
+                <div class="bg-lightcard mt-3 rounded shadow py-1">
                     @if(nation.getNumProjects() > 0)
                         <h4>Existing Projects</h4>
                         <ul class="list-group">

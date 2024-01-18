@@ -288,7 +288,7 @@ public class Settings extends Config {
 
     @Comment({
             "Proxy settings (Not implemented, work in progress)",
-            "- Locutus commands can perform alliance administration actions",
+            "- Bot commands can perform alliance administration actions",
             "- A proxy can aid multiple alliances performing actions concurrently"
     })
     public static class PROXY {
@@ -477,6 +477,9 @@ public class Settings extends Config {
 
 
     public static class WEB {
+        @Comment("The cosmetic name of the web interface")
+        public String INTERFACE_NAME = "Locutus";
+
         @Comment("The url/ip/hostname for the web interface")
         public String REDIRECT = "https://locutus.link";
         @Comment({"File location of the ssl certificate",

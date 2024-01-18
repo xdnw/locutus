@@ -7,11 +7,15 @@ import gg.jte.html.HtmlTemplateOutput;
 import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
 import io.javalin.http.Context;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -35,6 +39,26 @@ public class WebStore {
         OwaspHtmlTemplateOutput htmlOutput = new OwaspHtmlTemplateOutput(output);
         task.accept(htmlOutput);
         return output.toString();
+    }
+
+    public static void main(String[] args) {
+        Context t = null;
+        String[] split = t.path().split("/");
+    }
+
+    public Map<String, String> getPathLinks() {
+        String path = context.path();
+        String[] splitPath = path.split("/");
+        StringBuilder currentPath = new StringBuilder();
+        Map<String, String> paths = new LinkedHashMap<>();
+        paths.put("Home", "/");
+        for (int i = 0; i < splitPath.length; i++) {
+            String s = splitPath[i];
+            if (s.isEmpty()) continue;
+            currentPath.append("/").append(s);
+            paths.put(s, currentPath.toString());
+        }
+        return paths;
     }
 
     public Content unsafe(String content) {

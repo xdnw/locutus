@@ -12,7 +12,7 @@
 @param GuildDB db
 @param Announcement announcement
 <div class="alert alert-dismissible fade show container-fluid mt-1 shadow border-start border-3 @if(announcement.active)
-bg-white border-danger
+bg-lightborder-danger
 @else
 bg-secondary border-dark
 @endif">

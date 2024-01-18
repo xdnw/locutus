@@ -918,7 +918,7 @@ public class Auth {
             OffshoreInstance offshore = currentDB.getOffshore();
 
             GuildDB authDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with locutus: " + nation.getAlliance_id());
+            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with this Bot: " + nation.getAlliance_id());
             OffshoreInstance receiverOffshore = authDb.getOffshore();
             if (receiverOffshore == null) {
                 throw new IllegalArgumentException("Receiver does not have a registered offshore");

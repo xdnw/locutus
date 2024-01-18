@@ -15,7 +15,7 @@
     <a href="..">Go back ${command.getParent().getPrimaryCommandId()}</a>
     </div>
 @endif
-<div class="bg-white container mt-3 rounded shadow py-1">
+<div class="bg-lightcontainer mt-3 rounded shadow py-1">
 @if(command.help(ws.store()) != null)
 <h2>Help</h2>
 <p>${command.help(ws.store())}</p>

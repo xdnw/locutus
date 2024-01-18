@@ -14,7 +14,7 @@
 @param boolean includeDate
 
 <div class="alert alert-dismissible fade show container-fluid mt-1 shadow border-start border-3 @if(plrAnn.isActive())
-bg-white border-danger
+bg-lightborder-danger
 @else
 bg-secondary border-dark
 @endif">

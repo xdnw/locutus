@@ -14,7 +14,7 @@
 @else
     <div id="results">
 @for (SearchResult result : results)
-    <div class="bg-white container mt-1 rounded shadow">
+    <div class="bg-lightcontainer mt-1 rounded shadow">
         <h3>${WordUtils.capitalizeFully(result.type.name())}: <a href="${result.url}">${result.title}</a></h3>
         <hr>
         $unsafe{result.body}

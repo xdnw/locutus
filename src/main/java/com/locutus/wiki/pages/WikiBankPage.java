@@ -62,7 +62,7 @@ public class WikiBankPage extends BotWikiGen {
                         If the owner has been inactive without notice for over one month (both on discord and in-game), no one can access funds, nor is there a succession plan - funds can be transferred to stakeholders if there is reasonable claim. Reasonable claim can be considered:
                         - Alliance leadership (in-game)
                         - Discord admin perms
-                        - Deposits (sheet, bank log, Locutus etc.) (Alliance leader / admin takes precedence over deposits)
+                        - Deposits (sheet, bank log, in-game or discord position etc.) (Alliance leader / admin takes precedence over deposits)
                                                 
                         If there is a dispute with the above process, it must be resolved by the people disputing it (not Borg)."""),
                 "# Offshoring funds",

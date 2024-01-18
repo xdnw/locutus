@@ -466,7 +466,7 @@ public class AuthBindings extends WebBindingHelper {
                     Auth tmp = new Auth(nation.getNation_id(), null, System.currentTimeMillis());
                     pendingWebCmdTokens.put(tmpUid, tmp);
 
-                    String title = "Locutus Login | timestamp:" + System.currentTimeMillis();
+                    String title = "Bot Login | timestamp:" + System.currentTimeMillis();
                     String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
                             MarkupUtil.htmlUrl(Settings.INSTANCE.WEB.REDIRECT + " | Verify Login", authUrl);
 

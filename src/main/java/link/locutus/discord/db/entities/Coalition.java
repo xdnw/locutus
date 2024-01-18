@@ -87,7 +87,7 @@ public enum Coalition {
 
     UNTRACKED("Dont track war alerts from these alliances"),
 
-    WHITELISTED("Is whitelisted to use locutus commands (root admin)") {
+    WHITELISTED("Is whitelisted to use Bot commands (root admin)") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
             return Roles.ADMIN.hasOnRoot(user);
