@@ -18,7 +18,7 @@ We kindly request that you keep the details of the vulnerability confidential un
 
 #### Contact Information
 
-To report a vulnerability, please email us at `simonestranieri2518@gmail.com`. We will acknowledge the receipt of your email and work diligently to address the vulnerability as soon as possible.
+To report a vulnerability, please email us at `jessepaleg@gmail.com`. We will acknowledge the receipt of your email and work diligently to address the vulnerability as soon as possible.
 
 We appreciate your dedication to enhancing the security of Locutus. Your responsible disclosure is an invaluable contribution to the project's ongoing development.
 
