@@ -1,6 +1,11 @@
 package link.locutus.discord.web.commands.alliance;
 
+import gg.jte.generated.precompiled.JtebasictableGenerated;
+import gg.jte.generated.precompiled.alliance.JteannouncementvariationsGenerated;
+import gg.jte.generated.precompiled.alliance.JtemanageannouncementsGenerated;
+import gg.jte.generated.precompiled.alliance.JteplayerannouncementsGenerated;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
@@ -10,6 +15,7 @@ import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -23,15 +29,15 @@ import java.util.concurrent.TimeUnit;
 
 public class AlliancePages {
     @Command
-    public Object allianceLeaves(int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
+    public Object allianceLeaves(WebStore ws, int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
         Map<Integer, Map.Entry<Long, Rank>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
 
         String title = "Rank changes for " + MarkupUtil.htmlUrl(PnwUtil.getName(allianceId, true), PnwUtil.getUrl(allianceId, true));
         List<String> header = Arrays.asList("time", "nation", "position", "now-alliance", "now-position", "now-activity");
-        List<List<Object>> rows = new ArrayList<>();
+        List<List<String>> rows = new ArrayList<>();
 
         for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-            ArrayList<Object> row = new ArrayList<>();
+            ArrayList<String> row = new ArrayList<>();
 
             Map.Entry<Long, Rank> timeRank = entry.getValue();
             int nationId = entry.getKey();
@@ -39,10 +45,10 @@ public class AlliancePages {
 
             row.add(TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(timeRank.getKey())));
             row.add(MarkupUtil.htmlUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
-            row.add(timeRank.getValue());
+            row.add(timeRank.getValue().name());
             if (nation != null) {
                 row.add(MarkupUtil.htmlUrl(nation.getAllianceName(), nation.getAllianceUrl()));
-                row.add(Rank.byId(nation.getPosition()));
+                row.add(Rank.byId(nation.getPosition()).name());
                 String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                 if (nation.getVm_turns() != 0) {
                     active = MarkupUtil.htmlColor("orange", "VM:" + TimeUtil.secToTime(TimeUnit.HOURS, nation.getVm_turns() * 2));
@@ -57,29 +63,29 @@ public class AlliancePages {
             }
             rows.add(row);
         }
-        return rocker.basictable.template(title, header, rows).render().toString();
+        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, title, header, ws.table(rows)));
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String announcements(@Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
+    public String announcements(WebStore ws, @Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), !showArchived);
 
-        return rocker.alliance.playerannouncements.template(db, nation, announcements).render().toString();
+        return WebStore.render(f -> JteplayerannouncementsGenerated.render(f, null, ws, db, nation, announcements));
     }
 
     @Command
     @RolePermission(Roles.ADMIN)
-    public String manageAnnouncements(@Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
+    public String manageAnnouncements(WebStore ws, @Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement> announcements = db.getAnnouncements();
-        return rocker.alliance.manageannouncements.template(db, announcements).render().toString();
+        return WebStore.render(f -> JtemanageannouncementsGenerated.render(f, null, ws, db, announcements));
     }
 
     @Command
     @RolePermission(Roles.ADMIN)
-    public String announcementVariations(@Me GuildDB db, @Me DBNation nation, int announcementId) {
+    public String announcementVariations(WebStore ws, @Me GuildDB db, @Me DBNation nation, int announcementId) {
         Announcement announcement = db.getAnnouncement(announcementId);
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByAnnId(announcementId);
-        return rocker.alliance.announcementvariations.template(db, announcement, announcements).render().toString();
+        return WebStore.render(f -> JteannouncementvariationsGenerated.render(f, null, ws, db, announcement, announcements));
     }
 }

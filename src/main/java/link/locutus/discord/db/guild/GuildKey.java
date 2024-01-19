@@ -1470,7 +1470,7 @@ public class GuildKey {
             }
             Guild guild = Locutus.imp().getDiscordApi().getGuildById(ids.getValue());
             if (guild == null)
-                throw new IllegalArgumentException("Invalid guild: `" + ids.getValue() + "` (are you sure locutus is in that server?)");
+                throw new IllegalArgumentException("Invalid guild: `" + ids.getValue() + "` (are you sure this Bot is in that server?)");
             GuildDB otherDb = Locutus.imp().getGuildDB(guild);
             if (guild.getIdLong() == db.getIdLong())
                 throw new IllegalArgumentException("You cannot set the delegate as this guild");
@@ -1486,7 +1486,7 @@ public class GuildKey {
             if (entry == null) return true;
             GuildDB otherDB = Locutus.imp().getGuildDB(entry.getValue());
             if (otherDB == null) {
-                throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure locutus is in that server?)");
+                throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure this Bot is in that server?)");
             }
             if (!Roles.ADMIN.has(author, otherDB.getGuild()))
                 throw new IllegalArgumentException("You do not have ADMIN on " + otherDB.getGuild());

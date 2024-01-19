@@ -288,7 +288,7 @@ public class Settings extends Config {
 
     @Comment({
             "Proxy settings (Not implemented, work in progress)",
-            "- Locutus commands can perform alliance administration actions",
+            "- Bot commands can perform alliance administration actions",
             "- A proxy can aid multiple alliances performing actions concurrently"
     })
     public static class PROXY {
@@ -477,6 +477,9 @@ public class Settings extends Config {
 
 
     public static class WEB {
+        @Comment("The cosmetic name of the web interface")
+        public String INTERFACE_NAME = "Locutus";
+
         @Comment("The url/ip/hostname for the web interface")
         public String REDIRECT = "https://locutus.link";
         @Comment({"File location of the ssl certificate",
@@ -489,10 +492,12 @@ public class Settings extends Config {
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
         public String PRIVKEY_PASSWORD = "";
-        @Comment("Port used for HTTP. Set to 0 to disable")
-        public int PORT_HTTP = 80;
+        @Comment({"Port used for listening. Set to 0 to disable",
+        "80 = default unsecure http",
+        "443 = default secure https"})
+        public int PORT = 443;
         @Comment("Port used for secure HTTPS. Set to 0 to disable")
-        public int PORT_HTTPS = 443;
+        public boolean ENABLE_SSL = true;
         @Comment("If set to true, web content is not compressed/minified")
         public boolean DEVELOPMENT = true;
 

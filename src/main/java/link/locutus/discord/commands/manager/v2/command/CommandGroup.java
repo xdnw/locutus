@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -197,10 +199,9 @@ public class CommandGroup implements ICommandGroup {
     }
 
     @Override
-    public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint, boolean sse) {
-        Map<String, CommandCallable> allowed = getAllowedCommands(store, permHandler);
-        if (endpoint == null) endpoint = "";
-        return rocker.command.commandgroup.template(store, this, allowed, endpoint).render().toString();
+    public String toHtml(WebStore ws, PermissionHandler permHandler, String endpoint, boolean sse) {
+        Map<String, CommandCallable> allowed = getAllowedCommands(ws.store(), permHandler);
+        return WebStore.render(f -> JtecommandgroupGenerated.render(f, null, ws, this, allowed, endpoint == null ? "" : endpoint));
     }
 
     public CommandCallable get(String arg0) {

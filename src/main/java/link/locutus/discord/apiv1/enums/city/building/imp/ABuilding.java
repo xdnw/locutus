@@ -7,7 +7,6 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Project;
-import rocker.grant.city;
 
 import java.util.Map;
 import java.util.function.Predicate;

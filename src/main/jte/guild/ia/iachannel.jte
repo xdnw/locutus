@@ -1,0 +1,66 @@
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
+@import link.locutus.discord.commands.manager.v2.binding.annotation.Command
+@import link.locutus.discord.commands.manager.v2.binding.annotation.Default
+@import link.locutus.discord.commands.manager.v2.binding.annotation.Me
+@import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
+@import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
+@import link.locutus.discord.db.GuildDB
+@import link.locutus.discord.db.entities.Transaction2
+@import link.locutus.discord.db.entities.DBAlliance
+@import link.locutus.discord.db.entities.DBNation
+@import link.locutus.discord.user.Roles
+@import link.locutus.discord.util.StringMan
+@import link.locutus.discord.util.TimeUtil
+@import link.locutus.discord.util.discord.DiscordUtil
+@import link.locutus.discord.util.offshore.test.IACategory
+@import link.locutus.discord.util.offshore.test.IAChannel
+@import link.locutus.discord.util.task.ia.IACheckup
+@import net.dv8tion.jda.api.entities.Guild
+@import net.dv8tion.jda.api.entities.Member
+@import net.dv8tion.jda.api.entities.Role
+@import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
+@import java.io.IOException
+@import java.util.ArrayList
+@import java.util.Collections
+@import java.util.Comparator
+@import java.util.HashMap
+@import java.util.HashSet
+@import java.util.List
+@import java.util.Map
+@import java.util.Set
+@import java.util.concurrent.TimeUnit
+@import java.util.stream.Collectors
+@import link.locutus.discord.db.entities.InterviewMessage
+@import net.dv8tion.jda.api.entities.User
+
+@param WebStore ws
+@param GuildDB db
+@param DBNation me
+@param User author
+@param IACategory iaCat
+@param IACategory.SortedCategory category
+@param GuildMessageChannel channel
+@param DBNation interviewNation
+@param User interviewUser
+@param List<InterviewMessage> messages
+@param boolean isMyChannel
+
+<div  class="bg-primary p-3 rounded border border-2 border-light">
+    <div class="row">
+<%--<!--        // go to channel (url)-->--%>
+<%--<!--        // go to nation-->--%>
+<%--<!--        // summary of user (activity, city, mmr, mmr[build], off, color, avgbuildings, conduct audit-->--%>
+<%--<!--        // expand / collapse-->--%>
+<%--<!--        // expanded has scrollbar past X height (2000 px?)-->--%>
+<%--<!--        // dont log bot messages, or messages starting with `! or $`-->--%>
+    </div>
+<%--<!--    // make message compact, use script to expand-->--%>
+<%--<!--    //      avatar url-->--%>
+<%--<!--    //      date-->--%>
+<%--<!--    //      message-->--%>
+<%--<!--    //      outline-->--%>
+<%--<!--    // remove padding-->--%>
+<%--    @for (InterviewMessage message : messages)--%>
+<%--<!--        @template.guild.ia.message(ws, db.getGuild(), channel, interviewUser, message, isMyChannel)-->--%>
+<%--        @endfor--%>
+</div>

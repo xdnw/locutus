@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
@@ -47,11 +48,11 @@ public interface CommandCallable {
         }
     }
 
-    default String toHtml(ValueStore store, PermissionHandler permisser, boolean sse) {
+    default String toHtml(WebStore store, PermissionHandler permisser, boolean sse) {
         return toHtml(store, permisser, null, sse);
     }
 
-    String toHtml(ValueStore store, PermissionHandler permisser, String endpoint, boolean sse);
+    String toHtml(WebStore store, PermissionHandler permisser, String endpoint, boolean sse);
 
     default CommandCallable getCallable(List<String> args) {
         return getCallable(new ArrayList<>(args), false);

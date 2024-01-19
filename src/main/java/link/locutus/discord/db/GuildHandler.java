@@ -2086,7 +2086,7 @@ public class GuildHandler {
                 explanation.append("\n- " + allowedReason.name() +": " + allowedReason.getDescription());
             }
             if (isViolation) {
-                explanation.append("\n\n**note for members**: These are informational guidelines provided to be a war aid and in no way intended to shame anyone. Locutus isn't always correct, or necessarily accounting for the nuances of the situation. \n" +
+                explanation.append("\n\n**note for members**: These are informational guidelines provided to be a war aid and in no way intended to shame anyone. This Bot isn't always correct, or necessarily accounting for the nuances of the situation. \n" +
                         "Gov members are also just as capable of not knowing something or unnecessarily beiging by not paying attention.");
             }
         }

@@ -1,7 +1,5 @@
 package link.locutus.discord.util;
 
-import org.apache.tomcat.util.buf.ByteBufferUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

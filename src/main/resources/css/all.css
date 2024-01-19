@@ -37,7 +37,6 @@ input[type="date"]::-webkit-inner-spin-button {
      z-index: 1;
  }
 
-
 .background {
     display: block;
     vertical-align: bottom;
@@ -56,11 +55,7 @@ input[type="date"]::-webkit-inner-spin-button {
     box-shadow: 0 0 0 4px #007bff;
 }
 * {
-    color: #111;
     font-family: 'Open Sans', sans-serif;
-}
-body {
-    background-color: #003E80;
 }
 body,container {
     margin:0;
@@ -83,7 +78,6 @@ table {
 a{
   text-decoration: none;
   position: relative;
-  color: #0000d9;
 }
 a::before{
   content: '';

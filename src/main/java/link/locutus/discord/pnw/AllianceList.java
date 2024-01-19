@@ -16,7 +16,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.text.ParseException;

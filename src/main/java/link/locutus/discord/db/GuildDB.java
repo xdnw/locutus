@@ -929,7 +929,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         {
             String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL, `allow_creation` BOOLEAN NOT NULL)";
             executeStmt(query);
-            executeStmt("ALTER TABLE ANNOUNCEMENTS2 ADD COLUMN allow_creation BOOLEAN NOT NULL DEFAULT 0");
+//            executeStmt("ALTER TABLE ANNOUNCEMENTS2 ADD COLUMN allow_creation BOOLEAN NOT NULL DEFAULT 0");
 
             String query2 = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS_PLAYER2` (`receiver` INT NOT NULL, `ann_id` INT NOT NULL, `active` BOOLEAN NOT NULL, `diff` BLOB NOT NULL, PRIMARY KEY(receiver, ann_id), FOREIGN KEY(ann_id) REFERENCES ANNOUNCEMENTS2(ann_id))";
             executeStmt(query2);
@@ -1853,7 +1853,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                     throw new IllegalArgumentException("No Alliance not found for nation: " + receiverNation.getNation());
                 receiverDB = receiverAlliance.getGuildDB();
                 if (receiverDB == null)
-                    throw new IllegalArgumentException("No GuildDB found for: " + receiverAlliance + " (Are you sure Locutus is setup for this AA?)");
+                    throw new IllegalArgumentException("No GuildDB found for: " + receiverAlliance + " (Are you sure this Bot is setup for this Alliance?)");
             }
 
             if (receiverAlliance == null) {

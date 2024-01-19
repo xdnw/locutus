@@ -837,7 +837,7 @@ public class OffshoreInstance {
 
                         User receiverUser = nation.getUser();
                         if (receiverUser == null) {
-                            body.append("**Receiver is NOT registered with Locutus**\n");
+                            body.append("**Receiver is NOT registered with this Bot**\n");
                         } else {
                             Member member = senderDB.getGuild().getMember(receiverUser);
                             if (member == null) {

@@ -1,31 +1,28 @@
-<%--@import java.util.*--%>
-
-<%--@args (String title, List<String> header, List<List<Object>> rows)--%>
-
-<%--        @rocker.main.template(title) -> {--%>
-<%--        <table class="table">--%>
-<%--            <thead>--%>
-<%--            <tr>--%>
-<%--                @for (String item : header) {--%>
-<%--                <th scope="col">@raw(item)</th>--%>
-<%--                }--%>
-<%--            </tr>--%>
-<%--            </thead>--%>
-<%--            <tbody>--%>
-<%--            @for (List<Object> row : rows) {--%>
-<%--                <tr>--%>
-<%--                    @for (Object item : row) {--%>
-<%--                    <th>@raw(item == null ? "null" : item.toString())</th>--%>
-<%--                    }--%>
-<%--                </tr>--%>
-<%--                }--%>
-<%--            </tbody>--%>
-<%--        </table>--%>
-<%--        }--%>
-
+@import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import java.util.*
 
+@param WebStore ws
 @param String title
 @param List<String> header
-@param List<List<Object>> rows
+@param List<List<gg.jte.Content>> rows
 
+@template.main(ws = ws, content = @`
+<table class="table">
+    <thead>
+    <tr>
+        @for(String item : header)
+        <th scope="col">${item}</th>
+        @endfor
+    </tr>
+    </thead>
+    <tbody>
+    @for (List<gg.jte.Content> row : rows)
+        <tr>
+            @for(gg.jte.Content item : row)
+            <th>${item}</th>
+            @endfor
+        </tr>
+        @endfor
+    </tbody>
+</table>
+`, title = title, navbar = null)

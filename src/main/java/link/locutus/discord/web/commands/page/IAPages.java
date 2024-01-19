@@ -1,5 +1,9 @@
 package link.locutus.discord.web.commands.page;
 
+import gg.jte.generated.precompiled.guild.ia.JteauditsGenerated;
+import gg.jte.generated.precompiled.guild.ia.JteiachannelsGenerated;
+import gg.jte.generated.precompiled.guild.ia.JtementorsGenerated;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
@@ -47,7 +51,7 @@ public class IAPages {
     @Command()
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
-    public String iaChannels(@Me GuildDB db, @Me DBNation me, @Me User author) throws ExecutionException, InterruptedException {
+    public String iaChannels(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author) throws ExecutionException, InterruptedException {
         long start = System.currentTimeMillis();
 
         IACategory iaCat = db.getIACategory();
@@ -149,13 +153,13 @@ public class IAPages {
         long diff = System.currentTimeMillis() - start;
         System.out.println("Diff " + diff + "ms");
 
-        return rocker.guild.ia.iachannels.template(db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels).render().toString();
+        return WebStore.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels));
     }
 
     @Command()
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
-    public Object memberAuditIndex(@Me GuildDB db) throws IOException {
+    public Object memberAuditIndex(WebStore ws, @Me GuildDB db) throws IOException {
         AllianceList alliance = db.getAllianceList();
         IACheckup checkup = new IACheckup(db, alliance, true);
         Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
@@ -188,13 +192,13 @@ public class IAPages {
         }
 
 
-        return rocker.guild.ia.audits.template(db, allianceAuditResultsSorted).render().toString();
+        return WebStore.render(f -> JteauditsGenerated.render(f, null, ws, db, allianceAuditResultsSorted));
     }
 
     @Command()
     @IsAlliance
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
-    public Object mentorIndex(IACategory iaCat, @Me Guild guild, @Me GuildDB db, @Me DBNation me) throws IOException {
+    public Object mentorIndex(WebStore ws, IACategory iaCat, @Me Guild guild, @Me GuildDB db, @Me DBNation me) throws IOException {
         List<DBNation> mentors = new ArrayList<>();
         Roles[] mentorRoles = new Roles[]{Roles.INTERVIEWER, Roles.MENTOR};
         for (Roles mentorRole : mentorRoles) {
@@ -337,8 +341,12 @@ public class IAPages {
             }
         }
 
-        return rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+//        return "";//rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+//                mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
+//                checkup).render().toString();
+
+        return WebStore.render(f -> JtementorsGenerated.render(f, null, ws, iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
                 mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
-                checkup).render().toString();
+                checkup));
     }
 }

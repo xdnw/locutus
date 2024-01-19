@@ -2,7 +2,6 @@ package link.locutus.discord.apiv3.subscription;
 
 import com.pusher.client.Pusher;
 import com.pusher.client.channel.*;
-import rocker.error;
 
 import java.util.Locale;
 import java.util.Set;

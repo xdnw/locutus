@@ -1,6 +1,11 @@
 package link.locutus.discord.web.commands.page;
 
+import gg.jte.generated.precompiled.data.JtebarchartsingleGenerated;
+import gg.jte.generated.precompiled.data.JtetimechartdatasrcpageGenerated;
+import gg.jte.generated.precompiled.guild.milcom.JteglobalmilitarizationGenerated;
+import gg.jte.generated.precompiled.guild.milcom.JteglobaltierstatsGenerated;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
@@ -41,7 +46,7 @@ public class StatPages {
     }
 
     @Command()
-    public Object globalStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, int topX) {
+    public Object globalStats(WebStore ws, Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, int topX) {
         if (topX > 250) return "Treaty information is not available for those alliances (outside top 80)";
 
         long startTurn = TimeUtil.getTurn(start);
@@ -51,19 +56,19 @@ public class StatPages {
         Set<DBAlliance> alliances = spheres.getAlliances();
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap = AllianceMetric.getMetrics(metrics, startTurn, endTurn, alliances);
 
-        return rocker.guild.milcom.globalmilitarization.template(spheres, alliances, metricMap, metrics, startTurn, endTurn).render().toString();
+        return WebStore.render(f -> JteglobalmilitarizationGenerated.render(f, null, ws, spheres, alliances, metricMap, metrics, startTurn, endTurn));
     }
 
     @Command()
-    public Object radiationStats(Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
+    public Object radiationStats(WebStore ws, Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, start, end);
         JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
-        return rocker.data.timechartdatasrcpage.template("Radiation by Time", json, true).render().toString();
+        return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
     }
 
     @Command()
-    public Object aaStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
+    public Object aaStats(WebStore ws, Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
         String title = "aaStats";
         String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
 
@@ -75,11 +80,11 @@ public class StatPages {
 
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
         JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
-        return rocker.data.timechartdatasrcpage.template(title, json, true).render().toString();
+        return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
     }
 
     @Command()
-    public Object globalTierStats(Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
+    public Object globalTierStats(WebStore ws, Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
         if (topX > 250) return "Treaty information is not available for those alliances (outside top 80)";
 
         boolean removeVM = true;
@@ -89,18 +94,18 @@ public class StatPages {
         SphereGenerator spheres = new SphereGenerator(topX);
         Set<DBAlliance> alliances = spheres.getAlliances();
 
-        return rocker.guild.milcom.globaltierstats.template(spheres, alliances, metrics, groupBy, total, removeVM, removeActiveM, removeApps).render().toString();
+        return WebStore.render(f -> JteglobaltierstatsGenerated.render(f, null, ws, spheres, alliances, metrics, groupBy, total, removeVM, removeActiveM, removeApps));
     }
 
     @Command()
-    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
+    public Object metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         JsonObject json = table.toHtmlJson();
-        return rocker.data.barchartsingle.template(table.getName(), json, false).render().toString();
+        return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, table.getName(), json, false));
     }
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
-    public Object compareTierStats(NationAttributeDouble metric, NationAttributeDouble groupBy,
+    public Object compareTierStats(WebStore ws, NationAttributeDouble metric, NationAttributeDouble groupBy,
                                    Set<DBAlliance> coalition1,
                                    @Default Set<DBAlliance> coalition2,
                                    @Default Set<DBAlliance> coalition3,
@@ -142,15 +147,16 @@ public class StatPages {
         JsonObject data = table.toHtmlJson();
         title = table.getName();
 
+        String finalTitle = title;
         if (coalitions.size() <= 2 || barGraph) {
-            return rocker.data.barchartsingle.template(title, data, false).render().toString();
+            return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, finalTitle, data, false));
         } else {
-            return rocker.data.timechartdatasrcpage.template(title, data, false).render().toString();
+            return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, data, false));
         }
     }
 
     @Command(desc = "Compare the stats of up to 10 alliances/coalitions on a single time graph")
-    public Object compareStats(AllianceMetric metric,  @Timestamp long start, @Timestamp long end,
+    public Object compareStats(WebStore ws, AllianceMetric metric,  @Timestamp long start, @Timestamp long end,
                                    Set<DBAlliance> coalition1,
                                    Set<DBAlliance> coalition2,
                                    @Default Set<DBAlliance> coalition3,
@@ -196,6 +202,7 @@ public class StatPages {
         TimeNumericTable table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
         JsonObject json = table.toHtmlJson();
         title = table.getName();
-        return rocker.data.timechartdatasrcpage.template(title, json, true).render().toString();
+        String finalTitle = title;
+        return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, json, true));
     }
 }

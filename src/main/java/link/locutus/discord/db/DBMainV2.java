@@ -1,11 +1,7 @@
 package link.locutus.discord.db;
 
-import ch.qos.logback.classic.db.names.TableName;
 import com.ptsmods.mysqlw.Database;
-import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.FileUtil;
-import org.apache.http.util.TextUtils;
 
 import java.io.Closeable;
 import java.io.File;

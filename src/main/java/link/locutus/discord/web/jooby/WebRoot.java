@@ -1,58 +1,34 @@
 package link.locutus.discord.web.jooby;
 
 
+import com.aayushatharva.brotli4j.Brotli4jLoader;
+import gg.jte.CodeResolver;
+import gg.jte.ContentType;
+import gg.jte.TemplateEngine;
+import gg.jte.resolve.DirectoryCodeResolver;
+import gg.jte.watcher.DirectoryWatcher;
+import io.javalin.Javalin;
 import io.javalin.community.ssl.SSLPlugin;
-import io.javalin.compression.CompressionStrategy;
+import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import io.javalin.http.staticfiles.Location;
 import io.javalin.http.staticfiles.StaticFileConfig;
+import io.javalin.rendering.template.JavalinJte;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
-import link.locutus.discord.web.test.WebDB;
-import com.fizzed.rocker.runtime.RockerRuntime;
-import com.google.common.hash.Hashing;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import io.javalin.Javalin;
-import io.javalin.http.Context;
-import io.javalin.http.staticfiles.Location;
-import org.apache.http.HttpHeaders;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.methods.RequestBuilder;
-import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
-import org.bytedeco.librealsense.context;
-import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
-import javax.security.auth.login.LoginException;
 import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
+import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class WebRoot {
@@ -65,22 +41,26 @@ public class WebRoot {
     private static WebRoot INSTANCE;
 
     private final BankRequestHandler legacyBankHandler;
+    private final TemplateEngine jteEngine;
+    private final DirectoryCodeResolver jteResolver;
 
+    private static TemplateEngine createTemplateEngine() {
+        return TemplateEngine.createPrecompiled(Path.of("src/main/jte"), ContentType.Plain);
+    }
 
-    public WebRoot(int portMain, int portHTTPS) {
+    private static DirectoryCodeResolver createResolver() {
+        return new DirectoryCodeResolver(Path.of("src/main/jte"));
+    }
+
+    public WebRoot(int port, boolean ssl) {
         if (Settings.INSTANCE.CLIENT_SECRET.isEmpty()) throw new IllegalArgumentException("Please set CLIENT_SECRET in " + Settings.INSTANCE.getDefaultFile());
         if (INSTANCE != null) throw new IllegalArgumentException("Already initialized");
-        if (portHTTPS > 0 && portHTTPS != 443) {
-            REDIRECT = Settings.INSTANCE.WEB.REDIRECT + ":" + portHTTPS;
-        } else if (portHTTPS <= 0) {
-            REDIRECT = Settings.INSTANCE.WEB.REDIRECT + ":" + portMain;
+        if (port > 0 && port != (ssl ? 443 : 80)) {
+            REDIRECT = Settings.INSTANCE.WEB.REDIRECT + ":" + port;
         } else {
             REDIRECT = Settings.INSTANCE.WEB.REDIRECT;
         }
-
         INSTANCE = this;
-
-        RockerRuntime.getInstance().setReloading(true);
 
         this.legacyBankHandler = new BankRequestHandler();
 
@@ -95,22 +75,39 @@ public class WebRoot {
             } else {
                 conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH, Settings.INSTANCE.WEB.PRIVKEY_PASSWORD);
             }
-            conf.securePort = Settings.INSTANCE.WEB.PORT_HTTPS;
-            if (Settings.INSTANCE.WEB.PORT_HTTP > 0) {
-                conf.insecurePort = Settings.INSTANCE.WEB.PORT_HTTP;
-            }
+            conf.securePort = port;
+            conf.redirect = true;
+            conf.insecure = false;
         });
 
+        this.jteEngine = createTemplateEngine();
+        this.jteResolver = createResolver();
+        JavalinJte.init(jteEngine);
+        {
+            DirectoryWatcher watcher = new DirectoryWatcher(jteEngine, jteResolver);
+            watcher.start(templates -> {
+                for (String template : templates) {
+                    System.out.println("Reloaded template " + template);
+                }
+            });
+        }
 
+        System.out.println("Starting on port " + port);
+//        BrotliLoader.isBrotliAvailable();
         this.app = Javalin.create(config -> {
-            config.plugins.register(plugin);
+            if (ssl) {
+                config.plugins.register(plugin);
+            }
+            config.plugins.enableDevLogging(); // Approach 1
 //            config.enableCorsForOrigin();
-            config.compression.gzipOnly(3);
-//            config.server(() -> {
-//                Server server = new Server(); // configure this however you want
-//                LocutusSSLHandler.configureServer(server, portMain, portHTTPS);
-//                return server;
-//            });
+            // check if brotli available
+            if (Brotli4jLoader.isAvailable()) {
+                System.out.println("Using brotli");
+                config.compression.brotliAndGzip();
+            } else {
+                System.out.println("Using gzip");
+                config.compression.gzipOnly();
+            }
             for (Map.Entry<String, String> entry : staticFileMap.entrySet()) {
                 config.staticFiles.add(new Consumer<StaticFileConfig>() {
                     @Override
@@ -122,13 +119,18 @@ public class WebRoot {
                     }
                 });
             }
-        }).start();
+        }).start(port);
+
+
+
+        System.out.println("Started on port " + port);
 
         this.pageHandler = new PageHandler(this);
 
         this.app.get("/test", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
+                System.out.println("Test");
                 pageHandler.handle(context);
             }
         });
@@ -218,9 +220,15 @@ public class WebRoot {
         this.fileRoot = new File("files");
 
         this.app.get("/", ctx -> {
+            System.out.println("Index: Hello World");
             pageHandler.handle(ctx);
         });
+
 //        get("/favicon.ico", ctx -> null);
+    }
+
+    public Javalin getApp() {
+        return app;
     }
 
     public BankRequestHandler getLegacyBankHandler() {
@@ -250,14 +258,48 @@ public class WebRoot {
         return pageHandler;
     }
 
-    public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-
-        Locutus locutus = Locutus.create().start();
-
-        System.out.println("Port " + Settings.INSTANCE.WEB.PORT_HTTP + " | " + Settings.INSTANCE.WEB.PORT_HTTPS);
-        WebRoot webRoot = new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
-    }
+//    public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
+////        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+////        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
+////        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
+////
+////        Locutus locutus = Locutus.create().start();
+////
+////        System.out.println("Port " + Settings.INSTANCE.WEB.PORT_HTTP + " | " + Settings.INSTANCE.WEB.PORT_HTTPS);
+////        WebRoot webRoot = new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
+//
+//        SSLPlugin plugin = new SSLPlugin(conf -> {
+//            if (Settings.INSTANCE.WEB.PRIVKEY_PASSWORD.isEmpty()) {
+//                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH);
+//            } else {
+//                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH, Settings.INSTANCE.WEB.PRIVKEY_PASSWORD);
+//            }
+//            conf.redirect = true;
+//            // set ports
+//            conf.securePort = Settings.INSTANCE.WEB.PORT;
+//        });
+//        JavalinJte.init(createTemplateEngine());
+//        Javalin javalin = Javalin.create(config -> {
+////            if (Settings.INSTANCE.WEB.PORT_HTTPS > 0) {
+////                config.plugins.register(plugin);
+////            }
+//            config.plugins.enableDevLogging();
+////            config.enableCorsForOrigin();
+//            if (Brotli4jLoader.isAvailable()) {
+//                System.out.println("Using brotli");
+//                config.compression.brotliAndGzip();
+//            } else {
+//                System.out.println("Using gzip");
+//                config.compression.gzipOnly();
+//            }
+//        }).start(Settings.INSTANCE.WEB.PORT);
+//
+//        // print hello world
+//        javalin.get("/", ctx -> {
+//            System.out.println("Hello World");
+//            ctx.result("Hello World");
+//        });
+//
+//        javalin.start();
+//    }
 }

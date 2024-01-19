@@ -64,10 +64,21 @@ import java.util.stream.Collectors;
 public class AllianceMetricCommands {
 
     private static String projectsStr = """
-            Activity Center
-            Advanced Engineering Corps
-            Advanced Pirate Economy
+            Metropolitan Planning
+            Mars Landing
+            Space Program
+            Moon Landing
+            Telecommunications Satellite
             Advanced Urban Planning
+            Spy Satellite
+            Surveillance Network
+            Advanced Engineering Corps
+            Research and Development Center
+            Uranium Enrichment Program
+            Nuclear Research Facility
+            Urban Planning
+            Activity Center
+            Advanced Pirate Economy
             Arable Land Agency
             Arms Stockpile
             Bauxiteworks
@@ -82,31 +93,31 @@ public class AllianceMetricCommands {
             International Trade Center
             Iron Dome
             Ironworks
-            Mars Landing
             Mass Irrigation
-            Metropolitan Planning
             Military Salvage
             Missile Launch Pad
-            Moon Landing
-            Nuclear Research Facility
             Pirate Economy
             Propaganda Bureau
             Recycling Initiative
-            Research and Development Center
-            Space Program
             Specialized Police Training Program
-            Spy Satellite
-            Surveillance Network
-            Telecommunications Satellite
-            Uranium Enrichment Program
-            Urban Planning
             Vital Defense System""";
 
     private static String costsStr = """
-            500,000	1,000	0	0	0	0	0	0	0	0	0	0
-            50,000,000	0	0	0	1,000	0	0	0	10,000	10,000	0	0
-            50,000,000	0	10,000	10,000	0	10,000	10,000	10,000	0	0	0	0
+            0	1,500,000	7,000	7,000	7,000	7,000	7,000	7,000	0	0	0	0
+            200,000,000	0	0	20,000	20,000	0	0	0	20,000	20,000	20,000	20,000
+            50,000,000	0	0	0	0	0	0	0	0	0	0	25,000
+            50,000,000	0	0	5,000	10,000	0	0	0	5,000	5,000	5,000	5,000
+            300,000,000	0	0	10,000	10,000	0	10,000	0	0	0	0	10,000
             0	1,000,000	5,000	5,000	5,000	5,000	5,000	5,000	0	0	0	0
+            20,000,000	0	10,000	10,000	0	10,000	10,000	10,000	0	0	0	0
+            50,000,000	0	15,000	0	0	15,000	15,000	15,000	0	0	0	50,000
+            50,000,000	0	0	0	1,000	0	0	0	10,000	10,000	0	0
+            50,000,000	100,000	0	0	1,000	0	0	0	0	0	0	5,000
+            25,000,000	0	500	500	2,500	500	500	500	0	0	0	0
+            75,000,000	0	0	0	5,000	0	0	0	5,000	0	0	5,000
+            0	500,000	3,000	3,000	3,000	3,000	3,000	3,000	0	0	0	0
+            500,000	1,000	0	0	0	0	0	0	0	0	0	0
+            50,000,000	0	10,000	10,000	0	10,000	10,000	10,000	0	0	0	0
             3,000,000	0	1,500	0	0	1,500	0	0	0	0	0	0
             10,000,000	0	500	500	0	500	500	500	0	0	0	0
             10,000,000	0	500	500	0	500	500	500	0	0	0	0
@@ -121,24 +132,13 @@ public class AllianceMetricCommands {
             50,000,000	0	0	0	0	0	0	0	0	0	0	10,000
             15,000,000	0	0	0	0	0	0	0	0	5,000	0	0
             10,000,000	0	500	500	0	500	500	500	0	0	0	0
-            200,000,000	0	0	20,000	20,000	0	0	0	20,000	20,000	20,000	20,000
             10,000,000	50,000	500	500	0	500	500	500	0	0	0	0
-            0	1,500,000	7,000	7,000	7,000	7,000	7,000	7,000	0	0	0	0
             20,000,000	0	0	0	0	0	0	0	5,000	0	5,000	5,000
             15,000,000	0	0	0	0	0	0	0	5,000	5,000	0	5,000
-            50,000,000	0	0	5,000	10,000	0	0	0	5,000	5,000	5,000	5,000
-            75,000,000	0	0	0	5,000	0	0	0	5,000	0	0	5,000
             25,000,000	0	7,500	7,500	0	7,500	7,500	7,500	0	0	0	0
             10,000,000	0	0	0	0	0	0	0	2,000	2,000	2,000	2,000
             10,000,000	100,000	0	0	0	0	0	0	0	0	0	0
-            50,000,000	100,000	0	0	1,000	0	0	0	0	0	0	5,000
-            50,000,000	0	0	0	0	0	0	0	0	0	0	25,000
             50,000,000	250,000	0	0	0	0	0	0	0	0	0	5,000
-            20,000,000	0	10,000	10,000	0	10,000	10,000	10,000	0	0	0	0
-            50,000,000	0	15,000	0	0	15,000	15,000	15,000	0	0	0	50,000
-            300,000,000	0	0	10,000	10,000	0	10,000	0	0	0	0	10,000
-            25,000,000	0	500	500	2,500	500	500	500	0	0	0	0
-            0	500,000	3,000	3,000	3,000	3,000	3,000	3,000	0	0	0	0
             40,000,000	0	0	0	0	0	0	0	5,000	5,000	5,000	5,000""";
 
     private static Map<Project, double[]> newCosts = new HashMap<>();
@@ -186,15 +186,9 @@ public class AllianceMetricCommands {
 //
 //    }
 
-    public static void main(String[] args) {
-        String input = "-1*{food=10,coal=3}";
-        System.out.println(PnwUtil.parseResources(input));
-    }
-
-    public static void main2(String[] args) throws IOException, ParseException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
+    public static void main(String[] args) throws IOException, ParseException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.WEB.PORT_HTTPS = 0;
-        Settings.INSTANCE.WEB.PORT_HTTP = 8000;
+        Settings.INSTANCE.WEB.PORT = 0;
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
         Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
@@ -234,6 +228,9 @@ public class AllianceMetricCommands {
                 currentCities.clear();
             }
         };
+
+        double[] revenueTotal = ResourceType.getBuffer();
+        double[] revenueTaxable = ResourceType.getBuffer();
 
         System.out.println("day\tvalue_old\tvalue_new\tcity_cost");
         double[] totalOld = ResourceType.getBuffer();
@@ -312,12 +309,16 @@ public class AllianceMetricCommands {
             }
         });
         // print output
+        System.out.println("Total annual revenue:");
+        System.out.println("Total " + PnwUtil.resourcesToString(revenueTotal));
+        System.out.println("Taxable " + PnwUtil.resourcesToString(revenueTaxable));
 
         // print totals
         System.out.println("\n\n");
         System.out.println("Old " + PnwUtil.resourcesToString(totalOld));
         System.out.println("New " + PnwUtil.resourcesToString(totalNew));
         System.out.println("City " + MathMan.format(cityTotal.get()));
+        // Note: Revenue may be innaccurate
 
         System.out.println("\n\n\n");
 

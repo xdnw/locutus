@@ -12,14 +12,18 @@ public class ProviderParser<T> implements Parser<T> {
         this.value = value;
     }
 
-    @Override
-    public T apply(ArgumentStack arg) {
+    public T getValue() {
         return value;
     }
 
     @Override
+    public T apply(ArgumentStack arg) {
+        return getValue();
+    }
+
+    @Override
     public T apply(ValueStore store, Object t) {
-        return value;
+        return getValue();
     }
 
     @Override

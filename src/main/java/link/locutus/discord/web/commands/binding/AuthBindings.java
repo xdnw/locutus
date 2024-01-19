@@ -6,12 +6,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
+import gg.jte.generated.precompiled.auth.JtepickerGenerated;
+import gg.jte.generated.precompiled.data.Jtetable_dataGenerated;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -293,16 +297,16 @@ public class AuthBindings extends WebBindingHelper {
                 .toString();
     }
 
-    public static Auth getAuth(Context ctx) {
+    public static Auth getAuth(WebStore ws, Context ctx) {
         try {
-            return getAuth(ctx, false, false, false);
+            return getAuth(ws, ctx, false, false, false);
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    public static Auth getAuth(Context context, boolean allowRedirect, boolean requireNation, boolean requireUser) throws IOException {
+    public static Auth getAuth(WebStore ws, Context context, boolean allowRedirect, boolean requireNation, boolean requireUser) throws IOException {
         if ((requireNation || requireUser) && !allowRedirect) {
             throw new IllegalArgumentException("Cannot require nation or user without allowing redirect");
         }
@@ -462,7 +466,7 @@ public class AuthBindings extends WebBindingHelper {
                     Auth tmp = new Auth(nation.getNation_id(), null, System.currentTimeMillis());
                     pendingWebCmdTokens.put(tmpUid, tmp);
 
-                    String title = "Locutus Login | timestamp:" + System.currentTimeMillis();
+                    String title = "Bot Login | timestamp:" + System.currentTimeMillis();
                     String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
                             MarkupUtil.htmlUrl(Settings.INSTANCE.WEB.REDIRECT + " | Verify Login", authUrl);
 
@@ -514,7 +518,7 @@ public class AuthBindings extends WebBindingHelper {
                 nationIdArray.add(id);
             }
             if (requireNation) {
-                String html = rocker.auth.nationpicker.template(errors, nationArray, nationIdArray).render().toString();
+                String html = WebStore.render(f -> JtenationpickerGenerated.render(f, null, ws, errors, nationArray, nationIdArray));
                 throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
             } else {
                 allowRedirect = true;
@@ -525,7 +529,7 @@ public class AuthBindings extends WebBindingHelper {
             String discordAuthUrl = getDiscordAuthUrl();
             String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
 
-            String html = rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
+            String html = WebStore.render(f -> JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
             throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
         }
         return null;
