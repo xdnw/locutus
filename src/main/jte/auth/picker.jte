@@ -4,13 +4,12 @@
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.User
 @import link.locutus.discord.db.entities.DBAlliance
-
 @param WebStore ws
 @param String discordUrl
 @param String mailUrl
 @template.main(ws = ws, title = "Pick a login method", content = @`
-    <h3>How would you like to login?</h3>
-    <ul class="nav nav-pills flex-column flex-sm-row" id="js-pills-1" role="tablist">
+    <h3>How would you like to log in?</h3>
+    <ul class="nav nav-pills flex-row" id="js-pills-1" role="tablist">
         <li class="nav-item border border-dark rounded-0">
             <button class="nav-link active text-start d-flex align-items-center fw-bold rounded-0" id="profile-pill" data-bs-toggle="pill" data-bs-target="#profile-pill-pane" type="button" role="tab" aria-controls="profile-pill-pane" aria-selected="true">
                 <i class="bi bi-discord"></i>&nbsp;Discord OAuth

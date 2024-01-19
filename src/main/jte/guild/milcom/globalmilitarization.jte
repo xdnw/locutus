@@ -9,7 +9,6 @@
 @import link.locutus.discord.db.entities.metric.AllianceMetric
 @import link.locutus.discord.db.entities.DBAlliance
 @import java.util.Collections
-
 @param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
@@ -17,7 +16,6 @@
 @param Set<AllianceMetric> metrics
 @param long startTurn
 @param long endTurn
-
 @template.main(ws = ws, title = "Global Stats", navbar = null, content = @`
 
 

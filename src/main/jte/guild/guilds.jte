@@ -2,7 +2,6 @@
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
 @import java.util.*
-
 @param WebStore ws
 @param Set<GuildDB> guildDbs
 @param GuildDB current
@@ -10,7 +9,6 @@
 @param String registerLink
 @param String locutusInvite
 @param String joinLink
-
 @template.main(ws = ws, title = "Guilds", navbar = null, content = @`
 <script>
 $(document).ready(function(){

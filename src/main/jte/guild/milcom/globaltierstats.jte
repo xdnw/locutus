@@ -6,7 +6,6 @@
 @import java.util.Collections
 @import java.util.Set
 @import link.locutus.discord.commands.rankings.table.TimeNumericTable
-
 @param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
@@ -16,7 +15,6 @@
 @param boolean removeVM
 @param int removeActiveM
 @param boolean removeApps
-
 @template.main(ws = ws, title = "Global Stats", navbar = null, content = @`
 <h2 class="text-white">Search</h2>
 <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">

@@ -149,6 +149,7 @@ dependencies {
     implementation group: 'com.opencsv', name: 'opencsv', version: '3.7'
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation 'in.wilsonl.minifyhtml:minify-html:0.15.0'
 
 //    implementation "org.springframework.boot:spring-boot-starter-web:2.4.4"
 //    implementation "org.springframework.boot:spring-boot-starter-data-mongodb:2.4.4"

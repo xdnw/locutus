@@ -70,9 +70,9 @@ public class AuthBindings extends WebBindingHelper {
     @Binding
     @Me
     public static User user(Context context, @Me @Default Auth auth) {
-        User user = auth == null ? null : auth.getUser();
+        User user = auth == null ? null : auth.getUser(false);
         if (user != null) return user;
-        DBNation nation = auth == null ? null : auth.getNation();
+        DBNation nation = auth == null ? null : auth.getNation(false);
         String url;
         if (nation != null) {
             user = nation.getUser();
@@ -89,10 +89,10 @@ public class AuthBindings extends WebBindingHelper {
     @Binding
     @Me
     public static DBNation nation(Context context, @Me @Default Auth auth) {
-        DBNation nation = auth == null ? null : auth.getNation();
+        DBNation nation = auth == null ? null : auth.getNation(false);
         if (nation != null) return nation;
 
-        User user = auth == null ? null : auth.getUser();
+        User user = auth == null ? null : auth.getUser(false);
         String url;
         if (auth != null) {
             nation = DiscordUtil.getNation(user);
@@ -143,16 +143,30 @@ public class AuthBindings extends WebBindingHelper {
 
     public record Auth(Integer nationId, Long userId, long timestamp) {
 
-        public User getUser() {
-            return userId == null ? null : DiscordUtil.getUser(userId);
+        public User getUser(boolean fetch) {
+            User user = userId == null ? null : DiscordUtil.getUser(userId);
+            if (user == null && fetch && nationId != null) {
+                DBNation nation = DBNation.getById(nationId);
+                if (nation != null) {
+                    user = nation.getUser();
+                }
+            }
+            return user;
         }
 
-        public DBNation getNation() {
-            return nationId == null ? null : DBNation.getById(nationId);
+        public DBNation getNation(boolean fetch) {
+            DBNation nation = nationId == null ? null : DBNation.getById(nationId);
+            if (nation == null && fetch && userId != null) {
+                User user = DiscordUtil.getUser(userId);
+                if (user != null) {
+                    nation = DiscordUtil.getNation(user);
+                }
+            }
+            return nation;
         }
 
         public boolean isValid() {
-            return getUser() != null || getNation() != null;
+            return getUser(false) != null || getNation(false) != null;
         }
 
         public boolean isExpired() {
@@ -163,7 +177,7 @@ public class AuthBindings extends WebBindingHelper {
             Map<String, Object> data = new HashMap<>();
             if (userId != null) {
                 data.put("user", userId);
-                data.put("user_valid", (getUser() != null));
+                data.put("user_valid", (getUser(false) != null));
             }
             if (nationId != null) {
                 data.put("nation", nationId);
@@ -430,8 +444,8 @@ public class AuthBindings extends WebBindingHelper {
 
         Auth auth = discordIdFinal == null && nationIdFinal == null ? null : new Auth(nationIdFinal, discordIdFinal, Long.MAX_VALUE);
         if (auth != null) {
-            DBNation nation = auth.getNation();
-            User user = auth.getUser();
+            DBNation nation = auth.getNation(true);
+            User user = auth.getUser(true);
             if (requireUser && user == null) {
                 throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
             }

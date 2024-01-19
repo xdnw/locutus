@@ -2,7 +2,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.command.CommandGroup
 @import link.locutus.discord.commands.manager.v2.perm.PermissionHandler
-
 @param WebStore ws
 @param PermissionHandler permHandler
 @param String commandEndpoint
@@ -24,7 +23,6 @@
     <input class="form-control form-control-lg" id="myInput" type="text" placeholder="Filter..">
 </div>
 @template.command.commandgroup(ws = ws, command = pages, subcommands = pages.getAllowedCommands(ws.store(), permHandler), endpoint = pageEndpoint)
-
 @template.command.commandgroup(ws = ws, command = commands, subcommands = commands.getAllowedCommands(ws.store(), permHandler), endpoint = commandEndpoint)
 `, navbar = null)
 

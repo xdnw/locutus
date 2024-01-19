@@ -6,12 +6,10 @@
 @import java.util.List
 @import link.locutus.discord.config.Settings
 @import java.util.Date
-
 @param WebStore ws
 @param GuildDB db
 @param Announcement announcement
 @param List<Announcement.PlayerAnnouncement> announcements
-
 @template.main(ws = ws, content = @`
 <div class="alert alert-dismissible fade show container-fluid mt-1 shadow border-start border-3 @if(announcement.active)
 bg-lightborder-danger

@@ -21,7 +21,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @NoForm
-    public String login(WebStore ws, Context context, @Default Integer nation, @Default Long user) throws IOException {
+    public String login(WebStore ws, Context context, @Default Integer nation, @Default Long user, @Default String token) throws IOException {
         System.out.println("method " + context.method());
         System.out.println("headers " + context.res().getHeaderNames());
         Iterator<String> iter = context.req().getHeaderNames().asIterator();
@@ -44,7 +44,7 @@ public class EndpointPages extends PageHelper {
             AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
             if (auth != null && (auth.userId() != null || auth.nationId() != null)) {
                 Map<String, Object> data = auth.toMap();
-                Guild guild = AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
+                Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
                 if (guild != null) {
                     data.put("guild", guild.getIdLong());
                 }
@@ -61,7 +61,7 @@ public class EndpointPages extends PageHelper {
     @NoForm
     public String logout(WebStore ws, Context context) throws IOException {
         AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, false, false, false);
-        Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
+        Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
         AuthBindings.logout(context, false);
         if (auth != null) {
             Map<String, Object> data = auth.toMap();

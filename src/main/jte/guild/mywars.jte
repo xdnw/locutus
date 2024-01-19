@@ -24,7 +24,6 @@
 @import link.locutus.discord.apiv1.enums.AttackType
 @import link.locutus.discord.apiv1.enums.city.JavaCity
 @import link.locutus.discord.pnw.BeigeReason
-
 @param WebStore ws
 @param GuildDB db
 @param DBNation nation

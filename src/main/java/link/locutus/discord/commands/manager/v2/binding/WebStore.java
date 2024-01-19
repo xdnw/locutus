@@ -51,7 +51,7 @@ public class WebStore {
         String[] splitPath = path.split("/");
         StringBuilder currentPath = new StringBuilder();
         Map<String, String> paths = new LinkedHashMap<>();
-        paths.put("Home", "/");
+        paths.put("Home", "");
         for (int i = 0; i < splitPath.length; i++) {
             String s = splitPath[i];
             if (s.isEmpty()) continue;

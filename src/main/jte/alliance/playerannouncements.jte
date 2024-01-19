@@ -3,7 +3,6 @@
 @import link.locutus.discord.db.entities.announce.Announcement
 @import link.locutus.discord.db.entities.DBNation
 @import java.util.List
-
 @param WebStore ws
 @param GuildDB db
 @param DBNation me

@@ -29,13 +29,11 @@
 @import java.util.Map
 @import link.locutus.discord.apiv1.enums.ResourceType
 @import java.util.UUID
-
 @param WebStore ws
 @param Object id
 @param double[] a
 @param double[] b
 @param boolean showByResource
-
 @template.guild.econ.incomeexpensebar(ws = ws, titleA = "Monetary Income", titleB = "Monetary Expense", a = PnwUtil.convertedTotal(a), b = PnwUtil.convertedTotal(b))
 @if(showByResource)
     <div class="accordion" id="Accordion${id + ""}">

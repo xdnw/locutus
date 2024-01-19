@@ -31,7 +31,6 @@
 @import java.util.UUID
 @import java.util.ArrayList
 @import java.util.HashMap
-
 @param WebStore ws
 @param GuildDB db
 @param Set<Integer> alliances
@@ -57,7 +56,6 @@
 @param Map<Integer,double[]> expensesByBracket
 @param Map<Integer,double[]> expensesByNation
 @param Map<Integer, Map<Integer,double[]>> expensesByNationByBracket
-
 @template.main(ws = ws, title = "Tax Expenses", navbar = null, content = @`
 <div class="bg-lightcontainer mt-3 rounded shadow py-1">
 @if(requireGrant)

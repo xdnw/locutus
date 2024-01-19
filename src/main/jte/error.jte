@@ -1,7 +1,6 @@
 @param link.locutus.discord.commands.manager.v2.binding.WebStore ws
 @param String error
 @param String stacktrace
-
 @template.main(ws = ws, content = @`
 <link rel="stylesheet"  media="print" onload="this.media='all'" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>

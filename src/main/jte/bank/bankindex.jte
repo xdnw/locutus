@@ -4,12 +4,10 @@
 @import link.locutus.discord.db.guild.GuildKey
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.User
-
 @param WebStore ws
 @param GuildDB db
 @param Guild guild
 @param User user
-
 @template.main(ws = ws, title = db.getGuild().getName() + " Bank Index", content = @`
     <h2>Member Pages</h2>
     <a class="m-1 btn btn-primary btn-lg" href="${db.getGuild().getIdLong()}/deposits">View Your Deposits</a>

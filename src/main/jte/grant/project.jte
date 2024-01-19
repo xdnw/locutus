@@ -9,7 +9,6 @@
 @import java.util.List
 @import java.util.UUID
 @import link.locutus.discord.util.MarkupUtil
-
 @param WebStore ws
 @param Project project
 @param Grant grant

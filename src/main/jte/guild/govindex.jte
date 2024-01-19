@@ -19,14 +19,12 @@
 @import link.locutus.discord.config.Settings
 @import link.locutus.discord.util.PnwUtil
 @import link.locutus.discord.web.jooby.WebRoot
-
 @param WebStore ws
 @param Guild guild
 @param GuildDB db
 @param DBNation nation
 @param User author
 @param Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
-
 @template.main(ws = ws, title = "Guild Gov index", navbar = null, content = @`
 
 @if(Roles.MILCOM.has(author, db.getGuild()))

@@ -2,8 +2,6 @@
 @import link.locutus.discord.util.MathMan
 @import link.locutus.discord.util.PnwUtil
 @import link.locutus.discord.apiv1.enums.SuccessType
-
-
 @param WebStore ws
 @param double odds
 @param int success

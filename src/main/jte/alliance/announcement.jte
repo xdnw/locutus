@@ -7,7 +7,6 @@
 @import java.util.List
 @import java.util.Date
 @import link.locutus.discord.config.Settings
-
 @param WebStore ws
 @param GuildDB db
 @param Announcement announcement

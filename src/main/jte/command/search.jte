@@ -3,11 +3,9 @@
 @import link.locutus.discord.web.commands.search.SearchType
 @import java.util.List
 @import org.apache.commons.lang3.text.WordUtils
-
 @param WebStore ws
 @param String term
 @param List<SearchResult> results
-
 @template.main(ws = ws, title = "Search Results", content = @`
 @if(results.isEmpty())
     <div class="alert alert-danger">No results found for <kbd>${term}</kbd></div>

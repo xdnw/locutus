@@ -1,7 +1,6 @@
 package com.locutus.wiki;
 
 import com.locutus.wiki.pages.WikiAiTools;
-import com.locutus.wiki.pages.WikiAlliancePlaceholdersPage;
 import com.locutus.wiki.pages.WikiAntiLeakPage;
 import com.locutus.wiki.pages.WikiArgumentsPage;
 import com.locutus.wiki.pages.WikiAuditingPage;
@@ -27,7 +26,6 @@ import com.locutus.wiki.pages.WikiHelpPage;
 import com.locutus.wiki.pages.WikiHostingLocutus;
 import com.locutus.wiki.pages.WikiInterviewPage;
 import com.locutus.wiki.pages.WikiLoanPage;
-import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
 import com.locutus.wiki.pages.WikiPermsPage;
 import com.locutus.wiki.pages.WikiPlaceholderPage;
 import com.locutus.wiki.pages.WikiRecruitmentPage;
@@ -66,17 +64,24 @@ public class WikiGenHandler {
         this.pathRelative = pathRelative;
     }
 
-    public void writeDefaults() throws IOException {
+    public List<BotWikiGen> getIntroPages() {
         List<BotWikiGen> pages = new ArrayList<>();
-
-        // register defaults
         pages.add(new WikiSetupPage(manager));
         pages.add(new WikiHostingLocutus(manager));
-        // commands
+        return pages;
+    }
+
+    public List<BotWikiGen> getCommandPages() {
+        List<BotWikiGen> pages = new ArrayList<>();
         pages.add(new WikiCommandsPage(manager));
-        // arguments
         pages.add(new WikiArgumentsPage(manager));
-        //War Alerts
+        pages.add(new WikiPermsPage(manager));
+        return pages;
+    }
+
+    public List<BotWikiGen> getTopicPages() {
+        List<BotWikiGen> pages = new ArrayList<>();
+
         pages.add(new WikiWarAlertsPage(manager));
 //        //Auto masking
         pages.add(new WikiAutoMaskingPage(manager));
@@ -151,19 +156,32 @@ public class WikiGenHandler {
         // and the commansd role self
         // add role to all members
         // mask command?
+        return pages;
+    }
 
-        // Placeholders
 
-        List<BotWikiGen> placeholderPages = new ArrayList<>();
+    public List<BotWikiGen> getPlaceholderPages() {
+        List<BotWikiGen> pages = new ArrayList<>();
         PlaceholdersMap placeholderMap = Locutus.cmd().getV2().getPlaceholders();
         List<Class> types = new ArrayList<>(placeholderMap.getTypes());
         Collections.sort(types, Comparator.comparing(PlaceholdersMap::getClassName));
         for (Class type : types) {
-            placeholderPages.add(new WikiPlaceholderPage(manager, placeholderMap, type));
+            pages.add(new WikiPlaceholderPage(manager, placeholderMap, type));
         }
+        return pages;
+    }
 
+    public void writeDefaults() throws IOException {
+        List<BotWikiGen> pages = new ArrayList<>();
+
+        // register defaults
+        pages.addAll(getIntroPages());
+        pages.addAll(getCommandPages());
+        pages.addAll(getTopicPages());
+        pages.removeIf(f -> f instanceof WikiPermsPage);
+        // Placeholders
+        List<BotWikiGen> placeholderPages = getPlaceholderPages();
         WikiPermsPage permsPage = new WikiPermsPage(manager);
-
         WikiHelpPage help = new WikiHelpPage(manager, pages, placeholderPages, permsPage);
         pages.add(help);
 

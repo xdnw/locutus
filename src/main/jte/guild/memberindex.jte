@@ -27,7 +27,6 @@
 @import link.locutus.discord.apiv1.enums.city.JavaCity
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.db.entities.announce.Announcement
-
 @param WebStore ws
 @param Guild guild
 @param GuildDB db

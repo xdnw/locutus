@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -10,14 +11,14 @@ import java.util.*;
 
 public class ArgumentStack {
     private final List<String> args;
-    private final ValueStore<Object> store;
+    private final LocalValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private int index;
 
-    public ArgumentStack(List<String> args, ValueStore<?> store, ValidatorStore validators, PermissionHandler permisser) {
+    public ArgumentStack(List<String> args, LocalValueStore<?> store, ValidatorStore validators, PermissionHandler permisser) {
         this.args = args;
-        this.store = (ValueStore<Object>) store;
+        this.store = (LocalValueStore<Object>) store;
         this.validators = validators;
         this.permisser = permisser;
     }
@@ -86,7 +87,7 @@ public class ArgumentStack {
         return (T) parser.apply(this);
     }
 
-    public ValueStore<?> getStore() {
+    public LocalValueStore<?> getStore() {
         return store;
     }
 

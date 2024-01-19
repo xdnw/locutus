@@ -5,7 +5,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.ValueStore
 @import link.locutus.discord.commands.manager.v2.command.ParametricCallable
 @import link.locutus.discord.util.MarkupUtil
-
 @param WebStore ws
 @param ParametricCallable command
 @param Content form
