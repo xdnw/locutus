@@ -260,63 +260,7 @@ public class WebRoot {
         return siteMap;
     }
 
-    //    {
-//        get("/{guildid}", ctx -> {
-//            Map<String, String> path = ctx.pathMap();
-//            Map<String, String> headers = ctx.headerMap();
-//            String url = ctx.getRequestURL();
-//            Map<String, String> query = ctx.queryMap();
-//            String method = ctx.getMethod();
-//            Map<String, Object> attributes = ctx.getAttributes();
-//        });
-//    }
-
     public PageHandler getPageHandler() {
         return pageHandler;
     }
-
-//    public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
-////        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-////        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-////        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-////
-////        Locutus locutus = Locutus.create().start();
-////
-////        System.out.println("Port " + Settings.INSTANCE.WEB.PORT_HTTP + " | " + Settings.INSTANCE.WEB.PORT_HTTPS);
-////        WebRoot webRoot = new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
-//
-//        SSLPlugin plugin = new SSLPlugin(conf -> {
-//            if (Settings.INSTANCE.WEB.PRIVKEY_PASSWORD.isEmpty()) {
-//                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH);
-//            } else {
-//                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH, Settings.INSTANCE.WEB.PRIVKEY_PASSWORD);
-//            }
-//            conf.redirect = true;
-//            // set ports
-//            conf.securePort = Settings.INSTANCE.WEB.PORT;
-//        });
-//        JavalinJte.init(createTemplateEngine());
-//        Javalin javalin = Javalin.create(config -> {
-////            if (Settings.INSTANCE.WEB.PORT_HTTPS > 0) {
-////                config.plugins.register(plugin);
-////            }
-//            config.plugins.enableDevLogging();
-////            config.enableCorsForOrigin();
-//            if (Brotli4jLoader.isAvailable()) {
-//                System.out.println("Using brotli");
-//                config.compression.brotliAndGzip();
-//            } else {
-//                System.out.println("Using gzip");
-//                config.compression.gzipOnly();
-//            }
-//        }).start(Settings.INSTANCE.WEB.PORT);
-//
-//        // print hello world
-//        javalin.get("/", ctx -> {
-//            System.out.println("Hello World");
-//            ctx.result("Hello World");
-//        });
-//
-//        javalin.start();
-//    }
 }

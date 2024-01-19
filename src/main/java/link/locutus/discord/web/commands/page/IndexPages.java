@@ -83,7 +83,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
-    public Object search(WebStore ws, @Me GuildDB db, String term) {
+    public Object search(WebStore ws, String term) {
         term = URLDecoder.decode(term).trim();
 
         double nameEquals = 100;
@@ -93,8 +93,7 @@ public class IndexPages extends PageHelper {
 
         String termLow = term.toLowerCase();
 
-        String urlBase = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
-        String cmdUrl = urlBase + "command/";
+        String urlBase = WebRoot.REDIRECT + "/";
 
         List<SearchResult> results = new ArrayList<>();
 
@@ -136,7 +135,7 @@ public class IndexPages extends PageHelper {
         };
 
         recursive(Locutus.imp().getCommandManager().getV2().getCommands(), f -> cmdSearch.accept(urlBase + "command/", f));
-        recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "/", f));
+        recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "page/", f));
 
 
         for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
@@ -226,8 +225,8 @@ public class IndexPages extends PageHelper {
         CommandGroup pages = WebRoot.getInstance().getPageHandler().getCommands();
 
         StringBuilder result = new StringBuilder();
-        String cmdEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/command/";
-        String pageEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
+        String cmdEndpoint = WebRoot.REDIRECT + "/" + db.getIdLong() + "/command/";
+        String pageEndpoint = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
 
         result.append(
                 commands.toHtml(ws, stack.getPermissionHandler(), cmdEndpoint, false)
@@ -336,7 +335,7 @@ public class IndexPages extends PageHelper {
     @Command()
     public Object logout(Context context) throws IOException {
         WebRoot.getInstance().getPageHandler().logout(context);
-        return "Logging out. If you are not redirected, please visit <a href=\"" + Settings.INSTANCE.WEB.REDIRECT + "\">" + Settings.INSTANCE.WEB.REDIRECT + "</a>";
+        return "Logging out. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
     }
 
     @Command()

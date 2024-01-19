@@ -109,6 +109,7 @@ public class ParametricCallable implements ICommand {
             for (Annotation annotation : annotations) {
                 if (annotation instanceof Switch) {
                     parameter.setFlag(((Switch) annotation).value());
+                    parameter.setOptional(true);
                 } else if (annotation instanceof Default) {
                     parameter.setOptional(true);
                     String[] value = ((Default) annotation).value();
@@ -743,7 +744,7 @@ public class ParametricCallable implements ICommand {
                 public Object apply(ParameterData param, Object o) {
                     if (o == null) {
                         if (!param.getBinding().isConsumer(store)) {
-                            return locals.getProvided(param.getBinding().getKey(), false);
+                            return locals.getProvided(param.getBinding().getKey(), !param.isOptional());
                         }
                         String def = param.getDefaultValueString();
                         if (def != null) {

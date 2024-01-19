@@ -4,4 +4,5 @@
 @param String title
 @param JsonObject data
 @param boolean stacked
+<span class="d-none">${title}</span>
 <canvas class="locutus-barchart" data-src="${data.toString()}" title="${title}" stacked="${stacked}"></canvas>

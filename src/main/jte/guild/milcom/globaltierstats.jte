@@ -17,8 +17,7 @@
 @param boolean removeApps
 @template.main(ws = ws, title = "Global Stats", navbar = null, content = @`
 <h2 class="text-white">Search</h2>
-<input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
-
+<input class="form-control" id="myInput" type="text" placeholder="Search alliance or sphere..">
 @for (Integer sphereId : spheres.getSpheres())
     <div class="bg-lightmt-3 rounded shadow py-1 searchable accordion" id="Accordion${sphereId}">
         <div class="accordion-item">
@@ -63,4 +62,4 @@ $(document).ready(function(){
     });
 });
 </script>
-    `)
+`)
