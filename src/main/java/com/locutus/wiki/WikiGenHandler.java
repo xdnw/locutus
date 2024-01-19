@@ -43,6 +43,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -201,5 +202,26 @@ public class WikiGenHandler {
         }
         File file = new File(pathRelative + File.separator + page.getPageName().toLowerCase().replace(" ", "_") + ".md");
         Files.write(file.toPath(), markdown.getBytes());
+    }
+
+    public JSONObject generateSiteMap() {
+        JSONObject wiki = new JSONObject();
+        wiki.put("home", "");
+        JSONObject wikiIntro = new JSONObject();
+        for (BotWikiGen page : getIntroPages()) {
+            wikiIntro.put(page.getPageName(), "");
+        }
+        wiki.put("intro", wikiIntro);
+        JSONObject wikiTopics = new JSONObject();
+        for (BotWikiGen page : getTopicPages()) {
+            wikiTopics.put(page.getPageName(), "");
+        }
+        wiki.put("topic", wikiTopics);
+        JSONObject wikiCommands = new JSONObject();
+        for (BotWikiGen page : getCommandPages()) {
+            wikiCommands.put(page.getPageName(), "");
+        }
+        wiki.put("command", wikiCommands);
+        return wiki;
     }
 }

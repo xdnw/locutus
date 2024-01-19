@@ -8,15 +8,12 @@
             <button type="button" class="btn-close d-md-none ms-1" data-bs-dismiss="offcanvas" aria-label="Close" data-bs-target="#sidebar"></button>
         </div>
     </div>
-    <div class="offcanvas-body position-relative p-0">
+    <div class="offcanvas-body position-relative p-0" id="sidebarlist">
         <div class="filter-docs sticky-top p-3">
-            <input type="text" class="form-control search" placeholder="Filter pages" aria-label="Filter pages">
+            <input type="text" id="sb-s-i" class="form-control search" placeholder="Filter pages" aria-label="Filter pages" onkeyup="filtersearch()">
             <div class="mt-1">
                 <small>Press <kbd class="text-body" style="font-size: 10px; background-color: hsla(var(--bs-emphasis-color-hsl), 0.1)">/</kbd> to focus</small>
             </div>
-        </div>
-        <div id="sidebarlist">
-
         </div>
 <%--        <ul class="sidebar-nav list p-3 pt-0"><li class="position-relative mt-2">--%>
 <%--                <h6 class="sidebar-header">--%>
@@ -396,50 +393,69 @@ function toggleDarkMode() {
     }
 }
 // Init sidebar docs filtering
-// get #sidbar
 var sidebar = document.getElementById("sidebar");
-// get data-src attribute as json object
-var sidebarData = JSON.parse(sidebar.getAttribute("data-src"));
 function createNestedList(jsonObject, parentElement, path = '') {
-    var ul = document.createElement('ol');
-    ul.className = '';
-
+    var ul = document.createElement('ul');
+    if (path === '') {
+        ul.id = 'list';
+    }
+    ul.className = 'sidebar-nav p-3 pt-0';
     for (var key in jsonObject) {
         var li = document.createElement('li');
-
-        // If the value is an object, create a nested list
+        li.className = 'nav-item';
         if (typeof jsonObject[key] === 'object') {
-            li.textContent = key;
+            var h6 = document.createElement('h6');
+            h6.className = 'sidebar-header';
+            h6.textContent = key;
+            li.appendChild(h6);
             var newPath = path ? path + '/' + key : key;
+            if (path.startsWith('wiki')) {
+                newPath = "https://github.com/xdnw/locutus/wiki";
+            }
             var nestedUl = createNestedList(jsonObject[key], li, newPath);
             nestedUl.id = key;
             li.appendChild(nestedUl);
         } else {
-            // If the value is a string, use it as the name, otherwise use the key as the name
             var a = document.createElement('a');
-            a.className = '';
+            a.className = 'nav-link';
             a.href = (path ? path + '/' + key : key); // use the full path for the href
-            a.textContent = typeof jsonObject[key] === 'string' ? jsonObject[key] : key;
+            let name = (typeof jsonObject[key] === 'string' && jsonObject[key] !== '') ? jsonObject[key] : key;
+            var span = document.createElement('span');
+            span.className = 'sidebar-search-name';
+            span.textContent = name;
+            a.appendChild(span);
             li.appendChild(a);
         }
 
         ul.appendChild(li);
     }
-
     parentElement.appendChild(ul);
     return ul;
 }
-console.log(sidebarData);
-createNestedList(sidebarData, document.getElementById("sidebarlist"));
+createNestedList(JSON.parse(sidebar.getAttribute("data-src")), document.getElementById("sidebarlist"));
+sidebar.removeAttribute("data-src");
 
-new List("sidebar", {valueNames: ["sidebar-search-name"]});
-document.addEventListener("keydown", function (event) {
-    if (!document.querySelector(".form-control:focus")) {
-        event = event || window.event;
-        if (event.which == 191) {
-            document.querySelector(".filter-docs .form-control").focus();
-            event.preventDefault();
+unhide_parent = (ele) => {
+    if(ele.parentNode.parentNode.style.display=="none") {
+        ele.parentNode.parentNode.style.display='';
+        unhide_parent(ele.parentNode.parentNode)
+    }
+};
+function filtersearch() {
+    var input, filter, ul, tr, search, i, txtValue;
+    input = document.getElementById("sb-s-i");
+    filter = input.value.toUpperCase();
+    ul = document.getElementById("list");
+    tr = ul.getElementsByTagName("li");
+    for (i = 0; i < tr.length; i++) {
+        search = tr[i].getElementsByTagName("a")[0];
+        txtValue = search.textContent || search.innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            tr[i].style.display = "";
+            unhide_parent(tr[i])
+        } else {
+            tr[i].style.display = "none";
         }
     }
-});
+}
 </script>

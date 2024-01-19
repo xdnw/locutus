@@ -7,13 +7,13 @@ import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.User;
 
 public class TestPages {
-    @Command(desc = "Show running tax expenses by day by bracket")
-    public Object testIndex(@Me DBNation nation) {
-        return "Hello World: " + (nation != null ? nation.getNation() : "no nation");
-    }
-
-    @Command
-    public Object testPost(String argument) {
-        return "Test post: " + argument;
-    }
+//    @Command(desc = "Show running tax expenses by day by bracket")
+//    public Object testIndex(@Me DBNation nation) {
+//        return "Hello World: " + (nation != null ? nation.getNation() : "no nation");
+//    }
+//
+//    @Command
+//    public Object testPost(String argument) {
+//        return "Test post: " + argument;
+//    }
 }
