@@ -941,8 +941,12 @@ public class TradeManager {
             setRadiation(Continent.ANTARCTICA, info.getAntarctica());
 
             this.gameDate = gameInfo.getGame_date();
-        } catch (HttpServerErrorException.InternalServerError | HttpClientErrorException.NotFound ignore) {
+        } catch (RuntimeException ignore) {
             ignore.printStackTrace();
+            // update radiation values to current turn
+            for (Map.Entry<Continent, Map.Entry<Double, Long>> entry : radiation.entrySet()) {
+                entry.getValue().setValue(currentTurn);
+            }
         }
 
         return radiation.get(continent).getKey();

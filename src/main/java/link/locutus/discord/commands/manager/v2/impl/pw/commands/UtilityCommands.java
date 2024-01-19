@@ -1416,7 +1416,7 @@ public class UtilityCommands {
         DBNation myNation = DiscordUtil.getNation(author.getIdLong());
         int perpage = 15;
         StringBuilder response = new StringBuilder();
-        String filter = command.getString("nationOrAlliances");
+        String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
         if (filter == null && me != null) filter = me.getQualifiedId();
         final Set<DBNation> nations = PnwUtil.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild(), true);
 

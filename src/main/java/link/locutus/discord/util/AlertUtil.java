@@ -86,8 +86,7 @@ public class AlertUtil {
         Member member = guild.getMemberById(user.getIdLong());
         if (member == null) return;
 
-        Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
-        MessageChannel channel = guildDb.getOrNull(GuildKey.MEMBER_AUDIT_ALERTS);
+        GuildMessageChannel channel = (GuildMessageChannel) guildDb.getOrNull(GuildKey.MEMBER_AUDIT_ALERTS);
         if (channel == null) return;
         String message = messageSuplier.apply(guildDb);
         if (message == null) return;
@@ -98,8 +97,10 @@ public class AlertUtil {
         }
 
         // TODO put result in database
-
-        if (pingOptOut != null && member.getRoles().contains(pingOptOut)) {
+        Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(channel.getGuild());
+        Role pingOptOut2 = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
+        boolean hasOptOut = (pingOptOut != null && member.getRoles().contains(pingOptOut)) || (pingOptOut2 != null && member.getRoles().contains(pingOptOut2));
+        if (hasOptOut) {
             message = member.getEffectiveName() + " " + message;
         } else {
             message = member.getAsMention() + "(opt out: " + CM.alerts.audit.optout.cmd.toSlashMention() + "):\n" + message;
