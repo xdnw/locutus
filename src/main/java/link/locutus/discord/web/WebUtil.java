@@ -1,7 +1,10 @@
 package link.locutus.discord.web;
 
+import in.wilsonl.minifyhtml.Configuration;
+import in.wilsonl.minifyhtml.MinifyHtml;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -86,6 +89,29 @@ public class WebUtil {
             case AFTER:
                 return "<div class=\"form-group bg-light mt-1 rounded shadow-sm border\"><div class=\"col-sm d-inline\">" + input + "</div><label class=\"col-form-label-sm d-inline\" " + (uuid != null ? "for=\"" + uuid.toString() + "\"" : "") + ">" + (name != null && !name.isEmpty() ? ("<b>" + name + ": </b>") : "") + desc + "</label></div>";
         }
+    }
+
+    private static Configuration cfg;
+
+    public static String minify(String msg) {
+        if (!Settings.INSTANCE.WEB.MINIFY) return msg;
+        if (cfg == null) {
+            cfg = new Configuration.Builder()
+                    .setKeepHtmlAndHeadOpeningTags(false)
+                    .setMinifyCss(true)
+                    .setDoNotMinifyDoctype(false)
+                    .setEnsureSpecCompliantUnquotedAttributeValues(false)
+                    .setKeepClosingTags(false)
+                    .setKeepInputTypeTextAttr(false)
+                    .setKeepSpacesBetweenAttributes(false)
+                    .setKeepComments(false)
+                    .setKeepSsiComments(false)
+                    .setMinifyJs(true)
+                    .setPreserveBraceTemplateSyntax(false)
+                    .setPreserveChevronPercentTemplateSyntax(false)
+                    .build();
+        }
+        return MinifyHtml.minify(msg, cfg);
     }
 
     public enum InlineMode {

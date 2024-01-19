@@ -499,7 +499,7 @@ public class Settings extends Config {
         @Comment("Port used for secure HTTPS. Set to 0 to disable")
         public boolean ENABLE_SSL = true;
         @Comment("If set to true, web content is not compressed/minified")
-        public boolean DEVELOPMENT = true;
+        public boolean MINIFY = true;
 
         @Comment("The port google sheets uses to validate your credentials")
         public int GOOGLE_SHEET_VALIDATION_PORT = 8889;

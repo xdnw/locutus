@@ -12,7 +12,6 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -29,7 +28,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.StockBinding;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -37,6 +35,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.binding.AuthBindings;
@@ -61,11 +60,9 @@ import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import org.bytedeco.librealsense.context;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -436,7 +433,7 @@ public class PageHandler implements Handler {
 
                     cmd.validatePermissions(stack.getStore(), permisser);
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                    ctx.result(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true));
+                    ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }
                 // case "page" ->
@@ -462,9 +459,8 @@ public class PageHandler implements Handler {
                     } else {
                         result = cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), false);
                     }
-
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
-                        ctx.result(result.toString());
+                        ctx.result(WebUtil.minify(result.toString()));
                     } else if (result != null) {
                         throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
                     } else {
@@ -488,7 +484,7 @@ public class PageHandler implements Handler {
             if (msg.startsWith("<")) {
                 ctx.header("Content-Type", "text/html");
                 ctx.header(Header.CACHE_CONTROL, "no-cache");
-                ctx.result(msg);
+                ctx.result(WebUtil.minify(msg));
                 return;
             }
             e.printStackTrace();
@@ -503,7 +499,7 @@ public class PageHandler implements Handler {
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
 
-        ctx.result(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue())));
+        ctx.result(WebUtil.minify(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue()))));
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx) {

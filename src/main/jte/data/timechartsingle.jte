@@ -5,5 +5,5 @@
 @param JsonObject data
 @param boolean time
 @template.main(ws = ws, title = title, navbar = null, content = @`
-<div class="col-sm locutus-chart" data-src="$unsafe{data.toString()}" title="${title}" time="${time}"></div>
+<div class="col-sm locutus-chart" data-src="${data.toString()}" title="${title}" time="${time}"></div>
 `)
