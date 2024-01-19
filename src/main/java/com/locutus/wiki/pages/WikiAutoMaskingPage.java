@@ -12,7 +12,7 @@ import link.locutus.discord.util.StringMan;
 
 public class WikiAutoMaskingPage extends BotWikiGen {
     public WikiAutoMaskingPage(CommandManager2 manager) {
-        super(manager, "auto masking");
+        super(manager, "auto_masking");
     }
 
     @Override

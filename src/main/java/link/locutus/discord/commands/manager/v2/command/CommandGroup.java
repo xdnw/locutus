@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -33,20 +34,20 @@ public class CommandGroup implements ICommandGroup {
         this.aliases = Arrays.asList(aliases);
     }
 
-    public JSONObject generateSiteMap() {
-        JSONObject root = new JSONObject();
+    public JsonObject generateSiteMap() {
+        JsonObject root = new JsonObject();
         getParametricCallables(f -> {
             String fullPath = f.getFullPath();
             String[] split = fullPath.split(" ");
-            JSONObject current = root;
+            JsonObject current = root;
             for (int i = 0; i < split.length - 1; i++) {
                 String s = split[i];
                 if (!current.has(s)) {
-                    current.put(s, new JSONObject());
+                    current.add(s, new JsonObject());
                 }
-                current = current.getJSONObject(s);
+                current = current.getAsJsonObject(s);
             }
-            current.put(split[split.length - 1], "");
+            current.addProperty(split[split.length - 1], "");
             return false;
         });
         return root;

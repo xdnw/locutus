@@ -8,7 +8,7 @@ import link.locutus.discord.util.MarkupUtil;
 
 public class WikiWarRoomPage extends BotWikiGen {
     public WikiWarRoomPage(CommandManager2 manager) {
-        super(manager, "war rooms");
+        super(manager, "war_rooms");
     }
 
     @Override

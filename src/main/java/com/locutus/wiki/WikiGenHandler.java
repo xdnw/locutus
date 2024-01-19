@@ -1,5 +1,6 @@
 package com.locutus.wiki;
 
+import com.google.gson.JsonObject;
 import com.locutus.wiki.pages.WikiAiTools;
 import com.locutus.wiki.pages.WikiAntiLeakPage;
 import com.locutus.wiki.pages.WikiArgumentsPage;
@@ -43,7 +44,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -204,24 +204,24 @@ public class WikiGenHandler {
         Files.write(file.toPath(), markdown.getBytes());
     }
 
-    public JSONObject generateSiteMap() {
-        JSONObject wiki = new JSONObject();
-        wiki.put("home", "");
-        JSONObject wikiIntro = new JSONObject();
+    public JsonObject generateSiteMap() {
+        JsonObject wiki = new JsonObject();
+        wiki.addProperty("home", "");
+        JsonObject wikiIntro = new JsonObject();
         for (BotWikiGen page : getIntroPages()) {
-            wikiIntro.put(page.getPageName(), "");
+            wikiIntro.addProperty(page.getPageName(), "");
         }
-        wiki.put("intro", wikiIntro);
-        JSONObject wikiTopics = new JSONObject();
+        wiki.add("intro", wikiIntro);
+        JsonObject wikiTopics = new JsonObject();
         for (BotWikiGen page : getTopicPages()) {
-            wikiTopics.put(page.getPageName(), "");
+            wikiTopics.addProperty(page.getPageName(), "");
         }
-        wiki.put("topic", wikiTopics);
-        JSONObject wikiCommands = new JSONObject();
+        wiki.add("topic", wikiTopics);
+        JsonObject wikiCommands = new JsonObject();
         for (BotWikiGen page : getCommandPages()) {
-            wikiCommands.put(page.getPageName(), "");
+            wikiCommands.addProperty(page.getPageName(), "");
         }
-        wiki.put("command", wikiCommands);
+        wiki.add("command", wikiCommands);
         return wiki;
     }
 }

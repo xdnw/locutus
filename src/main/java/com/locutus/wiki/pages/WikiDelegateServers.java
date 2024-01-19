@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
 public class WikiDelegateServers extends BotWikiGen {
     public WikiDelegateServers(CommandManager2 manager) {
-        super(manager, "multiple servers");
+        super(manager, "multiple_servers");
     }
 
     @Override

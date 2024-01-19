@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class WikiLoanPage extends BotWikiGen {
     public WikiLoanPage(CommandManager2 manager) {
-        super(manager, "loan reporting");
+        super(manager, "loan_reporting");
     }
 
     @Override

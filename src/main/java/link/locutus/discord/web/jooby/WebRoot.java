@@ -2,6 +2,7 @@ package link.locutus.discord.web.jooby;
 
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
+import com.google.gson.JsonObject;
 import com.locutus.wiki.WikiGenHandler;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -247,15 +248,15 @@ public class WebRoot {
         return fileRoot;
     }
 
-    private JSONObject siteMap;
+    private JsonObject siteMap;
 
-    public JSONObject generateSiteMap() {
+    public JsonObject generateSiteMap() {
         if (siteMap != null) return siteMap;
         siteMap = pageHandler.getCommands().generateSiteMap();
-        siteMap.put("command", Locutus.cmd().getV2().getCommands().generateSiteMap());
+        siteMap.add("command", Locutus.cmd().getV2().getCommands().generateSiteMap());
         WikiGenHandler gen = new WikiGenHandler("", Locutus.cmd().getV2());
-        JSONObject wiki = gen.generateSiteMap();
-        siteMap.put("wiki", wiki);
+        JsonObject wiki = gen.generateSiteMap();
+        siteMap.add("wiki", wiki);
         return siteMap;
     }
 
