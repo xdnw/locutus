@@ -32,7 +32,6 @@
 @import java.util.ArrayList
 @import java.util.HashMap
 @import link.locutus.discord.db.entities.TaxRecordCategorizer2
-
 @param WebStore ws
 @param String title
 @param GuildDB db
@@ -41,7 +40,6 @@
 @param TaxRecordCategorizer2 categorized
 @param Map<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> categorizedByTurnByBracket
 @param Map<Integer, TaxBracket> brackets
-
 @template.main(ws = ws, title = title, content = @`
 @for (Map.Entry<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> entry : categorizedByTurnByBracket.entrySet())
 <div class="bg-lightcontainer mt-3 rounded shadow py-1">

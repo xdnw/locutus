@@ -5,7 +5,6 @@
 @import link.locutus.discord.db.entities.DBNation
 @import java.util.List
 @import java.util.Date
-
 @param WebStore ws
 @param GuildDB db
 @param Announcement.PlayerAnnouncement plrAnn

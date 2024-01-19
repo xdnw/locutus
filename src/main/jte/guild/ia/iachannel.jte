@@ -32,7 +32,6 @@
 @import java.util.stream.Collectors
 @import link.locutus.discord.db.entities.InterviewMessage
 @import net.dv8tion.jda.api.entities.User
-
 @param WebStore ws
 @param GuildDB db
 @param DBNation me

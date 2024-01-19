@@ -10,7 +10,6 @@
 @import java.util.UUID
 @import link.locutus.discord.util.MarkupUtil
 @import link.locutus.discord.util.MathMan
-
 @param WebStore ws
 @param Grant grant
 @param User user

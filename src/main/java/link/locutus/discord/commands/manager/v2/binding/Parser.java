@@ -21,7 +21,7 @@ public interface Parser<T> {
 
     String getDescription();
 
-    default T apply(ValueStore store, ValidatorStore validators, PermissionHandler permisser, String... args) {
+    default T apply(LocalValueStore store, ValidatorStore validators, PermissionHandler permisser, String... args) {
         List<String> argsList;
         if (args == null) {
             argsList = new ArrayList<>();

@@ -1,5 +1,6 @@
 @import java.util.List
 @import java.util.Map
+@import java.util.Set
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.web.jooby.WebRoot
 @import link.locutus.discord.config.Settings
@@ -30,6 +31,7 @@
 
     <%--    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.4.4/umd/popper.js"></script>--%>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/1.0.2/list.min.js"></script>
 <%--    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>--%>
     <!-- Latest compiled and minified JavaScript -->
 <%--    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>--%>
@@ -50,7 +52,6 @@
 <%--    <script src="/js/pnwtimechart.js"></script>--%>
 
 <%--    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>--%>
-
     <link rel="stylesheet"  media="print" onload="this.media='all'" href="https://cdn.rawgit.com/afeld/bootstrap-toc/v0.3.0/dist/bootstrap-toc.min.css">
 </head>
 <body class="ps-md-sbwidth">
@@ -402,14 +403,41 @@
             </li></ul>
     </div>
 </nav>
-<div class="container">
+<div class="container" style="min-height: calc(100vh - 203px);">
     ${content}
 </div>
-<footer class="bd-footer py-5 mt-5 bg-light">
-    <div class="container py-5">
-        <div class="row">
-            <div class="col-12">
-                Hello World
+<footer class="bd-footer border-top border-1 mt-0 pt-3 bg-light">
+    <div class="container-md">
+        <div class="row g-4">
+            <div class="col-4">
+                <img src="https://cdn.discordapp.com/avatars/672237266940198960/0d78b819d401a8f983ab16242de195da.webp" style="position:absolute;" alt="Logo" width="18" height="18">
+                <h5 class="fw-medium ms-4">${Settings.INSTANCE.WEB.INTERFACE_NAME}</h5>
+                <hr>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/"><i class="bi bi-git"></i>&nbsp;Source Code</a></li>
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/wiki"><i class="bi bi-wikipedia"></i>&nbsp;Wiki</a></li>
+                </ul>
+            </div>
+            <div class="col-4">
+                <h5 class="fw-medium m-0">Get in Touch</h5>
+                <hr>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/issues"><i class="bi bi-github"></i>&nbsp;Issue Tracker</a></li>
+                    <li class="mb-2"><a href="https://discord.gg/cUuskPDrB7"><i class="bi bi-discord"></i>&nbsp;Discord Server</a></li>
+                    <li class="mb-2"><a href="discord://discord.com/users/${Settings.INSTANCE.ADMIN_USER_ID}"><i class="bi bi-person-circle"></i>&nbsp;Discord User</a></li>
+                    <li class="mb-2"><a href="https://politicsandwar.com/nation/id=${Settings.INSTANCE.NATION_ID}"><i class="bi bi-joystick"></i>&nbsp;In-Game</a></li>
+                    <li class="mb-2"><a href="mailto:jessepaleg@gmail.com"><i class="bi bi-at"></i>&nbsp;Email</a></li>
+                </ul>
+            </div>
+            <div class="col-4">
+                <h5 class="fw-medium m-0">Legal</h5>
+                <hr>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/blob/master/LICENSE"><i class="bi bi-list-columns-reverse"></i>&nbsp;License</a></li>
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/blob/master/ToS.MD"><i class="bi bi-list-check"></i>&nbsp;Terms Of Service</a></li>
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/blob/master/PRIVACY.MD"><i class="bi bi-list-stars"></i>&nbsp;Privacy Policy</a></li>
+                    <li class="mb-2"><a href="https://github.com/xdnw/locutus/blob/master/SECURITY.md"><i class="bi bi-incognito"></i>&nbsp;Vulnerability Disclosure</a></li>
+                </ul>
             </div>
         </div>
     </div>

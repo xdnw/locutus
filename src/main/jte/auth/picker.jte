@@ -4,7 +4,6 @@
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.User
 @import link.locutus.discord.db.entities.DBAlliance
-
 @param WebStore ws
 @param String discordUrl
 @param String mailUrl

@@ -225,11 +225,10 @@ public class PageHandler implements Handler {
                 }
 
                 if (cmd instanceof ParametricCallable) {
-                    ValueStore locals = stack.getStore();
+                    LocalValueStore locals = stack.getStore();
                     Map<String, String> fullCmdStr = parseQueryMap(ctx.queryParamMap());
                     locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
-
                     setupLocals(locals, ctx, null);
 
                     ParametricCallable parametric = (ParametricCallable) cmd;
@@ -248,8 +247,7 @@ public class PageHandler implements Handler {
 
             } else if (cmds.size() == 1){
                 CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
-                LocalValueStore<Object> locals = new LocalValueStore<>(store);
-                setupLocals(locals, ctx, null);
+                LocalValueStore locals = setupLocals(null, ctx, null);
                 String cmdStr = cmds.get(0);
                 v2.run(locals, io, cmdStr, false, true);
             } else {
@@ -413,9 +411,7 @@ public class PageHandler implements Handler {
     }
 
     private ArgumentStack createStack(Context ctx, List<String> args) {
-        LocalValueStore<Object> locals = new LocalValueStore<>(store);
-
-        setupLocals(locals, ctx, args);
+        LocalValueStore locals = setupLocals(null, ctx, args);
 
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
         locals.addProvider(stack);
@@ -440,7 +436,7 @@ public class PageHandler implements Handler {
 
                     cmd.validatePermissions(stack.getStore(), permisser);
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                    ctx.result(cmd.toHtml(new WebStore(stack.getStore(), ctx), stack.getPermissionHandler(), endpoint, true));
+                    ctx.result(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true));
                     break;
                 }
                 // case "page" ->
@@ -458,12 +454,13 @@ public class PageHandler implements Handler {
                             queryMap = parametric.formatArgumentsToMap(stack.getStore(), args);
                         } else {
                             queryMap = parseQueryMap(ctx.queryParamMap());
+                            queryMap.remove("code");
                         }
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
                         Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
-                        result = wrap(new WebStore(stack.getStore(), ctx), cmdResult, ctx);
+                        result = wrap(stack.getStore().getProvided(WebStore.class), cmdResult, ctx);
                     } else {
-                        result = cmd.toHtml(new WebStore(stack.getStore(), ctx), stack.getPermissionHandler(), false);
+                        result = cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), false);
                     }
 
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
@@ -535,15 +532,20 @@ public class PageHandler implements Handler {
         return call;
     }
 
-    private ValueStore setupLocals(ValueStore<Object> locals, Context ctx, List<String> args) {
+    private LocalValueStore setupLocals(LocalValueStore<Object> locals, Context ctx, List<String> args) {
+        WebStore ws;
         if (locals == null) {
             locals = new LocalValueStore<>(store);
+            ws = new WebStore(locals, ctx);
+            locals.addProvider(Key.of(WebStore.class), ws);
+        } else {
+            ws = (WebStore) locals.getProvided(Key.of(WebStore.class));
         }
-        AuthBindings.Auth auth = AuthBindings.getAuth(new WebStore(locals, ctx), ctx);
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, ctx);
         if (auth != null) {
             locals.addProvider(Key.of(AuthBindings.Auth.class, Me.class), auth);
-            User user = auth.getUser();
-            DBNation nation = auth.getNation();
+            User user = auth.getUser(true);
+            DBNation nation = auth.getNation(true);
             if (user != null) {
                 locals.addProvider(Key.of(User.class, Me.class), user);
             }
@@ -576,13 +578,8 @@ public class PageHandler implements Handler {
             if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
             List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
             path.remove("command");
-
-            ValueStore locals = setupLocals(null, ctx, path);
-
-            System.out.println("1");
+            LocalValueStore locals = setupLocals(null, ctx, path);
             CommandCallable cmd = commands.getCallable(path);
-            System.out.println("2");
-
             if (cmd == null) {
                 sseMessage(sse, "Command not found: " + path, false);
                 return;

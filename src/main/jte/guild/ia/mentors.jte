@@ -31,7 +31,6 @@
 @import java.util.Set
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
-
 @param WebStore ws
 @param IACategory iaCat
 @param GuildDB db
@@ -48,7 +47,6 @@
 @param List<DBNation> noMentor
 @param List<DBNation> idleMentors
 @param IACheckup checkup
-
 @template.main(ws = ws, title = "Mentors", navbar = null, content = @`
         <div class="bg-lightcontainer mt-3 rounded shadow py-1">
             <div class=""></div>

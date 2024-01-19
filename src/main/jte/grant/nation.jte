@@ -2,7 +2,6 @@
 @import link.locutus.discord.db.entities.DBNation
 @import link.locutus.discord.util.TimeUtil
 @import java.util.*
-
 @param WebStore ws
 @param DBNation nation
 <div class="card alert p-1 my-1 alert-dismissible">

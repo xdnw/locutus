@@ -34,7 +34,6 @@
 @import link.locutus.discord.db.entities.InterviewMessage
 @import net.dv8tion.jda.api.entities.User
 @import com.google.gson.JsonElement
-
 @param WebStore ws
 @param GuildDB db
 @param DBNation me
@@ -49,7 +48,6 @@
 @param JsonElement usersJson
 @param JsonElement messagesJson
 @param Set<GuildMessageChannel> myChannels
-
 @template.main(ws = ws, title = "Alliance interview channels", navbar = null, content = @`
     <div class="container">
     <div class="bg-lightmt-3 rounded shadow py-1 row">

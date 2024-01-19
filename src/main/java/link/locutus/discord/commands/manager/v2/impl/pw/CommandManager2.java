@@ -730,7 +730,7 @@ public class CommandManager2 {
         }
     }
 
-    private void handleCall(IMessageIO io, CommandGroup group, ValueStore store) {
+    private void handleCall(IMessageIO io, CommandGroup group, LocalValueStore store) {
         handleCall(io, () -> group.call(new ArgumentStack(new ArrayList<>(), store, validators, permisser)));
     }
 

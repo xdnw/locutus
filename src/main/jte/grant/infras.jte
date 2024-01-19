@@ -9,7 +9,6 @@
 @import java.util.UUID
 @import link.locutus.discord.apiv1.enums.DomesticPolicy
 @import link.locutus.discord.util.TimeUtil
-
 @param WebStore ws
 @param Collection<Grant> grants
 @param User user
@@ -17,7 +16,6 @@
 @param Map<Grant, List<String>> failedRequirements
 @param Map<Grant, List<String>> overrideRequirements
 @param Map<Grant, UUID> grantTokens
-
 @template.grant.grants(ws = ws, title = "Infra", content = @`
     <div class="row">
         <div class="col-lg-3">

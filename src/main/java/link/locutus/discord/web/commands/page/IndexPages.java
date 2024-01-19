@@ -6,6 +6,8 @@ import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
+import io.javalin.http.HttpStatus;
+import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -75,7 +77,7 @@ public class IndexPages extends PageHelper {
         response.append("User: ").append(auth.userId()).append("\n");
         response.append("nation: ").append(auth.nationId()).append("\n");
         response.append("Valid: ").append(auth.isValid()).append("\n");
-        Guild guild = AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
+        Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
         response.append("Guild: ").append(guild).append("\n");
         return response.toString();
     }
@@ -247,14 +249,14 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object login(WebStore ws, Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+    public Object login(WebStore ws, Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation, @Default String token) throws IOException {
         Map<String, List<String>> queries = context.queryParamMap();
         boolean requireNation = queries.containsKey("nation");
         boolean requireUser = queries.containsKey("discord");
         AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
-            String url = AuthBindings.getRedirect(context, false);
+            String url = AuthBindings.getRedirect(context, true);
             if (url != null) {
                 return PageHelper.redirect(context, url);
             }
@@ -268,7 +270,8 @@ public class IndexPages extends PageHelper {
             if (current != null) {
                 result.put("guild", current.getId());
             }
-            return new Gson().toJson(result);
+            throw new RedirectResponse(HttpStatus.SEE_OTHER, url);
+//            return new Gson().toJson(result);
         } else {
             Map<String, String> result = new HashMap<>();
             result.put("error", "You are not logged in, add `nation` or `discord` to the query string to require login");

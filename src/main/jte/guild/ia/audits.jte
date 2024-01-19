@@ -30,11 +30,9 @@
 @import java.util.Set
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
-
 @param WebStore ws
 @param GuildDB db
 @param Map<IACheckup.AuditType, Map<DBNation, String>> nationsByAudit
-
 @template.main(ws = ws, title = "Alliance audit results", content = @`
 <script>
 $(document).ready(function(){
