@@ -1395,8 +1395,6 @@ public class ArrayUtil {
                         currentToken = new StringBuilder();
                         i += operator.getSymbol().length() - 1;
                         continue;
-                    } else{
-                        System.out.println("Found character " + c);
                     }
                     currentToken.append(c);
                 }
