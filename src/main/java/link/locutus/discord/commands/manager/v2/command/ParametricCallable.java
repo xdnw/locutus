@@ -713,7 +713,8 @@ public class ParametricCallable implements ICommand {
                 public Object apply(ParameterData param, Object o) {
                     if (o == null) {
                         if (!param.getBinding().isConsumer(store)) {
-                            return locals.getProvided(param.getBinding().getKey(), false);
+                            Object result = locals.getProvided(param.getBinding().getKey(), !param.isOptional());
+                            return result;
                         }
                         String def = param.getDefaultValueString();
                         if (def != null) {
@@ -744,7 +745,8 @@ public class ParametricCallable implements ICommand {
                 public Object apply(ParameterData param, Object o) {
                     if (o == null) {
                         if (!param.getBinding().isConsumer(store)) {
-                            return locals.getProvided(param.getBinding().getKey(), !param.isOptional());
+                            Object result = locals.getProvided(param.getBinding().getKey(), !param.isOptional());
+                            return result;
                         }
                         String def = param.getDefaultValueString();
                         if (def != null) {
@@ -798,10 +800,13 @@ public class ParametricCallable implements ICommand {
 //                List<String> args;
                 if (arg == null && parameter.isOptional()) {
                     if (parameter.getDefaultValue() == null) {
-                        paramVals[i] = null;
+                        if (parameter.getBinding().isConsumer(store)) {
+                            paramVals[i] = null;
+                        } else {
+                            paramVals[i] = locals.getProvided(parameter.getBinding().getKey(), false);
+                        }
                         continue;
                     }
-//                    args = new ArrayList<>(Arrays.asList(parameter.getDefaultValue()));
                     arg2 = parameter.getDefaultValueString();
                 } else if (arg != null) {
                     arg2 = arg;

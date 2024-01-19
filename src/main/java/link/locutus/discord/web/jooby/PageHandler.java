@@ -409,7 +409,6 @@ public class PageHandler implements Handler {
 
     private ArgumentStack createStack(Context ctx, List<String> args) {
         LocalValueStore locals = setupLocals(null, ctx, args);
-
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
         locals.addProvider(stack);
         return stack;

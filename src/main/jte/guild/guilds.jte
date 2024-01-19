@@ -55,20 +55,20 @@ $(document).ready(function(){
     </div>
     @endif
     @if(joinLink != null)
-    <div class="p-1 my-1 alert alert-warning alert-dismissible fade show" role="alert">
-        <strong>You are not a member of an alliance.</strong> Find and join an alliance to gain access to alliance functions
-        <a href="${joinLink}">
-            Join Alliance
-        </a>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
+        <div class="p-1 my-1 alert alert-warning alert-dismissible fade show" role="alert">
+            <strong>You are not a member of an alliance.</strong> Find and join an alliance to gain access to alliance functions
+            <a href="${joinLink}">
+                Join Alliance
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     @endif
         </div>
     </div>
     <div class="row">
         <div class="col-sm">
-    <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
-            </div>
+            <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
+        </div>
     </div>
     @if(guildDbs.isEmpty())
     <div class="p-1 my-1 alert alert-error alert-dismissible fade show" role="alert">
@@ -77,7 +77,7 @@ $(document).ready(function(){
     </div>
     @endif
 </div>
-    </div>
+<div>
     <div class="row">
         <div class="col-sm">
             <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">

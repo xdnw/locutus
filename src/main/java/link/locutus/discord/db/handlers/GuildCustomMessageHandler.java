@@ -256,33 +256,35 @@ public class GuildCustomMessageHandler implements Runnable {
 
         List<DBNation> nationsCreated = nationsNone.stream().filter(f -> f.getDate() > createCutoff).toList();
 
-        for (DBNation nation : nationsCreated) {
-            long date = nation.getDate();
-            long ageMs = now - date;
+        if (creation != null) {
+            for (DBNation nation : nationsCreated) {
+                long date = nation.getDate();
+                long ageMs = now - date;
 
-            // get the messages which are below ageMs but above the lastSent
-            List<Map.Entry<GuildDB, CustomConditionMessage>> messages = getMessagesBetween(creation, 0, ageMs);
-            messages.removeIf(f -> f.getValue().getOriginDate() > date || Math.abs(ageMs - f.getValue().getDelay()) > TimeUnit.DAYS.toMillis(7));
-            if (!messages.isEmpty()) {
-                Set<Long> guildsSent = new LongArraySet();
-                for (Map.Entry<GuildDB, CustomConditionMessage> entry : messages) {
-                    GuildDB db = entry.getKey();
-                    if (!guildsSent.add(db.getIdLong())) continue;
-                    try {
-                        CustomConditionMessage message = entry.getValue();
+                // get the messages which are below ageMs but above the lastSent
+                List<Map.Entry<GuildDB, CustomConditionMessage>> messages = getMessagesBetween(creation, 0, ageMs);
+                messages.removeIf(f -> f.getValue().getOriginDate() > date || Math.abs(ageMs - f.getValue().getDelay()) > TimeUnit.DAYS.toMillis(7));
+                if (!messages.isEmpty()) {
+                    Set<Long> guildsSent = new LongArraySet();
+                    for (Map.Entry<GuildDB, CustomConditionMessage> entry : messages) {
+                        GuildDB db = entry.getKey();
+                        if (!guildsSent.add(db.getIdLong())) continue;
+                        try {
+                            CustomConditionMessage message = entry.getValue();
 
-                        long lastMs = getMeta(nation, db, NationMeta.LAST_SENT_CREATION, -1L);
-                        long lastAge = Math.max(lastMs - date + 1, 0);
-                        if (lastAge > message.getDelay()) {
-                            System.out.println("Last sent > delay");
-                            continue;
-                        }
+                            long lastMs = getMeta(nation, db, NationMeta.LAST_SENT_CREATION, -1L);
+                            long lastAge = Math.max(lastMs - date + 1, 0);
+                            if (lastAge > message.getDelay()) {
+                                System.out.println("Last sent > delay");
+                                continue;
+                            }
 
-                        System.out.println("Send 1");
-                        message.send(db, nation, sendEnabled);
-                    } finally {
-                        if (updateMeta) {
-                            db.setMeta(nation.getId(), NationMeta.LAST_SENT_CREATION, nowBuf);
+                            System.out.println("Send 1");
+                            message.send(db, nation, sendEnabled);
+                        } finally {
+                            if (updateMeta) {
+                                db.setMeta(nation.getId(), NationMeta.LAST_SENT_CREATION, nowBuf);
+                            }
                         }
                     }
                 }
@@ -329,8 +331,6 @@ public class GuildCustomMessageHandler implements Runnable {
                     }
                 }
             }
-
-
         }
     }
 

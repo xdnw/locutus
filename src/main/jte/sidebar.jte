@@ -8,7 +8,7 @@
             <button type="button" class="btn-close d-md-none ms-1" data-bs-dismiss="offcanvas" aria-label="Close" data-bs-target="#sidebar"></button>
         </div>
     </div>
-    <div class="position-relative p-0" id="sidebarlist">
+    <div class="offcanvas-body position-relative p-0" id="sidebarlist">
         <div class="filter-docs sticky-top p-3">
             <input type="text" id="sb-s-i" class="form-control search" placeholder="Filter pages" aria-label="Filter pages" onkeyup="filtersearch()">
             <div class="mt-1">

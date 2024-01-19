@@ -288,9 +288,6 @@ public class IndexPages extends PageHelper {
     public Object guildselect(WebStore ws, Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
         if (user == null && nation == null) {
             new Exception().printStackTrace();
-            // need to login
-            // return WM login page
-            // throw error
             User user2 = (User) store.getProvided(Key.of(User.class, Me.class), false);
             DBNation nation2 = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
             String user2Str = user2 == null ? "null" : user2.getName();
