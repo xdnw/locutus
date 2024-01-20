@@ -21,8 +21,13 @@ import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.DenyPermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -131,12 +136,33 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
-        Map<Key, Parser> parsers = Locutus.imp().getCommandManager().getV2().getStore().getParsers();
+        Set<Parser> parsers = new HashSet<>();
+        for (ParametricCallable cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
+            RolePermission rolePerm = f.getMethod().getAnnotation(RolePermission.class);
+            if (rolePerm != null && (rolePerm.root() || rolePerm.alliance() || rolePerm.guild() > 0)) {
+                return false;
+            }
+            GuildCoalition guildPerm = f.getMethod().getAnnotation(GuildCoalition.class);
+            if (guildPerm != null) {
+                return false;
+            }
+            DenyPermission deny = f.getMethod().getAnnotation(DenyPermission.class);
+            if (deny != null) {
+                return false;
+            }
+            WhitelistPermission whitelist = f.getMethod().getAnnotation(WhitelistPermission.class);
+            if (whitelist != null) {
+                return false;
+            }
+            return true;
+        })) {
+            for (ParameterData param : cmd.getUserParameters()) {
+                parsers.add(param.getBinding());
+            }
+        }
 
         List<Key> missingKeys = new ArrayList<>();
-
-        for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
-            Parser parser = entry.getValue();
+        for (Parser parser : parsers) {
             if (!parser.isConsumer(Locutus.cmd().getV2().getStore())) continue;
 
             Key htmlKey = parser.getKey().append(HtmlInput.class);

@@ -500,7 +500,7 @@ public class SlashCommandManager extends ListenerAdapter {
                                 option.setAutoComplete(true);
                             } else {
                                 if (bindingKeys.add(completerKey)) {
-                                    System.out.println("No binding: " + binding.getKey());
+                                    System.out.println("No autocomplete binding: " + binding.getKey());
                                 }
                             }
                         }
