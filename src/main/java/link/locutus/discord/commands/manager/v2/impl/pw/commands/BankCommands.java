@@ -1867,7 +1867,8 @@ public class BankCommands {
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
             }
 
-            if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
+            double[] grant = depoByType.get(DepositType.GRANT);
+            if (grant != null && !ignoreGrants && !ResourceType.isZero(grant)) {
                 List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
@@ -1877,8 +1878,8 @@ public class BankCommands {
                     Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
                     String expire2 = notes.get("#expire");
                     String decay2 = notes.get("#decay");
-                    long expireEpoch = 0;
-                    long decayEpoch = 0;
+                    long expireEpoch = Long.MAX_VALUE;
+                    long decayEpoch = Long.MAX_VALUE;
                     if (expire2 != null) {
                         expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
                     }
