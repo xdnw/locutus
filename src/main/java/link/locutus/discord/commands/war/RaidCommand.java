@@ -145,6 +145,7 @@ public class RaidCommand extends Command {
                     Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                     for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
                         switch (aaTreatyEntry.getValue().getType()) {
+                            case EXTENSION:
                             case MDP:
                             case MDOAP:
                             case PROTECTORATE:

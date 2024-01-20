@@ -1199,6 +1199,7 @@ public class WarDB extends DBMainV2 {
             for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(allianceId).entrySet()) {
                 Treaty treaty = entry.getValue();
                 switch (treaty.getType()) {
+                    case EXTENSION:
                     case MDP:
                     case MDOAP:
                     case ODP:
@@ -1327,6 +1328,7 @@ public class WarDB extends DBMainV2 {
         Set<Integer> attAA = new HashSet<>(Collections.singleton(war.getAttacker_aa()));
         for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.getAttacker_aa()).entrySet()) {
             switch (entry.getValue().getType()) {
+                case EXTENSION:
                 case MDP:
                 case MDOAP:
                 case ODP:
@@ -1339,6 +1341,7 @@ public class WarDB extends DBMainV2 {
         Set<Integer> defAA = new HashSet<>(Collections.singleton(war.getDefender_aa()));
         for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.getDefender_aa()).entrySet()) {
             switch (entry.getValue().getType()) {
+                case EXTENSION:
                 case MDP:
                 case MDOAP:
                 case ODP:

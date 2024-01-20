@@ -355,6 +355,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                 for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
                     switch (aaTreatyEntry.getValue().getType()) {
+                        case EXTENSION:
                         case MDP:
                         case MDOAP:
                         case PROTECTORATE:
@@ -926,6 +927,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                     if (protector != null) continue;
                     getTreaties(otherAA, currentWeb, aaCache);
                     continue;
+                case EXTENSION:
                 case PROTECTORATE:
                     double score = otherAA.getScore();
                     double currentScore = 0;
