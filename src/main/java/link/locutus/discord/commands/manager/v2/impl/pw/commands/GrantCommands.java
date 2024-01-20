@@ -40,6 +40,7 @@ import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -2278,7 +2279,7 @@ public class GrantCommands {
     @Command
     @RolePermission(Roles.MEMBER)
     public synchronized String grants(@Me GuildDB db, DBNation nation) {
-        String baseUrl = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
+        String baseUrl = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
         List<String> pages = Arrays.asList(
                 baseUrl + "infragrants/" + nation.getNation_id(),
                 baseUrl + "landgrants/" + nation.getNation_id(),

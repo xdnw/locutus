@@ -7,7 +7,7 @@ import link.locutus.discord.util.MarkupUtil;
 
 public class WikiSendTargetsPage extends BotWikiGen {
     public WikiSendTargetsPage(CommandManager2 manager) {
-        super(manager, "sending targets");
+        super(manager, "sending_targets");
     }
 
     @Override

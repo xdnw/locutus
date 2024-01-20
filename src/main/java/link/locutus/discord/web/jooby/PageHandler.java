@@ -194,7 +194,6 @@ public class PageHandler implements Handler {
      */
     public void sse(SseClient2 sse) {
         try {
-
             Context ctx = sse.ctx;
             WebIO io = new WebIO(sse);
 
@@ -203,7 +202,7 @@ public class PageHandler implements Handler {
             if (cmds.isEmpty()) {
                 ArgumentStack stack = createStack(ctx);
                 String path = stack.consumeNext();
-                if (!path.equalsIgnoreCase("command")) {
+                if (!path.equalsIgnoreCase("sse")) {
                     sseMessage(sse, "Invalid path (not command): " + path, false);
                     return;
                 }
@@ -375,15 +374,6 @@ public class PageHandler implements Handler {
         return combined;
     }
 
-//    @Command()
-//    public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
-//        List<String> args = stack.getRemainingArgs();
-//        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-//        CommandCallable cmd = manager.getCallable(args);
-//
-//        return cmd.toHtml(stack.getStore(), stack.getPermissionHandler());
-//    }
-
     @NotNull
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
@@ -409,7 +399,6 @@ public class PageHandler implements Handler {
 
     private ArgumentStack createStack(Context ctx, List<String> args) {
         LocalValueStore locals = setupLocals(null, ctx, args);
-
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
         locals.addProvider(stack);
         return stack;
@@ -432,7 +421,7 @@ public class PageHandler implements Handler {
                     }
 
                     cmd.validatePermissions(stack.getStore(), permisser);
-                    String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
+                    String endpoint = WebRoot.REDIRECT + "/sse/" + cmd.getFullPath("/");
                     ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }
@@ -548,22 +537,30 @@ public class PageHandler implements Handler {
             if (nation != null) {
                 locals.addProvider(Key.of(DBNation.class, Me.class), nation);
             }
+
+            Guild guild = AuthBindings.guild(ctx, nation, user, false);
+            if (guild != null) {
+                GuildDB guildDb = Locutus.imp().getGuildDB(guild);
+                locals.addProvider(Key.of(Guild.class, Me.class), guild);
+                locals.addProvider(Key.of(GuildDB.class, Me.class), guildDb);
+            }
         }
 
         locals.addProvider(Key.of(Context.class), ctx);
-        Map<String, String> path = ctx.pathParamMap();
-        if (path.containsKey("guild_id") && args != null && !args.isEmpty()) {
-            Long guildId = Long.parseLong(path.get("guild_id"));
-            args.remove(guildId + "");
-            GuildDB guildDb = Locutus.imp().getGuildDB(guildId);
-            if (guildDb == null) {
-                throw new IllegalArgumentException("No guild found for id: " + guildId);
-            }
-            Guild guild = guildDb.getGuild();
-
-            locals.addProvider(Key.of(Guild.class, Me.class), guild);
-            locals.addProvider(Key.of(GuildDB.class, Me.class), guildDb);
-        }
+//        Map<String, String> path = ctx.pathParamMap();
+//
+//        if (path.containsKey("guild_id") && args != null && !args.isEmpty()) {
+//            Long guildId = Long.parseLong(path.get("guild_id"));
+//            args.remove(guildId + "");
+//            GuildDB guildDb = Locutus.imp().getGuildDB(guildId);
+//            if (guildDb == null) {
+//                throw new IllegalArgumentException("No guild found for id: " + guildId);
+//            }
+//            Guild guild = guildDb.getGuild();
+//
+//            locals.addProvider(Key.of(Guild.class, Me.class), guild);
+//            locals.addProvider(Key.of(GuildDB.class, Me.class), guildDb);
+//        }
         return locals;
     }
 
@@ -592,7 +589,7 @@ public class PageHandler implements Handler {
                 return;
             }
 
-            String redirectBase = Settings.INSTANCE.WEB.REDIRECT + "/command/" + cmd.getFullPath("/").toLowerCase() + "/";
+            String redirectBase = WebRoot.REDIRECT + "/command/" + cmd.getFullPath("/").toLowerCase() + "/";
 
             Map<String, String> combined = parseQueryMap(ctx.queryParamMap());
             ParametricCallable parametric = (ParametricCallable) cmd;

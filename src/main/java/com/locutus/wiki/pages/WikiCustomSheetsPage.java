@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 public class WikiCustomSheetsPage extends BotWikiGen {
     public WikiCustomSheetsPage(CommandManager2 manager) {
-        super(manager, "custom spreadsheets");
+        super(manager, "custom_spreadsheets");
     }
 
     @Override

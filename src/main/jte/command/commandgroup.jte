@@ -9,11 +9,6 @@
 @param Map<String, CommandCallable> subcommands
 @param String endpoint
 @template.main(ws = ws, title = command.getFullPath(), navbar = null, content = @`
-@if(command.getParent() != null)
-    <div class="alert alert-light">
-        <a href="..">Go back ${command.getParent().getPrimaryCommandId()}</a>
-    </div>
-@endif
 <div class="bg-lightcontainer mt-3 rounded shadow py-1">
     @if(command.help(ws.store()) != null)
         <h2>Help</h2>

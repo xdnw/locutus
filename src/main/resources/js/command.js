@@ -115,11 +115,10 @@ function executeCommandFromArgMap(form, sse) {
     return executeCommandFromArgMapWithOutput(form, outDiv, sse);
 }
 
-function executeCommandFromArgMapWithOutput(form, outDiv, args, sse) {
-//    var domain = window.location.href.replace("/command", "").replace("web", "sse");
+function executeCommandFromArgMapWithOutput(form, outDiv, sse) {
     var domain;
     if (form.hasAttribute("endpoint")) {
-        domain = form.getAttribute("endpoint") + window.location.pathname;
+        domain = form.getAttribute("endpoint");
     } else {
         var domain = window.location.href.replace("command", "sse");
     }
@@ -266,7 +265,6 @@ function executeCommandFromArgMapWithDomain(domain, form, outDiv, sse) {
             createEventSource(domain, outDiv);
         }
     } else {
-        // redirect
         location.href = domain;
     }
     return false;

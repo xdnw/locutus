@@ -13,7 +13,7 @@ import java.util.List;
 
 public class WikiWarAlertsPage extends BotWikiGen {
     public WikiWarAlertsPage(CommandManager2 manager) {
-        super(manager, "war alerts");
+        super(manager, "war_alerts");
     }
 
     @Override

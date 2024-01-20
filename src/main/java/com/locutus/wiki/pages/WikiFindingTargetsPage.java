@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
 public class WikiFindingTargetsPage extends BotWikiGen {
     public WikiFindingTargetsPage(CommandManager2 manager) {
-        super(manager, "target finding");
+        super(manager, "target_finding");
     }
 
     @Override

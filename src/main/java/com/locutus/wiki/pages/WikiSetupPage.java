@@ -18,7 +18,7 @@ import static link.locutus.discord.user.Roles.*;
 
 public class WikiSetupPage extends BotWikiGen {
     public WikiSetupPage(CommandManager2 manager) {
-        super(manager, "initial setup");
+        super(manager, "initial_setup");
     }
 
     @Override

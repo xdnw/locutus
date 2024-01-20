@@ -517,7 +517,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             // get function
             TypedFunction<T, ?> function = functions.get(section);
             if (function != null) {
-                System.out.println("Return function 1" + function.getName() + " | " + function.getType());
+                System.out.println("Return function 1:" + function.getName() + " | " + function.getType());
                 return function;
             }
             System.out.println("Return non function section " + section);

@@ -83,7 +83,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
-    public Object search(WebStore ws, @Me GuildDB db, String term) {
+    public Object search(WebStore ws, String term) {
         term = URLDecoder.decode(term).trim();
 
         double nameEquals = 100;
@@ -93,8 +93,7 @@ public class IndexPages extends PageHelper {
 
         String termLow = term.toLowerCase();
 
-        String urlBase = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
-        String cmdUrl = urlBase + "command/";
+        String urlBase = WebRoot.REDIRECT + "/";
 
         List<SearchResult> results = new ArrayList<>();
 
@@ -136,7 +135,7 @@ public class IndexPages extends PageHelper {
         };
 
         recursive(Locutus.imp().getCommandManager().getV2().getCommands(), f -> cmdSearch.accept(urlBase + "command/", f));
-        recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "/", f));
+        recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "page/", f));
 
 
         for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
@@ -226,8 +225,8 @@ public class IndexPages extends PageHelper {
         CommandGroup pages = WebRoot.getInstance().getPageHandler().getCommands();
 
         StringBuilder result = new StringBuilder();
-        String cmdEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/command/";
-        String pageEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
+        String cmdEndpoint = WebRoot.REDIRECT + "/command/";
+        String pageEndpoint = WebRoot.REDIRECT + "/";
 
         result.append(
                 commands.toHtml(ws, stack.getPermissionHandler(), cmdEndpoint, false)
@@ -289,9 +288,6 @@ public class IndexPages extends PageHelper {
     public Object guildselect(WebStore ws, Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
         if (user == null && nation == null) {
             new Exception().printStackTrace();
-            // need to login
-            // return WM login page
-            // throw error
             User user2 = (User) store.getProvided(Key.of(User.class, Me.class), false);
             DBNation nation2 = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
             String user2Str = user2 == null ? "null" : user2.getName();
@@ -336,7 +332,7 @@ public class IndexPages extends PageHelper {
     @Command()
     public Object logout(Context context) throws IOException {
         WebRoot.getInstance().getPageHandler().logout(context);
-        return "Logging out. If you are not redirected, please visit <a href=\"" + Settings.INSTANCE.WEB.REDIRECT + "\">" + Settings.INSTANCE.WEB.REDIRECT + "</a>";
+        return "Logging out. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
     }
 
     @Command()

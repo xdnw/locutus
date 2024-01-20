@@ -14,7 +14,7 @@ import static link.locutus.discord.pnw.BeigeReason.*;
 
 public class WikiBeigeCyclingPage extends BotWikiGen {
     public WikiBeigeCyclingPage(CommandManager2 manager) {
-        super(manager, "beige cycling");
+        super(manager, "beige_cycling");
     }
 
     @Override

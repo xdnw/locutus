@@ -7,7 +7,7 @@ import link.locutus.discord.user.Roles;
 
 public class WikiAntiLeakPage extends BotWikiGen {
     public WikiAntiLeakPage(CommandManager2 manager) {
-        super(manager, "announcements and opsec");
+        super(manager, "announcements_and_opsec");
     }
 
     @Override

@@ -10,9 +10,6 @@
 @param Content form
 @template.main(ws = ws, title = "Command: " + command.getPrimaryCommandId(), content = @`
 <div class="container-fluid rounded shadow bg-lightp-1">
-@if(command.getParent() != null)
-<a href="">Go back ${command.getParent().getPrimaryCommandId()}</a>
-@endif
 @if(command.help(ws.store()) != null)
 <h2>Help</h2>
 <p>$unsafe{MarkupUtil.markdownToHTML(command.help(ws.store()))}</p>

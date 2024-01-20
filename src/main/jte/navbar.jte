@@ -11,10 +11,6 @@
                     <button type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" class="btn btn btn-secondary d-md-none">
                         <i class="bi bi-layout-sidebar"></i>
                     </button>
-                    <a href="/" class="d-flex align-items-center d-block btn btn-sm btn-secondary">
-                        <img src="https://cdn.discordapp.com/avatars/672237266940198960/0d78b819d401a8f983ab16242de195da.webp" alt="Logo" width="18" height="18">
-                        <span class="d-none d-md-block d-lg-block inline me-2">${Settings.INSTANCE.WEB.INTERFACE_NAME}</span>
-                    </a>
                     <a type="button" class="btn btn btn-secondary d-md-block" aria-label="Toggle dark mode" onclick="toggleDarkMode()">
                         <i class="bi bi-moon-stars-fill" style="color:gray"></i>
                     </a>
@@ -28,7 +24,7 @@
             </div>
             <div class="col p-0">
                 <form class="d-flex" role="search" id="navbar-search-form" onsubmit="return search()">
-                    <input class="form-control rounded-end-0" type="search" placeholder="Search pages..." aria-label="Search">
+                    <input id="navbar-search" class="form-control rounded-end-0" type="search" placeholder="Search pages..." aria-label="Search">
                     <button type="submit" class="btn btn-light text-nowrap rounded-start-0"><i class="bi bi-search"></i></button>
                 </form>
             </div>

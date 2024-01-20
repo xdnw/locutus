@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -16,6 +17,8 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -114,17 +117,20 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     public List<NationAttribute> getMetrics(ValueStore store) {
         List<NationAttribute> result = new ArrayList<>();
-        for (CommandCallable cmd : getFilterCallables()) {
-            String id = cmd.aliases().get(0);
+        for (CommandCallable callable : getFilterCallables()) {
+            ParametricCallable cmd = (ParametricCallable) callable;
+            if (cmd.getUserParameters().stream().anyMatch(f -> !f.isOptional())) continue;
             try {
-                TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false);
-                if (typeFunction == null) continue;
-
-                NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
-                result.add(metric);
-            } catch (IllegalStateException | CommandUsageException ignore) {
-                continue;
-            }
+                String id = cmd.aliases().get(0);
+                try {
+                    TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false);
+                    if (typeFunction == null) continue;
+                    NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
+                    result.add(metric);
+                } catch (IllegalStateException | CommandUsageException ignore) {
+                    continue;
+                }
+            } catch (RedirectResponse ignore) {}
         }
         return result;
     }
@@ -166,12 +172,16 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     public List<NationAttributeDouble> getMetricsDouble(ValueStore store) {
         List<NationAttributeDouble> result = new ArrayList<>();
-        for (CommandCallable cmd : getFilterCallables()) {
-            String id = cmd.aliases().get(0);
-            NationAttributeDouble metric = getMetricDouble(store, id, true);
-            if (metric != null) {
-                result.add(metric);
-            }
+        for (CommandCallable callable : getFilterCallables()) {
+            ParametricCallable cmd = (ParametricCallable) callable;
+            if (cmd.getUserParameters().stream().anyMatch(f -> !f.isOptional())) continue;
+            try {
+                String id = cmd.aliases().get(0);
+                NationAttributeDouble metric = getMetricDouble(store, id, true);
+                if (metric != null) {
+                    result.add(metric);
+                }
+            } catch (RedirectResponse ignore) {}
         }
         for (Map.Entry<String, NationAttribute> entry : customMetrics.entrySet()) {
             String id = entry.getKey();

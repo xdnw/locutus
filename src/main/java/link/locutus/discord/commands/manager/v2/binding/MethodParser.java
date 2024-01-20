@@ -139,6 +139,8 @@ public class MethodParser<T> implements Parser<T> {
                     if (!paramKey.isDefault()) {
                         System.out.println("Failed to apply " + paramKey + " to " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
                         throw e;
+                    } else {
+                        System.out.println("Option is default " + paramKey + " to " + method.getDeclaringClass().getSimpleName() + "#" + method.getName() + " | " + e.getMessage());
                     }
                     arg = null;
                 }

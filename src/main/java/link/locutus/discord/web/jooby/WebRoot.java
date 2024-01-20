@@ -3,14 +3,9 @@ package link.locutus.discord.web.jooby;
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
 import com.google.gson.JsonObject;
-import com.locutus.wiki.BotWikiGen;
 import com.locutus.wiki.WikiGenHandler;
-import gg.jte.CodeResolver;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
-import gg.jte.TemplateOutput;
-import gg.jte.html.HtmlInterceptor;
-import gg.jte.html.HtmlPolicy;
 import gg.jte.resolve.DirectoryCodeResolver;
 import gg.jte.watcher.DirectoryWatcher;
 import io.javalin.Javalin;
@@ -253,89 +248,19 @@ public class WebRoot {
         return fileRoot;
     }
 
-    private JSONObject siteMap;
+    private JsonObject siteMap;
 
-    public JSONObject generateSiteMap() {
+    public JsonObject generateSiteMap() {
         if (siteMap != null) return siteMap;
-        siteMap = new JSONObject();
-        // Pages
-        siteMap.put("pages", pageHandler.getCommands().toCommandMap());
-        // Commands
-        siteMap.put("command", Locutus.cmd().getV2().getCommands().toCommandMap());
-        // Wiki
-        JSONObject wiki = new JSONObject();
-        wiki.put("home", "");
+        siteMap = pageHandler.getCommands().generateSiteMap();
+        siteMap.add("command", Locutus.cmd().getV2().getCommands().generateSiteMap());
         WikiGenHandler gen = new WikiGenHandler("", Locutus.cmd().getV2());
-        for (BotWikiGen page : gen.getIntroPages()) {
-            wiki.put("intro", page.getPageName());
-        }
-        for (BotWikiGen page : gen.getTopicPages()) {
-            wiki.put("topic", page.getPageName());
-        }
-        for (BotWikiGen page : gen.getCommandPages()) {
-            wiki.put("command", page.getPageName());
-        }
-        siteMap.put("wiki", wiki);
+        JsonObject wiki = gen.generateSiteMap();
+        siteMap.add("wiki", wiki);
         return siteMap;
     }
-
-    //    {
-//        get("/{guildid}", ctx -> {
-//            Map<String, String> path = ctx.pathMap();
-//            Map<String, String> headers = ctx.headerMap();
-//            String url = ctx.getRequestURL();
-//            Map<String, String> query = ctx.queryMap();
-//            String method = ctx.getMethod();
-//            Map<String, Object> attributes = ctx.getAttributes();
-//        });
-//    }
 
     public PageHandler getPageHandler() {
         return pageHandler;
     }
-
-//    public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
-////        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-////        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-////        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-////
-////        Locutus locutus = Locutus.create().start();
-////
-////        System.out.println("Port " + Settings.INSTANCE.WEB.PORT_HTTP + " | " + Settings.INSTANCE.WEB.PORT_HTTPS);
-////        WebRoot webRoot = new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
-//
-//        SSLPlugin plugin = new SSLPlugin(conf -> {
-//            if (Settings.INSTANCE.WEB.PRIVKEY_PASSWORD.isEmpty()) {
-//                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH);
-//            } else {
-//                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH, Settings.INSTANCE.WEB.PRIVKEY_PASSWORD);
-//            }
-//            conf.redirect = true;
-//            // set ports
-//            conf.securePort = Settings.INSTANCE.WEB.PORT;
-//        });
-//        JavalinJte.init(createTemplateEngine());
-//        Javalin javalin = Javalin.create(config -> {
-////            if (Settings.INSTANCE.WEB.PORT_HTTPS > 0) {
-////                config.plugins.register(plugin);
-////            }
-//            config.plugins.enableDevLogging();
-////            config.enableCorsForOrigin();
-//            if (Brotli4jLoader.isAvailable()) {
-//                System.out.println("Using brotli");
-//                config.compression.brotliAndGzip();
-//            } else {
-//                System.out.println("Using gzip");
-//                config.compression.gzipOnly();
-//            }
-//        }).start(Settings.INSTANCE.WEB.PORT);
-//
-//        // print hello world
-//        javalin.get("/", ctx -> {
-//            System.out.println("Hello World");
-//            ctx.result("Hello World");
-//        });
-//
-//        javalin.start();
-//    }
 }

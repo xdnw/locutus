@@ -1,5 +1,6 @@
 package com.locutus.wiki;
 
+import com.google.gson.JsonObject;
 import com.locutus.wiki.pages.WikiAiTools;
 import com.locutus.wiki.pages.WikiAntiLeakPage;
 import com.locutus.wiki.pages.WikiArgumentsPage;
@@ -201,5 +202,26 @@ public class WikiGenHandler {
         }
         File file = new File(pathRelative + File.separator + page.getPageName().toLowerCase().replace(" ", "_") + ".md");
         Files.write(file.toPath(), markdown.getBytes());
+    }
+
+    public JsonObject generateSiteMap() {
+        JsonObject wiki = new JsonObject();
+        wiki.addProperty("home", "");
+        JsonObject wikiIntro = new JsonObject();
+        for (BotWikiGen page : getIntroPages()) {
+            wikiIntro.addProperty(page.getPageName(), "");
+        }
+        wiki.add("intro", wikiIntro);
+        JsonObject wikiTopics = new JsonObject();
+        for (BotWikiGen page : getTopicPages()) {
+            wikiTopics.addProperty(page.getPageName(), "");
+        }
+        wiki.add("topic", wikiTopics);
+        JsonObject wikiCommands = new JsonObject();
+        for (BotWikiGen page : getCommandPages()) {
+            wikiCommands.addProperty(page.getPageName(), "");
+        }
+        wiki.add("command", wikiCommands);
+        return wiki;
     }
 }

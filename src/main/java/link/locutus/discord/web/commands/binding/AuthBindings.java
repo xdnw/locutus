@@ -115,7 +115,15 @@ public class AuthBindings extends WebBindingHelper {
     @Me
     @Binding
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user) {
-        return guild(context, nation, user, true);
+        System.out.println("Get guild " + context + " | " + nation + " | " + user);
+        try {
+            Guild guild = guild(context, nation, user, true);
+            System.out.println("Return guild");
+            return guild;
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user, boolean allowRedirect) {
@@ -482,7 +490,7 @@ public class AuthBindings extends WebBindingHelper {
 
                     String title = "Bot Login | timestamp:" + System.currentTimeMillis();
                     String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
-                            MarkupUtil.htmlUrl(Settings.INSTANCE.WEB.REDIRECT + " | Verify Login", authUrl);
+                            MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
 
                     ApiKeyPool pool = ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY);
                     JsonObject result = nation.sendMail(pool, title, body, true);
