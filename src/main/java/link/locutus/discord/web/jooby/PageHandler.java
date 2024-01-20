@@ -194,7 +194,6 @@ public class PageHandler implements Handler {
      */
     public void sse(SseClient2 sse) {
         try {
-
             Context ctx = sse.ctx;
             WebIO io = new WebIO(sse);
 
@@ -203,7 +202,7 @@ public class PageHandler implements Handler {
             if (cmds.isEmpty()) {
                 ArgumentStack stack = createStack(ctx);
                 String path = stack.consumeNext();
-                if (!path.equalsIgnoreCase("command")) {
+                if (!path.equalsIgnoreCase("sse")) {
                     sseMessage(sse, "Invalid path (not command): " + path, false);
                     return;
                 }
@@ -375,15 +374,6 @@ public class PageHandler implements Handler {
         return combined;
     }
 
-//    @Command()
-//    public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
-//        List<String> args = stack.getRemainingArgs();
-//        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-//        CommandCallable cmd = manager.getCallable(args);
-//
-//        return cmd.toHtml(stack.getStore(), stack.getPermissionHandler());
-//    }
-
     @NotNull
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
@@ -431,7 +421,7 @@ public class PageHandler implements Handler {
                     }
 
                     cmd.validatePermissions(stack.getStore(), permisser);
-                    String endpoint = WebRoot.REDIRECT + "/command";
+                    String endpoint = WebRoot.REDIRECT + "/sse/" + cmd.getFullPath("/");
                     ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }

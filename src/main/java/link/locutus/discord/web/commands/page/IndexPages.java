@@ -225,8 +225,8 @@ public class IndexPages extends PageHelper {
         CommandGroup pages = WebRoot.getInstance().getPageHandler().getCommands();
 
         StringBuilder result = new StringBuilder();
-        String cmdEndpoint = WebRoot.REDIRECT + "/" + db.getIdLong() + "/command/";
-        String pageEndpoint = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
+        String cmdEndpoint = WebRoot.REDIRECT + "/command/";
+        String pageEndpoint = WebRoot.REDIRECT + "/";
 
         result.append(
                 commands.toHtml(ws, stack.getPermissionHandler(), cmdEndpoint, false)
