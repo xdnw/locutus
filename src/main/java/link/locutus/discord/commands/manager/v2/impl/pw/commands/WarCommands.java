@@ -3698,7 +3698,7 @@ public class WarCommands {
                     alliesIds.addAll(protectorates);
                 }
                 if (includeMDP) {
-                    alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
+                    alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP, TreatyType.EXTENSION).keySet());
                 }
                 if (includeODP) {
                     alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());

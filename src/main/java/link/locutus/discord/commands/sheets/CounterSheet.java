@@ -79,7 +79,7 @@ public class CounterSheet extends Command {
                     allies.addAll(protectorates);
                 }
                 if (includeMDP) {
-                    allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
+                    allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP, TreatyType.EXTENSION).keySet());
                 }
                 if (includeODP) {
                     allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());

@@ -2184,6 +2184,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         return isAllyOfRoot(type -> {
             if (type == null) return false;
             switch (type) {
+                case EXTENSION:
                 case MDP:
                 case MDOAP:
                 case ODP:
@@ -2617,6 +2618,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                 for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
                     switch (aaTreatyEntry.getValue().getType()) {
+                        case EXTENSION:
                         case MDP:
                         case MDOAP:
                         case PROTECTORATE:
@@ -3020,6 +3022,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                     Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                     for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                         switch (entry.getValue().getType()) {
+                            case EXTENSION:
                             case MDP:
                             case MDOAP:
                             case ODP:
