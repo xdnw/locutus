@@ -88,7 +88,7 @@ public class WarsByTier extends Command {
 
         boolean attachJson = flags.contains('j');
         boolean attachCsv = flags.contains('j');
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
         return null;
     }
 }

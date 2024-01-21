@@ -310,7 +310,7 @@ public interface IMessageBuilder {
     IMessageBuilder file(String name, byte[] data);
 
     @CheckReturnValue
-    IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat);
+    IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate);
 
     CompletableFuture<IMessageBuilder> send();
 

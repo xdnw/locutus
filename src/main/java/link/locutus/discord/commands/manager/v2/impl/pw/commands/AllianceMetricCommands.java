@@ -381,7 +381,7 @@ public class AllianceMetricCommands {
                                 @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> nationsSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total);
-        table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
+        table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
     }
 
     @Command
@@ -478,7 +478,7 @@ public class AllianceMetricCommands {
             for (long day = minDay; day <= maxDay; day++) {
                 table.add(day, (Void) null);
             }
-            table.writeMsg(msg2, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, false, false);
+            table.writeMsg(msg2, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, false, false);
         }
         msg2.send();
         return null;

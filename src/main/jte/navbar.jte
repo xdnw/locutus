@@ -23,7 +23,7 @@
                 </div>
             </div>
             <div class="col p-0">
-                <form class="d-flex" role="search" id="navbar-search-form" onsubmit="return search()">
+                <form class="d-flex" role="search" id="navbar-search-form" onsubmit="return navsearch()">
                     <input id="navbar-search" class="form-control rounded-end-0" type="search" placeholder="Search pages..." aria-label="Search">
                     <button type="submit" class="btn btn-light text-nowrap rounded-start-0"><i class="bi bi-search"></i></button>
                 </form>

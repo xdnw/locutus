@@ -1,7 +1,10 @@
 package link.locutus.discord.web.commands;
 
 import com.google.gson.JsonObject;
+import gg.jte.generated.precompiled.data.JtebarchartdatasrcGenerated;
+import gg.jte.generated.precompiled.data.JtetimechartdatasrcGenerated;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -44,6 +47,7 @@ public class WebMessage implements IMessageBuilder {
     public final StringBuilder content = new StringBuilder();
     public final Map<String, String> buttons = new LinkedHashMap<>();
     public final Map<String, String> links = new LinkedHashMap<>();
+    public final List<String> htmlData = new ArrayList<>();
     public final List<MessageEmbed> embeds = new ArrayList<>();
     public final Map<String, byte[]> attachments = new HashMap<>();
     public User author;
@@ -73,6 +77,7 @@ public class WebMessage implements IMessageBuilder {
         embeds.clear();
         attachments.clear();
         files = null;
+        this.htmlData.clear();
         return this;
     }
 
@@ -137,12 +142,22 @@ public class WebMessage implements IMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat) {
-        try {
-            attachments.put(table.getName() + ".png", table.write(timeFormat, numberFormat));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+        String html;
+        if (origin > 0) {
+            if (timeFormat == TimeFormat.TURN_TO_DATE) {
+                table.convertTurnsToEpochSeconds(origin);
+            } else if (timeFormat == TimeFormat.DAYS_TO_DATE) {
+                table.convertDaysToEpochSeconds(origin);
+            }
         }
+        if (table.isBar()) {
+            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, table.getName(), table.toHtmlJson(), false));
+        } else {
+            boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE;
+            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, table.getName(), table.toHtmlJson(), isTime));
+        }
+        addHtml(html);
         return this;
     }
 
@@ -215,13 +230,15 @@ public class WebMessage implements IMessageBuilder {
                 DataArray array = DataArray.fromCollection(embeds);
                 obj.put("embeds", array);
             }
-            // reactions
         }
         if (!attachments.isEmpty()) {
             Map<String, String> urlFileNames = getUrlFileNames();
             if (!urlFileNames.isEmpty()) {
                 obj.put("files", urlFileNames);
             }
+        }
+        if (!htmlData.isEmpty()) {
+            obj.put("html", DataArray.fromCollection(htmlData));
         }
         if (!this.links.isEmpty()) {
             List<DataObject> buttonsData = new ArrayList<>();
@@ -254,5 +271,9 @@ public class WebMessage implements IMessageBuilder {
             urlFileNames.put(entry.getValue().getName(), entry.getKey());
         }
         return urlFileNames;
+    }
+
+    public void addHtml(String html) {
+        this.htmlData.add(html);
     }
 }

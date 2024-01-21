@@ -16,10 +16,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clusterize.js/0.19.0/clusterize.min.js" integrity="sha512-sCslfbDbPoJepZJxo6S3mdJwYYt0SX+C9G1SYez6/yGuXcPrZXM9tqZQMpujvMZlujVve98JSzimWbYAlQzvFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/clusterize.js/0.19.0/clusterize.min.css" integrity="sha512-8KLHxyeJ2I3BzL2ma1RZxwT1cc/U5Rz/uJg+G25tCrQ8sFfPz3MfJdKZegZDPijTxK2A3+b4kAXvzyK/OLLU5A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <div class="container-flex rounded shadow bg-lightp-1">
-    <!--  TODO error alerts  -->
-
     <h3>Select your nation</h3>
-    <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
+    <input class="form-control form-control-sm" id="nationpicker" type="text" placeholder="Search..">
 
     <div class="clusterize">
         <table class="table" style="background-color:#fff;color:#333">
@@ -44,12 +42,11 @@
 
 <script>
 var nationNames = $unsafe{nationNames.toString()};
-var nationIds = $unsafe{nationIds.toString()};
+var nationIds = ${nationIds.toString()};
 var baseUrl = "${WebRoot.REDIRECT}";
 
 // JavaScript
-var rows = [],
-    search = document.getElementById('myInput');
+var rows = [], search = document.getElementById('nationpicker');
 
 /* Fill array with data
  *
@@ -61,17 +58,14 @@ var rows = [],
  * active *bool*   - specifies if row is suitable by search phrase
 */
 
-var tbody = document.getElementById("myTable");
-var bodyhtml = "";
 for (var i = 0; i < nationNames.length; i++) {
     var nationName = nationNames[i];
     var nationId = nationIds[i];
-
     rows.push({
     values: [nationId, nationName],
     markup: "<tr><td><a href='" + baseUrl + "/page/login?nation=" + nationId + "'>" + nationName + "</a></td><td>" + nationId + "</td></tr>",
     active: true
-  });
+});
 
 }
 

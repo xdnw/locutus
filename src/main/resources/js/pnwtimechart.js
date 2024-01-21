@@ -1,13 +1,14 @@
-$(document).ready(function() {
-    let timecharts = document.getElementsByClassName("locutus-chart");
-    for (let i = 0; i < timecharts.length; i++) {
-        let container = timecharts[i];
+function initCharts() {
+     for (let container of document.querySelectorAll('.locutus-chart:not([initialized])')) {
+        container.setAttribute("initialized", true);
         let src = container.getAttribute("src");
         let isTime = container.getAttribute("time") + "" == "true";
         if (src != null) {
-            $.getJSON( src, function( data ) {
-                setupTimeChart(container, data, isTime);
-            });
+            (function(container) {
+                $.getJSON( src, function( data ) {
+                    setupTimeChart(container, data, isTime);
+                });
+            })(container);
         }else {
             let dataSrc = container.getAttribute("data-src");
             if (dataSrc != null) {
@@ -16,21 +17,21 @@ $(document).ready(function() {
         }
     }
 
-    let barcharts = document.getElementsByClassName("locutus-barchart");
-    for (var container of barcharts) {
+    for (let container of document.querySelectorAll('.locutus-barchart:not([initialized])')) {
+        container.setAttribute("initialized", true);
         let stackedAttribute = container.getAttribute("stacked");
         let isStacked = stackedAttribute !== null && stackedAttribute.toLowerCase()
 
         let dataSrc = container.getAttribute("data-src");
         if (dataSrc != null) {
-            var json = JSON.parse(dataSrc);
+            let json = JSON.parse(dataSrc);
 
-            var labels = json["labels"];
+            let labels = json["labels"];
 
-            var jsonData = json["data"];
-            var dataSets = [];
-            var colors = hexColors(jsonData.length - 1);
-            for (var i = 1; i < jsonData.length; i++) {
+            let jsonData = json["data"];
+            let dataSets = [];
+            let colors = hexColors(jsonData.length - 1);
+            for (let i = 1; i < jsonData.length; i++) {
                 dataSets.push({
                     label: labels[i - 1],
                     data: jsonData[i],
@@ -38,11 +39,11 @@ $(document).ready(function() {
                 });
             }
 
-            var data = {
+            let data = {
             labels: jsonData[0],
             datasets: dataSets
             };
-            const config = {
+            let config = {
               type: 'bar',
               data: data,
               options: {
@@ -74,13 +75,13 @@ $(document).ready(function() {
                 }
               }
             };
-            const myChart = new Chart(
+            let myChart = new Chart(
                 container,
                 config
               );
         }
     }
-});
+}
 
 function setupTimeChart(elem, jsonData, isTime) {
     let title = elem.getAttribute("title");
@@ -97,7 +98,6 @@ function setupTimeChart(elem, jsonData, isTime) {
     }
     if (height < 100) height = 600;
     height = Math.min((width * 2) / 3, height)
-    console.log(width + " | " + height + " | width / height");
     let data = jsonData["data"];
     let labels = jsonData["labels"];
     let xAxis = data[0];
@@ -120,9 +120,7 @@ function setupTimeChart(elem, jsonData, isTime) {
 //            size: 80,
 //            values: (self, ticks) => ticks.map(rawValue => formatN(rawValue)),
 //        });
-
     let colors = rgbColors(data.length - 1);
-
     for (let i = 1; i < data.length; i++) {
         let color = colors[i - 1];
         let colorHex = rgbToHex(color[0], color[1], color[2]);
@@ -134,8 +132,7 @@ function setupTimeChart(elem, jsonData, isTime) {
             value: (self, rawValue) => formatN(rawValue),
         })
     }
-
-    const opts = {
+    let opts = {
         scales: {
             x: {
                     time: isTime
@@ -147,16 +144,18 @@ function setupTimeChart(elem, jsonData, isTime) {
         series: series,
         axes: axis,
     };
-
-    let uplot = new uPlot(opts, data, elem);
-
+    elem.uplot = new uPlot(opts, data, elem);
     let resize = function () {
-        let width = elem.getBoundingClientRect().width;
-        let height = uplot.height;
+        let width = this.getBoundingClientRect().width;
+        let height = this.uplot.height;
         height = Math.min((width * 2) / 3, height)
         if (width > 0) {
-            uplot.setSize({width, height});
+            this.uplot.setSize({width, height});
         }
     };
-    $(window).on('resize', resize);
+    $(window).on('resize', resize.bind(elem));
 }
+
+$(document).ready(function() {
+    initCharts();
+});

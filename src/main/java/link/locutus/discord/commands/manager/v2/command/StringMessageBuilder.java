@@ -167,7 +167,7 @@ public class StringMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat) {
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
         try {
             images.put(table.getName(), table.write(timeFormat, numberFormat));
         } catch (IOException e) {
