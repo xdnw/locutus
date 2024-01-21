@@ -135,7 +135,6 @@ public class WebRoot {
         this.app.get("/test", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
-                System.out.println("Test");
                 pageHandler.handle(context);
             }
         });
@@ -225,7 +224,6 @@ public class WebRoot {
         this.fileRoot = new File("files");
 
         this.app.get("/", ctx -> {
-            System.out.println("Index: Hello World");
             pageHandler.handle(ctx);
         });
 

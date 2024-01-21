@@ -1257,7 +1257,7 @@ public class TradeCommands {
             table.add(day, (Void) null);
         }
 
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
         return "Done!";
     }
 
@@ -1315,7 +1315,7 @@ public class TradeCommands {
         }
 
 
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
 
         return "Done!";
     }
@@ -1408,7 +1408,7 @@ public class TradeCommands {
             }
 
 
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
         }
 
 
@@ -1492,7 +1492,7 @@ public class TradeCommands {
                 }
             }
 
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
         }
     }
 

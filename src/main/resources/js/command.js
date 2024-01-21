@@ -161,6 +161,9 @@ function createEventSourceWithLoading(domain, outDiv, inputDiv, inputReplacement
                 }
                 return value;
             });
+            if (json["html"]) {
+                outDiv.insertAdjacentHTML('afterbegin', json["html"]);
+            }
             if (json["action"]) {
                 switch (json["action"]) {
                     case "redirect":
@@ -215,6 +218,7 @@ function createEventSourceWithLoading(domain, outDiv, inputDiv, inputReplacement
               console.log("Error: " + exception_var)
             }
 //            outDiv.innerHTML = output + outDiv.innerHTML;
+            initCharts();
          }
     } finally {
 //        evtSource.close();

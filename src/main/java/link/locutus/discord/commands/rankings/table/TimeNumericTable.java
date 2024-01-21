@@ -19,8 +19,11 @@ import de.erichseifert.gral.plots.legends.AbstractLegend;
 import de.erichseifert.gral.plots.legends.ValueLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
+import gg.jte.generated.precompiled.data.JtebarchartdatasrcGenerated;
+import gg.jte.generated.precompiled.data.JtetimechartdatasrcGenerated;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -36,6 +39,7 @@ import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
+import link.locutus.discord.web.commands.WebMessage;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -72,6 +76,10 @@ public abstract class TimeNumericTable<T> {
     public TimeNumericTable<T> setBar(boolean bar) {
         isBar = bar;
         return this;
+    }
+
+    public boolean isBar() {
+        return isBar;
     }
 
     public static TimeNumericTable metricByGroup(Set<NationAttributeDouble> metrics, Set<DBNation> coalitionNations, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
@@ -406,6 +414,16 @@ public abstract class TimeNumericTable<T> {
         return this;
     }
 
+    public TimeNumericTable<T> convertDaysToEpochSeconds(long dayStart) {
+        for (int i = 0; i < data.getRowCount(); i++) {
+            Row row = data.getRow(i);
+            long day = dayStart + ((Number) row.get(0)).longValue();
+            long time = TimeUtil.getTimeFromDay(day) / 1000L;
+            data.set(0, i, time);
+        }
+        return this;
+    }
+
     public XYPlot getTable(TimeFormat timeFormat, TableNumberFormat numberFormat) {
         DataSource[] series = new DataSource[amt];
         for (int i = 0; i < amt; i++) {
@@ -588,21 +606,19 @@ public abstract class TimeNumericTable<T> {
 
     public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat) throws IOException {
         XYPlot plot = getTable(timeFormat, numberFormat);
-
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
-    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
-        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, attachJson, attachCsv);
+    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, originDate, attachJson, attachCsv);
         msg.send();
     }
 
-    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
+    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
         try {
-            byte[] bytes = write(timeFormat, numberFormat);
-            msg  = msg.file("img.png", bytes);
+            msg = msg.graph(this, timeFormat, numberFormat, originDate);
             String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
             if (attachJson) {
                 msg = msg.file(name + ".json", toHtmlJson().toString());

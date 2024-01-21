@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import gg.jte.generated.precompiled.alliance.JteallianceindexGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
+import gg.jte.generated.precompiled.grant.JtenationGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
 import io.javalin.http.HttpStatus;
@@ -416,9 +417,6 @@ public class IndexPages extends PageHelper {
 
         String url = alliance.getUrl();
         Set<DBNation> nations = alliance.getNations();
-
-        // 1 view wars
-        // 2 view members
 
         return WebStore.render(f -> JteallianceindexGenerated.render(f, null, ws, db, guild, alliance, user));
     }
