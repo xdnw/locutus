@@ -39,9 +39,8 @@ import java.util.function.Predicate;
 
 public class TestCommands {
     @Command
-    public String test(SpreadSheet sheet) throws IOException {
-        sheet.updateClearFirstTab();
-        return "Done!";
+    public String test() throws IOException {
+        return "<https://www.google.com>";
     }
 
     @Command(desc = "Dummy command. No output")

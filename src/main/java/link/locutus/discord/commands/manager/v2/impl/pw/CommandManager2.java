@@ -173,6 +173,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("admin", "sync"), "saveMetrics", "saveMetrics");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_tier"), "metricByGroup", "metric_by_group");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_other", "data_csv"), "AlliancesDataByDay", "AlliancesDataByDay");

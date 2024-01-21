@@ -339,7 +339,10 @@ public class PlaceholdersMap {
         if (nationId != null) {
             return Set.of(DBNation.getOrCreate(nationId));
         }
-
+        if (input.contains("tax_id=")) {
+            int taxId = PnwUtil.parseTaxId(input);
+            return (Set) Locutus.imp().getNationDB().getNationsByBracket(taxId);
+        }
         if (input.charAt(0) == '~') input = input.substring(1);
         if (input.startsWith("coalition:")) input = input.substring("coalition:".length());
         if (input.startsWith("<@&") && db != null) {

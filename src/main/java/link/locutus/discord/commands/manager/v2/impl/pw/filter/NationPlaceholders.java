@@ -312,6 +312,9 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         } else if (MathMan.isInteger(nameLower)) {
             int id = Integer.parseInt(nameLower);
             return f -> f.getId() == id || f.getAlliance_id() == id;
+        } else if (nameLower.contains("tax_id=")) {
+            int taxId = PnwUtil.parseTaxId(name);
+            return f -> f.getTax_id() == taxId;
         }
 
         boolean containsAA = nameLower.contains("/alliance/");
