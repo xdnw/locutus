@@ -6,6 +6,7 @@ import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
+import gg.jte.generated.precompiled.JteindexGenerated;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -69,17 +70,7 @@ public class IndexPages extends PageHelper {
     @Command
     public Object index(WebStore ws, Context context) throws IOException {
         AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, false, false);
-        if (auth == null) {
-            return "Not logged in";
-        }
-        StringBuilder response = new StringBuilder();
-        response.append("Index page:\n");
-        response.append("User: ").append(auth.userId()).append("\n");
-        response.append("nation: ").append(auth.nationId()).append("\n");
-        response.append("Valid: ").append(auth.isValid()).append("\n");
-        Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
-        response.append("Guild: ").append(guild).append("\n");
-        return response.toString();
+        return WebStore.render(f -> JteindexGenerated.render(f, null, ws, DBNation.getById(227696)));
     }
 
     @Command
