@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.MethodParser;
@@ -18,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBNation;
@@ -25,7 +27,10 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.HtmlInput;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -34,7 +39,9 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -826,6 +833,24 @@ public abstract class Placeholders<T> extends BindingHelper {
         LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation, cache);
         return getFormatFunction(locals, arg, throwError);
     }
+
+//    public String registerWebBindings() {
+//        Key key = Key.of(TypeToken.getParameterized(TypedFunction.class, getType(), String.class).getType(), HtmlInput.class);
+//        addBinding(store -> {
+//            store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+//                Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
+//                ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+//                List<Member> options = new ArrayList<>(guild.getMembers());
+//
+//                return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.getEffectiveName(), t.getAsMention()), true);
+//            }));
+//        });
+//        List<Coalition> options = Arrays.asList(Coalition.values());
+//        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+//            names.add(obj.name());
+//            subtext.add(obj.getDescription());
+//        });
+//    }
 
     @Binding(value = "Format text containing placeholders")
     public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg) {

@@ -18,7 +18,6 @@
     </div>
 </nav>
 <script type="text/javascript">
-
 // Function to read cookie
 function readCookie(name) {
     var nameEQ = name + "=";
@@ -45,7 +44,6 @@ function setCookie(name, value, days) {
     }
     document.cookie = name + "=" + (value || "")  + expires + "; path=/";
 }
-
 // Set system preference if cookie (with saved preference) not present
 var systemColorMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 let cookieVal = readCookie("halfmoonColorMode");

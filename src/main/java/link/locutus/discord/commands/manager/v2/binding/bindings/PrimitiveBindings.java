@@ -8,16 +8,26 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.CustomSheet;
+import link.locutus.discord.db.entities.DBLoan;
+import link.locutus.discord.db.entities.LoanManager;
+import link.locutus.discord.db.entities.MessageTrigger;
+import link.locutus.discord.db.entities.SelectionAlias;
+import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.math.ScriptUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.commands.HtmlInput;
 
 import java.awt.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+
+import static link.locutus.discord.web.commands.binding.WebBindingHelper.multipleSelect;
 
 public class PrimitiveBindings extends BindingHelper {
 

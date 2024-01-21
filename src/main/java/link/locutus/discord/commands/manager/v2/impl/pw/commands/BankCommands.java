@@ -1909,6 +1909,8 @@ public class BankCommands {
                             response.append("Adding `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.add(totalExpire, tx.resources);
                             if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                        } else {
+                            System.out.println("Invalid sign " + sign);
                         }
                     }
                 }
@@ -3870,7 +3872,8 @@ public class BankCommands {
 
         if (root.isOffshore(true) && (offshoreDB == null || (offshoreDB == root))) {
             if (nation.getAlliance_id() != offshoreAlliance.getAlliance_id()) {
-                throw new IllegalArgumentException("You must be in the provided alliance: " + offshoreAlliance.getId() + " to set the new ALLIANCE_ID for this offshore");
+                GuildKey.ALLIANCE_ID.validate(root, Set.of(offshoreAlliance.getAlliance_id()));
+//                throw new IllegalArgumentException("You must be in the provided alliance: " + offshoreAlliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
 
             Set<Long> announceChannels = new HashSet<>();

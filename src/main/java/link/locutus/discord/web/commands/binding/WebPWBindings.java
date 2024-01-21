@@ -13,7 +13,9 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
+import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.ReportPerms;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -29,15 +31,18 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
+import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.imps.ProviderType;
@@ -51,11 +56,13 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.json.CityBuild;
+import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
@@ -76,6 +83,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.web.WebUtil.createInput;
 import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
@@ -89,6 +97,89 @@ public class WebPWBindings extends WebBindingHelper {
     /*
     --------------------------------------------------------------------
      */
+//Missing: Key{type=java.util.Set<link.locutus.discord.apiv1.enums.NationColor>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types = {Set.class, NationColor.class})
+    public String NationColorSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(NationColor.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+    @HtmlInput
+    @Binding(types = {Set.class, ResourceType.class})
+    public String ResourceTypeSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(ResourceType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+    @HtmlInput
+    @Binding(types = {Set.class, SuccessType.class})
+    public String SuccessTypeSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(SuccessType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+    @HtmlInput
+    @Binding(types = {Set.class, TreatyType.class})
+    public String TreatyTypeSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(TreatyType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+    @HtmlInput
+    @Binding(types = {Set.class, GuildSetting.class})
+    public String GuildSettingSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(GuildKey.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+    @HtmlInput
+    @Binding(types = {Set.class, AutoAuditType.class})
+    public String AutoAuditTypeSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(AutoAuditType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+
+
+    @HtmlInput
+    @Binding(types = CustomSheet.class)
+    public String CustomSheet(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
+        Set<String> keys = manager.getCustomSheets().keySet();
+        return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s, s));
+    }
+
+    @HtmlInput
+    @Binding(types = DBLoan.class)
+    public String DBLoan(@Me GuildDB db, LoanManager manager, @Default ParameterData param) {
+        List<DBLoan> keys = manager.getLoansByGuildDB(db);
+        return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s.toString(), s.loanId + ""));
+    }
+
+    @HtmlInput
+    @Binding(types = MessageTrigger.class)
+    public String MessageTrigger(@Default ParameterData param) {
+        MessageTrigger[] options = MessageTrigger.values();
+        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+    }
+
+    @HtmlInput
+    @Binding(types = SelectionAlias.class)
+    public String SelectionAlias(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
+        Set<String> keys = manager.getSelectionAliasNames();
+        return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s, s));
+    }
+
+    @HtmlInput
+    @Binding(types = SheetTemplate.class)
+    public String SheetTemplate(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
+        Set<String> options = manager.getSheetTemplates(new ArrayList<>()).keySet();
+        return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s, s));
+    }
+
+    @HtmlInput
+    @Binding(types = TemplateTypes.class)
+    public String TemplateTypes(@Default ParameterData param) {
+        TemplateTypes[] options = TemplateTypes.values();
+        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+    }
+
+    @HtmlInput
+    @PlaceholderType
+    @Binding(types = {Class.class})
+    public String clazz(ParameterData param) {
+        Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
+        List<String> options = types.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
+        return multipleSelect(param, options, f -> Map.entry(f, f));
+    }
 
     @HtmlInput
     @Binding(types = DBLoan.class)
@@ -284,6 +375,12 @@ public class WebPWBindings extends WebBindingHelper {
     }
     @HtmlInput
     @Binding(types= NationOrAllianceOrGuild.class)
+    public String nationOrAllianceOrGuild(@Me User user, @Me GuildDB db, ParameterData param) {
+        return nationOrAllianceOrGuildOrTaxid(user, db, param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= NationOrAllianceOrGuildOrTaxid.class)
     public String nationOrAllianceOrGuildOrTaxid(@Me User user, @Me GuildDB db, ParameterData param) {
         return nationOrAllianceOrGuildOrTaxid(user, db, param, true);
     }
@@ -415,7 +512,6 @@ public class WebPWBindings extends WebBindingHelper {
             }
             subtext.add(sub);
         }, true);
-
     }
 
     public WebPWBindings() {

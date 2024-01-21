@@ -299,10 +299,10 @@ public class DBCity {
         if (previous == null) {
             if (eventConsumer != null) {
                 DBNation nation = DBNation.getById(nationId);
-                if (nation != null && nation.active_m() > 4880) {
-                    new Exception().printStackTrace();
-                    AlertUtil.error("Invalid city create", "city for " + nationId + " | " + this);
-                }
+//                if (nation != null && nation.active_m() > 4880) {
+//                    new Exception().printStackTrace();
+////                    AlertUtil.error("Invalid city create", "city for " + nationId + " | " + this);
+//                }
                 if (this.created > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
                     Locutus.imp().getNationDB().setNationActive(nationId, this.created, eventConsumer);
                     eventConsumer.accept(new CityCreateEvent(nationId, this));

@@ -37,6 +37,8 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -237,6 +239,13 @@ public class DiscordWebBindings extends WebBindingHelper {
                 subtext.add("");
             }
         });
+    }
+
+    @HtmlInput
+    @Binding(types = Font.class)
+    public String Font(@Default ParameterData param) {
+        String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        return multipleSelect(param, Arrays.asList(fonts), f -> new AbstractMap.SimpleEntry<>(f, f));
     }
 
     @HtmlInput

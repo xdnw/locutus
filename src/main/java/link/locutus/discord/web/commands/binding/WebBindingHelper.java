@@ -16,7 +16,7 @@ import java.util.UUID;
 import java.util.function.Function;
 
 public class WebBindingHelper extends BindingHelper {
-    public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue) {
+    public static <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue) {
         return multipleSelect(param, objects, toNameValue, false);
     }
 
@@ -26,7 +26,7 @@ public class WebBindingHelper extends BindingHelper {
         return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.toString(), t.toString()), true);
     }
 
-    public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue, boolean multiple) {
+    public static <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue, boolean multiple) {
         if (true) {
             return WebUtil.generateSearchableDropdown(param, objects, new QuadConsumer<T, JsonArray, JsonArray, JsonArray>() {
                 @Override
