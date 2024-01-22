@@ -42,7 +42,7 @@ public class TestCommands {
     public String test() throws IOException {
         return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
                 "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
-                "- " + CM.fun.borg.cmd.toSlashCommand(true);
+                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
     }
 
     @Command(desc = "Dummy command. No output")

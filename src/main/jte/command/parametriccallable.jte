@@ -22,4 +22,43 @@
 ${form}
 <div style="width:100%;height:80%;margin-top:10px" id="output" class=""></div>
 </div>
+@raw
+<script>
+        // Parse the query string
+let params = new URLSearchParams(window.location.search);
+
+// Iterate over each key-value pair
+for(let pair of params.entries()) {
+    let key = pair[0];
+    let value = pair[1];
+
+    // Find the corresponding input element in the form
+    let input = document.querySelector(`#command-form [name="${key}"]`);
+
+    // Check if the input element exists
+    if(input) {
+        // Check the type of the input element
+        if(input.type === 'checkbox') {
+            // Set the checked property
+            input.checked = (value.toLowerCase() === 'true');
+        } else if(input.type === 'select-multiple') {
+            // Split the value and set the selected options
+            let values = value.split(',');
+            for(let option of input.options) {
+                option.selected = values.includes(option.value);
+            }
+        } else if(input.type === 'select-one') {
+            // Set the value
+            input.value = value;
+        } else if(input.type === 'text') {
+            // Set the value
+            input.value = value;
+        }
+    } else {
+        // Print the key-value pair if no matching input element is found
+        console.log(`No matching input for key: ${key}, value: ${value}`);
+    }
+}
+</script>
+@endraw
 `, navbar = null)

@@ -4,6 +4,7 @@ import com.overzealous.remark.Remark;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -43,8 +44,9 @@ public class MarkupUtil {
             CommandCallable cmd = Locutus.cmd().getV2().getCommands().getCallable(split, true);
             if (cmd != null) {
                 String url = WebRoot.REDIRECT + "/command/" + cmd.getFullPath("/");
-                if (!split.isEmpty() && cmd instanceof ParametricCallable param) {
-                    Map<String, String> args = param.formatArgumentsToMap(WebRoot.getInstance().getPageHandler().getStore(), split);
+                String remaining = found.substring(cmd.getFullPath().length()).trim();
+                if (!remaining.isEmpty() && cmd instanceof ParametricCallable param) {
+                    Map<String, String> args = CommandManager2.parseArguments(param.getUserParameterMap().keySet(), remaining, false);
                     List<BasicNameValuePair> pairs = args.entrySet().stream().map(entry -> new BasicNameValuePair(entry.getKey(), entry.getValue())).toList();
                     url += "?" + URLEncodedUtils.format(pairs, "UTF-8");
                 }

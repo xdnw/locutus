@@ -69,7 +69,7 @@ var usernames = $unsafe{usersJson.toString()};
 var messages = $unsafe{messagesJson.toString()};
 var guildId = "${db.getIdLong()}";
 var avatarUrl = "${String.format(User.AVATAR_URL, "{0}", "{1}", "{2}")}";
-
+@raw
 function getAvatarUrl(userId, avatarId) {
     return avatarUrl.format(userId, avatarId, avatarId.startsWith("a_") ? "gif" : "png");
 }
@@ -84,29 +84,30 @@ function msgTemplate(channelId, messageEntry) {
     var avatar = getAvatarUrl(userId, avatarId);
     var username = usernames[userId];
 
-    return ${"&#96;"}<div class="card mb-4">
+    return `<div class="card mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between">
                 <div class="d-flex flex-row align-items-center">
                     <img
-                            src="${"${avatar}"}"
+                            src="${avatar}"
                             alt="avatar"
                             width="25"
                             height="25"
                     />
-                    <p class="small mb-0 ms-2 me-2">${"${username}"}</p>
+                    <p class="small mb-0 ms-2 me-2">${username}</p>
                     <i class="bi bi-dot"></i>
-                    <p class="small text-muted mb-0 ms-2 format-date">${"${dateStr}"}</p>
+                    <p class="small text-muted mb-0 ms-2 format-date">${dateStr}</p>
 
                 </div>
                 <div class="d-flex flex-row align-items-center">
-                    <p class="small text-muted mb-0"><a href="discord://discord.com/channels/${"${guildId}/${channelId}/${messageId}"}"><kbd>Jump</kbd></a></p>
+                    <p class="small text-muted mb-0"><a href="discord://discord.com/channels/${guildId}/${channelId}/${messageId}"><kbd>Jump</kbd></a></p>
                 </div>
             </div>
-            <p>${"${message}"}</p>
+            <p>${message}</p>
         </div>
-    </div>${"&#96;"}
+    </div>`
 }
+@endraw
 </script>
 
 <div id="test">
