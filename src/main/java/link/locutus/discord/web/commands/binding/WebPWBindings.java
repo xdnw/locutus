@@ -431,12 +431,6 @@ public class WebPWBindings extends WebBindingHelper {
 
 
     @HtmlInput
-    @Binding(types= NationOrAllianceOrGuild.class)
-    public String nationOrAllianceOrGuild(@Me User user, ParameterData param) {
-        return nationOrAllianceOrGuildOrTaxid(user, null, param, false);
-    }
-
-    @HtmlInput
     @Binding(types= TaxRate.class)
     public String taxRate(ParameterData param) {
         String pattern = "[0-9]{1,2}/[0-9]{1,2}";
@@ -552,7 +546,7 @@ public class WebPWBindings extends WebBindingHelper {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                     User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
-                    return nationOrAllianceOrGuild(user, param);
+                    return nationOrAllianceOrGuild(user, null, param);
                 }));
             });
         }

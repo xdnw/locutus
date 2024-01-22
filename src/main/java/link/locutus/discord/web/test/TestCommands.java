@@ -40,7 +40,9 @@ import java.util.function.Predicate;
 public class TestCommands {
     @Command
     public String test() throws IOException {
-        return "<https://www.google.com>";
+        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
+                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
+                "- " + CM.fun.borg.cmd.toSlashCommand(true);
     }
 
     @Command(desc = "Dummy command. No output")

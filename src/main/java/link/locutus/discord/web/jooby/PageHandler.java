@@ -107,8 +107,8 @@ public class PageHandler implements Handler {
 
         new DiscordWebBindings().register(store);
         new JavalinBindings().register(store);
-        new PrimitiveWebBindings().register(store);
         new WebPWBindings().register(store);
+        new PrimitiveWebBindings().register(store);
 
         new AuthBindings().register(store);
 
@@ -258,7 +258,7 @@ public class PageHandler implements Handler {
                     Object[] parsed = parametric.parseArgumentMap(fullCmdStr, stack);
                     Object result = parametric.call(null, stack.getStore(), parsed);
                     if (result != null) {
-                        String formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
+                        String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim());
                         if (!formatted.isEmpty()) {
                             sseMessage(sse, formatted, true);
                         }

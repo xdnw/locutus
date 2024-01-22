@@ -54,7 +54,7 @@ public class PrimitiveBindings extends BindingHelper {
      * @return the requested type
      * @throws IllegalArgumentException on error
      */
-    @Binding(examples = {"true", "false"}, types = {boolean.class})
+    @Binding(examples = {"true", "false"}, types = {boolean.class,Boolean.class})
     public static Boolean Boolean(String argument) {
         return switch (argument.toLowerCase(Locale.ROOT)) {
             case "" -> null;
@@ -105,12 +105,12 @@ public class PrimitiveBindings extends BindingHelper {
      * @return a number
      * @throws IllegalArgumentException thrown on parse error
      */
-    @Binding(types = {double.class}, examples = {"3.0", "3*4.5-6/2", "50.3m"}, value = "A decimal number")
+    @Binding(types = {double.class,Double.class}, examples = {"3.0", "3*4.5-6/2", "50.3m"}, value = "A decimal number")
     public static Double Double(String input) {
         return Number(input).doubleValue();
     }
 
-    @Binding(types = {int.class}, examples = {"3", "3*4-6/2", "50.3m"}, value = "A whole number")
+    @Binding(types = {int.class,Integer.class}, examples = {"3", "3*4-6/2", "50.3m"}, value = "A whole number")
     public static Integer Integer(String input) {
         return Number(input).intValue();
     }
@@ -149,7 +149,7 @@ public class PrimitiveBindings extends BindingHelper {
         }
     }
 
-    @Binding(types = {long.class}, examples = {"3", "3*4-6/2", "50.3k"}, value = "A whole number")
+    @Binding(types = {long.class,Long.class}, examples = {"3", "3*4-6/2", "50.3k"}, value = "A whole number")
     public static Long Long(String input) {
         try {
             return Long.parseLong(input);
@@ -212,13 +212,13 @@ public class PrimitiveBindings extends BindingHelper {
     }
 
     @Timediff
-    @Binding(types = {long.class}, examples = {"5d", "1w10h3m25s", "timestamp:1682013943000"}, value = "A time difference or unix timestamp which will resolve as a difference relative to the current date")
+    @Binding(types = {long.class,Long.class}, examples = {"5d", "1w10h3m25s", "timestamp:1682013943000"}, value = "A time difference or unix timestamp which will resolve as a difference relative to the current date")
     public static Long timediff(String argument) {
         return TimeUtil.timeToSec(argument) * 1000;
     }
 
     @Timestamp
-    @Binding(types={long.class}, examples = {"5d", "1w10h3m25s", "dd/MM/yyyy", "timestamp:1682013943000"}, value = "A unix timestamp, a DMY date or a time difference that will resolve to a timestamp from the current date")
+    @Binding(types={long.class,Long.class}, examples = {"5d", "1w10h3m25s", "dd/MM/yyyy", "timestamp:1682013943000"}, value = "A unix timestamp, a DMY date or a time difference that will resolve to a timestamp from the current date")
     public static Long timestamp(String argument) throws ParseException {
         if (argument.equalsIgnoreCase("%epoch%")) {
             return 0L;

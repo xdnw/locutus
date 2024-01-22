@@ -9,8 +9,9 @@ toRGB = (hex, reversed, integer) => {
 
 function markup(txt, opts) {
     txt = txt
-        .replace(/\&#60;:[^:]+:(\d+)\&#62;/g, '<img class="emoji" src="https://cdn.discordapp.com/emojis/$1.png"/>')
-        .replace(/\&#60;a:[^:]+:(\d+)\&#62;/g, '<img class="emoji" src="https://cdn.discordapp.com/emojis/$1.gif"/>')
+        .replace(/&#60;(https?:\/\/[^"<>]+?)&#62;/g, `<a href="$1">$1</a>`)
+        .replace(/\&#60;:[^:"<>]+:(\d+)\&#62;/g, '<img class="emoji" src="https://cdn.discordapp.com/emojis/$1.png"/>')
+        .replace(/\&#60;a:[^:"<>]+:(\d+)\&#62;/g, '<img class="emoji" src="https://cdn.discordapp.com/emojis/$1.gif"/>')
         .replace(/~~(.+?)~~/g, '<s>$1</s>')
         .replace(/\*\*\*(.+?)\*\*\*/g, '<em><strong>$1</strong></em>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -72,26 +73,6 @@ function createEmbed(elemRoot, json, author, avatar, outDiv) {
 		}
 		return true;
 	};
-//	let markup = (txt, opts) => {
-//            txt = txt
-//                .replace(/\&#60;:[^:]+:(\d+)\&#62;/g, '<img class="emoji" src="https://cdn.discordapp.com/emojis/$1.png"/>')
-//                .replace(/\&#60;a:[^:]+:(\d+)\&#62;/g, '<img class="emoji" src="https://cdn.discordapp.com/emojis/$1.gif"/>')
-//                .replace(/~~(.+?)~~/g, '<s>$1</s>')
-//                .replace(/\*\*\*(.+?)\*\*\*/g, '<em><strong>$1</strong></em>')
-//                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-//                .replace(/__(.+?)__/g, '<u>$1</u>')
-//                .replace(/\*(.+?)\*/g, '<em>$1</em>')
-//                .replace(/_(.+?)_/g, '<em>$1</em>')
-//            txt = txt.replace(/\`([^\`]+?)\`|\`\`([^\`]+?)\`\`|\`\`\`((?:\n|.)+?)\`\`\`/g, (m, x, y, z) => x ? `<code class="inline">${x}</code>` : y ? `<code class="inline">${y}</code>` : z ? `<code class="inline">${z}</code>` : m);
-//            txt = txt.replace(/\`\`\`(\w{1,15})?\n((?:\n|.)+?)\`\`\`|\`\`(.+?)\`\`(?!\`)|\`([^\`]+?)\`/g, (m, w, x, y, z) => w && x ? `<pre><code class="${w}">${x}</code></pre>` : x ? `<pre><code class="hljs nohighlight">${x}</code></pre>` : y || z ? `<code class="inline">${y || z}</code>` : m);
-//            txt = txt.replace(/\[([^\[\]]+)\]\((.+?)\)/g, `<a title="$1" target="_blank" class="anchor" href="$2">$1</a>`);
-//            if (opts.replaceEmojis) txt = txt.replace(/(?<!code(?: \w+=".+")?>[^>]+)(?<!\/[^\s"]+?):((?!\/)\w+):/g, (match, x) => x && emojis[x] ? emojis[x] : match);
-//            txt = txt
-//                .replace(/(?<=\n|^)\s*&#62;\s+([^\n]+)/g, '<div class="blockquote"><div class="blockquoteDivider"></div><blockquote>$1</blockquote></div>')
-//                .replace(/\n/g, '<br>');
-//            return txt;
-//        };
-		
 	let encodeHTML = str => str.replace(/[\u00A0-\u9999<>\&]/g, i => '&#' + i.charCodeAt(0) + ';');
 	let tstamp = stringISO => {
 		let date = stringISO ? new Date(stringISO) : new Date(),

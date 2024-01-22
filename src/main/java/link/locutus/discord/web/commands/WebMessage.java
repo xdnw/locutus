@@ -89,18 +89,19 @@ public class WebMessage implements IMessageBuilder {
 
     @Override
     public IMessageBuilder embed(String title, String body) {
-        return embed(title, body, null);
+        return embed(title, MarkupUtil.formatDiscordMarkdown(body), null);
     }
 
     @Override
     public IMessageBuilder embed(String title, String body, String footer) {
-        embeds.add(new EmbedBuilder().setTitle(title).appendDescription(body).setFooter(footer).build());
+        embeds.add(new EmbedBuilder().setTitle(title).appendDescription(MarkupUtil.formatDiscordMarkdown(body)).setFooter(footer).build());
         return this;
     }
 
     @Override
     public IMessageBuilder embed(MessageEmbed embed) {
-        this.embeds.add(embed);
+        MessageEmbed newEmbed = new EmbedBuilder(embed).setDescription(MarkupUtil.formatDiscordMarkdown(embed.getDescription())).build();
+        this.embeds.add(newEmbed);
         return this;
     }
 
@@ -220,8 +221,8 @@ public class WebMessage implements IMessageBuilder {
 
     public DataObject build() {
         DataObject obj = DataObject.empty();
-        if (this.content.length() != 0) {
-            obj.put("content", MarkupUtil.transformURLIntoMarkup(content.toString()));
+        if (!this.content.isEmpty()) {
+            obj.put("content", MarkupUtil.formatDiscordMarkdown(content.toString()));
         }
         if (!this.embeds.isEmpty()) {
             if (this.embeds.size() == 1) {

@@ -25,9 +25,7 @@
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="/css/command.css">
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="/css/embed.css">
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="https://github.com/xdnw/locutus/raw/master/src/main/resources/css/datatables.css">
-
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="https://cdn.jsdelivr.net/npm/uplot@1.6.28/dist/uPlot.min.css">
-
     <%--    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.4.4/umd/popper.js"></script>--%>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -45,7 +43,6 @@
     <script src="/js/colorutil.js"></script>
     <script src="/js/pnwtimechart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<%--    <link rel="stylesheet"  media="print" onload="this.media='all'" href="https://cdn.rawgit.com/afeld/bootstrap-toc/v0.3.0/dist/bootstrap-toc.min.css">--%>
 </head>
 <body class="ps-md-sbwidth">
 @template.navbar(ws = ws)

@@ -185,12 +185,6 @@ function createEventSourceWithLoading(domain, outDiv, inputDiv, inputReplacement
 
                 return;
             }
-
-            console.log(json);
-            console.log(json["content"]);
-            console.log($.parseHTML(json["content"]));
-//            var output = "<div class='alert alert-success'><b>[" + new Date().toLocaleTimeString() + "]: " + JSON.stringify(args) +":</b><br>" + json["content"] + "</div>";
-
             var embed = null;
             if (json.id) {
                 var existing = document.getElementById(json.id);
