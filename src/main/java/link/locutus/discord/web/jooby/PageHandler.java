@@ -221,10 +221,11 @@ public class PageHandler implements Handler {
     public void sse(SseClient2 sse) {
         try {
             Context ctx = sse.ctx;
-            WebIO io = new WebIO(sse);
-
             Map<String, List<String>> queryMap = sse.ctx.queryParamMap();
+
             List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
+            WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null, false));
+
             if (cmds.isEmpty()) {
                 ArgumentStack stack = createStack(ctx);
                 String path = stack.consumeNext();
@@ -258,7 +259,7 @@ public class PageHandler implements Handler {
                     Object[] parsed = parametric.parseArgumentMap(fullCmdStr, stack);
                     Object result = parametric.call(null, stack.getStore(), parsed);
                     if (result != null) {
-                        String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim());
+                        String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
                         if (!formatted.isEmpty()) {
                             sseMessage(sse, formatted, true);
                         }

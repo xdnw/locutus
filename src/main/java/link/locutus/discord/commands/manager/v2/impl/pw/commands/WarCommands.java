@@ -1748,7 +1748,7 @@ public class WarCommands {
             if (nation.getAircraft() == 0) opTypesList.remove(SpyCount.Operation.AIRCRAFT);
             if (nation.getShips() == 0) opTypesList.remove(SpyCount.Operation.SHIPS);
 
-            int maxMissile = nation.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
+            int maxMissile = nation.hasProject(Projects.SPACE_PROGRAM) ? 3 : 2;
             if (opTypesList.contains(SpyCount.Operation.MISSILE) && nation.getMissiles() == maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.MISSILE);
@@ -3961,7 +3961,7 @@ public class WarCommands {
         if (nation.getMissiles() > 0 || nation.getNukes() > 0) {
             long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
-            int maxMissile = nation.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
             if (nation.getMissiles() == maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) {

@@ -1017,7 +1017,8 @@ public class UnsortedCommands {
 
 //    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
 
-    @Command(desc = "Get the revenue of a city or build json")
+    @Command(desc = "Get the revenue of a city or build json\n" +
+            "Accepts `land` and `age` as json attributes")
     public String cityRevenue(@Me Guild guild, @Me IMessageIO channel, @Me User user,
                               @Arg("The city url or build json")
                               CityBuild city,
@@ -1025,8 +1026,25 @@ public class UnsortedCommands {
                                         "i.e. Projects, radiation, continent")
                               @Default("%user%") DBNation nation,
                               @Arg("Exclude the new nation bonus")
-                              @Switch("b") boolean excludeNationBonus) throws Exception {
+                              @Switch("b") boolean excludeNationBonus,
+                              @Switch("l") Double land,
+                              @Switch("a") Integer age) throws Exception {
         if (nation == null) return "Please use " + CM.register.cmd.toSlashMention();
+        List<String> errors = new ArrayList<>();
+        if (land != null) {
+            city = new CityBuild(city);
+            city.setLand(land);
+        }
+        if (age != null) {
+            city = new CityBuild(city);
+            city.setAge(age);
+        }
+        if (city.getLand() == null || city.getLand() == 0) {
+            errors.add("Add a `land` key to the json to specify city land amount");
+        }
+        if (city.getAge() == null || city.getAge() == 0) {
+            errors.add("Add a `age` key to the json to specify city age");
+        }
         JavaCity jCity = new JavaCity(city);
 
         double[] revenue = PnwUtil.getRevenue(null, 12, nation, Collections.singleton(jCity), false, false, !excludeNationBonus, false, false, nation.getTreasureBonusPct());
@@ -1056,7 +1074,9 @@ public class UnsortedCommands {
         if (jCity.getNukeTurn() > nukeCutoff) {
             msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - TimeUtil.getTimeFromTurn(jCity.getNukeTurn())) + " ago");
         }
-
+        if (!errors.isEmpty()) {
+            msg.append("\n- " + StringMan.join(errors, "\n- "));
+        }
         msg.send();
         return null;
     }

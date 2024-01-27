@@ -30,6 +30,7 @@ build/*
 build/generated-src/views
 !build/generated-src/
 
+/files/
 /data/
 database/
 database2/

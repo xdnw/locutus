@@ -24,41 +24,49 @@ ${form}
 </div>
 @raw
 <script>
-        // Parse the query string
-let params = new URLSearchParams(window.location.search);
-
-// Iterate over each key-value pair
-for(let pair of params.entries()) {
-    let key = pair[0];
-    let value = pair[1];
-
-    // Find the corresponding input element in the form
-    let input = document.querySelector(`#command-form [name="${key}"]`);
-
-    // Check if the input element exists
-    if(input) {
-        // Check the type of the input element
-        if(input.type === 'checkbox') {
-            // Set the checked property
-            input.checked = (value.toLowerCase() === 'true');
-        } else if(input.type === 'select-multiple') {
-            // Split the value and set the selected options
-            let values = value.split(',');
-            for(let option of input.options) {
-                option.selected = values.includes(option.value);
+function initForm2() {
+    let params = new URLSearchParams(window.location.search);
+    let form = document.querySelector('#command-form');
+    let inputs = form.elements;
+    let inputMap = {};
+    for(let i = 0; i < inputs.length; i++) {
+        inputMap[inputs[i].name.toLowerCase()] = inputs[i];
+    }
+    for(let pair of params.entries()) {
+        let key = pair[0].toLowerCase();
+        let value = pair[1];
+        let input = inputMap[key];
+        if(input) {
+            // Check the type of the input element
+            if(input.type === 'checkbox' || input.type === 'radio') {
+                let val = (value.toLowerCase() === 'true');
+                input.checked = val;
+                input.previousSibling.checked=val;
+                input.previousSibling.value=val?1:0;
+            } else if(input.tagName.toLowerCase() === 'select') {
+                if (input.parentElement.classList.contains('bootstrap-select')) {
+                    $(input).selectpicker('val', input.multiple ? value.split(',') : value);
+                }
+                if(input.multiple) {
+                    let values = value.split(',');
+                    for(let option of input.options) {
+                        option.selected = values.includes(option.value) || values.includes(option.innerHTML);
+                    }
+                }
+                input.value = value;
+            } else if(['number', 'color', 'date', 'textarea', 'text'].includes(input.type)) {
+                input.value = value;
+            } else {
+                console.log(`Input type ${input.type} is not supported`);
             }
-        } else if(input.type === 'select-one') {
-            // Set the value
-            input.value = value;
-        } else if(input.type === 'text') {
-            // Set the value
-            input.value = value;
+        } else {
+            console.log(`No matching input for key: ${key}, value: ${value}`);
         }
-    } else {
-        // Print the key-value pair if no matching input element is found
-        console.log(`No matching input for key: ${key}, value: ${value}`);
     }
 }
+$( document ).ready(function() {
+    initForm2();
+});
 </script>
 @endraw
 `, navbar = null)

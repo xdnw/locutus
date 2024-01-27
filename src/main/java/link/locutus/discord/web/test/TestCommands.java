@@ -39,10 +39,12 @@ import java.util.function.Predicate;
 
 public class TestCommands {
     @Command
-    public String test() throws IOException {
-        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
-                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
-                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
+    public String test(@Me IMessageIO io) throws IOException {
+        io.create().embed("Title", "Body goes here").commandButton(CM.fun.say.cmd.create("Hello World"), "test").file("test.txt", "hello world 2").send();
+//        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
+//                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
+//                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
+        return null;
     }
 
     @Command(desc = "Dummy command. No output")

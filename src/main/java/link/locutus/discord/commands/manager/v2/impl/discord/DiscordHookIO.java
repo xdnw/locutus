@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -37,6 +38,21 @@ public class DiscordHookIO implements IMessageIO {
     public DiscordHookIO(InteractionHook hook, IModalCallback modalCallback) {
         this.hook = hook;
         this.modalCallback = modalCallback;
+    }
+
+    @Override
+    public Guild getGuildOrNull() {
+        if (hook != null) {
+            Interaction interaction = hook.getInteraction();
+            if (interaction != null && interaction.isFromGuild()) return interaction.getGuild();
+        }
+        if (modalCallback != null && modalCallback.isFromGuild()) {
+            return modalCallback.getGuild();
+        }
+        if (event != null && event.isFromGuild()) {
+            return event.getGuild();
+        }
+        return null;
     }
 
     public InteractionHook getHook() {

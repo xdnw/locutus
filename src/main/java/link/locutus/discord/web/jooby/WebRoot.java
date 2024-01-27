@@ -117,16 +117,23 @@ public class WebRoot {
                 config.staticFiles.add(new Consumer<StaticFileConfig>() {
                     @Override
                     public void accept(StaticFileConfig staticFiles) {
-                        staticFiles.hostedPath = entry.getValue();                   // change to host files on a subpath, like '/assets'
-                        staticFiles.directory = entry.getKey();              // the directory where your files are located
-                        staticFiles.location = Location.CLASSPATH;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
-                        staticFiles.precompress = true;                // if the files should be pre-compressed and cached in memory (optimization)
+                        staticFiles.hostedPath = entry.getValue();
+                        staticFiles.directory = entry.getKey();
+                        staticFiles.location = Location.CLASSPATH;
+                        staticFiles.precompress = true;
                     }
                 });
             }
+            new File("/files").mkdirs();
+            config.staticFiles.add(new Consumer<StaticFileConfig>() {
+                @Override
+                public void accept(StaticFileConfig staticFiles) {
+                    staticFiles.hostedPath = "/files";
+                    staticFiles.directory = "files";
+                    staticFiles.location = Location.EXTERNAL;
+                }
+            });
         }).start(port);
-
-
 
         System.out.println("Started on port " + port);
 
@@ -226,8 +233,6 @@ public class WebRoot {
         this.app.get("/", ctx -> {
             pageHandler.handle(ctx);
         });
-
-//        get("/favicon.ico", ctx -> null);
     }
 
     public Javalin getApp() {

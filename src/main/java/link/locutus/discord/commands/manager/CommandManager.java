@@ -508,8 +508,7 @@ public class CommandManager {
                         if (db != null) {
                             assert value != null;
                             double converted = PnwUtil.convertedTotal(value.getValue());
-                            double pct = attacker == null ? 0.10 : attacker.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
-                            if (nation.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) pct *= 0.6;
+                            double pct = 0.1 * (1 + (attacker.looterModifier(false) - 1) + (nation.lootModifier() - 1));
                             channel.sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct));
                         }
                     }

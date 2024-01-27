@@ -2,12 +2,17 @@ package link.locutus.discord.util;
 
 import com.overzealous.remark.Remark;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.external.guild.KeyStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -35,6 +40,10 @@ public class MarkupUtil {
 
     private static final Pattern QUOTED_COMMAND = Pattern.compile("`/([^`]+?)`");
     private static final Pattern MENTIONED_COMMAND = Pattern.compile("</([^>0-9:]+?):[0-9]{11,21}>");
+    private static final Pattern MENTIONED_ROLE = Pattern.compile("<@&([0-9]{11,21})>");
+    private static final Pattern MENTIONED_CHANNEL = Pattern.compile("<#([0-9]{11,21})>");
+    private static final Pattern MENTIONED_USER = Pattern.compile("<@!?([0-9]{11,21})>");
+
     public static String formatQuotedCommands(String input) {
         Matcher m = QUOTED_COMMAND.matcher(input);
         StringBuffer sb = new StringBuffer();
@@ -78,9 +87,61 @@ public class MarkupUtil {
         return sb.toString();
     }
 
-    public static String formatDiscordMarkdown(String input) {
+    public static String formatMentionedRoles(String input, Guild guild) {
+        Matcher m = MENTIONED_ROLE.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            Role role = guild.getRoleById(id);
+            if (role != null) {
+                m.appendReplacement(sb, role.toString());
+            } else {
+                m.appendReplacement(sb, "@" + found);
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String formatMentionedChannels(String input, Guild guild) {
+        Matcher m = MENTIONED_CHANNEL.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            TextChannel channel = guild.getTextChannelById(id);
+            if (channel != null) {
+                m.appendReplacement(sb, markdownUrl("#" + channel.getName(), channel.getJumpUrl()));
+            } else {
+                m.appendReplacement(sb, "#" + found);
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String formatMentionedUsers(String input) {
+        Matcher m = MENTIONED_USER.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            String name = DiscordUtil.getUserName(id);
+            String url = DiscordUtil.userUrl(id, false);
+            m.appendReplacement(sb, markdownUrl(name, url));
+        }
+        m.appendTail(sb);
+        return sb.toString(); }
+
+    public static String formatDiscordMarkdown(String input, Guild guild) {
         input = formatQuotedCommands(input);
         input = formatMentionedCommands(input);
+        input = formatMentionedUsers(input);
+        if (guild != null) {
+            input = formatMentionedRoles(input, guild);
+            input = formatMentionedChannels(input, guild);
+        }
         return input;
     }
 

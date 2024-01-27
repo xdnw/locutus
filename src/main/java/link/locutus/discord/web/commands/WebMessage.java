@@ -89,18 +89,18 @@ public class WebMessage implements IMessageBuilder {
 
     @Override
     public IMessageBuilder embed(String title, String body) {
-        return embed(title, MarkupUtil.formatDiscordMarkdown(body), null);
+        return embed(title, MarkupUtil.formatDiscordMarkdown(body, parent.getGuildOrNull()), null);
     }
 
     @Override
     public IMessageBuilder embed(String title, String body, String footer) {
-        embeds.add(new EmbedBuilder().setTitle(title).appendDescription(MarkupUtil.formatDiscordMarkdown(body)).setFooter(footer).build());
+        embeds.add(new EmbedBuilder().setTitle(title).appendDescription(MarkupUtil.formatDiscordMarkdown(body, parent.getGuildOrNull())).setFooter(footer).build());
         return this;
     }
 
     @Override
     public IMessageBuilder embed(MessageEmbed embed) {
-        MessageEmbed newEmbed = new EmbedBuilder(embed).setDescription(MarkupUtil.formatDiscordMarkdown(embed.getDescription())).build();
+        MessageEmbed newEmbed = new EmbedBuilder(embed).setDescription(MarkupUtil.formatDiscordMarkdown(embed.getDescription(), parent.getGuildOrNull())).build();
         this.embeds.add(newEmbed);
         return this;
     }
@@ -208,6 +208,7 @@ public class WebMessage implements IMessageBuilder {
                 try {
                     String fileId = UUID.randomUUID().toString();
                     File file = new File(WebRoot.getInstance().getFileRoot(), fileId);
+                    file.getParentFile().mkdirs();
                     Files.write(file.toPath(), bytes);
                     files.add(new AbstractMap.SimpleEntry<>(filename, file));
                     file.deleteOnExit();
@@ -222,7 +223,7 @@ public class WebMessage implements IMessageBuilder {
     public DataObject build() {
         DataObject obj = DataObject.empty();
         if (!this.content.isEmpty()) {
-            obj.put("content", MarkupUtil.formatDiscordMarkdown(content.toString()));
+            obj.put("content", MarkupUtil.formatDiscordMarkdown(content.toString(), parent.getGuildOrNull()));
         }
         if (!this.embeds.isEmpty()) {
             if (this.embeds.size() == 1) {
@@ -234,6 +235,7 @@ public class WebMessage implements IMessageBuilder {
         }
         if (!attachments.isEmpty()) {
             Map<String, String> urlFileNames = getUrlFileNames();
+            System.out.println("Add files " + urlFileNames);
             if (!urlFileNames.isEmpty()) {
                 obj.put("files", urlFileNames);
             }

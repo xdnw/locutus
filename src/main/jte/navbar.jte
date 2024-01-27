@@ -29,7 +29,7 @@
                 </form>
             </div>
             <div class="col-auto p-0 ps-1">
-                <a class="btn btn btn-danger fw-bold" href="${WebRoot.REDIRECT}/logout" aria-label="logout"><i class="bi bi-box-arrow-left"></i></a>
+                @template.dropdown(ws = ws)
             </div>
         </div>
     </div>

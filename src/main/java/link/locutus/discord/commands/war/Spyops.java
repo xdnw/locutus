@@ -238,7 +238,7 @@ public class Spyops extends Command {
                 opTypes = new SpyCount.Operation[]{operation};
             }
             ArrayList<SpyCount.Operation> opTypesList = new ArrayList<>(Arrays.asList(opTypes));
-            int maxMissile = nation.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
             if (opTypesList.contains(SpyCount.Operation.MISSILE) && nation.getMissiles() == maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.MISSILE);

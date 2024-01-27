@@ -49,6 +49,11 @@ public enum TreatyType {
         return this == MDP || this == MDOAP || this == ODP || this == ODOAP || this == PROTECTORATE || this == EXTENSION;
     }
 
+    @Command(desc = "If this is a defensive treaty")
+    public boolean isMandatoryDefensive() {
+        return this == MDP || this == MDOAP || this == PROTECTORATE || this == EXTENSION;
+    }
+
     @Command(desc = "If this is an offensive treaty")
     public boolean isOffensive() {
         return this == MDOAP || this == ODOAP;
