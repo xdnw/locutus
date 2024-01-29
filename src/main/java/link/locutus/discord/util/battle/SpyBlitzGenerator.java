@@ -176,7 +176,7 @@ public class SpyBlitzGenerator {
                         }
                     }
                     if (operation == SpyCount.Operation.MISSILE) {
-                        Integer missileCap = defender.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
+                        Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject);
                         if (defender.getMissiles() == missileCap) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();

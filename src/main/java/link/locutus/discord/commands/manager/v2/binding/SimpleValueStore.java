@@ -33,8 +33,6 @@ public class SimpleValueStore<T> implements ValueStore<T> {
         }
         if (!key.getAnnotationTypes().isEmpty()) {
             Set<Class<?>> types = new LinkedHashSet<>(key.getAnnotationTypes());
-//            List<Annotation> set = new ArrayList<>(Arrays.asList(key.getAnnotations()));
-
             types.removeIf(f -> !allowedAnnotations.contains(f));
             if (types.size() != key.getAnnotationTypes().size()) {
                 key = Key.of(key.getType(), types.toArray(new Class[0]));

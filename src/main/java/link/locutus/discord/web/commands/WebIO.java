@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.web.jooby.handler.IMessageOutput;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.utils.data.DataObject;
 
 import java.util.List;
@@ -14,9 +15,16 @@ import java.util.concurrent.Future;
 
 public class WebIO implements IMessageIO {
     private final IMessageOutput sse;
+    private final Guild guild;
 
-    public WebIO(IMessageOutput sse) {
+    public WebIO(IMessageOutput sse, Guild guild) {
         this.sse = sse;
+        this.guild = guild;
+    }
+
+    @Override
+    public Guild getGuildOrNull() {
+        return guild;
     }
 
     @Override

@@ -22,4 +22,51 @@
 ${form}
 <div style="width:100%;height:80%;margin-top:10px" id="output" class=""></div>
 </div>
+@raw
+<script>
+function initForm2() {
+    let params = new URLSearchParams(window.location.search);
+    let form = document.querySelector('#command-form');
+    let inputs = form.elements;
+    let inputMap = {};
+    for(let i = 0; i < inputs.length; i++) {
+        inputMap[inputs[i].name.toLowerCase()] = inputs[i];
+    }
+    for(let pair of params.entries()) {
+        let key = pair[0].toLowerCase();
+        let value = pair[1];
+        let input = inputMap[key];
+        if(input) {
+            // Check the type of the input element
+            if(input.type === 'checkbox' || input.type === 'radio') {
+                let val = (value.toLowerCase() === 'true');
+                input.checked = val;
+                input.previousSibling.checked=val;
+                input.previousSibling.value=val?1:0;
+            } else if(input.tagName.toLowerCase() === 'select') {
+                if (input.parentElement.classList.contains('bootstrap-select')) {
+                    $(input).selectpicker('val', input.multiple ? value.split(',') : value);
+                }
+                if(input.multiple) {
+                    let values = value.split(',');
+                    for(let option of input.options) {
+                        option.selected = values.includes(option.value) || values.includes(option.innerHTML);
+                    }
+                }
+                input.value = value;
+            } else if(['number', 'color', 'date', 'textarea', 'text'].includes(input.type)) {
+                input.value = value;
+            } else {
+                console.log(`Input type ${input.type} is not supported`);
+            }
+        } else {
+            console.log(`No matching input for key: ${key}, value: ${value}`);
+        }
+    }
+}
+$( document ).ready(function() {
+    initForm2();
+});
+</script>
+@endraw
 `, navbar = null)

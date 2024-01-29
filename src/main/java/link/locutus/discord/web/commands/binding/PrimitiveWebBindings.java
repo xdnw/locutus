@@ -30,22 +30,22 @@ import static link.locutus.discord.web.WebUtil.createInput;
 
 public class PrimitiveWebBindings extends WebBindingHelper {
 
-    @Binding(types = {Set.class, Integer.class}, multiple = true)
     @HtmlInput
+    @Binding(types = {Set.class, Integer.class}, multiple = true)
     public String Set(ValueStore store, ParameterData param) {
         return createInput(WebUtil.InputType.text, param, "pattern=\"[0-9]+(,[0-9]+)*\"");
     }
 
-    @Binding(types = {List.class, String.class}, multiple = true)
     @TextArea
     @HtmlInput
+    @Binding(types = {List.class, String.class}, multiple = true)
     public String List(ParameterData param) {
         return TextArea(param);
     }
 
-    @Binding(types = {String.class})
     @TextArea
     @HtmlInput
+    @Binding(types = {String.class})
     public static String TextArea(ParameterData param) {
         return WebUtil.createInputWithClass("textarea", WebUtil.InputType.text, param, null, true);
     }
@@ -61,7 +61,7 @@ public class PrimitiveWebBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(examples = "hello", types={String.class})
+    @Binding(types=String.class)
     public static String String(ParameterData param) {
         ArgChoice choice = param.getAnnotation(ArgChoice.class);
         if (choice != null) {

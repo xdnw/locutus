@@ -5757,7 +5757,7 @@ public class DBNation implements NationOrAlliance {
         caps[1] = Buildings.FACTORY.getUnitDailyBuy() * Buildings.FACTORY.cap(this::hasProject) * getCities();
         caps[2] = Buildings.HANGAR.getUnitDailyBuy() * Buildings.HANGAR.cap(this::hasProject) * getCities();
         caps[3] = Buildings.DRYDOCK.getUnitDailyBuy() * Buildings.DRYDOCK.cap(this::hasProject) * getCities();
-        caps[4] = hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
+        caps[4] = MilitaryUnit.MISSILE.getMaxPerDay(getCities(), this::hasProject);
         caps[5] = 1;
 
         Map<Integer, Long> result = new HashMap<>();
@@ -6217,7 +6217,7 @@ public class DBNation implements NationOrAlliance {
     public Map.Entry<CommandResult, String> runCommandInternally(Guild guild, User user, String command) {
         if (user == null) return new AbstractMap.SimpleEntry<>(CommandResult.ERROR, "No user for: " + getNation());
 
-        StringMessageIO output = new StringMessageIO(user);
+        StringMessageIO output = new StringMessageIO(user, guild);
         CommandResult type;
         String result;
         try {

@@ -33,23 +33,23 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class WarPages {
-    @Command()
-    @RolePermission(Roles.MILCOM)
-    public String defensive(@Me GuildDB db) {
-        return "TODO";
-    }
-
-    @Command()
-    @RolePermission(Roles.MILCOM)
-    public String offensive(@Me GuildDB db) {
-        return "TODO";
-    }
-
-    @Command()
-    @RolePermission(Roles.MILCOM)
-    public String enemies(@Me GuildDB db) {
-        return "TODO";
-    }
+//    @Command()
+//    @RolePermission(Roles.MILCOM)
+//    public String defensive(@Me GuildDB db) {
+//        return "TODO";
+//    }
+//
+//    @Command()
+//    @RolePermission(Roles.MILCOM)
+//    public String offensive(@Me GuildDB db) {
+//        return "TODO";
+//    }
+//
+//    @Command()
+//    @RolePermission(Roles.MILCOM)
+//    public String enemies(@Me GuildDB db) {
+//        return "TODO";
+//    }
 
     @Command(desc = "Wars which are currently uncountered")
     @RolePermission(Roles.MILCOM)
@@ -226,49 +226,25 @@ public class WarPages {
                 allyApps.add(war);
             }
         }
-
-
-//        // add offshores
-//        for (DBWar war : wars) {
-//            DBNation defender = war.getNation(false);
-//            if (offshore.contains(defender.getAlliance_id()) && defender.getPosition() >= Rank.MEMBER.id) members.add(war);
-//        }
-//        // add active members
-//        for (DBWar war : wars) {
-//            DBNation defender = war.getNation(false);
-//            if (aaId != null && defender.getAlliance_id() == aaId && defender.getPosition() >= Rank.MEMBER.id) members.add(war);
-//        }
-
-        // Offshore
-        // Active members
-        // Inactive members
-        // Active applicants
-        // Protectorate members
-        // Ally members
-
-        // inactive apps
-        // slotted/beiged targets
-        // protectorate apps
-        // ally apps
         PageBuilder builder = new PageBuilder(ws);
         builder.title("Uncountered wars");
         if (!partial.isEmpty()) {
-            builder.spoiler("Partially countered (" + partial.size() + ")", table.buildHtml("", partial));
+            builder.spoiler("Partially countered (" + partial.size() + ")", table.buildTableHtml("", partial));
         }
         if (!members.isEmpty()) {
-            builder.spoiler("Members (" + members.size() + ")", table.buildHtml("", members));
+            builder.spoiler("Members (" + members.size() + ")", table.buildTableHtml("", members));
         }
         if (!activeApps.isEmpty()) {
-            builder.spoiler("Active Applicants (" + activeApps.size() + ")", table.buildHtml("", activeApps));
+            builder.spoiler("Active Applicants (" + activeApps.size() + ")", table.buildTableHtml("", activeApps));
         }
         if (!inactiveApps.isEmpty()) {
-            builder.spoiler("Inactive Applicants (" + inactiveApps.size() + ")", table.buildHtml("", inactiveApps));
+            builder.spoiler("Inactive Applicants (" + inactiveApps.size() + ")", table.buildTableHtml("", inactiveApps));
         }
         if (!allyMembers.isEmpty()) {
-            builder.spoiler("Ally members (" + allyMembers.size() + ")", table.buildHtml("", allyMembers));
+            builder.spoiler("Ally members (" + allyMembers.size() + ")", table.buildTableHtml("", allyMembers));
         }
         if (!allyApps.isEmpty()) {
-            builder.spoiler("Ally Applicants (" + allyApps.size() + ")", table.buildHtml("", allyApps));
+            builder.spoiler("Ally Applicants (" + allyApps.size() + ")", table.buildTableHtml("", allyApps));
         }
 
         return builder.buildWithContainer();

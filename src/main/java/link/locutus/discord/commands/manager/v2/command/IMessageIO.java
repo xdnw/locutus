@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.config.Settings;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONObject;
 
@@ -11,6 +12,8 @@ import java.util.concurrent.ExecutionException;
 
 public interface IMessageIO {
     IMessageBuilder getMessage();
+
+    Guild getGuildOrNull();
 
     @CheckReturnValue
     IMessageBuilder create();

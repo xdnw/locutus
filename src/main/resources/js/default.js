@@ -1,4 +1,3 @@
-// String.format function
 if (!String.prototype.format) {
     String.prototype.format = function() {
         var args = arguments;
@@ -20,29 +19,22 @@ function formatN(number) {
     const base = Math.floor(Math.log10(Math.abs(number)));
     const siBase = (base < 0 ? Math.ceil : Math.floor)(base / EXP_STEP_SIZE);
     const prefix = siPrefixes[siBase + SI_PREFIXES_CENTER_INDEX];
-
-    // return number as-is if no prefix is available
     if (siBase === 0) return number.toString();
-
-    // We're left with a number which needs to be devided by the power of 10e[base]
-    // This outcome is then rounded two decimals and parsed as float to make sure those
-    // decimals only appear when they're actually requird (10.0 -> 10, 10.90 -> 19.9, 10.01 -> 10.01)
     const baseNumber = parseFloat((number / Math.pow(10, siBase * EXP_STEP_SIZE)).toFixed(2));
     return `${baseNumber}${prefix}`;
 };
-function htmlDecode(input) {
-  var doc = new DOMParser().parseFromString(input, "text/html");
-  return doc.documentElement.textContent;
-}
+//function htmlDecode(input) {
+//  var doc = new DOMParser().parseFromString(input, "text/html");
+//  return doc.documentElement.textContent;
+//}
 function uuidv4() {
   return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
     (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
   );
 }
-
 function htmlToElement(html) {
     var template = document.createElement('template');
-    html = html.trim(); // Never return a text node of whitespace as the result
+    html = html.trim();
     template.innerHTML = html;
     return template.content.firstChild;
 }

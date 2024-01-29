@@ -1,9 +1,22 @@
 package link.locutus.discord.util;
 
 import com.overzealous.remark.Remark;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.external.guild.KeyStore;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
+import org.apache.http.message.BasicNameValuePair;
 import org.kefirsf.bb.BBProcessorFactory;
 import org.kefirsf.bb.ConfigurationFactory;
 import org.kefirsf.bb.TextProcessor;
@@ -12,6 +25,7 @@ import org.primeframework.transformer.service.BBCodeParser;
 import org.primeframework.transformer.service.BBCodeToHTMLTransformer;
 import org.primeframework.transformer.service.Transformer;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +36,113 @@ import java.util.regex.Pattern;
 public class MarkupUtil {
     public static String markdownUrl(String name, String url) {
         return String.format("[%s](%s)", name, url);
+    }
+
+    private static final Pattern QUOTED_COMMAND = Pattern.compile("`/([^`]+?)`");
+    private static final Pattern MENTIONED_COMMAND = Pattern.compile("</([^>0-9:]+?):[0-9]{11,21}>");
+    private static final Pattern MENTIONED_ROLE = Pattern.compile("<@&([0-9]{11,21})>");
+    private static final Pattern MENTIONED_CHANNEL = Pattern.compile("<#([0-9]{11,21})>");
+    private static final Pattern MENTIONED_USER = Pattern.compile("<@!?([0-9]{11,21})>");
+
+    public static String formatQuotedCommands(String input) {
+        Matcher m = QUOTED_COMMAND.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            List<String> split = StringMan.split(found, ' ');
+            CommandCallable cmd = Locutus.cmd().getV2().getCommands().getCallable(split, true);
+            if (cmd != null) {
+                String url = WebRoot.REDIRECT + "/command/" + cmd.getFullPath("/");
+                String remaining = found.substring(cmd.getFullPath().length()).trim();
+                if (!remaining.isEmpty() && cmd instanceof ParametricCallable param) {
+                    Map<String, String> args = CommandManager2.parseArguments(param.getUserParameterMap().keySet(), remaining, false);
+                    List<BasicNameValuePair> pairs = args.entrySet().stream().map(entry -> new BasicNameValuePair(entry.getKey(), entry.getValue())).toList();
+                    url += "?" + URLEncodedUtils.format(pairs, "UTF-8");
+                }
+                m.appendReplacement(sb, String.format("[/%s](%s)", found, url));
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String formatMentionedCommands(String input) {
+        Matcher m = MENTIONED_COMMAND.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            List<String> split = StringMan.split(found, ' ');
+            CommandCallable cmd = Locutus.cmd().getV2().getCommands().getCallable(split, true);
+            if (cmd != null) {
+                String url = WebRoot.REDIRECT + "/command/" + cmd.getFullPath("/");
+                if (!split.isEmpty() && cmd instanceof ParametricCallable param) {
+                    Map<String, String> args = param.formatArgumentsToMap(WebRoot.getInstance().getPageHandler().getStore(), split);
+                    List<BasicNameValuePair> pairs = args.entrySet().stream().map(entry -> new BasicNameValuePair(entry.getKey(), entry.getValue())).toList();
+                    url += "?" + URLEncodedUtils.format(pairs, "UTF-8");
+                }
+                m.appendReplacement(sb, String.format("[/%s](%s)", found, url));
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String formatMentionedRoles(String input, Guild guild) {
+        Matcher m = MENTIONED_ROLE.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            Role role = guild.getRoleById(id);
+            if (role != null) {
+                m.appendReplacement(sb, role.toString());
+            } else {
+                m.appendReplacement(sb, "@" + found);
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String formatMentionedChannels(String input, Guild guild) {
+        Matcher m = MENTIONED_CHANNEL.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            TextChannel channel = guild.getTextChannelById(id);
+            if (channel != null) {
+                m.appendReplacement(sb, markdownUrl("#" + channel.getName(), channel.getJumpUrl()));
+            } else {
+                m.appendReplacement(sb, "#" + found);
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String formatMentionedUsers(String input) {
+        Matcher m = MENTIONED_USER.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            String name = DiscordUtil.getUserName(id);
+            String url = DiscordUtil.userUrl(id, false);
+            m.appendReplacement(sb, markdownUrl(name, url));
+        }
+        m.appendTail(sb);
+        return sb.toString(); }
+
+    public static String formatDiscordMarkdown(String input, Guild guild) {
+        input = formatQuotedCommands(input);
+        input = formatMentionedCommands(input);
+        input = formatMentionedUsers(input);
+        if (guild != null) {
+            input = formatMentionedRoles(input, guild);
+            input = formatMentionedChannels(input, guild);
+        }
+        return input;
     }
 
     public static String stripImageReferences(String markdown) {
@@ -162,8 +283,14 @@ public class MarkupUtil {
         Matcher m = p.matcher(text);
         StringBuffer sb = new StringBuffer();
         while(m.find()){
-            String found =m.group(0);
-            if (m.start() > 0 && text.charAt(m.start() - 1) != '"') {
+            int start = m.start();
+            int end = m.end();
+            if (start > 0 && text.charAt(start - 1) == '<' && end < text.length() && text.charAt(end) == '>') {
+                start--;
+                end++;
+            }
+            String found = text.substring(start, end);
+            if (start > 0 && text.charAt(start - 1) != '"') {
                 m.appendReplacement(sb, "[" + found + "](" + found + ")");
             }
         }
@@ -172,12 +299,13 @@ public class MarkupUtil {
     }
 
     public static String markdownToHTML(String source) {
-        source = source.replace("_", "UNDERSCOREPLACEHOLDER").replace(" * ", "STARPLACEHOLDER");
+        source = source.replace("_", "\u200B\t").replace(" * ", "\u200B\r");
         source = source.replaceAll("```", "`");
         TextProcessor processor = BBProcessorFactory.getInstance()
                 .createFromResource(ConfigurationFactory.MARKDOWN_CONFIGURATION_FILE);
         source = processor.process(source);
-        source = source.replace("\n", "<br>").replace("STARPLACEHOLDER", " * ").replace("UNDERSCOREPLACEHOLDER", "_");
+        source = source.replace("\n", "<br>").replace("\u200B\r", " * ").replace("\u200B\t", "_");
+        source = transformURLIntoLinks(source);
         return source;
     }
 

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.util.StringMan;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.LinkedHashMap;
@@ -11,10 +12,17 @@ public class StringMessageIO implements IMessageIO {
 
     private final Map<Long, String> messages = new LinkedHashMap<>();
     private final User user;
+    private final Guild guild;
     private long id = 1;
 
-    public StringMessageIO(User user) {
+    public StringMessageIO(User user, Guild guild) {
         this.user = user;
+        this.guild = guild;
+    }
+
+    @Override
+    public Guild getGuildOrNull() {
+        return guild;
     }
 
     public String getOutput() {

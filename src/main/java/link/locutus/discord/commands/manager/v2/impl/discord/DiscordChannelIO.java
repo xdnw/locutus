@@ -9,7 +9,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -34,6 +36,14 @@ public class DiscordChannelIO implements IMessageIO {
     public DiscordChannelIO(MessageChannel channel, Supplier<Message> userMessage) {
         this.channel = channel;
         this.userMessage = userMessage;
+    }
+
+    @Override
+    public Guild getGuildOrNull() {
+        if (channel instanceof GuildChannel gc) {
+            return gc.getGuild();
+        }
+        return null;
     }
 
     public DiscordChannelIO(MessageChannel channel) {

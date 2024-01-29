@@ -7,8 +7,13 @@ import gg.jte.html.HtmlTemplateOutput;
 import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
 import io.javalin.http.Context;
+import io.javalin.http.HttpStatus;
+import io.javalin.http.RedirectResponse;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.binding.AuthBindings;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,10 +24,13 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static link.locutus.discord.web.commands.binding.AuthBindings.getDiscordAuthUrl;
+
 public class WebStore {
     private final ValueStore store;
     private final Context context;
     private AuthBindings.Auth auth;
+    private boolean initAuth;
 
     public WebStore(ValueStore store) {
         this.store = store;
@@ -39,11 +47,6 @@ public class WebStore {
         OwaspHtmlTemplateOutput htmlOutput = new OwaspHtmlTemplateOutput(output);
         task.accept(htmlOutput);
         return output.toString();
-    }
-
-    public static void main(String[] args) {
-        Context t = null;
-        String[] split = t.path().split("/");
     }
 
     public Map<String, String> getPathLinks() {
@@ -82,13 +85,37 @@ public class WebStore {
     }
 
     public AuthBindings.Auth auth(boolean allowRedirect, boolean requireNation, boolean requireUser) {
-        if (this.auth != null) return this.auth;
         try {
-            this.auth = AuthBindings.getAuth(this, context, allowRedirect, requireNation, requireUser);
+            if (!initAuth) {
+                initAuth = true;
+                this.auth = AuthBindings.getAuth(this, context, allowRedirect, requireNation, requireUser);
+            }
+            if (requireUser && (auth == null || auth.getUser(true) == null)) {
+                throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
+            }
+            if (requireNation && (auth == null || auth.getNation(true) == null)) {
+                return AuthBindings.getAuth(this, context, allowRedirect, requireNation, requireUser);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return null;
+        return auth;
+    }
+
+    public DBNation getNation() {
+        AuthBindings.Auth tmp = auth();
+        if (tmp == null) return null;
+        return tmp.getNation(true);
+    }
+
+    public User getUser() {
+        AuthBindings.Auth tmp = auth();
+        if (tmp == null) return null;
+        return tmp.getUser(true);
+    }
+
+    public Guild getGuild() {
+        return AuthBindings.guild(context, getNation(), getUser(), false);
     }
 
     public ValueStore store() {

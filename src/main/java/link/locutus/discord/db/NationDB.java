@@ -514,7 +514,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
         List<DBAlliance> createdAlliances = new ArrayList<>();
         for (Alliance alliance : alliances) {
-
             if (alliance.getDate() != null && alliance.getName() != null) { // Essential components of an alliance
                 DBAlliance existing;
                 synchronized (alliancesById) {
@@ -524,12 +523,17 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     existing = new DBAlliance(alliance);
                     synchronized (alliancesById) {
                         alliancesById.put(alliance.getId(), existing);
+                        allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
                     }
                     createdAlliances.add(existing);
                     dirtyAlliances.add(existing);
                 } else {
+                    String originalName = existing.getName();
                     if (existing.set(alliance, eventConsumer)) {
                         dirtyAlliances.add(existing);
+                        if (originalName != existing.getName()) {
+                            allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
+                        }
                     }
                 }
             }
@@ -1444,35 +1448,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return existing;
     }
 
-    private static final Cache<String, DBAlliance> allianceByNameCache = CacheBuilder.newBuilder()
-            .weakKeys()
-            .weakValues()
-            .build();
+    private final Map<String, Integer> allianceByNameCache = new ConcurrentHashMap<>();
 
     public String getAllianceName(int aaId) {
         DBAlliance existing = getAlliance(aaId);
         if (existing != null) return existing.getName();
-        for (Map.Entry<String, DBAlliance> entry : allianceByNameCache.asMap().entrySet()) {
-            if (entry.getValue().getAlliance_id() == aaId) {
-                return entry.getKey();
-            }
-        }
+
         return "AA:" + aaId;
     }
+
     public DBAlliance getAllianceByName(String name) {
-        {
-            DBAlliance alliance = allianceByNameCache.getIfPresent(name.toLowerCase(Locale.ROOT));
-            if (alliance != null && alliance.getName().equalsIgnoreCase(name)) {
-                return alliance;
-            }
-        }
-        DBAlliance result = null;
-        synchronized (alliancesById) {
-            for (DBAlliance alliance : alliancesById.values()) {
-                if (alliance.getName().equalsIgnoreCase(name)) {
-                    allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance);
-                    return alliance;
-                }
+        Integer aaId = allianceByNameCache.get(name.toLowerCase(Locale.ROOT));
+        if (aaId != null) {
+            synchronized (alliancesById) {
+                DBAlliance aa = alliancesById.get(aaId);
+                if (aa != null) return aa;
             }
         }
         return null;
@@ -1958,7 +1948,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (timestamp > 0) {
             PnwPusherShardManager pusher = Locutus.imp().getPusher();
             if (pusher != null) {
-                Locutus.imp().getPusher().getSpyTracker().updateCasualties(nation, timestamp);
+                pusher.getSpyTracker().updateCasualties(nation, timestamp);
             }
         }
         DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
@@ -2024,12 +2014,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return base;
     }
 
-    private void loadAlliances() throws SQLException {
+    public void loadAlliances() throws SQLException {
         SelectBuilder builder = getDb().selectBuilder("ALLIANCES").select("*");
         try (ResultSet rs = builder.executeRaw()) {
             while (rs.next()) {
                 DBAlliance alliance = createAlliance(rs);
                 alliancesById.put(alliance.getAlliance_id(), alliance);
+                allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
             }
         }
     }

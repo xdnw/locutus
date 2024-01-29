@@ -407,29 +407,29 @@ public final class Locutus extends ListenerAdapter {
 
             System.out.println("remove:|| init repeating tasks " + (((-start)) + (start = System.currentTimeMillis())));
 
-            for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS) {
-                Guild guild = getDiscordApi().getGuildById(guildId);
-                if (guild != null) {
-                    link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
-                }
-            }
-
-            System.out.println("remove:|| banned guilds " + (((-start)) + (start = System.currentTimeMillis())));
-
-            if (!Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.isEmpty()) {
-                for (GuildDB value : getGuildDatabases().values()) {
-                    Guild guild = value.getGuild();
-                    if (!guild.isLoaded()) continue;
-                    long owner = guild.getOwnerIdLong();
-                    DBNation nation = DiscordUtil.getNation(owner);
-                    if (nation != null) {
-                        if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
-                            link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
-                        }
-                    }
-                }
-            }
-            System.out.println("remove:|| banned alliances " + (((-start)) + (start = System.currentTimeMillis())));
+//            for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS.keySet()) {
+//                Guild guild = getDiscordApi().getGuildById(guildId);
+//                if (guild != null) {
+//                    link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
+//                }
+//            }
+//
+//            System.out.println("remove:|| banned guilds " + (((-start)) + (start = System.currentTimeMillis())));
+//
+//            if (!Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.isEmpty()) {
+//                for (GuildDB value : getGuildDatabases().values()) {
+//                    Guild guild = value.getGuild();
+//                    if (!guild.isLoaded()) continue;
+//                    long owner = guild.getOwnerIdLong();
+//                    DBNation nation = DiscordUtil.getNation(owner);
+//                    if (nation != null) {
+//                        if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.containsKey(nation.getAlliance_id())) {
+//                            link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
+//                        }
+//                    }
+//                }
+//            }
+//            System.out.println("remove:|| banned alliances " + (((-start)) + (start = System.currentTimeMillis())));
 
             // load members
             {

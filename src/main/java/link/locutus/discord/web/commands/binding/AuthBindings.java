@@ -115,10 +115,8 @@ public class AuthBindings extends WebBindingHelper {
     @Me
     @Binding
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user) {
-        System.out.println("Get guild " + context + " | " + nation + " | " + user);
         try {
             Guild guild = guild(context, nation, user, true);
-            System.out.println("Return guild");
             return guild;
         } catch (RuntimeException e) {
             e.printStackTrace();

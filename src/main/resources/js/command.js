@@ -75,7 +75,7 @@ function loadButtons() {
             var outDiv = output != null ? document.getElementById(output) : null;
 
             var query = "cmd=" + encodeURIComponent(cmd);
-            domain = [location.protocol, '//', location.host].join('') + "/sse?" + query;
+            domain = [location.protocol, '//', location.host].join('') + "/sse/?" + query;
             if (this.hasAttribute("replace") && outDiv != null) {
                 outDiv.innerHTML = "";
             }
@@ -153,7 +153,6 @@ function createEventSourceWithLoading(domain, outDiv, inputDiv, inputReplacement
         };
         sse.onmessage = function(event) {
         try {
-            console.log("ON MESSAGE ");
             console.log("DATA: " + event.data);
             var json = JSON.parse(event.data, (key, value) => {
                 if (key === "id" && typeof value === "string" && value.match(/^\d+$/)) {
@@ -162,7 +161,29 @@ function createEventSourceWithLoading(domain, outDiv, inputDiv, inputReplacement
                 return value;
             });
             if (json["html"]) {
-                outDiv.insertAdjacentHTML('afterbegin', json["html"]);
+                            outDiv.insertAdjacentHTML('afterbegin', json["html"]);
+            }
+            if (json.files) {
+                outDiv.prepend(document.createElement("br"));
+                for (const [fileId, fileName] of Object.entries(json.files)) {
+                    let a = document.createElement('a');
+                    a.href = "/files/" + fileId;
+                    a.download = fileName;
+                    a.textContent = fileName;
+                    a.innerHTML += `<i class="bi bi-paperclip"></i>`;
+                    outDiv.prepend(a);
+                    outDiv.prepend(document.createElement("br"));
+                }
+            }
+            if (json.buttons) {
+                console.log("BUTTONS: " + JSON.stringify(json.buttons));
+                for (var button of json.buttons) {
+                    var b = document.createElement('button');
+                    b.setAttribute('cmd', button["cmd"]);
+                    b.className = 'btn btn-primary';
+                    b.textContent = button["label"];
+                    outDiv.prepend(b);
+                }
             }
             if (json["action"]) {
                 switch (json["action"]) {
@@ -185,12 +206,6 @@ function createEventSourceWithLoading(domain, outDiv, inputDiv, inputReplacement
 
                 return;
             }
-
-            console.log(json);
-            console.log(json["content"]);
-            console.log($.parseHTML(json["content"]));
-//            var output = "<div class='alert alert-success'><b>[" + new Date().toLocaleTimeString() + "]: " + JSON.stringify(args) +":</b><br>" + json["content"] + "</div>";
-
             var embed = null;
             if (json.id) {
                 var existing = document.getElementById(json.id);

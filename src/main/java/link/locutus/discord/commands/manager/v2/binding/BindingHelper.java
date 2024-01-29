@@ -71,7 +71,9 @@ public class BindingHelper {
             store.addParser(key, parser);
         } else {
             Set<Type> types = new LinkedHashSet<>(Arrays.asList(binding.types()));
-            types.add(method.getGenericReturnType());
+            if (types.isEmpty()) {
+                types.add(method.getGenericReturnType());
+            }
 
             for (Type ret : types) {
                 MethodParser parser = new MethodParser(this, method, desc, binding, ret);

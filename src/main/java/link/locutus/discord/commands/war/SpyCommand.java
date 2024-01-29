@@ -119,7 +119,7 @@ public class SpyCommand extends Command {
         if (nation.getMissiles() > 0 || nation.getNukes() > 0) {
             long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
-            int maxMissile = nation.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
             if (nation.getMissiles() == maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) {

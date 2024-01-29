@@ -148,8 +148,8 @@ public enum MilitaryUnit {
             cap = 0;
             switch (this) {
                 case MISSILE -> {
-                    if (hasProject.test(Projects.MISSILE_LAUNCH_PAD)) cap = 1;
-                    if (hasProject.test(Projects.SPACE_PROGRAM)) cap = 2;
+                    if (hasProject.test(Projects.MISSILE_LAUNCH_PAD)) cap = 2;
+                    if (hasProject.test(Projects.SPACE_PROGRAM)) cap = 3;
                 }
                 case NUKE -> {
                     if (hasProject.test(Projects.NUCLEAR_RESEARCH_FACILITY)) cap++;
