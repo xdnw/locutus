@@ -22,7 +22,6 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
     private final Function<T, String> getInput;
 
     public LazyMathEntity(Object resolved) {
-        System.out.println("Resolved " + resolved);
         this.resolved2 = resolved;
         this.resolver3 = null;
         this.returnError = false;
@@ -68,10 +67,8 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         if (resolver3 == null) return resolved2;
         try {
             Object result = resolver3.apply(input);
-            System.out.println(getInput.apply(input) + " -> " + result);
             return result;
         } catch (RuntimeException e) {
-            System.out.println("Result " + getInput.apply(input));
             return getInput.apply(input) + (returnError ? ": " + e.getMessage() : "");
         }
     }
