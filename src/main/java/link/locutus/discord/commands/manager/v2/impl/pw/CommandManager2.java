@@ -173,7 +173,17 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictEnd", "end");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictName", "rename");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictStart", "start");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importCtowned", "import");
+
+        getCommands().registerMethod(new TestCommands(), List.of("test"), "test", "test");
 
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("admin", "sync"), "saveMetrics", "saveMetrics");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_tier"), "metricByGroup", "metric_by_group");
@@ -477,8 +487,28 @@ public class CommandManager2 {
     }
 
     private LocalValueStore createLocals(@Nullable LocalValueStore<Object> existingLocals, @Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, @Nullable Map<String, String> fullCmdStr) {
-        if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.contains(guild.getIdLong()))
-            throw new IllegalArgumentException("Unsupported");
+        if (guild != null) {
+            String denyReason = Settings.INSTANCE.MODERATION.BANNED_GUILDS.get(guild.getIdLong());
+            if (denyReason != null) {
+                throw new IllegalArgumentException("Access-Denied[Guild=" + guild.getIdLong() + "]: " + denyReason);
+            }
+            long ownerId = guild.getOwnerIdLong();
+            if (user == null || user.getIdLong() != ownerId) {
+                String userDenyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(ownerId);
+                if (userDenyReason != null) {
+                    String userName = DiscordUtil.getUserName(ownerId);
+                    if (!userName.startsWith("<@")) userName += "/" + ownerId;
+                    throw new IllegalArgumentException("Access-Denied[User=" + userName + "]: " + userDenyReason);
+                }
+                DBNation nation = DiscordUtil.getNation(ownerId);
+                if (nation != null) {
+                    String nationDenyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(nation.getId());
+                    if (nationDenyReason != null) {
+                        throw new IllegalArgumentException("Access-Denied[Nation=" + nation.getId() + "]: " + nationDenyReason);
+                    }
+                }
+            }
+        }
 
         LocalValueStore<Object> locals = existingLocals == null ? new LocalValueStore<>(store) : existingLocals;
 
@@ -486,13 +516,19 @@ public class CommandManager2 {
         locals.addProvider(Key.of(ValidatorStore.class), validators);
 
         if (user != null) {
-            if (Settings.INSTANCE.MODERATION.BANNED_USERS.contains(user.getIdLong()))
-                throw new IllegalArgumentException("Unsupported");
+            String userDenyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(user.getIdLong());
+            if (userDenyReason != null) {
+                throw new IllegalArgumentException("Access-Denied: " + userDenyReason);
+            }
             DBNation nation = DiscordUtil.getNation(user);
             if (nation != null) {
-                if (Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getId())
-                        || Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
-                    throw new IllegalArgumentException("Unsupported");
+                String nationDenyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(nation.getId());
+                if (nationDenyReason != null) {
+                    throw new IllegalArgumentException("Access-Denied: " + nationDenyReason);
+                }
+                String allianceDenyReason = Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.get(nation.getAlliance_id());
+                if (allianceDenyReason != null) {
+                    throw new IllegalArgumentException("Access-Denied: " + allianceDenyReason);
                 }
             }
             locals.addProvider(Key.of(User.class, Me.class), user);
@@ -513,8 +549,10 @@ public class CommandManager2 {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             if (db != null) {
                 for (int id : db.getAllianceIds(true)) {
-                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(id))
-                        throw new IllegalArgumentException("Unsupported");
+                    String allianceDenyReason = Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.get(id);
+                    if (allianceDenyReason != null) {
+                        throw new IllegalArgumentException("Access-Denied[Alliance=" + id + "]: " + allianceDenyReason);
+                    }
                 }
             }
             locals.addProvider(Key.of(GuildDB.class, Me.class), db);

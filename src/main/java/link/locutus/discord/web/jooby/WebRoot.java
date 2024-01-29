@@ -26,6 +26,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -251,16 +252,16 @@ public class WebRoot {
         return fileRoot;
     }
 
-    private JsonObject siteMap;
+    private String siteMapB64;
 
-    public JsonObject generateSiteMap() {
-        if (siteMap != null) return siteMap;
-        siteMap = pageHandler.getCommands().generateSiteMap();
+    public String generateSiteMapB64() {
+        if (siteMapB64 != null) return siteMapB64;
+        JsonObject siteMap = pageHandler.getCommands().generateSiteMap();
         siteMap.add("command", Locutus.cmd().getV2().getCommands().generateSiteMap());
         WikiGenHandler gen = new WikiGenHandler("", Locutus.cmd().getV2());
         JsonObject wiki = gen.generateSiteMap();
         siteMap.add("wiki", wiki);
-        return siteMap;
+        return siteMapB64 = Base64.getEncoder().encodeToString(siteMap.toString().getBytes());
     }
 
     public PageHandler getPageHandler() {

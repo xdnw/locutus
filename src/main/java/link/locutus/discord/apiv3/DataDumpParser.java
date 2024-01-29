@@ -915,7 +915,9 @@ public class DataDumpParser {
                 });
             }
 
-            onEach.accept(day);
+            if (onEach != null) {
+                onEach.accept(day);
+            }
 
         }
 
@@ -1054,7 +1056,12 @@ public class DataDumpParser {
     }
 
     private void download(String fileUrl, File savePath) throws IOException {
-        System.out.println("Saving " + savePath);
+        File parent = savePath.getParentFile();
+        if (!parent.exists()) {
+            if (!parent.mkdirs()) {
+                throw new IOException("Could not create directory " + parent);
+            }
+        }
         byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DATA_DUMP, fileUrl);
         assert bytes != null;
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(bytes))) {

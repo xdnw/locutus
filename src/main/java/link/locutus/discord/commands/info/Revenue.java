@@ -156,16 +156,16 @@ public class Revenue extends Command {
 
             double rads = nation.getRads();
 
-            int numCities = bonus ? nation.getCities() : 10;
+            int numCities = bonus ? nation.getCities() : 21;
 
             Collection<JavaCity> cityList = entry.getValue().values();
 
             for (JavaCity build : cityList) {
-                cityProfit = build.profit(me.getContinent(), rads, -1L, hasProject, cityProfit, numCities, me.getGrossModifier() + treasureBonus, 12);
+                cityProfit = build.profit(nation.getContinent(), rads, -1L, hasProject, cityProfit, numCities, nation.getGrossModifier() + treasureBonus, 12);
             }
 
             NationColor color = nation.getColor();
-            long nationTurnBonus = (long) (color.getTurnBonus() * 12L * me.getGrossModifier());
+            long nationTurnBonus = (long) (color.getTurnBonus() * 12L * nation.getGrossModifier());
             tradeBonus += nationTurnBonus;
 
             if (!nation.hasUnsetMil()) {

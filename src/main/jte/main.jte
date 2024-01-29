@@ -24,7 +24,7 @@
 <%--    <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="/css/all.css">--%>
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="/css/command.css">
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="/css/embed.css">
-    <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="https://github.com/xdnw/locutus/raw/master/src/main/resources/css/datatables.css">
+    <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <link rel="stylesheet"  media="print" onload="this.media='all'" type="text/css" href="https://cdn.jsdelivr.net/npm/uplot@1.6.28/dist/uPlot.min.css">
     <%--    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.4.4/umd/popper.js"></script>--%>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,33 +1,63 @@
+function renderUrl(data, type, row, meta) {
+    var a = document
+}
+
 function setupTable(containerElem, tableElem, dataSetRoot) {
     let jqContainer = $(containerElem);
     let jqTable = $(tableElem);
 
-    let dataSet = dataSetRoot["data"];
-    let columnsInfo = [];
-    if (dataSet.length > 0) {
-        let row0 = dataSet[0]
-        Object.keys(row0).forEach(function(key,index) {
-            let value = row0[key];
-            columnsInfo.push({"data": key, "className": 'details-control'});
-        });
-    }
-    let visibleColumns = dataSetRoot["visible"];
-    let searchableColumns = dataSetRoot["searchable"];
+    let dataColumns = dataSetRoot["columns"]; // is a list
+    let dataList = dataSetRoot["data"]; // is a list of lists
+    let searchableColumns = dataSetRoot["searchable"]; // is a list of column indexes
+    let visibleColumns = dataSetRoot["visible"]; // is a list of column indexes
+    let cell_format = dataSetRoot["cell_format"]; // is a object of function -> list of column indexes - This variable may be null
+    let row_format = dataSetRoot["row_format"]; // is a string (or null)
+    let sort = dataSetRoot["sort"]; // [index, asc or desc]
+    if (sort == null) sort = [0, 'asc'];
 
+    let dataObj = [];
+    dataList.forEach(function (row, index) {
+        let obj = {};
+        for (let i = 0; i < dataColumns.length; i++) {
+            obj[dataColumns[i]] = row[i];
+        }
+        dataObj.push(obj);
+    });
+    let cellFormatByCol = {};
+    if (cell_format != null) {
+        for (let func in cell_format) {
+            let cols = cell_format[func];
+            for (let i = 0; i < cols.length; i++) {
+                cellFormatByCol[cols[i]] = window[func];
+            }
+        }
+    }
+
+    let columnsInfo = [];
+    if (dataColumns.length > 0) {
+        for (let i = 0; i < dataColumns.length; i++) {
+            let columnInfo = {"data": dataColumns[i], "className": 'details-control'};
+            let renderFunc = cellFormatByCol[i];
+            if (renderFunc != null) {
+                columnInfo["render"] = renderFunc;
+            }
+            columnsInfo.push(columnInfo);
+        }
+    }
 
     // header and footer toggles + search
     for(let i = 0; i < columnsInfo.length; i++) {
         let columnInfo = columnsInfo[i];
         let title = columnInfo["data"];
         if (visibleColumns != null) {
-            columnInfo["visible"] = visibleColumns.includes(title);
+            columnInfo["visible"] = visibleColumns.includes(i);
         }
         let th,tf;
         if (title == null) {
             th = '';
             tf = '';
         } else {
-            if (searchableColumns == null || searchableColumns.includes(title)) {
+            if (searchableColumns == null || searchableColumns.includes(i)) {
                 th = '<input type="text" placeholder="'+ title +'" style="width: 100%;" />';
             } else {
                 th = title;
@@ -46,9 +76,9 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
 
     // table initialization
     let table = jqTable.DataTable( {
-        data: dataSet,
+        data: dataObj,
         "columns": columnsInfo,
-        "order": [[0, 'asc']],
+        "order": [sort],
         lengthMenu: [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "All"] ],
         initComplete: function () {
             this.api().columns().every( function (index) {
@@ -173,9 +203,11 @@ $(document).ready(function() {
             let dataSrc = container.getAttribute("data-src");
             if (dataSrc != null) {
                 container.removeAttribute("data-src");
-                setupTable(container, table, JSON.parse(htmlDecode(dataSrc)));
+                setupTable(container, table, JSON.parse(atob(dataSrc)));
             }
         }
     }
-    console.log("LOAD TABLES");
+    $("input").click(function(e) {
+       e.stopPropagation();
+    });
 });

@@ -68,7 +68,7 @@ public class WarDB extends DBMainV2 {
     private final Int2ObjectOpenHashMap<Object> warsByAllianceId;
     private final Int2ObjectOpenHashMap<Object> warsByNationId;
     private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
-    private final ConflictManager conflictManager;
+    private ConflictManager conflictManager;
     public WarDB() throws SQLException {
         this("war");
     }
@@ -78,7 +78,6 @@ public class WarDB extends DBMainV2 {
         warsById = new ObjectOpenHashSet<>();
         warsByAllianceId = new Int2ObjectOpenHashMap<>();
         warsByNationId = new Int2ObjectOpenHashMap<>();
-        conflictManager = Settings.INSTANCE.ENABLED_COMPONENTS.WEB ? new ConflictManager(this) : null;
     }
 
     public List<DBAttack> getLegacyVictory() {
@@ -1018,7 +1017,10 @@ public class WarDB extends DBMainV2 {
                 e.printStackTrace();
             }
         };
-        this.conflictManager.createTables();
+        conflictManager = Settings.INSTANCE.ENABLED_COMPONENTS.WEB ? new ConflictManager(this) : null;
+        if (conflictManager != null) {
+            this.conflictManager.createTables();
+        }
     }
 
     public ConflictManager getConflicts() {

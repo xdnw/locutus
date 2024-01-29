@@ -89,6 +89,20 @@ import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
 
+    @Binding(value = "The name of a stored conflict between two coalitions")
+    public Conflict conflict(ConflictManager manager, String nameOrId) {
+        Conflict conflict = manager.getConflict(nameOrId);
+        if (conflict != null) {
+            return conflict;
+        }
+        if (MathMan.isInteger(nameOrId)) {
+            int id = PrimitiveBindings.Integer(nameOrId);
+            conflict = manager.getConflictById(id);
+            if (conflict != null) return conflict;
+        }
+        throw new IllegalArgumentException("Unknown conflict: `" + nameOrId + "`. Options: " + StringMan.getString(manager.getConflictNames()));
+    }
+
     @Binding(value = "A treaty between two alliances\n" +
             "Link two alliances, separated by a colon")
     public static Treaty treaty(String input) {
@@ -1064,9 +1078,20 @@ public class PWBindings extends BindingHelper {
         return nation;
     }
 
+
     @Binding
     public MailReceivedEvent MailReceivedEvent() {
         throw new IllegalStateException("No mail event provided in command locals");
+    }
+
+    @Binding
+    public ConflictManager ConflictManager() {
+        Locutus lc = Locutus.imp();
+        ConflictManager manager = lc.getWarDb().getConflicts();
+        if (manager == null) {
+            throw new IllegalStateException("No conflict manager provided in command locals");
+        }
+        return manager;
     }
 
     @Binding

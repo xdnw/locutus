@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.page;
 
+import com.google.gson.JsonArray;
 import gg.jte.generated.precompiled.data.JtebarchartsingleGenerated;
 import gg.jte.generated.precompiled.data.JtetimechartdatasrcpageGenerated;
 import gg.jte.generated.precompiled.guild.milcom.JteglobalmilitarizationGenerated;
@@ -16,6 +17,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.db.Conflict;
+import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -24,6 +27,8 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
+import link.locutus.discord.web.builder.TableBuilder;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,15 +40,24 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class StatPages {
-    /**
-     * TODO
-     *  - War stats page
-     *  - Compare page
-     */
-
-    @Command(desc = "Show war costs between two coalitions")
-    public Object warCost(Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2, @Timediff long timeStart, @Timediff long timeEnd) {
-        return "TODO";
+    @Command(desc = "Show active conflicts")
+    public Object conflicts(ConflictManager manager, WebStore ws) {
+        TableBuilder<Conflict> table = new TableBuilder<>(ws);
+        table.addColumn("Conflict", true, true, f -> {
+            JsonArray arr = new JsonArray();
+            arr.add(f.getId());
+            arr.add(f.getName());
+            return arr;
+        });
+        table.addColumn("Start", true, true, f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
+        table.addColumn("End", true, true, f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
+        table.addColumn("C1 Size", false, false, f -> f.getCoalition1().size());
+        table.addColumn("C2 Size", false, false, f -> f.getCoalition2().size());
+        table.sort(2, true);
+        table.setRenderer(0, "renderUrl");
+        table.setRenderer(1, "renderTime");
+        table.setRenderer(2, "renderTime");
+        return table.buildPageHtml("Test", new ArrayList<>(manager.getConflictMap().values()));
     }
 
     @Command()

@@ -33,6 +33,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommand
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.Conflict;
+import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
@@ -103,6 +105,7 @@ public class WebPWBindings extends WebBindingHelper {
     public String NationColorSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(NationColor.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
+
     @HtmlInput
     @Binding(types = {Set.class, ResourceType.class})
     public String ResourceTypeSet(@Default ParameterData param) {
@@ -135,6 +138,14 @@ public class WebPWBindings extends WebBindingHelper {
     public String CustomSheet(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
         Set<String> keys = manager.getCustomSheets().keySet();
         return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s, s));
+    }
+
+    @HtmlInput
+    @Binding(types = {Conflict.class})
+    public String Conflict(ConflictManager manager, @Default ParameterData param) {
+        Map<Integer, Conflict> conflicts = manager.getConflictMap();
+        Set<Map.Entry<Integer, Conflict>> options = conflicts.entrySet();
+        return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s.getValue().getName(), s.getKey() + ""));
     }
 
     @HtmlInput

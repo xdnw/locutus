@@ -387,10 +387,10 @@ public class Settings extends Config {
         /*
         DO NOT ADD HERE FOR PERSONAL REASONS. ONLY IF THEY ARE ABUSING THE BOT
         */
-        public List<Integer> BANNED_NATIONS = List.of();
-        public List<Long> BANNED_USERS = List.of();
-        public List<Long> BANNED_GUILDS = new ArrayList<>();
-        public List<Integer> BANNED_ALLIANCES = new ArrayList<>();
+        public Map<Integer, String> BANNED_NATIONS = new LinkedHashMap<>();
+        public Map<Long, String> BANNED_USERS = new LinkedHashMap<>();
+        public Map<Long, String> BANNED_GUILDS = new LinkedHashMap<>();
+        public Map<Integer, String> BANNED_ALLIANCES = new LinkedHashMap<>();
     }
 
     public static class UPDATE_PROCESSOR {

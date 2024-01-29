@@ -293,10 +293,45 @@ public class CommandManager {
                 }
 
                 if (nation != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
-                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id()) || Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getNation_id()) || Settings.INSTANCE.MODERATION.BANNED_USERS.contains(msgUser.getIdLong()))
+                    String allianceDenyReason = Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.get(nation.getAlliance_id());
+                    if (allianceDenyReason != null) {
+                        channel.sendMessage("Access-Denied: " + allianceDenyReason);
                         return;
+                    }
+                    String nationDenyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(nation.getNation_id());
+                    if (nationDenyReason != null) {
+                        channel.sendMessage("Access-Denied: " + nationDenyReason);
+                        return;
+                    }
                 }
-
+                String userDenyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(msgUser.getIdLong());
+                if (userDenyReason != null) {
+                    channel.sendMessage("Access-Denied: " + userDenyReason);
+                    return;
+                }
+                if (guild != null) {
+                    String guildDenyReason = Settings.INSTANCE.MODERATION.BANNED_GUILDS.get(guild.getIdLong());
+                    if (guildDenyReason != null) {
+                        channel.sendMessage("Access-Denied: " + guildDenyReason);
+                        return;
+                    }
+                    long ownerId = guild.getOwnerIdLong();
+                    if (msgUser == null || msgUser.getIdLong() != ownerId) {
+                        userDenyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(ownerId);
+                        if (userDenyReason != null) {
+                            String userName = DiscordUtil.getUserName(ownerId);
+                            if (!userName.startsWith("<@")) userName += "/" + ownerId;
+                            throw new IllegalArgumentException("Access-Denied[User=" + userName + "]: " + userDenyReason);
+                        }
+                        DBNation ownerNation = DiscordUtil.getNation(ownerId);
+                        if (ownerNation != null) {
+                            String nationDenyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(ownerNation.getId());
+                            if (nationDenyReason != null) {
+                                throw new IllegalArgumentException("Access-Denied[Nation=" + ownerNation.getId() + "]: " + nationDenyReason);
+                            }
+                        }
+                    }
+                }
                 System.out.println("Content 1: " + content1);
 
                 if (!(cmd instanceof Noformat) && nation != null) {

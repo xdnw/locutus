@@ -16,6 +16,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -61,23 +62,59 @@ public class Config {
         String[] split = key.split("\\.");
         Object instance = getInstance(split, root);
         if (instance != null) {
-            Field field = getField(split, instance);
-            if (field != null) {
-                try {
-                    if (field.getAnnotation(Final.class) != null) {
-                        return;
-                    }
-                    if (field.getType() == String.class && !(value instanceof String)) {
-                        value = value + "";
-                    }
-                    // TODO FIXME parsing using bindings
-                    field.set(instance, value);
+            if (instance instanceof Map map) {
+                String[] splitCopy = Arrays.copyOfRange(split, 0, split.length - 1);
+                Object mapHolder = getInstance(splitCopy, root);
+                Field field = getField(splitCopy, mapHolder);
+                ParameterizedType type = (ParameterizedType) field.getGenericType();
+                Type keyType = type.getActualTypeArguments()[0];
+                if (keyType == Integer.class) {
+                    map.put(Integer.parseInt(split[split.length - 1]), value);
                     return;
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                } else if (keyType == Long.class) {
+                    map.put(Long.parseLong(split[split.length - 1]), value);
+                    return;
+                } else if (keyType == Double.class) {
+                    map.put(Double.parseDouble(split[split.length - 1]), value);
+                    return;
+                } else if (keyType == Float.class) {
+                    map.put(Float.parseFloat(split[split.length - 1]), value);
+                    return;
+                } else if (keyType == Short.class) {
+                    map.put(Short.parseShort(split[split.length - 1]), value);
+                    return;
+                } else if (keyType == Byte.class) {
+                    map.put(Byte.parseByte(split[split.length - 1]), value);
+                    return;
+                } else if (keyType == Boolean.class) {
+                    map.put(Boolean.parseBoolean(split[split.length - 1]), value);
+                    return;
+                } else if (keyType == Character.class) {
+                    map.put(split[split.length - 1].charAt(0), value);
+                    return;
+                } else if (keyType == String.class) {
+                    map.put(split[split.length - 1], value);
+                    return;
+                }
+            } else {
+                Field field = getField(split, instance);
+                if (field != null) {
+                    try {
+                        if (field.getAnnotation(Final.class) != null) {
+                            return;
+                        }
+                        if (field.getType() == String.class && !(value instanceof String)) {
+                            value = value + "";
+                        }
+                        field.set(instance, value);
+                        return;
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
+        System.out.println("Failed to set config option: " + key + ": " + value + " | " + instance + " | " + root.getSimpleName() + ".yml");
         LOGGER.error("Failed to set config option: {}: {} | {} | {}.yml", key, value, instance, root.getSimpleName());
     }
 
@@ -91,6 +128,7 @@ public class Config {
             if (value instanceof MemorySection) {
                 continue;
             }
+            System.out.println(key + " = " + value);
             set(key, value, getClass());
         }
         return true;
@@ -214,6 +252,15 @@ public class Config {
                 return "''";
             }
             return "\"" + value + "\"";
+        }
+        if (value instanceof Map<?, ?> map) {
+            StringBuilder m = new StringBuilder();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                Object key = entry.getKey();
+                Object val = entry.getValue();
+                m.append(System.lineSeparator()).append(spacing).append("  ").append(toYamlString(key, spacing)).append(": ").append(toYamlString(val, spacing));
+            }
+            return m.toString();
         }
         return value != null ? value.toString() : "null";
     }

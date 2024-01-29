@@ -1,7 +1,7 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.web.jooby.WebRoot
 @param WebStore ws
-<nav id="sidebar" class="sidebar offcanvas-start offcanvas-md" tabindex="-1" tabindex="-1" role="dialog" data-src="${WebRoot.getInstance().generateSiteMap().toString()}">
+<nav id="sidebar" class="sidebar offcanvas-start offcanvas-md" tabindex="-1" tabindex="-1" role="dialog" data-src="${WebRoot.getInstance().generateSiteMapB64()}">
     <div class="offcanvas-header position-relative justify-content-start flex-shrink-0 py-0 mt-2">
         <a href="#top" class="visually-hidden-focusable btn btn-link fw-bold antialiased bg-body-secondary position-absolute top-50 end-0 translate-middle-y me-3 z-1">Skip to main content</a>
         <div class="col-auto ms-auto">
@@ -101,7 +101,7 @@ function createNestedList(jsonObject, parentElement, path = '') {
     parentElement.appendChild(ul);
     return ul;
 }
-createNestedList(JSON.parse(sidebar.getAttribute("data-src")), document.getElementById("sidebarlist"));
+createNestedList(JSON.parse(atob(sidebar.getAttribute("data-src"))), document.getElementById("sidebarlist"));
 sidebar.removeAttribute("data-src");
 
 unhide_parent = (ele) => {
