@@ -1017,7 +1017,18 @@ public class OffshoreInstance {
 
     public TransferResult transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
         if (banker != null) {
-            String denyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(banker.getId());
+            String denyReason = Settings.INSTANCE.MODERATION.BANNED_BANKERS.get((long) banker.getId());
+            if (denyReason != null) {
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Access-Denied[Banker-Nation]: " + denyReason);
+            }
+            Long bankerUser = banker.getUserId();
+            if (bankerUser != null) {
+                denyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(bankerUser);
+                if (denyReason != null) {
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Access-Denied[Banker-User]: " + denyReason);
+                }
+            }
+            denyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(banker.getId());
             if (denyReason != null) {
                 return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Access-Denied[Banker]: " + denyReason);
             }
@@ -1037,12 +1048,14 @@ public class OffshoreInstance {
             } else if (receiver.isNation()) {
                 DBNation receiverNation = receiver.asNation();
                 denyReason = Settings.INSTANCE.MODERATION.BANNED_NATIONS.get(receiverNation.getId());
+                if (denyReason == null) denyReason = Settings.INSTANCE.MODERATION.BANNED_BANKERS.get((long) receiverNation.getId());
                 if (denyReason != null) {
                     return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Access-Denied[Receiver-Ban]: " + denyReason);
                 }
                 Long userId = receiverNation.getUserId();
                 if (userId != null) {
                     denyReason = Settings.INSTANCE.MODERATION.BANNED_USERS.get(userId);
+                    if (denyReason == null) denyReason = Settings.INSTANCE.MODERATION.BANNED_BANKERS.get(userId);
                     if (denyReason != null) {
                         return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Access-Denied[Receiver-Ban]: " + denyReason);
                     }
