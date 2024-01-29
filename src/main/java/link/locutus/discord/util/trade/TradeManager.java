@@ -264,7 +264,7 @@ public class TradeManager {
                     case CREDITS:
                         return -1;
                     case FOOD:
-                        return 50;
+                        return 30;
                     case COAL:
                     case OIL:
                     case URANIUM:
@@ -286,7 +286,7 @@ public class TradeManager {
                     case CREDITS:
                         return -1;
                     case FOOD:
-                        return 200;
+                        return 5000;
                     case COAL:
                     case OIL:
                     case URANIUM:
@@ -330,7 +330,7 @@ public class TradeManager {
         for (DBTrade offer : trades) {
             ResourceType type = offer.getResource();
             int factor = type == ResourceType.FOOD ? 1 : 25;
-            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 200 : 10000)) {
+            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 500 : 10000)) {
                 continue;
             }
             long[] ppuArr;
