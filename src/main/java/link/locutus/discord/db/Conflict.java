@@ -22,28 +22,39 @@ public class Conflict {
     private final CoalitionSide coalition1 = new CoalitionSide(this);
     private final CoalitionSide coalition2 = new CoalitionSide(this);
 
-    private CoalitionSide getCoalition(int aaId1, int aaId2) {
+    public long getStartTurn(int allianceId) {
+        return startTime.getOrDefault(allianceId, turnStart);
+    }
+    public long getEndTurn(int allianceId) {
+        return endTime.getOrDefault(allianceId, turnEnd);
+    }
+
+    private CoalitionSide getCoalition(int aaId1, int aaId2, long turn) {
         if (coalition1.hasAlliance(aaId1)) {
-            if (coalition2.hasAlliance(aaId2)) {
-                return coalition1;
+            if (coalition2.hasAlliance(aaId2) &&
+                    getStartTurn(aaId1) <= turn && getEndTurn(aaId1) > turn &&
+                    getStartTurn(aaId2) <= turn && getEndTurn(aaId2) > turn) {
+                    return coalition1;
             }
         } else if (coalition2.hasAlliance(aaId1)) {
-            if (coalition1.hasAlliance(aaId2)) {
+            if (coalition1.hasAlliance(aaId2) &&
+                    getStartTurn(aaId1) <= turn && getEndTurn(aaId1) > turn &&
+                    getStartTurn(aaId2) <= turn && getEndTurn(aaId2) > turn) {
                 return coalition2;
             }
         }
         return null;
     }
 
-    public void updateWar(DBWar previous, DBWar current) {
-        CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa());
+    public void updateWar(DBWar previous, DBWar current, long turn) {
+        CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa(), turn);
         if (side == null) return;
         CoalitionSide otherSide = side.getOther();
         side.updateWar(previous, current, true);
         otherSide.updateWar(previous, current, false);
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack) {
+    public void updateAttack(DBWar war, AbstractCursor attack, long turn) {
         int attackerAA, defenderAA;
         if (attack.getAttacker_id() == war.getAttacker_id()) {
             attackerAA = war.getAttacker_aa();
@@ -52,7 +63,7 @@ public class Conflict {
             attackerAA = war.getDefender_aa();
             defenderAA = war.getAttacker_aa();
         }
-        CoalitionSide side = getCoalition(attackerAA, defenderAA);
+        CoalitionSide side = getCoalition(attackerAA, defenderAA, turn);
         if (side == null) return;
         CoalitionSide otherSide = side.getOther();
         side.updateAttack(war, attack, true);
@@ -144,30 +155,31 @@ public class Conflict {
     }
 
     public Set<Integer> getCoalition1() {
-        return coalition1;
+        return coalition1.get();
     }
 
     public Set<Integer> getCoalition2() {
-        return coalition2;
+        return coalition2.get();
     }
 
     public Set<DBAlliance> getCoalition1Obj() {
-        return coalition1.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        return coalition1.get().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
     }
 
     public Set<DBAlliance> getCoalition2Obj() {
-        return coalition2.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        return coalition2.get().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
     }
 
     public Boolean getSide(int allianceId) {
-        if (coalition1.contains(allianceId)) return true;
-        if (coalition2.contains(allianceId)) return false;
+        if (coalition1.hasAlliance(allianceId)) return true;
+        if (coalition2.hasAlliance(allianceId)) return false;
         return null;
     }
 
     public Set<Integer> getAllianceIds() {
-        Set<Integer> ids = new IntOpenHashSet(coalition1);
-        ids.addAll(coalition2);
+        Set<Integer> ids = new IntOpenHashSet(coalition1.get().size() + coalition2.get().size());
+        ids.addAll(coalition1.get());
+        ids.addAll(coalition2.get());
         return ids;
     }
 }

@@ -34,6 +34,18 @@ public class CoalitionSide {
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByNation = new Int2ObjectOpenHashMap<>();
 
+    public void add(int allianceId) {
+        coalition.add(allianceId);
+    }
+
+    public void remove(int allianceId) {
+        coalition.remove(allianceId);
+    }
+
+    public Set<Integer> get() {
+        return coalition;
+    }
+
 
     private static class DamageStatGroup {
         public final double[] totalCost = ResourceType.getBuffer();

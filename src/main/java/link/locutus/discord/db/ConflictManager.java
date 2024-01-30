@@ -53,6 +53,8 @@ public class ConflictManager {
                 for (long turn = startTurn; turn < endTurn; turn++) {
                     Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictIds.computeIfAbsent(turn, k -> new Int2ObjectOpenHashMap<>());
                     for (int aaId : aaIds) {
+                        if (conflict.getStartTurn(aaId) > turn) continue;
+                        if (conflict.getEndTurn(aaId) <= turn) continue;
                         int[] currIds = conflictIdsByAA.get(aaId);
                         if (currIds == null) {
                             currIds = new int[]{conflict.getId()};
@@ -120,13 +122,14 @@ public class ConflictManager {
         }
     }
 
-    public void updateWar(DBWar war, long turn) {
+    public void updateWar(DBWar previous, DBWar current) {
+        long turn = TimeUtil.getTurn(current.getDate());
         if (turn > lastTurn) initTurn();
-        applyConflicts(turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateWar(war, turn));
+        applyConflicts(turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn));
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack) {
-        long turn = TimeUtil.getTurn(attack.getDate());
+        long turn = TimeUtil.getTurn(war.getDate());
         if (turn > lastTurn) initTurn();
         applyConflicts(turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn));
     }
