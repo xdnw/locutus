@@ -4039,7 +4039,7 @@ public class DBNation implements NationOrAlliance {
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
     }
 
-    private Map.Entry<Boolean, String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, Supplier<List<Auth.TradeResult>> tradeSupplier) {
+    private Map.Entry<double[], String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, Supplier<List<Auth.TradeResult>> tradeSupplier) {
         PoliticsAndWarV3 receiverApi = getApi(true);
 
         synchronized (OffshoreInstance.BANK_LOCK) {
@@ -4050,10 +4050,10 @@ public class DBNation implements NationOrAlliance {
                 throw new IllegalArgumentException("Receiver is not member");
             }
             if (!this.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
-                return Map.entry(false, "The nation specifies has no `" + AlliancePermission.WITHDRAW_BANK + "` permission");
+                return Map.entry(ResourceType.getBuffer(), "The nation specifies has no `" + AlliancePermission.WITHDRAW_BANK + "` permission");
             }
             if (!this.hasPermission(AlliancePermission.VIEW_BANK)) {
-                return Map.entry(false, "The nation specifies has no `" + AlliancePermission.VIEW_BANK + "` permission");
+                return Map.entry(ResourceType.getBuffer(), "The nation specifies has no `" + AlliancePermission.VIEW_BANK + "` permission");
             }
 
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
@@ -4103,7 +4103,7 @@ public class DBNation implements NationOrAlliance {
 
             if (ResourceType.isZero(toDeposit)) {
                 response.append("\n- No trades to deposit " + PnwUtil.resourcesToString(toDeposit));
-                return Map.entry(false, response.toString());
+                return Map.entry(ResourceType.getBuffer(), response.toString());
             }
             double[] depositPositive = PnwUtil.max(toDeposit.clone(), ResourceType.getBuffer());
             int receiverId;
@@ -4113,13 +4113,13 @@ public class DBNation implements NationOrAlliance {
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(depositPositive, amt)) {
                     response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(depositPositive) + " != " + PnwUtil.resourcesToString(amt));
-                    return Map.entry(false, response.toString());
+                    return Map.entry(ResourceType.getBuffer(), response.toString());
                 }
                 receiverId = deposit.getReceiver_id();
             } catch (Throwable e) {
                 e.printStackTrace();
                 response.append("\n- Error Depositing: " + e.getMessage());
-                return Map.entry(false, response.toString());
+                return Map.entry(ResourceType.getBuffer(), response.toString());
             }
 
             DBAlliance receiverAA = DBAlliance.getOrCreate(receiverId);
@@ -4132,7 +4132,7 @@ public class DBNation implements NationOrAlliance {
                 response.append("Offshore " + transferResult.toLineString());
                 if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                     response.append("\n- Depositing failed");
-                    return Map.entry(false, response.toString());
+                    return Map.entry(ResourceType.getBuffer(), response.toString());
                 }
             }
 
@@ -4153,11 +4153,11 @@ public class DBNation implements NationOrAlliance {
                 RateLimitUtil.queue(logChannel.sendMessage(response));
             }
 
-            return new AbstractMap.SimpleEntry<>(true, response.toString());
+            return new AbstractMap.SimpleEntry<>(toDeposit, response.toString());
         }
     }
 
-    public Map.Entry<Boolean, String> tradeAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, double[] amounts) {
+    public Map.Entry<double[], String> tradeAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, double[] amounts) {
         Map<ResourceType, Integer> amountMap = new LinkedHashMap<>();
         for (ResourceType type : ResourceType.values) {
             double amt = amounts[type.ordinal()];
@@ -4198,7 +4198,7 @@ public class DBNation implements NationOrAlliance {
         return createAndOffshoreDeposit(currentDB, senderNation, tradeSupplier);
     }
 
-    public Map.Entry<Boolean, String> acceptAndOffshoreTrades(GuildDB currentDB, DBNation senderNation) {
+    public Map.Entry<double[], String> acceptAndOffshoreTrades(GuildDB currentDB, DBNation senderNation) {
         int expectedNationId = senderNation.getNation_id();
         PoliticsAndWarV3 api = getApi(true);
 

@@ -897,7 +897,7 @@ public class Auth {
         }, this);
     }
 
-    public Map.Entry<Boolean, String> acceptAndOffshoreTrades(GuildDB currentDB, int expectedNationId) throws Exception {
+    public Map.Entry<double[], String> acceptAndOffshoreTrades(GuildDB currentDB, int expectedNationId) throws Exception {
         synchronized (OffshoreInstance.BANK_LOCK) {
             if (!TimeUtil.checkTurnChange()) {
                 throw new IllegalArgumentException("Turn change");
@@ -944,9 +944,9 @@ public class Auth {
 
             StringBuilder response = new StringBuilder("Checking trades...");
 
-            boolean result = PnwUtil.withLogin(new Callable<Boolean>() {
+            double[] amtDeposited = PnwUtil.withLogin(new Callable<double[]>() {
                 @Override
-                public Boolean call() throws Exception {
+                public double[] call() throws Exception {
                     Set<Auth.TradeResult> trades = Auth.this.acceptTrades(expectedNationId, false);
                     double[] toDeposit = ResourceType.getBuffer();
                     for (Auth.TradeResult trade : trades) {
@@ -961,10 +961,10 @@ public class Auth {
                         String safekeepResult = Auth.this.safekeep(false, toDeposit, "#ignore");
                         if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
                             response.append("\n- " + "Could not safekeep: " + safekeepResult);
-                            return false;
+                            return ResourceType.getBuffer();
                         }
                     }
-                    if (PnwUtil.convertedTotal(toDeposit) == 0) return false;
+                    if (PnwUtil.convertedTotal(toDeposit) == 0) return ResourceType.getBuffer();
 
                     OffshoreInstance bank = nation.getAlliance().getBank();
                     if (bank != offshore) {
@@ -974,7 +974,7 @@ public class Auth {
                         TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore", null);
                         response.append("Offshore " + transferResult.toLineString());
                         if (!transferResult.getStatus().isSuccess()) {
-                            return false;
+                            return ResourceType.getBuffer();
                         }
 
                         // subtract from alliance
@@ -997,11 +997,11 @@ public class Auth {
                         RateLimitUtil.queue(logChannel.sendMessage(response));
                     }
 
-                    return true;
+                    return toDeposit;
                 }
             }, Auth.this);
 
-            return new AbstractMap.SimpleEntry<>(result, response.toString());
+            return new AbstractMap.SimpleEntry<>(amtDeposited, response.toString());
         }
     }
 }
