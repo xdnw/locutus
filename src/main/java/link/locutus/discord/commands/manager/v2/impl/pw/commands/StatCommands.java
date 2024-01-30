@@ -634,7 +634,7 @@ public class StatCommands {
                                          @Switch("t") boolean total,
                                      @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         int num1 = coalition1Nations.size();
         int num2 = coalition2Nations.size();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));

@@ -2695,7 +2695,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)")
     @RolePermission(value = Roles.ECON)
-    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user, NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default("%epoch%") @Timestamp long timeframe, @Default("false") boolean useTaxBase, @Default("true") boolean useOffset, @Switch("s") SpreadSheet sheet,
+    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, @Default("%epoch%") @Timestamp long timeframe, @Default("false") boolean useTaxBase, @Default("true") boolean useOffset, @Switch("s") SpreadSheet sheet,
                                @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
 
@@ -2746,6 +2746,8 @@ public class BankCommands {
             } else {
                 transactions.addAll(db.getTransactionsById(otherDB.getGuild().getIdLong(), 3));
             }
+        } else if (nationOrAllianceOrGuild.isTaxid()) {
+
         }
 
         sheet.addTransactionsList(channel, transactions, true);
@@ -3125,7 +3127,7 @@ public class BankCommands {
             "The receiver must be authenticated with the bot and have bank access in an alliance\n" +
             "Only resources sold for $0 or food bought for cash are accepted")
     @RolePermission(value = Roles.MEMBER)
-    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useLogin, @Switch("f") boolean force) throws Exception {
+    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me User user, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useLogin, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set in this guild: <https://github.com/xdnw/locutus/wiki/banking>";
 
@@ -3148,7 +3150,7 @@ public class BankCommands {
             return null;
         }
 
-        Map.Entry<Boolean, String> result;
+        Map.Entry<double[], String> result;
         if (amount != null) {
             Double money = amount.get(ResourceType.MONEY);
             if (money != null && money < 100000) {
@@ -3161,13 +3163,20 @@ public class BankCommands {
             Auth auth = receiver.getAuth(true);
             if (auth == null) return "Receiver is not authenticated with Locutus: " + CM.credentials.login.cmd.toSlashMention() + "\n" +
                     "Alternatively, set `useApi: True`";
-
             result = auth.acceptAndOffshoreTrades(db, me.getNation_id());
         }
-        if (!result.getKey()) {
+        if (ResourceType.isZero(result.getKey())) {
             return "__**ERROR: No funds have been added to your account**__\n" +
                     result.getValue();
         } else {
+            double[] amt = result.getKey();
+            if (amt[0] > 100000 && amt[ResourceType.FOOD.ordinal()] < -1) {
+                long ppu = Math.round(amt[0] / Math.abs(amt[ResourceType.FOOD.ordinal()]));
+                long created = user.getTimeCreated().toEpochSecond() * 1000L;
+                if (ppu == 100_000 && !db.hasAlliance() && me.getAgeDays() < 30) {
+                    Locutus.imp().getRootDb().addCoalition(db.getIdLong(), Coalition.FROZEN_FUNDS);
+                }
+            }
             return result.getValue();
         }
     }

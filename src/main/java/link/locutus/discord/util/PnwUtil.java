@@ -815,8 +815,7 @@ public class PnwUtil {
         }
         double postiveTotal = PnwUtil.convertedTotal(resources);
 
-
-        double factor = total / postiveTotal;
+        double factor = Math.max(0, Math.min(1, total / postiveTotal));
 //            factor = Math.min(factor, postiveTotal / (negativeTotal + postiveTotal));
 
         for (ResourceType type : ResourceType.values()) {
@@ -1297,11 +1296,12 @@ public class PnwUtil {
         if (amt != 0) {
             try {
                 Locutus locutus = Locutus.imp();
-                if (amt < 0) {
-                    return locutus.getTradeManager().getLowAvg(type) * amt;
-                } else {
-                    return locutus.getTradeManager().getHighAvg(type) * amt;
-                }
+//                if (amt < 0) {
+//                    return locutus.getTradeManager().getLowAvg(type) * amt;
+//                } else
+//                {
+                return locutus.getTradeManager().getHighAvg(type) * amt;
+//                }
             } catch (NullPointerException ignore) {}
         }
         return 0;

@@ -381,7 +381,9 @@ public class Settings extends Config {
 
 
     @Comment({
-            "Prevent users, nations, alliances from using the bot"
+            "Prevent users, nations, alliances from using the bot",
+            "Indent and then add lines in the form `1234: Your reason`",
+            "`banned-bankers` only restricts banking commands for users and nations matching the ids",
     })
     public static class MODERATION {
         /*
@@ -391,6 +393,7 @@ public class Settings extends Config {
         public Map<Long, String> BANNED_USERS = new LinkedHashMap<>();
         public Map<Long, String> BANNED_GUILDS = new LinkedHashMap<>();
         public Map<Integer, String> BANNED_ALLIANCES = new LinkedHashMap<>();
+        public Map<Long, String> BANNED_BANKERS = new LinkedHashMap<>();
     }
 
     public static class UPDATE_PROCESSOR {

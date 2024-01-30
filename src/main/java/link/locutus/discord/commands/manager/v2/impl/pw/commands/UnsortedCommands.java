@@ -911,7 +911,7 @@ public class UnsortedCommands {
     @Command(desc = "Get the revenue of nations or alliances\n" +
             "Equilibrium taxrate is where the value of raws consumed matches the value taxed")
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User user, @Me DBNation me,
-                          NationList nations2,
+                          NationList nations,
                           @Arg("Include the revenue of nations unable to be taxed")
                           @Switch("t") boolean includeUntaxable,
                           @Arg("Exclude the new nation bonus")
@@ -925,7 +925,7 @@ public class UnsortedCommands {
                           @Timediff Long includeWarCosts,
                           @Switch("s") @Timestamp Long snapshotDate
                           ) throws Exception {
-        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations2.getNations(), nations2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         if (forceAtWar && forceAtPeace) {
             throw new IllegalArgumentException("Cannot set both `forceAtWar` and `forceAtPeace` (pick one)");
         }
