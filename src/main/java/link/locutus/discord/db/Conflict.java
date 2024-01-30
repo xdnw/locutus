@@ -3,7 +3,9 @@ package link.locutus.discord.db;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.Map;
@@ -17,16 +19,53 @@ public class Conflict {
     private long turnEnd;
     private final Map<Integer, Long> startTime = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Long> endTime = new Int2ObjectOpenHashMap<>();
-    private final Set<Integer> coalition1;
-    private final Set<Integer> coalition2;
+    private final CoalitionSide coalition1 = new CoalitionSide(this);
+    private final CoalitionSide coalition2 = new CoalitionSide(this);
+
+    private CoalitionSide getCoalition(int aaId1, int aaId2) {
+        if (coalition1.hasAlliance(aaId1)) {
+            if (coalition2.hasAlliance(aaId2)) {
+                return coalition1;
+            }
+        } else if (coalition2.hasAlliance(aaId1)) {
+            if (coalition1.hasAlliance(aaId2)) {
+                return coalition2;
+            }
+        }
+        return null;
+    }
+
+    public void updateWar(DBWar previous, DBWar current) {
+        CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa());
+        if (side == null) return;
+        CoalitionSide otherSide = side.getOther();
+        side.updateWar(previous, current, true);
+        otherSide.updateWar(previous, current, false);
+    }
+
+    public void updateAttack(DBWar war, AbstractCursor attack) {
+        int attackerAA, defenderAA;
+        if (attack.getAttacker_id() == war.getAttacker_id()) {
+            attackerAA = war.getAttacker_aa();
+            defenderAA = war.getDefender_aa();
+        } else {
+            attackerAA = war.getDefender_aa();
+            defenderAA = war.getAttacker_aa();
+        }
+        CoalitionSide side = getCoalition(attackerAA, defenderAA);
+        if (side == null) return;
+        CoalitionSide otherSide = side.getOther();
+        side.updateAttack(war, attack, true);
+        otherSide.updateAttack(war, attack, false);
+    }
 
     public Conflict(int id, String name, long turnStart, long turnEnd) {
         this.id = id;
         this.name = name;
         this.turnStart = turnStart;
         this.turnEnd = turnEnd;
-        coalition1 = new IntOpenHashSet();
-        coalition2 = new IntOpenHashSet();
+        this.coalition1.setOther(coalition2);
+        this.coalition2.setOther(coalition1);
     }
 
     private void setParticipantTime(int allianceId, long start, long end) {

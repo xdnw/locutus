@@ -3,26 +3,27 @@ package link.locutus.discord.db;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import org.eclipse.jetty.util.ArrayUtil;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class ConflictManager {
     private final WarDB db;
@@ -32,18 +33,102 @@ public class ConflictManager {
     private final Set<Integer> activeConflicts = new IntOpenHashSet();
     private long lastTurn = 0;
     private final Map<Integer, Set<Integer>> activeConflictsByAllianceId = new Int2ObjectOpenHashMap<>();
+    private final Map<Long, Map<Integer, int[]>> mapTurnAllianceConflictIds = new Long2ObjectOpenHashMap<>();
 
     private synchronized void initTurn() {
-        long turn = TimeUtil.getTurn();
-        if (lastTurn != turn) {
+        long currTurn = TimeUtil.getTurn();
+        if (lastTurn != currTurn) {
             Iterator<Integer> iter = activeConflicts.iterator();
             activeConflicts.removeIf(f -> {
                 Conflict conflict = conflictMap.get(f);
-                return (conflict == null || conflict.getEndTurn() <= turn);
+                return (conflict == null || conflict.getEndTurn() <= currTurn);
             });
             recreateConflictsByAlliance();
-            lastTurn = turn;
+
+            for (Conflict conflict : conflictMap.values()) {
+                long startTurn = Math.max(lastTurn + 1, conflict.getStartTurn());
+                long endTurn = Math.min(currTurn + 1, conflict.getEndTurn());
+                if (startTurn >= endTurn) continue;
+                Set<Integer> aaIds = conflict.getAllianceIds();
+                for (long turn = startTurn; turn < endTurn; turn++) {
+                    Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictIds.computeIfAbsent(turn, k -> new Int2ObjectOpenHashMap<>());
+                    for (int aaId : aaIds) {
+                        int[] currIds = conflictIdsByAA.get(aaId);
+                        if (currIds == null) {
+                            currIds = new int[]{conflict.getId()};
+                        } else {
+                            int[] newIds = new int[currIds.length + 1];
+                            System.arraycopy(currIds, 0, newIds, 0, currIds.length);
+                            newIds[currIds.length] = conflict.getId();
+                            Arrays.sort(newIds);
+                            currIds = newIds;
+                        }
+                        conflictIdsByAA.put(aaId, currIds);
+                    }
+                }
+            }
+            lastTurn = currTurn;
         }
+    }
+
+    private void applyConflicts(long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
+        if (allianceId1 == 0 && allianceId2 == 0) return;
+        synchronized (mapTurnAllianceConflictIds) {
+            Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictIds.get(turn);
+            if (conflictIdsByAA == null) return;
+            int[] conflictIds1 = allianceId1 != 0 ? conflictIdsByAA.get(allianceId1) : null;
+            int[] conflictIds2 = allianceId2 != 0 && allianceId2 != allianceId1 ? conflictIdsByAA.get(allianceId2) : null;
+            if (conflictIds2 != null && conflictIds1 != null) {
+                int i = 0, j = 0;
+                while (i < conflictIds1.length && j < conflictIds2.length) {
+                    if (conflictIds1[i] < conflictIds2[j]) {
+                        applyConflictConsumer(conflictIds1[i], conflictConsumer);
+                        i++;
+                    } else if (conflictIds1[i] > conflictIds2[j]) {
+                        applyConflictConsumer(conflictIds2[j], conflictConsumer);
+                        j++;
+                    } else {
+                        applyConflictConsumer(conflictIds1[i], conflictConsumer);
+                        i++;
+                        j++;
+                    }
+                }
+                while (i < conflictIds1.length) {
+                    applyConflictConsumer(conflictIds1[i], conflictConsumer);
+                    i++;
+                }
+                while (j < conflictIds2.length) {
+                    applyConflictConsumer(conflictIds2[j], conflictConsumer);
+                    j++;
+                }
+            } else if (conflictIds1 != null) {
+                for (int conflictId : conflictIds1) {
+                    applyConflictConsumer(conflictId, conflictConsumer);
+                }
+            } else if (conflictIds2 != null) {
+                for (int conflictId : conflictIds2) {
+                    applyConflictConsumer(conflictId, conflictConsumer);
+                }
+            }
+        }
+    }
+
+    private void applyConflictConsumer(int conflictId, Consumer<Conflict> conflictConsumer) {
+        Conflict conflict = conflictMap.get(conflictId);
+        if (conflict != null) {
+            conflictConsumer.accept(conflict);
+        }
+    }
+
+    public void updateWar(DBWar war, long turn) {
+        if (turn > lastTurn) initTurn();
+        applyConflicts(turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateWar(war, turn));
+    }
+
+    public void updateAttack(DBWar war, AbstractCursor attack) {
+        long turn = TimeUtil.getTurn(attack.getDate());
+        if (turn > lastTurn) initTurn();
+        applyConflicts(turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn));
     }
 
     private void recreateConflictsByAlliance() {
@@ -66,6 +151,50 @@ public class ConflictManager {
 
     public ConflictManager(WarDB db) {
         this.db = db;
+    }
+
+    protected void loadConflicts() {
+        conflictMap.clear();
+        db.query("SELECT * FROM conflicts", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                long start = rs.getLong("start");
+                long end = rs.getLong("end");
+                conflictMap.put(id, new Conflict(id, name, start, end));
+            }
+        });
+        db.query("SELECT * FROM conflict_participant", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int conflictId = rs.getInt("conflict_id");
+                int allianceId = rs.getInt("alliance_id");
+                boolean side = rs.getBoolean("side");
+                long start = rs.getLong("start");
+                long end = rs.getLong("end");
+                Conflict conflict = conflictMap.get(conflictId);
+                if (conflict != null) {
+                    conflict.addParticipant(allianceId, side, false, start, end);
+                }
+            }
+        });
+        // load legacyNames
+        db.query("SELECT * FROM legacy_names", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                legacyNames.put(id, name);
+                legacyIds.putIfAbsent(name.toLowerCase(Locale.ROOT), id);
+                System.out.println("Add legacy name " + name + "," + id);
+            }
+        });
+
+        if (legacyNames.isEmpty()) {
+            saveDefaultNames();
+        }
+        initTurn();
     }
 
     private void saveDefaultNames() {
@@ -324,55 +453,9 @@ public class ConflictManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL)");
-
 //        db.executeStmt("DELETE FROM conflict_participant");
 //        db.executeStmt("DELETE FROM conflicts");
-
         loadConflicts();
-    }
-
-    protected void loadConflicts() {
-        conflictMap.clear();
-        db.query("SELECT * FROM conflicts", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                long start = rs.getLong("start");
-                long end = rs.getLong("end");
-                conflictMap.put(id, new Conflict(id, name, start, end));
-            }
-        });
-        db.query("SELECT * FROM conflict_participant", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int conflictId = rs.getInt("conflict_id");
-                int allianceId = rs.getInt("alliance_id");
-                boolean side = rs.getBoolean("side");
-                long start = rs.getLong("start");
-                long end = rs.getLong("end");
-                Conflict conflict = conflictMap.get(conflictId);
-                if (conflict != null) {
-                    conflict.addParticipant(allianceId, side, false, start, end);
-                }
-            }
-        });
-        // load legacyNames
-        db.query("SELECT * FROM legacy_names", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                legacyNames.put(id, name);
-                legacyIds.putIfAbsent(name.toLowerCase(Locale.ROOT), id);
-                System.out.println("Add legacy name " + name + "," + id);
-            }
-        });
-
-        if (legacyNames.isEmpty()) {
-            saveDefaultNames();
-        }
-        initTurn();
     }
 
     public void addLegacyName(int id, String name) {
@@ -476,8 +559,19 @@ public class ConflictManager {
         return null;
     }
 
-    public Integer getLegacyName(String name) {
+    public Integer getLegacyId(String name) {
         return legacyIds.get(name.toLowerCase(Locale.ROOT));
+    }
+
+    public String getAllianceName(int id) {
+        DBAlliance alliance = DBAlliance.get(id);
+        if (alliance != null) return alliance.getName();
+        String name;
+        synchronized (legacyNames) {
+            name = legacyNames.get(id);
+        }
+        if (name != null) return name;
+        return "AA:" + id;
     }
 
     public void deleteConflict(Conflict conflict) {

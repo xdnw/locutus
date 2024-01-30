@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -393,7 +394,7 @@ public class WarUpdateProcessor {
         return category;
     }
 
-    public static AttackTypeSubCategory subCategorize(AbstractCursor root) {
+    public static AttackTypeSubCategory subCategorize(IAttack root) {
         switch (root.getAttack_type()) {
             case FORTIFY:
                 return AttackTypeSubCategory.FORTIFY;

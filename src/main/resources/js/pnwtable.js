@@ -1,18 +1,36 @@
+function createAnchor(href, text) {
+    var a = document.createElement('a');
+    a.href = href;
+    a.innerText = text;
+    return a.outerHTML;
+}
 function renderUrl(data, type, row, meta) {
-    var a = document
+    return createAnchor(data[0] + "", data[1]);
+}
+function renderUrlSub(data, type, row, meta) {
+    var currentUrl = new URL(window.location.href);
+    currentUrl.pathname = currentUrl.pathname + (currentUrl.pathname.endsWith('/') ? '' : '/') + data[0];
+    return createAnchor(currentUrl.toString(), data[1]);
+}
+function renderTime(data, type, row, meta) {
+    if (data == -1) return "N/A";
+    let date = new Date(data);
+    // local
+    console.log(data + " | " + data.toLocaleString());
+    return date.toISOString().split('T')[0];
 }
 
 function setupTable(containerElem, tableElem, dataSetRoot) {
     let jqContainer = $(containerElem);
     let jqTable = $(tableElem);
 
-    let dataColumns = dataSetRoot["columns"]; // is a list
-    let dataList = dataSetRoot["data"]; // is a list of lists
-    let searchableColumns = dataSetRoot["searchable"]; // is a list of column indexes
-    let visibleColumns = dataSetRoot["visible"]; // is a list of column indexes
-    let cell_format = dataSetRoot["cell_format"]; // is a object of function -> list of column indexes - This variable may be null
-    let row_format = dataSetRoot["row_format"]; // is a string (or null)
-    let sort = dataSetRoot["sort"]; // [index, asc or desc]
+    let dataColumns = dataSetRoot["columns"];
+    let dataList = dataSetRoot["data"];
+    let searchableColumns = dataSetRoot["searchable"];
+    let visibleColumns = dataSetRoot["visible"];
+    let cell_format = dataSetRoot["cell_format"];
+    let row_format = dataSetRoot["row_format"];
+    let sort = dataSetRoot["sort"];
     if (sort == null) sort = [0, 'asc'];
 
     let dataObj = [];

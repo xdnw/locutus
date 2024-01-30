@@ -91,8 +91,15 @@ public class TableBuilder<T> {
                 if (value instanceof JsonElement) {
                     row.add((JsonElement) value);
                 } else {
-                    String valueStr = value == null ? "" : value.toString();
-                    row.add(valueStr);
+                    if (value instanceof Number num) {
+                        row.add(num);
+                    } else if (value instanceof String s) {
+                        row.add(s);
+                    } else if (value instanceof Boolean b) {
+                        row.add(b);
+                    } else {
+                        row.add(value == null ? "" : value.toString());
+                    }
                 }
             }
             data.add(row);

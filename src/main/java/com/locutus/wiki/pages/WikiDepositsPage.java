@@ -27,7 +27,7 @@ public class WikiDepositsPage extends BotWikiGen {
                 """
                 The deposits check command can be used to view the account balance of nations, tax brackets as well as the alliance or guild offshore account
                 - Nation e.g. `Borg` - Net funds a nation has deposited/received with the alliance bank
-                - Tax bracket e.g. `#tax_id=1234` - Net funds a from tax records
+                - Tax bracket e.g. `tax_id=1234` - Net funds a from tax records
                 - Alliance e.g. `AA:Rose` - Net funds the alliance has deposited/received with the offshore
                 - Guild ID e.g. `647252780817448972` - Net funds the `#guild` has deposited/received with the offshore
                 

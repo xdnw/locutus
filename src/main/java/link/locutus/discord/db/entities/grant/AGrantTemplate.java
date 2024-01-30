@@ -88,10 +88,10 @@ public abstract class AGrantTemplate<T> {
 
         if (fromBracket > 0) {
             if (filterString.contains("#")) result.append(",");
-            result.append("#tax_id=").append(fromBracket);
+            result.append("tax_id=").append(fromBracket);
         } else if (useReceiverBracket) {
             if (result.length() > 0) result.append(",");
-            result.append("#tax_id=").append("receiver");
+            result.append("tax_id=").append("receiver");
         }
         if (expiryOrZero > 0) {
             String time = TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero);
@@ -140,7 +140,7 @@ public abstract class AGrantTemplate<T> {
                 nationFilter.getFilter(),
                 getEconRole() == null ? null : getEconRole().getAsMention(),
                 getSelfRole() == null ? null : getSelfRole().getAsMention(),
-                fromBracket > 0 ? "#tax_id=" + fromBracket : null,
+                fromBracket > 0 ? "tax_id=" + fromBracket : null,
                 useReceiverBracket ? "true" : null,
                 maxTotal > 0 ? "" + maxTotal : null,
                 maxDay > 0 ? "" + maxDay : null,
@@ -654,7 +654,7 @@ public abstract class AGrantTemplate<T> {
             return receiver.getTaxBracket();
         }
         if (this.fromBracket > 0) {
-            return PWBindings.bracket(db, "#tax_id=" + fromBracket);
+            return PWBindings.bracket(db, "tax_id=" + fromBracket);
         }
         return null;
     }

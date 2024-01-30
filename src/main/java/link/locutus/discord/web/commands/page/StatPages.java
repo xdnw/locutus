@@ -11,9 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
@@ -22,26 +20,21 @@ import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
 import link.locutus.discord.web.builder.TableBuilder;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class StatPages {
     @Command(desc = "Show active conflicts")
-    public Object conflicts(ConflictManager manager, WebStore ws) {
+    public Object conflicts(ConflictManager manager, WebStore ws, @Default Conflict conflict) {
+        System.out.println("Conflict " + (conflict == null ? "NONE" : conflict.getName()));
+        long start = System.currentTimeMillis();
         TableBuilder<Conflict> table = new TableBuilder<>(ws);
         table.addColumn("Conflict", true, true, f -> {
             JsonArray arr = new JsonArray();
@@ -51,13 +44,16 @@ public class StatPages {
         });
         table.addColumn("Start", true, true, f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
         table.addColumn("End", true, true, f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
-        table.addColumn("C1 Size", false, false, f -> f.getCoalition1().size());
-        table.addColumn("C2 Size", false, false, f -> f.getCoalition2().size());
+        table.addColumn("Coalition 1", false, false, f -> f.getCoalition1().stream().map(manager::getAllianceName).collect(Collectors.joining(",")));
+        table.addColumn("Coalition 2", false, false, f -> f.getCoalition2().stream().map(manager::getAllianceName).collect(Collectors.joining(",")));
         table.sort(2, true);
-        table.setRenderer(0, "renderUrl");
+        table.setRenderer(0, "renderUrlSub");
         table.setRenderer(1, "renderTime");
         table.setRenderer(2, "renderTime");
-        return table.buildPageHtml("Test", new ArrayList<>(manager.getConflictMap().values()));
+        String html = table.buildPageHtml("Test", new ArrayList<>(manager.getConflictMap().values()));
+        long diff = System.currentTimeMillis() - start;
+        System.out.println("Took " + diff + "ms");
+        return html;
     }
 
     @Command()
