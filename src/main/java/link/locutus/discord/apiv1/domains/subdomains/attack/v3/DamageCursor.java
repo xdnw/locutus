@@ -177,6 +177,17 @@ public abstract class DamageCursor extends AbstractCursor{
     }
 
     @Override
+    public void addBuildingsDestroyed(char[] destroyedBuffer) {
+        if (num_improvements > 0) {
+            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                byte typeId = entry.getKey();
+                byte amt = entry.getValue();
+                destroyedBuffer[typeId] += amt;
+            }
+        }
+    }
+
+    @Override
     public double getCity_infra_before() {
         return city_infra_before_cents * 0.01;
     }

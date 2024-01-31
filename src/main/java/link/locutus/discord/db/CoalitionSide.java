@@ -1,24 +1,28 @@
 package link.locutus.discord.db;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.db.entities.conflict.DamageStatGroup;
+import link.locutus.discord.db.entities.conflict.OffDefStatGroup;
+import link.locutus.discord.web.jooby.JteUtil;
 
-import java.util.EnumMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class CoalitionSide {
     private final Conflict parent;
+    private final String name;
     private CoalitionSide otherSide;
 
     private final Set<Integer> coalition = new IntOpenHashSet();
@@ -28,11 +32,53 @@ public class CoalitionSide {
     private final Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>> statsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>> statsByNation = new Int2ObjectOpenHashMap<>();
 
-
     private final DamageStatGroup lossesStats = new DamageStatGroup();
     private final DamageStatGroup inflictedStats = new DamageStatGroup();
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByNation = new Int2ObjectOpenHashMap<>();
+
+    public JsonObject toJson(ConflictManager manager) {
+        JsonObject root = new JsonObject();
+        root.addProperty("name", getName());
+        JsonArray allianceIds = new JsonArray();
+        JsonArray allianceNames = new JsonArray();
+        List<Integer> aaIds = new ArrayList<>(coalition);
+        for (int id : aaIds) {
+            String aaName = manager.getAllianceNameOrNull(id);
+            if (aaName == null) aaName = "";
+            allianceIds.add(id);
+            allianceNames.add(aaName);
+        }
+        root.add("alliance_ids", allianceIds);
+        root.add("alliance_names", allianceNames);
+
+        JsonArray nationIds = new JsonArray();
+        JsonArray nationNames = new JsonArray();
+        List<Integer> nationIdsList = new ArrayList<>(statsByNation.keySet());
+        for (int id : nationIdsList) {
+            DBNation nation = DBNation.getById(id);
+            String name = nation == null ? "" : nation.getName();
+            nationIds.add(id);
+            nationNames.add(name);
+        }
+        root.add("nation_ids", nationIds);
+        root.add("nation_names", nationNames);
+
+        Map<String, Function<OffDefStatGroup, Object>> offDefHeader = OffDefStatGroup.createHeader();
+        JsonArray offDefData = new JsonArray();
+        JteUtil.writeArray(offDefData, offDefHeader.values(), List.of(offensiveStats, defensiveStats));
+        JteUtil.writeArray(offDefData, offDefHeader.values(), aaIds, statsByAlliance);
+        JteUtil.writeArray(offDefData, offDefHeader.values(), nationIdsList, statsByNation);
+        root.add("counts", offDefData);
+
+        Map<String, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
+        JsonArray damageData = new JsonArray();
+        JteUtil.writeArray(damageData, damageHeader.values(), List.of(lossesStats, inflictedStats));
+        JteUtil.writeArray(damageData, damageHeader.values(), aaIds, damageByAlliance);
+        JteUtil.writeArray(damageData, damageHeader.values(), nationIdsList, damageByNation);
+        root.add("damage", damageData);
+        return root;
+    }
 
     public void add(int allianceId) {
         coalition.add(allianceId);
@@ -42,91 +88,50 @@ public class CoalitionSide {
         coalition.remove(allianceId);
     }
 
-    public Set<Integer> get() {
+    public Set<Integer> getAllianceIds() {
         return coalition;
     }
 
-
-    private static class DamageStatGroup {
-        public final double[] totalCost = ResourceType.getBuffer();
-        public final double[] unitCost = ResourceType.getBuffer();
-        public final double[] consumption = ResourceType.getBuffer();
-        public final double[] loot = ResourceType.getBuffer();
-        public final int[] units = new int[MilitaryUnit.values.length];
-        public double infra = 0;
-
-        public void apply(AbstractCursor attack, boolean isAttacker) {
-            attack.getLosses(totalCost, isAttacker, true, true, true, true, true);
-            attack.getLosses(unitCost, isAttacker, true, false, false, false, false);
-            attack.getLosses(consumption, isAttacker, false, false, true, false, false);
-            attack.getLosses(loot, isAttacker, false, false, false, true, false);
-            attack.getUnitLosses(units, isAttacker);
-            if (!isAttacker) {
-                infra += attack.getInfra_destroyed_value();
-            }
-        }
+    public String getName() {
+        return name;
     }
 
-    private static class OffDefStatGroup {
-        public int totalWars;
-        public int activeWars;
-        public int attacks = 0;
-        public int warsWon;
-        public int warsLost;
-        public int warsExpired;
-        public int warsPeaced;
-        public final Map<AttackType, Integer> attackTypes = new EnumMap<>(AttackType.class);
-        public final Map<AttackTypeSubCategory, Integer> attackSubTypes = new EnumMap<>(AttackTypeSubCategory.class);
-        public final Map<SuccessType, Integer> successTypes = new EnumMap<>(SuccessType.class);
-        public final Map<WarType, Integer> warTypes = new EnumMap<>(WarType.class);
-
-        public void newWar(DBWar war, boolean isAttacker) {
-            totalWars++;
-            if (war.isActive()) activeWars++;
-            else {
-                addWarStatus(war.getStatus(), isAttacker);
-            }
-            warTypes.merge(war.getWarType(), 1, Integer::sum);
-        }
-
-        private void addWarStatus(WarStatus status, boolean isAttacker) {
-            switch (status) {
-                case DEFENDER_VICTORY -> {
-                    if (isAttacker) warsLost++;
-                    else warsWon++;
-                }
-                case ATTACKER_VICTORY -> {
-                    if (isAttacker) warsWon++;
-                    else warsLost++;
-                }
-                case PEACE -> {
-                    warsPeaced++;
-                }
-                case EXPIRED -> {
-                    warsExpired++;
-                }
-            }
-        }
-
-        public void updateWar(DBWar previous, DBWar current, boolean isAttacker) {
-            addWarStatus(current.getStatus(), isAttacker);
-            if (previous.isActive() && !current.isActive()) {
-                activeWars--;
-            }
-        }
-
-        public void newAttack(DBWar war, AbstractCursor attack, AttackTypeSubCategory subCategory) {
-            attacks++;
-            attackTypes.merge(attack.getAttack_type(), 1, Integer::sum);
-            if (subCategory != null) {
-                attackSubTypes.merge(subCategory, 1, Integer::sum);
-            }
-            successTypes.merge(attack.getSuccess(), 1, Integer::sum);
-        }
+    public OffDefStatGroup getOffensiveStats() {
+        return getOffensiveStats(null, false);
     }
 
-    public CoalitionSide(Conflict parent) {
+    public OffDefStatGroup getOffensiveStats(Integer id, boolean isAlliance) {
+        if (id == null) return offensiveStats;
+        Map.Entry<OffDefStatGroup, OffDefStatGroup> pair = isAlliance ? statsByAlliance.get(id) : statsByNation.get(id);
+        return pair == null ? null : pair.getKey();
+    }
+
+    public OffDefStatGroup getDefensiveStats() {
+        return getDefensiveStats(null, false);
+    }
+    public OffDefStatGroup getDefensiveStats(Integer id, boolean isAlliance) {
+        if (id == null) return defensiveStats;
+        Map.Entry<OffDefStatGroup, OffDefStatGroup> pair = isAlliance ? statsByAlliance.get(id) : statsByNation.get(id);
+        return pair == null ? null : pair.getValue();
+    }
+
+    public DamageStatGroup getLosses() {
+        return getDamageStats(true, null, false);
+    }
+
+    public DamageStatGroup getInflicted() {
+        return getDamageStats(false, null, false);
+    }
+
+    public DamageStatGroup getDamageStats(boolean isLosses, Integer id, boolean isAlliance) {
+        if (id == null) return isLosses ? lossesStats : inflictedStats;
+        Map.Entry<DamageStatGroup, DamageStatGroup> pair = isAlliance ? damageByAlliance.get(id) : damageByNation.get(id);
+        return pair == null ? null : isLosses ? pair.getKey() : pair.getValue();
+    }
+
+    public CoalitionSide(Conflict parent, String name) {
         this.parent = parent;
+        this.name = name;
     }
 
     public boolean hasAlliance(int aaId) {

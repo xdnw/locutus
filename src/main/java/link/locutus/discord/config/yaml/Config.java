@@ -128,7 +128,6 @@ public class Config {
             if (value instanceof MemorySection) {
                 continue;
             }
-            System.out.println(key + " = " + value);
             set(key, value, getClass());
         }
         return true;

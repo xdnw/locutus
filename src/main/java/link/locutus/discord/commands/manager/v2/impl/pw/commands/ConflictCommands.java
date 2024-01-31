@@ -347,10 +347,10 @@ public class ConflictCommands {
     //- Import conflicts from ctowned
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String importCtowned() throws IOException, SQLException, ClassNotFoundException, ParseException {
-        loadConflicts("conflicts", "conflicts");
-        loadConflicts("conflicts/micros", "conflicts-micros");
-        return "";
+    public String importCtowned(ConflictManager manager) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        loadConflicts(manager, "conflicts", "conflicts");
+        loadConflicts(manager, "conflicts/micros", "conflicts-micros");
+        return "Done!";
     }
 
     private static int getAllianceId(String name) {
@@ -365,7 +365,7 @@ public class ConflictCommands {
         return 0;
     }
 
-    private static void loadConflicts(String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    private static void loadConflicts(ConflictManager manager, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
         String fileStr = "files/" + fileName + ".html";
         Document document;
         if (new File(fileName).exists()) {
@@ -391,6 +391,7 @@ public class ConflictCommands {
             // Get the URL and text
             String cellUrl = aElement.attr("href");
             String conflictName = getConflictName(aElement.text());
+            if (manager.getConflict(conflictName) != null) continue;
 
             String startDateStr = row.select("td").get(6).text();
             String endDateStr = row.select("td").get(7).text();

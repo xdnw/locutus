@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -8,7 +9,9 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.sql.PreparedStatement;
@@ -73,11 +76,11 @@ public class ConflictManager {
         }
     }
 
-    private void applyConflicts(long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
-        if (allianceId1 == 0 && allianceId2 == 0) return;
+    private boolean applyConflicts(long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
+        if (allianceId1 == 0 && allianceId2 == 0) return false;
         synchronized (mapTurnAllianceConflictIds) {
             Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictIds.get(turn);
-            if (conflictIdsByAA == null) return;
+            if (conflictIdsByAA == null) return false;
             int[] conflictIds1 = allianceId1 != 0 ? conflictIdsByAA.get(allianceId1) : null;
             int[] conflictIds2 = allianceId2 != 0 && allianceId2 != allianceId1 ? conflictIdsByAA.get(allianceId2) : null;
             if (conflictIds2 != null && conflictIds1 != null) {
@@ -112,6 +115,7 @@ public class ConflictManager {
                     applyConflictConsumer(conflictId, conflictConsumer);
                 }
             }
+            return true;
         }
     }
 
@@ -122,10 +126,19 @@ public class ConflictManager {
         }
     }
 
-    public void updateWar(DBWar previous, DBWar current) {
+    public boolean updateWar(DBWar previous, DBWar current) {
         long turn = TimeUtil.getTurn(current.getDate());
         if (turn > lastTurn) initTurn();
-        applyConflicts(turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn));
+        return applyConflicts(turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn));
+    }
+
+    @Subscribe
+    public void onAttack(AttackEvent event) {
+        AbstractCursor attack = event.getAttack();
+        DBWar war = attack.getWar();
+        if (war != null) {
+            updateAttack(war, attack);
+        }
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack) {
@@ -157,15 +170,16 @@ public class ConflictManager {
     }
 
     protected void loadConflicts() {
+        long start = System.currentTimeMillis();
         conflictMap.clear();
         db.query("SELECT * FROM conflicts", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 int id = rs.getInt("id");
                 String name = rs.getString("name");
-                long start = rs.getLong("start");
-                long end = rs.getLong("end");
-                conflictMap.put(id, new Conflict(id, name, start, end));
+                long startTurn = rs.getLong("start");
+                long endTurn = rs.getLong("end");
+                conflictMap.put(id, new Conflict(id, name, startTurn, endTurn));
             }
         });
         db.query("SELECT * FROM conflict_participant", stmt -> {
@@ -174,11 +188,11 @@ public class ConflictManager {
                 int conflictId = rs.getInt("conflict_id");
                 int allianceId = rs.getInt("alliance_id");
                 boolean side = rs.getBoolean("side");
-                long start = rs.getLong("start");
-                long end = rs.getLong("end");
+                long startTurn = rs.getLong("start");
+                long endTurn = rs.getLong("end");
                 Conflict conflict = conflictMap.get(conflictId);
                 if (conflict != null) {
-                    conflict.addParticipant(allianceId, side, false, start, end);
+                    conflict.addParticipant(allianceId, side, false, startTurn, endTurn);
                 }
             }
         });
@@ -190,14 +204,35 @@ public class ConflictManager {
                 String name = rs.getString("name");
                 legacyNames.put(id, name);
                 legacyIds.putIfAbsent(name.toLowerCase(Locale.ROOT), id);
-                System.out.println("Add legacy name " + name + "," + id);
             }
         });
 
+        System.out.println("Loaded " + conflictMap.size() + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
         if (legacyNames.isEmpty()) {
             saveDefaultNames();
         }
+        System.out.println("Default names: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
         initTurn();
+        System.out.println("Init turns: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+        ObjectOpenHashSet<DBWar> wars = new ObjectOpenHashSet<>();
+        long turn = TimeUtil.getTurn();
+        for (DBWar war : this.db.getWars()) {
+            if (updateWar(null, war)) {
+                if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < turn) {
+                    System.out.println("INVALID WAR EPIRED " + war.getWarId() + " | " + war.getDate() + " | " + war.getStatus());
+                }
+                wars.add(war);
+            }
+        }
+        System.out.println("Load wars: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+        db.iterateAttacks(wars, f -> true, f -> true, new Consumer<AbstractCursor>() {
+            @Override
+            public void accept(AbstractCursor attack) {
+                DBWar war = wars.get(new ArrayUtil.IntKey(attack.getWar_id()));
+                updateAttack(war, attack);
+            }
+        });
+        System.out.println("Load attacks: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
     }
 
     private void saveDefaultNames() {
@@ -458,7 +493,6 @@ public class ConflictManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL)");
 //        db.executeStmt("DELETE FROM conflict_participant");
 //        db.executeStmt("DELETE FROM conflicts");
-        loadConflicts();
     }
 
     public void addLegacyName(int id, String name) {
@@ -567,14 +601,19 @@ public class ConflictManager {
     }
 
     public String getAllianceName(int id) {
+        String name = getAllianceNameOrNull(id);
+        if (name == null) name = "AA:" + id;
+        return name;
+    }
+
+    public String getAllianceNameOrNull(int id) {
         DBAlliance alliance = DBAlliance.get(id);
         if (alliance != null) return alliance.getName();
         String name;
         synchronized (legacyNames) {
             name = legacyNames.get(id);
         }
-        if (name != null) return name;
-        return "AA:" + id;
+        return name;
     }
 
     public void deleteConflict(Conflict conflict) {

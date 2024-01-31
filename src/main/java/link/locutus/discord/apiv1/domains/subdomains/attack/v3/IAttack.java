@@ -54,6 +54,7 @@ public interface IAttack {
     double getInfra_destroyed();
     int getImprovements_destroyed(); // ?
     void addBuildingsDestroyed(int[] destroyedBuffer);
+    void addBuildingsDestroyed(char[] destroyedBuffer);
     /**
      * Valid for victory when all cities receive damage
      * @return number between 0 and 100

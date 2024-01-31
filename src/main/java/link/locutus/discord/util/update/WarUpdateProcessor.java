@@ -9,6 +9,7 @@ import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
@@ -133,6 +134,18 @@ public class WarUpdateProcessor {
             WarUpdateProcessor.checkActiveConflicts();
         } catch (Throwable e) {
             e.printStackTrace();
+        }
+        ConflictManager conflictManager = Locutus.imp().getWarDb().getConflicts();
+        if (conflictManager != null) {
+            try {
+                for (Map.Entry<DBWar, DBWar> entry : wars) {
+                    DBWar previous = entry.getKey();
+                    DBWar current = entry.getValue();
+                    conflictManager.updateWar(previous, current);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 500) {

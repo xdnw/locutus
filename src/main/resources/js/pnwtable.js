@@ -1,25 +1,3 @@
-function createAnchor(href, text) {
-    var a = document.createElement('a');
-    a.href = href;
-    a.innerText = text;
-    return a.outerHTML;
-}
-function renderUrl(data, type, row, meta) {
-    return createAnchor(data[0] + "", data[1]);
-}
-function renderUrlSub(data, type, row, meta) {
-    var currentUrl = new URL(window.location.href);
-    currentUrl.pathname = currentUrl.pathname + (currentUrl.pathname.endsWith('/') ? '' : '/') + data[0];
-    return createAnchor(currentUrl.toString(), data[1]);
-}
-function renderTime(data, type, row, meta) {
-    if (data == -1) return "N/A";
-    let date = new Date(data);
-    // local
-    console.log(data + " | " + data.toLocaleString());
-    return date.toISOString().split('T')[0];
-}
-
 function setupTable(containerElem, tableElem, dataSetRoot) {
     let jqContainer = $(containerElem);
     let jqTable = $(tableElem);
@@ -62,8 +40,6 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
             columnsInfo.push(columnInfo);
         }
     }
-
-    // header and footer toggles + search
     for(let i = 0; i < columnsInfo.length; i++) {
         let columnInfo = columnsInfo[i];
         let title = columnInfo["data"];
@@ -80,7 +56,7 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
             } else {
                 th = title;
             }
-            tf = "<button class='toggle-vis btn-danger' data-column='" + i + "'>-" + title + "</button>";
+            tf = "<button class='toggle-vis btn btn-danger' data-column='" + i + "'>-" + title + "</button>";
         }
         jqTable.find("thead tr").append("<th>" + th + "</th>");
         let rows = jqTable.find("tfoot tr").append("<th>" + tf + "</th>");
@@ -198,18 +174,28 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
     } );
 }
 
+function addTable(container, id) {
+    container.innerHTML = "<div class=\"table-toggles\"></div>" +
+    "<table id=\"" + id + "\" class=\"locutus-table table compact table-striped table-bordered table-sm\" style=\"width:100%\">" +
+    "<thead class=\"table-danger\"><tr></tr></thead>" +
+    "<tbody></tbody>" +
+    "<tfoot><tr></tr></tfoot>" +
+    "</table>";
+}
+
+function setupContainer(container, data) {
+    addTable(container, uuidv4());
+    let table = container.getElementsByTagName("table")[0];
+    setupTable(container, table, data);
+}
+
 $(document).ready(function() {
     let containers = document.getElementsByClassName("locutus-table-container");
     for (let i = 0; i < containers.length; i++) {
         let container = containers[i];
 
         var id = "t" + uuidv4();
-        container.innerHTML = "<div class=\"table-toggles\"></div>" +
-            "<table id=\"" + id + "\" class=\"locutus-table table compact table-striped table-bordered table-sm\" style=\"width:100%\">" +
-            "<thead class=\"table-danger\"><tr></tr></thead>" +
-            "<tbody></tbody>" +
-            "<tfoot><tr></tr></tfoot>" +
-            "</table>";
+        addTable(container, id);
         let table = container.getElementsByTagName("table")[0];
         let src = container.getAttribute("src");
 

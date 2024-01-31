@@ -1,15 +1,22 @@
 package link.locutus.discord.db;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.conflict.DamageStatGroup;
+import link.locutus.discord.db.entities.conflict.OffDefStatGroup;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.jooby.JteUtil;
 
+import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Conflict {
@@ -19,8 +26,38 @@ public class Conflict {
     private long turnEnd;
     private final Map<Integer, Long> startTime = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Long> endTime = new Int2ObjectOpenHashMap<>();
-    private final CoalitionSide coalition1 = new CoalitionSide(this);
-    private final CoalitionSide coalition2 = new CoalitionSide(this);
+    private final CoalitionSide coalition1 = new CoalitionSide(this, "Coalition 1");
+    private final CoalitionSide coalition2 = new CoalitionSide(this, "Coalition 2");
+    private String b64;
+    private volatile boolean dirtyWars = false;
+    private volatile boolean dirtyJson = true;
+
+    public synchronized String getJsonB64(ConflictManager manager) {
+        if (dirtyWars) {
+            // TODO
+        }
+        if (dirtyJson || b64 == null) {
+            try {
+                JsonObject root = new JsonObject();
+                JsonArray coalitions = new JsonArray();
+                coalitions.add(coalition1.toJson(manager));
+                coalitions.add(coalition2.toJson(manager));
+                root.add("coalitions", coalitions);
+
+
+                Map<String, Function<OffDefStatGroup, Object>> offDefHeader = OffDefStatGroup.createHeader();
+                root.add("counts_header", JteUtil.createArrayCol(offDefHeader.keySet()));
+                Map<String, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
+                root.add("damage_header", JteUtil.createArrayCol(damageHeader.keySet()));
+
+                return b64 = Base64.getEncoder().encodeToString(root.toString().getBytes());
+            } finally {
+                System.out.println(b64.length());
+                dirtyJson = false;
+            }
+        }
+        return b64;
+    }
 
     public long getStartTurn(int allianceId) {
         return startTime.getOrDefault(allianceId, turnStart);
@@ -52,6 +89,7 @@ public class Conflict {
         CoalitionSide otherSide = side.getOther();
         side.updateWar(previous, current, true);
         otherSide.updateWar(previous, current, false);
+        dirtyJson = true;
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack, long turn) {
@@ -68,6 +106,7 @@ public class Conflict {
         CoalitionSide otherSide = side.getOther();
         side.updateAttack(war, attack, true);
         otherSide.updateAttack(war, attack, false);
+        dirtyJson = true;
     }
 
     public Conflict(int id, String name, long turnStart, long turnEnd) {
@@ -86,6 +125,7 @@ public class Conflict {
         if (end != Long.MAX_VALUE) {
             endTime.put(allianceId, end);
         }
+        dirtyJson = true;
     }
 
     private ConflictManager getManager() {
@@ -95,18 +135,21 @@ public class Conflict {
     public Conflict setName(String name) {
         this.name = name;
         getManager().updateConflict(id, turnStart, turnEnd);
+        dirtyJson = true;
         return this;
     }
 
     public Conflict setStart(long time) {
         this.turnStart = TimeUtil.getTurn(time);
         getManager().updateConflict(id, turnStart, turnEnd);
+        dirtyJson = true;
         return this;
     }
 
     public Conflict setEnd(long time) {
         this.turnEnd = TimeUtil.getTurn(time) + 1;
         getManager().updateConflict(id, turnStart, turnEnd);
+        dirtyJson = true;
         return this;
     }
 
@@ -125,7 +168,9 @@ public class Conflict {
         else coalition2.add(allianceId);
         if (save) {
             getManager().addParticipant(allianceId, id, side, startTime.getOrDefault(allianceId, 0L), endTime.getOrDefault(allianceId, Long.MAX_VALUE));
+            dirtyWars = true;
         }
+        dirtyJson = true;
         return this;
     }
 
@@ -135,6 +180,8 @@ public class Conflict {
         startTime.remove(allianceId);
         endTime.remove(allianceId);
         getManager().removeParticipant(allianceId, id);
+        dirtyWars = true;
+        dirtyJson = true;
         return this;
     }
 
@@ -155,19 +202,19 @@ public class Conflict {
     }
 
     public Set<Integer> getCoalition1() {
-        return coalition1.get();
+        return coalition1.getAllianceIds();
     }
 
     public Set<Integer> getCoalition2() {
-        return coalition2.get();
+        return coalition2.getAllianceIds();
     }
 
     public Set<DBAlliance> getCoalition1Obj() {
-        return coalition1.get().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        return coalition1.getAllianceIds().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
     }
 
     public Set<DBAlliance> getCoalition2Obj() {
-        return coalition2.get().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        return coalition2.getAllianceIds().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
     }
 
     public Boolean getSide(int allianceId) {
@@ -177,9 +224,21 @@ public class Conflict {
     }
 
     public Set<Integer> getAllianceIds() {
-        Set<Integer> ids = new IntOpenHashSet(coalition1.get().size() + coalition2.get().size());
-        ids.addAll(coalition1.get());
-        ids.addAll(coalition2.get());
+        Set<Integer> ids = new IntOpenHashSet(coalition1.getAllianceIds().size() + coalition2.getAllianceIds().size());
+        ids.addAll(coalition1.getAllianceIds());
+        ids.addAll(coalition2.getAllianceIds());
         return ids;
+    }
+
+    public int getActiveWars() {
+        return coalition1.getOffensiveStats(null, false).activeWars + coalition2.getOffensiveStats(null, false).activeWars;
+    }
+
+    public int getTotalWars() {
+        return coalition1.getOffensiveStats(null, false).totalWars + coalition2.getOffensiveStats(null, false).totalWars;
+    }
+
+    public double getDamageConverted(boolean isPrimary) {
+        return (isPrimary ? coalition1 : coalition2).getInflicted().getTotalConverted();
     }
 }

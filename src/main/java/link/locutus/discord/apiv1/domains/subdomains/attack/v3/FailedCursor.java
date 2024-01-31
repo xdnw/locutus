@@ -85,6 +85,11 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
+    public void addBuildingsDestroyed(char[] destroyedBuffer) {
+
+    }
+
+    @Override
     public Map<Building, Integer> getBuildingsDestroyed2() {
         return Collections.emptyMap();
     }

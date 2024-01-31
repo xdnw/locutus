@@ -458,6 +458,9 @@ public class WarDB extends DBMainV2 {
         }
 
         activeWars.syncBlockades();
+        if (conflictManager != null) {
+            conflictManager.loadConflicts();
+        }
     }
 
     public Set<Integer> getNationsBlockadedBy(int nationId) {
@@ -482,6 +485,8 @@ public class WarDB extends DBMainV2 {
                 long warTurn = TimeUtil.getTurn(war.getDate());
                 if (currentTurn - warTurn < 60) {
                     activeWars.addActiveWar(war);
+                } else if (war.isActive()) {
+                    war.setStatus(WarStatus.EXPIRED);
                 }
             }
         });

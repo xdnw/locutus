@@ -387,9 +387,9 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.raid beige = CM.war.find.raid.cmd.create(
                 "*", "25", null, null, "24", null, null, null, null, null, null);
         CM.war.find.raid ground = CM.war.find.raid.cmd.create(
-                "#tankpct<20,#soldier%<40,*", "25", "0d", "true", null, null, null, null, null, null, null);
+                "#tankpct<0.2,#soldierpct<0.4,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.raid ground_2d = CM.war.find.raid.cmd.create(
-                "#tankpct<20,#soldier%<40,*", "25", "2d",  "true", null,null, null, null, null, null, null);
+                "#tankpct<0.2,#soldierpct<0.4,*", "25", "2d",  "true", null,null, null, null, null, null, null);
         CM.war.find.raid losing = CM.war.find.raid.cmd.create(
                 "#def>0,#RelativeStrength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
