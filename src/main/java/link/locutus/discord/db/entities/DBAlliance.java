@@ -1079,7 +1079,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
         GuildDB db = getGuildDB();
         if (db != null) {
             List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
-
             if (apiKeys != null && !apiKeys.isEmpty()) {
                 List<String> newKeys = new ArrayList<>(apiKeys);
                 for (String key : apiKeys) {
@@ -1173,7 +1172,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
-        PoliticsAndWarV3 api = getApi( permissions);
+        PoliticsAndWarV3 api = getApi(permissions);
         if (api == null) {
             String msg = "No api key found for " + getMarkdownUrl() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
                     "Api key can be found on <https://politicsandwar.com/account/>";

@@ -705,7 +705,6 @@ public class CommandManager2 {
                     throw new IllegalArgumentException("Invalid command class " + callable.getClass());
                 }
             } catch (Throwable e) {
-
                 e.printStackTrace();
             }
         };

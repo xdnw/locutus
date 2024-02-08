@@ -275,7 +275,6 @@ public class GuildCustomMessageHandler implements Runnable {
                             long lastMs = getMeta(nation, db, NationMeta.LAST_SENT_CREATION, -1L);
                             long lastAge = Math.max(lastMs - date + 1, 0);
                             if (lastAge > message.getDelay()) {
-                                System.out.println("Last sent > delay");
                                 continue;
                             }
 

@@ -5638,6 +5638,41 @@ public class DBNation implements NationOrAlliance {
         return count;
     }
 
+    @Command(desc = "Cost of buying up to a certain infra level")
+    public double getBuyInfraCost(double toInfra, @Switch("u") boolean forceUrbanization, @Switch("aec") boolean forceAEC, @Switch("cfce") boolean forceCFCE, @Switch("gsa") boolean forceGSA) {
+        double total = 0;
+        for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
+            double cityInfra = entry.getValue().getInfra();
+            if (cityInfra < toInfra) {
+                total += PnwUtil.calculateInfra(cityInfra, toInfra,
+                        hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC,
+                        hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || forceCFCE,
+                        getDomesticPolicy() == DomesticPolicy.URBANIZATION || forceUrbanization,
+                        hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA);
+            }
+        }
+        return total;
+    }
+
+    @Command(desc = "Cost of buying up to a certain land level")
+    public double getBuyLandCost(double toLand, @Switch("ra") boolean forceRAPolicy, @Switch("aec") boolean forceAEC, @Switch("ala") boolean forceALA, @Switch("gsa") boolean forceGSA) {
+        double factor = 1;
+        if (hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC) factor -= 0.05;
+        if (hasProject(Projects.ARABLE_LAND_AGENCY) || forceALA) factor -= 0.05;
+        if (getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || forceRAPolicy) {
+            factor -= 0.05;
+            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA) factor -= 0.025;
+        }
+        double total = 0;
+        for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
+            double cityLand = entry.getValue().getLand();
+            if (cityLand < toLand) {
+                total += PnwUtil.calculateLand(cityLand, toLand) * factor;
+            }
+        }
+        return total;
+    }
+
     @Command(desc = "Get the number of active offensive wars with a list of nations")
     public int getAttacking(Set<DBNation> nations) {
         if (nations == null) return getNumWars();

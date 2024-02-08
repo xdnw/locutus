@@ -32,6 +32,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,38 +49,39 @@ public class ForumDB extends DBMain {
     }
 
     public boolean update() {
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         try {
             List<DBComment> comments = updateAndGetNewComments();
             if (guild == null) return true;
 
             List<Category> purgeCategories = new ArrayList<>();
             for (DBComment comment : comments) {
+                if (comment.timestamp > cutoff) {
+                    List<Category> discordCategories = guild.getCategoriesByName(comment.category_name.replace(" ", "-"), true);
+                    if (discordCategories.isEmpty()) continue;
+                    Category category = discordCategories.get(0);
 
-                List<Category> discordCategories = guild.getCategoriesByName(comment.category_name.replace(" ", "-"), true);
-                if (discordCategories.isEmpty()) continue;
-                Category category = discordCategories.get(0);
+                    purgeCategories.add(category);
 
-                purgeCategories.add(category);
+                    String requiredChannelName = comment.topic_name.toLowerCase().replace("-", " ").replaceAll("[ ]+", " ").replaceAll("[^a-z0-9 ]", "") + " " + comment.topic_id;
+                    requiredChannelName = requiredChannelName.replaceAll(" +", " ");
+                    requiredChannelName = requiredChannelName.trim();
+                    requiredChannelName = requiredChannelName.replaceAll(" ", "-");
 
-                String requiredChannelName = comment.topic_name.toLowerCase().replace("-", " ").replaceAll("[ ]+", " ").replaceAll("[^a-z0-9 ]", "") + " " + comment.topic_id;
-                requiredChannelName = requiredChannelName.replaceAll(" +", " ");
-                requiredChannelName = requiredChannelName.trim();
-                requiredChannelName = requiredChannelName.replaceAll(" ", "-");
+                    List<TextChannel> channels = guild.getTextChannelsByName(requiredChannelName, true);
+                    TextChannel channel = channels.isEmpty() ? null : channels.get(0);
+                    if (channel == null) {
+                        channel = RateLimitUtil.complete(category.createTextChannel(requiredChannelName));
+                        RateLimitUtil.queue(channel.getManager().setTopic(comment.topicUrl()));
+                    }
 
-                List<TextChannel> channels = guild.getTextChannelsByName(requiredChannelName, true);
-                TextChannel channel = channels.isEmpty() ? null : channels.get(0);
-                if (channel == null) {
-                    channel = RateLimitUtil.complete(category.createTextChannel(requiredChannelName));
-                    RateLimitUtil.queue(channel.getManager().setTopic(comment.topicUrl()));
+                    String title = comment.poster_name;
+                    String body = comment.content;
+                    String footer = "[link](" + comment.commentUrl() + ")";
+                    DiscordUtil.createEmbedCommand(channel, title, footer + "\n" + body, new String[0]);
                 }
-
-                String title = comment.poster_name;
-                String body = comment.content;
-                String footer = "[link](" + comment.commentUrl() + ")";
-                DiscordUtil.createEmbedCommand(channel, title, footer + "\n" + body, new String[0]);
             }
 
-            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
             for (Category category : purgeCategories) {
                 for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
                     if (GuildMessageChannel.getLatestMessageIdLong() > 0) {
@@ -214,6 +216,50 @@ public class ForumDB extends DBMain {
         ForumDB db = new ForumDB(null);
         db.scrapeTopic(42, "alliance-affairs");
     }
+
+    public String getSectionName(int id) {
+        try (PreparedStatement stmt = prepareQuery("select `section_name` FROM FORUM_TOPICS WHERE `section_id` = ?")) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+            return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Integer getSectionId(String name) {
+        try (PreparedStatement stmt = prepareQuery("select `section_id` FROM FORUM_TOPICS WHERE `section_name` = ?")) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+            return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Map<Integer, String> getSectionIds() {
+        Map<Integer, String> topics = new HashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select `section_id`, `section_name` FROM FORUM_TOPICS")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    topics.putIfAbsent(rs.getInt(1), rs.getString(2));
+                }
+            }
+            return topics;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        } }
 
     public List<DBComment> updateAndGetNewComments() throws IOException {
         Set<Integer> existing = getCommentIds();
