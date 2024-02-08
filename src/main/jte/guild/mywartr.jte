@@ -55,8 +55,8 @@
     <tbody>
 <tr class="border-top border-1 border-secondary">
     <td><a href="${enemy.getNationUrl()}">${enemy.getNation()}</a>
-    @if(enemy.getActive_m() > 2440)
-        <span class="badge bg-secondary">inactive ${TimeUtil.minutesToTime(enemy.getActive_m())}</span>
+    @if(enemy.active_m() > 2440)
+        <span class="badge bg-secondary">inactive ${TimeUtil.minutesToTime(enemy.active_m())}</span>
     @endif
     </td>
     <td><a href="${enemy.getAllianceUrl()}">${enemy.getAllianceName()}</a></td>

@@ -80,7 +80,7 @@ public class Borgomas extends Command {
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {
                 Set<DBNation> members = DBAlliance.getOrCreate(me.getAlliance_id()).getNations(true, 7200, true);
-                members.removeIf(f -> f.getActive_m() > 2880 && f.isGray());
+                members.removeIf(f -> f.active_m() > 2880 && f.isGray());
                 members.add(me);
                 DBNation maxNation = null;
                 double maxInfra = 0;

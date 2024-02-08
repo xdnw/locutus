@@ -35,45 +35,42 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.web.jooby.JteUtil.createArray;
-import static link.locutus.discord.web.jooby.JteUtil.createArrayObj;
-
 public class StatPages {
 
-    @Command(desc = "Show stats for a conflict")
-    public Object conflict(ConflictManager manager, WebStore ws, Conflict conflict) {
-        long start = System.currentTimeMillis();
-        String b64 = conflict.getJsonB64(manager);
-        long diff = System.currentTimeMillis() - start;
-        System.out.println("Took " + diff + "ms (b64)");
-        return WebStore.render(f -> JteconflictGenerated.render(f, null, ws, conflict.getName(), b64));
-    }
-
-    @Command(desc = "Show active conflicts")
-    public Object conflicts(ConflictManager manager, WebStore ws) {
-        long start = System.currentTimeMillis();
-        TableBuilder<Conflict> table = new TableBuilder<>(ws);
-        table.addColumn("Conflict", true, true, f -> createArrayObj(f.getId(), f.getName()));
-        table.addColumn("Start", true, true, f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
-        table.addColumn("End", true, true, f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
-        table.addColumn("Wars", true, false, Conflict::getTotalWars);
-        table.addColumn("Active wars", true, false, Conflict::getActiveWars);
-        table.addColumn("C1 Dealt", true, false, f -> (long) f.getDamageConverted(true));
-        table.addColumn("C2 Dealt", true, false, f -> (long) f.getDamageConverted(false));
-        table.addColumn("C1", false, false, f -> f.getCoalition1().stream().map(manager::getAllianceName).collect(Collectors.joining(",")));
-        table.addColumn("C2", false, false, f -> f.getCoalition2().stream().map(manager::getAllianceName).collect(Collectors.joining(",")));
-        table.sort(2, true);
-        table.setRenderer(0, "renderUrl");
-        table.setRenderer(1, "renderTime");
-        table.setRenderer(2, "renderTime");
-        table.setRenderer(5, "renderMoney");
-        table.setRenderer(6, "renderMoney");
-
-        String b64 = table.buildJsonEncodedString(new ArrayList<>(manager.getConflictMap().values()));
-        long diff = System.currentTimeMillis() - start;
-        System.out.println("Took " + diff + "ms");
-        return WebStore.render(f -> JteconflictsGenerated.render(f, null, ws, "Conflicts", b64));
-    }
+//    @Command(desc = "Show stats for a conflict")
+//    public Object conflict(ConflictManager manager, WebStore ws, Conflict conflict) {
+//        long start = System.currentTimeMillis();
+//        byte[] b64 = conflict.getB64Gzip(manager);
+//        long diff = System.currentTimeMillis() - start;
+//        System.out.println("Took " + diff + "ms (b64)");
+//        return WebStore.render(f -> JteconflictGenerated.render(f, null, ws, conflict.getName(), b64));
+//    }
+//
+//    @Command(desc = "Show active conflicts")
+//    public Object conflicts(ConflictManager manager, WebStore ws) {
+//        long start = System.currentTimeMillis();
+//        TableBuilder<Conflict> table = new TableBuilder<>(ws);
+//        table.addColumn("Conflict", true, true, f -> createArrayObj(f.getId(), f.getName()));
+//        table.addColumn("Start", true, true, f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
+//        table.addColumn("End", true, true, f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
+//        table.addColumn("Wars", true, false, Conflict::getTotalWars);
+//        table.addColumn("Active wars", true, false, Conflict::getActiveWars);
+//        table.addColumn("C1 Dealt", true, false, f -> (long) f.getDamageConverted(true));
+//        table.addColumn("C2 Dealt", true, false, f -> (long) f.getDamageConverted(false));
+//        table.addColumn("C1", false, false, f -> f.getCoalition1().stream().map(manager::getAllianceName).collect(Collectors.joining(",")));
+//        table.addColumn("C2", false, false, f -> f.getCoalition2().stream().map(manager::getAllianceName).collect(Collectors.joining(",")));
+//        table.sort(2, true);
+//        table.setRenderer(0, "renderUrl");
+//        table.setRenderer(1, "renderTime");
+//        table.setRenderer(2, "renderTime");
+//        table.setRenderer(5, "renderMoney");
+//        table.setRenderer(6, "renderMoney");
+//
+//        String b64 = table.buildJsonEncodedString(new ArrayList<>(manager.getConflictMap().values()));
+//        long diff = System.currentTimeMillis() - start;
+//        System.out.println("Took " + diff + "ms");
+//        return WebStore.render(f -> JteconflictsGenerated.render(f, null, ws, "Conflicts", b64));
+//    }
 
     @Command()
     public Object globalStats(WebStore ws, Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, int topX) {

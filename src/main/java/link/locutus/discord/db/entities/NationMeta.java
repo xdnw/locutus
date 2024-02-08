@@ -183,9 +183,9 @@ public enum NationMeta {
 
     public enum BeigeAlertMode {
         NO_ALERTS(f -> false),
-        INACTIVE_NONES(f -> f.getActive_m() > 10000 && f.getAlliance_id() == 0),
+        INACTIVE_NONES(f -> f.active_m() > 10000 && f.getAlliance_id() == 0),
         NONES(f -> f.getAlliance_id() == 0),
-        NONES_INACTIVE_APPS(f -> (f.getAlliance_id() == 0 || (f.getActive_m() > 10000 && f.getPosition() <= Rank.APPLICANT.id))),
+        NONES_INACTIVE_APPS(f -> (f.getAlliance_id() == 0 || (f.active_m() > 10000 && f.getPosition() <= Rank.APPLICANT.id))),
         ANYONE_NOT_BLACKLISTED(f -> true)
 
         ;

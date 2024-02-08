@@ -176,7 +176,7 @@ public class IACommands {
             header.set(3, isApi ? "API" : "UNKNOWN");
             header.set(4, MathMan.format(nation.getScore()));
             header.set(5, String.valueOf(nation.getCities()));
-            header.set(6, String.valueOf(nation.getActive_m()));
+            header.set(6, String.valueOf(nation.active_m()));
             sheet.addRow(header);
         }
 
@@ -408,7 +408,7 @@ public class IACommands {
         ByteBuffer mentorBuf = db.getNationMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
         DBNation currentMentor = mentorBuf != null ?  DBNation.getById(mentorBuf.getInt()) : null;
 
-        if (currentMentor != null && currentMentor.getActive_m() < 1440) {
+        if (currentMentor != null && currentMentor.active_m() < 1440) {
             User currentMentorUser = currentMentor.getUser();
         }
 
@@ -495,7 +495,7 @@ public class IACommands {
             ByteBuffer mentorBuf = db.getNationMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
             if (mentorBuf != null) {
                 DBNation current = DBNation.getById(mentorBuf.getInt());
-                if (current != null && current.getActive_m() < 2880 && current.getVm_turns() == 0) {
+                if (current != null && current.active_m() < 2880 && current.getVm_turns() == 0) {
                     User currentUser = current.getUser();
                     if (currentUser != null && Roles.MEMBER.has(currentUser, db.getGuild())) {
                         String title = mentee.getNation() + " already has a mentor";
@@ -625,8 +625,8 @@ public class IACommands {
             response.append("\n\n**--- Mentor: " + mentor.getNation()).append("**: " + myMentees.size() + "\n");
             response.append("Graduated: " + numPassed + "\n");
 
-            if (mentor.getActive_m() > 4880) {
-                response.append("**MENTOR IS INACTIVE:** " + TimeUtil.minutesToTime(mentor.getActive_m())).append("\n");
+            if (mentor.active_m() > 4880) {
+                response.append("**MENTOR IS INACTIVE:** " + TimeUtil.minutesToTime(mentor.active_m())).append("\n");
             }
             if (mentor.getVm_turns() > 0) {
                 response.append("**MENTOR IS VM:** " + TimeUtil.turnsToTime(mentor.getVm_turns())).append("\n");
@@ -726,7 +726,7 @@ public class IACommands {
                     List<DBNation> idleMentors = new ArrayList<>();
                     for (DBNation mentor : mentors) {
                         List<DBNation> myMentees = mentorMenteeMap.getOrDefault(mentor, Collections.emptyList());
-                        myMentees.removeIf(f -> f.getActive_m() > 4880 || f.getVm_turns() > 0 || passedMap.getOrDefault(f, false));
+                        myMentees.removeIf(f -> f.active_m() > 4880 || f.getVm_turns() > 0 || passedMap.getOrDefault(f, false));
                         if (myMentees.isEmpty()) {
                             idleMentors.add(mentor);
                         }
@@ -845,7 +845,7 @@ public class IACommands {
             "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @RolePermission(Roles.MILCOM)
     public String lootValueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        attackers.removeIf(f -> f.getActive_m() > 10000);
+        attackers.removeIf(f -> f.active_m() > 10000);
         attackers.removeIf(f -> f.getVm_turns() > 0);
         if (attackers.size() > 200) return "Too many nations";
         if (sheet == null) {
@@ -875,7 +875,7 @@ public class IACommands {
             double lootInactive = 0;
             for (DBWar war : wars) {
                 DBNation other = war.getNation(false);
-                boolean inactive = other.getActive_m() > TimeUnit.DAYS.toMinutes(5);
+                boolean inactive = other.active_m() > TimeUnit.DAYS.toMinutes(5);
                 if (inactive) {
                     offInactive++;
                     lootInactive += other.lootTotal();
@@ -1266,10 +1266,10 @@ public class IACommands {
     public void inactive(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Arg("Required days inactive") @Default("7") int days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") int page) {
         if (!includeApplicants) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeVacationMode) nations.removeIf(f -> f.getVm_turns() > 0);
-        nations.removeIf(f -> f.getActive_m() * TimeUnit.DAYS.toMinutes(1) < days);
+        nations.removeIf(f -> f.active_m() * TimeUnit.DAYS.toMinutes(1) < days);
 
         List<DBNation> nationList = new ArrayList<>(nations);
-        nationList.sort((o1, o2) -> Integer.compare(o2.getActive_m(), o1.getActive_m()));
+        nationList.sort((o1, o2) -> Integer.compare(o2.active_m(), o1.active_m()));
 
         int perPage = 5;
 
@@ -1458,7 +1458,7 @@ public class IACommands {
 
             // metrics
             alliances.add(nation.getAlliance_id());
-            if (nation.getActive_m() > 7200) inactive++;
+            if (nation.active_m() > 7200) inactive++;
             if (nation.getVm_turns() > 0) vm++;
             if (nation.getAlliance_id() == 0) noAA++;
             if (nation.getPosition() <= 1) applicants++;
@@ -1545,8 +1545,8 @@ public class IACommands {
             if (nation.getVm_turns() > 0) {
                 response.append(" | vm=" + TimeUtil.turnsToTime(nation.getVm_turns()));
             }
-            if (nation.getActive_m() > 10000) {
-                response.append(" | inactive=" + TimeUtil.minutesToTime(nation.getActive_m()));
+            if (nation.active_m() > 10000) {
+                response.append(" | inactive=" + TimeUtil.minutesToTime(nation.active_m()));
             }
         }
         if (aaIds.isEmpty() && !member.getRoles().contains(memberRole)) {
@@ -1795,7 +1795,7 @@ public class IACommands {
                 DBNation nation = entry.getKey();
 
                 if (!allowedNations.contains(nation)) continue;
-                if (!aaIds.contains(nation.getAlliance_id()) || nation.getActive_m() > 10000 || nation.getVm_turns() > 0) continue;
+                if (!aaIds.contains(nation.getAlliance_id()) || nation.active_m() > 10000 || nation.getVm_turns() > 0) continue;
                 User user = nation.getUser();
                 if (user == null) continue;
 
@@ -1855,7 +1855,7 @@ public class IACommands {
                     if (latestMessageThem != null) last = Math.max(last, latestMessageThem.getTimeCreated().toEpochSecond() * 1000L);
                     long now = System.currentTimeMillis();
                     long diffMsg = now - last;
-                    long diffActive = TimeUnit.MINUTES.toMillis(nation.getActive_m());
+                    long diffActive = TimeUnit.MINUTES.toMillis(nation.active_m());
 
                     if (last == 0 || diffMsg > diffActive + time) {
                         long activityValue = diffMsg - diffActive;
@@ -1878,7 +1878,7 @@ public class IACommands {
                         DBNation nation = iaChan.getNation();
 
 
-                        response.append(channel.getAsMention() + " " + "c" + nation.getCities() + " mmr:" + nation.getMMRBuildingStr() + " infra:" + nation.getAvgBuildings() + " off:" + nation.getOff() + ", " + nation.getColor() + ", " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()));
+                        response.append(channel.getAsMention() + " " + "c" + nation.getCities() + " mmr:" + nation.getMMRBuildingStr() + " infra:" + nation.getAvgBuildings() + " off:" + nation.getOff() + ", " + nation.getColor() + ", " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
                         response.append("\n");
 
                         Map.Entry<Message, Message> messages = latestMsgs.get(iaChan);

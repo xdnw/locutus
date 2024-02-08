@@ -8,6 +8,10 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public interface IAttack {
     /*
     "war_attack_id=" + getWar_attack_id() +
@@ -142,11 +146,32 @@ public interface IAttack {
         return damage;
     }
 
+    default List<AbstractCursor> getWarAttacks(boolean load) {
+        DBWar war = getWar();
+        if (war == null) return Collections.emptyList();
+        return war.getAttacks2(load);
+    }
+
+    default List<AbstractCursor> getPriorAttacks(boolean load) {
+        return getWarAttacks(load).stream().filter(f -> f.war_attack_id < getWar_attack_id()).toList();
+    }
+
+    default AbstractCursor getPriorAttack(boolean onlySameAttacker, boolean load) {
+        List<AbstractCursor> attacks = getWarAttacks(load);
+        if (attacks.isEmpty()) return null;
+        for (int i = attacks.size() - 1; i >= 0; i--) {
+            AbstractCursor attack = attacks.get(i);
+            if (attack.getAttack_type() == AttackType.PEACE) continue;
+            if (attack.war_attack_id < getWar_attack_id() && (!onlySameAttacker || attack.attacker_id == getAttacker_id())) return attack;
+        }
+        return null;
+    }
+
     double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 
     DBWar getWar();
 
-    default AttackTypeSubCategory getSubCategory() {
-        return WarUpdateProcessor.subCategorize(this);
+    default AttackTypeSubCategory getSubCategory(boolean checkActive) {
+        return WarUpdateProcessor.subCategorize(this, checkActive);
     }
 }

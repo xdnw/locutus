@@ -1053,7 +1053,7 @@ public class DiscordUtil {
         double activeProbability = 1 - (inactivePct / 100);
         nations.removeIf(nation -> {
             if (nation.getVm_turns() != 0 || nation.isBeige()) return true;
-            if (nation.getActive_m() < 10000) {
+            if (nation.active_m() < 10000) {
                 int twoWeeks = 14 * 12;
                 Activity activity = new Activity(nation.getNation_id(), twoWeeks);
                 double chance = activity.loginChance(finalInactiveTurns, true);

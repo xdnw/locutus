@@ -49,10 +49,10 @@ public class AlliancePages {
             if (nation != null) {
                 row.add(MarkupUtil.htmlUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(Rank.byId(nation.getPosition()).name());
-                String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
+                String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m());
                 if (nation.getVm_turns() != 0) {
                     active = MarkupUtil.htmlColor("orange", "VM:" + TimeUtil.secToTime(TimeUnit.HOURS, nation.getVm_turns() * 2));
-                } else if (nation.getActive_m() > 10000) {
+                } else if (nation.active_m() > 10000) {
                     active = MarkupUtil.htmlColor("#8B8000", active);
                 }
                 row.add(active);

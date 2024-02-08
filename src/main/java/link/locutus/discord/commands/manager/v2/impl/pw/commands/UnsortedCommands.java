@@ -613,9 +613,9 @@ public class UnsortedCommands {
                         "";
 
                 String active;
-                if (n.getActive_m() < TimeUnit.DAYS.toMinutes(1)) {
+                if (n.active_m() < TimeUnit.DAYS.toMinutes(1)) {
                     active = "daily";
-                } else if (n.getActive_m() < TimeUnit.DAYS.toMinutes(7)) {
+                } else if (n.active_m() < TimeUnit.DAYS.toMinutes(7)) {
                     active = "weekly";
                 } else {
                     active = "inactive";
@@ -1341,7 +1341,7 @@ public class UnsortedCommands {
                 DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
                 if (nation != null && (filter == null || filter.getNations().contains(nation))) {
 
-                    if (ignoreInactives && nation.getActive_m() > 10000) continue;
+                    if (ignoreInactives && nation.active_m() > 10000) continue;
                     if (ignoreVM && nation.getVm_turns() != 0) continue;
                     if (ignoreMembers && nation.getPosition() > 1) continue;
 
@@ -1630,9 +1630,9 @@ public class UnsortedCommands {
         Iterator<DBNation> iter = nationSet.iterator();
         while (iter.hasNext()) {
             DBNation nation = iter.next();
-            if (nation.getActive_m() > 7200) {
+            if (nation.active_m() > 7200) {
                 iter.remove();
-                errors.put(nation, "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()));
+                errors.put(nation, "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
             } else if (nation.getPosition() <= 1) {
                 iter.remove();
                 errors.put(nation, "Nation is not a member");
@@ -1911,7 +1911,7 @@ public class UnsortedCommands {
                 header.set(2, MarkupUtil.sheetUrl(name, url));
             }
 
-            header.set(3, nation.getActive_m() + "");
+            header.set(3, nation.active_m() + "");
             header.set(4, nation.getCities() + "");
             header.set(5, MathMan.format(nation.getAvg_infra()));
             header.set(6, MathMan.format(nation.getOff()));
@@ -2038,7 +2038,7 @@ public class UnsortedCommands {
                 throw new IllegalArgumentException("Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
             }
             if (!force) {
-                if (nation.getActive_m() > 20000)
+                if (nation.active_m() > 20000)
                     return "The " + nations.size() + " receivers includes inactive for >2 weeks. Use `" + sendTo.getFilter() + ",#active_m<20000` or set `force` to confirm";
                 if (nation.getVm_turns() > 0)
                     return "The " + nations.size() + " receivers includes vacation mode nations. Use `" + sendTo.getFilter() + ",#vm_turns=0` or set `force` to confirm";

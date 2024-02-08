@@ -173,6 +173,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "syncConflictData", "sync");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictEnd", "end");
@@ -181,7 +182,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importCtowned", "import");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importConflictData", "import");
 
         getCommands().registerMethod(new TestCommands(), List.of("test"), "test", "test");
 

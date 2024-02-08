@@ -517,7 +517,7 @@ public class WarCard {
         Rank rank = Rank.REMOVE;
 
         if (nation != null) {
-            active_m = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
+            active_m = TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m());
             markdown1 = nation.toMarkdown(false, true, false);
             markdown2 = nation.toMarkdown(false, false, true);
             rank = Rank.byId(nation.getPosition());

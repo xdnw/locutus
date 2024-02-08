@@ -127,11 +127,7 @@ function initConflictTables() {
         searchable.push(0);
         cell_format["coalitionNames"] = [0];
     }
-
-    // range [1, ... columns length]
     cell_format["formatNumber"] = Array.from({length: columns.length}, (_, i) => i + 1);
-    console.log(cell_format["formatNumber"] + " | " + columns.length);
-
     for (let i = 0; i < coalitions.length; i++) {
         let colEntry = coalitions[i];
         let name = colEntry["name"];
@@ -171,12 +167,6 @@ function initConflictTables() {
         }
        rows.push(row);
     }
-    // log rows size
-    console.log("rows size: " + rows.length);
-    // log row0 length
-    console.log("row0 length: " + rows[0].length);
-    // log header size
-    console.log("header size: " + columns.length);
     let data = {
         "columns": columns,
         "data": rows,
@@ -191,9 +181,9 @@ function initConflictTables() {
 
 $(document).ready(function() {
     initConflictTables();
-    $("button").click(function(e) {
-       e.stopPropagation();
-    });
+        $("button").click(function(e) {
+           e.stopPropagation();
+        });
 });
 
 </script>

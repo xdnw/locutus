@@ -8,6 +8,9 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -3145,7 +3148,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
-        String allianceQueryStr = StringMan.getString(allianceIds);
+        List<Integer> alliancesSorted = new ArrayList<>(allianceIds);
+        alliancesSorted.sort(Comparator.naturalOrder());
+        String allianceQueryStr = StringMan.getString(alliancesSorted);
 
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new LinkedHashMap<>();
 
@@ -3209,7 +3214,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
-        String allianceQueryStr = StringMan.getString(allianceIds);
+        List<Integer> alliancesSorted = new ArrayList<>(allianceIds);
+        alliancesSorted.sort(Comparator.naturalOrder());
+        String allianceQueryStr = StringMan.getString(alliancesSorted);
         String metricQueryStr = StringMan.getString(metrics.stream().map(Enum::ordinal).collect(Collectors.toList()));
         boolean hasTurnEnd = turnEnd > 0 && turnEnd < Long.MAX_VALUE;
 
@@ -3597,6 +3604,53 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 //                stmt.setLong(4, previous);
             stmt.setInt(4, current);
         });
+    }
+
+    public Map<Long, Map<Integer, Map<MilitaryUnit, Integer>>> getMilitaryHistoryByTurn(Set<Integer> nationIds, long startMs, long endMs) {
+        Map<Integer, Map<MilitaryUnit, Map<Long, Integer>>> milHistory = getMilitaryHistory(nationIds, startMs, endMs);
+        Map<Long, Map<Integer, Map<MilitaryUnit, Integer>>> milHistoryByTurn = new Long2ObjectArrayMap<>();
+        for (Map.Entry<Integer, Map<MilitaryUnit, Map<Long, Integer>>> entry : milHistory.entrySet()) {
+            int nationId = entry.getKey();
+            Map<MilitaryUnit, Map<Long, Integer>> milHis = entry.getValue();
+            for (Map.Entry<MilitaryUnit, Map<Long, Integer>> milEntry : milHis.entrySet()) {
+                MilitaryUnit unit = milEntry.getKey();
+                for (Map.Entry<Long, Integer> timeEntry : milEntry.getValue().entrySet()) {
+                    long timeMs = timeEntry.getKey();
+                    int count = timeEntry.getValue();
+                    long turn = TimeUtil.getTurn(timeMs);
+                    milHistoryByTurn.computeIfAbsent(turn, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, k -> new EnumMap<>(MilitaryUnit.class)).put(unit, count);
+                }
+            }
+        }
+        return milHistoryByTurn;
+    }
+
+    public Map<Integer, Map<MilitaryUnit, Map<Long, Integer>>> getMilitaryHistory(Set<Integer> nations, long start, long end) {
+        if (nations.isEmpty()) return Collections.emptyMap();
+        List<Integer> nationsSorted = new ArrayList<>(nations);
+        nationsSorted.sort(Comparator.naturalOrder());
+        String nationQueryStr = StringMan.getString(nationsSorted);
+        String query = "SELECT * FROM NATION_MIL_HISTORY WHERE id in " + nationQueryStr + " AND date >= ? AND date <= ? ORDER BY date DESC";
+        Map<Integer, Map<MilitaryUnit, Map<Long, Integer>>> result = new Int2ObjectOpenHashMap<>();
+        query(query, new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setLong(1, start);
+                stmt.setLong(2, end);
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws Exception {
+                while (rs.next()) {
+                    int nationId = rs.getInt("id");
+                    MilitaryUnit unit = MilitaryUnit.values[rs.getInt("unit")];
+                    long date = rs.getLong("date");
+                    int amount = rs.getInt("amount");
+                    result.computeIfAbsent(nationId, f -> new EnumMap<>(MilitaryUnit.class)).computeIfAbsent(unit, f -> new Long2IntLinkedOpenHashMap()).put(date, amount);
+                }
+            }
+        });
+        return result;
     }
 
     public List<Map.Entry<Long, Integer>> getMilitaryHistory(DBNation nation, MilitaryUnit unit, Long snapshot) {
@@ -4104,7 +4158,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 kickDates.computeIfAbsent(entry.getKey(), k -> new LinkedHashMap<>()).put(alliance, entry.getValue());
             }
         } else {
-            try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance in " + StringMan.getString(alliances) + " " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
+            List<Integer> alliancesSorted = new ArrayList<>(alliances);
+            alliancesSorted.sort(Comparator.naturalOrder());
+            try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance in " + StringMan.getString(alliancesSorted) + " " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
                 if (cutoff > 0) {
                     stmt.setLong(1, cutoff);
                 }

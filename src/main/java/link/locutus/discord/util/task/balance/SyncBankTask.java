@@ -55,7 +55,7 @@ public class SyncBankTask implements Callable<Boolean>, Runnable {
                 for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
                     done++;
                     DBNation nation = entry.getValue();
-                    if (nation.getActive_m() < cutoffMins) {
+                    if (nation.active_m() < cutoffMins) {
                         if (-last + (last = System.currentTimeMillis()  ) > 2000) {
                             update.accept("(" + done + "/" + size + ") Fetching transactions for " + entry.getValue().getNation());
                         }

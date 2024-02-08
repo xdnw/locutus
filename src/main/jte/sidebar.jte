@@ -1,7 +1,7 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.web.jooby.WebRoot
 @param WebStore ws
-<nav id="sidebar" class="sidebar offcanvas-start offcanvas-md" tabindex="-1" tabindex="-1" role="dialog" data-src="${WebRoot.getInstance().generateSiteMapB64()}">
+<nav id="sidebar" class="sidebar offcanvas-start offcanvas-md" tabindex="-1" tabindex="-1" role="dialog">
     <div class="offcanvas-header position-relative justify-content-start flex-shrink-0 py-0 mt-2">
         <a href="#top" class="visually-hidden-focusable btn btn-link fw-bold antialiased bg-body-secondary position-absolute top-50 end-0 translate-middle-y me-3 z-1">Skip to main content</a>
         <div class="col-auto ms-auto">
@@ -12,7 +12,7 @@
         <div class="filter-docs sticky-top p-3">
             <input type="text" id="sb-s-i" class="form-control search" placeholder="Filter pages" aria-label="Filter pages" onkeyup="filtersearch()">
             <div class="mt-1">
-                <small>Press <kbd class="text-body" style="font-size: 10px; background-color: hsla(var(--bs-emphasis-color-hsl), 0.1)">/</kbd> to focus</small>
+                <small>Press <kbd class="text-body" style="font-size: 10px;">/</kbd> to focus</small>
             </div>
         </div>
     </div>

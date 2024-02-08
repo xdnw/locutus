@@ -244,7 +244,7 @@ public class AddBalanceBuilder {
                     aaIds.add(nation.getAlliance_id());
                     if (nation.isGray()) gray++;
                     if (nation.getVm_turns() > 0) vm++;
-                    if (nation.getActive_m() > 10000) inactive++;
+                    if (nation.active_m() > 10000) inactive++;
                     if (nation.getPosition() <= 1) applicants++;
                 }
                 if (aaIds.size() > 1) {

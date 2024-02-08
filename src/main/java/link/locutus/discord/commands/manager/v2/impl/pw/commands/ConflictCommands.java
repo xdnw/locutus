@@ -1,9 +1,11 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
@@ -20,6 +22,8 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.web.jooby.AwsManager;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -41,7 +45,6 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
-import java.text.Normalizer;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +52,7 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +61,36 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ConflictCommands {
-    //- list conflict command
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs) {
+        WebRoot webRoot = WebRoot.getInstance();
+        AwsManager aws = webRoot.getAws();
+        if (aws == null) {
+            throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
+        }
+        if (conflicts != null) {
+            List<String> urls = new ArrayList<>();
+            for (Conflict conflict : conflicts) {
+                String key = "conflicts/" + conflict.getId() + ".gzip";
+                byte[] value = conflict.getPsonGzip(manager);
+                aws.putObject(key, value);
+                urls.add(aws.getLink(key));
+
+                if (includeGraphs) {
+                    String graphKey = "conflicts/graphs/" + conflict.getId() + ".gzip";
+                    byte[] graphValue = conflict.getGraphPsonGzip(manager);
+                    aws.putObject(graphKey, graphValue);
+                    urls.add(aws.getLink(graphKey));
+                }
+            }
+            return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
+        }
+        String key = "conflicts/index.gzip";
+        byte[] value = manager.getPsonGzip();
+        aws.putObject(key, value);
+        return "Done! See: <" + aws.getLink(key) + ">";
+    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
@@ -123,7 +156,7 @@ public class ConflictCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setConflictEnd(ConflictManager manager, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
         if (alliance != null) {
-            Boolean side = conflict.getSide(alliance.getId());
+            Boolean side = conflict.isSide(alliance.getId());
             if (side == null) {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
             }
@@ -136,23 +169,36 @@ public class ConflictCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String setConflictName(ConflictManager manager, Conflict conflict, String name) {
+    public String setConflictName(ConflictManager manager, Conflict conflict, String name, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
+        if (isCoalition1 && isCoalition2) {
+            throw new IllegalArgumentException("Cannot specify both `isCoalition1` and `isCoalition2`");
+        }
         if (!name.matches("[a-zA-Z0-9_. ]+")) {
             throw new IllegalArgumentException("Conflict name must be alphanumeric (`" + name + "`)");
         }
         if (MathMan.isInteger(name)) {
             throw new IllegalArgumentException("Conflict name cannot be a number (`" + name + "`)");
         }
-        String previousName = conflict.getName();
-        conflict.setName(name);
-        return "Set `" + previousName  + "` name to `" + name + "`";
+        String previousName = isCoalition1 ? conflict.getSide(true).getName() : isCoalition2 ? conflict.getSide(false).getName() : conflict.getName();
+        String sideName;
+        if (isCoalition1) {
+            sideName = "coalition 1";
+            conflict.setName(name, true);
+        } else if (isCoalition2) {
+            sideName = "coalition 2";
+            conflict.setName(name, false);
+        } else {
+            sideName = "conflict";
+            conflict.setName(name);
+        }
+        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "`";
     }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setConflictStart(ConflictManager manager, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
         if (alliance != null) {
-            Boolean side = conflict.getSide(alliance.getId());
+            Boolean side = conflict.isSide(alliance.getId());
             if (side == null) {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
             }
@@ -229,7 +275,7 @@ public class ConflictCommands {
         if (manager.getConflict(conflictName) != null) {
             throw new IllegalArgumentException("Conflict with name `" + conflictName + "` already exists");
         }
-        Conflict conflict = manager.addConflict(conflictName, TimeUtil.getTurn(start), Long.MAX_VALUE);
+        Conflict conflict = manager.addConflict(conflictName, "Coalition 1", "Coalition 2", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
         StringBuilder response = new StringBuilder();
         response.append("Created conflict `" + conflictName + "`\n");
         // add coalitions
@@ -347,9 +393,57 @@ public class ConflictCommands {
     //- Import conflicts from ctowned
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String importCtowned(ConflictManager manager) throws IOException, SQLException, ClassNotFoundException, ParseException {
-        loadConflicts(manager, "conflicts", "conflicts");
-        loadConflicts(manager, "conflicts/micros", "conflicts-micros");
+    public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        if (!ctowned && graphData == null && !allianceNames && !wiki) {
+            throw new IllegalArgumentException("Please specify either `ctowned` or `graphData` or `allianceNames` or `wiki`");
+        }
+        if (ctowned) {
+            loadCtownedConflicts(manager, "conflicts", "conflicts");
+            loadCtownedConflicts(manager, "conflicts/micros", "conflicts-micros");
+        }
+        if (graphData != null) {
+            for (Conflict conflict : graphData) {
+                System.out.println("Updating graphs " + conflict.getName() + " | " + conflict.getId());
+                conflict.updateGraphsLegacy(manager);
+            }
+        }
+        if (allianceNames) {
+            manager.saveDataCsvAllianceNames();
+        }
+        if (wiki) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors);
+            conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
+            // print all ongoing conflicts
+
+            for (Map.Entry<String, String> entry : errors.entrySet()) {
+                System.out.println(entry.getValue());
+            }
+            System.out.println("Num conflicts: " + conflicts.size());
+            if (conflicts.isEmpty()) return "No conflicts found on wiki";
+            for (Conflict value : manager.getConflictMap().values()) {
+                // find matching conflict by start/end date
+                Conflict closest = null;
+                long distance = Long.MAX_VALUE;
+                for (Conflict conflict : conflicts) {
+                    if (conflict.getStartTurn() == value.getStartTurn() && conflict.getEndTurn() == value.getEndTurn()) {
+                        closest = conflict;
+                        break;
+                    }
+                    long d = Math.abs(conflict.getStartTurn() - value.getStartTurn()) + Math.abs(conflict.getEndTurn() - value.getEndTurn());
+                    if (d < distance) {
+                        distance = d;
+                        closest = conflict;
+                    }
+                }
+                System.out.println("Found closest " + value.getName() + " -> https://politicsandwar.fandom.com/wiki/" + closest.getName());
+                System.out.println("- Col1-DB: " + value.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+                System.out.println("- Col1-Wiki: " + closest.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+                System.out.println("- Col2-DB: " + value.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+                System.out.println("- Col2-Wiki: " + closest.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+            }
+
+        }
         return "Done!";
     }
 
@@ -365,7 +459,7 @@ public class ConflictCommands {
         return 0;
     }
 
-    private static void loadConflicts(ConflictManager manager, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    private static void loadCtownedConflicts(ConflictManager manager, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
         String fileStr = "files/" + fileName + ".html";
         Document document;
         if (new File(fileName).exists()) {
@@ -390,8 +484,8 @@ public class ConflictCommands {
 
             // Get the URL and text
             String cellUrl = aElement.attr("href");
-            String conflictName = getConflictName(aElement.text());
-            if (manager.getConflict(conflictName) != null) continue;
+            String conflictName = StringMan.normalize(aElement.text());
+//            if (manager.getConflict(conflictName) != null) continue;
 
             String startDateStr = row.select("td").get(6).text();
             String endDateStr = row.select("td").get(7).text();
@@ -406,6 +500,9 @@ public class ConflictCommands {
             Elements elements = conflictDom.select("span[data-toggle=tooltip]");
             String toolTip1 = elements.get(0).attr("title");
             String toolTip2 = elements.get(1).attr("title");
+
+            String col1Name = elements.get(0).text();
+            String col2Name = elements.get(1).text();
 
             List<String> coalition1Names = new ArrayList<>(new HashSet<>(Arrays.asList(toolTip1.substring(1, toolTip1.length() - 1).split(", "))));
             List<String> coalition2Names = new ArrayList<>(new HashSet<>(Arrays.asList(toolTip2.substring(1, toolTip2.length() - 1).split(", "))));
@@ -427,9 +524,14 @@ public class ConflictCommands {
                     coalition2Names.remove("Skull & Bones");
                     coalition1Names.remove("Skull & Bones");
                 }
+                case "Blue Balled" -> {
+                    coalition2Names.remove("Containment Site 453");
+                }
             }
             List<String> unknown = new ArrayList<>();
-            for (String name : coalition1Names) {
+            Set<String> allNames = new HashSet<>(coalition1Names);
+            allNames.addAll(coalition2Names);
+            for (String name : allNames) {
                 if (getAllianceId(name) == 0) {
                     unknown.add(name);
                 }
@@ -453,15 +555,16 @@ public class ConflictCommands {
             if (col2Ids.isEmpty()) {
                 throw new IllegalArgumentException("Coalition 2 is empty");
             }
-            Conflict conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
+            Conflict conflict = manager.getConflict(conflictName);
+            if (conflict == null) {
+                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, col1Name, col2Name, "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
+            } else {
+                conflict.setName(col1Name, true);
+                conflict.setName(col2Name, false);
+            }
             for (int aaId : col1Ids) conflict.addParticipant(aaId, true, null, null);
             for (int aaId : col2Ids) conflict.addParticipant(aaId, false, null, null);
         }
-    }
-
-    private static String getConflictName(String text) {
-        text = Normalizer.normalize(text, Normalizer.Form.NFKD);
-        return text.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "");
     }
 
     private static String getConflict(String url, String text) throws IOException {

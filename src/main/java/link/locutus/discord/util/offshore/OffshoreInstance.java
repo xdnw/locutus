@@ -527,7 +527,7 @@ public class OffshoreInstance {
 //                return Map.entry(TransferStatus.BLOCKADE, TransferStatus.BLOCKADE.msg + " (set the `force` parameter to bypass. set `escrow_mode` to escrow)");
                 return new TransferResult(TransferStatus.BLOCKADE, receiver, amount, depositType.toString()).addMessage(TransferStatus.BLOCKADE.msg + " (set the `bypassChecks` parameter to bypass. set `escrow_mode` to escrow)");
             }
-            if (nation.getActive_m() > 11520) {
+            if (nation.active_m() > 11520) {
 //                return Map.entry(TransferStatus.INACTIVE, TransferStatus.INACTIVE.msg + " (set the `force` parameter to bypass)");
                 return new TransferResult(TransferStatus.INACTIVE, receiver, amount, depositType.toString()).addMessage(TransferStatus.INACTIVE.msg + " (set the `bypassChecks` parameter to bypass)");
             }

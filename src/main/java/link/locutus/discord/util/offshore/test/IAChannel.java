@@ -74,7 +74,7 @@ public class IAChannel {
             if (nation.getVm_turns() > 0) {
                 emojis.add("\uD83C\uDFD6\ufe0f");
             }
-            if (nation.getActive_m() > 2440) {
+            if (nation.active_m() > 2440) {
                 emojis.add("\uD83E\uDEA6");
             }
             if (nation.getCities() < 10 && nation.getOff() < 4) {

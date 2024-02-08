@@ -111,7 +111,7 @@ public class SheetUtil {
 
             row.add(defender.getScore() + "");
             row.add(defender.getBeigeTurns() + "");
-            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
+            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
 
             Activity activity = defender.getActivity(12 * 7 * 2);
             double loginChance = activity.loginChance(turn == -1 ? 11 : turn, 48, false);

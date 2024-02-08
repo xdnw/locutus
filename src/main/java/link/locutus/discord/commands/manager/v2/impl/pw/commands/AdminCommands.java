@@ -657,7 +657,7 @@ public class AdminCommands {
                 throw new IllegalArgumentException("Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
             }
             if (!force) {
-                if (nation.getActive_m() > 20000)
+                if (nation.active_m() > 20000)
                     return "The " + nations.size() + " receivers includes inactive for >2 weeks. Use `" + sendTo.getFilter() + ",#active_m<20000` or set `force` to confirm";
                 if (nation.getVm_turns() > 0)
                     return "The " + nations.size() + " receivers includes vacation mode nations. Use `" + sendTo.getFilter() + ",#vm_turns=0` or set `force` to confirm";
@@ -1415,8 +1415,8 @@ public class AdminCommands {
 
             Set<Integer> aaIds = db.getAllianceIds();
 
-            if (nation != null && nation.getActive_m() > 30000) {
-                response.append(guild + "/" + StringMan.getString(aaIds) + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()) + "\n");
+            if (nation != null && nation.active_m() > 30000) {
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "\n");
                 continue;
             }
             // In an alliance with inactive leadership (1 month)
@@ -1582,7 +1582,7 @@ public class AdminCommands {
             if (nation == null) {
                 notice.add("\n- Owner is Unregistered");
                 printDeposits.add(id);
-            } else if (nation.getActive_m() > 10000) {
+            } else if (nation.active_m() > 10000) {
                 notice.add("\n- Owner is inactive: <@" + owner.getIdLong() + "> | <" + nation.getNationUrl() + "> | `" + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "`");
                 printDeposits.add(id);
             }

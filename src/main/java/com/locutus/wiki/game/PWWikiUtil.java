@@ -2,6 +2,11 @@ package com.locutus.wiki.game;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import link.locutus.discord.db.Conflict;
+import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.jooby.JteUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -12,15 +17,21 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.text.Normalizer;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class PWWikiUtil {
 
@@ -123,7 +134,7 @@ public class PWWikiUtil {
 
                 // Skip if title contains "Category:"
                 String hrefLower = href.toLowerCase(Locale.ROOT);
-                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:")) {
+                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:") || hrefLower.contains("talk:")) {
                     continue;
                 }
 
@@ -321,6 +332,19 @@ public class PWWikiUtil {
         }
     }
 
+    public static Document getDocument(String slug, String urlStub, boolean readCache) throws IOException {
+        File file = new File("wiki/html/" + slug + ".html");
+        if (readCache) {
+            if (file.exists()) {
+                return Jsoup.parse(file, "UTF-8", "");
+            }
+        }
+        file.getParentFile().mkdirs();
+        Document document = Jsoup.connect("https://politicsandwar.fandom.com/wiki/" + urlStub).get();
+        Files.write(file.toPath(), document.outerHtml().getBytes());
+        return document;
+    }
+
     public static void fetchDefaultPages() throws IOException {
         Map<String, String> pagesToSave = new LinkedHashMap<>();
         pagesToSave.put("Frequently Asked Questions", "Frequently_Asked_Questions");
@@ -328,12 +352,22 @@ public class PWWikiUtil {
 
         String[] categoriesToSave = {"Wars", "Alliances", "Treaties", "Guides", "Mechanics", "API"};
 
-        // Iterate through categories
-        for (String category : categoriesToSave) {
-            // Get the pages from each category
-            System.out.println("Get " + category);
-            Map<String, String> pages = getCategoryPages(category);
+        pagesToSave.putAll(getPages(categoriesToSave));
 
+        // Save to sitemap.json
+        File file = new File("wiki/sitemap.json");
+        file.getParentFile().mkdirs();
+        file.createNewFile();
+        FileWriter writer = new FileWriter(file);
+        new Gson().toJson(pagesToSave, writer);
+        writer.close();
+        System.out.println("Write sitemap " + file.getAbsolutePath());
+    }
+
+    public static Map<String, String> getPages(String... categories) throws IOException {
+        Map<String, String> pagesToSave = new LinkedHashMap<>();
+        for (String category : categories) {
+            Map<String, String> pages = getCategoryPages(category);
             for (Map.Entry<String, String> entry : pages.entrySet()) {
                 String page = entry.getKey();
                 String url = entry.getValue();
@@ -344,21 +378,13 @@ public class PWWikiUtil {
                     url = url.substring(0, url.indexOf("?"));
                 }
                 String hrefLower = url.toLowerCase();
-                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:")) {
+                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:") || hrefLower.contains("talk:")) {
                     continue;
                 }
                 pagesToSave.put(page, url);
             }
         }
-
-        // Save to sitemap.json
-        File file = new File("wiki/sitemap.json");
-        file.getParentFile().mkdirs();
-        file.createNewFile();
-        FileWriter writer = new FileWriter(file);
-        new Gson().toJson(pagesToSave, writer);
-        writer.close();
-        System.out.println("Write sitemap " + file.getAbsolutePath());
+        return pagesToSave;
     }
 
     public static Map<String, String> getSitemapCached() throws IOException {
@@ -434,4 +460,91 @@ public class PWWikiUtil {
             return null;
         }
     }
+
+    public static void main(String[] args) throws IOException {
+        String url = "https://forum.politicsandwar.com/index.php?/topic/398-what-is-pw-listening-to/";
+        Document document = Jsoup.connect(url).get();
+        Element time = document.select("time[datetime]").first();
+        if (time == null) {
+            System.out.println("No time");
+        } else {
+            String dateStr = time.attr("datetime");
+            DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+            ZonedDateTime dateTime = ZonedDateTime.parse(dateStr, formatter);
+            long millis = dateTime.toInstant().toEpochMilli();
+            System.out.println(new Date(millis));
+        }
+    }
+
+    /**
+     * Note:
+     * Conflicts lacking alliance name information will be skipped
+     * Some alliance pages have dates in formats that cannot be parsed
+     * @return
+     */
+    public static List<Conflict> loadWikiConflicts(Map<String, String> errorsByPage) throws IOException {
+        long wikiCutoff = TimeUtil.getDay(1577836800000L);
+        List<Conflict> conflicts = new ArrayList<>();
+
+        String category = "Alliance_Wars";
+        Map<String, String> pages = getPages(category);
+        System.out.println("Got pages");
+        for (Map.Entry<String, String> entry : pages.entrySet()) {
+            String name = entry.getKey();
+            String nameNormal = StringMan.normalize(name);
+            String slug = slugify(name, false);
+            String urlStub = entry.getValue();
+
+            PWWikiPage page = new PWWikiPage(nameNormal, urlStub, true);
+            Map<String, List<String>> table = page.getTableData();
+            if (table == null) {
+                errorsByPage.put(name, "No table found");
+                continue;
+            }
+            Map.Entry<Long, Long> date = page.getDates();
+            if (date == null) {
+                List<String> dateList = table.get("date");
+                if (dateList == null) {
+                    errorsByPage.put(name, "No date found");
+                } else if (dateList.isEmpty()) {
+                    errorsByPage.put(name, "Empty date found");
+                } else if (!dateList.getFirst().contains("-")){
+                    errorsByPage.put(name, "No end date specified (in the format `start date - end date`)");
+                } else {
+                    errorsByPage.put(name, "Unparseable date range: `" + dateList.getFirst() + "`");
+                }
+                continue;
+            }
+            if (date.getKey() < wikiCutoff) continue; // TODO remove
+
+            Set<String> unknownAlliances = new LinkedHashSet<>();
+            Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances);
+            if (combatants == null) {
+                errorsByPage.put(name, "No combatants found");
+                continue;
+            }
+//            if (!unknownAlliances.isEmpty()) {
+//                errorsByPage.put(name, "Unknown alliances: " + unknownAlliances);
+//                continue;
+//            }
+            if (combatants.getKey().isEmpty()) {
+                errorsByPage.put(name, "No coalition 1 combatants found");
+                continue;
+            }
+            if (combatants.getValue().isEmpty()) {
+                errorsByPage.put(name, "No coalition 2 combatants found");
+                continue;
+            }
+
+            long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
+            long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
+
+            Conflict conflict = new Conflict(0, nameNormal, "Coalition 1", "Coalition 2", urlStub, startTurn, endTurn);
+            combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
+            combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
+            conflicts.add(conflict);
+        }
+        return conflicts;
+    }
+
 }

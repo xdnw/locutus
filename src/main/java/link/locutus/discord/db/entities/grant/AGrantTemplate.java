@@ -471,11 +471,11 @@ public abstract class AGrantTemplate<T> {
            }
        }));
 //
-//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 24h", econStaff, f -> f.getActive_m() < 1440));
+//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 24h", econStaff, f -> f.active_m() < 1440));
         list.add(new Grant.Requirement("Nation must be active in past 24h", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return nation.getActive_m() < 1440;
+                return nation.active_m() < 1440;
             }
         }));
         list.add(new Grant.Requirement("Nation must have 10d seniority", false, new Function<DBNation, Boolean>() {

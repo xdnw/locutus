@@ -63,7 +63,7 @@ public class CounterGenerator {
             attackersSorted.removeIf(f -> f.getNumWars() > 0 && f.getRelativeStrength() < 1);
             attackersSorted.removeIf(f -> f.getStrength() * 1.25 < enemy.getStrength() || f.getCities() <= enemy.getCities() * 0.6);
             attackersSorted.removeIf(f -> f.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER < enemy.getScore() || f.getScore() * 0.75 > enemy.getScore());
-            attackersSorted.removeIf(f -> f.getActive_m() > 4880);
+            attackersSorted.removeIf(f -> f.active_m() > 4880);
             attackersSorted.removeIf(f -> f.getVm_turns() != 0);
             attackersSorted.removeIf(f -> f.getPosition() <= 1);
         }
@@ -72,7 +72,7 @@ public class CounterGenerator {
         Map<DBNation, Double> factors = new HashMap<>();
 
         for (DBNation att : attackersSorted) {
-            double activeFactor = att.isOnline() ? 1.2 : att.getActive_m() < 1440 ? 1 : (1 - (att.getActive_m() - 1440d) / 4880);
+            double activeFactor = att.isOnline() ? 1.2 : att.active_m() < 1440 ? 1 : (1 - (att.active_m() - 1440d) / 4880);
             double groundFactor = Math.max(0.5, Math.min(3, att.getGroundStrength(true, false, 1.5) / enemy.getGroundStrength(true, false, 1d)));
             double cityFactor = (double) att.getCities() / enemy.getCities();
 
@@ -84,7 +84,7 @@ public class CounterGenerator {
                     if (defender == null) {
                         continue;
                     }
-                    if (defender.getActive_m() < 10000 && defender.getStrength() > att.getStrength() * 0.3) {
+                    if (defender.active_m() < 10000 && defender.getStrength() > att.getStrength() * 0.3) {
                         maxOffFactor = 0;
                         break;
                     }
@@ -105,7 +105,7 @@ public class CounterGenerator {
             if (warCat != null) {
                 Set<Integer> inWarRoom = new HashSet<>();
                 for (WarCategory.WarRoom room : warCat.getWarRoomMap().values()) {
-                    if (room.isParticipant(att, false) && room.target.getActive_m() < 2880) {
+                    if (room.isParticipant(att, false) && room.target.active_m() < 2880) {
                         inWarRoom.add(room.target.getNation_id());
                     }
                 }

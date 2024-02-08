@@ -120,18 +120,18 @@ public class WarCommand extends Command {
                     nations = DiscordUtil.parseNations(guild, author, me, aa, false, false);
                 }
 
-                if (!includeInactives) nations.removeIf(n -> n.getActive_m() >= 2440);
+                if (!includeInactives) nations.removeIf(n -> n.active_m() >= 2440);
                 nations.removeIf(n -> n.getVm_turns() != 0);
 //                nations.removeIf(n -> n.isBeige());
 
                 ArrayList<DBNation> tmp = new ArrayList<>();
                 for (DBNation nation : nations) {
                     if (nation.getScore() >= maxScore || nation.getScore() <= minScore) continue;
-                    if (nation.getActive_m() > 2440 && !includeInactives) continue;
+                    if (nation.active_m() > 2440 && !includeInactives) continue;
                     if (nation.getVm_turns() != 0) continue;
                     if (nation.getDef() >= 3) continue;
                     if (nation.getCities() >= me.getCities() * 1.5 && !includeStrong && me.getGroundStrength(false, true) > nation.getGroundStrength(true, false) * 2) continue;
-                    if (nation.getCities() >= me.getCities() * 1.8 && !includeStrong && nation.getActive_m() < 2880) continue;
+                    if (nation.getCities() >= me.getCities() * 1.8 && !includeStrong && nation.active_m() < 2880) continue;
                     if (nation.active_m() < 2880 && nation.getCities() > Math.ceil(me.getCities() * 1.33) && me.getCities() >= 10 && !(flags.contains('f'))) {
                         filteredUpdeclare = true;
                         continue;
@@ -172,8 +172,8 @@ public class WarCommand extends Command {
 //                    List<DBNation> allyNations = Locutus.imp().getNationDB().getNations(allies);
 //                    List<DBNation> enemyNations = Locutus.imp().getNationDB().getNations(enemies);
 //
-//                    allyNations.removeIf(f -> f.getAircraftPct() < 0.8 || f.getActive_m() > 2880 || f.getVm_turns() > 0 || f.getCities() < 10);
-//                    enemyNations.removeIf(f -> f.getAircraftPct() < 0.8 || f.getActive_m() > 2880 || f.getVm_turns() > 0 || f.getCities() < 10);
+//                    allyNations.removeIf(f -> f.getAircraftPct() < 0.8 || f.active_m() > 2880 || f.getVm_turns() > 0 || f.getCities() < 10);
+//                    enemyNations.removeIf(f -> f.getAircraftPct() < 0.8 || f.active_m() > 2880 || f.getVm_turns() > 0 || f.getCities() < 10);
 //
 //                    allyGraph = PnwUtil.getXInRange(allyNations, n -> Math.pow(n.getStrength(), 3));
 //                    enemyGraph = PnwUtil.getXInRange(enemyNations, n -> Math.pow(n.getStrength(), 3));
@@ -207,7 +207,7 @@ public class WarCommand extends Command {
                             if (nation.getOff() > 0) value /= 4;
                             if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
                             if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
-                            if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
+                            if (nation.active_m() > 1440) value *= 1 + Math.sqrt(nation.active_m() - 1440) / 250;
                             value /= (1 + nation.getOff() * 0.1);
                             if (nation.getScore() > score * 1.25) value /= 2;
                             if (nation.getOff() > 0) value /= nation.getRelativeStrength();
@@ -216,7 +216,7 @@ public class WarCommand extends Command {
 
 //                        SimulatedWarNode solution;
 //
-//                        if (nation.getActive_m() > 10000) {
+//                        if (nation.active_m() > 10000) {
 //                            Function<SimulatedWarNode, Double> valueFunction = simulatedWarNode -> -simulatedWarNode.raidDistance(origin);
 //                            Function<SimulatedWarNode, SimulatedWarNode.WarGoal> goal = node -> {
 //                                if (node.getAggressor().getResistance() <= 0 || node.getDefender().getResistance() <= 0 || node.getTurnsLeft() <= 0) {

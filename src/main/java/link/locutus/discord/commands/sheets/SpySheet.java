@@ -93,12 +93,12 @@ public class SpySheet extends Command {
         attackers.removeIf(f -> f.hasUnsetMil());
         defenders.removeIf(f -> f.hasUnsetMil());
 
-        attackers.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > 1880 || t.getPosition() <= 1);
+        attackers.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > 1880 || t.getPosition() <= 1);
         if (minSpies != -1) {
             Integer finalMinSpies1 = minSpies;
             attackers.removeIf(t -> t.getSpies() < finalMinSpies1 - 3);
         }
-        defenders.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > 2880);
+        defenders.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > 2880);
 
         BiFunction<Double, Double, Integer> attRange = PnwUtil.getIsNationsInSpyRange(attackers);
         BiFunction<Double, Double, Integer> defSpyRange = PnwUtil.getIsNationsInSpyRange(defenders);
@@ -207,13 +207,13 @@ public class SpySheet extends Command {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
                                 if (minute > 30) {
-                                    if (defender.getActive_m() < minute) {
+                                    if (defender.active_m() < minute) {
                                         continue;
                                     }
                                 } else {
                                     if (activity == null) activity = attacker.getActivity(12 * 14);
                                     double attLogin = activity.loginChance(1, true);
-                                    if (attacker.getActive_m() < 60) attLogin = (60 - attacker.getActive_m()) / 60d;
+                                    if (attacker.active_m() < 60) attLogin = (60 - attacker.active_m()) / 60d;
                                     opNetDamage += opNetDamage * attLogin * 5;
                                 }
                             } else {
@@ -226,13 +226,13 @@ public class SpySheet extends Command {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
                                 if (minute > 30) {
-                                    if (defender.getActive_m() < minute) {
+                                    if (defender.active_m() < minute) {
                                         continue;
                                     }
                                 } else {
                                     if (activity == null) activity = attacker.getActivity(12 * 14);
                                     double attLogin = activity.loginChance(1, true);
-                                    if (attacker.getActive_m() < 60) attLogin = (60 - attacker.getActive_m()) / 60d;
+                                    if (attacker.active_m() < 60) attLogin = (60 - attacker.active_m()) / 60d;
                                     opNetDamage += opNetDamage * attLogin * 5;
                                 }
                             } else {

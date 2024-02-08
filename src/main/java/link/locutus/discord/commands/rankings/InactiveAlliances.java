@@ -66,7 +66,7 @@ public class InactiveAlliances extends Command {
         Map<Integer, Integer> allianceSize = new RankBuilder<>(nations).group(DBNation::getAlliance_id).sumValues(i -> 1).get();
 
         new RankBuilder<>(nations)
-                .removeIf(nation -> nation.getActive_m() > minutes)
+                .removeIf(nation -> nation.active_m() > minutes)
                 .group(DBNation::getAlliance_id)
                 .sumValues(nation -> 1)
                 .sort((o1, o2) -> {

@@ -111,7 +111,7 @@ public class CounterSheet extends Command {
             DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
             if (defender == null) continue;
             if (flags.contains('a') && defender.getPosition() <= 1) continue;
-            if (flags.contains('i') && defender.getActive_m() > 4880) continue;
+            if (flags.contains('i') && defender.active_m() > 4880) continue;
             if (!allies.contains(defender.getAlliance_id())) continue;
 
             enemies.computeIfAbsent(enemy, f -> new ArrayList<>()).add(war);
@@ -214,7 +214,7 @@ public class CounterSheet extends Command {
                     rank = Rank.byId(position);
                 }
 
-                active_m = Math.min(active_m, defender.getActive_m());
+                active_m = Math.min(active_m, defender.active_m());
 
                 if (aaIds.contains(Integer.valueOf(war.getDefender_aa()))) {
                     action = Math.min(action, 0);
@@ -256,7 +256,7 @@ public class CounterSheet extends Command {
             row.add( rank == null ? "" : rank.name());
 
 
-            row.add( DurationFormatUtils.formatDuration(enemy.getActive_m() * 60L * 1000, "dd:HH:mm"));
+            row.add( DurationFormatUtils.formatDuration(enemy.active_m() * 60L * 1000, "dd:HH:mm"));
             row.add(DurationFormatUtils.formatDuration(active_m * 60L * 1000, "dd:HH:mm"));
             row.add(enemy.getDef());
 

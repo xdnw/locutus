@@ -77,7 +77,7 @@ public class Damage extends Command {
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getVm_turns() != 0);
         if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
-        if (!includeInactives) nations.removeIf(f -> f.getActive_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
+        if (!includeInactives) nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
         if (filterNoShips) nations.removeIf(f -> f.getShips() > 2);
         if (!includeBeige) nations.removeIf(f -> f.isBeige());
 
@@ -157,10 +157,10 @@ public class Damage extends Command {
                 numCities++;
                 if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
             }
-            if (nation.getActive_m() > 2440) numCities++;
+            if (nation.active_m() > 2440) numCities++;
             if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
             if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-            if (nation.getActive_m() > 10000) numCities++;
+            if (nation.active_m() > 10000) numCities++;
 
             List<Double> cityInfra = new ArrayList<>();
 
@@ -190,11 +190,11 @@ public class Damage extends Command {
             numCities++;
             if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
         }
-        if (nation.getActive_m() > 2440) numCities+=0.5;
-        if (nation.getActive_m() > 4880) numCities+=0.5;
+        if (nation.active_m() > 2440) numCities+=0.5;
+        if (nation.active_m() > 4880) numCities+=0.5;
         if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
         if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-        if (nation.getActive_m() > 10000) numCities += 10;
+        if (nation.active_m() > 10000) numCities += 10;
 
         if (numCities == 0) return 0;
 

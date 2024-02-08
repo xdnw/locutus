@@ -82,13 +82,13 @@ public class IntelOp extends Command {
         }
 
         enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
-        enemies.removeIf(f -> f.getActive_m() < 4320);
+        enemies.removeIf(f -> f.active_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
         enemies.removeIf(f -> f.isBeige());
         if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
         enemies.removeIf(f -> f.getDef() == 3);
         enemies.removeIf(nation ->
-                nation.getActive_m() < 12000 &&
+                nation.active_m() < 12000 &&
                         nation.getGroundStrength(true, false) > finalNation.getGroundStrength(true, false) &&
                         nation.getAircraft() > finalNation.getAircraft() &&
                         nation.getShips() > finalNation.getShips() + 2);
@@ -97,7 +97,7 @@ public class IntelOp extends Command {
 
         if (false) {
             Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
-            myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
+            myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
         } else {

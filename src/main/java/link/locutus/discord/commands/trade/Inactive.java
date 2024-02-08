@@ -61,12 +61,12 @@ public class Inactive extends Command {
             }
         }
         List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations(allianceIds));
-        nations.removeIf(nation -> nation.getActive_m() < minutes);
+        nations.removeIf(nation -> nation.active_m() < minutes);
 
         boolean applicants = flags.contains('a');
         if (!applicants) nations.removeIf(nation -> nation.getPosition() <= 1);
 
-        nations.sort((o1, o2) -> Integer.compare(o2.getActive_m(), o1.getActive_m()));
+        nations.sort((o1, o2) -> Integer.compare(o2.active_m(), o1.active_m()));
 
         int perPage = 5;
         int pages = (nations.size() + perPage - 1) / perPage;

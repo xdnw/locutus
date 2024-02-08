@@ -789,7 +789,7 @@ public class BankCommands {
         Map<Integer, Integer> defensivesByNation = new HashMap<>();
 
         Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allyIds);
-        nations.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= 1);
+        nations.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 10000 || f.getPosition() <= 1);
         List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
                 f -> (allyIds.contains(f.getAttacker_aa()) || allyIds.contains(f.getDefender_aa())) && (enemyIds.contains(f.getAttacker_aa()) || enemyIds.contains(f.getDefender_aa())) && f.getDate() > cutoff).values());
@@ -855,7 +855,7 @@ public class BankCommands {
         for (Map.Entry<Integer, double[]> entry : warcostByNation.entrySet()) {
             int id = entry.getKey();
             DBNation nation = DBNation.getById(id);
-            if (nation == null || !allies.contains(nation.getAlliance_id()) || nation.getPosition() <= 1 || nation.getVm_turns() > 0 || nation.getActive_m() > 7200 || nation.getCities() < 10) continue;
+            if (nation == null || !allies.contains(nation.getAlliance_id()) || nation.getPosition() <= 1 || nation.getVm_turns() > 0 || nation.active_m() > 7200 || nation.getCities() < 10) continue;
             header.clear();
             header.add(PnwUtil.getName(id, false));
             header.add(offensivesByNation.getOrDefault(id, 0) + "");
@@ -1429,7 +1429,7 @@ public class BankCommands {
         Set<Integer> ids = db.getAllianceIds(false);
         int sizeOriginal = nationSet.size();
         nationSet.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || !ids.contains(f.getAlliance_id()));
-        nationSet.removeIf(f -> f.getActive_m() > 7200 || f.isGray() || f.isBeige() || f.getVm_turns() > 0);
+        nationSet.removeIf(f -> f.active_m() > 7200 || f.isGray() || f.isBeige() || f.getVm_turns() > 0);
         int numRemoved = sizeOriginal - nationSet.size();
         if (nationSet.isEmpty()) {
             return "No nations to process. " + numRemoved + " nations were removed from the list. Please ensure they are members of your alliance";
@@ -2003,7 +2003,7 @@ public class BankCommands {
             if (nation.getVm_turns() > 0) forceErrors.add("Receiver is in Vacation Mode");
             if (nation.isGray()) forceErrors.add("Receiver is Gray");
             if (nation.getNumWars() > 0 && receiver.asNation().isBlockaded() && (escrow_mode == null || escrow_mode == EscrowMode.NEVER)) forceErrors.add("Receiver is blockaded");
-            if (nation.getActive_m() > 10000) forceErrors.add(("!! **WARN**: Receiver is " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())) + " inactive");
+            if (nation.active_m() > 10000) forceErrors.add(("!! **WARN**: Receiver is " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())) + " inactive");
         } else if (receiver.isAlliance()) {
             DBAlliance alliance = receiver.asAlliance();
             if (alliance.getNations(f -> f.getPositionEnum().id > Rank.HEIR.id && f.getVm_turns() == 0 && f.active_m() < 10000).size() == 0) {
@@ -3137,7 +3137,7 @@ public class BankCommands {
         User receiverUser = receiver.getUser();
         if (receiverUser == null) return "Receiver is not verified";
         Member member = receiverDB.getGuild().getMember(receiverUser);
-        if (receiver.getActive_m() > 1440) return "Receive is offline for >24 hours";
+        if (receiver.active_m() > 1440) return "Receive is offline for >24 hours";
         if (!force && receiver.getNumWars() > 0 && (member == null || member.getOnlineStatus() != OnlineStatus.ONLINE)) {
             String title = "Receiver is not online on discord";
             StringBuilder body = new StringBuilder();

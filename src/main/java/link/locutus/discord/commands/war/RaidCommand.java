@@ -259,7 +259,7 @@ public class RaidCommand extends Command {
         if (weakground) nations.removeIf(f -> f.getGroundStrength(true, true) > me.getGroundStrength(true, true) * 0.4);
 
         nations.removeIf(nation ->
-                nation.getActive_m() < 12000 &&
+                nation.active_m() < 12000 &&
                         nation.getGroundStrength(true, false) > me.getGroundStrength(true, false) &&
                         nation.getAircraft() > me.getAircraft() &&
                         nation.getShips() > me.getShips() + 2);
@@ -290,7 +290,7 @@ public class RaidCommand extends Command {
         // 38w4d
         ArrayList<DBNation> enemies = new ArrayList<>();
         for (DBNation enemy : nations) {
-            if (enemy.getActive_m() > 385920) continue;
+            if (enemy.active_m() > 385920) continue;
             if (enemy.getScore() >= maxScore || enemy.getScore() <= minScore) continue;
             if (enemy.getVm_turns() > vm) continue;
             if ((slots == -1 && enemy.getDef() >= 3) || (slots != -1 && 3 - enemy.getDef() != slots)) continue;
@@ -298,12 +298,12 @@ public class RaidCommand extends Command {
             if (!beige && enemy.isBeige()) continue;
             if (useDnr && !canRaidDNR.apply(enemy)) continue;
 //                    if (dnr.contains(enemy.getAlliance_id())) continue;
-//                    if (enemy.getActive_m() < 10000 && dnr_active.contains(enemy.getAlliance_id())) continue;
-//                    if ((enemy.getActive_m() < 10000 || enemy.getPosition() > 1) && dnr_member.contains(enemy.getAlliance_id())) continue;
+//                    if (enemy.active_m() < 10000 && dnr_active.contains(enemy.getAlliance_id())) continue;
+//                    if ((enemy.active_m() < 10000 || enemy.getPosition() > 1) && dnr_member.contains(enemy.getAlliance_id())) continue;
             if ((ignoreAlliances.contains(enemy.getAlliance_id()) == !includeAlliances) && (includeAlliances || enemy.getPosition() > 1))
                 continue;
             if (attackingWars.containsKey(enemy.getNation_id())) continue;
-            if (!active && enemy.getActive_m() < minutesInactive) continue;
+            if (!active && enemy.active_m() < minutesInactive) continue;
             if (enemy.hasUnsetMil() || me.hasUnsetMil()) continue;
             enemies.add(enemy);
         }
@@ -433,7 +433,7 @@ public class RaidCommand extends Command {
             double originalValue = value;
             double winChance = 1;
             double costIncurred = 0;
-            double activeChance = enemy.getActive_m() < 10000 ? (enemy.getActive_m() < 3000 ? 1 : 0.5) : 0;
+            double activeChance = enemy.active_m() < 10000 ? (enemy.active_m() < 3000 ? 1 : 0.5) : 0;
 
             if (value <= minLoot) continue;
 
@@ -441,7 +441,7 @@ public class RaidCommand extends Command {
             long myMilValue = me.militaryValue(false);
 
             long start5 = System.nanoTime();
-            if (enemy.getActive_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id())) {
+            if (enemy.active_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id())) {
                 int turns = 2 * 12;
                 Activity activity = new Activity(enemy.getNation_id(), 70 * 12);
                 activeChance = activity.loginChance(turns, true);

@@ -59,7 +59,7 @@ public class WarCitySheet extends Command {
         for (int column = 0; column < args.size(); column++) {
             String arg = args.get(column);
             Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, arg, false, false);
-            nations.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > minutesInactive);
+            nations.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > minutesInactive);
             int[] num = new int[100];
             for (DBNation nation : nations) num[nation.getCities()]++;
 

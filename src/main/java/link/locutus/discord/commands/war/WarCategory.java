@@ -749,7 +749,7 @@ public class WarCategory {
                     boolean defensive = war.getAttacker_id() == target.getNation_id();
                     DBNation participant = Locutus.imp().getNationDB().getNation(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
 
-                    if (participant != null && (participants.contains(participant) || participant.getActive_m() < 2880)) {
+                    if (participant != null && (participants.contains(participant) || participant.active_m() < 2880)) {
                         String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
                         body.append(typeStr).append("`" + participant.getNation() + "`")
                                 .append(" | ").append(participant.getAllianceName());
@@ -1042,7 +1042,7 @@ public class WarCategory {
 //            for (DBWar war : wars) {
 //                int assignedId = war.attacker_id == target.getNation_id() ? war.defender_id : war.attacker_id;
 //                DBNation nation = Locutus.imp().getNationDB().getNation(assignedId);
-//                if (nation == null || nation.getPosition() <= 1 || nation.getVm_turns() != 0 || nation.getActive_m() > 2880 || !allies.contains(nation.getAlliance_id())) {
+//                if (nation == null || nation.getPosition() <= 1 || nation.getVm_turns() != 0 || nation.active_m() > 2880 || !allies.contains(nation.getAlliance_id())) {
 //                    continue;
 //                }
 //                User discordUser = nation.getUser();

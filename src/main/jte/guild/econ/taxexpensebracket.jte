@@ -83,7 +83,7 @@
                     <td colspan="100" class="bg-warning text-center text-bold">nation is applicant</td>
                     @elseif (nation.getVm_turns() > 0)
                     <td colspan="100" class="bg-warning text-center text-bold">nation is VM</td>
-                    @elseif(nation.getActive_m() > 7200)
+                    @elseif(nation.active_m() > 7200)
                     <td colspan="100" class="bg-warning text-center text-bold">nation is inactive</td>
                     @elseif(nation.isGray())
                     <td colspan="100" class="bg-warning text-center text-bold">nation is gray (untaxable)</td>

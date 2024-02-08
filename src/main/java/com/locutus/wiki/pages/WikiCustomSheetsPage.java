@@ -109,7 +109,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 - Each tab can have 1 selection. See the list above for supported types
                 - Enter placeholders in the first row, for example, `{nation}` is a placeholder for a nation selection.
                 - Placeholders can be combined with formulas. 
-                - Use `{row}` or `{column}` to reference the current row or column
+                - Use `$row` or `$column` to reference the current row or column
                 ![Column Placeholder](column_placeholders.png)
                 - The tab name **must** be the type, colon, followed by the comma-separated selection
                 ![Tab Selection](tab_selection.png)
@@ -155,7 +155,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 "# Sheet templates",
                 "A list of columns",
                 "See the type pages above for supported placeholders",
-                "Use `{row}` and `{column}` to reference the current row and column",
+                "Use `$row` and `$column` to reference the current row and column",
                 "Templates are used alongside a selection to create a sheet tab",
                 "## Add columns to a template",
                 "A template will be created if one does not already exist",

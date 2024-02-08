@@ -185,7 +185,7 @@ public class BlitzSheet extends Command {
 
             row.add(defender.getScore() + "");
             row.add(defender.getBeigeTurns() + "");
-            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
+            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
 
             Activity activity = defender.getActivity(12 * 7 * 2);
             double loginChance = activity.loginChance(turn == -1 ? 11 : turn, 48, false);
@@ -269,14 +269,14 @@ public class BlitzSheet extends Command {
 //                DBNation defender = defNations.get(i);
 //                if (defender.isBeige()) continue;
 //                if (defender.getVm_turns() > 0) continue;
-//                if (defender.getActive_m() > 10000) continue;
+//                if (defender.active_m() > 10000) continue;
 //                List<DBNation> myCounters = counters.computeIfAbsent(defender.getNation_id(), f -> Lists.newArrayList());
 //                if (myCounters.size() >= 3) continue;
 //                // Ground is 1/3 stronger
 //                // air is stronger
 //                for (DBNation attacker : attNations) {
 //                    if (attacker.getVm_turns() > 0) continue;
-//                    if (attacker.getActive_m() > 10000) continue;
+//                    if (attacker.active_m() > 10000) continue;
 //                    if (attacker.getScore() < defender.getScore() * 0.75 || attacker.getScore() * 0.75 > defender.getScore())
 //                        continue;
 //                    List<DBNation> myTargets = targets.computeIfAbsent(attacker.getNation_id(), f -> Lists.newArrayList());
@@ -331,7 +331,7 @@ public class BlitzSheet extends Command {
 //            header.set(9, PnwUtil.resourcesToString(knownResources));
 //            header.set(10, defender.getScore() + "");
 //            header.set(11, defender.getBeigeTurns() + "");
-//            header.set(12, TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
+//            header.set(12, TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
 //
 //            header.set(13, "");
 //            header.set(14, "");
@@ -358,12 +358,12 @@ public class BlitzSheet extends Command {
             DBNation defender = defNations.get(i);
             if (defender.isBeige()) continue;
             if (defender.getVm_turns() > 0) continue;
-            if (defender.getActive_m() > 10000) continue;
+            if (defender.active_m() > 10000) continue;
             List<DBNation> myCounters = counters.computeIfAbsent(defender.getNation_id(), f -> Lists.newArrayList());
             if (myCounters.size() >= 3) continue;
             for (DBNation attacker : attNations) {
                 if (attacker.getVm_turns() > 0) continue;
-                if (attacker.getActive_m() > 10000) continue;
+                if (attacker.active_m() > 10000) continue;
                 if (attacker.getScore() < defender.getScore() * 0.75 || attacker.getScore() * 0.75 > defender.getScore())
                     continue;
                 List<DBNation> myTargets = targets.computeIfAbsent(attacker.getNation_id(), f -> Lists.newArrayList());

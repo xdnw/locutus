@@ -391,7 +391,7 @@ public class IACategory {
                 } catch (Exception e) {}
             } else {
                 DBNation nation = iaChannel.getNation();
-                if (nation.getActive_m() > 20000 || (nation.getActive_m() > 10000) && !alliance.isInAlliance(nation)) {
+                if (nation.active_m() > 20000 || (nation.active_m() > 10000) && !alliance.isInAlliance(nation)) {
                    if (output != null) output.send("Deleted channel " + channel.getName() + " (nation is (inactive)");
                     RateLimitUtil.queue(channel.delete());
                 }
@@ -410,7 +410,7 @@ public class IACategory {
                 // channel is null
                     iaChannel == null ||
                             // nation is inactive vm app
-                            (iaChannel.getNation().getActive_m() > 10000 && iaChannel.getNation().getPosition() <= 1) ||
+                            (iaChannel.getNation().active_m() > 10000 && iaChannel.getNation().getPosition() <= 1) ||
                             // nation not in alliance
                             !alliance.contains(iaChannel.getNation().getAlliance_id()) ||
                             // user is null
@@ -427,7 +427,7 @@ public class IACategory {
                     if (nation != null) {
                         body.append("\n").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
                         body.append("\nPosition: ").append(Rank.byId(nation.getPosition()));
-                        body.append("\nActive: ").append(TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()));
+                        body.append("\nActive: ").append(TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
                         User user = nation.getUser();
                         if (user != null) {
                             body.append("\n").append(user.getAsMention());
@@ -449,7 +449,7 @@ public class IACategory {
                                     .commandButton(CM.channel.delete.current.cmd.create(channel.getAsMention()), emoji)
                                             .send();
 
-                    if (nation != null && ((nation.getActive_m() > 7200) || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))))) {
+                    if (nation != null && ((nation.active_m() > 7200) || (nation.active_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))))) {
                         if (getFreeCategory(inactiveCategories) != null && !inactiveCategories.contains(channel.getParentCategory())) {
                             RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)));
                         }
@@ -501,9 +501,9 @@ public class IACategory {
                 }
                 channelMap.put(iaChannel.getNation(), iaChannel);
                 if (getFreeCategory(inactiveCategories) != null) {
-                    if ((nation.getActive_m() > 7200) ||
-                            (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))) ||
-                            (nation.getActive_m() > 2880 && inactiveCategories.contains(channel.getParentCategory()))
+                    if ((nation.active_m() > 7200) ||
+                            (nation.active_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))) ||
+                            (nation.active_m() > 2880 && inactiveCategories.contains(channel.getParentCategory()))
                     ) {
                         if (!inactiveCategories.contains(channel.getParentCategory())) {
                             RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)));
@@ -564,7 +564,7 @@ public class IACategory {
     public Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> update() throws InterruptedException, ExecutionException, IOException {
         ArrayList<DBNation> nations = new ArrayList<>(channelMap.keySet());
         ArrayList<DBNation> toCheckup = new ArrayList<>(nations);
-        toCheckup.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 2880 || f.getPosition() <= 1);
+        toCheckup.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 2880 || f.getPosition() <= 1);
         IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
 
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> result = checkup.checkup(toCheckup, f -> {}, true);
@@ -753,8 +753,8 @@ public class IACategory {
                 if (nation != null && Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (iaCat.inactiveCategories.contains(tc.getParentCategory())) {
                     if (iaChan == null ||
-                        (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !allianceIds.contains(nation.getAlliance_id()))) ||
-                        nation.getActive_m() > 7200 ||
+                        (nation.active_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !allianceIds.contains(nation.getAlliance_id()))) ||
+                        nation.active_m() > 7200 ||
                         db.getGuild().getMember(iaChan.getNation().getUser()) == null) {
                         return true;
                     }
@@ -762,7 +762,7 @@ public class IACategory {
                 if (iaChan == null) {
                     return false;
                 }
-                if (nation.getActive_m() > 7200 || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !allianceIds.contains(nation.getAlliance_id())))) return true;
+                if (nation.active_m() > 7200 || (nation.active_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !allianceIds.contains(nation.getAlliance_id())))) return true;
                 return false;
             }
         },
@@ -788,7 +788,7 @@ public class IACategory {
                 }
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null && nation.getOff() < 5) {
                     Set<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
-                    enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER || f.getScore() < nation.getScore() * 0.75 || f.getActive_m() < 10000);
+                    enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER || f.getScore() < nation.getScore() * 0.75 || f.active_m() < 10000);
                     int raids = Math.min(4, enemies.size());
                     if (nation.getOff() < raids) return true;
                 }
@@ -845,7 +845,7 @@ public class IACategory {
                 if (!fightingEnemy && nation.getNumWars() > 0) {
                     for (DBWar war : nation.getActiveWars()) {
                         DBNation other = war.getNation(!war.isAttacker(nation));
-                        if (other != null && other.getActive_m() < 4880) fightingEnemy = true;
+                        if (other != null && other.active_m() < 4880) fightingEnemy = true;
                     }
 
                 }

@@ -74,7 +74,7 @@ public class NoteSheet extends Command {
 
             row.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
             row.set(1, nation.getCities());
-            row.set(2, nation.getActive_m());
+            row.set(2, nation.active_m());
 
             sheet.addRow(row);
         }

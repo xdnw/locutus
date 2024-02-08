@@ -144,7 +144,7 @@ public class LeavingBeigeAlert {
             if (throwError) throw new IllegalArgumentException("You are not in any of the alliances: ID:" + StringMan.getString(allianceIds));
             return false;
         }
-        if (attacker.getActive_m() > 7200) {
+        if (attacker.active_m() > 7200) {
             if (throwError) throw new IllegalArgumentException("You are more than 1 week inactive");
             return false;
         }
@@ -155,7 +155,7 @@ public class LeavingBeigeAlert {
 
         NationMeta.BeigeAlertRequiredStatus requiredStatus = attacker.getBeigeRequiredStatus(NationMeta.BeigeAlertRequiredStatus.ONLINE);
 
-        if ((attacker.getActive_m() <= 15 || requiredStatus.getApplies().test(member) || attacker.getNation_id() == Settings.INSTANCE.NATION_ID)) {
+        if ((attacker.active_m() <= 15 || requiredStatus.getApplies().test(member) || attacker.getNation_id() == Settings.INSTANCE.NATION_ID)) {
             NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NONES);
             if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) {
                 if (throwError) throw new IllegalArgumentException("You have disabled beige alerts. See " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention());
@@ -206,7 +206,7 @@ public class LeavingBeigeAlert {
                 return false;
             }
 
-            if (attacker.getActive_m() > 7200) {
+            if (attacker.active_m() > 7200) {
                 if (throwError) throw new IllegalArgumentException("Your are inactive (1w)");
                 return false;
             }

@@ -355,7 +355,7 @@ public class WarCommands {
             body.append(info);
             body.append("\nBeige:");
 
-            if (enemy.getActive_m() > 10000) {
+            if (enemy.active_m() > 10000) {
                 body.append("**YES** (inactive)");
             } else if (!enemies.contains(enemy.getAlliance_id())) {
                 body.append("**YES** (not an enemy)");
@@ -419,13 +419,13 @@ public class WarCommands {
         }
 
         enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
-        enemies.removeIf(f -> f.getActive_m() < 4320);
+        enemies.removeIf(f -> f.active_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
         enemies.removeIf(f -> f.isBeige());
         if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
         enemies.removeIf(f -> f.getDef() == 3);
         enemies.removeIf(nation ->
-                nation.getActive_m() < 12000 &&
+                nation.active_m() < 12000 &&
                         nation.getGroundStrength(true, false) > finalNation.getGroundStrength(true, false) &&
                         nation.getAircraft() > finalNation.getAircraft() &&
                         nation.getShips() > finalNation.getShips() + 2);
@@ -434,7 +434,7 @@ public class WarCommands {
 
         if (false) {
             Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
-            myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
+            myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
         } else {
@@ -577,7 +577,7 @@ public class WarCommands {
                     blockading.remove(me.getNation_id());
                     blockading.removeIf(f -> {
                         DBNation nation = DBNation.getById(f);
-                        return (nation == null || nation.getActive_m() > 2880);
+                        return (nation == null || nation.active_m() > 2880);
                     });
 
                     if (blockading.size() > 0) {
@@ -616,7 +616,7 @@ public class WarCommands {
         if (allies.isEmpty()) {
             return "No allies were provided (See: " + CM.coalition.create.cmd.toSlashMention() + " with " + Coalition.ALLIES + ")";
         }
-        allies.removeIf(f -> f.getActive_m() > 1440 || f.getVm_turns() > 0 || f.getPosition() <= 1);
+        allies.removeIf(f -> f.active_m() > 1440 || f.getVm_turns() > 0 || f.getPosition() <= 1);
         allies.removeIf(f -> !f.isBlockaded());
         if (allies.isEmpty()) {
             return "No allies are blockaded";
@@ -733,7 +733,7 @@ public class WarCommands {
             if (allyUser != null) {
                 response.append(ally.getUserDiscriminator() + " | ");
                 OnlineStatus status = OnlineStatus.OFFLINE;
-                if (ally.getActive_m() < 15) {
+                if (ally.active_m() < 15) {
                     status = OnlineStatus.ONLINE;
                 } else {
                     Member member = allyUser.getMutualGuilds().get(0).getMember(allyUser);
@@ -798,7 +798,7 @@ public class WarCommands {
                     blockading.remove(ally.getNation_id());
                     blockading.removeIf(f -> {
                         DBNation nation = DBNation.getById(f);
-                        return (nation == null || nation.getActive_m() > 2880);
+                        return (nation == null || nation.active_m() > 2880);
                     });
 
                     if (blockading.size() > 0) {
@@ -865,7 +865,7 @@ public class WarCommands {
 
         Set<Integer> aaIds = new HashSet<>();
         for (DBNation nation : nations) {
-            if (nation.getActive_m() < 10000 && nation.getPosition() >= Rank.MEMBER.id) {
+            if (nation.active_m() < 10000 && nation.getPosition() >= Rank.MEMBER.id) {
                 aaIds.add(nation.getAlliance_id());
             }
         }
@@ -895,9 +895,9 @@ public class WarCommands {
             }
 
             canCounter.removeIf(f -> f.getVm_turns() > 0);
-            canCounter.removeIf(f -> f.getCities() < 10 && f.getActive_m() > 2880);
-            canCounter.removeIf(f -> f.getCities() == 10 && f.getActive_m() > 3000);
-            canCounter.removeIf(f -> f.getCities() > 10 && f.getActive_m() > 12000);
+            canCounter.removeIf(f -> f.getCities() < 10 && f.active_m() > 2880);
+            canCounter.removeIf(f -> f.getCities() == 10 && f.active_m() > 3000);
+            canCounter.removeIf(f -> f.getCities() > 10 && f.active_m() > 12000);
             canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER) <= 0);
             canCounter.removeIf(f -> f.getOff() >= f.getMaxOff());
 //            canCounter.removeIf(f -> f.getAircraft() < me.getAircraft() * 0.6);
@@ -917,16 +917,16 @@ public class WarCommands {
         Map<DBNation, Double> strength = new HashMap<>();
         List<Map.Entry<DBNation, Double>> counterChance = new ArrayList<>();
         for (DBNation nation : nations) {
-            if (nation.getActive_m() > 2880) {
+            if (nation.active_m() > 2880) {
                 if (nation.lostInactiveWar() || nation.getAlliance_id() == 0) {
                     strength.put(nation, Math.pow(nation.getStrength(), 3) * 0.44);
                     continue;
                 }
                 if (nation.getPosition() == Rank.APPLICANT.id) {
-                    strength.put(nation, Math.pow(nation.getStrength(), 3) * Math.max(0, 0.8 - 0.1 * nation.getActive_m() / 1440d));
+                    strength.put(nation, Math.pow(nation.getStrength(), 3) * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d));
                     continue;
                 }
-                strength.put(nation, Math.pow(nation.getStrength(), 3) * Math.max(0, 0.8 - 0.1 * nation.getActive_m() / 1440d));
+                strength.put(nation, Math.pow(nation.getStrength(), 3) * Math.max(0, 0.8 - 0.1 * nation.active_m() / 1440d));
                 continue;
             }
             if (nation.getAlliance_id() == 0) {
@@ -1122,8 +1122,8 @@ public class WarCommands {
 
         String aa = null;
 
-        if (!includeApplicants) targets.removeIf(f -> f.getActive_m() > 1440 && f.getPosition() <= 1);
-        if (!includeInactives) targets.removeIf(n -> n.getActive_m() >= 2440);
+        if (!includeApplicants) targets.removeIf(f -> f.active_m() > 1440 && f.getPosition() <= 1);
+        if (!includeInactives) targets.removeIf(n -> n.active_m() >= 2440);
         targets.removeIf(n -> n.getVm_turns() != 0);
 //                nations.removeIf(n -> n.isBeige());
 
@@ -1135,11 +1135,11 @@ public class WarCommands {
         ArrayList<DBNation> targetsStorted = new ArrayList<>();
         for (DBNation nation : targets) {
             if (nation.getScore() >= maxScore || nation.getScore() <= minScore) continue;
-            if (nation.getActive_m() > 2440 && !includeInactives) continue;
+            if (nation.active_m() > 2440 && !includeInactives) continue;
             if (nation.getVm_turns() != 0) continue;
             if (nation.getDef() >= 3) continue;
             if (nation.getCities() >= me.getCities() * 1.5 && !includeStrong && me.getGroundStrength(false, true) > nation.getGroundStrength(true, false) * 2) continue;
-            if (nation.getCities() >= me.getCities() * 1.8 && !includeStrong && nation.getActive_m() < 2880) continue;
+            if (nation.getCities() >= me.getCities() * 1.8 && !includeStrong && nation.active_m() < 2880) continue;
             targetsStorted.add(nation);
         }
 
@@ -1181,7 +1181,7 @@ public class WarCommands {
                 if (nation.getOff() > 0) value /= 4;
                 if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
                 if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
-                if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
+                if (nation.active_m() > 1440) value *= 1 + Math.sqrt(nation.active_m() - 1440) / 250;
                 value /= (1 + nation.getOff() * 0.1);
                 if (nation.getScore() > attackerScore * 1.25) value /= 2;
                 if (nation.getOff() > 0) value /= nation.getRelativeStrength();
@@ -1407,7 +1407,7 @@ public class WarCommands {
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getVm_turns() != 0);
         if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
-        if (!includeInactives) nations.removeIf(f -> f.getActive_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
+        if (!includeInactives) nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
         if (noNavy) nations.removeIf(f -> f.getShips() > 2);
         DBNation finalMe = me;
         if (relativeNavalStrength != null) nations.removeIf(f -> f.getShips() > finalMe.getShips() * relativeNavalStrength);
@@ -1487,10 +1487,10 @@ public class WarCommands {
                 numCities++;
                 if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
             }
-            if (nation.getActive_m() > 2440) numCities++;
+            if (nation.active_m() > 2440) numCities++;
             if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
             if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-            if (nation.getActive_m() > 10000) numCities++;
+            if (nation.active_m() > 10000) numCities++;
 
             List<Double> cityInfra = new ArrayList<>();
 
@@ -1519,11 +1519,11 @@ public class WarCommands {
             numCities++;
             if (nation.getAircraft() <= me.getAircraft()) numCities += 5;
         }
-//        if (nation.getActive_m() > 2440) numCities += 0.5;
-//        if (nation.getActive_m() > 4880) numCities += 0.5;
+//        if (nation.active_m() > 2440) numCities += 0.5;
+//        if (nation.active_m() > 4880) numCities += 0.5;
         if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
         if (nation.getCities() <= me.getCities() * 0.5) numCities++;
-        if (nation.getActive_m() > 10000) numCities += 10;
+        if (nation.active_m() > 10000) numCities += 10;
 
         if (numCities == 0) return 0;
 
@@ -1561,7 +1561,7 @@ public class WarCommands {
         if (counterWith == null) {
             counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(db.getAllianceIds()));
         }
-        counterWith.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
+        counterWith.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.active_m() > TimeUnit.DAYS.toMinutes(2));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
@@ -1672,7 +1672,7 @@ public class WarCommands {
                          @Switch("n") DBNation attacker) throws ExecutionException, InterruptedException, IOException {
         DBNation finalNation = attacker == null ? me : attacker;
 
-        targets.removeIf(f -> f.getActive_m() > 2880);
+        targets.removeIf(f -> f.active_m() > 2880);
         targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         String title = "Recommended ops";
         String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
@@ -2071,7 +2071,7 @@ public class WarCommands {
         }
         int maxOps = 2;
 
-        attackers.removeIf(f -> f.getPosition() <= 1 || f.getActive_m() > 1440 || f.getVm_turns() > 0);
+        attackers.removeIf(f -> f.getPosition() <= 1 || f.active_m() > 1440 || f.getVm_turns() > 0);
         if (dnrTopX == null) dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (dnrTopX == null) dnrTopX = 0;
 
@@ -2084,7 +2084,7 @@ public class WarCommands {
             enemies.removeIf(f -> !canRaid.apply(f));
         }
         enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
-        enemies.removeIf(f -> f.getActive_m() < 4320);
+        enemies.removeIf(f -> f.active_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
         enemies.removeIf(f -> !f.isGray());
 //        enemies.removeIf(f -> f.getCities() < 4);
@@ -2753,7 +2753,7 @@ public class WarCommands {
             }
         }
 
-        if (ignoreInactive) nations.removeIf(n -> n.getKey().getActive_m() > 10000);
+        if (ignoreInactive) nations.removeIf(n -> n.getKey().active_m() > 10000);
         if (ignoreVM) nations.removeIf(n -> n.getKey().getVm_turns() != 0);
         if (ignoreMembers) nations.removeIf(n -> n.getKey().getPosition() > 1);
         if (nations.isEmpty()) return "No nations find over the specified timeframe";
@@ -2808,7 +2808,7 @@ public class WarCommands {
             row.add(defender.getSpies() + "");
             row.add(defender.getScore() + "");
             row.add(defender.getBeigeTurns() + "");
-            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
+            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
 
             Activity activity = defender.getActivity(12 * 7 * 2);
             row.add(activity.getAverageByDay());
@@ -2845,7 +2845,7 @@ public class WarCommands {
                 return true;
             }
             DBNation self = nations.contains(n1) ? n1 : n2;
-            return n1.getActive_m() > 4320 || n2.getActive_m() > 4320 || self.getPosition() <= 1;
+            return n1.active_m() > 4320 || n2.active_m() > 4320 || self.getPosition() <= 1;
         });
 
         if (wars.isEmpty()) return "No wars found";
@@ -3446,7 +3446,7 @@ public class WarCommands {
     private String getStrengthInfo(DBNation nation) {
         String msg = "Ground:" + (int) nation.getGroundStrength(true, false) + ", Air: " + nation.getAircraft() + ", cities:" + nation.getCities();
 
-        if (nation.getActive_m() > 10000) msg += " (inactive)";
+        if (nation.active_m() > 10000) msg += " (inactive)";
         else {
             msg += " (" + ((int) (nation.avg_daily_login() * 100)) + "% active)";
         }
@@ -3726,7 +3726,7 @@ public class WarCommands {
             DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
             if (defender == null) continue;
             if (excludeApplicants && defender.getPosition() <= 1) continue;
-            if (excludeInactives && defender.getActive_m() > 4880) continue;
+            if (excludeInactives && defender.active_m() > 4880) continue;
             if (!alliesIds.contains(defender.getAlliance_id())) continue;
 
             enemies.computeIfAbsent(enemy, f -> new ArrayList<>()).add(war);
@@ -3830,7 +3830,7 @@ public class WarCommands {
                     rank = Rank.byId(position);
                 }
 
-                active_m = Math.min(active_m, defender.getActive_m());
+                active_m = Math.min(active_m, defender.active_m());
 
                 if (aaIds.contains(Integer.valueOf(war.getDefender_aa()))) {
                     action = Math.min(action, 0);
@@ -3872,7 +3872,7 @@ public class WarCommands {
             row.add( rank == null ? "" : rank.name());
 
 
-            row.add( DurationFormatUtils.formatDuration(enemy.getActive_m() * 60L * 1000, "dd:HH:mm"));
+            row.add( DurationFormatUtils.formatDuration(enemy.active_m() * 60L * 1000, "dd:HH:mm"));
             row.add(DurationFormatUtils.formatDuration(active_m * 60L * 1000, "dd:HH:mm"));
             row.add(enemy.getDef());
 
@@ -4047,7 +4047,7 @@ public class WarCommands {
                 counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 10000, true));
             }
         }
-        counterWith.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= Rank.APPLICANT.id || (f.getCities() < 10 && f.getActive_m() > 4880));
+        counterWith.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 10000 || f.getPosition() <= Rank.APPLICANT.id || (f.getCities() < 10 && f.active_m() > 4880));
         if (requireDiscord) counterWith.removeIf(f -> f.getUser() == null);
 
         double score = target.getScore();
@@ -4062,7 +4062,7 @@ public class WarCommands {
         counterWith.removeIf(nation -> nation.getScore() < scoreMin || nation.getScore() > scoreMax);
         if (!allowAttackersWithMaxOffensives) counterWith.removeIf(nation -> nation.getOff() >= nation.getMaxOff());
         counterWith.removeIf(nation -> nation.getAlliance_id() == 0);
-        counterWith.removeIf(nation -> nation.getActive_m() > TimeUnit.DAYS.toMinutes(2));
+        counterWith.removeIf(nation -> nation.active_m() > TimeUnit.DAYS.toMinutes(2));
         counterWith.removeIf(nation -> nation.getVm_turns() != 0);
         counterWith.removeIf(f -> f.getAircraft() < target.getAircraft() * 0.6 && target.getAircraft() > 100);
         if (filterWeak) counterWith.removeIf(nation -> nation.getStrength() < target.getStrength());
@@ -4215,7 +4215,7 @@ public class WarCommands {
                     channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is in VM. ", command).send();
                     return null;
                 }
-                if (attacker.isGray() && attacker.getActive_m() > 1440 || attacker.getCities() < 10 && attacker.getActive_m() > 2000) {
+                if (attacker.isGray() && attacker.active_m() > 1440 || attacker.getCities() < 10 && attacker.active_m() > 2000) {
                     channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is gray/inactive. ", command).send();
                     return null;
                 }

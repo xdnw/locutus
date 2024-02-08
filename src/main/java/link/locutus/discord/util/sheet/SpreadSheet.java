@@ -707,8 +707,8 @@ public class SpreadSheet {
             } else {
                 String valueStr = value.toString();
                 if (valueStr.contains("{")) {
-                    valueStr = valueStr.replaceAll("\\{row}", (getCachedValues(tab).size() + 1) + "");
-                    valueStr = valueStr.replaceAll("\\{column}", SheetUtil.getLetter(getCachedValues(tab).size() + 1));
+                    valueStr = valueStr.replaceAll("[$]row", (getCachedValues(tab).size() + 1) + "");
+                    valueStr = valueStr.replaceAll("[$]column", SheetUtil.getLetter(getCachedValues(tab).size() + 1));
                     out.add(valueStr);
                 } else {
                     out.add(value);

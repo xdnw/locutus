@@ -168,11 +168,11 @@ public class IAPages {
         List<DBNation> allNations = new ArrayList<>(alliance.getNations(true, 0, true));
         Collections.sort(allNations, Comparator.comparingInt(DBNation::getCities));
 
-        List<DBNation> inactive = allNations.stream().filter(f -> f.getActive_m() > 4320).collect(Collectors.toList());
-        allNations.removeIf(f -> f.getActive_m() > 4320);
+        List<DBNation> inactive = allNations.stream().filter(f -> f.active_m() > 4320).collect(Collectors.toList());
+        allNations.removeIf(f -> f.active_m() > 4320);
 
         Map<DBNation, String> inactiveMap = inactive.stream().collect(Collectors.toMap(f -> f,
-                f -> f.getNation() + " is " + TimeUtil.minutesToTime(f.getActive_m()) + " inactive"));
+                f -> f.getNation() + " is " + TimeUtil.minutesToTime(f.active_m()) + " inactive"));
         allianceAuditResults.put(IACheckup.AuditType.INACTIVE, inactiveMap);
 
         for (DBNation nation : allNations) {
@@ -335,7 +335,7 @@ public class IAPages {
 
         for (DBNation mentor : mentors) {
             List<DBNation> myMentees = mentorMenteeMap.getOrDefault(mentor, Collections.emptyList());
-            myMentees.removeIf(f -> f.getActive_m() > 4880 || f.getVm_turns() > 0 || passedMap.getOrDefault(f, false));
+            myMentees.removeIf(f -> f.active_m() > 4880 || f.getVm_turns() > 0 || passedMap.getOrDefault(f, false));
             if (myMentees.isEmpty()) {
                 idleMentors.add(mentor);
             }
