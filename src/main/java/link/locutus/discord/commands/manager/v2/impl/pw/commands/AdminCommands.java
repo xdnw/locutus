@@ -26,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.ForumDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
@@ -1772,8 +1773,17 @@ public class AdminCommands {
 
     @Command(aliases = {"syncforum", "syncforums"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncForum(@Me IMessageIO channel) throws IOException, ParseException {
-        Locutus.imp().getForumDb().update();
+    public String syncForum(@Me IMessageIO channel, @Default Integer sectionId, @Default String sectionName) throws IOException, ParseException, SQLException {
+        ForumDB forumDB = Locutus.imp().getForumDb();
+        if (sectionId != null) {
+            if (sectionName == null) sectionName = forumDB.getSectionName(sectionId);
+            if (sectionName == null) {
+                throw new IllegalArgumentException("No section found for id: " + sectionId);
+            }
+            forumDB.scrapeTopic(sectionId, sectionName);
+        } else {
+            forumDB.update();
+        }
         return "Done!";
     }
 

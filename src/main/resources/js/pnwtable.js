@@ -1,7 +1,3 @@
-function renderUrl(data, type, row, meta) {
-    var a = document
-}
-
 function setupTable(containerElem, tableElem, dataSetRoot) {
     let jqContainer = $(containerElem);
     let jqTable = $(tableElem);

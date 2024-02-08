@@ -103,7 +103,7 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.12.1'
     implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
-    implementation ('net.dv8tion:JDA:5.0.0-beta.19') {
+    implementation ('net.dv8tion:JDA:5.0.0-beta.20') {
         exclude module: 'opus-java'
     }
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.8.4'

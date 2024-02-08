@@ -1284,9 +1284,9 @@ public class StatCommands {
             String response = """
                     > Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
                     > Each coalition is grouped by city count and color coded.
-                    > **RED** = Coalition 1
-                    > **BLUE** = Coalition 2
-                    """;
+                    > **RED** = {coalition1}
+                    > **BLUE** = {coalition2}
+                    """.replace("{coalition1}", coalition1.getFilter()).replace("{coalition2}", coalition2.getFilter());
 
             IMessageBuilder msg = channel.create();
             msg.image("img.png", baos.toByteArray());

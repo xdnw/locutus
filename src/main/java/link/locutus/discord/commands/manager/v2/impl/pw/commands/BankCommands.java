@@ -4163,6 +4163,7 @@ public class BankCommands {
             }
         }
 
+        response.append("\nDone!");
         return response.toString();
     }
 }

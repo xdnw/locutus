@@ -1570,26 +1570,26 @@ public class UtilityCommands {
             IMessageBuilder msg = channel.create().embed(title, nationList.toMarkdown());
 
             msg = msg.commandButton(CommandBehavior.EPHEMERAL, command.put("list", "True").put("listMentions", "True"), "List");
-            // Tiering graph
-            CM.stats_tier.cityTierGraph tiering =
-                    CM.stats_tier.cityTierGraph.cmd.create(filter, "", null, null, null, null, null);
-            msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
-            // strength graph
-            CM.stats_tier.strengthTierGraph strength =
-                    CM.stats_tier.strengthTierGraph.cmd.create(filter, "", null, null, null, null, null, null, null, null);
-            msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
-            // mmr tier
-            CM.stats_tier.mmrTierGraph mmr =
-                    CM.stats_tier.mmrTierGraph.cmd.create(filter, "", null, null, null, null);
-            msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
-            // spy tier
-            CM.stats_tier.spyTierGraph spy =
-                    CM.stats_tier.spyTierGraph.cmd.create(filter, "", null, null, null, null, null, null);
-            msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
-            // alliance cost
-            CM.alliance.cost cost =
-                    CM.alliance.cost.cmd.create(filter, null);
-            msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
+//            // Tiering graph
+//            CM.stats_tier.cityTierGraph tiering =
+//                    CM.stats_tier.cityTierGraph.cmd.create(filter, "", null, null, null, null, null);
+//            msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
+//            // strength graph
+//            CM.stats_tier.strengthTierGraph strength =
+//                    CM.stats_tier.strengthTierGraph.cmd.create(filter, "", null, null, null, null, null, null, null, null);
+//            msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
+//            // mmr tier
+//            CM.stats_tier.mmrTierGraph mmr =
+//                    CM.stats_tier.mmrTierGraph.cmd.create(filter, "", null, null, null, null);
+//            msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
+//            // spy tier
+//            CM.stats_tier.spyTierGraph spy =
+//                    CM.stats_tier.spyTierGraph.cmd.create(filter, "", null, null, null, null, null, null);
+//            msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
+//            // alliance cost
+//            CM.alliance.cost cost =
+//                    CM.alliance.cost.cmd.create(filter, null);
+//            msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
 
             msg.send();
         }
