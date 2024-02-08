@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv3.enums;
 
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 
 import java.util.Map;
@@ -54,6 +55,7 @@ public enum AttackTypeSubCategory {
 
     ;
 
+    public static final AttackTypeSubCategory[] values = values();
     public final String message;
 
     AttackTypeSubCategory(String msg) {

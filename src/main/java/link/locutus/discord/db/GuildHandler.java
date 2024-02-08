@@ -119,11 +119,6 @@ public class GuildHandler {
         }
     }
 
-    @Subscribe
-    public void testEvent(String evnet) {
-        System.out.println("Guild " + guild + " received " + evnet);
-    }
-
     public void onGuildInviteCreate(GuildInviteCreateEvent event) {
         addInvite(event.getInvite());
     }

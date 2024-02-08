@@ -28,6 +28,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -156,7 +158,7 @@ public class ForumDB extends DBMain {
             String content = get(url);
             Document html = Jsoup.parse(content);
             // get every ipsType_break ipsContained
-            Elements elems = html.select(".ipsType_break.ipsContained");
+            Elements elems = html.select(".ipsDataItem_main");
             for (Element elem : elems) {
                 // get href
                 Elements a = elem.select("a");
@@ -170,7 +172,11 @@ public class ForumDB extends DBMain {
                 Elements date = elem.select("time");
                 String dateStr = date.attr("datetime");
                 // to milliseconds
-                long timestamp = Instant.parse(dateStr).toEpochMilli();
+//                System.out.println("Date " + dateStr);
+                System.out.println("Date " + elem);
+                DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+                ZonedDateTime dateTime = ZonedDateTime.parse(dateStr, formatter);
+                long timestamp = dateTime.toInstant().toEpochMilli();
 
                 // get poster id and name (611 and prefontaine)
                 Elements poster = elem.select("a[href^='https://forum.politicsandwar.com/index.php?/profile/']");

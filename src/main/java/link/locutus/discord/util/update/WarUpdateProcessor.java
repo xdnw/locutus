@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -8,6 +9,7 @@ import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
@@ -132,6 +134,18 @@ public class WarUpdateProcessor {
             WarUpdateProcessor.checkActiveConflicts();
         } catch (Throwable e) {
             e.printStackTrace();
+        }
+        ConflictManager conflictManager = Locutus.imp().getWarDb().getConflicts();
+        if (conflictManager != null) {
+            try {
+                for (Map.Entry<DBWar, DBWar> entry : wars) {
+                    DBWar previous = entry.getKey();
+                    DBWar current = entry.getValue();
+                    conflictManager.updateWar(previous, current);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 500) {
@@ -393,7 +407,7 @@ public class WarUpdateProcessor {
         return category;
     }
 
-    public static AttackTypeSubCategory subCategorize(AbstractCursor root) {
+    public static AttackTypeSubCategory subCategorize(IAttack root) {
         switch (root.getAttack_type()) {
             case FORTIFY:
                 return AttackTypeSubCategory.FORTIFY;

@@ -290,6 +290,8 @@ public final class Locutus extends ListenerAdapter {
         eventBus.register(new WarUpdateProcessor());
         eventBus.register(new AllianceListener());
         eventBus.register(new MailListener(commandManager.getV2().getStore(), commandManager.getV2().getValidators(), commandManager.getV2().getPermisser()));
+        ConflictManager conflictManager = warDb == null ? null : warDb.getConflicts();
+        if (conflictManager != null) eventBus.register(conflictManager);
     }
 
     public EventBus getEventBus() {

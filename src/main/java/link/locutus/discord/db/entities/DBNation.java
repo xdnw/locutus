@@ -4346,7 +4346,7 @@ public class DBNation implements NationOrAlliance {
         body.append(leader).append(" | ");
         // DiscordUtil.timestamp
         if (tax_id != 0) {
-            body.append(" `#tax_id=").append(tax_id).append("` | ");
+            body.append(" `tax_id=").append(tax_id).append("` | ");
         }
 
         body.append(DiscordUtil.timestamp(date, null)).append("\n");

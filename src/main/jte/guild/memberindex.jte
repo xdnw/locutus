@@ -138,7 +138,7 @@
         <div id="raid-out-1" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
     <a href="javascript:void(0)" replace for="raid-out-2" cmd="${CM.war.find.raid.cmd.create("(*,#color=beige)|(*,#vm_turns>0)", "25", "2d", null, null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">List nations coming out of beige</a>
         <div id="raid-out-2" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
-    <a href="javascript:void(0)" replace for="raid-out-3" cmd="${CM.war.find.raid.cmd.create("#tank%<20,#soldier%<40,*", "25", "2d", "true", null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">List actives with minimal ground (2d inactive)</a>
+    <a href="javascript:void(0)" replace for="raid-out-3" cmd="${CM.war.find.raid.cmd.create("#tankpct<0.2,#soldierpct<0.4,*", "25", "2d", "true", null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">List actives with minimal ground (2d inactive)</a>
         <div id="raid-out-3" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
     <a href="javascript:void(0)" replace for="raid-out-4" cmd="${CM.war.find.raid.cmd.create("#def>0,#RelativeStrength<1,*", "25", "0d", "true", null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Include actives losing their current wars</a>
         <div id="raid-out-4" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>

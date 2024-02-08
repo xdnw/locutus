@@ -48,7 +48,6 @@
 @template.navbar(ws = ws)
 @template.sidebar(ws = ws)
 <div class="container" style="min-height: calc(100vh - 203px);">
-    <h1>hello world 6</h1>
     ${content}
 </div>
 @template.footer()

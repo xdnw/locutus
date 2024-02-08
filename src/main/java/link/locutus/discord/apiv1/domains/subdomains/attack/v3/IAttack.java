@@ -2,9 +2,11 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.update.WarUpdateProcessor;
 
 public interface IAttack {
     /*
@@ -52,6 +54,7 @@ public interface IAttack {
     double getInfra_destroyed();
     int getImprovements_destroyed(); // ?
     void addBuildingsDestroyed(int[] destroyedBuffer);
+    void addBuildingsDestroyed(char[] destroyedBuffer);
     /**
      * Valid for victory when all cities receive damage
      * @return number between 0 and 100
@@ -142,4 +145,8 @@ public interface IAttack {
     double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 
     DBWar getWar();
+
+    default AttackTypeSubCategory getSubCategory() {
+        return WarUpdateProcessor.subCategorize(this);
+    }
 }

@@ -1,33 +1,25 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import de.siegmar.fastcsv.reader.CsvRow;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.Conflict;
 import link.locutus.discord.db.ConflictManager;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -51,21 +43,14 @@ import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.text.Normalizer;
 import java.text.ParseException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.temporal.TemporalAccessor;
-import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -362,16 +347,16 @@ public class ConflictCommands {
     //- Import conflicts from ctowned
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String importCtowned() throws IOException, SQLException, ClassNotFoundException, ParseException {
-        loadConflicts("conflicts", "conflicts");
-        loadConflicts("conflicts/micros", "conflicts-micros");
-        return "";
+    public String importCtowned(ConflictManager manager) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        loadConflicts(manager, "conflicts", "conflicts");
+        loadConflicts(manager, "conflicts/micros", "conflicts-micros");
+        return "Done!";
     }
 
     private static int getAllianceId(String name) {
         DBAlliance aa = Locutus.imp().getNationDB().getAllianceByName(name);
         if (aa != null) return aa.getId();
-        Integer idCache = Locutus.imp().getWarDb().getConflicts().getLegacyName(name);
+        Integer idCache = Locutus.imp().getWarDb().getConflicts().getLegacyId(name);
         if (idCache != null) return idCache;
         if (MathMan.isInteger(name)) {
             return Integer.parseInt(name);
@@ -380,7 +365,7 @@ public class ConflictCommands {
         return 0;
     }
 
-    private static void loadConflicts(String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    private static void loadConflicts(ConflictManager manager, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
         String fileStr = "files/" + fileName + ".html";
         Document document;
         if (new File(fileName).exists()) {
@@ -406,6 +391,7 @@ public class ConflictCommands {
             // Get the URL and text
             String cellUrl = aElement.attr("href");
             String conflictName = getConflictName(aElement.text());
+            if (manager.getConflict(conflictName) != null) continue;
 
             String startDateStr = row.select("td").get(6).text();
             String endDateStr = row.select("td").get(7).text();

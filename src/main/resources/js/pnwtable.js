@@ -2,13 +2,13 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
     let jqContainer = $(containerElem);
     let jqTable = $(tableElem);
 
-    let dataColumns = dataSetRoot["columns"]; // is a list
-    let dataList = dataSetRoot["data"]; // is a list of lists
-    let searchableColumns = dataSetRoot["searchable"]; // is a list of column indexes
-    let visibleColumns = dataSetRoot["visible"]; // is a list of column indexes
-    let cell_format = dataSetRoot["cell_format"]; // is a object of function -> list of column indexes - This variable may be null
-    let row_format = dataSetRoot["row_format"]; // is a string (or null)
-    let sort = dataSetRoot["sort"]; // [index, asc or desc]
+    let dataColumns = dataSetRoot["columns"];
+    let dataList = dataSetRoot["data"];
+    let searchableColumns = dataSetRoot["searchable"];
+    let visibleColumns = dataSetRoot["visible"];
+    let cell_format = dataSetRoot["cell_format"];
+    let row_format = dataSetRoot["row_format"];
+    let sort = dataSetRoot["sort"];
     if (sort == null) sort = [0, 'asc'];
 
     let dataObj = [];
@@ -40,8 +40,6 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
             columnsInfo.push(columnInfo);
         }
     }
-
-    // header and footer toggles + search
     for(let i = 0; i < columnsInfo.length; i++) {
         let columnInfo = columnsInfo[i];
         let title = columnInfo["data"];
@@ -58,7 +56,7 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
             } else {
                 th = title;
             }
-            tf = "<button class='toggle-vis btn-danger' data-column='" + i + "'>-" + title + "</button>";
+            tf = "<button class='toggle-vis btn btn-danger' data-column='" + i + "'>-" + title + "</button>";
         }
         jqTable.find("thead tr").append("<th>" + th + "</th>");
         let rows = jqTable.find("tfoot tr").append("<th>" + tf + "</th>");
@@ -176,18 +174,28 @@ function setupTable(containerElem, tableElem, dataSetRoot) {
     } );
 }
 
+function addTable(container, id) {
+    container.innerHTML = "<div class=\"table-toggles\"></div>" +
+    "<table id=\"" + id + "\" class=\"locutus-table table compact table-striped table-bordered table-sm\" style=\"width:100%\">" +
+    "<thead class=\"table-danger\"><tr></tr></thead>" +
+    "<tbody></tbody>" +
+    "<tfoot><tr></tr></tfoot>" +
+    "</table>";
+}
+
+function setupContainer(container, data) {
+    addTable(container, uuidv4());
+    let table = container.getElementsByTagName("table")[0];
+    setupTable(container, table, data);
+}
+
 $(document).ready(function() {
     let containers = document.getElementsByClassName("locutus-table-container");
     for (let i = 0; i < containers.length; i++) {
         let container = containers[i];
 
         var id = "t" + uuidv4();
-        container.innerHTML = "<div class=\"table-toggles\"></div>" +
-            "<table id=\"" + id + "\" class=\"locutus-table table compact table-striped table-bordered table-sm\" style=\"width:100%\">" +
-            "<thead class=\"table-danger\"><tr></tr></thead>" +
-            "<tbody></tbody>" +
-            "<tfoot><tr></tr></tfoot>" +
-            "</table>";
+        addTable(container, id);
         let table = container.getElementsByTagName("table")[0];
         let src = container.getAttribute("src");
 
