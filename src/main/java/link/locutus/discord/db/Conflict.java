@@ -8,6 +8,7 @@ import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -19,6 +20,7 @@ import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
@@ -41,6 +43,7 @@ import java.util.stream.Collectors;
 
 public class Conflict {
     private final int id;
+    private ConflictCategory category;
     private String wiki;
     private String name;
     private long turnStart;
@@ -53,10 +56,13 @@ public class Conflict {
     private byte[] bsonCompressed;
     private volatile boolean dirtyWars = false;
     private volatile boolean dirtyJson = true;
+    private final Map<String, Map.Entry<String, Long>> announcements = new Object2ObjectLinkedOpenHashMap<>();
+    private String casusBelli = "";
+    private String statusDesc = "";
 
-
-    public Conflict(int id, String name, String col1, String col2, String wiki, long turnStart, long turnEnd) {
+    public Conflict(int id, ConflictCategory category, String name, String col1, String col2, String wiki, long turnStart, long turnEnd) {
         this.id = id;
+        this.category = category;
         this.name = name;
         this.wiki = wiki;
         this.turnStart = turnStart;
@@ -65,6 +71,28 @@ public class Conflict {
         this.coalition2 = new CoalitionSide(this, col2, false);
         this.coalition1.setOther(coalition2);
         this.coalition2.setOther(coalition1);
+    }
+
+    public void setCasusBelli(String casusBelli) {
+        this.casusBelli = casusBelli;
+        dirtyJson = true;
+        getManager().setCb(id, casusBelli);
+    }
+
+    public void setStatus(String status) {
+        this.statusDesc = status;
+        dirtyJson = true;
+        getManager().setStatus(id, status);
+    }
+
+    public ConflictCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(ConflictCategory category) {
+        this.category = category;
+        dirtyJson = true;
+        getManager().updateConflictCategory(id, category);
     }
 
     public void setWiki(String wiki) {
@@ -299,6 +327,13 @@ public class Conflict {
     public synchronized byte[] getGraphPsonGzip(ConflictManager manager) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         root.put("name", getName());
+        root.put("wiki", wiki);
+        root.put("status", statusDesc);
+        root.put("cb", casusBelli);
+        root.put("posts", getAnnouncementsList());
+        root.put("start", TimeUtil.getTimeFromTurn(turnStart));
+        root.put("end", turnEnd == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(turnEnd));
+
         List<String> metricNames = new ObjectArrayList<>();
         List<Integer> metricsDay = new IntArrayList();
         List<Integer> metricsTurn = new IntArrayList();
@@ -322,6 +357,14 @@ public class Conflict {
         return bsonCompressed = JteUtil.compress(JteUtil.toBinary(root));
     }
 
+    public String getStatusDesc() {
+        return statusDesc;
+    }
+
+    public String getCasusBelli() {
+        return casusBelli;
+    }
+
     public synchronized byte[] getPsonGzip(ConflictManager manager) {
         if (dirtyWars) {
             // TODO
@@ -330,6 +373,9 @@ public class Conflict {
             try {
                 Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
                 root.put("name", getName());
+                root.put("status", statusDesc);
+                root.put("cb", casusBelli);
+
                 List<Object> coalitions = new ObjectArrayList<>();
                 coalitions.add(coalition1.toMap(manager));
                 coalitions.add(coalition2.toMap(manager));
@@ -534,5 +580,24 @@ public class Conflict {
 
     public double getDamageConverted(boolean isPrimary) {
         return (isPrimary ? coalition1 : coalition2).getInflicted().getTotalConverted();
+    }
+
+    public void addAnnouncement(long timestamp, int postId, String postStub, String desc) {
+        String name = postId + "-" + postStub;
+        announcements.put(name, Map.entry(desc, timestamp));
+    }
+
+    public Map<String, List> getAnnouncementsList() {
+        synchronized (announcements) {
+            Map<String, List> map = new Object2ObjectLinkedOpenHashMap<>();
+            for (Map.Entry<String, Map.Entry<String, Long>> entry : announcements.entrySet()) {
+                map.put(entry.getKey(), List.of(entry.getValue().getKey(), entry.getValue().getValue()));
+            }
+            return map;
+        }
+    }
+
+    public String getWiki() {
+        return wiki;
     }
 }

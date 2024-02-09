@@ -38,6 +38,7 @@ import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
@@ -167,6 +168,13 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types = MessageTrigger.class)
     public String MessageTrigger(@Default ParameterData param) {
         MessageTrigger[] options = MessageTrigger.values();
+        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+    }
+
+    @HtmlInput
+    @Binding(types = ConflictCategory.class)
+    public String ConflictCategory(@Default ParameterData param) {
+        ConflictCategory[] options = ConflictCategory.values();
         return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
     }
 

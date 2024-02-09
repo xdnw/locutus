@@ -42,6 +42,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
@@ -220,6 +221,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "The success type of an attack")
     public SuccessType SuccessType(String input) {
         return emum(SuccessType.class, input);
+    }
+
+    @Binding(value = "The category for a conflict")
+    public ConflictCategory ConflictCategory(String input) {
+        return emum(ConflictCategory.class, input);
     }
 
     @Binding

@@ -2,6 +2,8 @@ package com.locutus.wiki.game;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.db.ForumDB;
+import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.util.StringMan;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -35,7 +37,7 @@ public class PWWikiPage {
     private final String name;
     private final String slug;
     private Map<String, List<String>> tableDate;
-    private Map<String, String> forumLinks;
+    private Map<String, Map.Entry<String, Long>> forumLinks;
 
     public PWWikiPage(String name, String urlStub, boolean allowCache) throws IOException {
         String url = "https://politicsandwar.fandom.com/wiki/" + urlStub;
@@ -92,8 +94,30 @@ public class PWWikiPage {
         return null;
     }
 
-    public static void main(String[] args) {
-        String input = "August 11, 2021 - August 17, 2021";
+    public static void main(String[] args) throws IOException {
+        String stub = "Great_War_30";
+        PWWikiPage page = new PWWikiPage("Great War 30", stub, true);
+        Set<String> categories = page.getCategories();
+        System.out.println(categories);
+
+        // Iterate wars on war page
+        // add get war
+    }
+
+    public Set<String> getCategories() {
+        // Get content of "page-header__categories" class
+        Element categoriesElement = document.selectFirst("div.page-header__categories");
+        if (categoriesElement != null) {
+            Elements categoryLinks = categoriesElement.select("a");
+            List<String> categoryList = new ArrayList<>();
+            for (Element categoryLink : categoryLinks) {
+                categoryList.add(categoryLink.text().trim());
+            }
+            // remove category if matches number more e.g. `4 more`
+            categoryList.removeIf(category -> category.matches("\\d+ more"));
+            return new HashSet<>(categoryList);
+        }
+        return new HashSet<>();
     }
 
 //    private static Set<String> validYears = Set.of("2020", "2021", "2022", "2023", "2024", "2025");
@@ -130,6 +154,8 @@ public class PWWikiPage {
         System.out.println("Error parsing date: " + dateStr + " for " + slug + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
         return null;
     }
+
+
 
     public Map.Entry<Set<Integer>, Set<Integer>> getCombatants(Set<String> unknownCombatants) {
         List<String> combatants = getTableData().get("combatants");
@@ -180,7 +206,7 @@ public class PWWikiPage {
                 System.out.println("Empty combatant for: " + slug + " | " + href);
                 continue;
             }
-            if (!paragraph.isEmpty() && link.parent().parent().tag().normalName().equalsIgnoreCase("center") && Locutus.imp().getWarDb().getConflicts().getLegacyId(text) == null) {
+            if (!paragraph.isEmpty() && link.parent().parent().tag().normalName().equalsIgnoreCase("center") && (Locutus.imp() != null && Locutus.imp().getWarDb().getConflicts().getLegacyId(text) == null)) {
                 System.out.println("Skipping bloc name: " + link.text() + " | " + slug + " | " + link.attr("href"));
                 continue;
             }
@@ -248,14 +274,13 @@ public class PWWikiPage {
         return tableDate = data;
     }
 
-    public Map<String, String> getForumLinks() {
+    public Map<String, Map.Entry<String, Long>> getForumLinks() {
         if (this.forumLinks != null) return this.forumLinks;
         Map<String, String> result = new LinkedHashMap<>();
         Element output = document.select(".mw-parser-output").get(0);
         // iterate h2
         Elements h2s = output.select("h2");
         for (Element h2 : h2s) {
-            // print text
             String header = h2.text();
 
             switch (header.toLowerCase(Locale.ROOT)) {
@@ -266,11 +291,22 @@ public class PWWikiPage {
                         // get href links
                         Elements links = next.select("a");
                         for (Element link : links) {
-                            String name = link.text();
+                            String desc = null;
+                            Elements parents = h2.parents();
+                            for (Element parent : parents) {
+                                if (parent.tagName().equalsIgnoreCase("li")) {
+                                    desc = parent.text();
+                                    break;
+                                }
+                            }
+                            if (desc == null) {
+                                desc = h2.text();
+                            }
                             String href = link.attr("href");
-                            // https://forum.politicsandwar.com
-                            if (href != null && href.startsWith("https://forum.politicsandwar.com")) {
-                                result.put(name, href);
+                            String startsWith = "https://forum.politicsandwar.com/index.php?/topic/";
+                            if (href != null && href.startsWith(startsWith)) {
+                                href = href.substring(startsWith.length()).split("[?/]")[0];
+                                result.put(href, desc);
                             }
                         }
                         next = next.nextElementSibling();
@@ -278,6 +314,56 @@ public class PWWikiPage {
                 }
             }
         }
-        return forumLinks= result;
+        Map<Integer, String> postName = new LinkedHashMap<>();
+        Map<Integer, String> postDesc = new LinkedHashMap<>();
+        Map<Integer, Long> postDate = new LinkedHashMap<>();
+
+        for (Map.Entry<String, String> entry : result.entrySet()) {
+            String[] split = entry.getKey().split("-", 2);
+            String idStr = split[0];
+            int id = Integer.parseInt(idStr);
+            ForumDB forumDb = Locutus.imp().getForumDb();
+            if (forumDb == null) {
+                throw new IllegalArgumentException("No `forum-feed-server` setup in `config.yml`");
+            }
+            DBTopic topic = forumDb.getTopic(id);
+            if (topic == null) {
+                // load topic
+                topic = forumDb.loadTopic(id, split[1]);
+            }
+            if (topic != null) {
+                postName.put(id, topic.topic_name);
+                postDesc.put(id, entry.getValue());
+                postDate.put(id, topic.timestamp);
+            }
+        }
+
+        forumLinks = new LinkedHashMap<>();
+        for (Map.Entry<Integer, String> entry : postName.entrySet()) {
+            String urlStub = entry.getKey() + "-" + entry.getValue();
+            String desc = postDesc.get(entry.getKey());
+            long date = postDate.get(entry.getKey());
+            forumLinks.put(urlStub, Map.entry(desc, date));
+        }
+        return forumLinks;
+    }
+
+    public String getStatus() {
+        Map<String, List<String>> table = getTableData();
+        if (table == null) return null;
+        List<String> status = table.get("status");
+        if (status == null) {
+            // result
+            status = table.get("result");
+        }
+        if (status != null) {
+            return StringMan.join(status, "\n");
+        }
+        return null;
+    }
+
+    public String getCtownedLink() {
+        Element element = document.select("a[href^='https://ctowned.net/']").first();
+        return element != null ? element.attr("href") : null;
     }
 }

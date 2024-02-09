@@ -17,6 +17,7 @@ import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.util.StringMan;
@@ -27,12 +28,6 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
-import org.bson.BsonBinaryWriter;
-import org.bson.BsonWriter;
-import org.bson.Document;
-import org.bson.codecs.DocumentCodec;
-import org.bson.codecs.EncoderContext;
-import org.bson.io.BasicOutputBuffer;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -212,9 +207,10 @@ public class ConflictManager {
                 String wiki = rs.getString("wiki");
                 String col1 = rs.getString("col1");
                 String col2 = rs.getString("col2");
+                ConflictCategory category = ConflictCategory.values[rs.getInt("category")];
                 if (col1.isEmpty()) col1 = "Coalition 1";
                 if (col2.isEmpty()) col2 = "Coalition 2";
-                conflictMap.put(id, new Conflict(id, name, col1, col2, wiki, startTurn, endTurn));
+                conflictMap.put(id, new Conflict(id, category, name, col1, col2, wiki, startTurn, endTurn));
             }
         });
 //        db.update("DELETE FROM conflict_participant WHERE alliance_id = 0");
@@ -232,6 +228,22 @@ public class ConflictManager {
                 }
             }
         });
+        // load announcements
+        db.query("SELECT * FROM conflict_announcements", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int conflictId = rs.getInt("conflict_id");
+                long timestamp = rs.getLong("timestamp");
+                int postId = rs.getInt("post_id");
+                String postStub = rs.getString("post_stub");
+                String desc = rs.getString("description");
+                Conflict conflict = conflictMap.get(conflictId);
+                if (conflict != null) {
+                    conflict.addAnnouncement(timestamp, postId, postStub, desc);
+                }
+            }
+        });
+
         // load legacyNames
         db.query("SELECT * FROM legacy_names", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
@@ -265,7 +277,6 @@ public class ConflictManager {
             }
         }
         long finalStart = start;
-
         Locutus.imp().getExecutor().submit(new Runnable() {
             @Override
             public void run() {
@@ -305,6 +316,7 @@ public class ConflictManager {
     private Map<String, Integer> getDefaultNames() {
         Map<String, Integer> legacyIds = new HashMap<>();
         legacyIds.put("Arrgh!", 913);
+        legacyIds.put("The Hive", 8819);
         legacyIds.put("Zodiac", 4145);
         legacyIds.put("Resplendent Inc.", 2844);
         legacyIds.put("Phoenix", 1809);
@@ -638,13 +650,30 @@ public class ConflictManager {
 
     }
 
+    public void setStatus(int conflictId, String status) {
+        db.update("UPDATE conflicts SET status = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, status);
+            stmt.setInt(2, conflictId);
+        });
+    }
+
+    public void setCb(int conflictId, String cb) {
+        db.update("UPDATE conflicts SET cb = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, cb);
+            stmt.setInt(2, conflictId);
+        });
+    }
+
     public void createTables() {
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL)");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL)");
         // add col1 and col2 (string) to conflicts, default ""
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
         // add wiki column, default empty
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL)");
@@ -653,34 +682,21 @@ public class ConflictManager {
 
         // conflict_graphs: int conflict_id, boolean side, int metric, bigint turn, byte[] data
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, side, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+
+        // announcements
+        // conflict_id (foreign key), long timestamp, int post_id, string post_stub,
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements (conflict_id INTEGER NOT NULL, timestamp BIGINT NOT NULL, post_id INTEGER NOT NULL, post_stub VARCHAR NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, post_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("ALTER TABLE conflict_announcements ADD COLUMN description VARCHAR DEFAULT ''");
     }
 
-    public static void main(String[] args) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("name", "John Doe");
-        map.put("age", 30);
-        map.put("city", "New York");
-
-        // Convert the map to a BSON document
-        Document bson = new Document(map);
-        // Create a DocumentCodec to handle the encoding
-        DocumentCodec codec = new DocumentCodec();
-
-        BasicOutputBuffer outputBuffer = new BasicOutputBuffer();
-        BsonWriter writer = new BsonBinaryWriter(outputBuffer);
-        // Write the BSON document to the writer
-        codec.encode(writer, bson, EncoderContext.builder().isEncodingCollectibleDocument(true).build());
-
-        // Print the BSON document
-        System.out.println(bson.toJson());
-
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        String key = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
-        String secret = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
-        String region = Settings.INSTANCE.WEB.S3.REGION;
-        String bucket = Settings.INSTANCE.WEB.S3.BUCKET;
-        AwsManager aws = new AwsManager(key, secret, bucket, region);
-        aws.putObject("test.gzip", JteUtil.compress(outputBuffer.toByteArray()));
+    public void addAnnouncement(int conflictId, long timestamp, int postId, String postStub, String description) {
+        db.update("INSERT OR IGNORE INTO conflict_announcements (conflict_id, timestamp, post_id, post_stub, description) VALUES (?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, conflictId);
+            stmt.setLong(2, timestamp);
+            stmt.setInt(3, postId);
+            stmt.setString(4, postStub);
+            stmt.setString(5, description);
+        });
     }
 
     public void clearGraphData(ConflictMetric metric, int conflictId, boolean side, long turn) {
@@ -733,8 +749,8 @@ public class ConflictManager {
         });
     }
 
-    public Conflict addConflict(String name, String col1, String col2, String wiki, long turnStart, long turnEnd) {
-        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end) VALUES (?, ?, ?)";
+    public Conflict addConflict(String name, ConflictCategory category, String col1, String col2, String wiki, long turnStart, long turnEnd) {
+        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category) VALUES (?, ?, ?)";
         try (PreparedStatement stmt = db.getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
             stmt.setString(2, col1);
@@ -742,11 +758,12 @@ public class ConflictManager {
             stmt.setString(4, wiki);
             stmt.setLong(5, turnStart);
             stmt.setLong(6, turnEnd);
+            stmt.setInt(7, category.ordinal());
             stmt.executeUpdate();
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 int id = rs.getInt(1);
-                Conflict conflict = new Conflict(id, name, col1, col2, wiki, turnStart, turnEnd);
+                Conflict conflict = new Conflict(id, category, name, col1, col2, wiki, turnStart, turnEnd);
                 conflictMap.put(id, conflict);
 
                 synchronized (activeConflicts) {
@@ -920,6 +937,10 @@ public class ConflictManager {
         headerFuncs.put("c2_dealt", f -> (long) f.getDamageConverted(false));
         headerFuncs.put("c1", f -> new IntArrayList(f.getCoalition1()));
         headerFuncs.put("c2", f -> new IntArrayList(f.getCoalition1()));
+        headerFuncs.put("wiki", Conflict::getWiki);
+        headerFuncs.put("status", Conflict::getStatusDesc);
+        headerFuncs.put("cb", Conflict::getCasusBelli);
+        headerFuncs.put("posts", Conflict::getAnnouncementsList);
 
         List<String> headers = new ObjectArrayList<>();
         List<Function<Conflict, Object>> funcs = new ObjectArrayList<>();
@@ -967,5 +988,12 @@ public class ConflictManager {
             }
         }
         return distance == Integer.MAX_VALUE ? null : Map.entry(similar, distance);
+    }
+
+    public void updateConflictCategory(int conflictId, ConflictCategory category) {
+        db.update("UPDATE conflicts SET category = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, category.ordinal());
+            stmt.setInt(2, conflictId);
+        });
     }
 }

@@ -145,6 +145,21 @@ public class ForumDB extends DBMain {
         }
     }
 
+    public DBTopic getTopic(int id) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM FORUM_TOPICS WHERE `topic_id` = ?")) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new DBTopic(rs);
+                }
+            }
+            return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private static String get(String requestURL) throws IOException {
         return FileUtil.readStringFromURL(PagePriority.FORUM_PAGE, requestURL);
     }
@@ -346,5 +361,21 @@ public class ForumDB extends DBMain {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public DBTopic loadTopic(int id, String topicName) {
+        String url = "https://forum.politicsandwar.com/index.php?/topic/" + id + "-" + topicName + "/";
+        if (true) throw new IllegalArgumentException("NOT IMPLEMENTED");
+        try {
+            String content = get(url);
+            Document dom = Jsoup.parse(content);
+            Elements elems = dom.select(".ipsType_normal");
+            for (Element elem : elems) {
+                System.out.println(elem.text());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

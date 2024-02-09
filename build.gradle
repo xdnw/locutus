@@ -86,6 +86,8 @@ def operatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
 def currentArchitecture = DefaultNativePlatform.getCurrentArchitecture()
 
 dependencies {
+    implementation 'org.jgrapht:jgrapht-core:1.5.2'
+    implementation 'org.jgrapht:jgrapht-ext:1.5.2'
     implementation 'com.amazonaws:aws-java-sdk-bom:1.12.649'
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.649'
 

@@ -16,6 +16,7 @@ import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -224,7 +225,7 @@ public class ConflictCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String addConflict(ConflictManager manager, @Me User user, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d")@Timestamp Long start) {
+    public String addConflict(ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d")@Timestamp Long start) {
         if (conflictName != null) {
             if (MathMan.isInteger(conflictName)) {
                 throw new IllegalArgumentException("Conflict name cannot be a number (`" + conflictName + "`)");
@@ -275,7 +276,7 @@ public class ConflictCommands {
         if (manager.getConflict(conflictName) != null) {
             throw new IllegalArgumentException("Conflict with name `" + conflictName + "` already exists");
         }
-        Conflict conflict = manager.addConflict(conflictName, "Coalition 1", "Coalition 2", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
+        Conflict conflict = manager.addConflict(conflictName, category, "Coalition 1", "Coalition 2", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
         StringBuilder response = new StringBuilder();
         response.append("Created conflict `" + conflictName + "`\n");
         // add coalitions
@@ -398,8 +399,8 @@ public class ConflictCommands {
             throw new IllegalArgumentException("Please specify either `ctowned` or `graphData` or `allianceNames` or `wiki`");
         }
         if (ctowned) {
-            loadCtownedConflicts(manager, "conflicts", "conflicts");
-            loadCtownedConflicts(manager, "conflicts/micros", "conflicts-micros");
+            loadCtownedConflicts(manager, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+            loadCtownedConflicts(manager, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
         }
         if (graphData != null) {
             for (Conflict conflict : graphData) {
@@ -414,34 +415,46 @@ public class ConflictCommands {
             Map<String, String> errors = new LinkedHashMap<>();
             List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors);
             conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
+            Set<String> existingWikis = manager.getConflictMap().values().stream().map(Conflict::getWiki).collect(Collectors.toSet());
+            conflicts.removeIf(f -> existingWikis.contains(f.getWiki()));
             // print all ongoing conflicts
-
             for (Map.Entry<String, String> entry : errors.entrySet()) {
                 System.out.println(entry.getValue());
             }
             System.out.println("Num conflicts: " + conflicts.size());
-            if (conflicts.isEmpty()) return "No conflicts found on wiki";
-            for (Conflict value : manager.getConflictMap().values()) {
-                // find matching conflict by start/end date
-                Conflict closest = null;
-                long distance = Long.MAX_VALUE;
-                for (Conflict conflict : conflicts) {
-                    if (conflict.getStartTurn() == value.getStartTurn() && conflict.getEndTurn() == value.getEndTurn()) {
-                        closest = conflict;
-                        break;
-                    }
-                    long d = Math.abs(conflict.getStartTurn() - value.getStartTurn()) + Math.abs(conflict.getEndTurn() - value.getEndTurn());
-                    if (d < distance) {
-                        distance = d;
-                        closest = conflict;
-                    }
-                }
-                System.out.println("Found closest " + value.getName() + " -> https://politicsandwar.fandom.com/wiki/" + closest.getName());
-                System.out.println("- Col1-DB: " + value.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-                System.out.println("- Col1-Wiki: " + closest.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-                System.out.println("- Col2-DB: " + value.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-                System.out.println("- Col2-Wiki: " + closest.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-            }
+//            if (conflicts.isEmpty()) return "No conflicts found on wiki";
+//            for (Conflict value : manager.getConflictMap().values()) {
+//                // find matching conflict by start/end date
+//                Conflict closest = null;
+//                long distance = Long.MAX_VALUE;
+//                int maxOverlap1 = 0;
+//                int maxOverlap2 = 0;
+//                for (Conflict conflict : conflicts) {
+//                    int col1Overlap = (int) value.getCoalition1().stream().filter(conflict.getCoalition1()::contains).count();
+//                    int col2Overlap = (int) value.getCoalition2().stream().filter(conflict.getCoalition2()::contains).count();
+//                    int col1OverlapSwap = (int) value.getCoalition1().stream().filter(conflict.getCoalition2()::contains).count();
+//                    int col2OverlapSwap = (int) value.getCoalition2().stream().filter(conflict.getCoalition1()::contains).count();
+//                    if (col1Overlap + col2Overlap < col1OverlapSwap + col2OverlapSwap) {
+//                        col1Overlap = col1OverlapSwap;
+//                        col2Overlap = col2OverlapSwap;
+//                    }
+//                    long d = Math.abs(conflict.getStartTurn() - value.getStartTurn()) + Math.abs(conflict.getEndTurn() - value.getEndTurn()) - (((col1Overlap + col2Overlap) * 30L) / (value.getAllianceIds().size()));
+//                    if (d < distance) {
+//                        distance = d;
+//                        closest = conflict;
+//                        maxOverlap1 = col1Overlap;
+//                        maxOverlap2 = col2Overlap;
+//                    }
+//                }
+//                System.out.println("#" + value.getId() + " Closest (" + maxOverlap1 + "/" + maxOverlap2 + ")" + value.getName() + " -> https://politicsandwar.fandom.com/wiki/" + closest.getWiki());
+//                System.out.println("- Start: " + TimeUtil.turnsToTime(TimeUtil.getTurn() - value.getStartTurn()) + " | " + TimeUtil.turnsToTime(TimeUtil.getTurn() - closest.getStartTurn()));
+//                System.out.println("- End: " + (value.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : TimeUtil.turnsToTime(TimeUtil.getTurn() - value.getEndTurn())) + " | " + (closest.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : TimeUtil.turnsToTime(TimeUtil.getTurn() - closest.getEndTurn())));
+//                System.out.println("- Col1-DB: " + value.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+//                System.out.println("- Col1-Wiki: " + closest.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+//                System.out.println("- Col2-DB: " + value.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+//                System.out.println("- Col2-Wiki: " + closest.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
+//            }
+
 
         }
         return "Done!";
@@ -459,7 +472,7 @@ public class ConflictCommands {
         return 0;
     }
 
-    private static void loadCtownedConflicts(ConflictManager manager, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    private static void loadCtownedConflicts(ConflictManager manager, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
         String fileStr = "files/" + fileName + ".html";
         Document document;
         if (new File(fileName).exists()) {
@@ -555,12 +568,18 @@ public class ConflictCommands {
             if (col2Ids.isEmpty()) {
                 throw new IllegalArgumentException("Coalition 2 is empty");
             }
+            String wiki = PWWikiUtil.getWikiUrlFromCtowned(conflictName);
+            if (wiki == null) wiki = "";
+
             Conflict conflict = manager.getConflict(conflictName);
             if (conflict == null) {
-                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, col1Name, col2Name, "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
+                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
             } else {
                 conflict.setName(col1Name, true);
                 conflict.setName(col2Name, false);
+                if (!wiki.isEmpty()) {
+                    conflict.setWiki(wiki);
+                }
             }
             for (int aaId : col1Ids) conflict.addParticipant(aaId, true, null, null);
             for (int aaId : col2Ids) conflict.addParticipant(aaId, false, null, null);

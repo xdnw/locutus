@@ -10,17 +10,6 @@ import gg.jte.TemplateOutput;
 import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.conflict.OffDefStatGroup;
-import org.bson.BsonBinaryWriter;
-import org.bson.BsonWriter;
-import org.bson.codecs.DocumentCodec;
-import org.bson.codecs.EncoderContext;
-import org.bson.io.BasicOutputBuffer;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
