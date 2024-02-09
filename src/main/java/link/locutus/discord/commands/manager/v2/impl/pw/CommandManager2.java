@@ -173,6 +173,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new UtilityCommands(), List.of("land"), "landROI", "roi");
+        getCommands().registerMethod(new UtilityCommands(), List.of("infra"), "infraROI", "roi");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictEnd", "end");
