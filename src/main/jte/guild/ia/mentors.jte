@@ -77,7 +77,7 @@
             <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
             <td><a href="discord://discordapp.com/users/${nation.getUserId()}">@${nation.getUserDiscriminator()}</a></td>
             <td>${nation.getCities()}</td>
-            <td>${TimeUtil.minutesToTime(nation.getActive_m())}</td>
+            <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
         </tr>
         @endfor
         </tbody>
@@ -101,7 +101,7 @@
         <tr>
             <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
             <td>${nation.getCities()}</td>
-            <td>${TimeUtil.minutesToTime(nation.getActive_m())}</td>
+            <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
             <td>@if(iaCat.get(nation) != null && iaCat.get(nation).getChannel() != null)
                 <a href="${DiscordUtil.getChannelUrl(iaCat.get(nation).getChannel())}">#${iaCat.get(nation).getChannel().getName()}</a>
                 @endif</td>
@@ -133,7 +133,7 @@
         <tr>
             <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
             <td>${nation.getCities()}</td>
-            <td>${TimeUtil.minutesToTime(nation.getActive_m())}</td>
+            <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
             <td>@if(iaCat.get(nation) != null && iaCat.get(nation).getChannel() != null)
                 <a href="${DiscordUtil.getChannelUrl(iaCat.get(nation).getChannel())}">#${iaCat.get(nation).getChannel().getName()}</a>
                 @endif</td>
@@ -162,7 +162,7 @@
                     <tr>
                         <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
                         <td>${nation.getCities()}</td>
-                        <td>${TimeUtil.minutesToTime(nation.getActive_m())}</td>
+                        <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
                         <td>@if(iaCat.get(nation) != null && iaCat.get(nation).getChannel() != null)
                             <a href="${DiscordUtil.getChannelUrl(iaCat.get(nation).getChannel())}">#${iaCat.get(nation).getChannel().getName()}</a>
                         @endif</td>
@@ -189,7 +189,7 @@
         <tr>
             <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
             <td>${nation.getCities()}</td>
-            <td>${TimeUtil.minutesToTime(nation.getActive_m())}</td>
+            <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
         </tr>
         @endfor
         </tbody>

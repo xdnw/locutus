@@ -175,7 +175,7 @@ public class WarPages {
             return card.attackerMAP + "<br>" + card.defenderMAP;
         });
         table.addColumn("def active", false, false, f -> {
-            return TimeUtil.secToTime(TimeUnit.MINUTES, f.getNation(false).getActive_m());
+            return TimeUtil.secToTime(TimeUnit.MINUTES, f.getNation(false).active_m());
         });
         table.addColumn("actions", false, false, f -> {
             String cmd = CM.war.counter.auto.cmd.create(f.getAttacker_id() + "", null, null, null, null, null).toCommandArgs();
@@ -211,7 +211,7 @@ public class WarPages {
                     members.add(war);
                     continue;
                 }
-                if (defender.getActive_m() < 7200) {
+                if (defender.active_m() < 7200) {
                     activeApps.add(war);
                     continue;
                 }

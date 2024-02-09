@@ -289,7 +289,7 @@ public class GuildHandler {
         StringBuilder body = new StringBuilder();
         body.append("User: " + author.getAsMention() + "\n");
         if (nation != null) {
-            if (nation.getActive_m() > 7200) return false;
+            if (nation.active_m() > 7200) return false;
 
             body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
             if (nation.getPosition() > 1 && aaIds.contains(nation.getAlliance_id())) {
@@ -451,7 +451,7 @@ public class GuildHandler {
                 String title = previous.getNation() + " (" + rank.name() + ") VM";
                 StringBuilder body = new StringBuilder();
                 body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
-                body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.getActive_m()));
+                body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.active_m()));
                 User user = current.getUser();
                 if (user != null) {
                     body.append("\nUser: " + user.getAsMention());
@@ -465,7 +465,7 @@ public class GuildHandler {
     public void onMemberLeaveVM(NationLeaveVacationEvent event) {
         DBNation previous = event.getPrevious();
         DBNation current = event.getCurrent();
-        if (current != null && current.getActive_m() > 10000) return;
+        if (current != null && current.active_m() > 10000) return;
 
         MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
         if (channel != null) {
@@ -473,7 +473,7 @@ public class GuildHandler {
             String title = previous.getNation() + " (" + rank.name() + ") left VM";
             StringBuilder body = new StringBuilder();
             body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
-            body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.getActive_m()));
+            body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.active_m()));
             User user = current.getUser();
             if (user != null) {
                 body.append("\nUser: " + user.getAsMention());
@@ -584,14 +584,14 @@ public class GuildHandler {
         StringBuilder body = new StringBuilder();
         body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
 
-        body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.getActive_m()));
+        body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.active_m()));
         if (user != null) {
             body.append("\nUser: " + user.getAsMention());
         }
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
 
-        if (user != null && current.getActive_m() < 2880) {
+        if (user != null && current.active_m() < 2880) {
             try {
                 double[] depoTotal = current.getNetDeposits(db, false);
                 body.append("\n\nPlease check the following:\n" +
@@ -629,7 +629,7 @@ public class GuildHandler {
             String title = previous.getNation() + " (" + rank.name() + ") deleted";
             StringBuilder body = new StringBuilder();
             body.append(MarkupUtil.markdownUrl(previous.getNation(), previous.getNationUrl()));
-            body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, previous.getActive_m()));
+            body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, previous.active_m()));
             User user = previous.getUser();
             if (user != null) {
                 body.append("\nUser: " + user.getAsMention());
@@ -801,8 +801,8 @@ public class GuildHandler {
 //        Role temp = Roles.TEMP.toRole(getGuild());
 //        baseRequirements.add(new Grant.Requirement("Nation not eligible for grants", overrideSafe, f -> !member.getRoles().contains(temp)));
 //
-//        baseRequirements.add(new Grant.Requirement("Nation is not active in past 24h", overrideSafe, f -> f.getActive_m() < 1440));
-//        baseRequirements.add(new Grant.Requirement("Nation is not active in past 7d", overrideUnsafe, f -> f.getActive_m() < 10000));
+//        baseRequirements.add(new Grant.Requirement("Nation is not active in past 24h", overrideSafe, f -> f.active_m() < 1440));
+//        baseRequirements.add(new Grant.Requirement("Nation is not active in past 7d", overrideUnsafe, f -> f.active_m() < 10000));
 //
 //        baseRequirements.add(new Grant.Requirement("Nation does not have 5 raids going", overrideSafe, f -> f.getCities() >= 10 || f.getOff() >= 5));
 //
@@ -1009,7 +1009,7 @@ public class GuildHandler {
 //                                if (f.getOff() > 0) {
 //                                    for (DBWar war : f.getActiveWars()) {
 //                                        DBNation other = war.getNation(war.isAttacker(f));
-//                                        if (other.getActive_m() < 1440 || other.getPosition() >= Rank.APPLICANT.id) {
+//                                        if (other.active_m() < 1440 || other.getPosition() >= Rank.APPLICANT.id) {
 //                                            return false;
 //                                        }
 //                                    }
@@ -1426,7 +1426,7 @@ public class GuildHandler {
     private void handleWonWars(DBNation enemy, Set<Integer> aaIds, AbstractCursor root, DBNation memberNation) {
         if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         MessageChannel channel = db.getOrNull(GuildKey.WON_WAR_CHANNEL);
-        if (enemy.getActive_m() > 1440 || enemy.getVm_turns() > 0) return;
+        if (enemy.active_m() > 1440 || enemy.getVm_turns() > 0) return;
 
         if (channel == null) return;
 
@@ -1592,7 +1592,7 @@ public class GuildHandler {
                 }
             } else {
                 if (defender != null) {
-                    boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.getActive_m() < 2440 || (aaIds.contains(defender.getAlliance_id()) && defender.getActive_m() < 7200);
+                    boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.active_m() < 2440 || (aaIds.contains(defender.getAlliance_id()) && defender.active_m() < 7200);
                     if (pingMilcom && milcomRole != null) {
                         CounterStat counterStat = war.getCounterStat();
                         if (counterStat != null && counterStat.type == CounterType.IS_COUNTER && !enemies.contains(attacker.getAlliance_id())) {
@@ -1721,8 +1721,8 @@ public class GuildHandler {
                                     body.append(defender.getNationUrlMarkup(true));
                                     if (defender.getAlliance_id() != 0) {
                                         body.append(" | " + defender.getAllianceUrlMarkup(true));
-                                        if (defender.getActive_m() > 1440) {
-                                            body.append(" | " + TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
+                                        if (defender.active_m() > 1440) {
+                                            body.append(" | " + TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
                                         }
                                         if (defender.getPosition() < Rank.MEMBER.id) {
                                             body.append("- " + Rank.byId(defender.getPosition()));
@@ -1831,7 +1831,7 @@ public class GuildHandler {
 
                             DBNation attacker = war.getNation(true);
                             DBNation defender = war.getNation(false);
-                            if (!offensive && attacker != null && defender != null && footer.length() > 0 && defender.getPosition() >= Rank.MEMBER.id && db.isWhitelisted() && defender.getActive_m() < 15000 && !mentions.isEmpty()) {
+                            if (!offensive && attacker != null && defender != null && footer.length() > 0 && defender.getPosition() >= Rank.MEMBER.id && db.isWhitelisted() && defender.active_m() < 15000 && !mentions.isEmpty()) {
                                 Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
                                 if (stat != null && stat.type == CounterType.IS_COUNTER && !enemies.contains(attacker.getAlliance_id())) {
@@ -1909,7 +1909,7 @@ public class GuildHandler {
                 if (attacker == null || defender == null) {
                     return false;
                 }
-                if (defender.getActive_m() > 10000 && defender.getAlliance_id() == 0) {
+                if (defender.active_m() > 10000 && defender.getAlliance_id() == 0) {
                     return false;
                 }
                 Boolean hideApps = db.getOrNull(GuildKey.HIDE_APPLICANT_WARS);
@@ -2255,7 +2255,7 @@ public class GuildHandler {
     public void reward(DBNation referred, NationMeta meta, boolean onlyOnce, double[] amt, String message, Supplier<DBNation> referrerSupplier) {
         ByteBuffer metaBuf = getDb().getNationMeta(referred.getNation_id(), meta);
         if (metaBuf != null && onlyOnce) return;
-        if (referred.getActive_m() > 2880) return;
+        if (referred.active_m() > 2880) return;
 
         DBNation referrer = referrerSupplier.get();
         if (referrer == null) return;
@@ -2421,7 +2421,7 @@ public class GuildHandler {
 
                 Set<DBNation> members = Locutus.imp().getNationDB().getNations(aaIds);
                 members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
-                members.removeIf(f -> f.getActive_m() > 2880);
+                members.removeIf(f -> f.active_m() > 2880);
                 members.removeIf(f -> f.getVm_turns() > 0);
                 members.removeIf(DBNation::isGray);
 
@@ -2521,7 +2521,7 @@ public class GuildHandler {
     }
 
     public void onRefer(DBNation nation) {
-        if (nation.getVm_turns() > 0 || nation.getActive_m() > 2880 || nation.isGray() || nation.isBeige()) return;
+        if (nation.getVm_turns() > 0 || nation.active_m() > 2880 || nation.isGray() || nation.isBeige()) return;
 
         Set<Integer> aaIds = getDb().getAllianceIds();
         if (!aaIds.isEmpty() && nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPosition() > Rank.APPLICANT.id) {

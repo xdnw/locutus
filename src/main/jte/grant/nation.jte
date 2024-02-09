@@ -28,7 +28,7 @@
             </tr>
             <tr>
                 <th scope="row">Last login</th>
-                <td>@if(nation.getActive_m() <= 3)Online @else ${TimeUtil.minutesToTime(nation.getActive_m())}@endif</td>
+                <td>@if(nation.active_m() <= 3)Online @else ${TimeUtil.minutesToTime(nation.active_m())}@endif</td>
             </tr>
             <tr>
                 <th scope="row">Daily Login</th>

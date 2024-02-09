@@ -114,7 +114,7 @@ public enum AllianceMetric implements IAllianceMetric {
     INACTIVE_1W(false, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
-            return (double) alliance.getNations().stream().filter(f -> f.getVm_turns() == 0 && f.getPosition() > Rank.APPLICANT.id && f.getActive_m() > 1440 * 7).count();
+            return (double) alliance.getNations().stream().filter(f -> f.getVm_turns() == 0 && f.getPosition() > Rank.APPLICANT.id && f.active_m() > 1440 * 7).count();
         }
     },
     VM_PCT(true, PERCENTAGE_ONE) {
@@ -155,7 +155,7 @@ public enum AllianceMetric implements IAllianceMetric {
         @Override
         public Double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
-            return nations.stream().filter(f -> f.getActive_m() > 1440 * 7 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
+            return nations.stream().filter(f -> f.active_m() > 1440 * 7 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
         }
     },
     WARCOST_DAILY(false, SI_UNIT) {

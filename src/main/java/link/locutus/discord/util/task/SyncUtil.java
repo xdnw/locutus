@@ -168,13 +168,13 @@
 ////            if (nation.isBeige()) continue;
 //                    if (nation.getAlliance_id() == 0) continue;
 //                    if (nation.getPosition() <= 1) continue;
-//                    if (nation.getActive_m() > TimeUnit.DAYS.toMinutes(1)) continue;
+//                    if (nation.active_m() > TimeUnit.DAYS.toMinutes(1)) continue;
 //
 //                    ByteBuffer meta = nation.getMeta(NationMeta.UPDATE_SPIES);
 //                    long lastturn = meta == null ? 0 : meta.getLong();
 //
 //                    long lastUpdate = TimeUtil.getTimeFromTurn(lastturn);
-//                    long lastActive = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(nation.getActive_m());
+//                    long lastActive = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(nation.active_m());
 //
 //                    long diff = currentTurn - lastturn;
 //                    if (diff > 1) {
@@ -246,9 +246,9 @@
 //                if (System.currentTimeMillis() - start > 55000) break;
 //                if (nation.getNation_id() == 6) continue;
 //                if (nation.isBeige()) continue;
-//                if (nation.getActive_m() < 60 || nation.getActive_m() > 120) continue;
+//                if (nation.active_m() < 60 || nation.active_m() > 120) continue;
 //                if (Locutus.imp().getDiscordDB().isVerified(nation.getNation_id())) continue;
-//                if (nation.getActive_m() >= 60 && nation.getActive_m() <= 120) {
+//                if (nation.active_m() >= 60 && nation.active_m() <= 120) {
 //                    ByteBuffer uuidUpdate = nation.getMeta(NationMeta.UPDATE_UUID);
 //                    long uuidUpdateTime = uuidUpdate == null ? 0 : uuidUpdate.getLong();
 //                    if (uuidUpdateTime >= currentDay - 7) continue;

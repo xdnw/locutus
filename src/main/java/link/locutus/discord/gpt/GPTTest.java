@@ -23,8 +23,6 @@ public class GPTTest {
 
     public static void main(String[] args) throws SQLException, LoginException, InterruptedException, ClassNotFoundException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.WEB.PORT = 0;
         Settings.INSTANCE.WEB.REDIRECT = "http://localhost";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();

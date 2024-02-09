@@ -204,7 +204,7 @@ public class Spyops extends Command {
             return false;
         });
 
-        nations.removeIf(f -> f.getActive_m() > 2880);
+        nations.removeIf(f -> f.active_m() > 2880);
         nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
 
         if (nations.isEmpty()) {

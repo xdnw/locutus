@@ -96,7 +96,7 @@ public class LeftAA extends Command {
                 DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
                 if (nation != null && (filter == null || filter.contains(nation))) {
 
-                    if (flags.contains('a') && nation.getActive_m() > 10000) continue;
+                    if (flags.contains('a') && nation.active_m() > 10000) continue;
                     if (flags.contains('v') && nation.getVm_turns() != 0) continue;
                     if (flags.contains('m') && nation.getPosition() > 1) continue;
 

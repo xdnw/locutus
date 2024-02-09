@@ -683,7 +683,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public Set<DBNation> getNations(boolean removeVM, int removeInactiveM, boolean removeApps) {
         Set<DBNation> nations = getNations();
         if (removeVM) nations.removeIf(f -> f.getVm_turns() != 0);
-        if (removeInactiveM > 0) nations.removeIf(f -> f.getActive_m() > removeInactiveM);
+        if (removeInactiveM > 0) nations.removeIf(f -> f.active_m() > removeInactiveM);
         if (removeApps) nations.removeIf(f -> f.getPosition() <= 1);
         return nations;
     }
@@ -1246,7 +1246,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         for (DBNation member : members) {
             if (member.getVm_turns() > 0) numVM++;
-            if (member.getVm_turns() == 0 && member.getActive_m() > 10000) {
+            if (member.getVm_turns() == 0 && member.active_m() > 10000) {
                 return false;
             }
             if (member.getVm_turns() == 0) {
@@ -1293,7 +1293,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             boolean lowMil = false;
             for (DBNation member : members) {
                 if (member.getVm_turns() != 0) continue;
-                if (member.getActive_m() > 7200) {
+                if (member.active_m() > 7200) {
                     return null;
                 }
                 if (member.isGray()) {

@@ -38,6 +38,7 @@ import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
@@ -149,6 +150,14 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
+    @Binding(types = {Set.class, Conflict.class})
+    public String Conflicts(ConflictManager manager, @Default ParameterData param) {
+        Map<Integer, Conflict> conflicts = manager.getConflictMap();
+        Set<Map.Entry<Integer, Conflict>> options = conflicts.entrySet();
+        return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s.getValue().getName(), s.getKey() + ""), true);
+    }
+
+    @HtmlInput
     @Binding(types = DBLoan.class)
     public String DBLoan(@Me GuildDB db, LoanManager manager, @Default ParameterData param) {
         List<DBLoan> keys = manager.getLoansByGuildDB(db);
@@ -159,6 +168,13 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types = MessageTrigger.class)
     public String MessageTrigger(@Default ParameterData param) {
         MessageTrigger[] options = MessageTrigger.values();
+        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+    }
+
+    @HtmlInput
+    @Binding(types = ConflictCategory.class)
+    public String ConflictCategory(@Default ParameterData param) {
+        ConflictCategory[] options = ConflictCategory.values();
         return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
     }
 
@@ -349,7 +365,7 @@ public class WebPWBindings extends WebBindingHelper {
     public String nation(ParameterData param) {
         Collection<DBNation> options = (Locutus.imp().getNationDB().getNations().values());
         options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
-        options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
+        options.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getNation());
             values.add(obj.getId());
@@ -368,7 +384,7 @@ public class WebPWBindings extends WebBindingHelper {
     public String nationOrAlliance(ParameterData param) {
         List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
-        nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
+        nations.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
 
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
@@ -399,7 +415,7 @@ public class WebPWBindings extends WebBindingHelper {
     public String nationOrAllianceOrGuildOrTaxid(@Me User user, @Me GuildDB db, ParameterData param, boolean includeBrackets) {
         List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
-        nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
+        nations.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
 
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
@@ -503,7 +519,7 @@ public class WebPWBindings extends WebBindingHelper {
         } else {
             options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
             options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
-            options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
+            options.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
         }
 
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {

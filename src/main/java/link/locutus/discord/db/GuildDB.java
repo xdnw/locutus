@@ -522,8 +522,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         body.append("Receiver: " + nation.getNationUrlMarkup(true));
         if (nation.getPosition() <= Rank.APPLICANT.id) body.append(" (applicant)");
         body.append("\n");
-        if (nation.getActive_m() > 1440) {
-            body.append("Inactive: " + TimeUtil.minutesToTime(nation.getActive_m()) + "\n");
+        if (nation.active_m() > 1440) {
+            body.append("Inactive: " + TimeUtil.minutesToTime(nation.active_m()) + "\n");
         }
         if (nation.isGray() || nation.isBeige()) {
             body.append("Color: " + nation.getColor() + "\n");
@@ -538,7 +538,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             double relativeSea = 1;
             for (DBWar war : nation.getActiveWars()) {
                 DBNation other = war.getNation(!war.isAttacker(nation));
-                if (other.getActive_m() > 2880) continue;
+                if (other.active_m() > 2880) continue;
 
                 double otherGround = other.getGroundStrength(true, false);
                 double otherAir = other.getAircraft();
@@ -1942,13 +1942,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             if (senderNation != null) {
                 if (senderNation.getVm_turns() > 0)
                     throw new IllegalArgumentException("Sender nation (" + senderNation.getNation() + ") is in VM");
-                if (senderNation.getActive_m() > 10000)
+                if (senderNation.active_m() > 10000)
                     throw new IllegalArgumentException("Sender nation (" + senderNation.getNation() + ") is inactive in-game");
             }
             if (receiverNation != null) {
                 if (receiverNation.getVm_turns() > 0)
                     throw new IllegalArgumentException("Receiver nation (" + receiverNation.getNation() + ") is in VM");
-                if (receiverNation.getActive_m() > 10000)
+                if (receiverNation.active_m() > 10000)
                     throw new IllegalArgumentException("Receiver nation (" + receiverNation.getNation() + ") is inactive in-game");
             }
 
@@ -2387,7 +2387,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         User user = owner.getUser();
         if (user == null) return false;
         DBNation nation = DiscordUtil.getNation(user);
-        return nation != null && nation.getActive_m() < 10000;
+        return nation != null && nation.active_m() < 10000;
     }
 
     public Set<String> findCoalitions(int aaId) {
@@ -2662,11 +2662,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             public Boolean apply(DBNation enemy) {
                 if (enemy.getAlliance_id() == 0) return true;
                 if (can_raid.contains(enemy.getAlliance_id())) return true;
-                if (can_raid_inactive.contains(enemy.getAlliance_id()) && enemy.getActive_m() > 10000) return true;
+                if (can_raid_inactive.contains(enemy.getAlliance_id()) && enemy.active_m() > 10000) return true;
                 if (enemies.contains(enemy.getAlliance_id())) return true;
                 if (dnr.contains(enemy.getAlliance_id())) return false;
-                if (enemy.getActive_m() < 10000 && dnr_active.contains(enemy.getAlliance_id())) return false;
-                if ((enemy.getActive_m() < 10000 || enemy.getPosition() > 1) && dnr_member.contains(enemy.getAlliance_id())) return false;
+                if (enemy.active_m() < 10000 && dnr_active.contains(enemy.getAlliance_id())) return false;
+                if ((enemy.active_m() < 10000 || enemy.getPosition() > 1) && dnr_member.contains(enemy.getAlliance_id())) return false;
 
                 long requiredInactive = -1;
 
@@ -2683,7 +2683,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                     }
                 }
 
-                long msInactive = enemy.getActive_m() * 60 * 1000L;
+                long msInactive = enemy.active_m() * 60 * 1000L;
 
                 return (msInactive > requiredInactive);
             }
@@ -3003,7 +3003,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                 if (nation == null) result.put(member, UnmaskedReason.NOT_REGISTERED);
                 else if (!allowedAAs.contains(nation.getAlliance_id())) result.put(member, UnmaskedReason.NOT_IN_ALLIANCE);
                 else if (nation.getPosition() <= 1) result.put(member, UnmaskedReason.APPLICANT);
-                else if (nation.getActive_m() > 20000) result.put(member, UnmaskedReason.INACTIVE);
+                else if (nation.active_m() > 20000) result.put(member, UnmaskedReason.INACTIVE);
             }
         }
         return result;

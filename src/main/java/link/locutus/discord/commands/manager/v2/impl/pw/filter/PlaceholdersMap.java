@@ -38,6 +38,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.Conflict;
+import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
@@ -140,6 +142,7 @@ public class PlaceholdersMap {
     public static Placeholders<DBWar> WARS = null;
     public static Placeholders<BankDB.TaxDeposit> TAX_DEPOSITS = null;
     public static Placeholders<GuildSetting> SETTINGS = null;
+    public static Placeholders<Conflict> CONFLICTS = null;
 
     // --------------------------------------------------------------------
 
@@ -190,6 +193,7 @@ public class PlaceholdersMap {
         this.placeholders.put(DBWar.class, createWars());
         this.placeholders.put(BankDB.TaxDeposit.class, createTaxDeposit());
         this.placeholders.put(GuildSetting.class, createGuildSettings());
+        this.placeholders.put(Conflict.class, createConflicts());
 
         Map<Class, Field> fields = new HashMap<>();
         for (Field field : PlaceholdersMap.class.getDeclaredFields()) {
@@ -1258,6 +1262,70 @@ public class PlaceholdersMap {
                         k, l, m, n, o, p, q, r, s, t,
                         u, v, w, x);
             }
+        };
+    }
+
+    public Placeholders<Conflict> createConflicts() {
+        return new SimplePlaceholders<Conflict>(Conflict.class, store, validators, permisser,
+                "TODO CM REF",
+                (ThrowingTriFunction<Placeholders<Conflict>, ValueStore, String, Set<Conflict>>) (inst, store, input) -> {
+                    Set<Conflict> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
+                    ConflictManager manager = Locutus.imp().getWarDb().getConflicts();
+                    if (input.equalsIgnoreCase("*")) {
+                        return new LinkedHashSet<>(manager.getConflictMap().values());
+                    }
+                    return Set.of(PWBindings.conflict(manager, input));
+                }, (ThrowingTriFunction<Placeholders<Conflict>, ValueStore, String, Predicate<Conflict>>) (inst, store, input) -> {
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            Conflict setting = PWBindings.conflict(Locutus.imp().getWarDb().getConflicts(), input);
+            return f -> f == setting;
+        }, new Function<Conflict, String>() {
+            @Override
+            public String apply(Conflict conflict) {
+                return conflict.getId() + "";
+            }
+        }) {
+//            @NoFormat
+//            @Command(desc = "Add an alias for a selection of conflicts")
+//            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+//            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Conflict> conflicts) {
+//                return _addSelectionAlias(this, command, db, name, conflicts, "conflicts");
+//            }
+//
+//            @NoFormat
+//            @Command(desc = "Add columns to a conflict sheet")
+//            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+//            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+//                                     @Default TypedFunction<Conflict, String> a,
+//                                     @Default TypedFunction<Conflict, String> b,
+//                                     @Default TypedFunction<Conflict, String> c,
+//                                     @Default TypedFunction<Conflict, String> d,
+//                                     @Default TypedFunction<Conflict, String> e,
+//                                     @Default TypedFunction<Conflict, String> f,
+//                                     @Default TypedFunction<Conflict, String> g,
+//                                     @Default TypedFunction<Conflict, String> h,
+//                                     @Default TypedFunction<Conflict, String> i,
+//                                     @Default TypedFunction<Conflict, String> j,
+//                                     @Default TypedFunction<Conflict, String> k,
+//                                     @Default TypedFunction<Conflict, String> l,
+//                                     @Default TypedFunction<Conflict, String> m,
+//                                     @Default TypedFunction<Conflict, String> n,
+//                                     @Default TypedFunction<Conflict, String> o,
+//                                     @Default TypedFunction<Conflict, String> p,
+//                                     @Default TypedFunction<Conflict, String> q,
+//                                     @Default TypedFunction<Conflict, String> r,
+//                                     @Default TypedFunction<Conflict, String> s,
+//                                     @Default TypedFunction<Conflict, String> t,
+//                                     @Default TypedFunction<Conflict, String> u,
+//                                     @Default TypedFunction<Conflict, String> v,
+//                                     @Default TypedFunction<Conflict, String> w,
+//                                     @Default TypedFunction<Conflict, String> x) throws GeneralSecurityException, IOException {
+//                return Placeholders._addColumns(this, command,db, io, author, sheet,
+//                        a, b, c, d, e, f, g, h, i, j,
+//                        k, l, m, n, o, p, q, r, s, t,
+//                        u, v, w, x);
+//            }
         };
     }
 

@@ -2,6 +2,13 @@ package com.locutus.wiki.game;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import link.locutus.discord.db.Conflict;
+import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.db.entities.conflict.ConflictCategory;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.jooby.JteUtil;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -12,15 +19,21 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.text.Normalizer;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class PWWikiUtil {
 
@@ -123,7 +136,7 @@ public class PWWikiUtil {
 
                 // Skip if title contains "Category:"
                 String hrefLower = href.toLowerCase(Locale.ROOT);
-                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:")) {
+                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:") || hrefLower.contains("talk:")) {
                     continue;
                 }
 
@@ -321,6 +334,19 @@ public class PWWikiUtil {
         }
     }
 
+    public static Document getDocument(String slug, String urlStub, boolean readCache) throws IOException {
+        File file = new File("wiki/html/" + slug + ".html");
+        if (readCache) {
+            if (file.exists()) {
+                return Jsoup.parse(file, "UTF-8", "");
+            }
+        }
+        file.getParentFile().mkdirs();
+        Document document = Jsoup.connect("https://politicsandwar.fandom.com/wiki/" + urlStub).get();
+        Files.write(file.toPath(), document.outerHtml().getBytes());
+        return document;
+    }
+
     public static void fetchDefaultPages() throws IOException {
         Map<String, String> pagesToSave = new LinkedHashMap<>();
         pagesToSave.put("Frequently Asked Questions", "Frequently_Asked_Questions");
@@ -328,12 +354,22 @@ public class PWWikiUtil {
 
         String[] categoriesToSave = {"Wars", "Alliances", "Treaties", "Guides", "Mechanics", "API"};
 
-        // Iterate through categories
-        for (String category : categoriesToSave) {
-            // Get the pages from each category
-            System.out.println("Get " + category);
-            Map<String, String> pages = getCategoryPages(category);
+        pagesToSave.putAll(getPages(categoriesToSave));
 
+        // Save to sitemap.json
+        File file = new File("wiki/sitemap.json");
+        file.getParentFile().mkdirs();
+        file.createNewFile();
+        FileWriter writer = new FileWriter(file);
+        new Gson().toJson(pagesToSave, writer);
+        writer.close();
+        System.out.println("Write sitemap " + file.getAbsolutePath());
+    }
+
+    public static Map<String, String> getPages(String... categories) throws IOException {
+        Map<String, String> pagesToSave = new LinkedHashMap<>();
+        for (String category : categories) {
+            Map<String, String> pages = getCategoryPages(category);
             for (Map.Entry<String, String> entry : pages.entrySet()) {
                 String page = entry.getKey();
                 String url = entry.getValue();
@@ -344,21 +380,13 @@ public class PWWikiUtil {
                     url = url.substring(0, url.indexOf("?"));
                 }
                 String hrefLower = url.toLowerCase();
-                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:")) {
+                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:") || hrefLower.contains("talk:")) {
                     continue;
                 }
                 pagesToSave.put(page, url);
             }
         }
-
-        // Save to sitemap.json
-        File file = new File("wiki/sitemap.json");
-        file.getParentFile().mkdirs();
-        file.createNewFile();
-        FileWriter writer = new FileWriter(file);
-        new Gson().toJson(pagesToSave, writer);
-        writer.close();
-        System.out.println("Write sitemap " + file.getAbsolutePath());
+        return pagesToSave;
     }
 
     public static Map<String, String> getSitemapCached() throws IOException {
@@ -434,4 +462,256 @@ public class PWWikiUtil {
             return null;
         }
     }
+
+    public static void main(String[] args) throws IOException {
+//        PWWikiPage page = new PWWikiPage("Great War 30", "Great_War_30", true);
+//        page.getForumLinks();
+
+
+
+//        String url = "https://forum.politicsandwar.com/index.php?/topic/398-what-is-pw-listening-to/";
+//        Document document = Jsoup.connect(url).get();
+//        Element time = document.select("time[datetime]").first();
+//        if (time == null) {
+//            System.out.println("No time");
+//        } else {
+//            String dateStr = time.attr("datetime");
+//            DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+//            ZonedDateTime dateTime = ZonedDateTime.parse(dateStr, formatter);
+//            long millis = dateTime.toInstant().toEpochMilli();
+//            System.out.println(new Date(millis));
+//        }
+//
+//        String category = "Alliance_Wars";
+//        Map<String, String> pages = getPages(category);
+//        System.out.println("Got pages");
+//        long wikiCutoff = TimeUtil.getDay(1577836800000L);
+//
+//        List<String> errors = new ArrayList<>();
+//
+//        for (Map.Entry<String, String> entry : pages.entrySet()) {
+//            String name = entry.getKey();
+//            String nameNormal = StringMan.normalize(name);
+//            String slug = slugify(name, false);
+//            String urlStub = entry.getValue();
+//
+//            PWWikiPage page = new PWWikiPage(nameNormal, urlStub, true);
+//            String ctowned = page.getCtownedLink();
+//            if (ctowned != null) {
+//                System.out.println(ctowned + " = " + nameNormal + " | " + urlStub);
+//
+//                continue;
+//            } else {
+//                continue;
+//            }
+////
+////            Map<String, List<String>> table = page.getTableData();
+////            if (table == null) continue;
+////            Map.Entry<Long, Long> dates = page.getDates();
+////            if (dates == null || dates.getKey() < wikiCutoff) continue;
+////
+////            if (dates.getValue() == null || dates.getValue() > TimeUtil.getDay()) {
+////                errors.add("Ongoing war?? " + page.getUrl());
+////                continue;
+////            }
+////
+////            String status = page.getStatus();
+////            List<String> cb = page.getTableData().get("casus belli");
+////            if (cb == null) {
+////                errors.add("No cb " + page.getTableData().keySet() + " | " + page.getUrl());
+////                continue;
+////            }
+////            System.out.println("Has CB: " + name + " = " + cb);
+////
+////            if (status == null) {
+////                errors.add("No status " + page.getUrl() + " | " + page.getTableData().keySet());
+////                continue;
+////            } else {
+////                System.out.println("Status: " + status);
+////            }
+//        }
+//        for (String error : errors) {
+//            System.out.println(error);
+//        }
+    }
+
+    /**
+     * Note:
+     * Conflicts lacking alliance name information will be skipped
+     * Some alliance pages have dates in formats that cannot be parsed
+     * @return
+     */
+    public static List<Conflict> loadWikiConflicts(Map<String, String> errorsByPage) throws IOException {
+        long wikiCutoff = TimeUtil.getDay(1577836800000L);
+        List<Conflict> conflicts = new ArrayList<>();
+
+        String wikiCategory = "Alliance_Wars";
+        Map<String, String> pages = getPages(wikiCategory);
+        System.out.println("Got pages");
+        for (Map.Entry<String, String> entry : pages.entrySet()) {
+            String name = entry.getKey();
+            String nameNormal = StringMan.normalize(name);
+            String slug = slugify(name, false);
+            String urlStub = entry.getValue();
+
+            PWWikiPage page = new PWWikiPage(nameNormal, urlStub, true);
+            Map<String, List<String>> table = page.getTableData();
+            if (table == null) {
+                errorsByPage.put(name, "No table found");
+                continue;
+            }
+            Map.Entry<Long, Long> date = page.getDates();
+            if (date == null) {
+                List<String> dateList = table.get("date");
+                if (dateList == null) {
+                    errorsByPage.put(name, "No date found");
+                } else if (dateList.isEmpty()) {
+                    errorsByPage.put(name, "Empty date found");
+                } else if (!dateList.getFirst().contains("-")){
+                    errorsByPage.put(name, "No end date specified (in the format `start date - end date`)");
+                } else {
+                    errorsByPage.put(name, "Unparseable date range: `" + dateList.getFirst() + "`");
+                }
+                continue;
+            }
+            Set<String> unknownAlliances = new LinkedHashSet<>();
+            Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances);
+            if (combatants == null) {
+                errorsByPage.put(name, "No combatants found");
+                continue;
+            }
+//            if (!unknownAlliances.isEmpty()) {
+//                errorsByPage.put(name, "Unknown alliances: " + unknownAlliances);
+//                continue;
+//            }
+            if (combatants.getKey().isEmpty()) {
+                errorsByPage.put(name, "No coalition 1 combatants found");
+                continue;
+            }
+            if (combatants.getValue().isEmpty()) {
+                errorsByPage.put(name, "No coalition 2 combatants found");
+                continue;
+            }
+            Set<String> pageCategories = page.getCategories();
+            boolean isGreatWar = pageCategories.contains("Great Wars");
+            boolean isMicroWar = pageCategories.contains("Micro Wars");
+            boolean isHistory = pageCategories.stream().anyMatch(category -> category.startsWith("Wars of "));
+            ConflictCategory category;
+            if (isGreatWar) {
+                category = ConflictCategory.GREAT;
+            } else if (isMicroWar) {
+                category = ConflictCategory.MICRO;
+            } else if (isHistory) {
+                category = ConflictCategory.NON_MICRO;
+            } else {
+                category = ConflictCategory.UNVERIFIED;
+            }
+            long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
+            long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
+            Conflict conflict = new Conflict(0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, startTurn, endTurn);
+            combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
+            combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
+            conflicts.add(conflict);
+        }
+        return conflicts;
+    }
+
+    public static String getWikiUrlFromCtowned(String name) {
+        return switch (name.toLowerCase(Locale.ROOT)) {
+            // #33 Closest (1/0)Step on Snek -> https://politicsandwar.fandom.com/wiki/Step_on_Snek
+            case "step on snek" -> "Step_on_Snek";
+            //#25 Closest (4/1)Judgement Day -> https://politicsandwar.fandom.com/wiki/Judgement_Day
+            case "judgement day" -> "Judgement_Day";
+            //#8 Closest (6/6)Ragnarok -> https://politicsandwar.fandom.com/wiki/Ragnar%C3%B6k
+            case "ragnarok" -> "Ragnar%C3%B6k";
+            //#9 Closest (2/1)Honor Thy Treaty -> https://politicsandwar.fandom.com/wiki/Training_Day
+            case "honor thy treaty" -> "Honor_Thy_Treaty";
+            //#24 Closest (0/1)Singularity vs HS -> https://politicsandwar.fandom.com/wiki/Breaking_The_News
+            case "singularity vs hs" -> "Breaking_The_News";
+            //#26 Closest (6/7)The Fault in Our Stars -> https://politicsandwar.fandom.com/wiki/The_Fault_in_Our_Stars
+            case "the fault in our stars" -> "The_Fault_in_Our_Stars";
+            //#16 Closest (14/6)Global War 28 -> https://politicsandwar.fandom.com/wiki/Dodge_This
+            case "global war 28" -> "Dodge_This";
+            //#17 Closest (3/3)Antarctic Expedition -> https://politicsandwar.fandom.com/wiki/Antarctic_Expedition
+            case "antarctic expedition" -> "Antarctic_Expedition";
+            //#21 Closest (2/3)Mental Midgetry -> https://politicsandwar.fandom.com/wiki/Mental_Midgetry
+            case "mental midgetry" -> "Mental_Midgetry";
+            //#23 Closest (5/1)Antarctic Expedition Part 2 -> https://politicsandwar.fandom.com/wiki/Aqua_War
+            case "antarctic expedition part 2" -> "Aqua_War";
+            //#27 Closest (6/4)The Way the Cookie Crumbles -> https://politicsandwar.fandom.com/wiki/The_Way_the_Cookie_Crumbles
+            case "the way the cookie crumbles" -> "The_Way_the_Cookie_Crumbles";
+            //#31 Closest (8/3)Singularly Hostile -> https://politicsandwar.fandom.com/wiki/Singular_Hostility
+            case "singularly hostile" -> "Singular_Hostility";
+            //#52 Closest (1/0)Size Does Matter -> https://politicsandwar.fandom.com/wiki/Size_Does_Matter
+            case "size does matter" -> "Size_Does_Matter";
+            //#32 Closest (14/6)New Year Nuke Me -> https://politicsandwar.fandom.com/wiki/Great_War_30
+            case "new year nuke me" -> "Great_War_30";
+            //#34 Closest (1/0)Broken Promises -> https://politicsandwar.fandom.com/wiki/Broken_Promises
+            case "broken promises" -> "Broken_Promises";
+            //#38 Closest (2/1)Paper Shortage -> https://politicsandwar.fandom.com/wiki/Paper_Shortage
+            case "paper shortage" -> "Paper_Shortage";
+            //#36 Closest (1/0)The Lost Debts -> https://politicsandwar.fandom.com/wiki/The_Lost_Debts
+            case "the lost debts" -> "The_Lost_Debts";
+            //#42 Closest (1/1)Fake News Eradication -> https://politicsandwar.fandom.com/wiki/SomaliArrgh_Hostage_Crisis
+            case "fake news eradication" -> "SomaliArrgh_Hostage_Crisis";
+            //#43 Closest (1/0)Arrgh Raid Ussr -> https://politicsandwar.fandom.com/wiki/Welcome_to_the_Gularrgh
+            case "arrgh raid ussr" -> "Welcome_to_the_Gularrgh";
+            //#44 Closest (3/1)Spanky and Piggys Little Misadventure -> https://politicsandwar.fandom.com/wiki/Super_Mario_64
+            case "spanky and piggys little misadventure" -> "Super_Mario_64";
+            //#45 Closest (0/0)Homicide for the Holidays -> https://politicsandwar.fandom.com/wiki/Homicide_for_the_Holidays
+            case "homicide for the holidays" -> "Homicide_for_the_Holidays";
+            //#40 Closest (1/1)Hong Kong Crisis -> https://politicsandwar.fandom.com/wiki/Hong_Kong_Crisis
+            case "hong kong crisis" -> "Hong_Kong_Crisis";
+            //#4 Closest (1/1)Under the Missile-Toe -> https://politicsandwar.fandom.com/wiki/Catatonic
+            case "under the missile-toe" -> "Catatonic";
+            //#12 Closest (13/5)World vs Fortuna -> https://politicsandwar.fandom.com/wiki/Darkest_Hour
+            case "world vs fortuna" -> "Darkest_Hour";
+            //#13 Closest (2/1)Guardian  HS vs Carthago -> https://politicsandwar.fandom.com/wiki/CTOwed
+            case "guardian  hs vs carthago" -> "CTOwed";
+            //#30 Closest (3/5)Singularitys Infra Shaving Exploit -> https://politicsandwar.fandom.com/wiki/Matrix_Assimilations
+            case "singularitys infra shaving exploit" -> "Matrix_Assimilations";
+            //#22 Closest (5/8)GW29 -> https://politicsandwar.fandom.com/wiki/That%27ll_Buff_Right_Out
+            case "gw29" -> "That%27ll_Buff_Right_Out";
+            //#2 Closest (1/4)Davey Jones Locker -> https://politicsandwar.fandom.com/wiki/Pirates_vs_Pacifists
+            case "davey jones locker" -> "Pirates_vs_Pacifists";
+            //#6 Closest (1/4)Cam vs Micros -> https://politicsandwar.fandom.com/wiki/Infinity_War
+            case "cam vs micros" -> "Infinity_War";
+            //#15 Closest (1/1)Arrgh vs SNB -> https://politicsandwar.fandom.com/wiki/Jolly_Roger
+            case "arrgh vs snb" -> "Jolly_Roger";
+            //#11 Closest (1/2)Covens Last Banzai -> https://politicsandwar.fandom.com/wiki/Alan_has_Fallen
+            case "covens last banzai" -> "Alan_has_Fallen";
+            //#10 Closest (6/2)World vs Aurora -> https://politicsandwar.fandom.com/wiki/Instant_Karma
+            case "world vs aurora" -> "Instant_Karma";
+            //#1 Closest (7/7)Clockattack -> https://politicsandwar.fandom.com/wiki/Vein_Has_A_Smoll_PP_War
+            case "clockattack" -> "Vein_Has_A_Smoll_PP_War";
+            //#3 Closest (6/12)Global War 26 -> https://politicsandwar.fandom.com/wiki/Bifr%C3%B6st_Blitz
+            case "global war 26" -> "Bifr%C3%B6st_Blitz";
+            //#5 Closest (6/4)New Year Firework -> https://politicsandwar.fandom.com/wiki/Steamed_HOGGs
+            case "new year firework" -> "Steamed_HOGGs";
+            // #20 Closest (0/0)Micro Brawl -> https://ctowned.net/conflicts/microbrawl
+            case "micro brawl" -> "Alan_Tripped_and_Fell";
+            // #14 Closest (0/0)KT vs UU -> https://politicsandwar.fandom.com/wiki/UU%27s_Intifada
+            case "kt vs uu" -> "UU%27s_Intifada";
+            // #7 Closest (0/1)Piracy in Atlantis -> https://politicsandwar.fandom.com/wiki/Atlantic_Vacation
+            case "piracy in atlantis" -> "Atlantic_Vacation";
+            // #19 Closest (0/0)CoA are the OGs -> https://politicsandwar.fandom.com/wiki/WTF_is_in_the_Media
+            case "coa are the ogs" -> "WTF_is_in_the_Media";
+            // #28 Closest (0/0)Cam vs Coal -> https://politicsandwar.fandom.com/wiki/Infinity_War
+            case "cam vs coal" -> "Infinity_War";
+            // #55 Closest (3/7)Blue Balled -> https://politicsandwar.fandom.com/wiki/Great_War_30
+            case "blue balled" -> "Great_War_30";
+            // #48 Closest (0/0)Counter Encounter -> https://politicsandwar.fandom.com/wiki/Wait,_do_Arrgh_counter%3F
+            case "counter encounter" -> "Wait,_do_Arrgh_counter%3F";
+            // #39 Closest (0/0)Maidenless Behavior -> https://politicsandwar.fandom.com/wiki/War_of_the_Roses
+            case "maidenless behavior" -> "War_of_the_Roses";
+            // #35 Closest (0/0)Turning Crimson -> https://politicsandwar.fandom.com/wiki/Turning_Crimson
+            case "turning crimson" -> "Turning_Crimson";
+            // #49 Closest (0/0)Pirates vs Scammers -> https://politicsandwar.fandom.com/wiki/Infinity_War
+            case "pirates vs scammers" -> "Infinity_War";
+            // #41 Closest (1/3)Rolling Micros -> https://politicsandwar.fandom.com/wiki/Welcome_to_the_Gularrgh
+            case "rolling micros" -> "Welcome_to_the_Gularrgh";
+            default -> null;
+        };
+    }
+
 }

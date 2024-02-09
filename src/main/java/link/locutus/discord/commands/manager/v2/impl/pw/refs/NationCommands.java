@@ -247,10 +247,10 @@ public class NationCommands {
                 return createArgs("filter", filter);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getActive_m")
-        public static class getActive_m extends CommandRef {
-            public static final getActive_m cmd = new getActive_m();
-            public getActive_m create() {
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="active_m")
+        public static class active_m extends CommandRef {
+            public static final active_m cmd = new active_m();
+            public active_m create() {
                 return createArgs();
             }
         }

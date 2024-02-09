@@ -2,12 +2,34 @@ package link.locutus.discord.util;
 
 import cn.easyproject.easyocr.EasyOCR;
 import cn.easyproject.easyocr.ImageType;
+import com.mxgraph.layout.mxCircleLayout;
+import com.mxgraph.layout.mxCompactTreeLayout;
+import com.mxgraph.layout.mxEdgeLabelLayout;
+import com.mxgraph.layout.mxFastOrganicLayout;
+import com.mxgraph.layout.mxGraphLayout;
+import com.mxgraph.layout.mxIGraphLayout;
+import com.mxgraph.layout.mxOrganicLayout;
+import com.mxgraph.layout.mxParallelEdgeLayout;
+import com.mxgraph.layout.mxPartitionLayout;
+import com.mxgraph.layout.mxStackLayout;
+import com.mxgraph.model.mxCell;
+import com.mxgraph.swing.mxGraphComponent;
+import com.mxgraph.util.mxCellRenderer;
+import com.mxgraph.util.mxConstants;
+import com.mxgraph.view.mxStylesheet;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.util.io.PagePriority;
+import org.jgrapht.Graph;
+import org.jgrapht.ext.JGraphXAdapter;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
+import javax.swing.JFrame;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
@@ -29,8 +51,11 @@ import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,6 +67,97 @@ public class ImageUtil {
             return image;
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static String getColor(TreatyType type) {
+        // Get the index of the type
+        int index = type.ordinal();
+
+        // Get the total number of types
+        int total = TreatyType.values().length;
+
+        // Calculate the hue
+        float hue = (float) index / total;
+
+        // Convert the hue to a color
+        Color color = Color.getHSBColor(hue, 1f, 1f);
+
+        // Convert the color to a hex string
+        String colorStr = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+
+        return colorStr;
+    }
+
+    public static byte[] generateTreatyGraph(Collection<Treaty> connections) throws IOException {
+        // Create a graph
+        Graph<String, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+        // Create a map to store edge labels
+        Map<DefaultEdge, String> edgeToLabelMap = new HashMap<>();
+
+        // Add vertices and edges from connections
+        for (Treaty connection : connections) {
+            String country1 = connection.getFrom().getName();
+            String country2 = connection.getTo().getName();
+            graph.addVertex(country1);
+            graph.addVertex(country2);
+            DefaultEdge edge = graph.addEdge(country1, country2);
+
+            String label = connection.getType().getName();
+            edgeToLabelMap.put(edge, label);
+        }
+
+        // Create a JGraphXAdapter
+        JGraphXAdapter<String, DefaultEdge> graphAdapter = new JGraphXAdapter<String, DefaultEdge>(graph) {
+            @Override
+            public String convertValueToString(Object cell) {
+                if (cell instanceof mxCell) {
+                    Object value = ((mxCell) cell).getValue();
+                    if (value instanceof DefaultEdge) {
+                        DefaultEdge edge = (DefaultEdge) value;
+                        // return the label for the edge
+                        String label = edgeToLabelMap.get(edge);
+                        TreatyType type = TreatyType.parse(label);
+                        String color = type.getColor();
+                        String style = mxConstants.STYLE_STROKECOLOR + "=" + color;
+                        mxCell mxCell = (mxCell) cell;
+                        mxCell.setStyle(style);
+//                        this.getStylesheet().getDefaultEdgeStyle().put(mxConstants.STYLE_STROKECOLOR, color);
+
+
+                        return label;
+                    }
+                }
+                return super.convertValueToString(cell);
+            }
+        };
+
+        // Create a layout for the graph
+        //mxCircleLayout - okay
+        //mxCompactTreeLayout - busted
+        //mxEdgeLabelLayout - busted
+        //mxFastOrganicLayout - okay
+        //mxGraphLayout
+        //mxOrganicLayout - meh
+        //mxParallelEdgeLayout - busted
+        //mxPartitionLayout bustwd
+        //mxStackLayout
+        mxFastOrganicLayout layout = new mxFastOrganicLayout(graphAdapter);
+        layout.setForceConstant(100);
+        layout.execute(graphAdapter.getDefaultParent());
+
+        // Create a mxGraphComponent
+        mxGraphComponent graphComponent = new mxGraphComponent(graphAdapter);
+        graphComponent.setEnabled(false);
+
+        // Render the graph to an image
+        BufferedImage image = mxCellRenderer.createBufferedImage(graphAdapter, null, 2, Color.WHITE, true, null);
+
+        // Write the image to a file
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "png", baos);
+            baos.flush();
+            return baos.toByteArray();
         }
     }
 

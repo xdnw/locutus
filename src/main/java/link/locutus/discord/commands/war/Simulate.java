@@ -118,7 +118,7 @@ public class Simulate extends Command {
 
         SimulatedWarNode solution;
         String verb;
-        if (origin.getAggressor().getNation().equals(me) && origin.getDefender().getNation().getActive_m() > 10000) {
+        if (origin.getAggressor().getNation().equals(me) && origin.getDefender().getNation().active_m() > 10000) {
             verb = "for optimal loot";
 
             SimulatedWar warSim = new SimulatedWar(origin, valueFunction, goal);

@@ -98,7 +98,7 @@ public class NationUpdateProcessor {
             if (nation.lastActiveMs() < inactive7d || nation.getPosition() <= Rank.APPLICANT.id || nation.getLeaving_vm() > turnNow) continue;
             int aaId = nation.getAlliance_id();
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
-            boolean active = nation.getActive_m() < 30;
+            boolean active = nation.active_m() < 30;
             if (!active && nation.lastActiveMs() > inactive1d && nation.getLeaving_vm() <= turnNow && nation.getPositionEnum().id > Rank.APPLICANT.id) {
                 active = online.contains(nation.getId());
             }
@@ -252,7 +252,7 @@ public class NationUpdateProcessor {
     }
 
     private void checkOfficerChange(DBNation previous, DBNation current) {
-        if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880) return;
+        if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.active_m() > 4880) return;
         if (previous.getPosition() < Rank.OFFICER.id) {
             DBAlliancePosition position = previous.getAlliancePosition();
             if (position == null || !position.hasAnyAdminPermission()) return;
@@ -308,7 +308,7 @@ public class NationUpdateProcessor {
                     body.append("\n" + nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum());
                     Locutus.imp().getRootDb().addCoalition(nation.getAlliance_id(), Coalition.FROZEN_FUNDS);
                     adminInfo.add(nation.getAllianceUrlMarkup(true));
-                    AlertUtil.error(nation.getAlliance_id() + " frozen", nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum() + " " + nation.getNationUrlMarkup(true) + " " + nation.getNation());
+                    AlertUtil.error(nation.getAlliance_id() + " frozen", nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum() + " " + nation.getNationUrlMarkup(true) + " " + nation.getNation(), true);
                 }
             }
         } else {
@@ -333,7 +333,7 @@ public class NationUpdateProcessor {
                             if (nation != null) {
                                 alertMsg += "\n" + nation.getNationUrlMarkup(true) + " " + nation.getNation();
                             }
-                            AlertUtil.error(guild.getIdLong() + " frozen", alertMsg);
+                            AlertUtil.error(guild.getIdLong() + " frozen", alertMsg, true);
                         }
                     }
                 }
@@ -387,16 +387,16 @@ public class NationUpdateProcessor {
 
         boolean leftVMBeige = false;
         String title;
-        if (previous.isBeige() && !current.isBeige() && current.getActive_m() < 10000) {
+        if (previous.isBeige() && !current.isBeige() && current.active_m() < 10000) {
             title = "Left Beige: " + current.getNation() + " | " + current.getAllianceName();
             leftVMBeige = true;
         } else if (previous.getVm_turns() > 0 && current.getVm_turns() == 0) {
             title = "Left VM: " + current.getNation() + " | " + current.getAllianceName();
             leftVMBeige = true;
-        } else if (previous.getActive_m() <= 10080 && current.getActive_m() > 10080) {
+        } else if (previous.active_m() <= 10080 && current.active_m() > 10080) {
             title = "Inactive: " + current.getNation() + " | " + current.getAllianceName();
             leftVMBeige = true;
-        } else if (previous.getAlliance_id() != 0 && current.getAlliance_id() == 0 && current.getActive_m() > 1440) {
+        } else if (previous.getAlliance_id() != 0 && current.getAlliance_id() == 0 && current.active_m() > 1440) {
             title = "Removed: " + current.getNation() + " | " + current.getAllianceName();
             leftVMBeige = true;
         } else if (previous.getDef() >= 3 && current.getDef() < 3 && !current.isBeige()) {
@@ -424,7 +424,7 @@ public class NationUpdateProcessor {
                     boolean inRange = false;
                     Set<DBNation> nations = guildDB.getMemberDBNations();
                     for (DBNation nation : nations) {
-                        if (nation.getScore() >= minScore && nation.getScore() <= maxScore && nation.getActive_m() < 1440 && nation.getOff() < nation.getMaxOff() && BlitzGenerator.getAirStrength(nation, true) > strength * 0.7) {
+                        if (nation.getScore() >= minScore && nation.getScore() <= maxScore && nation.active_m() < 1440 && nation.getOff() < nation.getMaxOff() && BlitzGenerator.getAirStrength(nation, true) > strength * 0.7) {
                             inRange = true;
                         }
                     }
@@ -461,11 +461,11 @@ public class NationUpdateProcessor {
                             if (attacker == null) continue;
 
                             OnlineStatus status = member.getOnlineStatus();
-                            if (attacker.getActive_m() > 15 && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE))
+                            if (attacker.active_m() > 15 && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE))
                                 continue;
                             if (optOut != null && member.getRoles().contains(optOut)) continue;
 
-                            if (/* attacker.getActive_m() > 1440 || */attacker.getDef() >= 3 || attacker.getVm_turns() != 0 || attacker.isBeige())
+                            if (/* attacker.active_m() > 1440 || */attacker.getDef() >= 3 || attacker.getVm_turns() != 0 || attacker.isBeige())
                                 continue;
                             if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
                             if (attacker.getOff() > 4) continue;
@@ -478,9 +478,9 @@ public class NationUpdateProcessor {
 
                             AbstractMap.SimpleEntry<DBNation, Member> entry = new AbstractMap.SimpleEntry<>(attacker, member);
 
-                            if (attacker.getCities() < current.getCities() * 0.66 && (current.getActive_m() < 3000))
+                            if (attacker.getCities() < current.getCities() * 0.66 && (current.active_m() < 3000))
                                 continue;
-                            if (attacker.getCities() < current.getCities() * 0.70 && (current.getActive_m() < 2440))
+                            if (attacker.getCities() < current.getCities() * 0.70 && (current.active_m() < 2440))
                                 continue;
                             if (attacker.getCities() < current.getCities() * 0.75 && (current.getSoldiers() > attacker.getSoldiers() * 0.33 || current.getAircraft() > attacker.getAircraft() * 0.66))
                                 continue;
@@ -534,7 +534,7 @@ public class NationUpdateProcessor {
 
     private boolean raidAlert(DBNation defender) {
         if (defender.getDef() > 2) return false;
-        if (defender.getActive_m() > 260 * 60 * 24) return false;
+        if (defender.active_m() > 260 * 60 * 24) return false;
         if (defender.isBeige()) return false;
         double loot = defender.lootTotal();
         if (loot < 10000000) {
@@ -554,7 +554,7 @@ public class NationUpdateProcessor {
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 if (!guildDB.isWhitelisted() || !guildDB.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) return;
 
-                if (guildDB.violatesDNR(defender) || (defender.getPosition() > 1 && defender.getActive_m() < 10000)) return;
+                if (guildDB.violatesDNR(defender) || (defender.getPosition() > 1 && defender.active_m() < 10000)) return;
 
                 Guild guild = guildDB.getGuild();
                 Set<Integer> ids = guildDB.getAllianceIds(false);
@@ -619,7 +619,7 @@ public class NationUpdateProcessor {
     }
 
     private void handleOfficerDelete(DBNation previous, DBNation current) {
-        if (current != null || previous == null || previous.getActive_m() > 10000) return;
+        if (current != null || previous == null || previous.active_m() > 10000) return;
         if (previous.getPosition() < Rank.OFFICER.id) {
             DBAlliancePosition position = previous.getAlliancePosition();
             if (position == null || !position.hasAnyAdminPermission()) return;
@@ -725,7 +725,7 @@ public class NationUpdateProcessor {
     }
 
     private static void checkExodus(DBNation previous, DBNation current) {
-        if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880 || previous.getAlliance_id() == 0 || previous.getPosition() == 1) return;
+        if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.active_m() > 4880 || previous.getAlliance_id() == 0 || previous.getPosition() == 1) return;
         DBAlliance alliance = previous.getAlliance(false);
         if (alliance == null || alliance.getRank() > 120) return;
 
@@ -746,7 +746,7 @@ public class NationUpdateProcessor {
             if (nation.getAlliance_id() == alliance.getAlliance_id()) continue;
             scoreDrop += nation.getScore();
 
-            if (nation.getActive_m() > 4880 || nation.getVm_turns() > 0 || nation.getCities() <= 3) continue;
+            if (nation.active_m() > 4880 || nation.getVm_turns() > 0 || nation.getCities() <= 3) continue;
 
             String line = PnwUtil.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + entry.getValue().getValue().name();
             if (nation.getAlliance_id() > 0) {
@@ -928,7 +928,7 @@ public class NationUpdateProcessor {
     }
 
     public static void processDeletion(DBNation previous, DBNation current) {
-        if (previous.getActive_m() < 14400 && current == null) {
+        if (previous.active_m() < 14400 && current == null) {
             processVMTransfers(previous, previous);
 
             String type = "DELETION";

@@ -57,7 +57,7 @@ public class MailTargets extends Command {
     public static String getStrengthInfo(DBNation nation) {
         String msg = "Ground:" + (int) nation.getGroundStrength(true, false) + ", Air: " + nation.getAircraft() + ", cities:" + nation.getCities();
 
-        if (nation.getActive_m() > 10000) msg += " (inactive)";
+        if (nation.active_m() > 10000) msg += " (inactive)";
         else {
             msg += " (" + ((int) (nation.avg_daily_login() * 100)) + "% active)";
         }

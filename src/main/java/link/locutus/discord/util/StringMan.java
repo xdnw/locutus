@@ -13,6 +13,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -134,6 +135,11 @@ public class StringMan {
         }
 
         return formattedText.toString();
+    }
+
+    public static String normalize(String text) {
+        text = Normalizer.normalize(text, Normalizer.Form.NFKD);
+        return text.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "");
     }
 
     public static String indentSpaces(int count) {

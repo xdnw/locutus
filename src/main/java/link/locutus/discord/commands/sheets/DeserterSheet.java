@@ -99,7 +99,7 @@ public class DeserterSheet extends Command {
             }
         }
 
-        if (flags.contains('a')) nations.removeIf(n -> n.getKey().getActive_m() > 10000);
+        if (flags.contains('a')) nations.removeIf(n -> n.getKey().active_m() > 10000);
         if (flags.contains('v')) nations.removeIf(n -> n.getKey().getVm_turns() != 0);
         if (flags.contains('n')) nations.removeIf(n -> n.getKey().getPosition() > 1);
         if (nations.isEmpty()) return "No nations find over the specified timeframe";
@@ -155,7 +155,7 @@ public class DeserterSheet extends Command {
             row.add(defender.getSpies() + "");
             row.add(defender.getScore() + "");
             row.add(defender.getBeigeTurns() + "");
-            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
+            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
 
             Activity activity = defender.getActivity(12 * 7 * 2);
             row.add(activity.getAverageByDay());

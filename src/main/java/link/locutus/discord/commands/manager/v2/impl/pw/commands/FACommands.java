@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -32,6 +33,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -270,7 +272,16 @@ public class FACommands {
         }
 
         String title = allTreaties.size() + " treaties";
-        channel.create().embed(title, response.toString()).send();
+        IMessageBuilder msg = channel.create().embed(title, response.toString());
+
+        try {
+            byte[] image = ImageUtil.generateTreatyGraph(allTreaties);
+            msg = msg.image("treaties.png", image);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        msg.send();
         return null;
     }
 

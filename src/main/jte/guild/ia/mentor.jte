@@ -43,8 +43,8 @@
 @param IACheckup checkup2
 
 <h2>Mentor: <a href="${mentor.getNationUrl()}">${mentor.getNation()}</a> | <a href="discord://discordapp.com/users/${mentor.getUserId()}">@${mentor.getUserDiscriminator()}</a></h2>
-@if(mentor.getActive_m() > 4880)
-<div class="alert alert-danger p-1 m-1"><b>Mentor is inactive: </b> ${TimeUtil.minutesToTime(mentor.getActive_m())}</div>
+@if(mentor.active_m() > 4880)
+<div class="alert alert-danger p-1 m-1"><b>Mentor is inactive: </b> ${TimeUtil.minutesToTime(mentor.active_m())}</div>
 @endif
 @if(mentor.getVm_turns() > 0)
 <div class="alert alert-danger p-1 m-1"><b>Mentor is VM: </b> ${TimeUtil.turnsToTime(mentor.getVm_turns())}</div>

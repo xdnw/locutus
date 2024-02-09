@@ -167,7 +167,7 @@ public class ROI extends Command {
             try {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
-                    if (nation.getActive_m() > TimeUnit.DAYS.toMinutes(7)) continue;
+                    if (nation.active_m() > TimeUnit.DAYS.toMinutes(7)) continue;
                     IMessageBuilder msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
                         msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree();
@@ -188,7 +188,7 @@ public class ROI extends Command {
             roi(nation, Integer.MAX_VALUE, Integer.MAX_VALUE, from, days, roiMap, 500);
         } else {
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
-            nations.removeIf(n -> n.getActive_m() > 10000 || n.getVm_turns() > 0);
+            nations.removeIf(n -> n.active_m() > 10000 || n.getVm_turns() > 0);
             if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(author)) {
                 nations.removeIf(n -> !aaIds.contains(n.getAlliance_id()));
                 if (nations.isEmpty()) {

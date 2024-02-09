@@ -1321,8 +1321,8 @@ public class GrantCommands {
 //                Role temp = Roles.TEMP.toRole(db.getGuild());
 //                grant.addRequirement(new Grant.Requirement("Nation not eligible for grants (has role: " + temp.getName() + ")", econStaff, f -> !member.getRoles().contains(temp)));
 //
-//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 24h", econStaff, f -> f.getActive_m() < 1440));
-//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 7d", econGov, f -> f.getActive_m() < 10000));
+//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 24h", econStaff, f -> f.active_m() < 1440));
+//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 7d", econGov, f -> f.active_m() < 10000));
 //
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 5 raids going", econStaff, f -> f.getCities() >= 10 || f.getOff() >= 5));
 //
@@ -1608,7 +1608,7 @@ public class GrantCommands {
 //                                if (f.getOff() > 0) {
 //                                    for (DBWar war : f.getActiveWars()) {
 //                                        DBNation other = war.getNation(war.isAttacker(f));
-//                                        if (other.getActive_m() < 1440 || other.getPosition() >= Rank.APPLICANT.id) {
+//                                        if (other.active_m() < 1440 || other.getPosition() >= Rank.APPLICANT.id) {
 //                                            return false;
 //                                        }
 //                                    }

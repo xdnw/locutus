@@ -45,6 +45,7 @@ public class WebRoot {
     private final BankRequestHandler legacyBankHandler;
     private final TemplateEngine jteEngine;
     private final DirectoryCodeResolver jteResolver;
+    private final AwsManager aws;
 
     private static TemplateEngine createTemplateEngine() {
         TemplateEngine engine = TemplateEngine.createPrecompiled(Path.of("src/main/jte"), ContentType.Plain);
@@ -52,6 +53,10 @@ public class WebRoot {
         engine.setTrimControlStructures(true);
         engine.setBinaryStaticContent(true);
         return engine;
+    }
+
+    public AwsManager getAws() {
+        return aws;
     }
 
     private static DirectoryCodeResolver createResolver() {
@@ -217,7 +222,9 @@ public class WebRoot {
         }
 
         this.app.get("/page/**", ctx -> {
+            long start = System.currentTimeMillis();
             pageHandler.handle(ctx);
+            System.out.println("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
         });
         this.app.post("/page/**", ctx -> {
             pageHandler.handle(ctx);
@@ -234,6 +241,19 @@ public class WebRoot {
         this.app.get("/", ctx -> {
             pageHandler.handle(ctx);
         });
+
+        this.aws = setupAws();
+    }
+
+    private AwsManager setupAws() {
+        String key = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
+        String secret = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
+        String region = Settings.INSTANCE.WEB.S3.REGION;
+        String bucket = Settings.INSTANCE.WEB.S3.BUCKET;
+        if (!key.isEmpty() && !secret.isEmpty() && !region.isEmpty() && !bucket.isEmpty()) {
+            return new AwsManager(key, secret, bucket, region);
+        }
+        return null;
     }
 
     public Javalin getApp() {

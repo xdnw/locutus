@@ -1,8 +1,5 @@
 package link.locutus.discord.apiv3.enums;
 
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.util.update.WarUpdateProcessor;
-
 import java.util.Map;
 
 public enum AttackTypeSubCategory {
@@ -10,7 +7,6 @@ public enum AttackTypeSubCategory {
     GROUND_NO_TANKS_MUNITIONS_USED_NECESSARY("Ground attack with no tanks where munitions were necessary"),
     GROUND_TANKS_MUNITIONS_USED_NECESSARY("Ground attack with tanks where munitions were necessary"),
     GROUND_TANKS_MUNITIONS_USED_UNNECESSARY("Ground attack with tanks and munitions when munitions were not needed for an immense triumph"),
-    AIRSTRIKE_NOT_DOGFIGHT_UNSUCCESSFUL("Unsuccessful dogfight"),
     AIRSTRIKE_3_PLANE("Airstrike with 3 planes"),
     AIRSTRIKE_UNIT("Aristrike that killed units"),
     NAVY_1_SHIP("Naval attack using 1 ship"),
@@ -37,7 +33,7 @@ public enum AttackTypeSubCategory {
     AIRSTRIKE_TANKS_NONE("You performed an airstrike against enemy tanks when the enemy has none"),
     AIRSTRIKE_SHIP_NONE("You performed an airstrike against enemy ships when the enemy has none"),
     AIRSTRIKE_INACTIVE_NO_GROUND("You performed an airstrike against an inactive enemy, but could have won a ground battle using soldiers and no munitions."),
-    AIRTRIKE_INACTIVE_NO_SHIP("You performed an airstrike against an inactive enemy, but could have won a naval battle with 1 ship."),
+    AIRSTRIKE_INACTIVE_NO_SHIP("You performed an airstrike against an inactive enemy, but could have won a naval battle with 1 ship."),
     AIRSTRIKE_FAILED_NOT_DOGFIGHT("You performed an airstrike against an enemy with relatively strong air, but did not target aircraft. A dogfight will inflict 83% more air casualties: <https://politicsandwar.fandom.com/wiki/Airstrike#Aircraft>"),
     AIRSTRIKE_AIRCRAFT_NONE("You performed a dogfight against an enemy with no aircraft. "),
     AIRSTRIKE_AIRCRAFT_NONE_INACTIVE(AIRSTRIKE_AIRCRAFT_NONE.message + "You can get an immense triumph with just 3 aircraft"),

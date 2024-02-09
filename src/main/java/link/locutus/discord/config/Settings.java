@@ -480,6 +480,25 @@ public class Settings extends Config {
 
 
     public static class WEB {
+        @Create
+        public S3 S3;
+
+        @Comment({"(Optional) Configure AWS S3 bucket for caching war stats",
+        "The access key, secret key and region must be set to be enabled",
+        "Leave blank to disable"})
+        public static final class S3 {
+            @Comment("Access key for AWS S3 - for storing binary data")
+            public String ACCESS_KEY = "";
+
+            @Comment("Secret Access key for AWS S3 - for storing binary data")
+            public String SECRET_ACCESS_KEY = "";
+
+            @Comment("Region of AWS S3 bucket (e.g. `ap-southeast-2`)")
+            public String REGION = "";
+
+            @Comment("Name of AWS S3 bucket (e.g. `locutus`)")
+            public String BUCKET = "";
+        }
         @Comment("The cosmetic name of the web interface")
         public String INTERFACE_NAME = "Locutus";
 

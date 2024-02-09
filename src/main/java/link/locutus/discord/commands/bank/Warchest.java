@@ -105,7 +105,7 @@ public class Warchest extends Command {
         if (nations.size() != 1 || !flags.contains('b')) {
             nations.removeIf(n -> n.getPosition() <= 1);
             nations.removeIf(n -> n.getVm_turns() != 0);
-            nations.removeIf(n -> n.getActive_m() > 2880);
+            nations.removeIf(n -> n.active_m() > 2880);
             nations.removeIf(n -> n.isGray() && n.getOff() == 0);
             nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
         }

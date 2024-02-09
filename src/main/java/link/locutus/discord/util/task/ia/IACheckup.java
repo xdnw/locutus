@@ -127,7 +127,7 @@ public class IACheckup {
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Collection<DBNation> nations, Consumer<DBNation> onEach, AuditType[] auditTypes, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = new LinkedHashMap<>();
         for (DBNation nation : nations) {
-            if (nation.getVm_turns() != 0 || nation.getActive_m() > 10000) continue;
+            if (nation.getVm_turns() != 0 || nation.active_m() > 10000) continue;
 
             if (onEach != null) onEach.accept(nation);
 
@@ -788,7 +788,7 @@ public class IACheckup {
             if (war.getAttacker_id() != nation.getNation_id()) continue;
             if (war.getStatus() != WarStatus.ACTIVE) continue;
             DBNation defender = DBNation.getById(war.getDefender_id());
-            if (defender == null || defender.getActive_m() < 2880) continue;
+            if (defender == null || defender.active_m() < 2880) continue;
             Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks2(false));
             if (map.getKey() >= 12) {
                 maxMapWars.add(war);
@@ -1039,7 +1039,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkInactive(DBNation nation) {
-        long daysInactive = TimeUnit.MINUTES.toDays(nation.getActive_m());
+        long daysInactive = TimeUnit.MINUTES.toDays(nation.active_m());
         if (daysInactive > 1) {
             String message = "Hasn't logged in for " + daysInactive + " days.";
             return new AbstractMap.SimpleEntry<>(daysInactive, message);
@@ -1107,7 +1107,7 @@ public class IACheckup {
                 if (enemy.getVm_turns() != 0) continue;
                 if (enemy.getDef() >= 3) continue;
                 if (enemy.hasUnsetMil()) continue;
-                if (enemy.getActive_m() < 10000) continue;
+                if (enemy.active_m() < 10000) continue;
                 if (enemy.getAlliance_id() != 0) continue;
                 if (enemy.isBeige()) continue;
                 if (enemy.getAircraft() > nation.getAircraft() * 0.33 &&

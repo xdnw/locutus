@@ -79,8 +79,12 @@ public enum ResourceType {
         return null;
     }
     public static final ResourceType parse(String input) {
-        if (input.equalsIgnoreCase("ALUMINIUM")) {
-            return ALUMINUM;
+        switch (input.toUpperCase()) {
+            case "ALUM":
+            case "ALUMINIUM":
+                return ALUMINUM;
+            case "URA":
+                return URANIUM;
         }
         return valueOf(input.toUpperCase());
     }

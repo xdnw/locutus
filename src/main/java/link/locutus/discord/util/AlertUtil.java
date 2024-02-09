@@ -2,6 +2,8 @@ package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -232,11 +234,22 @@ public class AlertUtil {
     }
 
     public static void error(String title, String body) {
+        error(title, body, false);
+    }
+
+    public static void error(String title, String body, boolean pingOwner) {
         if (Settings.INSTANCE.DISCORD.CHANNEL.ERRORS == 0) return;
         if (title == null) title = "error";
         else if (title.toLowerCase().contains("captcha")) return;
         try {
-            DiscordUtil.createEmbedCommand(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS, title, body);
+            MessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS);
+            if (channel != null) {
+                IMessageBuilder msg = new DiscordChannelIO(channel).create().embed(title, body);
+                if (pingOwner) {
+                    msg.append("<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                }
+                msg.send();
+            }
         } catch (IllegalArgumentException ignore) {
             ignore.printStackTrace();
         }

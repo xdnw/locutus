@@ -67,7 +67,7 @@ public class IntelOpSheet extends Command {
         long millis = TimeUtil.timeToSec(args.get(0)) * 1000L;
         long cutOff = System.currentTimeMillis() - millis;
         Set<DBNation> attackers = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);
-        attackers.removeIf(f -> f.getPosition() <= 1 || f.getActive_m() > 1440 || f.getVm_turns() > 0);
+        attackers.removeIf(f -> f.getPosition() <= 1 || f.active_m() > 1440 || f.getVm_turns() > 0);
         Integer topX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (args.size() > 2) topX = Integer.parseInt(args.get(2));
         if (topX == null) return usage("No `topX` value provided", channel);
@@ -83,7 +83,7 @@ public class IntelOpSheet extends Command {
             enemies.removeIf(f -> !canRaid.apply(f));
         }
         enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
-        enemies.removeIf(f -> f.getActive_m() < 4320);
+        enemies.removeIf(f -> f.active_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
         enemies.removeIf(f -> !f.isGray());
 //        enemies.removeIf(f -> f.getCities() < 4);
@@ -100,7 +100,7 @@ public class IntelOpSheet extends Command {
             if (opValue == null) {
                 iter.remove();
 
-//                if (nation.getActive_m() < 4320) continue;
+//                if (nation.active_m() < 4320) continue;
 //                if (nation.getVm_turns() != 0) continue;
 //                if (!nation.isGray()) continue;
 //                if (nation.getDef() == 3) continue;
@@ -112,7 +112,7 @@ public class IntelOpSheet extends Command {
 //                Map.Entry<Long, double[]> lootHistory = Locutus.imp().getWarDb().getNationLoot(nation.getNation_id()).get(nation.getNation_id());
 //                if (lootHistory != null && lootHistory.getKey() > cutoff) System.out.println("Spied in past 14d " + nation.getNationUrl());
 //
-//                long lastActiveDate = currentDate - nation.getActive_m() * 60 * 1000;
+//                long lastActiveDate = currentDate - nation.active_m() * 60 * 1000;
 //                if (lastActiveDate - 2880 > cutoff) System.out.println("Active in past 16 days " + nation.getNationUrl());;
 
                 continue;

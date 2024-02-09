@@ -1,5 +1,8 @@
 package link.locutus.discord.db.entities;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 public class DBTopic {
     public final int topic_id;
     public final int section_id;
@@ -23,4 +26,15 @@ public class DBTopic {
         this.poster_name = poster_name;
     }
 
+    public DBTopic(ResultSet rs) throws SQLException {
+        this.topic_id = rs.getInt("topic_id");
+        this.section_id = rs.getInt("section_id");
+        this.topic_name = rs.getString("topic_name");
+        this.topic_urlname = rs.getString("topic_urlname");
+        this.section_name = rs.getString("section_name");
+        this.section_urlname = rs.getString("section_urlname");
+        this.timestamp = rs.getLong("timestamp");
+        this.poster_id = rs.getInt("poster_id");
+        this.poster_name = rs.getString("poster_name");
+    }
 }

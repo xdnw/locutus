@@ -58,7 +58,7 @@ public class CombatantSheet extends Command {
                 return true;
             }
             DBNation self = alliances.contains(n1.getAlliance_id()) ? n1 : n2;
-            return n1.getActive_m() > 4320 || n2.getActive_m() > 4320 || self.getPosition() <= 1;
+            return n1.active_m() > 4320 || n2.active_m() > 4320 || self.getPosition() <= 1;
         });
 
         if (wars.isEmpty()) return "No wars found";

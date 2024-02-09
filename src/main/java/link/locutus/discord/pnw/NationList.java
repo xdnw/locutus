@@ -354,7 +354,7 @@ public interface NationList extends NationFilter {
     default Set<Integer> updateSpies(boolean updateManually) {
         Set<DBNation> toUpdate = new HashSet<>(getNations());
         return toUpdate.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
-//        toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 7200);
+//        toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 7200);
 //        Set<Integer> alliances = new HashSet<>();
 //        for (DBNation nation : toUpdate) {
 //            if (nation.getPosition() > Rank.APPLICANT.id) {

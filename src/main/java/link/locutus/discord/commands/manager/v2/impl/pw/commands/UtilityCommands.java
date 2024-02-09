@@ -425,7 +425,7 @@ public class UtilityCommands {
 
             for (DBNation member : members) {
                 if (member.getVm_turns() > 0) numVM++;
-                if (member.getVm_turns() == 0 && member.getActive_m() > 10000) {
+                if (member.getVm_turns() == 0 && member.active_m() > 10000) {
                     continue outer;
                 }
                 if (member.getVm_turns() == 0) {
@@ -452,7 +452,7 @@ public class UtilityCommands {
                 boolean lowMil = false;
                 for (DBNation member : members) {
                     if (member.getVm_turns() != 0) continue;
-                    if (member.getActive_m() > 7200) {
+                    if (member.active_m() > 7200) {
                         continue outer;
                     }
                     if (member.isGray()) {
@@ -557,7 +557,7 @@ public class UtilityCommands {
             if (nations.size() > 2) continue;
 
             for (DBNation nation : nations) {
-                if (nation.getActive_m() > 7200) continue outer;
+                if (nation.active_m() > 7200) continue outer;
             }
 
             Set<DBAlliance> treaties = DBAlliance.getOrCreate(aaId).getTreatiedAllies();
@@ -1070,7 +1070,7 @@ public class UtilityCommands {
                 info.append("Nation Loot from " + type);
                 info.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lootInfo.getDate()) + " ago)");
                 info.append(", worth: $" + MathMan.format(originalValue) + "($" + MathMan.format(originalLootable) + " lootable)");
-                if (nationOrAlliance.asNation().getActive_m() > 1440) info.append("- inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().getActive_m()));
+                if (nationOrAlliance.asNation().active_m() > 1440) info.append("- inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().active_m()));
                 extraInfo.add(info.toString());
             } else {
                 extraInfo.add("No spy or beige loot found");
@@ -1184,8 +1184,8 @@ public class UtilityCommands {
                 response.append("`" + DiscordUtil.getFullUsername(user) + "`" + " `<@" + user.getIdLong() + ">`");
                 DBNation nation = DiscordUtil.getNation(user);
                 if (nation != null) {
-                    String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
-                    if (nation.getActive_m() > 10000) active = "**" + active + "**";
+                    String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m());
+                    if (nation.active_m() > 10000) active = "**" + active + "**";
                     response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
                 }
                 response.append("- ").append(entry.getValue());
@@ -1796,7 +1796,7 @@ public class UtilityCommands {
         Boolean dnr = db.getCanRaid().apply(nation);
         if (!dnr) {
             title = ("do NOT raid " + nation.getNation());
-        }  else if (nation.getPosition() > 1 && nation.getActive_m() < 10000) {
+        }  else if (nation.getPosition() > 1 && nation.active_m() < 10000) {
             title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "");
         } else if (nation.getPosition() > 1) {
             title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "";

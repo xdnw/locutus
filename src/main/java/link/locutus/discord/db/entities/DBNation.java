@@ -151,7 +151,6 @@ public class DBNation implements NationOrAlliance {
 //    private double gdp;
     private double gni;
     private transient  DBNationCache cache;
-
     public static DBNation getByUser(User user) {
         return DiscordUtil.getNation(user);
     }
@@ -619,7 +618,7 @@ public class DBNation implements NationOrAlliance {
     public Map.Entry<Double, Boolean> getIntelOpValue(long cutoff) {
         if (active_m() < 4320) return null;
         if (getVm_turns() > 12) return null;
-        if (getActive_m() > 385920) return null;
+        if (active_m() > 385920) return null;
 //        if (!isGray()) return null;
         if (getDef() == 3) return null;
         long currentDate = System.currentTimeMillis();
@@ -653,7 +652,7 @@ public class DBNation implements NationOrAlliance {
 
         long diffMin = TimeUnit.MILLISECONDS.toMinutes(currentDate - lastLootDate);
 
-        if (getActive_m() < 12000) {
+        if (active_m() < 12000) {
             diffMin /= 8;
             DBWar lastWar = Locutus.imp().getWarDb().getLastDefensiveWar(nation_id);
             if (lastWar != null) {
@@ -667,7 +666,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
-        double value = getAvg_infra() * (diffMin + getActive_m()) * getCities();
+        double value = getAvg_infra() * (diffMin + active_m()) * getCities();
 
         if (loot == null && cities < 12) {
             long finalLastLootDate = lastLootDate;
@@ -864,7 +863,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double getRelativeStrength(boolean inactiveIsLoss) {
-        if (getActive_m() > 2440 && inactiveIsLoss) return 0;
+        if (active_m() > 2440 && inactiveIsLoss) return 0;
 
         double myStr = getStrength();
         double enemyStr = getEnemyStrength();
@@ -2670,8 +2669,16 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Minutes since last active in-game")
-    public int getActive_m() {
-        return active_m();
+    public int getActive_m(@Default @Timestamp Long time) {
+        long now = System.currentTimeMillis();
+        if (time != null) {
+            if (time < now - TimeUnit.MINUTES.toMillis(15)) {
+                now = time;
+            } else {
+                time = null;
+            }
+        }
+        return (int) TimeUnit.MILLISECONDS.toMinutes(now - (time == null ? lastActiveMs() : lastActiveMs(time)));
     }
 
     public void setActive_m(int active_m) {
@@ -3030,7 +3037,7 @@ public class DBNation implements NationOrAlliance {
         int total = 0;
         for (DBWar war : getActiveWars()) {
             DBNation other = war.getNation(!war.isAttacker(this));
-            if (other != null && other.getActive_m() < 4880) total++;
+            if (other != null && other.active_m() < 4880) total++;
         }
         return total;
     }
@@ -3259,7 +3266,7 @@ public class DBNation implements NationOrAlliance {
                 .append(vm > 0 ? " vm=" + TimeUtil.secToTime(TimeUnit.HOURS, vm * 2) : "")
                 .append("\n```")
                 .append(String.format("%5s", (int) getScore())).append(" ns").append(" | ")
-                .append(String.format("%10s", TimeUtil.secToTime(TimeUnit.MINUTES, getActive_m()))).append(" \uD83D\uDD52").append(" | ")
+                .append(String.format("%10s", TimeUtil.secToTime(TimeUnit.MINUTES, active_m()))).append(" \uD83D\uDD52").append(" | ")
                 .append(String.format("%2s", getCities())).append(" \uD83C\uDFD9").append(" | ");
                 if (showInfra) response.append(String.format("%5s", (int) getAvg_infra())).append(" \uD83C\uDFD7").append(" | ");
                 response.append(String.format("%6s", getSoldiers())).append(" \uD83D\uDC82").append(" | ")
@@ -3581,10 +3588,10 @@ public class DBNation implements NationOrAlliance {
             }
         }
         return PnwUtil.convertedTotal(knownResources);
-//        if (getActive_m() > TimeUnit.DAYS.toMinutes(90)) {
+//        if (active_m() > TimeUnit.DAYS.toMinutes(90)) {
 //            return 0;
 //        }
-//        if (getActive_m() <= 10000) {
+//        if (active_m() <= 10000) {
 //            if (!fetchStats) {
 //                return 0;
 //            }
@@ -3669,7 +3676,7 @@ public class DBNation implements NationOrAlliance {
 //        }
 //        Map<Integer, JavaCity> cityMap = getCityMap(false, false);
 //
-//        double daysInactive = Math.min(90, TimeUnit.MINUTES.toDays(getActive_m()));
+//        double daysInactive = Math.min(90, TimeUnit.MINUTES.toDays(active_m()));
 //        Arrays.fill(buffer, 0);
 //        double rads = getRads();
 //        for (Map.Entry<Integer, JavaCity> entry : cityMap.entrySet()) {
@@ -4440,7 +4447,6 @@ public class DBNation implements NationOrAlliance {
             if (cap == Integer.MAX_VALUE) cap = -1;
             // 6 chars
             String unitsStr = String.format("%6s", getUnits(unit));
-            // getRemainingUnitBuy(unit, dcTimestamp)
             String remainingStr = String.format("%6s", getRemainingUnitBuy(unit, dcTimestamp));
             String capStr = String.format("%6s", cap);
             body.append(String.format("%2s", unit.getEmoji())).append(" ").append(unitsStr).append("|").append(remainingStr).append("|").append(capStr).append("").append("\n");
@@ -4561,7 +4567,7 @@ public class DBNation implements NationOrAlliance {
         if (general || military) {
             response.append("```");
             if (general) {
-                int active = getActive_m();
+                int active = active_m();
                 active = active - active % (60);
                 String time = active <= 1 ? "Online" : TimeUtil.secToTime(TimeUnit.MINUTES, active);
                 response
@@ -4821,7 +4827,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "If this nation is not daily active and lost their most recent war")
     public boolean lostInactiveWar() {
-        if (getActive_m() < 2880) return false;
+        if (active_m() < 2880) return false;
         DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, getSnapshot());
         if (lastWar != null && lastWar.getDefender_id() == nation_id && lastWar.getStatus() == WarStatus.ATTACKER_VICTORY) {
             long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
@@ -5250,7 +5256,7 @@ public class DBNation implements NationOrAlliance {
         if (getOff() > 0) {
             for (DBWar activeWar : this.getActiveWars()) {
                 DBNation other = activeWar.getNation(!activeWar.isAttacker(this));
-                if (other != null && other.getActive_m() < 1440 && other.getVm_turns() == 0) return true;
+                if (other != null && other.active_m() < 1440 && other.getVm_turns() == 0) return true;
             }
         }
         return false;
@@ -5398,6 +5404,10 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Get units at a specific date")
     @RolePermission(Roles.MILCOM)
     public int getUnits(MilitaryUnit unit, long date) {
+        long now = System.currentTimeMillis();
+        if (date > now - TimeUnit.MILLISECONDS.toMillis(15)) {
+            return getUnits(unit);
+        }
         return Locutus.imp().getNationDB().getMilitary(this, unit, date);
     }
 
@@ -5779,7 +5789,7 @@ public class DBNation implements NationOrAlliance {
         if (getPositionEnum().id < Rank.APPLICANT.id || !db.isAllianceId(alliance_id)) {
             return -1;
         }
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getUpdateTZ");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getFreeOffSpyOps");
         List<DBNation> nations = scoped.getList(this);
         Map<DBNation, Integer> update = scoped.getGlobal(() -> db.getAllianceList().subList(nations).updateOffSpyOps());
         return update.getOrDefault(this, -1);
@@ -6264,6 +6274,16 @@ public class DBNation implements NationOrAlliance {
             type = CommandResult.ERROR;
         }
         return new AbstractMap.SimpleEntry<>(type, result);
+    }
+
+    public long lastActiveMs(long timestamp) {
+        long currentTurn = TimeUtil.getTurn(timestamp);
+        long lastTurn = Locutus.imp().getNationDB().getLastActiveTurn(getId(), currentTurn);
+        long diffTurn = currentTurn - lastTurn;
+        if (getColor() != NationColor.GRAY && getColor() != NationColor.BEIGE) {
+            diffTurn = Math.min(diffTurn, 12 * 5);
+        }
+        return TimeUtil.getTimeFromTurn(currentTurn - diffTurn);
     }
 
     public long lastActiveMs() {

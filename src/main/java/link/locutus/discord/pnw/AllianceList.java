@@ -65,7 +65,7 @@ public class AllianceList {
     public Set<DBNation> getNations(boolean removeVM, int removeInactiveM, boolean removeApps) {
         Set<DBNation> nations = getNations();
         if (removeVM) nations.removeIf(f -> f.getVm_turns() != 0);
-        if (removeInactiveM > 0) nations.removeIf(f -> f.getActive_m() > removeInactiveM);
+        if (removeInactiveM > 0) nations.removeIf(f -> f.active_m() > removeInactiveM);
         if (removeApps) nations.removeIf(f -> f.getPosition() <= 1);
         return nations;
     }

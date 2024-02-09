@@ -147,7 +147,7 @@ public class IndexPages extends PageHelper {
                 val = nameEquals;
             } else if (nation.getLeader().equalsIgnoreCase(termLow)) {
                 val = nameEquals - 0.5;
-            } else if (nation.getVm_turns() == 0 && nation.getActive_m() < 10000 && termLow.length() > 3) {
+            } else if (nation.getVm_turns() == 0 && nation.active_m() < 10000 && termLow.length() > 3) {
                 if (nation.getNation().toLowerCase().contains(termLow)) {
                     val = nameContains - Math.abs(termLow.length() - nation.getNation().length());
                 } else if (nation.getLeader().toLowerCase().contains(termLow)) {
@@ -374,7 +374,7 @@ public class IndexPages extends PageHelper {
             boolean isAttacker = war.isAttacker(nation);
             DBNation other = war.getNation(!isAttacker);
 
-            if (other.getActive_m() < 1440) {
+            if (other.active_m() < 1440) {
                 isFightingActives = true;
             }
 

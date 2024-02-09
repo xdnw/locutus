@@ -70,7 +70,7 @@ public class CheckCities extends Command {
             nations = Locutus.imp().getNationDB().getNations(aaIds);
             nations.removeIf(n -> n.getPosition() <= 1 ||
                     n.getVm_turns() > 0 ||
-                    n.getActive_m() > 10000
+                    n.active_m() > 10000
                     );
         } else {
             nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);

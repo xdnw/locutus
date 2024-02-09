@@ -1309,7 +1309,7 @@ public class WarDB extends DBMainV2 {
         if (war.getAttacker_aa() == 0 || war.getDefender_aa() == 0) {
             CounterStat stat = new CounterStat();
             stat.type = CounterType.UNCONTESTED;
-            stat.isActive = defender != null && defender.getActive_m() < 2880;
+            stat.isActive = defender != null && defender.active_m() < 2880;
             return stat;
         }
         int warId = war.warId;

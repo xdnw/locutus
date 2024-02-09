@@ -112,7 +112,7 @@ public class SpyBlitzGenerator {
 //            double attValue = entry.getValue();
 //
 //            Double attWeight = allianceWeighting.get(attacker.getAlliance_id());
-//            if (attWeight != null && (attacker.getActive_m() < 1440 || attWeight < 1)) {
+//            if (attWeight != null && (attacker.active_m() < 1440 || attWeight < 1)) {
 //                attValue *= attWeight;
 //            }
 
@@ -123,7 +123,7 @@ public class SpyBlitzGenerator {
                 double defValue = entry2.getValue();
 
                 Double defWeight = allianceWeighting.get(defender.getAlliance_id());
-                if (defWeight != null && (defender.getActive_m() < 1440 || defWeight < 1)) {
+                if (defWeight != null && (defender.active_m() < 1440 || defWeight < 1)) {
                     defValue *= defWeight;
                 }
 
@@ -167,7 +167,7 @@ public class SpyBlitzGenerator {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();
                             if (minute > 30) {
-                                if (defender.getActive_m() < minute) {
+                                if (defender.active_m() < minute) {
                                     continue;
                                 }
                             }
@@ -181,7 +181,7 @@ public class SpyBlitzGenerator {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();
                             if (minute > 30) {
-                                if (defender.getActive_m() < minute) {
+                                if (defender.active_m() < minute) {
                                     continue;
                                 }
                             }
@@ -374,7 +374,7 @@ public class SpyBlitzGenerator {
         List<DBNation> list = new ArrayList<>(nations);
 
         list.removeIf(DBNation::hasUnsetMil);
-        list.removeIf(f -> f.getActive_m() > 2880);
+        list.removeIf(f -> f.active_m() > 2880);
         list.removeIf(f -> f.getVm_turns() > 0);
         list.removeIf(f -> f.getSpies() <= 0);
         list.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);

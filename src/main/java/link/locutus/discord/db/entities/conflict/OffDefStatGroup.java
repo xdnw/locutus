@@ -17,6 +17,9 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import static link.locutus.discord.db.entities.conflict.ConflictColumn.header;
+import static link.locutus.discord.db.entities.conflict.ConflictColumn.ranking;
+
 public class OffDefStatGroup {
     public char totalWars;
     public char activeWars;
@@ -30,16 +33,42 @@ public class OffDefStatGroup {
     public final char[] successTypes = new char[SuccessType.values.length];
     public final char[] warTypes = new char[WarType.values.length];
 
-    public static Map<String, Function<OffDefStatGroup, Object>> createHeader() {
-        Map<String, Function<OffDefStatGroup, Object>> header = new Object2ObjectLinkedOpenHashMap<>();
-        header.put("wars", p -> (int) p.totalWars);
-        header.put("wars_active", p -> (int) p.activeWars);
-        header.put("attacks", p -> (int) p.attacks);
-        header.put("wars_won", p -> (int) p.warsWon);
-        header.put("wars_lost", p -> (int) p.warsLost);
-        header.put("wars_expired", p -> (int) p.warsExpired);
-        header.put("wars_peaced", p -> (int) p.warsPeaced);
-        return header;
+    public static Map<ConflictColumn, Function<OffDefStatGroup, Object>> createHeader() {
+        Map<ConflictColumn, Function<OffDefStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
+        map.put(ranking("wars"), p -> (int) p.totalWars);
+        map.put(header("wars_active"), p -> (int) p.activeWars);
+        map.put(ranking("attacks"), p -> (int) p.attacks);
+        map.put(ranking("wars_won"), p -> (int) p.warsWon);
+        map.put(header("wars_lost"), p -> (int) p.warsLost);
+        map.put(header("wars_expired"), p -> (int) p.warsExpired);
+        map.put(header("wars_peaced"), p -> (int) p.warsPeaced);
+        for (AttackType type : AttackType.values) {
+            ConflictColumn col;
+            String name = type.name().toLowerCase() + "_attacks";
+            if (type == AttackType.MISSILE || type == AttackType.NUKE) {
+                col = ranking(name);
+            } else {
+                col = header(name);
+            }
+            map.put(col, p -> (int) p.attackTypes[type.ordinal()]);
+        }
+        for (AttackTypeSubCategory type : AttackTypeSubCategory.values) {
+            switch (type) {
+                case AIRSTRIKE_MONEY:
+                case AIRSTRIKE_INFRA:
+                case MISSILE:
+                case NUKE:
+                    continue;
+            }
+            map.put(header(type.name().toLowerCase() + "_attacks"), p -> (int) p.attackSubTypes[type.ordinal()]);
+        }
+        for (SuccessType type : SuccessType.values) {
+            map.put(header(type.name().toLowerCase() + "_attacks"), p -> (int) p.successTypes[type.ordinal()]);
+        }
+        for (WarType type : WarType.values) {
+            map.put(header(type.name().toLowerCase() + "_wars"), p -> (int) p.warTypes[type.ordinal()]);
+        }
+        return map;
     }
 
     public void newWar(DBWar war, boolean isAttacker) {

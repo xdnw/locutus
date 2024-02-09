@@ -84,7 +84,7 @@ public enum BeigeReason {
         Set<Integer> enemies = db.getCoalition("enemies");
         if (!enemies.contains(defender.getAlliance_id())) result.add(NOT_AN_ENEMY);
         if (defender.getVm_turns() > 0) result.add(VACATION_MODE);
-        if (defender.getActive_m() > 2880) result.add(INACTIVE);
+        if (defender.active_m() > 2880) result.add(INACTIVE);
         if (defender.getPosition() <= 1) result.add(APPLICANT);
         if (defender.getBeigeTurns() > 120) result.add(ALREADY_BEIGE_STACKED);
         if (defender.getMissiles() >= 5) result.add(MISSILE_TURRET);
@@ -114,7 +114,7 @@ public enum BeigeReason {
 
         }
 
-        if (defender.getActive_m() < 2880 && defender.getVm_turns() == 0) {
+        if (defender.active_m() < 2880 && defender.getVm_turns() == 0) {
             List<AbstractCursor> attacks = war.getAttacks2(false);
             Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2(false));
             int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();

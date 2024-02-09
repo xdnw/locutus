@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -28,6 +29,15 @@ public class DBNationSnapshot extends DBNation {
 
     public void setCityMap(Map<Integer, DBCity> cityMap) {
         this.cityMap = cityMap;
+    }
+
+    public void addCity(DBCity city) {
+        if (cityMap == null) cityMap = new Int2ObjectOpenHashMap<>();
+        cityMap.put(city.id, city);
+    }
+
+    public boolean hasCityData() {
+        return cityMap != null;
     }
 
     private UnsupportedOperationException unsupported() {
@@ -69,13 +79,7 @@ public class DBNationSnapshot extends DBNation {
 
     @Override
     public long lastActiveMs() {
-        long currentTurn = TimeUtil.getTurn(snapshotDate);
-        long lastTurn = Locutus.imp().getNationDB().getLastActiveTurn(getId(), currentTurn);
-        long diffTurn = currentTurn - lastTurn;
-        if (getColor() != NationColor.GRAY && getColor() != NationColor.BEIGE) {
-            diffTurn = Math.min(diffTurn, 12 * 5);
-        }
-        return TimeUtil.getTimeFromTurn(currentTurn - diffTurn);
+        return lastActiveMs(snapshotDate);
     }
 
     @Override

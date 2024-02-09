@@ -73,7 +73,7 @@ public class StrengthCitySheet extends Command {
         for (int column = 0; column < args.size(); column++) {
             String arg = args.get(column);
             Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, arg, false, false);
-            nations.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > minutesInactive);
+            nations.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > minutesInactive);
 
             HashMap<Integer, Set<DBNation>> byCity = new HashMap<Integer, Set<DBNation>>();
             for (DBNation n : nations) byCity.computeIfAbsent(n.getCities(), f -> new HashSet<>()).add(n);

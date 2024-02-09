@@ -283,7 +283,7 @@ public class BlitzGenerator {
         }
 
         for (DBNation attacker : allAttackers) {
-            if (attacker.getActive_m() > 4880) {
+            if (attacker.active_m() > 4880) {
                 String response = ("Attacker: `" + attacker.getNation() + "` is inactive");
                 invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
             } else if (attacker.getVm_turns() > 1) {
@@ -296,7 +296,7 @@ public class BlitzGenerator {
             if (!isValidTarget.apply(defender)) {
                 String response = ("Defender: `" + defender.getNation() + "` is not an enemy");
                 invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
-            } else if (defender.getActive_m() > TimeUnit.DAYS.toMinutes(8)) {
+            } else if (defender.active_m() > TimeUnit.DAYS.toMinutes(8)) {
                 String response = ("Defender: `" + defender.getNation() + "` is inactive");
                 invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
             } else if (defender.getVm_turns() > 1) {
@@ -326,8 +326,8 @@ public class BlitzGenerator {
     }
 
     public void removeInactive(int minutes) {
-        colA.removeIf(n -> n.getActive_m() > minutes);
-        colB.removeIf(n -> n.getActive_m() > minutes);
+        colA.removeIf(n -> n.active_m() > minutes);
+        colB.removeIf(n -> n.active_m() > minutes);
     }
 
     public void removeSlotted() {

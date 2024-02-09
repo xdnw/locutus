@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -8,11 +9,14 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PnwUtil;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -55,6 +59,16 @@ public class TreatyUpdateProcessor {
         // Ignore treaty changes from alliance deletion
         if (fromAA == null || toAA == null) return;
 
+        Set<Treaty> treaties = new HashSet<>();
+        treaties.addAll(fromAA.getTreaties().values());
+        treaties.addAll(toAA.getTreaties().values());
+        byte[] img = null;
+        try {
+            img = ImageUtil.generateTreatyGraph(treaties);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         if (previous == null) {
             title += " " + current.getType();
         } else if (current == null) {
@@ -83,6 +97,7 @@ public class TreatyUpdateProcessor {
         body.append("\n");
 
         String finalTitle = title + (maxRank == Integer.MAX_VALUE ? "" : " | rank #" + maxRank);
+        byte[] finalImg = img;
         AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -111,7 +126,11 @@ public class TreatyUpdateProcessor {
                     }
                 }
                 DiscordChannelIO io = new DiscordChannelIO(channel);
-                io.create().embed(finalTitle, finalBody.toString()).sendWhenFree();
+                IMessageBuilder msg = io.create().embed(finalTitle, finalBody.toString());
+                if (finalImg != null) {
+                    msg.image("treaties.png", finalImg);
+                }
+                msg.sendWhenFree();
             }
         });
     }

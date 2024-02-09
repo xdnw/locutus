@@ -218,7 +218,6 @@ public class DBWar {
             long turn = TimeUtil.getTurn(attack.getDate());
             int mapUsed;
             switch (attack.getAttack_type()) {
-
                 case FORTIFY:
                     if (attack.getAttacker_id() == getAttacker_id()) {
                         fortified = true;
