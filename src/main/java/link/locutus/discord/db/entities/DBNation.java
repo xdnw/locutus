@@ -6312,10 +6312,14 @@ public class DBNation implements NationOrAlliance {
         return getGrossModifier(false);
     }
     public double getGrossModifier(boolean noFood) {
+        return getGrossModifier(noFood, getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS, hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+    }
+
+    public static double getGrossModifier(boolean noFood, boolean openMarkets, boolean gsa) {
         double grossModifier = 1;
-        if (getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS) {
+        if (openMarkets) {
             grossModifier += 0.01;
-            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
+            if (gsa) {
                 grossModifier += 0.005;
             }
         }

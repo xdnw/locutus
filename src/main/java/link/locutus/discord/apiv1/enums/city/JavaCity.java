@@ -527,12 +527,13 @@ public class JavaCity {
         return hashCode;
     }
 
-    public void zeroNonMilitary() {
+    public JavaCity zeroNonMilitary() {
         for (int i = 0; i < buildings.length; i++) {
             if (Buildings.get(i) instanceof MilitaryBuilding) continue;
             numBuildings -= buildings[i];
             buildings[i] = 0;
         }
+        return this;
     }
 
     public JavaCity optimalBuild(DBNation nation, long timeout) {

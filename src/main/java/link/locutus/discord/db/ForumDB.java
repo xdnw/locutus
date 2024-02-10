@@ -203,7 +203,7 @@ public class ForumDB extends DBMain {
 
                 // public DBTopic(int topic_id, int section_id, String topic_name, String topic_urlname, String section_name, String section_urlname, long timestamp, int poster_id, String poster_name) {
 
-                System.out.println("Saving: " + topicName);
+                System.out.println("Saving: " + topicName + " | " + posterName + " | " + posterId + " | " + dateStr);
                 DBTopic topic = new DBTopic(topic_id, section_id, topicName, topicUrlName, section_name, section_name, timestamp, posterId, posterName);
                 addTopic(topic);
             }

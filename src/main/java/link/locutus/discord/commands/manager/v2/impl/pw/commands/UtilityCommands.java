@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -84,6 +85,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -2038,5 +2040,101 @@ public class UtilityCommands {
         byte[] bytes = ImageUtil.addWatermark(image, watermarkText, color, opacityF, font, repeat);
         io.create().image("watermark.png", bytes).send();
         return null;
+    }
+
+    @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level")
+    public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
+                           @Switch("c") Continent continent,
+                           @Switch("r") Double rads,
+                           @Switch("p") Set<Project> forceProjects,
+                           @Switch("d") boolean openMarkets,
+                           @Switch("m") MMRInt mmr,
+                           @Switch("l") Double land
+
+    ) {
+        DBNation nation = DBNation.getById(city.getNationId());
+        if (nation == null) return "Unknown nation: `" + city.nation_id + "`";
+        if (infraLevel > 3500) return "Infra level too high (max 3,500)";
+
+        JavaCity origin = city.toJavaCity(nation).setInfra(infraLevel).zeroNonMilitary();
+        JavaCity originMinus50 = city.toJavaCity(nation).setInfra(infraLevel - 50).zeroNonMilitary();
+        if (mmr != null) {
+            origin.setMMR(mmr);
+            originMinus50.setMMR(mmr);
+        }
+        if (land != null) {
+            origin.setLand(land);
+            originMinus50.setLand(land);
+        }
+
+        int numCities = nation.getCities();
+        if (continent == null) continent = nation.getContinent();
+        if (rads == null) rads = nation.getRads();
+        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
+        double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
+
+        JavaCity optimal1 = origin.optimalBuild(nation, 5000);
+        if (optimal1 == null) {
+            return "Cannot generate optimal city build";
+        }
+        JavaCity optimal2 = originMinus50.optimalBuild(nation, 5000);
+        if (optimal2 == null) {
+            return "Cannot generate optimal city build";
+        }
+        double revenue1 = optimal1.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
+        double revenue2 = optimal2.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
+        double profit = revenue1 - revenue2;
+        if (profit <= 0) return "No ROI for `" + infraLevel + "`";
+        double cost = nation.infraCost(infraLevel - 50, infraLevel);
+        double daysROI = cost / profit;
+        return "Infra: " + MathMan.format(infraLevel - 50) + "->" + MathMan.format(infraLevel) + " will break even in " + MathMan.format(daysROI) + " days";
+    }
+
+    @Command(desc = "Calculate how many days it takes to ROI on the last 50 land for a specified level")
+    public String landROI(DBCity city, @Range(min=600,max=10000) double landLevel,
+                           @Switch("c") Continent continent,
+                           @Switch("r") Double rads,
+                           @Switch("p") Set<Project> forceProjects,
+                          @Switch("d") boolean openMarkets,
+                          @Switch("m") MMRInt mmr,
+                          @Switch("l") Double infra
+
+    ) {
+        DBNation nation = DBNation.getById(city.getNationId());
+        if (nation == null) return "Unknown nation: `" + city.nation_id + "`";
+        if (landLevel > 10000) return "Land level too high (max 10,000)";
+
+        JavaCity origin = city.toJavaCity(nation).setLand(landLevel).zeroNonMilitary();
+        JavaCity originMinus50 = city.toJavaCity(nation).setLand(landLevel - 50).zeroNonMilitary();
+        if (mmr != null) {
+            origin.setMMR(mmr);
+            originMinus50.setMMR(mmr);
+        }
+        if (infra != null) {
+            origin.setInfra(infra);
+            originMinus50.setInfra(infra);
+        }
+
+        int numCities = nation.getCities();
+        if (continent == null) continent = nation.getContinent();
+        if (rads == null) rads = nation.getRads();
+        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
+        double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
+
+        JavaCity optimal1 = origin.optimalBuild(nation, 5000);
+        if (optimal1 == null) {
+            return "Cannot generate optimal city build";
+        }
+        JavaCity optimal2 = originMinus50.optimalBuild(nation, 5000);
+        if (optimal2 == null) {
+            return "Cannot generate optimal city build";
+        }
+        double revenue1 = optimal1.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
+        double revenue2 = optimal2.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
+        double profit = revenue1 - revenue2;
+        if (profit <= 0) return "No ROI for `" + MathMan.format(landLevel) + "`";
+        double cost = nation.landCost(landLevel - 50, landLevel);
+        double daysROI = cost / profit;
+        return "Land: " + MathMan.format(landLevel - 50) + "->" + MathMan.format(landLevel) + " will break even in " + MathMan.format(daysROI) + " days";
     }
 }

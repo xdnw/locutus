@@ -46,6 +46,7 @@ import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -173,6 +174,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new UtilityCommands(), List.of("land"), "landROI", "roi");
+        getCommands().registerMethod(new UtilityCommands(), List.of("infra"), "infraROI", "roi");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "syncConflictData", "sync");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
