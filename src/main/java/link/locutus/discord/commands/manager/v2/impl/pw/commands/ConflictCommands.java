@@ -276,7 +276,7 @@ public class ConflictCommands {
         if (manager.getConflict(conflictName) != null) {
             throw new IllegalArgumentException("Conflict with name `" + conflictName + "` already exists");
         }
-        Conflict conflict = manager.addConflict(conflictName, category, "Coalition 1", "Coalition 2", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
+        Conflict conflict = manager.addConflict(conflictName, category, "Coalition 1", "Coalition 2", "", "", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
         StringBuilder response = new StringBuilder();
         response.append("Created conflict `" + conflictName + "`\n");
         // add coalitions
@@ -410,6 +410,12 @@ public class ConflictCommands {
         }
         if (allianceNames) {
             manager.saveDataCsvAllianceNames();
+            for (Map.Entry<String, Integer> entry : PWWikiUtil.getWikiAllianceIds().entrySet()) {
+                if (manager.getAllianceName(entry.getValue()) != null) continue;
+                if (manager.getLegacyId(entry.getKey()) != null) continue;
+                manager.addLegacyName(entry.getValue(), entry.getKey());
+            }
+
         }
         if (wiki) {
             Map<String, String> errors = new LinkedHashMap<>();
@@ -422,6 +428,11 @@ public class ConflictCommands {
                 System.out.println(entry.getValue());
             }
             System.out.println("Num conflicts: " + conflicts.size());
+            for (Conflict conflict : conflicts) {
+                manager.addConflict(conflict.getName(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
+            }
+
+
 //            if (conflicts.isEmpty()) return "No conflicts found on wiki";
 //            for (Conflict value : manager.getConflictMap().values()) {
 //                // find matching conflict by start/end date
@@ -478,6 +489,8 @@ public class ConflictCommands {
         if (new File(fileName).exists()) {
             document = Jsoup.parse(Files.readString(Path.of(fileStr)));
         } else {
+            System.out.println("Loading " + urlStub + " | " + fileName);
+            if (true) throw new IllegalArgumentException("Not implemented");
             String url = "https://ctowned.net/" + urlStub;
             document = Jsoup.connect(url).timeout(60000).sslSocketFactory(socketFactory()).ignoreContentType(true).get();
             String html = document.html();
@@ -573,7 +586,7 @@ public class ConflictCommands {
 
             Conflict conflict = manager.getConflict(conflictName);
             if (conflict == null) {
-                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
+                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
             } else {
                 conflict.setName(col1Name, true);
                 conflict.setName(col2Name, false);

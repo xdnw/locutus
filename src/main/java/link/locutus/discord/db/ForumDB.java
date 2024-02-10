@@ -31,7 +31,9 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -226,11 +228,11 @@ public class ForumDB extends DBMain {
             }
         }
     }
-
-    public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
-        ForumDB db = new ForumDB(null);
-        db.scrapeTopic(42, "alliance-affairs");
-    }
+//
+//    public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
+//        ForumDB db = new ForumDB(null);
+//        db.scrapeTopic(42, "alliance-affairs");
+//    }
 
     public String getSectionName(int id) {
         try (PreparedStatement stmt = prepareQuery("select `section_name` FROM FORUM_TOPICS WHERE `section_id` = ?")) {
@@ -363,19 +365,66 @@ public class ForumDB extends DBMain {
         }
     }
 
-    public DBTopic loadTopic(int id, String topicName) {
-        String url = "https://forum.politicsandwar.com/index.php?/topic/" + id + "-" + topicName + "/";
-        if (true) throw new IllegalArgumentException("NOT IMPLEMENTED");
-        try {
-            String content = get(url);
-            Document dom = Jsoup.parse(content);
-            Elements elems = dom.select(".ipsType_normal");
-            for (Element elem : elems) {
-                System.out.println(elem.text());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+    public DBTopic loadTopic(int topicId, String topicUrlStub) throws SQLException, IOException {
+        String url = "https://forum.politicsandwar.com/index.php?/topic/" + topicId + "-" + topicUrlStub + "/";
+        Document doc = Jsoup.connect(url).get();
+
+        // select ipsType_reset ipsType_blendLinks
+        Element elems = doc.select(".ipsPageHeader__meta").first();
+        // a with https://forum.politicsandwar.com/index.php?/profile
+        String profilePrefix = "https://forum.politicsandwar.com/index.php?/profile/";
+        Element profileLink = elems.select("a[href^='" + profilePrefix + "']").last();
+        if (profileLink == null) {
+            System.out.println("No profile link found for " + url);
+            return null;
         }
-        return null;
+        String[] profileSplit = profileLink.attr("href").replace(profilePrefix, "").split("/")[0].split("-", 2);
+        int profileId = Integer.parseInt(profileSplit[0]);
+        String profileUrlStub = profileSplit[1];
+        String profileName = profileLink.text();
+
+        // parent topic
+        // https://forum.politicsandwar.com/index.php?/forum/
+        String forumPrefix = "https://forum.politicsandwar.com/index.php?/forum/";
+        Element sectionLink = elems.select("a[href^='" + forumPrefix + "']").first();
+        String[] sectionSplit = sectionLink.attr("href").replace(forumPrefix, "").split("/")[0].split("-", 2);
+        int sectionId = Integer.parseInt(sectionSplit[0]);
+        String sectionUrlStub = sectionSplit[1];
+        String sectionName = sectionLink.html();
+
+        Element time = elems.select("time[datetime]").first();
+        String dateStr = time.attr("datetime");
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
+        ZonedDateTime dateTime = ZonedDateTime.parse(dateStr, formatter);
+        long millis = dateTime.toInstant().toEpochMilli();
+
+        String pageTitle = doc.select(".ipsType_pageTitle").first().text();
+
+        DBTopic topic = new DBTopic(topicId, sectionId, pageTitle, topicUrlStub, sectionName, sectionUrlStub, millis, profileId, profileUrlStub);
+        addTopic(topic);
+        return topic;
+    }
+
+    public Map<Integer, DBTopic> getTopics(Set<Integer> ids) {
+        if (ids.isEmpty()) return Collections.emptyMap();
+        List<Integer> idsSorted = new ArrayList<>(ids);
+        Collections.sort(idsSorted);
+        String sql = "SELECT * FROM FORUM_TOPICS WHERE `topic_id` IN (" + String.join(",", Collections.nCopies(idsSorted.size(), "?")) + ")";
+        try (PreparedStatement stmt = prepareQuery(sql)) {
+            for (int i = 0; i < idsSorted.size(); i++) {
+                stmt.setInt(i + 1, idsSorted.get(i));
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<Integer, DBTopic> map = new HashMap<>();
+                while (rs.next()) {
+                    DBTopic topic = new DBTopic(rs);
+                    map.put(topic.topic_id, topic);
+                }
+                return map;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

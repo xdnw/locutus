@@ -2,8 +2,10 @@ package com.locutus.wiki.game;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import link.locutus.discord.db.Conflict;
 import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -463,7 +465,30 @@ public class PWWikiUtil {
         }
     }
 
+    public static Map<String, Integer> getWikiAllianceIds() throws IOException {
+        Map<String, Integer> ids = new Object2IntOpenHashMap<>();
+        for (Map.Entry<String, String> entry : getPages("Alliances").entrySet()) {
+            String text = entry.getKey();
+            String href = entry.getValue();
+            PWWikiPage page = new PWWikiPage(text, href, true);
+            Integer id = page.getAllianceId();
+            System.out.println(text + " = " + id);
+            if (id != null) {
+                ids.put(text, id);
+            }
+        }
+        return ids;
+    }
+
     public static void main(String[] args) throws IOException {
+        for (Map.Entry<String, String> entry : getPages("Alliances").entrySet()) {
+            String text = entry.getKey();
+            String href = entry.getValue();
+            PWWikiPage page = new PWWikiPage(text, href, true);
+            Integer id = page.getAllianceId();
+            System.out.println(text + " = " + id);
+        }
+
 //        PWWikiPage page = new PWWikiPage("Great War 30", "Great_War_30", true);
 //        page.getForumLinks();
 
@@ -542,7 +567,6 @@ public class PWWikiUtil {
      * @return
      */
     public static List<Conflict> loadWikiConflicts(Map<String, String> errorsByPage) throws IOException {
-        long wikiCutoff = TimeUtil.getDay(1577836800000L);
         List<Conflict> conflicts = new ArrayList<>();
 
         String wikiCategory = "Alliance_Wars";
@@ -606,15 +630,21 @@ public class PWWikiUtil {
             } else {
                 category = ConflictCategory.UNVERIFIED;
             }
+            String cb = page.getCasusBelli();
+            String status = page.getStatus();
             long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
             long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
-            Conflict conflict = new Conflict(0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, startTurn, endTurn);
+            Conflict conflict = new Conflict(0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, cb, status, startTurn, endTurn);
             combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
             combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
             conflicts.add(conflict);
+            for (Map.Entry<String, DBTopic> topicEntry : page.getForumLinks().entrySet()) {
+                conflict.addAnnouncement(topicEntry.getKey(), topicEntry.getValue(), false);
+            }
         }
         return conflicts;
     }
+
 
     public static String getWikiUrlFromCtowned(String name) {
         return switch (name.toLowerCase(Locale.ROOT)) {
