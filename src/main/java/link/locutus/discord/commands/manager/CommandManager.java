@@ -334,7 +334,7 @@ public class CommandManager {
                 }
                 System.out.println("Content 1: " + content1);
 
-                if (!(cmd instanceof Noformat) && nation != null) {
+                if (!(cmd instanceof Noformat) && nation != null && content1.indexOf('{') != -1 && content1.indexOf('}') != -1) {
                     try {
                         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
                         String formatted = formatter.format2(guild, nation, msgUser, content1, nation, false);
