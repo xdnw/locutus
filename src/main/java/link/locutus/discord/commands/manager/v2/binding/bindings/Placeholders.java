@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
@@ -73,6 +74,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         this.store = store;
 //        this.math2Type = new SimpleValueStore();
 //        this.type2Math = new SimpleValueStore();
+        this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
     public Placeholders<T> init() {
@@ -461,6 +463,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                     if (throwError) {
                         throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
                     }
+                    currentIndex++;
                 }
             }
         }
@@ -530,7 +533,6 @@ public abstract class Placeholders<T> extends BindingHelper {
             System.out.println("Return non function section " + section);
             return new ResolvedFunction<>(String.class, section, section);
         }
-        System.out.println("Multiple sections " + sections);
         boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ResolvedFunction.class::isInstance);
         Function<T, Object> result = f -> {
             StringBuilder resultStr = new StringBuilder();

@@ -61,7 +61,6 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBNation.class, store, validators, permisser);
-        this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
     @Override
