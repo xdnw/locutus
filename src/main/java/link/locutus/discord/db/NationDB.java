@@ -1919,6 +1919,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         System.out.println("Updated nations.\n" +
                 "Changes: " + nationChanges.size() + "\n" +
                 "Cities: " + fetchCitiesOfNations.size());
+        System.out.println("Dirty " + dirtyNations.size());
 
 
         if (!fetchCitiesOfNations.isEmpty() || (fetchMostActiveIfNoneOutdated)) {

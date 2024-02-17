@@ -152,7 +152,7 @@ public final class Locutus extends ListenerAdapter {
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Configuration config = ctx.getConfiguration();
         LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
-        loggerConfig.setLevel(Level.DEBUG);
+        loggerConfig.setLevel(Level.INFO);
         ctx.updateLoggers();
 //        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
 //        root.setLevel(ch.qos.logback.classic.Level.INFO);
