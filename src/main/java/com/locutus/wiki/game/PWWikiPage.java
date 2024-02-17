@@ -4,7 +4,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.ForumDB;
 import link.locutus.discord.db.entities.DBTopic;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -12,6 +14,7 @@ import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.text.Normalizer;
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -37,7 +40,7 @@ public class PWWikiPage {
     private final String name;
     private final String slug;
     private Map<String, List<String>> tableDate;
-    private Map<String, Map.Entry<String, Long>> forumLinks;
+    private Map<String, DBTopic> forumLinks;
 
     public PWWikiPage(String name, String urlStub, boolean allowCache) throws IOException {
         String url = "https://politicsandwar.fandom.com/wiki/" + urlStub;
@@ -274,7 +277,7 @@ public class PWWikiPage {
         return tableDate = data;
     }
 
-    public Map<String, Map.Entry<String, Long>> getForumLinks() {
+    public Map<String, DBTopic> getForumLinks() {
         if (this.forumLinks != null) return this.forumLinks;
         Map<String, String> result = new LinkedHashMap<>();
         Element output = document.select(".mw-parser-output").get(0);
@@ -314,9 +317,7 @@ public class PWWikiPage {
                 }
             }
         }
-        Map<Integer, String> postName = new LinkedHashMap<>();
-        Map<Integer, String> postDesc = new LinkedHashMap<>();
-        Map<Integer, Long> postDate = new LinkedHashMap<>();
+        Map<String, DBTopic> postName = new LinkedHashMap<>();
 
         for (Map.Entry<String, String> entry : result.entrySet()) {
             String[] split = entry.getKey().split("-", 2);
@@ -329,22 +330,19 @@ public class PWWikiPage {
             DBTopic topic = forumDb.getTopic(id);
             if (topic == null) {
                 // load topic
-                topic = forumDb.loadTopic(id, split[1]);
+                try {
+                    topic = forumDb.loadTopic(id, split[1]);
+                } catch (SQLException | IOException e) {
+                    System.out.println("Skipping forum topic: " + entry.getKey() + " | " + entry.getValue() + " | " + slug + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
+                    e.printStackTrace();
+                }
             }
             if (topic != null) {
-                postName.put(id, topic.topic_name);
-                postDesc.put(id, entry.getValue());
-                postDate.put(id, topic.timestamp);
+                postName.put(entry.getValue(), topic);
             }
         }
 
-        forumLinks = new LinkedHashMap<>();
-        for (Map.Entry<Integer, String> entry : postName.entrySet()) {
-            String urlStub = entry.getKey() + "-" + entry.getValue();
-            String desc = postDesc.get(entry.getKey());
-            long date = postDate.get(entry.getKey());
-            forumLinks.put(urlStub, Map.entry(desc, date));
-        }
+        forumLinks = postName;
         return forumLinks;
     }
 
@@ -365,5 +363,33 @@ public class PWWikiPage {
     public String getCtownedLink() {
         Element element = document.select("a[href^='https://ctowned.net/']").first();
         return element != null ? element.attr("href") : null;
+    }
+
+    public String getCasusBelli() {
+        Map<String, List<String>> table = getTableData();
+        List<String> cb = table == null ? null : table.get("casus belli");
+        return cb == null ? null : StringMan.join(cb, "\n");
+    }
+
+    public Integer getAllianceId() {
+        Elements infobox = document.select(".infobox");
+        if (infobox == null) return null;
+        Element aaPage = infobox.select("img[alt='Alliancepage']").first();
+        if (aaPage != null) {
+            Element link = aaPage.parent();
+            if (link.tagName().equalsIgnoreCase("a")) {
+                String href = link.attr("href");
+                int index = href.indexOf("/id=");
+                if (index != -1) {
+                    String idStr = href.substring(index + 4).split("\\?")[0].split("&")[0].replace("/", "");
+                    if (MathMan.isInteger(idStr)) {
+                        return Integer.parseInt(idStr);
+                    } else {
+                        System.out.println("Invalid alliance id: " + idStr + " for " + slug + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

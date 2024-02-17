@@ -19,6 +19,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
@@ -56,15 +57,17 @@ public class Conflict {
     private byte[] bsonCompressed;
     private volatile boolean dirtyWars = false;
     private volatile boolean dirtyJson = true;
-    private final Map<String, Map.Entry<String, Long>> announcements = new Object2ObjectLinkedOpenHashMap<>();
+    private final Map<String, DBTopic> announcements = new Object2ObjectLinkedOpenHashMap<>();
     private String casusBelli = "";
     private String statusDesc = "";
 
-    public Conflict(int id, ConflictCategory category, String name, String col1, String col2, String wiki, long turnStart, long turnEnd) {
+    public Conflict(int id, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
         this.id = id;
         this.category = category;
         this.name = name;
-        this.wiki = wiki;
+        this.wiki = wiki == null ? "" : wiki;
+        this.casusBelli = cb == null ? "" : cb;
+        this.statusDesc = status == null ? "" : status;
         this.turnStart = turnStart;
         this.turnEnd = turnEnd;
         this.coalition1 = new CoalitionSide(this, col1, true);
@@ -582,16 +585,19 @@ public class Conflict {
         return (isPrimary ? coalition1 : coalition2).getInflicted().getTotalConverted();
     }
 
-    public void addAnnouncement(long timestamp, int postId, String postStub, String desc) {
-        String name = postId + "-" + postStub;
-        announcements.put(name, Map.entry(desc, timestamp));
+    public void addAnnouncement(String desc, DBTopic topic, boolean saveToDB) {
+        announcements.put(name, topic);
+        if (saveToDB) {
+            getManager().addAnnouncement(id, topic.topic_id, desc);
+        }
     }
 
     public Map<String, List> getAnnouncementsList() {
         synchronized (announcements) {
             Map<String, List> map = new Object2ObjectLinkedOpenHashMap<>();
-            for (Map.Entry<String, Map.Entry<String, Long>> entry : announcements.entrySet()) {
-                map.put(entry.getKey(), List.of(entry.getValue().getKey(), entry.getValue().getValue()));
+            for (Map.Entry<String, DBTopic> entry : announcements.entrySet()) {
+                DBTopic topic = entry.getValue();
+                map.put(entry.getKey(), List.of(topic.topic_id, topic.topic_urlname, topic.timestamp));
             }
             return map;
         }

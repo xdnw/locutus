@@ -70,25 +70,6 @@ public class ImageUtil {
         }
     }
 
-    private static String getColor(TreatyType type) {
-        // Get the index of the type
-        int index = type.ordinal();
-
-        // Get the total number of types
-        int total = TreatyType.values().length;
-
-        // Calculate the hue
-        float hue = (float) index / total;
-
-        // Convert the hue to a color
-        Color color = Color.getHSBColor(hue, 1f, 1f);
-
-        // Convert the color to a hex string
-        String colorStr = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
-
-        return colorStr;
-    }
-
     public static byte[] generateTreatyGraph(Collection<Treaty> connections) throws IOException {
         // Create a graph
         Graph<String, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
@@ -132,16 +113,6 @@ public class ImageUtil {
             }
         };
 
-        // Create a layout for the graph
-        //mxCircleLayout - okay
-        //mxCompactTreeLayout - busted
-        //mxEdgeLabelLayout - busted
-        //mxFastOrganicLayout - okay
-        //mxGraphLayout
-        //mxOrganicLayout - meh
-        //mxParallelEdgeLayout - busted
-        //mxPartitionLayout bustwd
-        //mxStackLayout
         mxFastOrganicLayout layout = new mxFastOrganicLayout(graphAdapter);
         layout.setForceConstant(100);
         layout.execute(graphAdapter.getDefaultParent());

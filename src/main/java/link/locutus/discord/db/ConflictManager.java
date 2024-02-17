@@ -16,6 +16,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
@@ -210,7 +211,9 @@ public class ConflictManager {
                 ConflictCategory category = ConflictCategory.values[rs.getInt("category")];
                 if (col1.isEmpty()) col1 = "Coalition 1";
                 if (col2.isEmpty()) col2 = "Coalition 2";
-                conflictMap.put(id, new Conflict(id, category, name, col1, col2, wiki, startTurn, endTurn));
+                String cb = rs.getString("cb");
+                String status = rs.getString("status");
+                conflictMap.put(id, new Conflict(id, category, name, col1, col2, wiki, cb, status, startTurn, endTurn));
             }
         });
 //        db.update("DELETE FROM conflict_participant WHERE alliance_id = 0");
@@ -229,20 +232,33 @@ public class ConflictManager {
             }
         });
         // load announcements
-        db.query("SELECT * FROM conflict_announcements", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int conflictId = rs.getInt("conflict_id");
-                long timestamp = rs.getLong("timestamp");
-                int postId = rs.getInt("post_id");
-                String postStub = rs.getString("post_stub");
-                String desc = rs.getString("description");
-                Conflict conflict = conflictMap.get(conflictId);
-                if (conflict != null) {
-                    conflict.addAnnouncement(timestamp, postId, postStub, desc);
+        if (Locutus.imp().getForumDb() != null) {
+            Map<Integer, Map<Integer, String>> conflictsByTopic = new Int2ObjectOpenHashMap<>();
+            db.query("SELECT * FROM conflict_announcements2", stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    int conflictId = rs.getInt("conflict_id");
+                    String desc = rs.getString("description");
+                    int topicId = rs.getInt("topic_id");
+                    Conflict conflict = conflictMap.get(conflictId);
+                    if (conflict != null) {
+                        conflictsByTopic.computeIfAbsent(topicId, k -> new HashMap<>()).put(conflictId, desc);
+                    }
+                }
+            });
+            Map<Integer, DBTopic> topics = Locutus.imp().getForumDb().getTopics(conflictsByTopic.keySet());
+            for (Map.Entry<Integer, Map<Integer, String>> entry : conflictsByTopic.entrySet()) {
+                DBTopic topic = topics.get(entry.getKey());
+                if (topic != null) {
+                    for (Map.Entry<Integer, String> entry2 : entry.getValue().entrySet()) {
+                        Conflict conflict = conflictMap.get(entry2.getKey());
+                        if (conflict != null) {
+                            conflict.addAnnouncement(entry2.getValue(), topic, false);
+                        }
+                    }
                 }
             }
-        });
+        }
 
         // load legacyNames
         db.query("SELECT * FROM legacy_names", stmt -> {
@@ -366,7 +382,13 @@ public class ConflictManager {
         legacyIds.put("Roman Empire", 9600);
         legacyIds.put("Serene Repubblica Fiorentina", 9927);
         legacyIds.put("Serene Wei", 1742);
+        legacyIds.put("Roz Wei", 1742);
+        legacyIds.put("Terminal Jest", 7620);
+        legacyIds.put("Nuclear Knights",1634);
+        legacyIds.put("Animation Domination", 4597);
+        legacyIds.put("Cornerstone", 1037);
         legacyIds.put("Seven Kingdoms", 615);
+        legacyIds.put("Nordic Sea Raiders", 4341);
         legacyIds.put("Soldiers of Liberty", 6215);
         legacyIds.put("Spartan Brotherhood", 6161);
         legacyIds.put("Spartan Republic", 7380);
@@ -685,17 +707,14 @@ public class ConflictManager {
 
         // announcements
         // conflict_id (foreign key), long timestamp, int post_id, string post_stub,
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements (conflict_id INTEGER NOT NULL, timestamp BIGINT NOT NULL, post_id INTEGER NOT NULL, post_stub VARCHAR NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, post_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("ALTER TABLE conflict_announcements ADD COLUMN description VARCHAR DEFAULT ''");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, post_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
     }
 
-    public void addAnnouncement(int conflictId, long timestamp, int postId, String postStub, String description) {
-        db.update("INSERT OR IGNORE INTO conflict_announcements (conflict_id, timestamp, post_id, post_stub, description) VALUES (?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+    public void addAnnouncement(int conflictId, int topicId, String description) {
+        db.update("INSERT OR IGNORE INTO conflict_announcements2 (conflict_id, topic_id, description) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
-            stmt.setLong(2, timestamp);
-            stmt.setInt(3, postId);
-            stmt.setString(4, postStub);
-            stmt.setString(5, description);
+            stmt.setInt(2, topicId);
+            stmt.setString(3, description);
         });
     }
 
@@ -749,8 +768,8 @@ public class ConflictManager {
         });
     }
 
-    public Conflict addConflict(String name, ConflictCategory category, String col1, String col2, String wiki, long turnStart, long turnEnd) {
-        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category) VALUES (?, ?, ?)";
+    public Conflict addConflict(String name, ConflictCategory category, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
+        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category, cb, status) VALUES (?, ?, ?)";
         try (PreparedStatement stmt = db.getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
             stmt.setString(2, col1);
@@ -759,11 +778,13 @@ public class ConflictManager {
             stmt.setLong(5, turnStart);
             stmt.setLong(6, turnEnd);
             stmt.setInt(7, category.ordinal());
+            stmt.setString(8, cb);
+            stmt.setString(9, status);
             stmt.executeUpdate();
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 int id = rs.getInt(1);
-                Conflict conflict = new Conflict(id, category, name, col1, col2, wiki, turnStart, turnEnd);
+                Conflict conflict = new Conflict(id, category, name, col1, col2, wiki, cb, status, turnStart, turnEnd);
                 conflictMap.put(id, conflict);
 
                 synchronized (activeConflicts) {
