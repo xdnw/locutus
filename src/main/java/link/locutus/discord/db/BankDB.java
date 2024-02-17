@@ -461,6 +461,11 @@ public class BankDB extends DBMainV3 {
             this.tax_id = tax_id;
         }
 
+        @Command(desc = "Get market value of tax record")
+        public double getMarketValue() {
+            return PnwUtil.convertedTotal(this.resources);
+        }
+
         @Command(desc = "The alliance class for this tax record")
         public DBAlliance getAlliance() {
             return DBAlliance.getOrCreate(allianceId);
