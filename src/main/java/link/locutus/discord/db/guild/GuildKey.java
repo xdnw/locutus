@@ -407,6 +407,7 @@ public class GuildKey {
                 }
             }
 
+            Set<String> toRemove = new LinkedHashSet<>();
             for (String key : existing) {
                 ApiKeyDetails details = null;
                 Integer nationId = null;
@@ -418,9 +419,10 @@ public class GuildKey {
                     String startWith = key.charAt(0) + "";
                     String endWith = key.charAt(key.length() - 1) + "";
                     response.append("The key `" + startWith + "..." + endWith + "` (nation: " + nationId + ") is invalid and has been removed\n");
-                    existing.remove(key);
+                    toRemove.add(key);
                 }
             }
+            existing.removeAll(toRemove);
             apiKeys = API_KEY.allowedAndValidate(db, user, apiKeys);
 
             existing.addAll(apiKeys);
