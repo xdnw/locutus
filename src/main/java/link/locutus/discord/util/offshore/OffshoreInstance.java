@@ -1193,7 +1193,7 @@ public class OffshoreInstance {
 
             long tx_datetime = System.currentTimeMillis();
 
-            boolean route = GuildKey.ROUTE_ALLIANCE_BANK.getOrNull(senderDB) == Boolean.TRUE && senderDB != getGuildDB();
+            boolean route = GuildKey.ROUTE_ALLIANCE_BANK.getOrNull(senderDB) == Boolean.TRUE && senderDB != getGuildDB() && (!receiver.isAlliance() || !senderDB.isAllianceId(receiver.getId()));
             if (route) {
                 boolean hasNonAlliance = depositsByAA.keySet().stream().anyMatch(n -> !n.isAlliance());
                 if (hasNonAlliance || depositsByAA.isEmpty()) {
