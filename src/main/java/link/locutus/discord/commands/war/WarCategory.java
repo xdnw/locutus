@@ -1203,6 +1203,15 @@ public class WarCategory {
             }
             return hasWar;
         }
+
+        public Set<DBNation> getParticipants() {
+            return participants;
+        }
+
+        public String getChannelMention() {
+            TextChannel tc = getChannel(false, false);
+            return tc == null ? null : tc.getAsMention();
+        }
     }
 
     private static Permission[] CATEGORY_PERMISSIONS = new Permission[]{

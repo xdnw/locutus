@@ -174,6 +174,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new WarCommands(), List.of("war", "room"), "warRoomList", "list");
         getCommands().registerMethod(new UtilityCommands(), List.of("land"), "landROI", "roi");
         getCommands().registerMethod(new UtilityCommands(), List.of("infra"), "infraROI", "roi");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "syncConflictData", "sync");
