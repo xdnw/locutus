@@ -1102,7 +1102,7 @@ public class TradeCommands {
         for (ResourceType type : ResourceType.values) {
             if (type != ResourceType.CREDITS) header.add(type.name().toLowerCase());
         }
-        sheet.addRow(header);
+        sheet.setHeader(header);
 
         double[] allDeposits = ResourceType.getBuffer();
         for (Long coalition : coalitions) {

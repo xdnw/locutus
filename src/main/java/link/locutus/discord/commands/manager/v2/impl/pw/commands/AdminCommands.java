@@ -437,7 +437,7 @@ public class AdminCommands {
                 "nation",
                 "time"
         ));
-        sheet.addRow(header);
+        sheet.setHeader(header);
         for (DBNation nation : nations) {
             List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
             for (DBSpyUpdate update : activity) {

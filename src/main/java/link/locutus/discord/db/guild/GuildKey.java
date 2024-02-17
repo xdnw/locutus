@@ -37,6 +37,7 @@ import link.locutus.discord.gpt.imps.CopilotText2Text;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.FileUtil;
@@ -47,6 +48,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
@@ -2520,6 +2522,53 @@ public class GuildKey {
         public String help() {
             return "If true, all transfers from the offshore will send via the alliance bank";
         }
+    }.requireValidAlliance().requiresOffshore();
+
+    public static GuildSetting<NationOrAllianceOrGuild> DEFAULT_OFFSHORE_ACCOUNT = new GuildSetting<NationOrAllianceOrGuild>(GuildSettingCategory.BANK_ACCESS, NationOrAllianceOrGuild.class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String DEFAULT_OFFSHORE_ACCOUNT(@Me GuildDB db, @Me User user, NationOrAllianceOrGuild natOrAA) {
+            if (natOrAA.isNation()) {
+                throw new IllegalArgumentException("Cannot set a nation as the default offshore account: " + natOrAA.asNation().getMarkdownUrl());
+            }
+            OffshoreInstance offshore = db.getOffshore();
+            if (offshore == null) throw new IllegalArgumentException("No offshore is setup. See: " + CM.offshore.add.cmd.toSlashMention());
+
+            OffshoreInstance otherOffshore;
+            GuildDB otherDB;
+            if (natOrAA.isAlliance()) {
+                DBAlliance aa = natOrAA.asAlliance();
+                otherDB = aa.getGuildDB();
+            } else {
+                otherDB = natOrAA.asGuild();
+            }
+            if (otherDB == null) {
+                throw new IllegalArgumentException("No guild registered for: " + natOrAA.getQualifiedName());
+            }
+            otherOffshore = otherDB.getOffshore();
+            if (otherOffshore == null) {
+                throw new IllegalArgumentException("No offshore setup for: " + natOrAA.getQualifiedName());
+            }
+            if (otherOffshore != offshore) {
+                throw new IllegalArgumentException("The offshore set (`AA:" + otherOffshore.getAllianceId() + "`) is not the same as the offshore for " + natOrAA.getQualifiedName() + " (`AA:" + otherOffshore.getAllianceId() + "`)");
+            }
+            if (!offshore.getOffshoreAAs().contains(natOrAA.getIdLong())) {
+                throw new IllegalArgumentException("The offshore set (`AA:" + offshore.getAllianceId() + "`) does not have " + natOrAA.getQualifiedName() + " added to `" + Coalition.OFFSHORING.name() + "` coalition");
+            }
+            return DEFAULT_OFFSHORE_ACCOUNT.setAndValidate(db, user, natOrAA);
+        }
+
+        @Override
+        public String help() {
+            return "The default account to offshore into via " + CM.offshore.send.cmd.toSlashMention();
+        }
+
+        @Override
+        public String toString(NationOrAllianceOrGuild value) {
+            return value.isAlliance() ? value.getQualifiedId() : value.getIdLong() + "";
+        }
+
     }.requireValidAlliance().requiresOffshore();
 
 

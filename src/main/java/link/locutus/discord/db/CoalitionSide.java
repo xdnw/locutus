@@ -48,14 +48,14 @@ public class CoalitionSide {
     private final Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>> statsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>> statsByNation = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Integer> allianceIdByNation = new Int2ObjectOpenHashMap<>();
-
     private final DamageStatGroup lossesStats = new DamageStatGroup();
     private final DamageStatGroup inflictedStats = new DamageStatGroup();
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByNation = new Int2ObjectOpenHashMap<>();
-
     private final Map<Long, TurnTierGraphData> graphDataByTurn = new Long2ObjectArrayMap<>();
     private final Map<Long, DayTierGraphData> graphDataByDay = new Long2ObjectArrayMap<>();
+    private final Map<Long, Map<Integer, Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>>>> statsByDayByAllianceByCity = new Long2ObjectArrayMap<>();
+    private final Map<Long, Map<Integer, Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
 
     public Set<Integer> getNationIds() {
         return statsByNation.keySet();
@@ -92,8 +92,6 @@ public class CoalitionSide {
     }
 
     public List<ConflictMetric.Entry> getGraphEntries() {
-        System.out.println("GDBT " + graphDataByTurn);
-        System.out.println("GDBD " + graphDataByDay);
         List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
         graphDataByTurn.forEach((k, v) -> entries.addAll(v.getEntries(parent.getId(), isPrimary, k)));
         graphDataByDay.forEach((k, v) -> entries.addAll(v.getEntries(parent.getId(), isPrimary, k)));
@@ -113,6 +111,12 @@ public class CoalitionSide {
         if (save) {
             dayGraph.save(manager, getParent().getId(), isPrimary, day);
         }
+    }
+
+    public List<Integer> getAllianceIdsSorted() {
+        List<Integer> allianceIds = new ArrayList<>(coalition);
+        Collections.sort(allianceIds);
+        return allianceIds;
     }
 
     public Map<String, Object> toMap(ConflictManager manager) {
@@ -235,7 +239,7 @@ public class CoalitionSide {
         this.otherSide = coalition;
     }
 
-    private void applyAttackerStats(int allianceId, int nationId, Consumer<OffDefStatGroup> onEach) {
+    private void applyAttackerStats(int allianceId, int nationId, int attCities, int defCities, Consumer<OffDefStatGroup> onEach) {
         allianceIdByNation.putIfAbsent(nationId, allianceId);
         onEach.accept(statsByAlliance.computeIfAbsent(allianceId,
                 k -> Map.entry(new OffDefStatGroup(), new OffDefStatGroup())).getKey());
@@ -243,7 +247,7 @@ public class CoalitionSide {
                 k -> Map.entry(new OffDefStatGroup(), new OffDefStatGroup())).getKey());
     }
 
-    private void applyDefenderStats(int allianceId, int nationId, Consumer<OffDefStatGroup> onEach) {
+    private void applyDefenderStats(int allianceId, int nationId, int attCities, int defCities, Consumer<OffDefStatGroup> onEach) {
         allianceIdByNation.putIfAbsent(nationId, allianceId);
         onEach.accept(statsByAlliance.computeIfAbsent(allianceId,
                 k -> Map.entry(new OffDefStatGroup(), new OffDefStatGroup())).getValue());
@@ -252,56 +256,70 @@ public class CoalitionSide {
     }
 
     public void updateWar(DBWar previous, DBWar current, boolean isAttacker) {
+        int attCities;
+        int defCities;
         int attackerAA, attackerId;
         if (isAttacker) {
+            attCities = current.getAttCities();
+            defCities = current.getDefCities();
             attackerAA = current.getAttacker_aa();
             attackerId = current.getAttacker_id();
             if (previous == null) {
                 offensiveStats.newWar(current, true);
-                applyAttackerStats(attackerAA, attackerId, p -> p.newWar(current, true));
+                applyAttackerStats(attackerAA, attackerId, attCities, defCities, p -> p.newWar(current, true));
             } else {
                 offensiveStats.updateWar(previous, current, true);
-                applyAttackerStats(attackerAA, attackerId, p -> p.updateWar(previous, current, true));
+                applyAttackerStats(attackerAA, attackerId, attCities, defCities, p -> p.updateWar(previous, current, true));
             }
         } else {
             attackerAA = current.getDefender_aa();
             attackerId = current.getDefender_id();
+            attCities = current.getDefCities();
+            defCities = current.getAttCities();
             if (previous == null) {
                 defensiveStats.newWar(current, false);
-                applyDefenderStats(attackerAA, attackerId, p -> p.newWar(current, false));
+                applyDefenderStats(attackerAA, attackerId, attCities, defCities, p -> p.newWar(current, false));
             } else {
                 defensiveStats.updateWar(previous, current, false);
-                applyDefenderStats(attackerAA, attackerId, p -> p.updateWar(previous, current, false));
+                applyDefenderStats(attackerAA, attackerId, attCities, defCities, p -> p.updateWar(previous, current, false));
             }
         }
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker) {
         AttackTypeSubCategory subCategory = attack.getSubCategory(true);
-        int attackerAA, attackerId;
+        int attackerAA, attackerId, attCities, defCities;
         if (isAttacker) {
             attackerId = attack.getAttacker_id();
             if (attack.getAttacker_id() == war.getAttacker_id()) {
                 attackerAA = war.getAttacker_aa();
+                attCities = war.getAttCities();
+                defCities = war.getDefCities();
             } else {
                 attackerAA = war.getDefender_aa();
+                attCities = war.getDefCities();
+                defCities = war.getAttCities();
             }
         } else {
             attackerId = attack.getDefender_id();
             if (attack.getDefender_id() == war.getDefender_id()) {
                 attackerAA = war.getDefender_aa();
+                attCities = war.getDefCities();
+                defCities = war.getAttCities();
             } else {
                 attackerAA = war.getAttacker_aa();
+                attCities = war.getAttCities();
+                defCities = war.getDefCities();
             }
         }
         allianceIdByNation.putIfAbsent(attackerId, attackerAA);
         {
             if (isAttacker) {
                 offensiveStats.newAttack(war, attack, subCategory);
-                applyAttackerStats(attackerAA, attackerId, p -> p.newAttack(war, attack, subCategory));
+                applyAttackerStats(attackerAA, attackerId, attCities, defCities, p -> p.newAttack(war, attack, subCategory));
             } else {
                 defensiveStats.newAttack(war, attack, subCategory);
-                applyDefenderStats(attackerAA, attackerId, p -> p.newAttack(war, attack, subCategory));
+                applyDefenderStats(attackerAA, attackerId, attCities, defCities, p -> p.newAttack(war, attack, subCategory));
             }
         }
 
@@ -316,7 +334,7 @@ public class CoalitionSide {
             aaDamage.getValue().apply(attack, false);
             nationDamage.getKey().apply(attack, true);
             nationDamage.getValue().apply(attack, false);
-            applyAttackerStats(attackerAA, attackerId, p -> p.newAttack(war, attack, subCategory));
+            applyAttackerStats(attackerAA, attackerId, attCities, defCities, p -> p.newAttack(war, attack, subCategory));
         } else {
             lossesStats.apply(attack, false);
             inflictedStats.apply(attack, true);
@@ -324,7 +342,7 @@ public class CoalitionSide {
             aaDamage.getValue().apply(attack, true);
             nationDamage.getKey().apply(attack, false);
             nationDamage.getValue().apply(attack, true);
-            applyDefenderStats(attackerAA, attackerId, p -> p.newAttack(war, attack, subCategory));
+            applyDefenderStats(attackerAA, attackerId, attCities, defCities, p -> p.newAttack(war, attack, subCategory));
         }
     }
 
@@ -360,7 +378,6 @@ public class CoalitionSide {
         List<Byte> citiesSorted = new ByteArrayList(cities);
         citiesSorted.sort(Byte::compareTo);
         root.put("cities", citiesSorted);
-        System.out.println("CITIES " + citiesSorted);
 
         root.put("turn_data", toGraphMap(turnData, turnsSorted, citiesSorted,
                 Arrays.stream(ConflictMetric.values).filter(f -> !f.isDay()).toList()));

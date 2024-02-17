@@ -160,7 +160,7 @@ public class PWWikiPage {
 
 
 
-    public Map.Entry<Set<Integer>, Set<Integer>> getCombatants(Set<String> unknownCombatants) {
+    public Map.Entry<Set<Integer>, Set<Integer>> getCombatants(Set<String> unknownCombatants, long dateStart) {
         List<String> combatants = getTableData().get("combatants");
         if (combatants == null || combatants.size() != 2) {
             System.out.println("Unknown combatants for: " + slug + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
@@ -173,7 +173,7 @@ public class PWWikiPage {
         ConflictManager manager = Locutus.imp().getWarDb().getConflicts();
         Set<Integer> col1Ids = col1Names.stream().map(f -> {
             f = Normalizer.normalize(f, Normalizer.Form.NFKD);
-            Integer id = manager.getLegacyId(f);
+            Integer id = manager.getAllianceId(f, dateStart);
             if (id == null) {
                 Map.Entry<String, Integer> similar = manager.getMostSimilar(f);
                 System.out.println("Unknown combatant: `" + f + "` " + (similar == null ? "" : " | Similar: " + similar.getKey() + "=" + similar.getValue()));
@@ -184,7 +184,7 @@ public class PWWikiPage {
         }).filter(Objects::nonNull).collect(Collectors.toSet());
         Set<Integer> col2Ids = col2Names.stream().map(f -> {
             f = Normalizer.normalize(f, Normalizer.Form.NFKD);
-            Integer id = manager.getLegacyId(f);
+            Integer id = manager.getAllianceId(f, dateStart);
             if (id == null) {
                 Map.Entry<String, Integer> similar = manager.getMostSimilar(f);
                 System.out.println("Unknown combatant: `" + f + "` " + (similar == null ? "" : " | Similar: " + similar.getKey() + "=" + similar.getValue()));
@@ -209,7 +209,7 @@ public class PWWikiPage {
                 System.out.println("Empty combatant for: " + slug + " | " + href);
                 continue;
             }
-            if (!paragraph.isEmpty() && link.parent().parent().tag().normalName().equalsIgnoreCase("center") && (Locutus.imp() != null && Locutus.imp().getWarDb().getConflicts().getLegacyId(text) == null)) {
+            if (!paragraph.isEmpty() && link.parent().parent().tag().normalName().equalsIgnoreCase("center") && (Locutus.imp() != null && Locutus.imp().getWarDb().getConflicts().getAllianceId(text, Long.MAX_VALUE) == null)) {
                 System.out.println("Skipping bloc name: " + link.text() + " | " + slug + " | " + link.attr("href"));
                 continue;
             }
@@ -281,42 +281,42 @@ public class PWWikiPage {
         if (this.forumLinks != null) return this.forumLinks;
         Map<String, String> result = new LinkedHashMap<>();
         Element output = document.select(".mw-parser-output").get(0);
-        // iterate h2
-        Elements h2s = output.select("h2");
-        for (Element h2 : h2s) {
-            String header = h2.text();
-
-            switch (header.toLowerCase(Locale.ROOT)) {
-                case "announcement","announcements","related links" -> {
-                    // iterate next siblings
-                    Element next = h2.nextElementSibling();
-                    while (next != null && !next.tagName().equalsIgnoreCase("h2")) {
-                        // get href links
-                        Elements links = next.select("a");
-                        for (Element link : links) {
-                            String desc = null;
-                            Elements parents = h2.parents();
-                            for (Element parent : parents) {
-                                if (parent.tagName().equalsIgnoreCase("li")) {
-                                    desc = parent.text();
-                                    break;
-                                }
-                            }
-                            if (desc == null) {
-                                desc = h2.text();
-                            }
-                            String href = link.attr("href");
-                            String startsWith = "https://forum.politicsandwar.com/index.php?/topic/";
-                            if (href != null && href.startsWith(startsWith)) {
-                                href = href.substring(startsWith.length()).split("[?/]")[0];
-                                result.put(href, desc);
-                            }
-                        }
-                        next = next.nextElementSibling();
-                    }
+        Elements links = output.select("a");
+        for (Element link : links) {
+            String desc = null;
+            Elements parents = link.parents();
+            for (Element parent : parents) {
+                if (parent.tagName().equalsIgnoreCase("li")) {
+                    desc = parent.text();
+                    break;
                 }
             }
+            if (desc == null) {
+                desc = link.text();
+            }
+            String href = link.attr("href");
+            String startsWith = "https://forum.politicsandwar.com/index.php?/topic/";
+            if (href != null && href.startsWith(startsWith)) {
+                href = href.substring(startsWith.length()).split("[?/]")[0];
+                result.put(href, desc);
+            }
         }
+        // iterate h2
+//        Elements h2s = output.select("h2");
+//        for (Element h2 : h2s) {
+//            String header = h2.text().replaceAll("[\\[\\]]", "").toLowerCase(Locale.ROOT).trim();
+//            switch (header) {
+//                case "announcement","announcements","related links", "announcements and events", "links & announcements", "events", "result", "forum announcements", "timeline", "links", "time-line", "announcements and links", "announcement and related links", "addendum" -> {
+//                    // iterate next siblings
+//                    Element next = h2.nextElementSibling();
+//                    while (next != null && !next.tagName().equalsIgnoreCase("h2")) {
+//                        // get href links
+//                        Elements links = next.select("a");
+//                        next = next.nextElementSibling();
+//                    }
+//                }
+//            }
+//        }
         Map<String, DBTopic> postName = new LinkedHashMap<>();
 
         for (Map.Entry<String, String> entry : result.entrySet()) {
@@ -329,7 +329,6 @@ public class PWWikiPage {
             }
             DBTopic topic = forumDb.getTopic(id);
             if (topic == null) {
-                // load topic
                 try {
                     topic = forumDb.loadTopic(id, split[1]);
                 } catch (SQLException | IOException e) {
@@ -338,6 +337,7 @@ public class PWWikiPage {
                 }
             }
             if (topic != null) {
+                System.out.println("Add post " + entry.getValue());
                 postName.put(entry.getValue(), topic);
             }
         }

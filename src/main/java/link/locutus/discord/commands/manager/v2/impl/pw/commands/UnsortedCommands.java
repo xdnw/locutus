@@ -1880,7 +1880,7 @@ public class UnsortedCommands {
         for (IACheckup.AuditType type : audits) {
             header.add(type.name().toLowerCase(Locale.ROOT));
         }
-        sheet.addRow(header);
+        sheet.setHeader(header);
 
         IACategory iaCat = db.getIACategory();
 

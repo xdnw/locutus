@@ -32,16 +32,30 @@ public class DBWar {
     public int allianceIdPair;
     private byte warStatusType;
     private final long date;
+    private final byte attCities;
+    private final byte defCities;
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }
 
-    public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, WarType warType, WarStatus status, long date) {
+    public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, WarType warType, WarStatus status, long date, int attCities, int defCities) {
         this.warId = warId;
         this.nationIdPair = MathMan.pairInt(attacker_id, defender_id);
         this.allianceIdPair = MathMan.pairChars((char) attacker_aa, (char) defender_aa);
         this.warStatusType = (byte) (status.ordinal() << 2 | warType.ordinal());
         this.date = date;
+        if (attCities == 0) attCities = defCities;
+        if (defCities == 0) defCities = attCities;
+        this.attCities = (byte) attCities;
+        this.defCities = (byte) defCities;
+    }
+
+    public int getAttCities() {
+        return attCities & 0xFF;
+    }
+
+    public int getDefCities() {
+        return defCities & 0xFF;
     }
 
     public void setStatus(WarStatus status) {
@@ -101,7 +115,7 @@ public class DBWar {
     }
 
     public DBWar(War war) {
-         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli());
+         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), getCities(war.getAtt_id()), getCities(war.getDef_id()));
     }
 
     private static int getAA(String aaStr) {
@@ -110,7 +124,7 @@ public class DBWar {
     }
 
     public DBWar(SWarContainer c) {
-        this(c.getWarID(), c.getAttackerID(), c.getDefenderID(), getAA(c.getAttackerAA()), getAA(c.getDefenderAA()), WarType.parse(c.getWarType()), WarStatus.parse(c.getStatus()), TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate()));
+        this(c.getWarID(), c.getAttackerID(), c.getDefenderID(), getAA(c.getAttackerAA()), getAA(c.getDefenderAA()), WarType.parse(c.getWarType()), WarStatus.parse(c.getStatus()), TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate()), getCities(c.getAttackerID()), getCities(c.getDefenderID()));
     }
 
     public DBWar(DBWar other) {
@@ -119,6 +133,13 @@ public class DBWar {
         this.allianceIdPair = other.allianceIdPair;
         this.warStatusType = other.warStatusType;
         this.date = other.getDate();
+        this.attCities = other.attCities;
+        this.defCities = other.defCities;
+    }
+
+    private static int getCities(int nationId) {
+        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        return nation == null ? 0 : nation.getCities();
     }
 
     public String getWarInfoEmbed(boolean isAttacker, boolean loot) {

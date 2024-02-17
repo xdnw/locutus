@@ -1,8 +1,10 @@
 package link.locutus.discord.db;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBComment;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.FileUtil;
@@ -43,17 +45,23 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ForumDB extends DBMain {
-    private final Guild guild;
 
-    public ForumDB(Guild guild) throws SQLException, ClassNotFoundException {
+    private final long guildId;
+
+    public ForumDB(long guildId) throws SQLException, ClassNotFoundException {
         super("forum");
-        this.guild = guild;
+        this.guildId = guildId;
+    }
+
+    public Guild getGuild() {
+        return Locutus.imp().getDiscordApi().getGuildById(guildId);
     }
 
     public boolean update() {
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         try {
             List<DBComment> comments = updateAndGetNewComments();
+            Guild guild = getGuild();
             if (guild == null) return true;
 
             List<Category> purgeCategories = new ArrayList<>();
@@ -409,11 +417,8 @@ public class ForumDB extends DBMain {
         if (ids.isEmpty()) return Collections.emptyMap();
         List<Integer> idsSorted = new ArrayList<>(ids);
         Collections.sort(idsSorted);
-        String sql = "SELECT * FROM FORUM_TOPICS WHERE `topic_id` IN (" + String.join(",", Collections.nCopies(idsSorted.size(), "?")) + ")";
+        String sql = "SELECT * FROM FORUM_TOPICS WHERE `topic_id` IN " + StringMan.getString(idsSorted) + "";
         try (PreparedStatement stmt = prepareQuery(sql)) {
-            for (int i = 0; i < idsSorted.size(); i++) {
-                stmt.setInt(i + 1, idsSorted.get(i));
-            }
             try (ResultSet rs = stmt.executeQuery()) {
                 Map<Integer, DBTopic> map = new HashMap<>();
                 while (rs.next()) {

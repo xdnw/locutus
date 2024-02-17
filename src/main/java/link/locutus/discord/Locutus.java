@@ -204,6 +204,10 @@ public final class Locutus extends ListenerAdapter {
         System.out.println("remove:|| bankdb " + (((-start)) + (start = System.currentTimeMillis())));
         this.tradeManager = new TradeManager();
         System.out.println("remove:|| trademanager " + (((-start)) + (start = System.currentTimeMillis())));
+        if (Settings.INSTANCE.FORUM_FEED_SERVER > 0) {
+            this.forumDb = new ForumDB(Settings.INSTANCE.FORUM_FEED_SERVER);
+            System.out.println("remove:|| forumfeed " + (((-start)) + (start = System.currentTimeMillis())));
+        }
 
         this.commandManager = new CommandManager(this);
         System.out.println("remove:|| commandmanager " + (((-start)) + (start = System.currentTimeMillis())));
@@ -390,19 +394,6 @@ public final class Locutus extends ListenerAdapter {
             }
 
             System.out.println(":||Remove ready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
-
-
-
-            System.out.println(":||Remove init db 2 " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
-
-            if (Settings.INSTANCE.FORUM_FEED_SERVER > 0) {
-                Guild forumGuild = getDiscordApi().getGuildById(Settings.INSTANCE.FORUM_FEED_SERVER);
-                if (forumGuild == null) throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.FORUM_FEED_SERVER + " as FORUM_FEED_SERVER in " + Settings.INSTANCE.getDefaultFile());
-                this.forumDb = new ForumDB(forumGuild);
-            }
-
-            System.out.println("remove:|| init forum db " + (((-start)) + (start = System.currentTimeMillis())));
-
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
             }

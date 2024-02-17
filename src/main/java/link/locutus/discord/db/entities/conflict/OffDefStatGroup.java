@@ -33,22 +33,32 @@ public class OffDefStatGroup {
     public final char[] successTypes = new char[SuccessType.values.length];
     public final char[] warTypes = new char[WarType.values.length];
 
+    public static Map<ConflictColumn, Function<OffDefStatGroup, Object>> createRanking() {
+        Map<ConflictColumn, Function<OffDefStatGroup, Object>> header = createHeader();
+        header.entrySet().removeIf(e -> !e.getKey().isRanking());
+        return header;
+    }
     public static Map<ConflictColumn, Function<OffDefStatGroup, Object>> createHeader() {
         Map<ConflictColumn, Function<OffDefStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
         map.put(ranking("wars"), p -> (int) p.totalWars);
-        map.put(header("wars_active"), p -> (int) p.activeWars);
+        map.put(ranking("wars_active"), p -> (int) p.activeWars);
         map.put(ranking("attacks"), p -> (int) p.attacks);
         map.put(ranking("wars_won"), p -> (int) p.warsWon);
-        map.put(header("wars_lost"), p -> (int) p.warsLost);
-        map.put(header("wars_expired"), p -> (int) p.warsExpired);
-        map.put(header("wars_peaced"), p -> (int) p.warsPeaced);
+        map.put(ranking("wars_lost"), p -> (int) p.warsLost);
+        map.put(ranking("wars_expired"), p -> (int) p.warsExpired);
+        map.put(ranking("wars_peaced"), p -> (int) p.warsPeaced);
         for (AttackType type : AttackType.values) {
             ConflictColumn col;
             String name = type.name().toLowerCase() + "_attacks";
+            if (type == AttackType.PEACE || type == AttackType.VICTORY) {
+                continue;
+            }
             if (type == AttackType.MISSILE || type == AttackType.NUKE) {
                 col = ranking(name);
-            } else {
+            } else if (type == AttackType.A_LOOT){
                 col = header(name);
+            } else {
+                col = ranking(name);
             }
             map.put(col, p -> (int) p.attackTypes[type.ordinal()]);
         }
@@ -66,7 +76,8 @@ public class OffDefStatGroup {
             map.put(header(type.name().toLowerCase() + "_attacks"), p -> (int) p.successTypes[type.ordinal()]);
         }
         for (WarType type : WarType.values) {
-            map.put(header(type.name().toLowerCase() + "_wars"), p -> (int) p.warTypes[type.ordinal()]);
+            if (type == WarType.NUCLEAR) continue;
+            map.put(ranking(type.name().toLowerCase() + "_wars"), p -> (int) p.warTypes[type.ordinal()]);
         }
         return map;
     }

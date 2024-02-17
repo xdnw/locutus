@@ -161,7 +161,7 @@ public class IACommands {
 
 
         List<String> header = new ArrayList<>(Arrays.asList("nation", "discord", "timezone", "updated", "score", "cities", "active_m"));
-        sheet.addRow(header);
+        sheet.setHeader(header);
 
         for (DBNation nation : nations.getNations()) {
             Double timezone = timezones.get(nation);

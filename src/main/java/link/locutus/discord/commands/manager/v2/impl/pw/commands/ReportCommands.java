@@ -257,7 +257,7 @@ public class ReportCommands {
                 "Date Submitted"
         );
 
-        sheet.addRow(header);
+        sheet.setHeader(header);
 
         // sort loans by status then date
         loans.sort(Comparator.comparing(DBLoan::getStatus).thenComparing(DBLoan::getLoanDate));

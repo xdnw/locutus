@@ -2,21 +2,11 @@ package link.locutus.discord.util;
 
 import cn.easyproject.easyocr.EasyOCR;
 import cn.easyproject.easyocr.ImageType;
-import com.mxgraph.layout.mxCircleLayout;
-import com.mxgraph.layout.mxCompactTreeLayout;
-import com.mxgraph.layout.mxEdgeLabelLayout;
 import com.mxgraph.layout.mxFastOrganicLayout;
-import com.mxgraph.layout.mxGraphLayout;
-import com.mxgraph.layout.mxIGraphLayout;
-import com.mxgraph.layout.mxOrganicLayout;
-import com.mxgraph.layout.mxParallelEdgeLayout;
-import com.mxgraph.layout.mxPartitionLayout;
-import com.mxgraph.layout.mxStackLayout;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.util.mxCellRenderer;
 import com.mxgraph.util.mxConstants;
-import com.mxgraph.view.mxStylesheet;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.Treaty;
@@ -29,7 +19,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
-import javax.swing.JFrame;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
@@ -58,8 +47,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class ImageUtil {
+
+
+
     public static BufferedImage readImage(String urlAddr) {
         try {
             URL url = new URL(urlAddr);
@@ -69,15 +62,96 @@ public class ImageUtil {
             throw new RuntimeException(e);
         }
     }
+//    public static byte[] generateTreatyGraph(Collection<Treaty> treaties) throws IOException {
+//        Map<Integer, Integer> treatiesByAlliance = new HashMap<>();
+//        for (Treaty treaty : treaties) {
+//            treatiesByAlliance.merge(treaty.getFromId(), 1, Integer::sum);
+//            treatiesByAlliance.merge(treaty.getToId(), 1, Integer::sum);
+//        }
+//        Map<Integer, Integer> treatiesByAlliance2ndOrder = new HashMap<>();
+//        for (Treaty treaty : treaties) {
+//            int from = treaty.getFromId();
+//            int to = treaty.getToId();
+//            int fromTreaties = treatiesByAlliance.get(from);
+//            int toTreaties = treatiesByAlliance.get(to);
+//            treatiesByAlliance2ndOrder.merge(from, toTreaties, Integer::sum);
+//            treatiesByAlliance2ndOrder.merge(to, fromTreaties, Integer::sum);
+//        }
+//        List<Treaty> treatiesSorted = new ArrayList<>(treaties);
+//        // sort by sum of # of connections 2nd order
+//        treatiesSorted.sort((a, b) -> {
+//            int aSum = treatiesByAlliance2ndOrder.get(a.getFromId()) + treatiesByAlliance2ndOrder.get(a.getToId());
+//            int bSum = treatiesByAlliance2ndOrder.get(b.getFromId()) + treatiesByAlliance2ndOrder.get(b.getToId());
+//            return Integer.compare(aSum, bSum);
+//        });
+//
+//        mxGraph graph = new mxGraph();
+//        Object parent = graph.getDefaultParent();
+//
+//        graph.getModel().beginUpdate();
+//        try {
+//            for (Treaty treaty : treatiesSorted) {
+//                String country1 = treaty.getFrom().getName();
+//                String country2 = treaty.getTo().getName();
+////                vertices.putIfAbsent(country1, graph.insertVertex(parent, null, country1, ThreadLocalRandom.current().nextInt(240), ThreadLocalRandom.current().nextInt(240), 80, 30));
+////                vertices.putIfAbsent(country2, graph.insertVertex(parent, null, country2, ThreadLocalRandom.current().nextInt(240), ThreadLocalRandom.current().nextInt(240), 80, 30));
+////                // Create edges between the vertices
+//                Object edge = graph.insertEdge(parent, null, treaty.getType().getName(), country1, country2);
+//                String color = treaty.getType().getColor();
+//                String style = mxConstants.STYLE_STROKECOLOR + "=" + color;
+//                ((mxCell) edge).setStyle(style);
+//            }
+//        } finally {
+//            graph.getModel().endUpdate();
+//        }
+//
+//        mxFastOrganicLayout layout = new mxFastOrganicLayout(graph);
+//        layout.setForceConstant(100); // Higher value gives more distance between nodes
+//        layout.setMaxIterations(10000);
+//        layout.setInitialTemp(200);
+//        layout.setMaxDistanceLimit(25);
+//        layout.setMinDistanceLimit(25);
+//        layout.execute(graph.getDefaultParent());
+//
+//        BufferedImage image = mxCellRenderer.createBufferedImage(graph, null, 1, Color.WHITE, true, null);
+//        // Write the image to a file
+//        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+//            ImageIO.write(image, "png", baos);
+//            baos.flush();
+//            return baos.toByteArray();
+//        }
+//    }
 
-    public static byte[] generateTreatyGraph(Collection<Treaty> connections) throws IOException {
-        // Create a graph
+    public static byte[] generateTreatyGraph(Collection<Treaty> treaties) throws IOException {
+        Map<Integer, Integer> treatiesByAlliance = new HashMap<>();
+        for (Treaty treaty : treaties) {
+            treatiesByAlliance.merge(treaty.getFromId(), 1, Integer::sum);
+            treatiesByAlliance.merge(treaty.getToId(), 1, Integer::sum);
+        }
+        Map<Integer, Integer> treatiesByAlliance2ndOrder = new HashMap<>();
+        for (Treaty treaty : treaties) {
+            int from = treaty.getFromId();
+            int to = treaty.getToId();
+            int fromTreaties = treatiesByAlliance.get(from);
+            int toTreaties = treatiesByAlliance.get(to);
+            treatiesByAlliance2ndOrder.merge(from, toTreaties, Integer::sum);
+            treatiesByAlliance2ndOrder.merge(to, fromTreaties, Integer::sum);
+        }
+        List<Treaty> treatiesSorted = new ArrayList<>(treaties);
+        // sort by sum of # of connections 2nd order
+        treatiesSorted.sort((a, b) -> {
+            int aSum = treatiesByAlliance2ndOrder.get(a.getFromId()) + treatiesByAlliance2ndOrder.get(a.getToId());
+            int bSum = treatiesByAlliance2ndOrder.get(b.getFromId()) + treatiesByAlliance2ndOrder.get(b.getToId());
+            return Integer.compare(bSum, aSum);
+        });
+
+//         Create a graph
         Graph<String, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
         // Create a map to store edge labels
         Map<DefaultEdge, String> edgeToLabelMap = new HashMap<>();
 
         // Add vertices and edges from connections
-        for (Treaty connection : connections) {
+        for (Treaty connection : treatiesSorted) {
             String country1 = connection.getFrom().getName();
             String country2 = connection.getTo().getName();
             graph.addVertex(country1);
@@ -103,9 +177,6 @@ public class ImageUtil {
                         String style = mxConstants.STYLE_STROKECOLOR + "=" + color;
                         mxCell mxCell = (mxCell) cell;
                         mxCell.setStyle(style);
-//                        this.getStylesheet().getDefaultEdgeStyle().put(mxConstants.STYLE_STROKECOLOR, color);
-
-
                         return label;
                     }
                 }
@@ -115,6 +186,11 @@ public class ImageUtil {
 
         mxFastOrganicLayout layout = new mxFastOrganicLayout(graphAdapter);
         layout.setForceConstant(100);
+        layout.setMaxIterations(5000);
+        layout.setInitialTemp(200);
+        layout.setMaxDistanceLimit(200);
+        layout.setMinDistanceLimit(50);
+        layout.setUseBoundingBox(true);
         layout.execute(graphAdapter.getDefaultParent());
 
         // Create a mxGraphComponent
@@ -122,7 +198,7 @@ public class ImageUtil {
         graphComponent.setEnabled(false);
 
         // Render the graph to an image
-        BufferedImage image = mxCellRenderer.createBufferedImage(graphAdapter, null, 2, Color.WHITE, true, null);
+        BufferedImage image = mxCellRenderer.createBufferedImage(graphAdapter, null, 1, Color.WHITE, true, null);
 
         // Write the image to a file
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {

@@ -481,13 +481,19 @@ public class PWWikiUtil {
     }
 
     public static void main(String[] args) throws IOException {
-        for (Map.Entry<String, String> entry : getPages("Alliances").entrySet()) {
-            String text = entry.getKey();
-            String href = entry.getValue();
-            PWWikiPage page = new PWWikiPage(text, href, true);
-            Integer id = page.getAllianceId();
-            System.out.println(text + " = " + id);
+        PWWikiPage page = new PWWikiPage("Brawlywood", "Brawlywood", true);
+        for (Map.Entry<String, DBTopic> entry : page.getForumLinks().entrySet()) {
+            System.out.println(entry.getKey() + " = " + entry.getValue().topic_name);
         }
+
+
+//        for (Map.Entry<String, String> entry : getPages("Alliances").entrySet()) {
+//            String text = entry.getKey();
+//            String href = entry.getValue();
+//            PWWikiPage page = new PWWikiPage(text, href, true);
+//            Integer id = page.getAllianceId();
+//            System.out.println(text + " = " + id);
+//        }
 
 //        PWWikiPage page = new PWWikiPage("Great War 30", "Great_War_30", true);
 //        page.getForumLinks();
@@ -599,7 +605,7 @@ public class PWWikiUtil {
                 continue;
             }
             Set<String> unknownAlliances = new LinkedHashSet<>();
-            Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances);
+            Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances, date.getKey());
             if (combatants == null) {
                 errorsByPage.put(name, "No combatants found");
                 continue;

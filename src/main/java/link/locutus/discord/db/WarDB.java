@@ -892,25 +892,14 @@ public class WarDB extends DBMainV2 {
         }
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL)";
+            executeStmt(create);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN IF NOT EXISTS `attCities` INT NOT NULL DEFAULT 0");
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN IF NOT EXISTS `defCities` INT NOT NULL DEFAULT 0");
         };
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            executeStmt("CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))");
         };
 
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_date ON WARS (date);");
@@ -1809,7 +1798,7 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`, `attCities`, `defCities`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         ThrowingBiConsumer<DBWar, PreparedStatement> setStmt = (war, stmt) -> {
             stmt.setInt(1, war.warId);
@@ -1820,6 +1809,8 @@ public class WarDB extends DBMainV2 {
             stmt.setInt(6, war.getWarType().ordinal());
             stmt.setInt(7, war.getStatus().ordinal());
             stmt.setLong(8, war.getDate());
+            stmt.setInt(9, war.getAttCities());
+            stmt.setInt(10, war.getDefCities());
         };
         if (values.size() == 1) {
             DBWar value = values.iterator().next();
@@ -1871,8 +1862,10 @@ public class WarDB extends DBMainV2 {
         WarType war_type = WarType.values[rs.getInt("war_type")];
         WarStatus status = WarStatus.values[rs.getInt("status")];
         long date = rs.getLong("date");
+        int attCities = rs.getInt("attCities");
+        int defCities = rs.getInt("defCities");
 
-        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date);
+        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities);
     }
 
     public DBWar getWar(int warId) {

@@ -22,7 +22,11 @@ public class DamageStatGroup {
     public final int[] units = new int[MilitaryUnit.values.length];
     public final char[] buildings = new char[Buildings.values().length];
     private long infraCents = 0;
-
+    public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createRanking() {
+        Map<ConflictColumn, Function<DamageStatGroup, Object>> header = createHeader();
+        header.entrySet().removeIf(e -> !e.getKey().isRanking());
+        return header;
+    }
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createHeader() {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
         map.put(ranking("loss_value"), p -> (long) PnwUtil.convertedTotal(p.totalCost));
@@ -30,16 +34,16 @@ public class DamageStatGroup {
             if (type == ResourceType.CREDITS) continue;
             map.put(header("loss_" + type.name().toLowerCase()), p -> (long) p.totalCost[type.ordinal()]);
         }
-        map.put(header("consume_gas"), p -> (long) p.consumption[ResourceType.GASOLINE.ordinal()]);
-        map.put(header("consume_mun"), p -> (long) p.consumption[ResourceType.MUNITIONS.ordinal()]);
-        map.put(header("consume_value"), p -> (long) PnwUtil.convertedTotal(p.consumption));
+        map.put(ranking("consume_gas"), p -> (long) p.consumption[ResourceType.GASOLINE.ordinal()]);
+        map.put(ranking("consume_mun"), p -> (long) p.consumption[ResourceType.MUNITIONS.ordinal()]);
+        map.put(ranking("consume_value"), p -> (long) PnwUtil.convertedTotal(p.consumption));
         map.put(ranking("loot_value"), p -> (long) PnwUtil.convertedTotal(p.loot));
         for (MilitaryUnit unit : MilitaryUnit.values) {
             if (unit == MilitaryUnit.SPIES || unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) continue;
             String name = unit.name().toLowerCase() + "_loss";
             ConflictColumn col = unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE ? header(name) : ranking(name);
             map.put(col, p -> p.units[unit.ordinal()]);
-            map.put(header(unit.name().toLowerCase() + "_loss_value"), p -> (long) (unit.getConvertedCost() * p.units[unit.ordinal()]));
+            map.put(ranking(unit.name().toLowerCase() + "_loss_value"), p -> (long) (unit.getConvertedCost() * p.units[unit.ordinal()]));
         }
         map.put(ranking("unit_loss_value"), p -> {
             double total = 0;
@@ -49,16 +53,16 @@ public class DamageStatGroup {
                     total += MilitaryUnit.values[i].getConvertedCost() * amt;
                 }
             }
-            return total;
+            return Math.round(total);
         });
-        map.put(header("building_loss"), p -> {
+        map.put(ranking("building_loss"), p -> {
             int total = 0;
             for (char c : p.buildings) {
                 total += c;
             }
             return total;
         });
-        map.put(header("building_loss_value"), p -> {
+        map.put(ranking("building_loss_value"), p -> {
             double total = 0;
             for (int i = 0; i < p.buildings.length; i++) {
                 int amt = p.buildings[i];

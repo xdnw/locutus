@@ -336,7 +336,7 @@ public class GPTCommands {
             ));
         }
 
-        sheet.addRow(header);
+        sheet.setHeader(header);
 
         IEmbeddingDatabase embeddings = handler.getHandler().getEmbeddings();
         Set<EmbeddingSource> sources = Collections.singleton(source);

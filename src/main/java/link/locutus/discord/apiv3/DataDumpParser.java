@@ -1132,8 +1132,14 @@ public class DataDumpParser {
     }
 
     public DBNationSnapshot loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted, long currentTimeMs) throws ParseException {
+        return loadNation(header, row, allowedNationIds, allowedAllianceIds, allowVm, false, allowDeleted, currentTimeMs);
+    }
+    public DBNationSnapshot loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted, long currentTimeMs) throws ParseException {
         int vm_turns = Integer.MAX_VALUE;
-        if (!allowVm) {
+        if (header.vm_turns == 0) {
+            vm_turns = 0;
+            if (!allowNoVmCol) return null;
+        } else if (!allowVm) {
             vm_turns = Integer.parseInt(row.getField(header.vm_turns));
             if (vm_turns > 0) return null;
         }
