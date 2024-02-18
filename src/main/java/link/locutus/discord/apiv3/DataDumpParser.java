@@ -452,6 +452,20 @@ public class DataDumpParser {
         writer.close();
     }
 
+
+    public Map<Long, Map<Integer, Byte>> backCalculateCityCounts() throws IOException, ParseException {
+        Map<Long, Map<Integer, Byte>> cityCountsByDay = new Long2ObjectOpenHashMap<>();
+        iterateAll(f -> true, new TriConsumer<Long, NationHeader, CsvRow>() {
+            @Override
+            public void consume(Long day, NationHeader header, CsvRow row) {
+                int nationId = Integer.parseInt(row.getField(header.nation_id));
+                int cities = Integer.parseInt(row.getField(header.cities));
+                cityCountsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nationId, (byte) cities);
+            }
+        }, null, f -> System.out.println("backCalculateCityCounts @ day=" + f));
+        return cityCountsByDay;
+    }
+
     public void backCalculateNukesAndMissiles() throws IOException, ParseException {
         load();
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {

@@ -32,8 +32,8 @@ public class DBWar {
     public int allianceIdPair;
     private byte warStatusType;
     private final long date;
-    private final byte attCities;
-    private final byte defCities;
+    private byte attCities;
+    private byte defCities;
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }
@@ -461,5 +461,13 @@ public class DBWar {
             case AIRSTRIKE_AIRCRAFT -> true;
             default -> false;
         }, MilitaryUnit.AIRCRAFT);
+    }
+
+    public void setAttCities(int attCities) {
+        this.attCities = (byte) attCities;
+    }
+
+    public void setDefCities(int defCities) {
+        this.defCities = (byte) defCities;
     }
 }

@@ -18,6 +18,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
@@ -50,6 +51,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -425,6 +427,38 @@ public class WarDB extends DBMainV2 {
         synchronized (warsById) {
             warsById.add(war);
         }
+    }
+
+    public void loadWarCityCountsLegacy() throws IOException, ParseException {
+        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        Map<Long, Map<Integer, Byte>> counts = parser.backCalculateCityCounts();
+        Set<DBWar> toSave = new ObjectOpenHashSet<>();
+        synchronized (warsById) {
+            warsById.forEach(war -> {
+                if (war.getAttCities() != 0 && war.getDefCities() != 0) return;
+                long day = TimeUtil.getDay(war.getDate());
+                Map<Integer, Byte> map = counts.get(war.getDate());
+                if (map != null) {
+                    boolean modified = false;
+                    if (war.getAttCities() == 0) {
+                        Byte attCities = map.get(war.getAttacker_id());
+                        if (attCities != null) {
+                            war.setAttCities(attCities & 0xff);
+                            modified = true;
+                        }
+                    }
+                    if (war.getDefCities() == 0) {
+                        Byte defCities = map.get(war.getDefender_id());
+                        if (defCities != null) {
+                            war.setDefCities(defCities & 0xff);
+                            modified = true;
+                        }
+                    }
+                }
+            });
+        }
+        System.out.println("Saving " + toSave.size() + " wars");
+        saveWars(toSave);
     }
 
     public void load() {
