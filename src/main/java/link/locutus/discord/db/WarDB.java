@@ -433,6 +433,7 @@ public class WarDB extends DBMainV2 {
         DataDumpParser parser = Locutus.imp().getDataDumper(true);
         Map<Long, Map<Integer, Byte>> counts = parser.backCalculateCityCounts();
         Set<DBWar> toSave = new ObjectOpenHashSet<>();
+        AtomicLong failed = new AtomicLong();
         synchronized (warsById) {
             warsById.forEach(war -> {
                 if (war.getAttCities() != 0 && war.getDefCities() != 0) return;
@@ -454,10 +455,16 @@ public class WarDB extends DBMainV2 {
                             modified = true;
                         }
                     }
+                    if (modified) {
+                        toSave.add(war);
+                    }
+                } else {
+                    failed.incrementAndGet();
                 }
             });
         }
         System.out.println("Saving " + toSave.size() + " wars");
+        System.out.println("Failed to find " + failed.get() + " wars");
         saveWars(toSave);
     }
 
