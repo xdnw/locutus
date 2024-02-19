@@ -438,7 +438,7 @@ public class WarDB extends DBMainV2 {
             warsById.forEach(war -> {
                 if (war.getAttCities() != 0 && war.getDefCities() != 0) return;
                 long day = TimeUtil.getDay(war.getDate());
-                Map<Integer, Byte> map = counts.get(war.getDate());
+                Map<Integer, Byte> map = counts.get(day);
                 if (map != null) {
                     boolean modified = false;
                     if (war.getAttCities() == 0) {
@@ -935,8 +935,8 @@ public class WarDB extends DBMainV2 {
         {
             String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL)";
             executeStmt(create);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN IF NOT EXISTS `attCities` INT NOT NULL DEFAULT 0");
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN IF NOT EXISTS `defCities` INT NOT NULL DEFAULT 0");
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0");
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0");
         };
 
         {

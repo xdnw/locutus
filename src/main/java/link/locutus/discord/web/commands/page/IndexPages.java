@@ -61,6 +61,22 @@ import java.util.stream.Collectors;
 public class IndexPages extends PageHelper {
 
     @Command
+    public Object bank(@Me GuildDB db, WebStore ws, Context context, @Me DBNation nation) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, false, false);
+        if (auth == null) {
+            return "Not logged in";
+        }
+        StringBuilder response = new StringBuilder();
+        response.append("Index page:\n");
+        response.append("User: ").append(auth.userId()).append("\n");
+        response.append("nation: ").append(auth.nationId()).append("\n");
+        response.append("Valid: ").append(auth.isValid()).append("\n");
+        Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+        response.append("Guild: ").append(guild).append("\n");
+        return response.toString();
+    }
+
+    @Command
     public Object argTypes() {
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         ValueStore<Object> store = manager.getStore();

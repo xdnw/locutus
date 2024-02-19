@@ -2723,6 +2723,20 @@ public class GuildKey {
         }
     }));
 
+    public static GuildSetting<Boolean> ALLOW_UNVERIFIED_BANKING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ALLOW_UNVERIFIED_BANKING(@Me GuildDB db, @Me User user, boolean value) {
+            return ALLOW_UNVERIFIED_BANKING.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "Allow unregistered nations to withdraw via a web banking portal";
+        }
+    }.requireValidAlliance().requiresOffshore();
+
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {
