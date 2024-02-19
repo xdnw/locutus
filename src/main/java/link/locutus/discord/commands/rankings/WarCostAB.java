@@ -150,6 +150,7 @@ public class WarCostAB extends Command {
             }
         }
         msg.append(result.toString());
+        msg.append("\n\nSee also: <https://wars.locutus.link/>");
         msg.send();
         return null;
     }

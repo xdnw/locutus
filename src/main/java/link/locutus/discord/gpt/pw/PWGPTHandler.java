@@ -199,7 +199,7 @@ public class PWGPTHandler {
             registerCommands.add(callable);
         }
         CommandEmbeddingAdapter adapter = new CommandEmbeddingAdapter(source, registerCommands);
-        adapter.createEmbeddings(handler);
+        adapter.createEmbeddings(handler, true);
 
         adapterMap2.put(source, adapter);
     }
@@ -217,7 +217,7 @@ public class PWGPTHandler {
         }
 
         SettingEmbeddingAdapter adapter = new SettingEmbeddingAdapter(source, settings);
-        adapter.createEmbeddings(handler);
+        adapter.createEmbeddings(handler, true);
 
         adapterMap2.put(source, adapter);
     }
@@ -226,7 +226,7 @@ public class PWGPTHandler {
         EmbeddingSource source = sourceMap.get(EmbeddingType.Nation_Statistic);
         Set<ParametricCallable> metrics = new HashSet<>(cmdManager.getNationPlaceholders().getParametricCallables());
         NationAttributeAdapter adapter = new NationAttributeAdapter(source, metrics);
-        adapter.createEmbeddings(handler);
+        adapter.createEmbeddings(handler, true);
 
         adapterMap2.put(source, adapter);
     }
@@ -244,7 +244,7 @@ public class PWGPTHandler {
         }
 
         ArgumentEmbeddingAdapter adapter = new ArgumentEmbeddingAdapter(source, consumeParsers);
-        adapter.createEmbeddings(handler);
+        adapter.createEmbeddings(handler, true);
 
         adapterMap2.put(source, adapter);
     }

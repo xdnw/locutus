@@ -2700,6 +2700,7 @@ public class DBNation implements NationOrAlliance {
         base += (cities - 1) * 100;
         base += infra / 40d;
         for (MilitaryUnit unit : MilitaryUnit.values) {
+            if (unit == MilitaryUnit.INFRASTRUCTURE) continue;
             int amt;
             if (mmr != null && unit.getBuilding() != null) {
                 amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(f -> false) * cities);
@@ -3521,8 +3522,10 @@ public class DBNation implements NationOrAlliance {
             DBAlliance alliance = getAlliance(false);
             if (alliance != null) {
                 LootEntry aaLoot = alliance.getLoot();
-                double[] lootScaled =  aaLoot.getAllianceLootValue(getScore());
-                lootRevenue = PnwUtil.add(lootRevenue, lootScaled);
+                if (aaLoot != null) {
+                    double[] lootScaled = aaLoot.getAllianceLootValue(getScore());
+                    lootRevenue = PnwUtil.add(lootRevenue, lootScaled);
+                }
             }
         }
 

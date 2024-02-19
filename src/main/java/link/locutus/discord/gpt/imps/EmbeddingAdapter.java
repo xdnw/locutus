@@ -45,14 +45,14 @@ public abstract class EmbeddingAdapter<T> implements IEmbeddingAdapter<T> {
         return objectsByHash.get(hash);
     }
 
-    public EmbeddingAdapter createEmbeddings(GptHandler handler) {
+    public EmbeddingAdapter createEmbeddings(GptHandler handler, boolean skipModerate) {
         List<T> values = new ArrayList<>(objects);
 
         hashesByObject.clear();
         objectsByHash.clear();
 
         List<Long> hashes = handler.registerEmbeddings(source,
-                values.stream().map(t -> getDescriptionAndExpandedPair(source, t)), moderate, true);
+                values.stream().map(t -> getDescriptionAndExpandedPair(source, t)), moderate && !skipModerate, true);
 
         for (int i = 0; i < values.size(); i++) {
             long hash = hashes.get(i);

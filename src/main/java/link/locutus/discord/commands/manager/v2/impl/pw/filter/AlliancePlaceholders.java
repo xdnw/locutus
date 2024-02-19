@@ -51,7 +51,6 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
 
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBAlliance.class, store, validators, permisser);
-        this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
     @Override

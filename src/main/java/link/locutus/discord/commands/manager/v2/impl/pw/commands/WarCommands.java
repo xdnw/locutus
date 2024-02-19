@@ -3049,6 +3049,44 @@ public class WarCommands {
         return response.toString();
     }
 
+    @Command(desc = "List war rooms for an ally or enemy")
+    public String warRoomList(@Me GuildDB db, @Me WarCategory warCategory, DBNation nation) {
+        Map<Integer, WarCategory.WarRoom> roomMap = warCategory.getWarRoomMap();
+        WarCategory.WarRoom room = roomMap.get(nation.getId());
+        Function<WarCategory.WarRoom, String> toString = f -> {
+            StringBuilder response = new StringBuilder();
+            String mention = f.getChannelMention();
+            if (mention == null) {
+                response.append("Unknown channel for: " + f.target.getMarkdownUrl());
+            } else {
+                response.append(mention + " - " + f.target.getMarkdownUrl() + " | " + f.target.getAllianceUrlMarkup(true));
+                for (DBNation participant : f.getParticipants()) {
+                    response.append("\n- " + participant.getMarkdownUrl() + " | " + participant.getAllianceUrlMarkup(true));
+                }
+            }
+            return response.toString();
+        };
+        if (room != null) {
+            return toString.apply(room);
+        } else {
+            Set<WarCategory.WarRoom> rooms = new LinkedHashSet<>();
+            for (Map.Entry<Integer, WarCategory.WarRoom> entry : roomMap.entrySet()) {
+                room = entry.getValue();
+                if (room.isParticipant(nation, false)) {
+                    rooms.add(room);
+                }
+            }
+            if (rooms.isEmpty()) {
+                return "No war rooms found for: " + nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true);
+            }
+            StringBuilder response = new StringBuilder();
+            for (WarCategory.WarRoom entry : rooms) {
+                response.append(toString.apply(entry) + "\n");
+            }
+            return response.toString();
+        }
+    }
+
     @Command(desc = "Create war rooms from a blitz sheet")
     @RolePermission(Roles.MILCOM)
     public String warRoomSheet(@Me WarCategory warCat, @Me User author, @Me Guild guild, @Me JSONObject command, @Me IMessageIO io,

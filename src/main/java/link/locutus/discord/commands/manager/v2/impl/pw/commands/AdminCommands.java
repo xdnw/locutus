@@ -1744,7 +1744,10 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncNations(NationDB db, @Default Set<DBNation> nations) throws IOException, ParseException {
+    public String syncNations(NationDB db, @Default Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
+        if (dirtyNations) {
+            db.updateDirtyNations(Event::post);
+        }
         List<Event> events = new ArrayList<>();
         Set<Integer> updatedIds;
         if (nations != null && !nations.isEmpty()) {
