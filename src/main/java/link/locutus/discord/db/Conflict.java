@@ -27,7 +27,6 @@ import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
-import link.locutus.discord.db.entities.conflict.OffDefStatGroup;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.web.jooby.JteUtil;
@@ -54,7 +53,7 @@ public class Conflict {
     private long turnEnd;
     private final Map<Integer, Long> startTime = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Long> endTime = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Map<Integer, Map.Entry<OffDefStatGroup, DamageStatGroup>>> warsVsAlliance = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance = new Int2ObjectOpenHashMap<>();
     private final CoalitionSide coalition1;
     private final CoalitionSide coalition2;
     private byte[] bsonCompressed;
@@ -285,8 +284,8 @@ public class Conflict {
                     }
                 }
 
-                Map<Byte, Map<MilitaryUnit, Integer>> unitsByCityCol1 = new Byte2ObjectOpenHashMap<>();
-                Map<Byte, Map<MilitaryUnit, Integer>> unitsByCityCol2 = new Byte2ObjectOpenHashMap<>();
+                Map<Integer, Map<Byte, Map<MilitaryUnit, Integer>>> unitsByCityCol1 = new Int2ObjectOpenHashMap<>();
+                Map<Integer, Map<Byte, Map<MilitaryUnit, Integer>>> unitsByCityCol2 = new Int2ObjectOpenHashMap<>();
 
                 long finalTurn = turn;
                 Set<Integer> allowedNations = latest.values().stream().filter(f -> {
@@ -301,8 +300,9 @@ public class Conflict {
 
                 for (int id : allowedNations) {
                     DBNation nation = latest.get(id);
-                    boolean isPrimary = coalition1.hasAlliance(nation.getAlliance_id());
-                    Map<Byte, Map<MilitaryUnit, Integer>> unitsByCity = isPrimary ? unitsByCityCol1 : unitsByCityCol2;
+                    int aaId = nation.getAlliance_id();
+                    boolean isPrimary = coalition1.hasAlliance(aaId);
+                    Map<Byte, Map<MilitaryUnit, Integer>> unitsByCity = (isPrimary ? unitsByCityCol1 : unitsByCityCol2).computeIfAbsent(aaId, f -> new Byte2ObjectOpenHashMap<>());
                     byte cities = (byte) nation.getCities();
                     for (MilitaryUnit unit : units) {
                         int count = nation.getUnits(unit);
@@ -338,32 +338,40 @@ public class Conflict {
         root.put("end", turnEnd == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(turnEnd));
 
         List<String> metricNames = new ObjectArrayList<>();
+
         List<Integer> metricsDay = new IntArrayList();
         List<Integer> metricsTurn = new IntArrayList();
+
         for (ConflictMetric metric : ConflictMetric.values) {
             metricNames.add(metric.name());
-            (metric.isDay() ? metricsDay : metricsTurn).add(metric.ordinal());
+            (metric.isDay() ? metricsDay : metricsTurn).add(metricNames.size());
+        }
+        Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeaders = DamageStatGroup.createRanking();
+        for (Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>> entry : damageHeaders.entrySet()) {
+            ConflictColumn column = entry.getKey();
+            String defPrefix = column.isCount() ? "def:" : "loss:";
+            metricNames.add(defPrefix + column.getName());
+            metricsDay.add(metricNames.size());
+            String attPrefix = column.isCount() ? "off:" : "dealt:";
+            metricNames.add(attPrefix + column.getName());
         }
         root.put("metric_names", metricNames);
         root.put("metrics_turn", metricsTurn);
         root.put("metrics_day", metricsDay);
 
+        long endTurn = turnEnd == Long.MAX_VALUE ? TimeUtil.getTurn() : turnEnd;
+
         List<Map<String, Object>> coalitions = new ObjectArrayList<>();
-        coalitions.add(coalition1.toGraphMap(manager));
-        coalitions.add(coalition2.toGraphMap(manager));
+        coalitions.add(coalition1.toGraphMap(manager, turnStart, endTurn, metricsTurn, metricsDay, new ArrayList<>(damageHeaders.values())));
+        coalitions.add(coalition2.toGraphMap(manager, turnStart, endTurn, metricsTurn, metricsDay, new ArrayList<>(damageHeaders.values())));
 
         root.put("coalitions", coalitions);
         return bsonCompressed = JteUtil.compress(JteUtil.toBinary(root));
     }
 
     private Map<String, Object> warsVsAllianceJson() {
-        Map<ConflictColumn, Function<OffDefStatGroup, Object>> offRanking = OffDefStatGroup.createRanking();
-        Map<ConflictColumn, Function<DamageStatGroup, Object>> damageRanking = DamageStatGroup.createRanking();
-
-        Map<ConflictColumn, Function<Map.Entry<OffDefStatGroup, DamageStatGroup>, Object>> combined = new Object2ObjectLinkedOpenHashMap<>();
-        combined.putAll(offRanking.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> p -> p == null ? 0 : e.getValue().apply(p.getKey()))));
-        combined.putAll(damageRanking.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> p -> p == null ? 0 : e.getValue().apply(p.getValue()))));
-        List<Map.Entry<ConflictColumn, Function<Map.Entry<OffDefStatGroup, DamageStatGroup>, Object>>> combinedList = new ObjectArrayList<>(combined.entrySet());
+        Map<ConflictColumn, Function<DamageStatGroup, Object>> combined = DamageStatGroup.createRanking();
+        List<Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>>> combinedList = new ObjectArrayList<>(combined.entrySet());
 
         Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
         // headers
@@ -374,16 +382,16 @@ public class Conflict {
         aaIdsFull.addAll(coalition2.getAllianceIdsSorted());
 
         List<List<List<Long>>> tables = new ArrayList<>();
-        for (Map.Entry<ConflictColumn, Function<Map.Entry<OffDefStatGroup, DamageStatGroup>, Object>> entry : combinedList) {
+        for (Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>> entry : combinedList) {
             List<List<Long>> table = new ArrayList<>();
-            Function<Map.Entry<OffDefStatGroup, DamageStatGroup>, Object> function = entry.getValue();
+            Function<DamageStatGroup, Object> function = entry.getValue();
 
             for (int aaId1 : aaIdsFull) {
                 List<Long> row = new LongArrayList();
-                Map<Integer, Map.Entry<OffDefStatGroup, DamageStatGroup>> statsByAA = warsVsAlliance.get(aaId1);
+                Map<Integer, DamageStatGroup> statsByAA = warsVsAlliance.get(aaId1);
                 if (statsByAA != null) {
                     for (int aaId2 : aaIdsFull) {
-                        Map.Entry<OffDefStatGroup, DamageStatGroup> stats = statsByAA.get(aaId2);
+                        DamageStatGroup stats = statsByAA.get(aaId2);
                         Object value = function.apply(stats);
                         row.add(((Number) value).longValue());
                     }
@@ -424,10 +432,9 @@ public class Conflict {
                 coalitions.add(coalition2.toMap(manager));
                 root.put("coalitions", coalitions);
 
-                Map<ConflictColumn, Function<OffDefStatGroup, Object>> offDefHeader = OffDefStatGroup.createHeader();
-                root.put("counts_header", new ObjectArrayList<>(offDefHeader.keySet().stream().map(ConflictColumn::getName).toList()));
                 Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
                 root.put("damage_header", new ObjectArrayList<>(damageHeader.keySet().stream().map(ConflictColumn::getName).toList()));
+                root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
                 root.put("war_web", warsVsAllianceJson());
                 byte[] compressed = JteUtil.compress(JteUtil.toBinary(root));
                 bsonCompressed = compressed;
@@ -463,12 +470,8 @@ public class Conflict {
         return null;
     }
 
-    private Map.Entry<OffDefStatGroup, DamageStatGroup> getWarWebEntry(int aaId1, int aaId2) {
-        return warsVsAlliance.computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> {
-            OffDefStatGroup offDef = new OffDefStatGroup();
-            DamageStatGroup damage = new DamageStatGroup();
-            return Map.entry(offDef, damage);
-        });
+    private DamageStatGroup getWarWebEntry(int aaId1, int aaId2) {
+        return warsVsAlliance.computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> new DamageStatGroup());
     }
 
     public void updateWar(DBWar previous, DBWar current, long turn) {
@@ -479,7 +482,7 @@ public class Conflict {
         side.updateWar(previous, current, true);
         otherSide.updateWar(previous, current, false);
 
-        getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).getKey().newWar(current, true);
+        getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
 
         dirtyJson = true;
     }
@@ -498,10 +501,10 @@ public class Conflict {
         CoalitionSide otherSide = side.getOther();
         side.updateAttack(war, attack, true);
         otherSide.updateAttack(war, attack, false);
-        getWarWebEntry(attackerAA, defenderAA).getKey().newAttack(war, attack, null);
+        getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
 
-        getWarWebEntry(attackerAA, defenderAA).getValue().apply(attack, true);
-        getWarWebEntry(defenderAA, attackerAA).getValue().apply(attack, false);
+        getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
+        getWarWebEntry(defenderAA, attackerAA).apply(attack, false);
 
         dirtyJson = true;
     }

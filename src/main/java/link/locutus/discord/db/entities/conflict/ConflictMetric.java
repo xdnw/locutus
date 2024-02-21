@@ -14,7 +14,6 @@ public enum ConflictMetric {
     SHIP(MilitaryUnit.SHIP, false),
     SPIES(MilitaryUnit.SPIES, false),
 
-
     ;
 
     public static final ConflictMetric[] values = values();
@@ -42,6 +41,6 @@ public enum ConflictMetric {
         return isDay;
     }
 
-    public record Entry(ConflictMetric metric, int conflictId, boolean side, long turnOrDay, int city, int value) {
+    public record Entry(ConflictMetric metric, int conflictId, int allianceId, boolean side, long turnOrDay, int city, int value) {
     }
 }

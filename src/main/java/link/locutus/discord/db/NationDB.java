@@ -3294,6 +3294,22 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         });
     }
 
+    public Set<Integer> getNationsActiveAtTurn(long turn) {
+        Set<Integer> result = new IntOpenHashSet();
+        try (PreparedStatement stmt = prepareQuery("SELECT nation FROM ACTIVITY WHERE turn = ?")) {
+            stmt.setLong(1, turn);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(rs.getInt(1));
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     private int[] saveNationLoot(List<LootEntry> entries) {
         if (entries.isEmpty()) return new int[0];
         /*

@@ -342,11 +342,12 @@ public class ConflictManager {
                 });
                 //
                 System.out.println("Load attacks: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-                db.query("SELECT * FROM conflict_graphs", stmt -> {
+                db.query("SELECT * FROM conflict_graphs2", stmt -> {
                 }, (ThrowingConsumer<ResultSet>) rs -> {
                     while (rs.next()) {
                         int conflictId = rs.getInt("conflict_id");
                         boolean side = rs.getBoolean("side");
+                        int allianceId = rs.getInt("alliance_id");
                         int metricOrd = rs.getInt("metric");
                         long turnOrDay = rs.getLong("turn");
                         int city = rs.getInt("city");
@@ -354,7 +355,7 @@ public class ConflictManager {
                         Conflict conflict = conflictMap.get(conflictId);
                         if (conflict != null) {
                             ConflictMetric metric = ConflictMetric.values[metricOrd];
-                            conflict.getSide(side).addGraphData(metric, turnOrDay, city, value);
+                            conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
                         }
                     }
                 });
@@ -735,8 +736,9 @@ public class ConflictManager {
         db.executeStmt("DROP TABLE legacy_names");
 //        db.executeStmt("DELETE FROM conflicts");
 
-        // conflict_graphs: int conflict_id, boolean side, int metric, bigint turn, byte[] data
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, side, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        // drop conflict_graphs
+        db.executeStmt("DROP TABLE conflict_graphs");
 
         // announcements
         // conflict_id (foreign key), long timestamp, int post_id, string post_stub,
@@ -752,7 +754,7 @@ public class ConflictManager {
     }
 
     public void clearGraphData(ConflictMetric metric, int conflictId, boolean side, long turn) {
-        db.update("DELETE FROM conflict_graphs WHERE conflict_id = ? AND side = ? AND metric = ? AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric = ? AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
             stmt.setBoolean(2, side);
             stmt.setInt(3, metric.ordinal());
@@ -766,7 +768,7 @@ public class ConflictManager {
             clearGraphData(metric.iterator().next(), conflictId, side, turn);
             return;
         }
-        db.update("DELETE FROM conflict_graphs WHERE conflict_id = ? AND side = ? AND metric IN (" + metric.stream().map(Enum::ordinal).map(String::valueOf).collect(Collectors.joining(",")) + ") AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric IN (" + metric.stream().map(Enum::ordinal).map(String::valueOf).collect(Collectors.joining(",")) + ") AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
             stmt.setBoolean(2, side);
             stmt.setLong(3, turn);
@@ -774,20 +776,21 @@ public class ConflictManager {
     }
 
     public void deleteGraphData(int conflictId) {
-        db.update("DELETE FROM conflict_graphs WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
         });
     }
 
     public void addGraphData(List<ConflictMetric.Entry> metrics) {
-        String query = "INSERT OR REPLACE INTO conflict_graphs (conflict_id, side, metric, turn, city, value) VALUES (?, ?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO conflict_graphs2 (conflict_id, side, alliance_id, metric, turn, city, value) VALUES (?, ?, ?, ?, ?, ?, ?)";
         db.executeBatch(metrics, query, (ThrowingBiConsumer<ConflictMetric.Entry, PreparedStatement>) (entry, stmt) -> {
             stmt.setInt(1, entry.conflictId());
             stmt.setBoolean(2, entry.side());
-            stmt.setInt(3, entry.metric().ordinal());
-            stmt.setLong(4, entry.turnOrDay());
-            stmt.setInt(5, entry.city());
-            stmt.setInt(6, entry.value());
+            stmt.setInt(3, entry.allianceId());
+            stmt.setInt(4, entry.metric().ordinal());
+            stmt.setLong(5, entry.turnOrDay());
+            stmt.setInt(6, entry.city());
+            stmt.setInt(7, entry.value());
         });
     }
 
