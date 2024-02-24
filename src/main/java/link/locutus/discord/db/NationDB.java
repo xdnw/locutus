@@ -839,17 +839,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
         long turn = TimeUtil.getTurn();
         Set<Integer> visited = new HashSet<>();
-        for (int i = 0; i < amt && !dirtyNations.isEmpty(); i++) {
+        while (!dirtyNations.isEmpty() && nationIdActive.size() < amt) {
             try {
-                Iterator<Integer> iter = dirtyNations.iterator();
-                int nationId = iter.next();
-                iter.remove();
-                if (visited.add(nationId)) {
-                    nationIdActive.add(Map.entry(nationId, Long.MAX_VALUE)); // Always update dirty nations
+                synchronized (dirtyNations) {
+                    Iterator<Integer> iter = dirtyNations.iterator();
+                    int nationId = iter.next();
+                    iter.remove();
+                    if (visited.add(nationId)) {
+                        nationIdActive.add(Map.entry(nationId, Long.MAX_VALUE)); // Always update dirty nations
+                    }
                 }
-            } catch (NoSuchElementException ignore) {}
-        }
+            } catch (NoSuchElementException ignore) {
+                ignore.printStackTrace();
+            }
 
+        }
         long now = System.currentTimeMillis();
         if (nationIdActive.size() < amt) {
             synchronized (nationsById) {

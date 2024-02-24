@@ -431,10 +431,12 @@ public class DiscordUtil {
     public static Message getMessage(long guildId, long channelId, long messageId) {
         Guild guild = Locutus.imp().getDiscordApi().getGuildById(guildId);
         if (guild == null) return null;
-        GuildMessageChannel channel = guild.getTextChannelById(channelId);
-        if (channel == null) return null;
-        Message message = RateLimitUtil.complete(channel.retrieveMessageById(messageId));
-        return message;
+        GuildChannel channel = guild.getGuildChannelById(channelId);
+        if (channel instanceof GuildMessageChannel gmc) {
+            Message message = RateLimitUtil.complete(gmc.retrieveMessageById(messageId));
+            return message;
+        }
+        return null;
     }
 
 

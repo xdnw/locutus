@@ -102,14 +102,10 @@ public class TreatyUpdateProcessor {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 StringBuilder finalBody = new StringBuilder(body);
-
-//                Integer allianceId = guildDB.getOrNull(GuildKey.ALLIANCE_ID);
-//                if (allianceId != null)
-                {
+                if (guildDB.hasAlliance() || !guildDB.isWhitelisted()) {
                     Set<Integer> tracked = guildDB.getAllies(true);
                     if (!tracked.isEmpty()) {
                         finalBody.append("\n\n**IN SPHERE**");
-
                         tracked.addAll(guildDB.getCoalition("enemies"));
                         tracked.addAll(guildDB.getCoalition(Coalition.DNR));
                         tracked.addAll(guildDB.getCoalition(Coalition.DNR_MEMBER));

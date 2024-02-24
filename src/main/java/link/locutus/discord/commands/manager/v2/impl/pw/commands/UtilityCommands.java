@@ -1222,7 +1222,6 @@ public class UtilityCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
-    @WhitelistPermission
     @NoFormat
     public static String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")

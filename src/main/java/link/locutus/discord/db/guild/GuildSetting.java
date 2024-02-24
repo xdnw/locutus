@@ -252,7 +252,7 @@ public abstract class GuildSetting<T> {
         for (GuildSetting require : requires) {
             if (require.getOrNull(db, false) == null) {
                 if (throwException) {
-                    errors.add("Missing required setting `" + require.name() + "` (see: " + require.getCommandObj(db, (String) null) + ")");
+                    errors.add("You must first enable `" + require.name() + "` (see: " + require.getCommandObj(db, (String) null) + ")");
                 } else {
                     return false;
                 }
@@ -261,7 +261,7 @@ public abstract class GuildSetting<T> {
         for (String coalition : requiresCoalitionStr) {
             if (db.getCoalition(coalition).isEmpty()) {
                 if (throwException) {
-                    errors.add("Missing required coalition `" + coalition + "` (see: " + CM.coalition.add.cmd.create(null, coalition).toSlashCommand() + ")");
+                    errors.add("You must first set the coalition `" + coalition + "` (see: " + CM.coalition.add.cmd.create(null, coalition).toSlashCommand() + ")");
                 } else {
                     return false;
                 }
@@ -340,6 +340,8 @@ public abstract class GuildSetting<T> {
         this.requiresFunction.add(new BiPredicate<GuildDB, Boolean>() {
             @Override
             public boolean test(GuildDB db, Boolean throwError) {
+                if (db.getGuild().getIdLong() == Settings.INSTANCE.ROOT_COALITION_SERVER) return true;
+                if (db.hasCoalitionPermsOnRoot(Coalition.WHITELISTED)) return true;
                 throw new IllegalArgumentException("Please use the public channels for this (this is to reduce unnecessary discord calls)");
             }
         });

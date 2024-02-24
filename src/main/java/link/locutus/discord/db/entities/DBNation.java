@@ -6451,6 +6451,11 @@ public class DBNation implements NationOrAlliance {
         return getBounties().stream().anyMatch(f -> f.getType() == WarType.NUCLEAR);
     }
 
+    @Command(desc = "Sum of all bounty values placed on them")
+    public double totalBountyValue() {
+        return getBounties().stream().mapToLong(DBBounty::getAmount).sum();
+    }
+
     @Command(desc = "Maximum total bounty placed on them of any type")
     public double maxBountyValue() {
         Set<DBBounty> bounties = getBounties();

@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -110,7 +111,7 @@ public class MarkupUtil {
         while(m.find()) {
             String found = m.group(1);
             Long id = Long.parseLong(found);
-            TextChannel channel = guild.getTextChannelById(id);
+            GuildChannel channel = guild.getGuildChannelById(id);
             if (channel != null) {
                 m.appendReplacement(sb, markdownUrl("#" + channel.getName(), channel.getJumpUrl()));
             } else {

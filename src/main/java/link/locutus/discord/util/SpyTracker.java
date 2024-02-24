@@ -1,11 +1,13 @@
 package link.locutus.discord.util;
 
+import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -17,8 +19,10 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +32,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -517,6 +522,77 @@ public class SpyTracker {
         }
         if (activitiesToFlag.isEmpty()) return;
 
+
+
+
+        // sort by order in nationIds
+        List<Nation> nationActiveData = getActive();
+
+        for (SpyActivity activity : activitiesToFlag) {
+            activity.nationActiveInfo = nationActiveData;
+        }
+    }
+
+    public void checkBounties(List<Bounty> all) throws IOException {
+        long start = System.currentTimeMillis();
+        Map<GuildDB, Set<Bounty>> bountiesByGuild = new LinkedHashMap<>();
+        for (Bounty bounty : all) {
+            DBNation nation = DBNation.getById(bounty.getNation_id());
+            if (nation == null || nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+            int aaId = nation.getAlliance_id();
+            GuildDB db = nation.getGuildDB();
+            if (db != null) {
+                MessageChannel espionage = GuildKey.ESPIONAGE_ALERT_CHANNEL.getOrNull(db);
+                if (espionage != null) {
+                    bountiesByGuild.computeIfAbsent(db, k -> new HashSet<>()).add(bounty);
+                }
+            }
+        }
+        if (bountiesByGuild.isEmpty()) return;
+        List<Nation> active = getActive();
+        for (Map.Entry<GuildDB, Set<Bounty>> entry : bountiesByGuild.entrySet()) {
+            GuildDB db = entry.getKey();
+            MessageChannel channel = GuildKey.ESPIONAGE_ALERT_CHANNEL.getOrNull(db);
+            if (channel == null) continue;
+
+            Set<Bounty> bounties = entry.getValue();
+
+            long total = bounties.stream().mapToLong(Bounty::getAmount).sum();
+            String title = "$" + MathMan.format(total) + " BOUNTY placed on ";
+            if (bounties.size() == 1) {
+                Bounty bounty = bounties.iterator().next();
+                title += PnwUtil.getName(bounty.getNation_id(), false);
+            } else {
+                title += bounties.size() + " nations";
+            }
+            StringBuilder body = new StringBuilder();
+            body.append("**Bounties:**\n");
+            for (Bounty bounty : bounties) {
+                String time = DiscordUtil.timestamp(bounty.getDate().toEpochMilli(), null);
+                body.append("\n- " + PnwUtil.getMarkdownUrl(bounty.getNation_id(), false) + ": `$" + MathMan.format(bounty.getAmount()) + "` - " + time);
+            }
+            body.append("\n<https://politicsandwar.com/world/bounties/>\n\n**Active Nations**:\n");
+            for (Nation nation : active) {
+                int id = nation.getId();
+                long activeMs = start - nation.getLast_active().toEpochMilli();
+                String activeStr = activeMs < 1000 ? "Now" : TimeUtil.secToTime(TimeUnit.MILLISECONDS, activeMs);
+                body.append("- " + PnwUtil.getMarkdownUrl(id, false) + " | ");
+                DBNation dbNation = DBNation.getById(id);
+                int allianceId = dbNation == null ? 0 : dbNation.getAlliance_id();
+                body.append(PnwUtil.getMarkdownUrl(allianceId, true) + " | ");
+                body.append(activeStr + "\n");
+            }
+            try {
+                new DiscordChannelIO(channel).send("**__" + title + "__**\n" + body);
+            } catch (InsufficientPermissionException permE) {
+                db.deleteInfo(GuildKey.ESPIONAGE_ALERT_CHANNEL);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private List<Nation> getActive() throws IOException {
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
         String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE, url);
 
@@ -525,14 +601,9 @@ public class SpyTracker {
         for (int i = 0; i < nationIds.size(); i++) {
             nationIdIndex.put(nationIds.get(i), i);
         }
-
         List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getV3().fetchNationActive(nationIds));
-        // sort by order in nationIds
         nationActiveData.sort(Comparator.comparingInt(o -> nationIdIndex.get(o.getId())));
-
-        for (SpyActivity activity : activitiesToFlag) {
-            activity.nationActiveInfo = nationActiveData;
-        }
+        return nationActiveData;
     }
 
     public void updateCasualties(Nation nation, long timestamp) {
