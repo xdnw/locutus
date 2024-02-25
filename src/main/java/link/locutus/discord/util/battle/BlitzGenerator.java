@@ -137,37 +137,73 @@ public class BlitzGenerator {
         Integer att3 = null;
         List<Integer> targetsIndexesRoseFormat = new ArrayList<>();
 
+        Map<Integer, String> duplicateColumns = new LinkedHashMap<>();
         boolean isReverse = false;
         for (int i = 0; i < header.size(); i++) {
             Object obj = header.get(i);
             if (obj == null) continue;
             String title = obj.toString();
-            if (title.equalsIgnoreCase("alliance") && allianceI == null) {
-                allianceI = i;
-            }
-            if (title.equalsIgnoreCase("nation") || title.equalsIgnoreCase("nation name") || (title.equalsIgnoreCase("link") && targetI == null)) {
-                targetI = i;
-            }
-            if (title.equalsIgnoreCase("leader") && targetI == null) {
-                targetI = i;
-                useLeader = true;
-            }
-            if (title.equalsIgnoreCase("att1") || title.equalsIgnoreCase("Fighter #1") || title.equalsIgnoreCase("Attacker 1")) {
+            if (title.equalsIgnoreCase("alliance")) {
+                if (allianceI != null) {
+                    duplicateColumns.put(i, "alliance");
+                } else {
+                    allianceI = i;
+                }
+            } else if (title.equalsIgnoreCase("nation") || title.equalsIgnoreCase("nation name") || (title.equalsIgnoreCase("link"))) {
+                if (targetI == null) {
+                    targetI = i;
+                } else {
+                    duplicateColumns.put(i, "nation");
+                }
+            } else if (title.equalsIgnoreCase("leader")) {
+                if (targetI == null) {
+                    targetI = i;
+                    useLeader = true;
+                } else {
+                    duplicateColumns.put(i, "leader");
+                }
+            } else if (title.equalsIgnoreCase("att1") || title.equalsIgnoreCase("Fighter #1") || title.equalsIgnoreCase("Attacker 1")) {
+                if (attI != null) {
+                    duplicateColumns.put(i, "att1");
+                }
                 attI = i;
-            }
-            if (title.equalsIgnoreCase("att2") || title.equalsIgnoreCase("Fighter #2") || title.equalsIgnoreCase("Attacker 2")) {
+            } else if (title.equalsIgnoreCase("att2") || title.equalsIgnoreCase("Fighter #2") || title.equalsIgnoreCase("Attacker 2")) {
+                if (att2 != null) {
+                    duplicateColumns.put(i, "att2");
+                }
                 att2 = i;
-            }
-            if (title.equalsIgnoreCase("att3") || title.equalsIgnoreCase("Fighter #3") || title.equalsIgnoreCase("Attacker 3")) {
+            } else if (title.equalsIgnoreCase("att3") || title.equalsIgnoreCase("Fighter #3") || title.equalsIgnoreCase("Attacker 3")) {
+                if (att3 != null) {
+                    duplicateColumns.put(i, "att3");
+                }
                 att3 = i;
-            }
-            else if (title.equalsIgnoreCase("def1")) {
+            } else if (title.equalsIgnoreCase("def1")) {
+                if (attI != null) {
+                    duplicateColumns.put(i, "def1");
+                }
                 attI = i;
                 isReverse = true;
             } else if (title.toLowerCase().startsWith("spy slot ")) {
+                if (attI != null) {
+                    duplicateColumns.put(i, "spy slot");
+                }
                 targetsIndexesRoseFormat.add(i);
                 targetI = 0;
             }
+        }
+        if (!duplicateColumns.isEmpty()) {
+            Map<String, List<String>> duplicates = new LinkedHashMap<>();
+            for (Map.Entry<Integer, String> entry : duplicateColumns.entrySet()) {
+                int index = entry.getKey();
+                String cell = SheetUtil.getLetter(index) + (headerRow + 1);
+                duplicates.computeIfAbsent(entry.getValue(), f -> new ArrayList<>()).add(cell);
+            }
+            for (Map.Entry<String, List<String>> entry : duplicates.entrySet()) {
+                String response = ("Duplicate columns found for: " + entry.getKey() + " at " + String.join(", ", entry.getValue()));
+                invalidOut.accept(new AbstractMap.SimpleEntry<>(null, null), response);
+            }
+
+
         }
 
         Set<DBNation> allAttackers = new LinkedHashSet<>();
@@ -191,7 +227,7 @@ public class BlitzGenerator {
             DBNation defender = !isReverse ? nation : null;
 
             if (nation == null) {
-                String response = ("`" + cell.toString() + "` is an invalid nation\n");
+                String response = ("`" + cell.toString() + "` is an invalid nation");
                 if (outMessages.add(response)) {
                     invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
                 }
@@ -204,7 +240,7 @@ public class BlitzGenerator {
                     String allianceStr = aaCell.toString();
                     DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(allianceStr);
                     if (alliance != null && nation.getAlliance_id() != alliance.getAlliance_id()) {
-                        String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`\n");
+                        String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`");
                         if (outMessages.add(response)) {
                             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
                         }
@@ -234,7 +270,7 @@ public class BlitzGenerator {
                         }
 
                         if (other == null) {
-                            String response = ("`" + cell.toString() + "` is an invalid nation\n");
+                            String response = ("`" + cell.toString() + "` is an invalid nation");
                             if (outMessages.add(response)) {
                                 invalidOut.accept(new AbstractMap.SimpleEntry<>(defenderMutable, attackerMutable), response);
                             }
@@ -271,7 +307,7 @@ public class BlitzGenerator {
                         attacker = other;
                     }
                     if (other == null) {
-                        String response = ("`" + cell.toString() + "` is an invalid nation\n");
+                        String response = ("`" + cell.toString() + "` is an invalid nation");
                         if (outMessages.add(response)) {
                             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
                         }
@@ -341,7 +377,7 @@ public class BlitzGenerator {
         Map<String, Object> debugInfoMap = new LinkedHashMap<>();
         debugInfoMap.put("sheet_id", sheet.getSpreadsheetId());
         debugInfoMap.put("errors", numErrors.get());
-        debugInfoMap.put("header_row", headerRow);
+        debugInfoMap.put("header_row", (headerRow + 1));
         debugInfoMap.put("inverse", isReverse ? "true (found `def` column)" : "false");
         debugInfoMap.put("use_leader", useLeader);
         debugInfoMap.put(defenderStr, targetI == null ? "Not Found" : SheetUtil.getLetter(targetI) + (headerRow + 1));
