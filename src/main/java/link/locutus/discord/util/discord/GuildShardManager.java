@@ -2,6 +2,7 @@ package link.locutus.discord.util.discord;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
@@ -41,7 +42,9 @@ public class GuildShardManager {
     }
 
     public GuildMessageChannel getGuildChannelById(long id) {
-        return get((jda) -> jda.getTextChannelById(id));
+        GuildChannel result = get((jda) -> jda.getGuildChannelById(id));
+        if (result instanceof GuildMessageChannel gmc) return gmc;
+        return null;
     }
 
     public User getUserById(long id) {

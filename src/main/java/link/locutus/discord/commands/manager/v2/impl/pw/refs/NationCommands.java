@@ -9,10 +9,31 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="allianceSeniorityApplicant")
+        public static class allianceSeniorityApplicant extends CommandRef {
+            public static final allianceSeniorityApplicant cmd = new allianceSeniorityApplicant();
+            public allianceSeniorityApplicant create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="allianceSeniorityApplicantMs")
+        public static class allianceSeniorityApplicantMs extends CommandRef {
+            public static final allianceSeniorityApplicantMs cmd = new allianceSeniorityApplicantMs();
+            public allianceSeniorityApplicantMs create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="allianceSeniorityMs")
         public static class allianceSeniorityMs extends CommandRef {
             public static final allianceSeniorityMs cmd = new allianceSeniorityMs();
             public allianceSeniorityMs create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="allianceSeniorityNoneMs")
+        public static class allianceSeniorityNoneMs extends CommandRef {
+            public static final allianceSeniorityNoneMs cmd = new allianceSeniorityNoneMs();
+            public allianceSeniorityNoneMs create() {
                 return createArgs();
             }
         }
@@ -56,6 +77,13 @@ public class NationCommands {
             public static final canBeSpiedByScore cmd = new canBeSpiedByScore();
             public canBeSpiedByScore create(String score) {
                 return createArgs("score", score);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="canBuildProject")
+        public static class canBuildProject extends CommandRef {
+            public static final canBuildProject cmd = new canBuildProject();
+            public canBuildProject create(String project) {
+                return createArgs("project", project);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="canDeclareOnScore")
@@ -191,6 +219,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastSelfWithdrawal")
+        public static class daysSinceLastSelfWithdrawal extends CommandRef {
+            public static final daysSinceLastSelfWithdrawal cmd = new daysSinceLastSelfWithdrawal();
+            public daysSinceLastSelfWithdrawal create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastShipBuy")
         public static class daysSinceLastShipBuy extends CommandRef {
             public static final daysSinceLastShipBuy cmd = new daysSinceLastShipBuy();
@@ -247,11 +282,11 @@ public class NationCommands {
                 return createArgs("filter", filter);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="active_m")
-        public static class active_m extends CommandRef {
-            public static final active_m cmd = new active_m();
-            public active_m create() {
-                return createArgs();
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getActive_m")
+        public static class getActive_m extends CommandRef {
+            public static final getActive_m cmd = new getActive_m();
+            public getActive_m create(String time) {
+                return createArgs("time", time);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAgeDays")
@@ -366,6 +401,20 @@ public class NationCommands {
                 return createArgs("nations", nations);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAuditResult")
+        public static class getAuditResult extends CommandRef {
+            public static final getAuditResult cmd = new getAuditResult();
+            public getAuditResult create(String audit) {
+                return createArgs("audit", audit);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAuditResultString")
+        public static class getAuditResultString extends CommandRef {
+            public static final getAuditResultString cmd = new getAuditResultString();
+            public getAuditResultString create(String audit) {
+                return createArgs("audit", audit);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgBarracks")
         public static class getAvgBarracks extends CommandRef {
             public static final getAvgBarracks cmd = new getAvgBarracks();
@@ -469,6 +518,20 @@ public class NationCommands {
             public static final getBuildings cmd = new getBuildings();
             public getBuildings create(String buildings) {
                 return createArgs("buildings", buildings);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getBuyInfraCost")
+        public static class getBuyInfraCost extends CommandRef {
+            public static final getBuyInfraCost cmd = new getBuyInfraCost();
+            public getBuyInfraCost create(String toInfra, String forceUrbanization, String forceAEC, String forceCFCE, String forceGSA) {
+                return createArgs("toInfra", toInfra, "forceUrbanization", forceUrbanization, "forceAEC", forceAEC, "forceCFCE", forceCFCE, "forceGSA", forceGSA);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getBuyLandCost")
+        public static class getBuyLandCost extends CommandRef {
+            public static final getBuyLandCost cmd = new getBuyLandCost();
+            public getBuyLandCost create(String toLand, String forceRAPolicy, String forceAEC, String forceALA, String forceGSA) {
+                return createArgs("toLand", toLand, "forceRAPolicy", forceRAPolicy, "forceAEC", forceAEC, "forceALA", forceALA, "forceGSA", forceGSA);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getCities")
@@ -597,6 +660,13 @@ public class NationCommands {
                 return createArgs("nations", nations);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getDeposits")
+        public static class getDeposits extends CommandRef {
+            public static final getDeposits cmd = new getDeposits();
+            public getDeposits create(String start, String end, String filter, String ignoreBaseTaxrate, String ignoreOffsets, String includeExpired, String includeIgnored, String excludeTypes) {
+                return createArgs("start", start, "end", end, "filter", filter, "ignoreBaseTaxrate", ignoreBaseTaxrate, "ignoreOffsets", ignoreOffsets, "includeExpired", includeExpired, "includeIgnored", includeIgnored, "excludeTypes", excludeTypes);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getDomesticPolicy")
         public static class getDomesticPolicy extends CommandRef {
             public static final getDomesticPolicy cmd = new getDomesticPolicy();
@@ -657,6 +727,13 @@ public class NationCommands {
         public static class getFreeBuildings extends CommandRef {
             public static final getFreeBuildings cmd = new getFreeBuildings();
             public getFreeBuildings create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getFreeOffSpyOps")
+        public static class getFreeOffSpyOps extends CommandRef {
+            public static final getFreeOffSpyOps cmd = new getFreeOffSpyOps();
+            public getFreeOffSpyOps create() {
                 return createArgs();
             }
         }
@@ -804,6 +881,13 @@ public class NationCommands {
         public static class getNations extends CommandRef {
             public static final getNations cmd = new getNations();
             public getNations create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNetDepositsConverted")
+        public static class getNetDepositsConverted extends CommandRef {
+            public static final getNetDepositsConverted cmd = new getNetDepositsConverted();
+            public getNetDepositsConverted create() {
                 return createArgs();
             }
         }
@@ -1038,11 +1122,25 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStockpile")
+        public static class getStockpile extends CommandRef {
+            public static final getStockpile cmd = new getStockpile();
+            public getStockpile create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrength")
         public static class getStrength extends CommandRef {
             public static final getStrength cmd = new getStrength();
             public getStrength create() {
                 return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrengthMMR")
+        public static class getStrengthMMR extends CommandRef {
+            public static final getStrengthMMR cmd = new getStrengthMMR();
+            public getStrengthMMR create(String mmr) {
+                return createArgs("mmr", mmr);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrongestEnemy")
@@ -1101,6 +1199,27 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTradeAvgPpu")
+        public static class getTradeAvgPpu extends CommandRef {
+            public static final getTradeAvgPpu cmd = new getTradeAvgPpu();
+            public getTradeAvgPpu create(String dateStart, String dateEnd, String types, String filter) {
+                return createArgs("dateStart", dateStart, "dateEnd", dateEnd, "types", types, "filter", filter);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTradeQuantity")
+        public static class getTradeQuantity extends CommandRef {
+            public static final getTradeQuantity cmd = new getTradeQuantity();
+            public getTradeQuantity create(String dateStart, String dateEnd, String types, String filter, String net) {
+                return createArgs("dateStart", dateStart, "dateEnd", dateEnd, "types", types, "filter", filter, "net", net);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTradeValue")
+        public static class getTradeValue extends CommandRef {
+            public static final getTradeValue cmd = new getTradeValue();
+            public getTradeValue create(String dateStart, String dateEnd, String types, String filter) {
+                return createArgs("dateStart", dateStart, "dateEnd", dateEnd, "types", types, "filter", filter);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTreasureBonusPct")
         public static class getTreasureBonusPct extends CommandRef {
             public static final getTreasureBonusPct cmd = new getTreasureBonusPct();
@@ -1127,6 +1246,13 @@ public class NationCommands {
             public static final getUnits cmd = new getUnits();
             public getUnits create(String unit, String date) {
                 return createArgs("unit", unit, "date", date);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUpdateTZ")
+        public static class getUpdateTZ extends CommandRef {
+            public static final getUpdateTZ cmd = new getUpdateTZ();
+            public getUpdateTZ create() {
+                return createArgs();
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserAgeDays")
@@ -1549,6 +1675,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="lastSelfWithdrawal")
+        public static class lastSelfWithdrawal extends CommandRef {
+            public static final lastSelfWithdrawal cmd = new lastSelfWithdrawal();
+            public lastSelfWithdrawal create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="login_daychange")
         public static class login_daychange extends CommandRef {
             public static final login_daychange cmd = new login_daychange();
@@ -1640,6 +1773,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="passesAudit")
+        public static class passesAudit extends CommandRef {
+            public static final passesAudit cmd = new passesAudit();
+            public passesAudit create(String audit) {
+                return createArgs("audit", audit);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="projectSlots")
         public static class projectSlots extends CommandRef {
             public static final projectSlots cmd = new projectSlots();
@@ -1651,6 +1791,13 @@ public class NationCommands {
         public static class raidBountyValue extends CommandRef {
             public static final raidBountyValue cmd = new raidBountyValue();
             public raidBountyValue create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="totalBountyValue")
+        public static class totalBountyValue extends CommandRef {
+            public static final totalBountyValue cmd = new totalBountyValue();
+            public totalBountyValue create() {
                 return createArgs();
             }
         }

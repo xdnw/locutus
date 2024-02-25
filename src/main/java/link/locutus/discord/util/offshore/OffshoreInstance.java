@@ -132,6 +132,13 @@ public class OffshoreInstance {
         if (!Settings.USE_V2) {
             try {
                 api = getAlliance().getApi(AlliancePermission.VIEW_BANK);
+                if (api == null) {
+                    GuildDB aaServer = getAlliance().getGuildDB();
+                    if (aaServer == null) {
+                        throw new IllegalArgumentException("No discord guild found for " + PnwUtil.getMarkdownUrl(allianceId, true) + ". Please invite locutus to a server for that alliance and run " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+                    }
+                    throw new IllegalArgumentException("No API key with VIEW_BANK permission found for: `" + allianceId + "`. Please set one in the alliance server using " + CM.settings_default.registerApiKey.cmd.toSlashMention());
+                }
                 stockpile = api.getAllianceStockpile(allianceId);
             } catch (HttpServerErrorException.InternalServerError | HttpServerErrorException.ServiceUnavailable |
                      HttpServerErrorException.GatewayTimeout ignore) {

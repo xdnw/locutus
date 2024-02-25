@@ -2292,6 +2292,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
 
     public boolean isWhitelisted() {
         if (getIdLong() == Settings.INSTANCE.ROOT_SERVER) return true;
+        if (getIdLong() == Settings.INSTANCE.ROOT_COALITION_SERVER) return true;
         if (hasCoalitionPermsOnRoot(Coalition.WHITELISTED)) return true;
         if (hasCoalitionPermsOnRoot(Coalition.WHITELISTED_AUTO)) return true;
 

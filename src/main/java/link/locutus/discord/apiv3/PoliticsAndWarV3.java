@@ -30,6 +30,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -245,8 +246,12 @@ public class PoliticsAndWarV3 {
             } catch (HttpClientErrorException e) {
                 e.printStackTrace();
                 AlertUtil.error(e.getMessage(), e);
-                rethrow(e, pair,false);
+                rethrow(e, pair, false);
                 throw e;
+            } catch (HttpServerErrorException.InternalServerError e) {
+                e.printStackTrace();
+                String msg = "Error 500 thrown by " + endpoint + ". Is the game's API down?";
+                throw HttpClientErrorException.create(msg, e.getStatusCode(), e.getStatusText(), e.getResponseHeaders(), e.getResponseBodyAsByteArray(), /* charset utf-8 */ StandardCharsets.UTF_8);
             } catch (JsonProcessingException e) {
                 AlertUtil.error(e.getMessage(), e);
                 rethrow(e, pair,true);

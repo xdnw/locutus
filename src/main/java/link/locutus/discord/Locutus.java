@@ -793,7 +793,12 @@ public final class Locutus extends ListenerAdapter {
 
         } else {
             addTaskSeconds(() -> {
-                runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
+                try {
+                    System.out.println("Update most active nations");
+                    runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
 
             addTaskSeconds(() -> {

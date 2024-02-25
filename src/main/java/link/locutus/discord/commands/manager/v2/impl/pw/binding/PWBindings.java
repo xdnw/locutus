@@ -467,6 +467,9 @@ public class PWBindings extends BindingHelper {
         if (build != null && cityId != null) {
             build.setCity_id(cityId);
         }
+        if (build == null) {
+            throw new IllegalArgumentException("Invalid city build: `" + input + "`. Please use a valid CITY id (not nation id), city url, or valid city json.");
+        }
         return build;
     }
 

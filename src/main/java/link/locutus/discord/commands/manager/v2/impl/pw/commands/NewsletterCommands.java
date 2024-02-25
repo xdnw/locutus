@@ -29,6 +29,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.requests.restaction.pagination.MessagePaginationAction;
 import org.json.JSONObject;
 
@@ -204,7 +205,7 @@ public class NewsletterCommands {
             return IACommands.mail(me, confirm, db, io,  author, nations, title, body, true, true, null);
         }
 
-        List<TextChannel> channels = newsletter.getChannelIds().stream().map(guild::getTextChannelById).filter(Objects::nonNull).toList();
+        List<GuildChannel> channels = newsletter.getChannelIds().stream().map(guild::getGuildChannelById).filter(Objects::nonNull).toList();
         if (channels.isEmpty()) {
             throw new IllegalArgumentException("No channels added to newsletter: `" + newsletter.getName() + "`. Add one using " + CM.newsletter.channel.add.cmd.toSlashMention());
         }
