@@ -189,7 +189,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importConflictData", "import");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importConflictData", "clone");
 
         getCommands().registerMethod(new TestCommands(), List.of("test"), "test", "test");
 

@@ -830,10 +830,7 @@ public class UtilityCommands {
                             @Default("false") boolean government_support_agency,
                             @Switch("c") @Default("1") int cities) {
         if (maxInfra > 40000) throw new IllegalArgumentException("Max infra 40000");
-
-        double total = 0;
-
-        total = PnwUtil.calculateInfra(currentInfra, maxInfra);
+        double total = PnwUtil.calculateInfra(currentInfra, maxInfra);
 
         double discountFactor = 1;
         if (urbanization) {
@@ -1176,7 +1173,7 @@ public class UtilityCommands {
                     "technological_advancement",
                     "government_support_agency",
                     "cost",
-                    "cost_value",
+                    "cost_raw",
                     "errors"
             ));
             int indexOffset = header.size();
@@ -1255,6 +1252,7 @@ public class UtilityCommands {
                     response.append(entry.getKey().name() + ": ~$" + MathMan.format(entry.getValue()) + "\n- `" + PnwUtil.resourcesToString(costByProject.get(entry.getKey())) + "`\n");
                 }
             }
+            response.append("\nSee " + CM.transfer.bulk.cmd.toSlashMention());
             msg.append(response.toString()).send();
             return null;
         }
