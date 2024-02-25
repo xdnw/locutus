@@ -1825,7 +1825,7 @@ public class OffshoreInstance {
                     if (nation == null) {
                         messages.add("Ensure " + GuildKey.API_KEY.name() + " is set: " + CM.settings.info.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)");
                     } else {
-                        messages.add("Ensure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + PnwUtil.getMarkdownUrl(allianceId, true));
+                        messages.add("Ensure the key is set to a valid nation in the alliance with bank access in " + PnwUtil.getMarkdownUrl(allianceId, true));
                     }
                 }
             }

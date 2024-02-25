@@ -1,5 +1,4 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
-@import link.locutus.discord.web.jooby.WebRoot
 @param WebStore ws
 <nav id="sidebar" class="sidebar offcanvas-start offcanvas-md" tabindex="-1" tabindex="-1" role="dialog">
     <div class="offcanvas-header position-relative justify-content-start flex-shrink-0 py-0 mt-2">

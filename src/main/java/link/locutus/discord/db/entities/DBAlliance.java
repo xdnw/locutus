@@ -972,6 +972,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return allianceId;
     }
 
+    @Command(desc = "Get the alliance's in-game link")
     public String getUrl() {
         return "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }

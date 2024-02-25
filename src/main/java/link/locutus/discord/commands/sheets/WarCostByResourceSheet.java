@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -13,6 +14,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Set;
@@ -61,8 +63,24 @@ public class WarCostByResourceSheet extends Command {
 
         long cutoffMs = System.currentTimeMillis() - timeRel * 1000;
 
+        JSONObject cmd = CM.sheets_milcom.WarCostByResourceSheet.cmd.create(
+                args.get(0),
+                args.get(1),
+                args.get(2),
+                flags.contains('c') ? "true" : null,
+                flags.contains('i') ? "true" : null,
+                flags.contains('l') ? "true" : null,
+                flags.contains('u') ? "true" : null,
+                flags.contains('g') ? "true" : null,
+                flags.contains('d') ? "true" : null,
+                flags.contains('n') ? "true" : null,
+                flags.contains('w') ? "true" : null,
+                null
+            ).toJson();
+
         return StatCommands.WarCostByResourceSheet(
                 channel,
+                cmd,
                 guildDb,
                 attackers,
                 defenders,

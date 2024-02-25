@@ -99,6 +99,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -3037,14 +3039,16 @@ public class WarCommands {
 
         Function<DBNation, Boolean> isValidTarget = n -> filter.contains(n);
 
+        AtomicBoolean hasErrors = new AtomicBoolean(false);
         BlitzGenerator.getTargets(sheet, useLeader, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
+                hasErrors.set(true);
             }
-        });
+        }, info -> response.append("```\n" + info.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.joining("\n")) + "\n```").append("\n"));
 
-        if (response.length() <= 1) return "All checks passed";
+        if (!hasErrors.get()) response.append("\n**All checks passed**");
 
         return response.toString();
     }
@@ -3112,14 +3116,26 @@ public class WarCommands {
         IMessageBuilder msg = io.create();
 
         StringBuilder response = new StringBuilder();
-        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
-        if (response.length() != 0) {
-            msg = io.create().append("**Errors:**\n").append(response.toString());
-            if (!force) {
-                msg.embed("Force create?", "ignore errors and create channels anyway")
-                        .confirmation(command).send();
-                return null;
+        AtomicInteger errors = new AtomicInteger();
+        StringBuilder body = new StringBuilder();
+        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true,
+                (dbNationDBNationEntry, s) -> {response.append(s).append("\n"); errors.incrementAndGet();},
+                info -> body.append("```\n" + info.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.joining("\n")) + "\n```").append("\n"));
+        if (!force) {
+            msg = io.create();
+            String title = "Create";
+            if (errors.get() > 0) {
+                title += " with " + errors.get() + " errors";
+                if (response.length() > 2000) {
+                    msg = msg.file(errors.get() + "_errors.txt", response.toString());
+                    body.append("\n\n**See `errors.txt` for details**");
+                } else {
+                    body.append("\n\n__**Errors:**__\n").append(response);
+                }
             }
+            msg.embed(title, body.toString())
+                    .confirmation(command).send();
+            return null;
         }
 
         msg.append("Creating channels...").send();
@@ -3201,18 +3217,21 @@ public class WarCommands {
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
         Map<DBNation, Set<Spyop>> spyOps = new HashMap<>();
 
+        Map<String, Object> blitzSheetSummary = new LinkedHashMap<>();
+        Map<String, Object> spySheetSummary = new LinkedHashMap<>();
+
         if (dm && !Roles.MAIL.hasOnRoot(author)) return "You do not have permission to dm users";
 
         if (blitzSheet != null) {
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, (a) -> blitzSheetSummary.putAll(a));
         }
 
         if (spySheet != null) {
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {}, (a) -> spySheetSummary.putAll(a));
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 0);
             } catch (NullPointerException e) {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {}, (a) -> spySheetSummary.putAll(a));
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
             }
         }
@@ -3366,7 +3385,13 @@ public class WarCommands {
             if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances";
 
             StringBuilder body = new StringBuilder();
-            body.append("subject: " + subject + "\n");
+            body.append("**subject:** `" + subject + "`\n\n");
+            if (!blitzSheetSummary.isEmpty()) {
+                body.append("War Blitz Sheet Summary:\n" + blitzSheetSummary.entrySet().stream().map(e -> "- " + e.getKey() + ": `" + e.getValue() + "`").collect(Collectors.joining("\n")) + "\n");
+            }
+            if (!spySheetSummary.isEmpty()) {
+                body.append("Spy Blitz Sheet Summary:\n" + spySheetSummary.entrySet().stream().map(e -> "- " + e.getKey() + ": `" + e.getValue() + "`").collect(Collectors.joining("\n")) + "\n");
+            }
 
             channel.create().confirmation(embedTitle, body.toString(), command)
                             .append(author.getAsMention())
@@ -3466,17 +3491,19 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
         if (headerRow == null) headerRow = 0;
+        AtomicBoolean hasErrors = new AtomicBoolean(false);
         BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> entry, String msg) {
+                hasErrors.set(true);
                 DBNation defender = entry.getKey();
                 DBNation attacker = entry.getValue();
                 if (attackerFilter != null && attacker != null && !attackerFilter.contains(attacker)) return;
                 response.append(msg + "\n");
             }
-        });
+        }, info -> response.append("```\n" + info.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.joining("\n")) + "\n```").append("\n"));
 
-        if (response.length() <= 1) return "All checks passed";
+        if (!hasErrors.get()) response.append("\n**All checks passed**");
 
         return response.toString();
     }

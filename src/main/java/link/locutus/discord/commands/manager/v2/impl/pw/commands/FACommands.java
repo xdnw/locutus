@@ -43,6 +43,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 public class FACommands {
     @Command(desc = "Generate a named coalition by the treaty web of an alliance")
@@ -236,7 +237,7 @@ public class FACommands {
     // Write a long description
     @Command(desc = "List the treaties of the provided alliances\n" +
             "Note: If you have the FORIEGN_AFFAIRS role you can view the pending treaties of your own alliance from its guild")
-    public String treaties(@Me IMessageIO channel, @Me User user, Set<DBAlliance> alliances) {
+    public String treaties(@Me IMessageIO channel, @Me User user, Set<DBAlliance> alliances, @Default Predicate<Treaty> treatyFilter) {
         StringBuilder response = new StringBuilder();
         Set<Treaty> allTreaties = new LinkedHashSet<>();
 
@@ -254,7 +255,9 @@ public class FACommands {
                 allTreaties.addAll(treaties.values());
             }
         }
-
+        if (treatyFilter != null) {
+            allTreaties.removeIf(treatyFilter.negate());
+        }
         if (allTreaties.isEmpty()) return "No treaties";
 
         long turn = TimeUtil.getTurn();

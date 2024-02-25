@@ -506,6 +506,6 @@ public enum AttackType {
 
     @Command(desc = "If this attack is one that can damage the enemy")
     public boolean canDamage() {
-        return this == FORTIFY || this == PEACE;
+        return this != FORTIFY && this != PEACE;
     }
 }

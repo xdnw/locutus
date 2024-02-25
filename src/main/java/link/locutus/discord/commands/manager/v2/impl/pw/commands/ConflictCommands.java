@@ -15,6 +15,7 @@ import link.locutus.discord.db.Conflict;
 import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
@@ -46,6 +47,7 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
+import java.text.Normalizer;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,6 +59,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -391,7 +394,6 @@ public class ConflictCommands {
         return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2";
     }
 
-    //- Import conflicts from ctowned
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki) throws IOException, SQLException, ClassNotFoundException, ParseException {
@@ -412,25 +414,57 @@ public class ConflictCommands {
             manager.saveDataCsvAllianceNames();
             for (Map.Entry<String, Integer> entry : PWWikiUtil.getWikiAllianceIds().entrySet()) {
                 if (manager.getAllianceName(entry.getValue()) != null) continue;
-                if (manager.getLegacyId(entry.getKey()) != null) continue;
-                manager.addLegacyName(entry.getValue(), entry.getKey());
+                if (manager.getAllianceId(entry.getKey(), Long.MAX_VALUE) != null) continue;
+                manager.addLegacyName(entry.getValue(), entry.getKey(), 0);
             }
 
         }
         if (wiki) {
+            Map<String, Set<Conflict>> conflictsByWiki = manager.getConflictMap().values().stream().collect(Collectors.groupingBy(Conflict::getWiki, Collectors.toSet()));
+
             Map<String, String> errors = new LinkedHashMap<>();
             List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors);
             conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
-            Set<String> existingWikis = manager.getConflictMap().values().stream().map(Conflict::getWiki).collect(Collectors.toSet());
-            conflicts.removeIf(f -> existingWikis.contains(f.getWiki()));
             // print all ongoing conflicts
             for (Map.Entry<String, String> entry : errors.entrySet()) {
                 System.out.println(entry.getValue());
             }
             System.out.println("Num conflicts: " + conflicts.size());
             for (Conflict conflict : conflicts) {
-                manager.addConflict(conflict.getName(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
+                Set<Conflict> existingSet = conflictsByWiki.get(conflict.getWiki());
+                if (existingSet == null) {
+                    System.out.println("Add conflict " + conflict.getName() + " -> " + conflict.getWiki());
+                    conflict = manager.addConflict(conflict.getName(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
+                    existingSet = Set.of(conflict);
+                }
+                for (Conflict existing : existingSet) {
+                    if (existing.getStatusDesc().isEmpty()) {
+                        existing.setStatus(conflict.getStatusDesc());
+                    }
+                    if (existing.getCasusBelli().isEmpty()) {
+                        existing.setCasusBelli(conflict.getCasusBelli());
+                    }
+                    if (existingSet.size() == 1 && !conflict.getName().equalsIgnoreCase(existing.getName())) {
+                        existing.setName(conflict.getName());
+                    }
+                    if (existing.getAnnouncement().isEmpty() && !conflict.getAnnouncement().isEmpty()) {
+                        for (Map.Entry<String, DBTopic> entry : conflict.getAnnouncement().entrySet()) {
+                            existing.addAnnouncement(entry.getKey(), entry.getValue(), true);
+                        }
+                    }
+                    if (existing.getCategory() != conflict.getCategory()) {
+                        existing.setCategory(conflict.getCategory());
+                    }
+                    if (existing.getAllianceIds().isEmpty()) {
+                        System.out.println("Add participant: " + existing.getName());
+                        for (int aaId : conflict.getCoalition1()) existing.addParticipant(aaId, true, null, null);
+                        for (int aaId : conflict.getCoalition2()) existing.addParticipant(aaId, false, null, null);
+                    }
+                }
+
             }
+            // announcements
+            // participants
 
 
 //            if (conflicts.isEmpty()) return "No conflicts found on wiki";
@@ -470,32 +504,21 @@ public class ConflictCommands {
         }
         return "Done!";
     }
-
-    private static int getAllianceId(String name) {
-        DBAlliance aa = Locutus.imp().getNationDB().getAllianceByName(name);
-        if (aa != null) return aa.getId();
-        Integer idCache = Locutus.imp().getWarDb().getConflicts().getLegacyId(name);
-        if (idCache != null) return idCache;
-        if (MathMan.isInteger(name)) {
-            return Integer.parseInt(name);
-        }
-        System.out.println("Unknown alliance `" + name + "`");
-        return 0;
-    }
+//
+//    private static int getAllianceId(String name) {
+//        DBAlliance aa = Locutus.imp().getNationDB().getAllianceByName(name);
+//        if (aa != null) return aa.getId();
+//        Integer idCache = Locutus.imp().getWarDb().getConflicts().getLegacyId(name);
+//        if (idCache != null) return idCache;
+//        if (MathMan.isInteger(name)) {
+//            return Integer.parseInt(name);
+//        }
+//        System.out.println("Unknown alliance `" + name + "`");
+//        return 0;
+//    }
 
     private static void loadCtownedConflicts(ConflictManager manager, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
-        String fileStr = "files/" + fileName + ".html";
-        Document document;
-        if (new File(fileName).exists()) {
-            document = Jsoup.parse(Files.readString(Path.of(fileStr)));
-        } else {
-            System.out.println("Loading " + urlStub + " | " + fileName);
-            if (true) throw new IllegalArgumentException("Not implemented");
-            String url = "https://ctowned.net/" + urlStub;
-            document = Jsoup.connect(url).timeout(60000).sslSocketFactory(socketFactory()).ignoreContentType(true).get();
-            String html = document.html();
-            Files.write(Path.of(fileStr), html.getBytes());
-        }
+        Document document = Jsoup.parse(getConflict(urlStub, fileName));
         // get table id=conflicts-table
         Element table = document.getElementById("conflicts-table");
         // Skip the first row (header)
@@ -511,7 +534,6 @@ public class ConflictCommands {
             // Get the URL and text
             String cellUrl = aElement.attr("href");
             String conflictName = StringMan.normalize(aElement.text());
-//            if (manager.getConflict(conflictName) != null) continue;
 
             String startDateStr = row.select("td").get(6).text();
             String endDateStr = row.select("td").get(7).text();
@@ -558,15 +580,15 @@ public class ConflictCommands {
             Set<String> allNames = new HashSet<>(coalition1Names);
             allNames.addAll(coalition2Names);
             for (String name : allNames) {
-                if (getAllianceId(name) == 0) {
+                if (manager.getAllianceId(name, Long.MAX_VALUE, true) == null) {
                     unknown.add(name);
                 }
             }
             if (!unknown.isEmpty()) {
-                throw new IllegalArgumentException("Unknown alliances: " + unknown.stream().collect(Collectors.joining(",")));
+                throw new IllegalArgumentException("Unknown alliances: " + unknown.stream().collect(Collectors.joining(", ")));
             }
-            Set<Integer> col1Ids = coalition1Names.stream().map(f -> getAllianceId(f)).collect(Collectors.toSet());
-            Set<Integer> col2Ids = coalition2Names.stream().map(f -> getAllianceId(f)).collect(Collectors.toSet());
+            Set<Integer> col1Ids = coalition1Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<Integer> col2Ids = coalition2Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
             System.out.println(conflictName + " | " + startDate + "|  " + endDate);
             System.out.println("- Col1: " + coalition1Names);
             System.out.println("- Col2: " + coalition2Names);
@@ -583,29 +605,41 @@ public class ConflictCommands {
             }
             String wiki = PWWikiUtil.getWikiUrlFromCtowned(conflictName);
             if (wiki == null) wiki = "";
+            System.out.println("Set wiki " + conflictName + " -> " + wiki);
 
             Conflict conflict = manager.getConflict(conflictName);
             if (conflict == null) {
-                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
-            } else {
-                conflict.setName(col1Name, true);
-                conflict.setName(col2Name, false);
-                if (!wiki.isEmpty()) {
-                    conflict.setWiki(wiki);
+                if (wiki != null) {
+                    String finalWiki = wiki;
+                    conflict = manager.getConflictMap().values().stream().filter(f -> finalWiki.equalsIgnoreCase(f.getWiki())).findFirst().orElse(null);
                 }
             }
-            for (int aaId : col1Ids) conflict.addParticipant(aaId, true, null, null);
-            for (int aaId : col2Ids) conflict.addParticipant(aaId, false, null, null);
+            if (conflict == null) {
+                conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
+            }
+            if (conflict.getSide(true).getName().equalsIgnoreCase("coalition 1")) {
+                conflict.setName(col1Name, true);
+            }
+            if (conflict.getSide(false).getName().equalsIgnoreCase("coalition 2")) {
+                conflict.setName(col2Name, false);
+            }
+            if (!wiki.isEmpty() && conflict.getWiki().isEmpty()) {
+                conflict.setWiki(wiki);
+            }
+            if (conflict.getAllianceIds().isEmpty()) {
+                for (int aaId : col1Ids) conflict.addParticipant(aaId, true, null, null);
+                for (int aaId : col2Ids) conflict.addParticipant(aaId, false, null, null);
+            }
         }
     }
 
     private static String getConflict(String url, String text) throws IOException {
-        String cacheFileStr = "files/" + text + ".html";
+        String cacheFileStr = "files/" + Normalizer.normalize(text, Normalizer.Form.NFKD) + ".html";
+        System.out.println("Path " + cacheFileStr);
         Path path = Paths.get(cacheFileStr);
         if (new File(cacheFileStr).exists()) {
             return Files.readString(path, StandardCharsets.ISO_8859_1);
         }
-
         String urlFull = "https://ctowned.net" + url;
         String html = Jsoup.connect(urlFull).timeout(60000).sslSocketFactory(socketFactory()).ignoreContentType(true).get().html();
         Files.write(path, html.getBytes());

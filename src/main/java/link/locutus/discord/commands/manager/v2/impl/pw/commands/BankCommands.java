@@ -701,6 +701,12 @@ public class BankCommands {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
+        if (account == null) {
+            NationOrAllianceOrGuild defAccount = GuildKey.DEFAULT_OFFSHORE_ACCOUNT.get(db);
+            if (defAccount != null) {
+                account = defAccount;
+            }
+        }
         boolean memberCanOffshore = db.getOrNull(GuildKey.MEMBER_CAN_OFFSHORE) == Boolean.TRUE;
         Roles checkRole = memberCanOffshore && account == null ? Roles.MEMBER : Roles.ECON;
 

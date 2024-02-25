@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -21,6 +22,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.event.war.AttackEvent;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -43,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,8 +60,8 @@ import java.util.stream.Collectors;
 public class ConflictManager {
     private final WarDB db;
     private final Map<Integer, Conflict> conflictMap = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, String> legacyNames = new Int2ObjectOpenHashMap<>();
-    private final Map<String, Integer> legacyIds = new ConcurrentHashMap<>();
+    private final Map<Integer, String> legacyNames2 = new Int2ObjectOpenHashMap<>();
+    private final Map<String, Map<Long, Integer>> legacyIdsByDate = new ConcurrentHashMap<>();
     private final Set<Integer> activeConflicts = new IntOpenHashSet();
     private long lastTurn = 0;
     private final Map<Integer, Set<Integer>> activeConflictsByAllianceId = new Int2ObjectOpenHashMap<>();
@@ -196,6 +199,7 @@ public class ConflictManager {
     }
 
     protected void loadConflicts() {
+        System.out.println("Load conflicts");
         long start = System.currentTimeMillis();
         conflictMap.clear();
         db.query("SELECT * FROM conflicts", stmt -> {
@@ -213,6 +217,7 @@ public class ConflictManager {
                 if (col2.isEmpty()) col2 = "Coalition 2";
                 String cb = rs.getString("cb");
                 String status = rs.getString("status");
+                System.out.println("Add conflict " + id);
                 conflictMap.put(id, new Conflict(id, category, name, col1, col2, wiki, cb, status, startTurn, endTurn));
             }
         });
@@ -242,43 +247,73 @@ public class ConflictManager {
                     int topicId = rs.getInt("topic_id");
                     Conflict conflict = conflictMap.get(conflictId);
                     if (conflict != null) {
+                        System.out.println("Add announcement to conflict(1) " + conflictId + " | " + desc);
                         conflictsByTopic.computeIfAbsent(topicId, k -> new HashMap<>()).put(conflictId, desc);
                     }
                 }
             });
             Map<Integer, DBTopic> topics = Locutus.imp().getForumDb().getTopics(conflictsByTopic.keySet());
+            System.out.println("Loaded topics " + topics.size());
             for (Map.Entry<Integer, Map<Integer, String>> entry : conflictsByTopic.entrySet()) {
                 DBTopic topic = topics.get(entry.getKey());
                 if (topic != null) {
                     for (Map.Entry<Integer, String> entry2 : entry.getValue().entrySet()) {
                         Conflict conflict = conflictMap.get(entry2.getKey());
                         if (conflict != null) {
+                            System.out.println("Add announcement to conflict " + entry.getKey() + " | " + entry2.getValue());
                             conflict.addAnnouncement(entry2.getValue(), topic, false);
                         }
                     }
                 }
             }
+        } else {
+            System.out.println("Forum db is null");
         }
 
         // load legacyNames
-        db.query("SELECT * FROM legacy_names", stmt -> {
+        db.query("SELECT * FROM legacy_names2", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 int id = rs.getInt("id");
                 String name = rs.getString("name");
-                legacyNames.put(id, name);
-                legacyIds.putIfAbsent(name.toLowerCase(Locale.ROOT), id);
+                long date = rs.getLong("date");
+                legacyNames2.put(id, name);
+                String nameLower = name.toLowerCase(Locale.ROOT);
+                legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
             }
         });
         for (Map.Entry<String, Integer> entry : getDefaultNames().entrySet()) {
-            legacyIds.putIfAbsent(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
-            legacyNames.putIfAbsent(entry.getValue(), entry.getKey());
+            String name = entry.getKey();
+            int id = entry.getValue();
+            if (!legacyNames2.containsKey(id)) {
+                legacyNames2.put(id, name);
+            }
+            String nameLower = name.toLowerCase(Locale.ROOT);
+            Map<Long, Integer> map = legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap());
+            if (map.isEmpty()) {
+                map.put(Long.MAX_VALUE, id);
+            }
         }
 
-        System.out.println("Loaded " + conflictMap.size() + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-        if (legacyNames.isEmpty()) {
-            saveDefaultNames();
+        Set<Integer> empty = new HashSet<>();
+        for (Map.Entry<Integer, Conflict> conflictEntry : conflictMap.entrySet()) {
+            if (conflictEntry.getValue().getAllianceIds().isEmpty()) {
+                empty.add(conflictEntry.getKey());
+            }
         }
+        // delete empty conflicts
+//        db.executeStmt("DELETE FROM conflicts WHERE `id` in (" + StringMan.join(empty, ",") + ")");
+//        db.executeStmt("DELETE FROM conflict_announcements2 WHERE `conflict_id` in (" + StringMan.join(empty, ",") + ")");
+//        db.executeStmt("DELETE FROM conflict_participant WHERE `conflict_id` not in (" + StringMan.join(conflictMap.keySet(), ",") + ")");
+//        db.executeStmt("DELETE FROM conflict_announcements2");
+//        db.update("DELETE FROM conflict_graphs WHERE conflict_id = 0");
+//        db.executeStmt("DELETE FROM conflict_participant");
+
+
+//        System.out.println("Loaded " + conflictMap.size() + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+//        if (legacyNames.isEmpty()) {
+//            saveDefaultNames();
+//        }
         System.out.println("Default names: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
         initTurn();
         System.out.println("Init turns: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
@@ -306,13 +341,13 @@ public class ConflictManager {
                     }
                 });
                 //
-//        db.update("DELETE FROM conflict_graphs WHERE conflict_id = 0");
                 System.out.println("Load attacks: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-                db.query("SELECT * FROM conflict_graphs", stmt -> {
+                db.query("SELECT * FROM conflict_graphs2", stmt -> {
                 }, (ThrowingConsumer<ResultSet>) rs -> {
                     while (rs.next()) {
                         int conflictId = rs.getInt("conflict_id");
                         boolean side = rs.getBoolean("side");
+                        int allianceId = rs.getInt("alliance_id");
                         int metricOrd = rs.getInt("metric");
                         long turnOrDay = rs.getLong("turn");
                         int city = rs.getInt("city");
@@ -320,7 +355,7 @@ public class ConflictManager {
                         Conflict conflict = conflictMap.get(conflictId);
                         if (conflict != null) {
                             ConflictMetric metric = ConflictMetric.values[metricOrd];
-                            conflict.getSide(side).addGraphData(metric, turnOrDay, city, value);
+                            conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
                         }
                     }
                 });
@@ -653,24 +688,21 @@ public class ConflictManager {
             public void consume(Long day, DataDumpParser.NationHeader header, CsvRow row) {
                 int aaId = Integer.parseInt(row.getField(header.alliance_id));
                 if (aaId == 0) return;
-                if (getAllianceNameOrNull(aaId) == null) {
-                    String name = row.getField(header.alliance);
-                    if (name != null && !name.isEmpty()) {
-                        addLegacyName(aaId, name);
-                        System.out.println("Added " + aaId + " | " + name);
-                    }
+                String name = row.getField(header.alliance);
+                if (name != null && !name.isEmpty()) {
+                    long date = TimeUtil.getTimeFromDay(day);
+                    addLegacyName(aaId, name, date);
                 }
             }
         }, null, null);
     }
 
-    private void saveDefaultNames() {
-        Map<String, Integer> legacyIds = getDefaultNames();
-        for (Map.Entry<String, Integer> entry : legacyIds.entrySet()) {
-            addLegacyName(entry.getValue(), entry.getKey());
-        }
-
-    }
+//    private void saveDefaultNames() {
+//        Map<String, Integer> legacyIds = getDefaultNames();
+//        for (Map.Entry<String, Integer> entry : legacyIds.entrySet()) {
+//            addLegacyName(entry.getValue(), entry.getKey());
+//        }
+//    }
 
     public void setStatus(int conflictId, String status) {
         db.update("UPDATE conflicts SET status = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
@@ -687,6 +719,8 @@ public class ConflictManager {
     }
 
     public void createTables() {
+        System.out.println("Create tables");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL)");
         // add col1 and col2 (string) to conflicts, default ""
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
@@ -698,16 +732,17 @@ public class ConflictManager {
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL)");
-//        db.executeStmt("DELETE FROM conflict_participant");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
+        db.executeStmt("DROP TABLE legacy_names");
 //        db.executeStmt("DELETE FROM conflicts");
 
-        // conflict_graphs: int conflict_id, boolean side, int metric, bigint turn, byte[] data
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, side, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        // drop conflict_graphs
+        db.executeStmt("DROP TABLE conflict_graphs");
 
         // announcements
         // conflict_id (foreign key), long timestamp, int post_id, string post_stub,
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, post_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+
     }
 
     public void addAnnouncement(int conflictId, int topicId, String description) {
@@ -719,7 +754,7 @@ public class ConflictManager {
     }
 
     public void clearGraphData(ConflictMetric metric, int conflictId, boolean side, long turn) {
-        db.update("DELETE FROM conflict_graphs WHERE conflict_id = ? AND side = ? AND metric = ? AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric = ? AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
             stmt.setBoolean(2, side);
             stmt.setInt(3, metric.ordinal());
@@ -733,7 +768,7 @@ public class ConflictManager {
             clearGraphData(metric.iterator().next(), conflictId, side, turn);
             return;
         }
-        db.update("DELETE FROM conflict_graphs WHERE conflict_id = ? AND side = ? AND metric IN (" + metric.stream().map(Enum::ordinal).map(String::valueOf).collect(Collectors.joining(",")) + ") AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric IN (" + metric.stream().map(Enum::ordinal).map(String::valueOf).collect(Collectors.joining(",")) + ") AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
             stmt.setBoolean(2, side);
             stmt.setLong(3, turn);
@@ -741,35 +776,49 @@ public class ConflictManager {
     }
 
     public void deleteGraphData(int conflictId) {
-        db.update("DELETE FROM conflict_graphs WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
         });
     }
 
     public void addGraphData(List<ConflictMetric.Entry> metrics) {
-        String query = "INSERT OR REPLACE INTO conflict_graphs (conflict_id, side, metric, turn, city, value) VALUES (?, ?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO conflict_graphs2 (conflict_id, side, alliance_id, metric, turn, city, value) VALUES (?, ?, ?, ?, ?, ?, ?)";
         db.executeBatch(metrics, query, (ThrowingBiConsumer<ConflictMetric.Entry, PreparedStatement>) (entry, stmt) -> {
             stmt.setInt(1, entry.conflictId());
             stmt.setBoolean(2, entry.side());
-            stmt.setInt(3, entry.metric().ordinal());
-            stmt.setLong(4, entry.turnOrDay());
-            stmt.setInt(5, entry.city());
-            stmt.setInt(6, entry.value());
+            stmt.setInt(3, entry.allianceId());
+            stmt.setInt(4, entry.metric().ordinal());
+            stmt.setLong(5, entry.turnOrDay());
+            stmt.setInt(6, entry.city());
+            stmt.setInt(7, entry.value());
         });
     }
 
-    public void addLegacyName(int id, String name) {
-        if (legacyNames.containsKey(id)) return;
-        legacyNames.put(id, name);
-        legacyIds.putIfAbsent(name.toLowerCase(Locale.ROOT), id);
-        db.update("INSERT OR IGNORE INTO legacy_names (id, name) VALUES (?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, id);
-            stmt.setString(2, name);
-        });
+    public void addLegacyName(int id, String name, long date) {
+        String nameLower = name.toLowerCase(Locale.ROOT);
+        Map<Long, Integer> byDate = legacyIdsByDate.computeIfAbsent(nameLower, f -> new Long2IntOpenHashMap());
+        Integer otherId = null;
+        Long lastDate = null;
+        for (Map.Entry<Long, Integer> entry : byDate.entrySet()) {
+            long otherDate = entry.getKey();
+            if (otherDate <= date && (lastDate == null || otherDate > lastDate)) {
+                lastDate = otherDate;
+                otherId = entry.getValue();
+            }
+        }
+        if (otherId == null || otherId != id) {
+            byDate.put(date, id);
+            db.update("INSERT OR IGNORE INTO legacy_names2 (id, name, date) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setInt(1, id);
+                stmt.setString(2, name);
+                stmt.setLong(3, date);
+            });
+        }
+
     }
 
     public Conflict addConflict(String name, ConflictCategory category, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
-        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category, cb, status) VALUES (?, ?, ?)";
+        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category, cb, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = db.getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
             stmt.setString(2, col1);
@@ -837,6 +886,7 @@ public class ConflictManager {
     public void updateConflictWiki(int conflictId, String wiki) {
         db.update("UPDATE conflicts SET `wiki` = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, wiki);
+            stmt.setInt(2, conflictId);
         });
     }
 
@@ -849,7 +899,7 @@ public class ConflictManager {
             stmt.setLong(5, end);
         });
         DBAlliance aa = DBAlliance.get(allianceId);
-        if (aa != null) addLegacyName(allianceId, aa.getName());
+        if (aa != null) addLegacyName(allianceId, aa.getName(), System.currentTimeMillis());
         synchronized (activeConflicts) {
             if (activeConflicts.contains(conflictId)) {
                 addConflictsByAlliance(conflictMap.get(conflictId));
@@ -886,8 +936,40 @@ public class ConflictManager {
         return null;
     }
 
-    public Integer getLegacyId(String name) {
-        return legacyIds.get(name.toLowerCase(Locale.ROOT));
+    public Integer getAllianceId(String name, long date, boolean parseInt) {
+        Integer id = getAllianceId(name, date);
+        if (id == null && parseInt && MathMan.isInteger(name)) {
+            id = Integer.parseInt(name);
+        }
+        return id;
+    }
+
+    public Integer getAllianceId(String name, long date) {
+        String nameLower = name.toLowerCase(Locale.ROOT);
+        synchronized (legacyIdsByDate) {
+            Map<Long, Integer> idsByDate = legacyIdsByDate.get(nameLower);
+            if (idsByDate != null && !idsByDate.isEmpty()) {
+                if (idsByDate.size() == 1) {
+                    return idsByDate.values().iterator().next();
+                }
+                Long lastDate = null;
+                Integer lastId = null;
+                for (Map.Entry<Long, Integer> entry : idsByDate.entrySet()) {
+                    long otherDate = entry.getKey();
+                    if (lastDate == null || (otherDate <= date && otherDate > lastDate)) {
+                        lastDate = otherDate;
+                        lastId = entry.getValue();
+                    }
+                }
+                return lastId;
+            }
+        }
+        DBAlliance alliance = DBAlliance.parse(name, false);
+        if (alliance != null) {
+            addLegacyName(alliance.getId(), name, 0);
+            return alliance.getId();
+        }
+        return null;
     }
 
     public String getAllianceName(int id) {
@@ -900,8 +982,8 @@ public class ConflictManager {
         DBAlliance alliance = DBAlliance.get(id);
         if (alliance != null) return alliance.getName();
         String name;
-        synchronized (legacyNames) {
-            name = legacyNames.get(id);
+        synchronized (legacyNames2) {
+            name = legacyNames2.get(id);
         }
         return name;
     }
@@ -943,6 +1025,7 @@ public class ConflictManager {
     public byte[] getPsonGzip() {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         Map<Integer, Conflict> map = getConflictMap();
+        System.out.println("Conflict map " + map.size());
         Map<Integer, String> aaNameById = new HashMap<>();
 
         Map<String, Function<Conflict, Object>> headerFuncs = new LinkedHashMap<>();
@@ -957,7 +1040,7 @@ public class ConflictManager {
         headerFuncs.put("c1_dealt", f -> (long) f.getDamageConverted(true));
         headerFuncs.put("c2_dealt", f -> (long) f.getDamageConverted(false));
         headerFuncs.put("c1", f -> new IntArrayList(f.getCoalition1()));
-        headerFuncs.put("c2", f -> new IntArrayList(f.getCoalition1()));
+        headerFuncs.put("c2", f -> new IntArrayList(f.getCoalition2()));
         headerFuncs.put("wiki", Conflict::getWiki);
         headerFuncs.put("status", Conflict::getStatusDesc);
         headerFuncs.put("cb", Conflict::getCasusBelli);
@@ -974,11 +1057,6 @@ public class ConflictManager {
 
         List<List<Object>> rows = new ObjectArrayList<>();
         JteUtil.writeArray(rows, funcs, map.values());
-
-        for (List<Object> row : rows) {
-            System.out.println("Start end " + row.get(2) + " | " + row.get(3));
-        }
-
         root.put("conflicts", rows);
 
         for (Conflict conflict : map.values()) {
@@ -1001,11 +1079,11 @@ public class ConflictManager {
     public Map.Entry<String, Integer> getMostSimilar(String name) {
         int distance = Integer.MAX_VALUE;
         String similar = null;
-        for (Map.Entry<String, Integer> entry : legacyIds.entrySet()) {
-            int d = StringMan.getLevenshteinDistance(name, entry.getKey());
+        for (Map.Entry<Integer, String> entry : legacyNames2.entrySet()) {
+            int d = StringMan.getLevenshteinDistance(name, entry.getValue());
             if (d < distance) {
                 distance = d;
-                similar = entry.getKey();
+                similar = entry.getValue();
             }
         }
         return distance == Integer.MAX_VALUE ? null : Map.entry(similar, distance);

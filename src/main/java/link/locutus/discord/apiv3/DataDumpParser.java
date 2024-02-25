@@ -452,6 +452,20 @@ public class DataDumpParser {
         writer.close();
     }
 
+
+    public Map<Long, Map<Integer, Byte>> backCalculateCityCounts() throws IOException, ParseException {
+        Map<Long, Map<Integer, Byte>> cityCountsByDay = new Long2ObjectOpenHashMap<>();
+        iterateAll(f -> true, new TriConsumer<Long, NationHeader, CsvRow>() {
+            @Override
+            public void consume(Long day, NationHeader header, CsvRow row) {
+                int nationId = Integer.parseInt(row.getField(header.nation_id));
+                int cities = Integer.parseInt(row.getField(header.cities));
+                cityCountsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nationId, (byte) cities);
+            }
+        }, null, f -> System.out.println("backCalculateCityCounts @ day=" + f));
+        return cityCountsByDay;
+    }
+
     public void backCalculateNukesAndMissiles() throws IOException, ParseException {
         load();
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
@@ -1132,8 +1146,14 @@ public class DataDumpParser {
     }
 
     public DBNationSnapshot loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowDeleted, long currentTimeMs) throws ParseException {
+        return loadNation(header, row, allowedNationIds, allowedAllianceIds, allowVm, false, allowDeleted, currentTimeMs);
+    }
+    public DBNationSnapshot loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted, long currentTimeMs) throws ParseException {
         int vm_turns = Integer.MAX_VALUE;
-        if (!allowVm) {
+        if (header.vm_turns == 0) {
+            vm_turns = 0;
+            if (!allowNoVmCol) return null;
+        } else if (!allowVm) {
             vm_turns = Integer.parseInt(row.getField(header.vm_turns));
             if (vm_turns > 0) return null;
         }

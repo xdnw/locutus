@@ -8,8 +8,10 @@ import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -25,13 +27,13 @@ import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
-import link.locutus.discord.db.entities.conflict.OffDefStatGroup;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +53,7 @@ public class Conflict {
     private long turnEnd;
     private final Map<Integer, Long> startTime = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Long> endTime = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Map<Integer, Integer>> warsVsAlliance = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance = new Int2ObjectOpenHashMap<>();
     private final CoalitionSide coalition1;
     private final CoalitionSide coalition2;
     private byte[] bsonCompressed;
@@ -140,6 +142,7 @@ public class Conflict {
             @Override
             public boolean test(Long day) {
                 if (day >= dayStart && day <= dayEnd) {
+                    System.out.println("Run for day " + day);
                     return true;
                 }
                 return false;
@@ -156,10 +159,10 @@ public class Conflict {
                 }
                 long currentTimeMs = TimeUtil.getTimeFromDay(day);
                 try {
-                    DBNationSnapshot nation = parser.loadNation(header, row, f -> true, f -> true, false, true, currentTimeMs);
-                    nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
-
-
+                    DBNationSnapshot nation = parser.loadNation(header, row, f -> true, f -> true, false, true, true, currentTimeMs);
+                    if (nation != null) {
+                        nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
+                    }
                 } catch (ParseException e) {
                     throw new RuntimeException(e);
                 }
@@ -281,8 +284,8 @@ public class Conflict {
                     }
                 }
 
-                Map<Byte, Map<MilitaryUnit, Integer>> unitsByCityCol1 = new Byte2ObjectOpenHashMap<>();
-                Map<Byte, Map<MilitaryUnit, Integer>> unitsByCityCol2 = new Byte2ObjectOpenHashMap<>();
+                Map<Integer, Map<Byte, Map<MilitaryUnit, Integer>>> unitsByCityCol1 = new Int2ObjectOpenHashMap<>();
+                Map<Integer, Map<Byte, Map<MilitaryUnit, Integer>>> unitsByCityCol2 = new Int2ObjectOpenHashMap<>();
 
                 long finalTurn = turn;
                 Set<Integer> allowedNations = latest.values().stream().filter(f -> {
@@ -297,8 +300,9 @@ public class Conflict {
 
                 for (int id : allowedNations) {
                     DBNation nation = latest.get(id);
-                    boolean isPrimary = coalition1.hasAlliance(nation.getAlliance_id());
-                    Map<Byte, Map<MilitaryUnit, Integer>> unitsByCity = isPrimary ? unitsByCityCol1 : unitsByCityCol2;
+                    int aaId = nation.getAlliance_id();
+                    boolean isPrimary = coalition1.hasAlliance(aaId);
+                    Map<Byte, Map<MilitaryUnit, Integer>> unitsByCity = (isPrimary ? unitsByCityCol1 : unitsByCityCol2).computeIfAbsent(aaId, f -> new Byte2ObjectOpenHashMap<>());
                     byte cities = (byte) nation.getCities();
                     for (MilitaryUnit unit : units) {
                         int count = nation.getUnits(unit);
@@ -330,34 +334,74 @@ public class Conflict {
     public synchronized byte[] getGraphPsonGzip(ConflictManager manager) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         root.put("name", getName());
-        root.put("wiki", wiki);
-        root.put("status", statusDesc);
-        root.put("cb", casusBelli);
-        root.put("posts", getAnnouncementsList());
         root.put("start", TimeUtil.getTimeFromTurn(turnStart));
         root.put("end", turnEnd == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(turnEnd));
 
         List<String> metricNames = new ObjectArrayList<>();
+
         List<Integer> metricsDay = new IntArrayList();
         List<Integer> metricsTurn = new IntArrayList();
+
         for (ConflictMetric metric : ConflictMetric.values) {
             metricNames.add(metric.name());
-            (metric.isDay() ? metricsDay : metricsTurn).add(metric.ordinal());
+            (metric.isDay() ? metricsDay : metricsTurn).add(metricNames.size());
+        }
+        Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeaders = DamageStatGroup.createRanking();
+        for (Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>> entry : damageHeaders.entrySet()) {
+            ConflictColumn column = entry.getKey();
+            String defPrefix = column.isCount() ? "def:" : "loss:";
+            metricNames.add(defPrefix + column.getName());
+            metricsDay.add(metricNames.size());
+            String attPrefix = column.isCount() ? "off:" : "dealt:";
+            metricNames.add(attPrefix + column.getName());
         }
         root.put("metric_names", metricNames);
         root.put("metrics_turn", metricsTurn);
         root.put("metrics_day", metricsDay);
 
+        long endTurn = turnEnd == Long.MAX_VALUE ? TimeUtil.getTurn() : turnEnd;
+
         List<Map<String, Object>> coalitions = new ObjectArrayList<>();
-        coalitions.add(coalition1.toGraphMap(manager));
-        coalitions.add(coalition2.toGraphMap(manager));
+        coalitions.add(coalition1.toGraphMap(manager, turnStart, endTurn, metricsTurn, metricsDay, new ArrayList<>(damageHeaders.values())));
+        coalitions.add(coalition2.toGraphMap(manager, turnStart, endTurn, metricsTurn, metricsDay, new ArrayList<>(damageHeaders.values())));
 
         root.put("coalitions", coalitions);
-
-        Map mapCopy = (Map) PSON.decode(JteUtil.toBinary(root));
-        System.out.println(mapCopy);
-
         return bsonCompressed = JteUtil.compress(JteUtil.toBinary(root));
+    }
+
+    private Map<String, Object> warsVsAllianceJson() {
+        Map<ConflictColumn, Function<DamageStatGroup, Object>> combined = DamageStatGroup.createRanking();
+        List<Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>>> combinedList = new ObjectArrayList<>(combined.entrySet());
+
+        Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
+        // headers
+        result.put("headers", combinedList.stream().map(e -> e.getKey().getName()).toList());
+        // alliance ids
+        List<Integer> aaIdsFull = new IntArrayList();
+        aaIdsFull.addAll(coalition1.getAllianceIdsSorted());
+        aaIdsFull.addAll(coalition2.getAllianceIdsSorted());
+
+        List<List<List<Long>>> tables = new ArrayList<>();
+        for (Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>> entry : combinedList) {
+            List<List<Long>> table = new ArrayList<>();
+            Function<DamageStatGroup, Object> function = entry.getValue();
+
+            for (int aaId1 : aaIdsFull) {
+                List<Long> row = new LongArrayList();
+                Map<Integer, DamageStatGroup> statsByAA = warsVsAlliance.get(aaId1);
+                if (statsByAA != null) {
+                    for (int aaId2 : aaIdsFull) {
+                        DamageStatGroup stats = statsByAA.get(aaId2);
+                        Object value = function.apply(stats);
+                        row.add(((Number) value).longValue());
+                    }
+                }
+                table.add(row);
+            }
+            tables.add(table);
+        }
+        result.put("data", tables);
+        return result;
     }
 
     public String getStatusDesc() {
@@ -376,26 +420,23 @@ public class Conflict {
             try {
                 Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
                 root.put("name", getName());
+                root.put("start", TimeUtil.getTimeFromTurn(turnStart));
+                root.put("end", turnEnd == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(turnEnd));
+                root.put("wiki", wiki);
                 root.put("status", statusDesc);
                 root.put("cb", casusBelli);
+                root.put("posts", getAnnouncementsList());
 
                 List<Object> coalitions = new ObjectArrayList<>();
                 coalitions.add(coalition1.toMap(manager));
                 coalitions.add(coalition2.toMap(manager));
                 root.put("coalitions", coalitions);
 
-                Map<ConflictColumn, Function<OffDefStatGroup, Object>> offDefHeader = OffDefStatGroup.createHeader();
-                root.put("counts_header", new ObjectArrayList<>(offDefHeader.keySet().stream().map(ConflictColumn::getName).toList()));
                 Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
                 root.put("damage_header", new ObjectArrayList<>(damageHeader.keySet().stream().map(ConflictColumn::getName).toList()));
-
-                Gson gson = new Gson();
-                JsonObject jsonObject = gson.toJsonTree(root).getAsJsonObject();
-                byte[] b64Legacy = JteUtil.compress(JteUtil.toB64(jsonObject));
+                root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
+                root.put("war_web", warsVsAllianceJson());
                 byte[] compressed = JteUtil.compress(JteUtil.toBinary(root));
-
-                System.out.println("Length: " + b64Legacy.length + " " + compressed.length);
-
                 bsonCompressed = compressed;
                 return compressed;
             } finally {
@@ -429,13 +470,20 @@ public class Conflict {
         return null;
     }
 
+    private DamageStatGroup getWarWebEntry(int aaId1, int aaId2) {
+        return warsVsAlliance.computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> new DamageStatGroup());
+    }
+
     public void updateWar(DBWar previous, DBWar current, long turn) {
         CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa(), turn);
         if (side == null) return;
-        warsVsAlliance.computeIfAbsent(current.getAttacker_aa(), k -> new Int2ObjectOpenHashMap<>()).merge(current.getDefender_aa(), 1, Integer::sum);
+
         CoalitionSide otherSide = side.getOther();
         side.updateWar(previous, current, true);
         otherSide.updateWar(previous, current, false);
+
+        getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
+
         dirtyJson = true;
     }
 
@@ -453,6 +501,11 @@ public class Conflict {
         CoalitionSide otherSide = side.getOther();
         side.updateAttack(war, attack, true);
         otherSide.updateAttack(war, attack, false);
+        getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
+
+        getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
+        getWarWebEntry(defenderAA, attackerAA).apply(attack, false);
+
         dirtyJson = true;
     }
 
@@ -586,7 +639,7 @@ public class Conflict {
     }
 
     public void addAnnouncement(String desc, DBTopic topic, boolean saveToDB) {
-        announcements.put(name, topic);
+        announcements.put(desc, topic);
         if (saveToDB) {
             getManager().addAnnouncement(id, topic.topic_id, desc);
         }
@@ -605,5 +658,11 @@ public class Conflict {
 
     public String getWiki() {
         return wiki;
+    }
+
+    public Map<String, DBTopic> getAnnouncement() {
+        synchronized (announcements) {
+            return new Object2ObjectOpenHashMap<>(announcements);
+        }
     }
 }

@@ -18,6 +18,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
@@ -50,6 +51,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -425,6 +427,45 @@ public class WarDB extends DBMainV2 {
         synchronized (warsById) {
             warsById.add(war);
         }
+    }
+
+    public void loadWarCityCountsLegacy() throws IOException, ParseException {
+        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        Map<Long, Map<Integer, Byte>> counts = parser.backCalculateCityCounts();
+        Set<DBWar> toSave = new ObjectOpenHashSet<>();
+        AtomicLong failed = new AtomicLong();
+        synchronized (warsById) {
+            warsById.forEach(war -> {
+                if (war.getAttCities() != 0 && war.getDefCities() != 0) return;
+                long day = TimeUtil.getDay(war.getDate());
+                Map<Integer, Byte> map = counts.get(day);
+                if (map != null) {
+                    boolean modified = false;
+                    if (war.getAttCities() == 0) {
+                        Byte attCities = map.get(war.getAttacker_id());
+                        if (attCities != null) {
+                            war.setAttCities(attCities & 0xff);
+                            modified = true;
+                        }
+                    }
+                    if (war.getDefCities() == 0) {
+                        Byte defCities = map.get(war.getDefender_id());
+                        if (defCities != null) {
+                            war.setDefCities(defCities & 0xff);
+                            modified = true;
+                        }
+                    }
+                    if (modified) {
+                        toSave.add(war);
+                    }
+                } else {
+                    failed.incrementAndGet();
+                }
+            });
+        }
+        System.out.println("Saving " + toSave.size() + " wars");
+        System.out.println("Failed to find " + failed.get() + " wars");
+        saveWars(toSave);
     }
 
     public void load() {
@@ -892,25 +933,14 @@ public class WarDB extends DBMainV2 {
         }
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL)";
+            executeStmt(create);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0");
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0");
         };
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            executeStmt("CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))");
         };
 
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_date ON WARS (date);");
@@ -1809,7 +1839,7 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`, `attCities`, `defCities`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         ThrowingBiConsumer<DBWar, PreparedStatement> setStmt = (war, stmt) -> {
             stmt.setInt(1, war.warId);
@@ -1820,6 +1850,8 @@ public class WarDB extends DBMainV2 {
             stmt.setInt(6, war.getWarType().ordinal());
             stmt.setInt(7, war.getStatus().ordinal());
             stmt.setLong(8, war.getDate());
+            stmt.setInt(9, war.getAttCities());
+            stmt.setInt(10, war.getDefCities());
         };
         if (values.size() == 1) {
             DBWar value = values.iterator().next();
@@ -1871,8 +1903,10 @@ public class WarDB extends DBMainV2 {
         WarType war_type = WarType.values[rs.getInt("war_type")];
         WarStatus status = WarStatus.values[rs.getInt("status")];
         long date = rs.getLong("date");
+        int attCities = rs.getInt("attCities");
+        int defCities = rs.getInt("defCities");
 
-        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date);
+        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities);
     }
 
     public DBWar getWar(int warId) {
@@ -2039,10 +2073,10 @@ public class WarDB extends DBMainV2 {
     public Map<Integer, DBWar> getWars(Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end) {
         if (coal1Alliances.isEmpty() && coal1Nations.isEmpty() && coal2Alliances.isEmpty() && coal2Nations.isEmpty()) return Collections.emptyMap();
 
-        Set<Integer> alliances = new HashSet<>();
+        Set<Integer> alliances = new IntOpenHashSet();
         alliances.addAll(coal1Alliances);
         alliances.addAll(coal2Alliances);
-        Set<Integer> nations = new HashSet<>();
+        Set<Integer> nations = new IntOpenHashSet();
         nations.addAll(coal1Nations);
         nations.addAll(coal2Nations);
 
@@ -2074,7 +2108,7 @@ public class WarDB extends DBMainV2 {
             };
         }
 
-        return getWarsForNationOrAlliance(nations.isEmpty() ? null : f -> nations.contains(f), alliances.isEmpty() ? null : f -> alliances.contains(f), isAllowed);
+        return getWarsForNationOrAlliance(nations.isEmpty() ? null : nations::contains, alliances.isEmpty() ? null : alliances::contains, isAllowed);
     }
 //
 //    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {

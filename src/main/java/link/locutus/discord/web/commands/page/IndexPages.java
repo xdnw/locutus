@@ -61,6 +61,11 @@ import java.util.stream.Collectors;
 public class IndexPages extends PageHelper {
 
     @Command
+    public Object bank(@Me GuildDB db, WebStore ws, Context context, @Me DBNation nation) throws IOException {
+       return "Your nation is " + nation.getId();
+    }
+
+    @Command
     public Object argTypes() {
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         ValueStore<Object> store = manager.getStore();

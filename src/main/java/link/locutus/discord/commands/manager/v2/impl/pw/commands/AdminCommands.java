@@ -437,7 +437,7 @@ public class AdminCommands {
                 "nation",
                 "time"
         ));
-        sheet.addRow(header);
+        sheet.setHeader(header);
         for (DBNation nation : nations) {
             List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
             for (DBSpyUpdate update : activity) {
@@ -491,6 +491,18 @@ public class AdminCommands {
         }
         return "Done! Imported " + count + "/" + lines.length + " users from " + url;
     }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncWars(@Switch("c") boolean updateCityCounts) throws IOException, ParseException {
+        if (updateCityCounts) {
+            Locutus.imp().getWarDb().loadWarCityCountsLegacy();
+            return "Done (city counts)";
+        }
+        Locutus.imp().getWarDb().updateAllWars(Event::post);
+        return "Done!";
+    }
+
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {

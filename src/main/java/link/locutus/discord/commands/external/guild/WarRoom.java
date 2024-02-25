@@ -32,6 +32,7 @@ import net.dv8tion.jda.api.entities.User;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class WarRoom extends Command {
     public WarRoom() {
@@ -100,7 +101,9 @@ public class WarRoom extends Command {
         if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
-            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
+            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true,
+                    (dbNationDBNationEntry, s) -> response.append(s).append("\n"),
+                    info -> response.append("```\n" + info.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.joining("\n")) + "\n```").append("\n"));
             if (response.length() != 0) {
                 channel.send(response.toString());
                 if (!flags.contains('f')) {
