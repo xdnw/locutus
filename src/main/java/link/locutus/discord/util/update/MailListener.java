@@ -127,7 +127,8 @@ public class MailListener {
                 return;
             }
 
-            List<String> args = StringMan.split(msg, " ");
+            List<String> args = remaining.isEmpty() ? new ArrayList<>() : StringMan.split(remaining.toString(), " ");
+            System.out.println("Running mail command `" + msg + "`");
             LocalValueStore locals = createLocals(db, guild, io, event, msg);
             ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
             Object response = callable.call(stack);
