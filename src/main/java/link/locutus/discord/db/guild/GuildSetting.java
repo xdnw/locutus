@@ -342,7 +342,7 @@ public abstract class GuildSetting<T> {
             public boolean test(GuildDB db, Boolean throwError) {
                 if (db.getGuild().getIdLong() == Settings.INSTANCE.ROOT_COALITION_SERVER) return true;
                 if (db.hasCoalitionPermsOnRoot(Coalition.WHITELISTED)) return true;
-                throw new IllegalArgumentException("Please use the public channels for this (this is to reduce unnecessary discord calls)");
+                throw new IllegalArgumentException("Please use the public channels for this <https://discord.gg/cUuskPDrB7> (this is to reduce unnecessary discord calls)");
             }
         });
         return this;

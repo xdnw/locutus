@@ -1207,7 +1207,7 @@ public class UtilityCommands {
                         errors.add("cities:" + project.maxCities() + " < " + nation.getCities() + " for " + project.name());
                     } else if (!ignoreProjectSlots && nation.getFreeProjectSlots() <= 0) {
                         errors.add("no free project slots");
-                    } else if (!ignoreRequirements && nation.hasProjects(project.requiredProjects(), false)) {
+                    } else if (!ignoreRequirements && !nation.hasProjects(project.requiredProjects(), false)) {
                         errors.add("missing required projects for " + project.name());
                     } else {
                         canBuy = true;
@@ -1237,7 +1237,7 @@ public class UtilityCommands {
             sheet.updateClearCurrentTab();
             sheet.updateWrite();
             IMessageBuilder msg = channel.create();
-            sheet.attach(msg, "coalition");
+            sheet.attach(msg, "projects");
 
             counts = ArrayUtil.sortMap(counts, false);
             response.append("Total:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");

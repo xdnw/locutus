@@ -702,7 +702,7 @@ public class BankCommands {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
         if (account == null) {
-            NationOrAllianceOrGuild defAccount = GuildKey.DEFAULT_OFFSHORE_ACCOUNT.get(db);
+            NationOrAllianceOrGuild defAccount = GuildKey.DEFAULT_OFFSHORE_ACCOUNT.getOrNull(db);
             if (defAccount != null) {
                 account = defAccount;
             }
@@ -2278,7 +2278,7 @@ public class BankCommands {
                     "Add `-d` to not include deposits\n" +
                     "Add `-t` to not include taxes\n" +
                     "Add `-l` to not include loans\n" +
-                    "Add `-g` to not include grants`\n" +
+                    "Add `-g` to not include grants\n" +
                     "Add `-p` to include past depositors\n" +
                     "Add `-f` to force an update"
 
@@ -4096,7 +4096,7 @@ public class BankCommands {
                         double[] depo = entry.getValue();
                         body.append("**Resetting Accounts:**\n");
                         if (!ResourceType.isZero(depo)) {
-                            body.append("- " + account.getQualifiedId() + " - worth: `~$" + PnwUtil.convertedTotal(depo) + "`\n");
+                            body.append("- " + account.getQualifiedId() + " - worth: `~$" + MathMan.format(PnwUtil.convertedTotal(depo)) + "`\n");
                             body.append(" - Balance: `" + PnwUtil.resourcesToString(depo) + "`\n");
                         }
                     }

@@ -1175,7 +1175,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
         PoliticsAndWarV3 api = getApi(permissions);
         if (api == null) {
-            String msg = "No api key found for " + getMarkdownUrl() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
+            String msg = "No api key found for " + getMarkdownUrl() + ". Please use" + CM.settings_default.registerApiKey.cmd.toSlashMention() + "\n" +
                     "Api key can be found on <https://politicsandwar.com/account/>";
             if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);
