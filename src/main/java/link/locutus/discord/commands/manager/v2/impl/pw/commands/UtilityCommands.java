@@ -1561,7 +1561,7 @@ public class UtilityCommands {
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reroll, "Reroll");
                 //Open alliance info
                 if (nation.getAlliance_id() != 0) {
-                    CM.who info = CM.who.cmd.create(nation.getAllianceUrl(), null, null, null, null, null, null, null, null);
+                    CM.who info = CM.who.cmd.create(nation.getAllianceUrl(), null, null, null, null, null, null, null, null, null);
                     msg = msg.commandButton(CommandBehavior.EPHEMERAL, info, "Alliance");
                 }
                 //Score command
@@ -1569,7 +1569,7 @@ public class UtilityCommands {
                 CM.nation.score score = CM.nation.score.cmd.create(nation.getNationUrl(), null, null, null, null, null, "", "", "", "", null, "");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, score, "Score");
                 //Revenue
-                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null, null, null, null);
+                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null, null, null, null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, revenue, "Revenue");
                 //WarInfo
                 CM.war.info warInfo = CM.war.info.cmd.create(nation.getNationUrl());
@@ -1582,7 +1582,7 @@ public class UtilityCommands {
                 CM.nation.loot loot = CM.nation.loot.cmd.create(nation.getNationUrl(), null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, loot, "Loot");
                 //Cost
-                CM.alliance.cost cost = CM.alliance.cost.cmd.create(nation.getNationUrl(), null);
+                CM.alliance.cost cost = CM.alliance.cost.cmd.create(nation.getNationUrl(), null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 //unit history
                 CM.unit.history history = CM.unit.history.cmd.create(nation.getNationUrl(), "", null);
@@ -1608,15 +1608,15 @@ public class UtilityCommands {
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
                 // Tiering graph
                 CM.stats_tier.cityTierGraph tiering =
-                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null);
+                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
                 // strength graph
                 CM.stats_tier.strengthTierGraph strength =
-                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null, null, null);
+                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
                 // mmr tier
                 CM.stats_tier.mmrTierGraph mmr =
-                        CM.stats_tier.mmrTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null);
+                        CM.stats_tier.mmrTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
                 // spy tier
                 CM.stats_tier.spyTierGraph spy =
@@ -1643,7 +1643,7 @@ public class UtilityCommands {
 
                 // alliance cost
                 CM.alliance.cost cost =
-                        CM.alliance.cost.cmd.create(alliance.getQualifiedId(), null);
+                        CM.alliance.cost.cmd.create(alliance.getQualifiedId(), null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 // offshore find
                 CM.offshore.findForCoalition findOffshore =

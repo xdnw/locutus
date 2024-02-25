@@ -177,6 +177,13 @@ public class AllianceCommands {
                 return createArgs("alliance", alliance);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getUrl")
+        public static class getUrl extends CommandRef {
+            public static final getUrl cmd = new getUrl();
+            public getUrl create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getWiki_link")
         public static class getWiki_link extends CommandRef {
             public static final getWiki_link cmd = new getWiki_link();

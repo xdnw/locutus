@@ -492,11 +492,11 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 body += "\n\n> Results in <#" + channelId + ">";
             }
 
-            CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null);
+            CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null, null);
             CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, showDepositsInDms + "", null, null, null, null);
             CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null, null);
             CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
-            CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null, null, null, null);
+            CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null, null, null, null, null, null);
             CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
             CM.trade.price tradeprice = CM.trade.price.cmd.create();
             CM.trade.margin trademargin = CM.trade.margin.cmd.create(null);
@@ -855,14 +855,14 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             msg = msg.commandButton(behavior, channelId, CM.offshore.accountSheet.cmd.create(null), "offshore");
         }
         if (offshoreSend) {
-            msg = msg.commandButton(behavior, channelId, CM.offshore.send.cmd.create(null, null, null), "offshore");
+            msg = msg.commandButton(behavior, channelId, CM.offshore.send.cmd.create(null, null, null, null), "offshore");
         }
         // deposits
         msg = msg.commandButton(behavior, channelId, CM.deposits.sheet.cmd.create(null, null, null, null, null, null, null, null, pastDepositorsStr, null, useFlowNoteStr, null), "deposits");
         // stockpile
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.stockpileSheet.cmd.create(null, null, null, null), "stockpile");
         // revenue
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.create(allianceStr, null), "revenue");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.create(allianceStr, null, null), "revenue");
         // bracket
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxBracketSheet.cmd.create(null, null), "bracket");
         // tax
@@ -916,7 +916,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         // spies
         msg = msg.commandButton(behavior, channelId, CM.audit.hasNotBoughtSpies.cmd.create(allianceStr), "spies");
         // mmr
-        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.create(allianceStr, null, null, null), "mmr");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.create(allianceStr, null, null, null, null), "mmr");
         // auto
         msg = msg.commandButton(behavior, channelId, CM.role.autoassign.cmd.create(null), "auto");
 
@@ -977,7 +977,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             addButtons.add(depositAuto);
             addLabels.add("deposit auto");
             isModals.add(false);
-            CommandRef offshore = CM.offshore.send.cmd.create(null, null, null);
+            CommandRef offshore = CM.offshore.send.cmd.create(null, null, null, null);
             addButtons.add(offshore);
             addLabels.add("offshore");
             isModals.add(false);
@@ -1173,7 +1173,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         CM.nation.sheet.NationSheet.cmd.create(
                                 allEnemies.getKey(),
                                 StringMan.join(allEnemies.getValue(), " "),
-                                null,
+                                null, null,
                                 "sheet:" + allEnemiesSheet.getSpreadsheetId()
                         ), "update").send();
 
@@ -1181,7 +1181,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 CM.nation.sheet.NationSheet.cmd.create(
                         allAllies.getKey(),
                         StringMan.join(allAllies.getValue(), " "),
-                        null,
+                        null, null,
                         "sheet:" + allAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
@@ -1189,7 +1189,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 CM.nation.sheet.NationSheet.cmd.create(
                         priorityEnemies.getKey(),
                         StringMan.join(priorityEnemies.getValue(), " "),
-                        null,
+                        null, null,
                         "sheet:" + priorityEnemiesSheet.getSpreadsheetId()
 
                 ), "update").send();
@@ -1198,7 +1198,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 CM.nation.sheet.NationSheet.cmd.create(
                         underutilizedAllies.getKey(),
                         StringMan.join(underutilizedAllies.getValue(), " "),
-                        null,
+                        null, null,
                         "sheet:" + underutilizedAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
@@ -1259,7 +1259,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         io.create().embed("Update ally", "Press `allies` to update active ally spy counts" + footer)
                 .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(
                         "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        columns,
+                        columns, null,
                         "true",
                         null
                 ), "allies").send();
@@ -1267,7 +1267,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         io.create().embed("Update enemy", "Press `enemies` to update active enemy spy counts" + footer)
                 .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(
                         "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        columns,
+                        columns, null,
                         "true",
                         null
                 ), "enemies").send();
@@ -1282,7 +1282,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "true",
                         "sheet:" + spySheetId,
                         null,
-                        null
+                        null, null, null, null, null
                 ), "blitz_kill").send();
 
         io.create().embed("Blitz priority damage", "Press `blitz_dmg` for a spy blitz sheet focusing damage" + footer)
@@ -1295,7 +1295,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "true",
                         "sheet:" + spySheetId,
                         null,
-                        null
+                        null, null, null, null, null
                 ), "blitz_dmg").send();
         io.create().embed("Validate and send", """
                         Press `check` to validate spy blitz sheet
@@ -1304,7 +1304,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .commandButton(behavior, channelId, CM.spy.sheet.validate.cmd.create(
                         "sheet:" + spySheetId,
                         null,
-                        "~" + allies
+                        "~" + allies, null
                 ), "validate")
         .commandButton(behavior, channelId, CM.mail.targets.cmd.create(
                         null,
@@ -1315,7 +1315,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         null,
                         null,
                         null,
-                        null
+                        null, null, null
                 ), "mail").send();
     }
 

@@ -1300,7 +1300,12 @@ public class IACommands {
                                     String subject,
                                     @Arg("The locutus command to run") String command,
                                     @Arg("Message to send along with the command result")
-                                    @TextArea String body, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+                                    @TextArea String body, @Switch("s") SpreadSheet sheet,
+                                    @Arg("Send as a discord direct message")
+                                    @Switch("d") boolean sendDM,
+                                    @Arg("Skip sending in-game mail\n" +
+                                            "(only valid if `sendDM` is true)")
+                                    @Switch("m") boolean skipMail) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.MAIL_RESPONSES_SHEET);
         }
@@ -1397,7 +1402,7 @@ public class IACommands {
         IMessageBuilder msg = channel.create();
         sheet.attach(msg, "mail_command", embed, false, 0);
         embed.append("\nPress `confirm` to confirm");
-        CM.mail.sheet cmd = CM.mail.sheet.cmd.create(sheet.getURL(), null);
+        CM.mail.sheet cmd = CM.mail.sheet.cmd.create(sheet.getURL(), null, sendDM ? "true" : null, skipMail ? "true" : null);
 
         msg.confirmation(title, embed.toString(), cmd).send();
 

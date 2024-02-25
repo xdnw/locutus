@@ -191,8 +191,6 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importConflictData", "clone");
 
-        getCommands().registerMethod(new TestCommands(), List.of("test"), "test", "test");
-
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("admin", "sync"), "saveMetrics", "saveMetrics");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_tier"), "metricByGroup", "metric_by_group");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_other", "data_csv"), "AlliancesDataByDay", "AlliancesDataByDay");

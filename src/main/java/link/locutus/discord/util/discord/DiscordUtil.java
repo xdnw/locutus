@@ -277,6 +277,10 @@ public class DiscordUtil {
         return null;
     }
 
+    public static <T> T parseArgFunc(List<String> args, String prefix, Function<String, T> parser) {
+        String arg = parseArg(args, prefix);
+        return arg == null ? null : parser.apply(arg);
+    }
     public static Integer parseArgInt(List<String> args, String prefix) {
         String arg = parseArg(args, prefix);
         return arg == null ? null : MathMan.parseInt(arg);

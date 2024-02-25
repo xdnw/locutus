@@ -4032,7 +4032,7 @@ public class BankCommands {
                 body.append("Withdraw commands will use this alliance bank\n");
                 body.append("To have another alliance/corporation use this bank as an offshore:\n");
                 body.append("- You must be admin or econ on both discord servers\n");
-                body.append("- On the other guild, use: " + CM.offshore.add.cmd.create(offshoreAlliance.getAlliance_id() + "", null) + "\n\n");
+                body.append("- On the other guild, use: " + CM.offshore.add.cmd.create(offshoreAlliance.getAlliance_id() + "", null, null, null) + "\n\n");
                 body.append("If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
 
                 confirmButton.embed(title, body.toString()).send();

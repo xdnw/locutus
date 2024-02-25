@@ -3873,7 +3873,7 @@ public class DBNation implements NationOrAlliance {
         IMessageBuilder msg = channel.create().embed(title, response)
                 .commandButton(CommandBehavior.UNPRESS, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {
-            msg = msg.commandButton(CM.who.cmd.create(getId() + "", null, null, null, null, null, null, null, null), "Refresh");
+            msg = msg.commandButton(CM.who.cmd.create(getId() + "", null, null, null, null, null, null, null, null, null), "Refresh");
         }
         msg.send();
     }

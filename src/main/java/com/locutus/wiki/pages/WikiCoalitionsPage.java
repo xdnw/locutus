@@ -21,7 +21,7 @@ public class WikiCoalitionsPage extends BotWikiGen {
                 - In built coalitions have functionality, such as for do not raid, or banking.
                 - Create custom coalitions for your own use.
                 - Mention coalitions in commands using `~coalitionName` e.g.""",
-                CM.who.cmd.create("~coalitionName,#position>1", null, null, null, null, null, null, null, null).toString(),
+                CM.who.cmd.create("~coalitionName,#position>1", null, null, null, null, null, null, null, null, null).toString(),
                 "# In built coalitions",
                 "- " + Arrays.stream(Coalition.values()).map(Coalition::toString).collect(Collectors.joining("\n- ")),
                 "# Adding to in-built coalition",

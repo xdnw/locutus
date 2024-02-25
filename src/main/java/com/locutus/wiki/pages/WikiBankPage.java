@@ -41,7 +41,7 @@ public class WikiBankPage extends BotWikiGen {
                     
                     The bot owner runs the public offshore. For Locutus that is `Borg`.
                     Use the who command to see the current offshore alliance""",
-                    CM.who.cmd.create("Borg", null, null, null, null, null, null, null, null).toString(),
+                    CM.who.cmd.create("Borg", null, null, null, null, null, null, null, null, null).toString(),
                 "Set that alliance as your offshore:",
                 commandMarkdownSpoiler(CM.offshore.add.cmd),
                 "**Alternatively** you can use the coalition command in your alliance server to set `" + Coalition.OFFSHORE.name() + "` to the desired offshore alliance, and ensure `" + Coalition.OFFSHORING.name() + "` is empty",
@@ -111,7 +111,7 @@ public class WikiBankPage extends BotWikiGen {
                 """
                         It is recommended to use an offshore instead, to avoid loot losses.
                         To enable banking using the local alliance, use your alliance url in:""",
-                        CM.offshore.add.cmd.create("", null).toString(),
+                        CM.offshore.add.cmd.create("", null, null, null).toString(),
                 "**Alternatively** you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your alliance",
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
@@ -132,7 +132,7 @@ public class WikiBankPage extends BotWikiGen {
                 CM.settings_default.registerApiKey.cmd.create("").toString(),
                 "### Set it as an offshore",
                 "In the guild for your offshore, use the alliance id of the offshore:",
-                CM.offshore.add.cmd.create("", null).toString(),
+                CM.offshore.add.cmd.create("", null, null, null).toString(),
                 "**Alternatively**, you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your offshore alliance",
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
@@ -140,7 +140,7 @@ public class WikiBankPage extends BotWikiGen {
                 CM.coalition.list.cmd.toString(),
                 "### Set the offshore in your alliance or corporation",
                 "Go to the guild you have setup for your alliance or corporation, and use the offshore add command with the alliance id of your offshore:",
-                CM.offshore.add.cmd.create("", null).toString(),
+                CM.offshore.add.cmd.create("", null, null, null).toString(),
                 "**Alternatively**:\n" +
                 "1. In your alliance/corporation server, use the coalition command to set `" + Coalition.OFFSHORE.name() + "` and ensure `" + Coalition.OFFSHORING.name() + "` is not set",
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString() + "\n" +
@@ -160,7 +160,7 @@ public class WikiBankPage extends BotWikiGen {
                 CM.deposits.add.cmd.create("", "", "#deposit", null).toString(),
                 "### Creating a new offshore (e.g. during war)",
                 "In the offshore server, add the new offshore using the alliance id of the new offshore:",
-                CM.offshore.add.cmd.create("", null).toString(),
+                CM.offshore.add.cmd.create("", null, null, null).toString(),
                 """
                     Guilds using the previous offshore should be updated.
                     You can manually add an offshore by going to the alliance or corporation discord which has an account and adding the alliance id of the offshore to the `offshore` coalition.""",

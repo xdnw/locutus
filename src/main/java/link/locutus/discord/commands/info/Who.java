@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -15,6 +16,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -43,6 +45,7 @@ public class Who extends Command {
                 "Use `-i` to list individual nation info\n" +
                 "Use `-c` to list individual nation channels" +
                 "Use `page:2` to list the second page of results\n" +
+                "Use `date:30d` to specify the snapshot date\n" +
                 "e.g. `" + Settings.commandPrefix(true) + "who @borg`";
     }
 
@@ -53,26 +56,7 @@ public class Who extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        /*
-        @Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
-                      @Arg("The nations to get info about")
-                      Set<NationOrAlliance> nationOrAlliances,
-                      @Arg("Sort any listed nations by this attribute")
-                      @Default() NationPlaceholder sortBy,
-                      @Arg("List the nations instead of just providing a summary")
-                      @Switch("l") boolean list,
-                      @Arg("List the alliances of the provided nation")
-                      @Switch("a") boolean listAlliances,
-                      @Arg("List the discord user ids of each nation")
-                      @Switch("r") boolean listRawUserIds,
-                      @Arg("List the discord user mentions of each nation")
-                      @Switch("m") boolean listMentions,
-                      @Arg("List paginated info of each nation")
-                      @Switch("i") boolean listInfo,
-                      @Arg("List all interview channels of each nation")
-                      @Switch("c") boolean listChannels,
-                      @Switch("p") Integer page
-         */
+        Long date = DiscordUtil.parseArgFunc(args, "date", (ThrowingFunction<String, Long>) PrimitiveBindings::timestamp);
         Integer page = DiscordUtil.parseArgInt(args, "page");
         String arg0 = StringMan.join(args, " ");
         System.out.println("Args " + arg0);
@@ -90,6 +74,7 @@ public class Who extends Command {
                 flags.contains('m') ? "True" : null,
                 flags.contains('i') ? "True" : null,
                 flags.contains('c') ? "True" : null,
+                null,
                 page == null ? null : page.toString()
         );
         GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
@@ -108,7 +93,7 @@ public class Who extends Command {
                 flags.contains('m'),
                 flags.contains('i'),
                 flags.contains('c'),
-                null,
+                date,
                 page);
 
 //
