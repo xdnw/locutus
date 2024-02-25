@@ -32,8 +32,7 @@ public class DBWar {
     public int allianceIdPair;
     private byte warStatusType;
     private final long date;
-    private byte attCities;
-    private byte defCities;
+    private char attDefCities;
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }
@@ -46,16 +45,15 @@ public class DBWar {
         this.date = date;
         if (attCities == 0) attCities = defCities;
         if (defCities == 0) defCities = attCities;
-        this.attCities = (byte) attCities;
-        this.defCities = (byte) defCities;
+        this.attDefCities = (char) (attCities | (defCities << 8));
     }
 
     public int getAttCities() {
-        return attCities & 0xFF;
+        return attDefCities & 0xFF;
     }
 
     public int getDefCities() {
-        return defCities & 0xFF;
+        return attDefCities >> 8;
     }
 
     public void setStatus(WarStatus status) {
@@ -133,8 +131,7 @@ public class DBWar {
         this.allianceIdPair = other.allianceIdPair;
         this.warStatusType = other.warStatusType;
         this.date = other.getDate();
-        this.attCities = other.attCities;
-        this.defCities = other.defCities;
+        this.attDefCities = other.attDefCities;
     }
 
     private static int getCities(int nationId) {
@@ -464,10 +461,10 @@ public class DBWar {
     }
 
     public void setAttCities(int attCities) {
-        this.attCities = (byte) attCities;
+        this.attDefCities = (char) (attCities | (getDefCities() << 8));
     }
 
     public void setDefCities(int defCities) {
-        this.defCities = (byte) defCities;
+        this.attDefCities = (char) (getAttCities() | (defCities << 8));
     }
 }

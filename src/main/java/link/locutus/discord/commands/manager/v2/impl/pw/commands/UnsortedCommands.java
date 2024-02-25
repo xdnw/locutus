@@ -975,7 +975,9 @@ public class UnsortedCommands {
             long start = System.currentTimeMillis() - includeWarCosts;
             WarParser parser = WarParser.of((Collection) nationSet, null, start, snapshotDate == null ? Long.MAX_VALUE : snapshotDate);
             AttackCost cost = parser.toWarCost(true, false, false, false, false);
-            warsCost = ResourceType.negative(PnwUtil.resourcesToArray(cost.getNetCost(true)));
+            warsCost = ResourceType.negative(PnwUtil.resourcesToArray(cost.getTotal(true)));
+            double numDays = includeWarCosts / (double) TimeUnit.DAYS.toMillis(1);
+            warsCost = PnwUtil.multiply(warsCost, 1d / numDays);
         }
 
         double[] total = ResourceType.builder().add(cityProfit).add(milUp).addMoney(tradeBonusTotal).add(warsCost).build();

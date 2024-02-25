@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import de.erichseifert.gral.data.DataTable;
@@ -1473,27 +1474,28 @@ public class StatCommands {
                     "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement"
     )
     @RolePermission(Roles.MILCOM)
-    public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me GuildDB db,
+    public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db,
                                                 Set<NationOrAlliance> attackers,
                                                 Set<NationOrAlliance> defenders,
                                                 @Timestamp long time,
-                                         @Switch("c") boolean excludeConsumption,
-                                         @Switch("i") boolean excludeInfra,
-                                         @Switch("l") boolean excludeLoot,
-                                         @Switch("u") boolean excludeUnitCost,
-                                         @Arg("Include nations on the gray color bloc")
+                                                @Switch("c") boolean excludeConsumption,
+                                                @Switch("i") boolean excludeInfra,
+                                                @Switch("l") boolean excludeLoot,
+                                                @Switch("u") boolean excludeUnitCost,
+                                                @Arg("Include nations on the gray color bloc")
                                          @Switch("g") boolean includeGray,
-                                        @Arg("Include defensive wars")
+                                                @Arg("Include defensive wars")
                                          @Switch("d") boolean includeDefensives,
-                                         @Arg("Use the average cost per city")
+                                                @Arg("Use the average cost per city")
                                          @Switch("n") boolean normalizePerCity,
-                                         @Arg("Use the average cost per war")
+                                                @Arg("Use the average cost per war")
                                          @Switch("w") boolean normalizePerWar,
-                                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+                                                @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.WAR_COST_SHEET);
         }
-
+        if ("*".equals(command.getString("attackers"))) attackers = null;
+        if ("*".equals(command.getString("defenders"))) defenders = null;
         WarParser parser1 = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
 
         Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());

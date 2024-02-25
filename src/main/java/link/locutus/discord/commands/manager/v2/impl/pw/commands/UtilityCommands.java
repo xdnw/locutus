@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -39,6 +40,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.sim.AttackTypeNode;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -1132,25 +1134,130 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Shows the cost of a project")
-    public String ProjectCost(Set<Project> projects, @Default("false") boolean technologicalAdvancement, @Default("false") boolean governmentSupportAgency) {
+    public String ProjectCost(@Me GuildDB db, @Me IMessageIO channel,
+                              Set<Project> projects,
+                              @Default("false") boolean technologicalAdvancement,
+                              @Default("false") boolean governmentSupportAgency,
+                              @Switch("n") Set<DBNation> nations,
+                              @Switch("s") SpreadSheet sheet,
+                              @Switch("p") boolean ignoreProjectSlots,
+                              @Switch("r") boolean ignoreRequirements,
+                              @Switch("c") boolean ignoreProjectCity) throws GeneralSecurityException, IOException {
+        if (sheet != null && nations == null) throw new IllegalArgumentException("You must specify `nations` for `sheet` option to be used");
+        if ((ignoreProjectSlots || ignoreRequirements || ignoreProjectCity) && nations == null) throw new IllegalArgumentException("You must specify `nations` for `ignore` options to be used");
+        List<Project> projectsList = new ArrayList<>(projects);
         double[] costs =  ResourceType.getBuffer();
         StringBuilder response = new StringBuilder();
-        for (Project project : projects) {
-            double[] cost = PnwUtil.resourcesToArray(project.cost());
-            if (technologicalAdvancement) {
-                double factor = 0.05;
-                if (governmentSupportAgency) {
-                    factor *= 1.5;
+        if (nations == null) {
+            for (Project project : projectsList) {
+                double[] cost = PnwUtil.resourcesToArray(project.cost());
+                if (technologicalAdvancement) {
+                    double factor = 0.05;
+                    if (governmentSupportAgency) {
+                        factor *= 1.5;
+                    }
+                    cost = PnwUtil.multiply(cost, 1 - factor);
                 }
-                cost = PnwUtil.multiply(cost, 1 - factor);
+                costs = PnwUtil.add(costs, cost);
+                response.append(project.name() + ":\n```" + PnwUtil.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) + "\n");
             }
-            costs = PnwUtil.add(costs, cost);
-            response.append(project.name() + ":\n```" + PnwUtil.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) + "\n");
-        }
-        if (projects.size() > 1) {
+            if (projectsList.size() > 1) {
+                response.append("Total:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
+            }
+            return response.toString();
+        } else {
+            if (sheet == null) {
+                sheet = SpreadSheet.create(db, SheetKey.PROJECT_SHEET);
+            }
+            List<String> header = new ArrayList<>(Arrays.asList(
+                    "nation",
+                    "alliance",
+                    "cities",
+                    "technological_advancement",
+                    "government_support_agency",
+                    "cost",
+                    "cost_value",
+                    "errors"
+            ));
+            int indexOffset = header.size();
+            for (Project project : projectsList) {
+                header.add(project.name());
+            }
+            sheet.setHeader(header);
+
+            Map<Project, Integer> counts = new LinkedHashMap<>();
+            Map<Project, double[]> costByProject = new LinkedHashMap<>();
+            for (DBNation nation : nations) {
+                DBNation nationCopy = new DBNation(nation);
+                double[] nationCost = ResourceType.getBuffer();
+                List<String> errors = new ArrayList<>();
+                List<Integer> buy = new ArrayList<>();
+
+                if (technologicalAdvancement)
+                    nationCopy.setDomesticPolicy(DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT);
+                if (governmentSupportAgency) nationCopy.setProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
+
+                for (Project project : projectsList) {
+                    boolean canBuy = false;
+                    if (nation.hasProject(project)) {
+                        errors.add("already has:" + project.name());
+                    } else if (!ignoreProjectCity && nation.getCities() < project.requiredCities()) {
+                        errors.add("cities:" + project.requiredCities() + " < " + nation.getCities() + " for " + project.name());
+                    } else if (!ignoreProjectCity && nation.getCities() > project.maxCities()) {
+                        errors.add("cities:" + project.maxCities() + " < " + nation.getCities() + " for " + project.name());
+                    } else if (!ignoreProjectSlots && nation.getFreeProjectSlots() <= 0) {
+                        errors.add("no free project slots");
+                    } else if (!ignoreRequirements && nation.hasProjects(project.requiredProjects(), false)) {
+                        errors.add("missing required projects for " + project.name());
+                    } else {
+                        canBuy = true;
+                        counts.merge(project, 1, Integer::sum);
+                        double[] cost = nation.projectCost(project);
+                        nationCost = PnwUtil.add(nationCost, cost);
+                        PnwUtil.add(costByProject.computeIfAbsent(project, p -> ResourceType.getBuffer()), cost);
+                    }
+                    buy.add(canBuy ? 1 : 0);
+                }
+                costs = PnwUtil.add(costs, nationCost);
+
+                header.set(0, MarkupUtil.sheetUrl(nation.getName(), nation.getUrl()));
+                header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+                header.set(2, String.valueOf(nation.getCities()));
+                header.set(3, nationCopy.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? "true" : "false");
+                header.set(4, nationCopy.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) ? "true" : "false");
+                header.set(5, PnwUtil.resourcesToString(nationCost));
+                header.set(6, MathMan.format(PnwUtil.convertedTotal(nationCost)));
+                header.set(7, StringMan.join(errors, ","));
+                for (int i = 0; i < projectsList.size(); i++) {
+                    header.set(i + indexOffset, String.valueOf(buy.get(i)));
+                }
+                sheet.addRow(header);
+            }
+
+            sheet.updateClearCurrentTab();
+            sheet.updateWrite();
+            IMessageBuilder msg = channel.create();
+            sheet.attach(msg, "coalition");
+
+            counts = ArrayUtil.sortMap(counts, false);
             response.append("Total:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
+            // append counts
+            response.append("# Bought: `" + StringMan.getString(counts) + "`\n");
+            // Add total cost
+            if (projects.size() > 1) {
+                Map<Project, Double> costByProjectValue = new LinkedHashMap<>();
+                for (Map.Entry<Project, double[]> entry : costByProject.entrySet()) {
+                    costByProjectValue.put(entry.getKey(), PnwUtil.convertedTotal(entry.getValue()));
+                }
+                ArrayUtil.sortMap(costByProjectValue, false);
+                for (Map.Entry<Project, Double> entry : costByProjectValue.entrySet()) {
+                    if (entry.getValue() == 0) continue;
+                    response.append(entry.getKey().name() + ": ~$" + MathMan.format(entry.getValue()) + "\n- `" + PnwUtil.resourcesToString(costByProject.get(entry.getKey())) + "`\n");
+                }
+            }
+            msg.append(response.toString()).send();
+            return null;
         }
-        return response.toString();
     }
 
     @Command(desc = "Add or remove the configured auto roles to all users in this discord guild")

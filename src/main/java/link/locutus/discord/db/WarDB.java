@@ -2073,10 +2073,10 @@ public class WarDB extends DBMainV2 {
     public Map<Integer, DBWar> getWars(Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end) {
         if (coal1Alliances.isEmpty() && coal1Nations.isEmpty() && coal2Alliances.isEmpty() && coal2Nations.isEmpty()) return Collections.emptyMap();
 
-        Set<Integer> alliances = new HashSet<>();
+        Set<Integer> alliances = new IntOpenHashSet();
         alliances.addAll(coal1Alliances);
         alliances.addAll(coal2Alliances);
-        Set<Integer> nations = new HashSet<>();
+        Set<Integer> nations = new IntOpenHashSet();
         nations.addAll(coal1Nations);
         nations.addAll(coal2Nations);
 
@@ -2108,7 +2108,7 @@ public class WarDB extends DBMainV2 {
             };
         }
 
-        return getWarsForNationOrAlliance(nations.isEmpty() ? null : f -> nations.contains(f), alliances.isEmpty() ? null : f -> alliances.contains(f), isAllowed);
+        return getWarsForNationOrAlliance(nations.isEmpty() ? null : nations::contains, alliances.isEmpty() ? null : alliances::contains, isAllowed);
     }
 //
 //    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {

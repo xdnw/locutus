@@ -74,7 +74,7 @@ public class ValidateSpyBlitzSheet extends Command {
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
             }
-        });
+        }, a -> {});
 
         if (response.length() <= 1) return "All checks passed";
 

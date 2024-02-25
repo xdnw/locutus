@@ -830,10 +830,25 @@ public class WarUpdateProcessor {
                             ((defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) ||
                             (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true)))) {
 
-                        attacks = root.getWar().getAttacks2(false);
-                        for (AbstractCursor attack : attacks) {
-                            if (attack.getAttack_type() == NAVAL && attack.getWar_attack_id() != root.getWar_attack_id()) {
-                                return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
+                        boolean hasGreater = defender.getTankPct() > 0.15;
+                        if (!hasGreater) {
+                            for (DBWar war : defender.getActiveWars()) {
+                                DBNation other = war.getNation(!war.isAttacker(defender));
+                                if (other == null) continue;
+                                if ((other.active_m() < 2880 || (other.active_m() < 7200 && other.getPositionEnum().id > Rank.APPLICANT.id)) &&
+                                        ((defender.getSoldierPct() > 0.2 || defender.getTankPct() > 0.1) && other.getGroundStrength(false, true) < defender.getGroundStrength(true, false)) ||
+                                        defender.getAircraftPct() > 0.15) {
+                                    hasGreater = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (hasGreater) {
+                            attacks = root.getWar().getAttacks2(false);
+                            for (AbstractCursor attack : attacks) {
+                                if (attack.getAttack_type() == NAVAL && attack.getWar_attack_id() != root.getWar_attack_id() && defender.getTanks() > 0) {
+                                    return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
+                                }
                             }
                         }
                     }

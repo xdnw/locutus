@@ -8,6 +8,8 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
@@ -25,12 +27,15 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class BlitzGenerator {
     private static final double AIR_FACTOR = 2;
@@ -85,37 +90,42 @@ public class BlitzGenerator {
         return reversed;
     }
 
-    private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlots, boolean checkSpySlots, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
+    private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlots, boolean checkSpySlots, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut, Set<String> outMessages) {
         double minScore = attacker.getScore() * minScoreMultiplier;
         double maxScore = attacker.getScore() * maxScoreMultiplier;
 
+        String response;
         if (defender.getScore() < minScore) {
             double diff = Math.round((minScore - defender.getScore()) * 100) / 100d;
-            String response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns below " + "`" + attacker.getNation() + "`");
-            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
-        }
-        else if (defender.getScore() > maxScore) {
+            response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns below " + "`" + attacker.getNation() + "`");
+        } else if (defender.getScore() > maxScore) {
             double diff = Math.round((defender.getScore() - maxScore) * 100) / 100d;
-            String response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns above " + "`" + attacker.getNation() + "`");
-            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+            response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns above " + "`" + attacker.getNation() + "`");
         } else if (checkUpdeclare && getAirStrength(defender, false) > getAirStrength(attacker, true) * 1.33) {
             double ratio = getAirStrength(defender, false) / getAirStrength(attacker, true);
-            String response = ("`" + defender.getNation() + "` is " + MathMan.format(ratio) + "x stronger than " + "`" + attacker.getNation() + "`");
-            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+            response = ("`" + defender.getNation() + "` is " + MathMan.format(ratio) + "x stronger than " + "`" + attacker.getNation() + "`");
         } else if (checkWarSlots && defender.getDef() == 3) {
-            String response = ("`" + defender.getNation() + "` is slotted");
-            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+            response = ("`" + defender.getNation() + "` is slotted");
         } else if (checkSpySlots && !defender.isEspionageAvailable()) {
-            String response = ("`" + defender.getNation() + "` is spy slotted");
+            response = ("`" + defender.getNation() + "` is spy slotted");
+        } else {
+            return;
+        }
+        if (outMessages.add(response)) {
             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
         }
     }
 
     public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, boolean isLeader, int headerRow) {
-        return getTargets(sheet, isLeader, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, false, false, f -> true, (a, b) -> {});
+        return getTargets(sheet, isLeader, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, false, false, f -> true, (a, b) -> {}, a -> {});
     }
 
-    public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, boolean isLeader, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlotted, boolean checkSpySlotted, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
+    public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, boolean isLeader, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlotted, boolean checkSpySlotted, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut2, Consumer<Map<String, Object>> debugInfo) {
+        AtomicInteger numErrors = new AtomicInteger();
+        BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut = (entry, s) -> {
+            numErrors.incrementAndGet();
+            invalidOut2.accept(entry, s);
+        };
         List<List<Object>> rows = sheet.fetchAll(null);
         List<Object> header = rows.get(headerRow);
 
@@ -159,10 +169,12 @@ public class BlitzGenerator {
                 targetI = 0;
             }
         }
+
         Set<DBNation> allAttackers = new LinkedHashSet<>();
         Set<DBNation> allDefenders = new LinkedHashSet<>();
         Map<DBNation, Set<DBNation>> targets = new LinkedHashMap<>();
         Map<DBNation, Set<DBNation>> offensiveWars = new LinkedHashMap<>();
+        Set<String> outMessages = new HashSet<>();
 
         for (int i = headerRow + 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
@@ -180,7 +192,9 @@ public class BlitzGenerator {
 
             if (nation == null) {
                 String response = ("`" + cell.toString() + "` is an invalid nation\n");
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                if (outMessages.add(response)) {
+                    invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                }
                 continue;
             }
 
@@ -191,7 +205,9 @@ public class BlitzGenerator {
                     DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(allianceStr);
                     if (alliance != null && nation.getAlliance_id() != alliance.getAlliance_id()) {
                         String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`\n");
-                        invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                        if (outMessages.add(response)) {
+                            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                        }
                     }
                 }
             }
@@ -219,11 +235,13 @@ public class BlitzGenerator {
 
                         if (other == null) {
                             String response = ("`" + cell.toString() + "` is an invalid nation\n");
-                            invalidOut.accept(new AbstractMap.SimpleEntry<>(defenderMutable, attackerMutable), response);
+                            if (outMessages.add(response)) {
+                                invalidOut.accept(new AbstractMap.SimpleEntry<>(defenderMutable, attackerMutable), response);
+                            }
                             return;
                         }
 
-                        process(attackerMutable, defenderMutable, minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, checkWarSlotted, checkSpySlotted, invalidOut);
+                        process(attackerMutable, defenderMutable, minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, checkWarSlotted, checkSpySlotted, invalidOut, outMessages);
 
                         allAttackers.add(attackerMutable);
                         allDefenders.add(defenderMutable);
@@ -254,7 +272,9 @@ public class BlitzGenerator {
                     }
                     if (other == null) {
                         String response = ("`" + cell.toString() + "` is an invalid nation\n");
-                        invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                        if (outMessages.add(response)) {
+                            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                        }
                         continue;
                     }
                     DBNation tmp = attacker;
@@ -278,36 +298,64 @@ public class BlitzGenerator {
             Set<DBNation> defenders = entry.getValue();
             if (defenders.size() > maxWars.apply(attacker)) {
                 String response = ("`" + attacker.getNation() + "` has " + entry.getValue().size() + " targets");
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
+                if (outMessages.add(response)) {
+                    invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
+                }
             }
         }
 
         for (DBNation attacker : allAttackers) {
+            String response;
             if (attacker.active_m() > 4880) {
-                String response = ("Attacker: `" + attacker.getNation() + "` is inactive");
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
+                response = ("Attacker: `" + attacker.getNation() + "` is inactive");
             } else if (attacker.getVm_turns() > 1) {
-                String response = ("Attacker: `" + attacker.getNation() + "` is in VM for " + attacker.getVm_turns() + " turns");
+                response = ("Attacker: `" + attacker.getNation() + "` is in VM for " + attacker.getVm_turns() + " turns");
+            } else {
+                continue;
+            }
+            if (outMessages.add(response)) {
                 invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
             }
         }
 
         for (DBNation defender : allDefenders) {
+            String response;
             if (!isValidTarget.apply(defender)) {
-                String response = ("Defender: `" + defender.getNation() + "` is not an enemy");
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
+                response = ("Defender: `" + defender.getNation() + "` is not an enemy");
             } else if (defender.active_m() > TimeUnit.DAYS.toMinutes(8)) {
-                String response = ("Defender: `" + defender.getNation() + "` is inactive");
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
+                response = ("Defender: `" + defender.getNation() + "` is inactive");
             } else if (defender.getVm_turns() > 1) {
-                String response = ("Defender: `" + defender.getNation() + "` is in VM for " + defender.getVm_turns() + " turns");
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
+                response = ("Defender: `" + defender.getNation() + "` is in VM for " + defender.getVm_turns() + " turns");
             } else if (defender.isBeige()) {
-                String response = ("Defender: `" + defender.getNation() + "` is beige");
+                response = ("Defender: `" + defender.getNation() + "` is beige");
+            } else {
+                continue;
+            }
+            if (outMessages.add(response)) {
                 invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
             }
         }
 
+        String attackerStr = isReverse ? "defender" : "attacker";
+        String defenderStr = !isReverse ? "defender" : "attacker";
+        Map<String, Object> debugInfoMap = new LinkedHashMap<>();
+        debugInfoMap.put("sheet_id", sheet.getSpreadsheetId());
+        debugInfoMap.put("errors", numErrors.get());
+        debugInfoMap.put("header_row", headerRow);
+        debugInfoMap.put("inverse", isReverse ? "true (found `def` column)" : "false");
+        debugInfoMap.put("use_leader", useLeader);
+        debugInfoMap.put(defenderStr, targetI == null ? "Not Found" : SheetUtil.getLetter(targetI) + (headerRow + 1));
+        debugInfoMap.put("alliance", allianceI == null ? "Not Found" : SheetUtil.getLetter(allianceI) + (headerRow + 1));
+        debugInfoMap.put(attackerStr + "_1", attI == null ? "Not Found" : SheetUtil.getLetter(attI) + (headerRow + 1));
+        debugInfoMap.put(attackerStr + "_2", att2 == null ? "Not Found" : SheetUtil.getLetter(att2) + (headerRow + 1));
+        debugInfoMap.put(attackerStr + "_3", att3 == null ? "Not Found" : SheetUtil.getLetter(att3) + (headerRow + 1));
+
+        Map<String, Integer> attackersByAA = ArrayUtil.sortMap(allAttackers.stream().collect(Collectors.groupingBy(DBNation::getAllianceName, Collectors.summingInt(f -> 1))), false);
+        Map<String, Integer> defendersByAA = ArrayUtil.sortMap(allDefenders.stream().collect(Collectors.groupingBy(DBNation::getAllianceName, Collectors.summingInt(f -> 1))), false);
+
+        debugInfoMap.put("attacker_alliances", attackersByAA);
+        debugInfoMap.put("defender_alliances", defendersByAA);
+        debugInfo.accept(debugInfoMap);
 
         return targets;
     }

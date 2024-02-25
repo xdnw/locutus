@@ -1915,4 +1915,22 @@ public class IACommands {
             return null;
         }
     }
+
+
+    @Command(desc = "Set the interview message")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String setInterview(@Me GuildDB db, IACategory category, String message) {
+        db.setCopyPasta("interview", message);
+        return "Set `interview` to:\n```md\n" + message + "```\n\nUse ";// TODO CM REF + CM.interview.questions.view.toSlashMention() + " to view";
+    }
+
+    @Command(desc = "View the interview message")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String viewInterview(@Me GuildDB db, IACategory category) {
+        String message = db.getCopyPasta("interview", true);
+        if (message == null) {
+            return "No message set. Set one with " + "";//TODO CM REF CM.interview.questions.set.cmd.toSlashMention();
+        }
+        return "Interview questions:\n```md\n" + message + "```";
+    }
 }
