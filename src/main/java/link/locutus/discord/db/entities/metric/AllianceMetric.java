@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -1487,6 +1486,6 @@ public enum AllianceMetric implements IAllianceMetric {
             }
         }
 
-        return Locutus.imp().getNationDB().getMetrics(aaIds, finalMetrics, minTurn, maxTurn);
+        return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, finalMetrics, minTurn, maxTurn);
     }
 }

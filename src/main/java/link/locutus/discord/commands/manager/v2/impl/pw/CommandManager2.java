@@ -174,6 +174,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new StatCommands(), List.of("stats_other", "global_metrics"), "orbisStatByDay", "by_time");
+
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militaryRanking", "militarization");
         getCommands().registerMethod(new IACommands(), List.of("interview", "questions"), "viewInterview", "view");
         getCommands().registerMethod(new IACommands(), List.of("interview", "questions"), "setInterview", "set");

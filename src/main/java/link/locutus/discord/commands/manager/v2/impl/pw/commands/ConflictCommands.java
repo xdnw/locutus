@@ -396,19 +396,17 @@ public class ConflictCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki, @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        boolean loadGraphData = false;
+        if (all) {
+            Locutus.imp().getWarDb().loadWarCityCountsLegacy();
+            allianceNames = true;
+            ctowned = true;
+            wiki = true;
+            loadGraphData = true;
+        }
         if (!ctowned && graphData == null && !allianceNames && !wiki) {
             throw new IllegalArgumentException("Please specify either `ctowned` or `graphData` or `allianceNames` or `wiki`");
-        }
-        if (ctowned) {
-            loadCtownedConflicts(manager, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-            loadCtownedConflicts(manager, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
-        }
-        if (graphData != null) {
-            for (Conflict conflict : graphData) {
-                System.out.println("Updating graphs " + conflict.getName() + " | " + conflict.getId());
-                conflict.updateGraphsLegacy(manager);
-            }
         }
         if (allianceNames) {
             manager.saveDataCsvAllianceNames();
@@ -418,6 +416,10 @@ public class ConflictCommands {
                 manager.addLegacyName(entry.getValue(), entry.getKey(), 0);
             }
 
+        }
+        if (ctowned) {
+            loadCtownedConflicts(manager, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+            loadCtownedConflicts(manager, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
         }
         if (wiki) {
             Map<String, Set<Conflict>> conflictsByWiki = manager.getConflictMap().values().stream().collect(Collectors.groupingBy(Conflict::getWiki, Collectors.toSet()));
@@ -463,6 +465,15 @@ public class ConflictCommands {
                 }
 
             }
+            if (loadGraphData && graphData == null) {
+                graphData = new LinkedHashSet<>(manager.getConflictMap().values());
+            }
+            if (graphData != null) {
+                for (Conflict conflict : graphData) {
+                    System.out.println("Updating graphs " + conflict.getName() + " | " + conflict.getId());
+                    conflict.updateGraphsLegacy(manager);
+                }
+            }
             // announcements
             // participants
 
@@ -499,8 +510,6 @@ public class ConflictCommands {
 //                System.out.println("- Col2-DB: " + value.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
 //                System.out.println("- Col2-Wiki: " + closest.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
 //            }
-
-
         }
         return "Done!";
     }

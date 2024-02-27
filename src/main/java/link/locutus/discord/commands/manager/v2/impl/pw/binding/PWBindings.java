@@ -48,6 +48,7 @@ import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricMode;
+import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -196,6 +197,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
     public Set<BeigeReason> BeigeReasons(String input) {
         return emumSet(BeigeReason.class, input);
+    }
+
+    @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
+    public Set<OrbisMetric> OrbisMetrics(String input) {
+        return emumSet(OrbisMetric.class, input);
     }
 
     @Binding(value = "A comma separated list of attack success types")

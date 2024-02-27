@@ -52,7 +52,7 @@ public class MilitaryRanking extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        Map<Integer, List<DBNation>> byAA = Locutus.imp().getNationDB().getNationsByAlliance(true, true, true, true);
+        Map<Integer, List<DBNation>> byAA = Locutus.imp().getNationDB().getNationsByAlliance(true, true, true, true, true);
 
         Map<Integer, Color> sphereColors = new HashMap<>();
         Map<Integer, Double> sphereScore = new HashMap<>();

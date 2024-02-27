@@ -43,6 +43,7 @@ import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
@@ -899,6 +900,21 @@ public class WebPWBindings extends WebBindingHelper {
     }
     public String BeigeReasons(ParameterData param, boolean multiple) {
         return multipleSelect(param, Arrays.asList(BeigeReason.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
+    }
+
+    @HtmlInput
+    @Binding(types= OrbisMetric.class)
+    public String OrbisMetric(ParameterData param) {
+        return OrbisMetrics(param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, OrbisMetric.class}, multiple = true)
+    public String OrbisMetrics(ParameterData param) {
+        return OrbisMetrics(param, true);
+    }
+    public String OrbisMetrics(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(OrbisMetric.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()), multiple);
     }
 
     @HtmlInput

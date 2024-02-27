@@ -887,7 +887,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             return Integer.MAX_VALUE;
         }
         if (rank == null) {
-            Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
+            Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true, true);
             rank = 0;
             for (Map.Entry<Integer, List<DBNation>> entry : byScore.entrySet()) {
                 rank++;

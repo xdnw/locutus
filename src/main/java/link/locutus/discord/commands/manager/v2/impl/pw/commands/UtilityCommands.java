@@ -407,7 +407,7 @@ public class UtilityCommands {
     public String listOffshores() {
         StringBuilder response = new StringBuilder();
 
-        Map<Integer, List<DBNation>> map = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
+        Map<Integer, List<DBNation>> map = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true, true);
         outer:
         for (Map.Entry<Integer, List<DBNation>> entry : map.entrySet()) {
             DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
@@ -548,7 +548,7 @@ public class UtilityCommands {
 
         long totalBankDiff = 0;
 
-        Map<Integer, List<DBNation>> alliances = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
+        Map<Integer, List<DBNation>> alliances = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true, true);
         outer:
         for (Map.Entry<Integer, List<DBNation>> entry : alliances.entrySet()) {
             int aaId = entry.getKey();

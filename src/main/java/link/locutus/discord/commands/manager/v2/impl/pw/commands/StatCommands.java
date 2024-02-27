@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import de.erichseifert.gral.data.DataTable;
@@ -12,6 +11,7 @@ import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -22,11 +22,9 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -38,10 +36,10 @@ import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
-import link.locutus.discord.db.entities.metric.AllianceMetricMode;
-import link.locutus.discord.db.entities.metric.IAllianceMetric;
+import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -471,7 +469,7 @@ public class StatCommands {
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turn);
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turn);
 
         Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
         for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
@@ -505,8 +503,8 @@ public class StatCommands {
         System.out.println(timeEnd);
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnStart);
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsEnd = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnEnd);
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turnStart);
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsEnd = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turnEnd);
 
         Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
         for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricsEnd.entrySet()) {
@@ -1972,8 +1970,6 @@ public class StatCommands {
         return PnwUtil.convertedTotal(total);
     }
 
-    @Command(desc = "Create a graph of")
-
     @Command(desc = """
                 Get the militirization levels of top 80 alliances.
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
@@ -2211,6 +2207,69 @@ public class StatCommands {
 
         sheet.attach(msg, "alliance_ranking").send();
         return null;
+    }
 
+    @Command(desc = "Get a game graph by day")
+    public String orbisStatByDay(@Me IMessageIO channel, NationDB db, Set<OrbisMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end, @Switch("j") boolean attachJson, @Switch("c") boolean attachCsv) throws IOException {
+        // Update
+        OrbisMetric.update(db);
+
+        if (start == null) start = 0L;
+        if (end == null) end = Long.MAX_VALUE;
+        boolean hasTurn = metrics.stream().anyMatch(OrbisMetric::isTurn);
+        boolean hasDay = metrics.stream().anyMatch(f -> !f.isTurn());
+        if (hasTurn && hasDay) throw new IllegalArgumentException("Cannot mix turn and day metrics");
+        Map<OrbisMetric, Map<Long, Double>> metricData = db.getMetrics(metrics, start, end);
+        Map<Long, Map<OrbisMetric, Double>> dataByTurn = new Long2ObjectOpenHashMap<>();
+
+        long minTurn = Long.MAX_VALUE;
+        long maxTurn = 0;
+        for (Map.Entry<OrbisMetric, Map<Long, Double>> entry : metricData.entrySet()) {
+            OrbisMetric metric = entry.getKey();
+            Map<Long, Double> turnValue = entry.getValue();
+            for (Map.Entry<Long, Double> turnValueEntry : turnValue.entrySet()) {
+                long turn = turnValueEntry.getKey();
+                double value = turnValueEntry.getValue();
+                dataByTurn.computeIfAbsent(turn, f -> new EnumMap<>(OrbisMetric.class)).put(metric, value);
+                minTurn = Math.min(minTurn, turn);
+                maxTurn = Math.max(maxTurn, turn);
+            }
+        }
+        if (maxTurn == 0) return "No data found";
+
+
+        List<OrbisMetric> metricList = new ArrayList<>(metrics);
+        metricList.sort(Comparator.comparing(OrbisMetric::ordinal));
+
+        String turnOrDayStr = hasTurn ? "turn" : "day";
+        String title = (metrics.size() == 1 ? metrics.iterator().next() : "Game Stats") + " by " + turnOrDayStr;
+        String[] labels = metrics.stream().map(f -> f.name().toLowerCase().replace("_", " ")).toArray(String[]::new);
+        double[] buffer = new double[labels.length];
+
+        long finalMinTurn = minTurn;
+        TimeNumericTable<Void> table = new TimeNumericTable<>(title, turnOrDayStr, "Radiation", labels) {
+            @Override
+            public void add(long turn, Void ignore) {
+                int turnRelative = (int) (turn - finalMinTurn);
+                Map<OrbisMetric, Double> turnData = dataByTurn.get(turn);
+                if (turnData != null) {
+                    for (int i = 0; i < metricList.size(); i++) {
+                        double rads = turnData.getOrDefault(metricList.get(i), 0d);
+                        buffer[i] = rads;
+                    }
+                    double total = 0;
+                    for (double val : turnData.values()) total += val;
+                    buffer[buffer.length - 1] = total / 5d;
+                }
+                add(turnRelative, buffer);
+            }
+        };
+
+        for (long turn = minTurn; turn <= maxTurn; turn++) {
+            table.add(turn, (Void) null);
+        }
+        TimeFormat format = hasTurn ? TimeFormat.TURN_TO_DATE : TimeFormat.DAYS_TO_DATE;
+        table.write(channel, format, TableNumberFormat.SI_UNIT, minTurn, attachJson, attachCsv);
+        return "Done!";
     }
 }

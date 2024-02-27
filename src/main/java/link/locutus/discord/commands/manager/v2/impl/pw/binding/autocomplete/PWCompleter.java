@@ -34,6 +34,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -618,6 +619,14 @@ public class PWCompleter extends BindingHelper {
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(MilitaryUnit.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, OrbisMetric.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(OrbisMetric.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }

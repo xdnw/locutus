@@ -54,6 +54,7 @@ public enum SheetKey {
     NEWSLETTER,
     CONTINENT_SHEET,
     RAID_SHEET,
+    MILITARY_RANKING
 
     ;
 

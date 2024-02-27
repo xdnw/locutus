@@ -3,7 +3,9 @@ package link.locutus.discord.apiv3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -21,6 +23,8 @@ import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import link.locutus.discord.util.io.PagePriority;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -200,7 +204,7 @@ public class PoliticsAndWarV3 {
                     System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
                     System.out.println("\n\n------\n");
                     JsonNode errors = json.get("errors");
-                    List<String> errorMessages = new ArrayList<>();
+                    List<String> errorMessages = new ObjectArrayList<>();
                     for (JsonNode error : errors) {
                         if (error.has("message")) {
                             errorMessages.add(error.get("message").toString());
@@ -211,6 +215,7 @@ public class PoliticsAndWarV3 {
                     rethrow(new IllegalArgumentException(message.replace(pair.getKey(), "XXX")), pair, true);
                 }
 
+                System.out.println("BODY " + body);
                 result = jacksonObjectMapper.readValue(body, resultBody);
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
@@ -323,7 +328,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BannedNation> getBansSince(long date, Consumer<Banned_nationsQueryRequest> filter) {
-        List<BannedNation> allResults = new ArrayList<>();
+        List<BannedNation> allResults = new ObjectArrayList<>();
         AtomicBoolean stopPaginating = new AtomicBoolean(false);
         int perPage = BANS_PER_PAGE;
         handlePagination(PagePriority.API_BANS, page -> {
@@ -371,6 +376,12 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    private static class PageError extends RuntimeException {
+        public PageError() {
+            super("");
+        }
+    }
+
     public <T extends GraphQLResult<?>> void handlePagination(PagePriority priority, Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {
         pageLoop:
         for (int page = 1; ; page++) {
@@ -415,7 +426,11 @@ public class PoliticsAndWarV3 {
                     }
                 }
 
-                onEachResult.accept(result);
+                try {
+                    onEachResult.accept(result);
+                } catch (PageError e) {
+                    break;
+                }
                 if (!iterateNext) {
                     break pageLoop;
                 }
@@ -429,7 +444,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bounty> fetchBounties(int perPage, Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bounty> recResults) {
-        List<Bounty> allResults = new ArrayList<>();
+        List<Bounty> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_BOUNTIES, page -> {
                     BountiesQueryRequest request = new BountiesQueryRequest();
@@ -481,8 +496,115 @@ public class PoliticsAndWarV3 {
         return fetchBaseballGames(BASEBALL_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
+    public List<NationResourceStat> getNationResourceStats(long date) {
+        Nation_resource_statsQueryRequest request = new Nation_resource_statsQueryRequest();
+        request.setAfter(new Date(date));
+        request.setOrderBy(List.of(
+                QueryNationResourceStatsOrderByOrderByClause.builder()
+                        .setOrder(SortOrder.DESC)
+                        .setColumn(QueryNationResourceStatsOrderByColumn.DATE)
+                        .build()
+        ));
+
+        NationResourceStatResponseProjection respProj = new NationResourceStatResponseProjection();
+        respProj.date();
+        respProj.money();
+        respProj.food();
+        respProj.steel();
+        respProj.aluminum();
+        respProj.gasoline();
+        respProj.munitions();
+        respProj.uranium();
+        respProj.coal();
+        respProj.oil();
+        respProj.iron();
+        respProj.bauxite();
+        respProj.lead();
+
+        GraphQLRequest graphQLRequest = new GraphQLRequest(request, respProj);
+        Nation_resource_statsQueryResponse result = readTemplate(PagePriority.API_ORBIS_METRICS, false, graphQLRequest, Nation_resource_statsQueryResponse.class);
+        return result.nation_resource_stats();
+    }
+
+    public List<ResourceStat> getResourceStats(long date) {
+        int perPage = 1000;
+        List<ResourceStat> allResults = new ObjectArrayList<>();
+
+        handlePagination(PagePriority.API_ORBIS_METRICS, page -> {
+                    Resource_statsQueryRequest request = new Resource_statsQueryRequest();
+                    request.setFirst(perPage);
+                    request.setPage(page);
+                    request.setAfter(new Date(date));
+
+                    ResourceStatResponseProjection respProj = new ResourceStatResponseProjection();
+
+                    ResourceStatPaginatorResponseProjection pagRespProj = new ResourceStatPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(respProj);
+
+                    return new GraphQLRequest(request, pagRespProj);
+                }, f -> ErrorResponse.EXIT, Resource_statsQueryResponse.class,
+                response -> {
+                    ResourceStatPaginator paginator = response.resource_stats();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    ResourceStatPaginator paginator = result.resource_stats();
+                    if (paginator != null) {
+                        List<ResourceStat> txs = paginator.getData();
+                        if (!txs.isEmpty()) {
+                            allResults.addAll(txs);
+                            if (txs.getLast().getDate().toEpochMilli() < date) {
+                                throw new PageError();
+                            }
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
+    public List<ActivityStat> getActivityStats(long date) {
+        int perPage = 1000;
+        List<ActivityStat> allResults = new ObjectArrayList<>();
+        handlePagination(PagePriority.API_ORBIS_METRICS, page -> {
+                    Activity_statsQueryRequest request = new Activity_statsQueryRequest();
+                    request.setFirst(perPage);
+                    request.setPage(page);
+                    request.setAfter(new Date(date));
+
+                    ActivityStatResponseProjection respProj = new ActivityStatResponseProjection();
+
+                    ActivityStatPaginatorResponseProjection pagRespProj = new ActivityStatPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(respProj);
+
+                    return new GraphQLRequest(request, pagRespProj);
+                }, f -> ErrorResponse.EXIT, Activity_statsQueryResponse.class,
+                response -> {
+                    ActivityStatPaginator paginator = response.activity_stats();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    ActivityStatPaginator paginator = result.activity_stats();
+                    if (paginator != null) {
+                        List<ActivityStat> txs = paginator.getData();
+                        if (!txs.isEmpty()) {
+                            allResults.addAll(txs);
+                            if (txs.getLast().getDate().toEpochMilli() < date) {
+                                throw new PageError();
+                            }
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
-        List<BBGame> allResults = new ArrayList<>();
+        List<BBGame> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_BASEBALL, page -> {
                     Baseball_gamesQueryRequest request = new Baseball_gamesQueryRequest();
@@ -614,7 +736,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
-        List<WarAttack> allResults = new ArrayList<>();
+        List<WarAttack> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_ATTACKS, page -> {
                     WarattacksQueryRequest request = new WarattacksQueryRequest();
@@ -669,7 +791,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<War> fetchWars(int perPage, Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<War> recResults) {
-        List<War> allResults = new ArrayList<>();
+        List<War> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_WARS, page -> {
                     WarsQueryRequest request = new WarsQueryRequest();
@@ -753,7 +875,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<City> fetchCities(boolean priority, int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
-        List<City> allResults = new ArrayList<>();
+        List<City> allResults = new ObjectArrayList<>();
 
         handlePagination(priority ? PagePriority.API_CITIES_MANUAL : PagePriority.API_CITIES_AUTO, page -> {
                     CitiesQueryRequest request = new CitiesQueryRequest();
@@ -845,7 +967,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bankrec> fetchBankRecs(boolean priority, int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
-        List<Bankrec> allResults = new ArrayList<>();
+        List<Bankrec> allResults = new ObjectArrayList<>();
 
         handlePagination(priority ? PagePriority.API_BANK_RECS_MANUAL : PagePriority.API_BANK_RECS_AUTO, page -> {
                     BankrecsQueryRequest request = new BankrecsQueryRequest();
@@ -919,7 +1041,7 @@ public class PoliticsAndWarV3 {
 
 //
 //    public List<Bankrec> fetchBankRecs2(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
-//        List<Bankrec> allResults = new ArrayList<>();
+//        List<Bankrec> allResults = new ObjectArrayList<>();
 //
 //        handlePagination(page -> {
 //                    AlliancesQueryRequest request = new AlliancesQueryRequest();
@@ -1020,7 +1142,7 @@ public class PoliticsAndWarV3 {
         return fetchNations(priority, NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
     public List<Nation> fetchNations(boolean priority, int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
-        List<Nation> allResults = new ArrayList<>();
+        List<Nation> allResults = new ObjectArrayList<>();
 
         handlePagination(priority ? PagePriority.API_NATIONS_MANUAL : PagePriority.API_NATIONS_AUTO, page -> {
             NationsQueryRequest request = new NationsQueryRequest();
@@ -1064,7 +1186,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<TreasureTrade> fetchTreasureTrades(Consumer<Treasure_tradesQueryRequest> consumer) {
-        List<TreasureTrade> allResults = new ArrayList<>();
+        List<TreasureTrade> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_TREASURE_TRADES, page -> {
             Treasure_tradesQueryRequest request = new Treasure_tradesQueryRequest();
@@ -1149,7 +1271,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Alliance> fetchAlliances(PagePriority priority, int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
-        List<Alliance> allResults = new ArrayList<>();
+        List<Alliance> allResults = new ObjectArrayList<>();
 
         handlePagination(priority, page -> {
                     AlliancesQueryRequest request = new AlliancesQueryRequest();
@@ -1192,7 +1314,7 @@ public class PoliticsAndWarV3 {
                 proj.treaties(treatyResponseProjection());
             }
         });
-        List<Treaty> result = new ArrayList<>();
+        List<Treaty> result = new ObjectArrayList<>();
         for (Alliance alliance : alliances) {
             if (alliance.getTreaties() != null) {
                 result.addAll(alliance.getTreaties());
@@ -1218,7 +1340,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Treaty> fetchTreaties(int perPage, Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Treaty> addEachResult) {
-        List<Treaty> allResults = new ArrayList<>();
+        List<Treaty> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_TREATIES, page -> {
                     TreatiesQueryRequest request = new TreatiesQueryRequest();
@@ -1270,7 +1392,7 @@ public class PoliticsAndWarV3 {
     }
 
     public Tradeprice getTradePrice() {
-        List<Tradeprice> allResults = new ArrayList<>();
+        List<Tradeprice> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_TRADE_PRICE, page -> {
                     TradepricesQueryRequest request = new TradepricesQueryRequest();
@@ -1689,7 +1811,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Embargo> fetchEmbargoWithInfo(Consumer<EmbargoesQueryRequest> filter, Consumer<EmbargoResponseProjection> query, Predicate<Embargo> embargoResults) {
-        List<Embargo> allResults = new ArrayList<>();
+        List<Embargo> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_EMBARGO_GET, page -> {
                     EmbargoesQueryRequest request = new EmbargoesQueryRequest();
@@ -1723,7 +1845,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Trade> fetchTrades(int perPage, Consumer<TradesQueryRequest> filter, Consumer<TradeResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Trade> tradeResults) {
-        List<Trade> allResults = new ArrayList<>();
+        List<Trade> allResults = new ObjectArrayList<>();
 
         handlePagination(PagePriority.API_TRADE_GET, page -> {
             TradesQueryRequest request = new TradesQueryRequest();

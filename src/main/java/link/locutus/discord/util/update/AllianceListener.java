@@ -160,7 +160,7 @@ public class AllianceListener {
         long now = System.currentTimeMillis();
 
         // get top 80 alliance
-        Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(false, true, true, true);
+        Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(false, true, true, true, true);
         int rank = 0;
         for (Map.Entry<Integer, List<DBNation>> entry : nationsByAA.entrySet()) {
             rank++;

@@ -1,17 +1,16 @@
 package link.locutus.discord.db;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
@@ -31,6 +30,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
@@ -2266,6 +2266,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
 
         executeStmt("CREATE TABLE IF NOT EXISTS ALLIANCE_METRICS (alliance_id INT NOT NULL, metric INT NOT NULL, turn BIGINT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(alliance_id, metric, turn))");
+        executeStmt("CREATE TABLE IF NOT EXISTS ORBIS_METRICS_DAY (metric INT NOT NULL, day BIGINT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(metric, day))");
+        executeStmt("CREATE TABLE IF NOT EXISTS ORBIS_METRICS_TURN (metric INT NOT NULL, turn BIGINT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(metric, turn))");
         executeStmt("CREATE TABLE IF NOT EXISTS RADIATION_BY_TURN (continent INT NOT NULL, radiation INT NOT NULL, turn BIGINT NOT NULL, PRIMARY KEY(continent, turn))");
         executeStmt("CREATE TABLE IF NOT EXISTS NATION_DESCRIPTIONS (id INT NOT NULL PRIMARY KEY, description TEXT NOT NULL)");
 
@@ -2281,7 +2283,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE INDEX IF NOT EXISTS index_banned_nations_discord_id ON banned_nations (discord_id);");
 
         purgeOldBeigeReminders();
-//
+
 //        //Create table IMPORTED_LOANS
 //        executeStmt("CREATE TABLE IF NOT EXISTS IMPORTED_LOANS (" +
 //                        "allianceOrGuild BIGINT NOT NULL, " +
@@ -3129,17 +3131,98 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             throw new RuntimeException(e);
         }
     }
-    public void addMetric(DBAlliance alliance, AllianceMetric metric, long turn, double value) {
-        addMetric(alliance, metric, turn, value, false);
-    }
 
-    public void addMetric(DBAlliance alliance, AllianceMetric metric, long turn, double value, boolean ignore) {
-        checkNotNull(metric);
-        String query = "INSERT OR " + (ignore ? "IGNORE" : "REPLACE") + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
-
+    public void addMetric(OrbisMetric metric, long turnOrDay, double value) {
         if (!Double.isFinite(value)) {
             return;
         }
+        boolean isTurn = metric.isTurn();
+        String table = isTurn ? "ORBIS_METRICS_TURN" : "ORBIS_METRICS_DAY";
+        String turnOrDayCol = isTurn ? "turn" : "day";
+        String query = "INSERT OR REPLACE INTO `" + table + "`(`metric`, `" + turnOrDayCol + "`, `value`) VALUES(?, ?, ?)";
+        update(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, metric.ordinal());
+            stmt.setLong(2, turnOrDay);
+            stmt.setDouble(3, value);
+        });
+    }
+
+    public long getLatestMetricTime(boolean isTurn) {
+        String tableName = isTurn ? "ORBIS_METRICS_TURN" : "ORBIS_METRICS_DAY";
+        String turnOrDayCol = isTurn ? "turn" : "day";
+        String query = "SELECT MAX(" + turnOrDayCol + ") FROM " + tableName;
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public Map<OrbisMetric, Map<Long, Double>> getMetrics(OrbisMetric metric, long start, long end) {
+        boolean isTurn = metric.isTurn();
+        String table = isTurn ? "ORBIS_METRICS_TURN" : "ORBIS_METRICS_DAY";
+        String turnOrDayCol = isTurn ? "turn" : "day";
+        String query = "SELECT * FROM " + table + " WHERE metric = ? AND " + turnOrDayCol + " >= ? AND " + turnOrDayCol + " <= ?";
+        Map<OrbisMetric, Map<Long, Double>> result = new Object2ObjectOpenHashMap<>();
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, metric.ordinal());
+            stmt.setLong(2, start);
+            stmt.setLong(3, end);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                long turnOrDay = rs.getLong(turnOrDayCol);
+                double value = rs.getDouble("value");
+                result.computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turnOrDay, value);
+            }
+        });
+        return result;
+    }
+
+    public Map<OrbisMetric, Map<Long, Double>> getMetrics(Collection<OrbisMetric> metrics, long start, long end) {
+        if (metrics.isEmpty()) return new HashMap<>();
+        if (metrics.size() == 1) return getMetrics(metrics.iterator().next(), start, end);
+        Map<OrbisMetric, Map<Long, Double>> result = new Object2ObjectOpenHashMap<>();
+        result.putAll(getMetrics(metrics, true, start, end));
+        result.putAll(getMetrics(metrics, false, start, end));
+        return result;
+    }
+
+    private Map<OrbisMetric, Map<Long, Double>> getMetrics(Collection<OrbisMetric> metrics, boolean isTurn, long start, long end) {
+        List<Integer> ids = metrics.stream().filter(f -> f.isTurn() == isTurn).map(Enum::ordinal).toList();
+        if (ids.isEmpty()) return new HashMap<>();
+        if (ids.size() == 1) {
+            return getMetrics(metrics.iterator().next(), start, end);
+        }
+        ids.sort(Comparator.naturalOrder());
+        String table = isTurn ? "ORBIS_METRICS_TURN" : "ORBIS_METRICS_DAY";
+        String turnOrDayCol = isTurn ? "turn" : "day";
+        String query = "SELECT * FROM " + table + " WHERE metric in " + StringMan.getString(ids) + " AND " + turnOrDayCol + " >= ? AND " + turnOrDayCol + " <= ?";
+        Map<OrbisMetric, Map<Long, Double>> result = new Object2ObjectOpenHashMap<>();
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, start);
+            stmt.setLong(2, end);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int metricId = rs.getInt("metric");
+                OrbisMetric metric = OrbisMetric.values[metricId];
+                long turnOrDay = rs.getLong(turnOrDayCol);
+                double value = rs.getDouble("value");
+                result.computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turnOrDay, value);
+            }
+        });
+        return result;
+    }
+
+    public void addAllianceMetric(DBAlliance alliance, AllianceMetric metric, long turn, double value, boolean ignore) {
+        checkNotNull(metric);
+        if (!Double.isFinite(value)) {
+            return;
+        }
+        String query = "INSERT OR " + (ignore ? "IGNORE" : "REPLACE") + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
         update(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws SQLException {
@@ -3151,7 +3234,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         });
     }
 
-    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
+    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         List<Integer> alliancesSorted = new ArrayList<>(allianceIds);
         alliancesSorted.sort(Comparator.naturalOrder());
@@ -3184,7 +3267,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         });
         return result;
     }
-    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turnStart, long turnEnd) {
+    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turnStart, long turnEnd) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         String allianceQueryStr = StringMan.getString(allianceIds);
         boolean hasTurnEnd = turnEnd > 0 && turnEnd < Long.MAX_VALUE;
@@ -3216,7 +3299,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return result;
     }
 
-    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
+    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         List<Integer> alliancesSorted = new ArrayList<>(allianceIds);
@@ -3795,7 +3878,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sortByScore) {
+    public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean removeVM, boolean sortByScore) {
         long activeCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
         long turnNow = TimeUtil.getTurn();
 
@@ -3805,7 +3888,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) return false;
                 if (removeUntaxable && (nation.isGray() || nation.isBeige())) return false;
                 if (removeInactive && (nation.lastActiveMs() < activeCutoff)) return false;
-                if ((removeUntaxable || removeInactive) && nation.getLeaving_vm() > turnNow) return false;
+                if ((removeUntaxable || removeInactive || removeVM) && nation.getLeaving_vm() > turnNow) return false;
                 return true;
             }
         };
@@ -3840,17 +3923,17 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 }
             }
         }
-        if (sortByScore) {
-            IntArrayList aaIds = new IntArrayList(scoreMap.keySet());
-            aaIds.sort((IntComparator) (id1, id2) -> Double.compare(scoreMap.get(id2), scoreMap.get(id1)));
-            Int2ObjectLinkedOpenHashMap<List<DBNation>> sortedMap = new Int2ObjectLinkedOpenHashMap<>(nationsByAllianceFiltered.size());
-            for (int aaId : aaIds) {
-                sortedMap.put(aaId, nationsByAllianceFiltered.get(aaId));
-            }
-            return sortedMap;
-        } else {
-            return nationsByAllianceFiltered;
+        return sortByScore ? sortByScore(scoreMap, nationsByAllianceFiltered) : nationsByAllianceFiltered;
+    }
+
+    private Int2ObjectLinkedOpenHashMap<List<DBNation>> sortByScore(Int2DoubleMap scoreMap, Int2ObjectOpenHashMap<List<DBNation>> nationsByAllianceFiltered) {
+        IntArrayList aaIds = new IntArrayList(scoreMap.keySet());
+        aaIds.sort((IntComparator) (id1, id2) -> Double.compare(scoreMap.get(id2), scoreMap.get(id1)));
+        Int2ObjectLinkedOpenHashMap<List<DBNation>> sortedMap = new Int2ObjectLinkedOpenHashMap<>(nationsByAllianceFiltered.size());
+        for (int aaId : aaIds) {
+            sortedMap.put(aaId, nationsByAllianceFiltered.get(aaId));
         }
+        return sortedMap;
     }
 
     public int getMilitaryBuy(DBNation nation, MilitaryUnit unit, long time) {
