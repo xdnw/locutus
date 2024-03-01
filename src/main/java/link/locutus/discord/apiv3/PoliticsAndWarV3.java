@@ -215,7 +215,6 @@ public class PoliticsAndWarV3 {
                     rethrow(new IllegalArgumentException(message.replace(pair.getKey(), "XXX")), pair, true);
                 }
 
-                System.out.println("BODY " + body);
                 result = jacksonObjectMapper.readValue(body, resultBody);
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {

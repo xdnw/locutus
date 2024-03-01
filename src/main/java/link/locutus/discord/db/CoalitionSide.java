@@ -60,6 +60,15 @@ public class CoalitionSide {
 //    private final Map<Long, Map<Integer, Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>>>> statsByDayByAllianceByCity = new Long2ObjectArrayMap<>();
     private final Map<Long, Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
 
+    public void clearWarData() {
+        allianceIdByNation.clear();
+        inflictedAndOffensiveStats.clear();
+        lossesAndDefensiveStats.clear();
+        damageByAlliance.clear();
+        damageByNation.clear();
+        damageByDayByAllianceByCity.clear();
+    }
+
     public Set<Integer> getNationIds() {
         return damageByNation.keySet();
     }
@@ -199,8 +208,9 @@ public class CoalitionSide {
 
     public DamageStatGroup getDamageStats(boolean isLosses, Integer id, boolean isAlliance) {
         if (id == null) return isLosses ? lossesAndDefensiveStats : inflictedAndOffensiveStats;
-        Map.Entry<DamageStatGroup, DamageStatGroup> pair = isAlliance ? damageByAlliance.get(id) : damageByNation.get(id);
-        return pair == null ? null : isLosses ? pair.getKey() : pair.getValue();
+        Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> map = isAlliance ? damageByAlliance : damageByNation;
+        Map.Entry<DamageStatGroup, DamageStatGroup> pair = map.computeIfAbsent(id, k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
+        return isLosses ? pair.getKey() : pair.getValue();
     }
 
     public DamageStatGroup getAllianceDamageStatsByDay(boolean isLosses, int id, int cities, long day) {

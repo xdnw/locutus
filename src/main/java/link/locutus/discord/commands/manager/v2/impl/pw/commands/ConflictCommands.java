@@ -52,6 +52,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
@@ -67,11 +68,14 @@ import java.util.stream.Collectors;
 public class ConflictCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs) {
+    public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs, @Switch("w") boolean reloadWars) {
         WebRoot webRoot = WebRoot.getInstance();
         AwsManager aws = webRoot.getAws();
         if (aws == null) {
             throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
+        }
+        if (reloadWars) {
+            manager.loadConflictWars(conflicts, true);
         }
         if (conflicts != null) {
             List<String> urls = new ArrayList<>();
@@ -141,7 +145,7 @@ public class ConflictCommands {
         // - Coalition2:
         for (Map.Entry<Integer, Conflict> entry : conflicts.entrySet()) {
             Conflict conflict = entry.getValue();
-            response.append("**").append(conflict.getName()).append("** - ")
+            response.append("**# " + conflict.getId() + ": ").append(conflict.getName()).append("** - ")
                     .append(TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromTurn(conflict.getStartTurn()))).append(" - ");
             if (conflict.getEndTurn() == Long.MAX_VALUE) {
                 response.append("Present");
@@ -400,13 +404,11 @@ public class ConflictCommands {
         boolean loadGraphData = false;
         if (all) {
             Locutus.imp().getWarDb().loadWarCityCountsLegacy();
+            System.out.println("Loaded city wars");
             allianceNames = true;
             ctowned = true;
             wiki = true;
             loadGraphData = true;
-        }
-        if (!ctowned && graphData == null && !allianceNames && !wiki) {
-            throw new IllegalArgumentException("Please specify either `ctowned` or `graphData` or `allianceNames` or `wiki`");
         }
         if (allianceNames) {
             manager.saveDataCsvAllianceNames();
@@ -433,6 +435,7 @@ public class ConflictCommands {
             }
             System.out.println("Num conflicts: " + conflicts.size());
             for (Conflict conflict : conflicts) {
+                Conflict original = conflict;
                 Set<Conflict> existingSet = conflictsByWiki.get(conflict.getWiki());
                 if (existingSet == null) {
                     System.out.println("Add conflict " + conflict.getName() + " -> " + conflict.getWiki());
@@ -458,15 +461,15 @@ public class ConflictCommands {
                         existing.setCategory(conflict.getCategory());
                     }
                     if (existing.getAllianceIds().isEmpty()) {
-                        System.out.println("Add participant: " + existing.getName());
-                        for (int aaId : conflict.getCoalition1()) existing.addParticipant(aaId, true, null, null);
-                        for (int aaId : conflict.getCoalition2()) existing.addParticipant(aaId, false, null, null);
+                        for (int aaId : original.getCoalition1()) existing.addParticipant(aaId, true, null, null);
+                        for (int aaId : original.getCoalition2()) existing.addParticipant(aaId, false, null, null);
                     }
                 }
 
             }
             if (loadGraphData && graphData == null) {
                 graphData = new LinkedHashSet<>(manager.getConflictMap().values());
+                manager.loadConflictWars(graphData, true);
             }
             if (graphData != null) {
                 for (Conflict conflict : graphData) {
@@ -618,10 +621,8 @@ public class ConflictCommands {
 
             Conflict conflict = manager.getConflict(conflictName);
             if (conflict == null) {
-                if (wiki != null) {
-                    String finalWiki = wiki;
-                    conflict = manager.getConflictMap().values().stream().filter(f -> finalWiki.equalsIgnoreCase(f.getWiki())).findFirst().orElse(null);
-                }
+                String finalWiki = wiki;
+                conflict = manager.getConflictMap().values().stream().filter(f -> finalWiki.equalsIgnoreCase(f.getWiki())).findFirst().orElse(null);
             }
             if (conflict == null) {
                 conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));

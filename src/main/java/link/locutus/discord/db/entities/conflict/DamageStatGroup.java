@@ -15,6 +15,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.util.PnwUtil;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -44,6 +45,26 @@ public class DamageStatGroup {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> header = createHeader();
         header.entrySet().removeIf(e -> !e.getKey().isRanking());
         return header;
+    }
+
+    public void clear() {
+        totalWars = 0;
+        activeWars = 0;
+        attacks = 0;
+        warsWon = 0;
+        warsLost = 0;
+        warsExpired = 0;
+        warsPeaced = 0;
+        Arrays.fill(attackTypes, (char) 0);
+        Arrays.fill(attackSubTypes, (char) 0);
+        Arrays.fill(successTypes, (char) 0);
+        Arrays.fill(warTypes, (char) 0);
+        Arrays.fill(totalCost, 0);
+        Arrays.fill(consumption, 0);
+        Arrays.fill(loot, 0);
+        Arrays.fill(units, 0);
+        Arrays.fill(buildings, (char) 0);
+        infraCents = 0;
     }
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createHeader() {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
@@ -199,4 +220,6 @@ public class DamageStatGroup {
     public double getTotalConverted() {
         return PnwUtil.convertedTotal(totalCost);
     }
+
+
 }

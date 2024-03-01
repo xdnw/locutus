@@ -63,6 +63,15 @@ public class Conflict {
     private String casusBelli = "";
     private String statusDesc = "";
 
+    public void clearWarData() {
+        warsVsAlliance.clear();;
+        coalition1.clearWarData();
+        coalition2.clearWarData();
+        dirtyWars = true;
+        dirtyJson = true;
+
+    }
+
     public Conflict(int id, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
         this.id = id;
         this.category = category;
@@ -392,8 +401,12 @@ public class Conflict {
                 if (statsByAA != null) {
                     for (int aaId2 : aaIdsFull) {
                         DamageStatGroup stats = statsByAA.get(aaId2);
-                        Object value = function.apply(stats);
-                        row.add(((Number) value).longValue());
+                        if (stats == null) {
+                            row.add(0L);
+                        } else {
+                            Object value = function.apply(stats);
+                            row.add(((Number) value).longValue());
+                        }
                     }
                 }
                 table.add(row);
@@ -482,7 +495,9 @@ public class Conflict {
         side.updateWar(previous, current, true);
         otherSide.updateWar(previous, current, false);
 
-        getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
+        if (previous == null) {
+            getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
+        }
 
         dirtyJson = true;
     }

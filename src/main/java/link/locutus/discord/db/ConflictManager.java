@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ConflictManager {
@@ -105,7 +106,7 @@ public class ConflictManager {
         }
     }
 
-    private boolean applyConflicts(long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
+    private boolean applyConflicts(Predicate<Conflict> allowed, long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
         if (allianceId1 == 0 && allianceId2 == 0) return false;
         synchronized (mapTurnAllianceConflictIds) {
             Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictIds.get(turn);
@@ -116,49 +117,49 @@ public class ConflictManager {
                 int i = 0, j = 0;
                 while (i < conflictIds1.length && j < conflictIds2.length) {
                     if (conflictIds1[i] < conflictIds2[j]) {
-                        applyConflictConsumer(conflictIds1[i], conflictConsumer);
+                        applyConflictConsumer(allowed, conflictIds1[i], conflictConsumer);
                         i++;
                     } else if (conflictIds1[i] > conflictIds2[j]) {
-                        applyConflictConsumer(conflictIds2[j], conflictConsumer);
+                        applyConflictConsumer(allowed, conflictIds2[j], conflictConsumer);
                         j++;
                     } else {
-                        applyConflictConsumer(conflictIds1[i], conflictConsumer);
+                        applyConflictConsumer(allowed, conflictIds1[i], conflictConsumer);
                         i++;
                         j++;
                     }
                 }
                 while (i < conflictIds1.length) {
-                    applyConflictConsumer(conflictIds1[i], conflictConsumer);
+                    applyConflictConsumer(allowed, conflictIds1[i], conflictConsumer);
                     i++;
                 }
                 while (j < conflictIds2.length) {
-                    applyConflictConsumer(conflictIds2[j], conflictConsumer);
+                    applyConflictConsumer(allowed, conflictIds2[j], conflictConsumer);
                     j++;
                 }
             } else if (conflictIds1 != null) {
                 for (int conflictId : conflictIds1) {
-                    applyConflictConsumer(conflictId, conflictConsumer);
+                    applyConflictConsumer(allowed, conflictId, conflictConsumer);
                 }
             } else if (conflictIds2 != null) {
                 for (int conflictId : conflictIds2) {
-                    applyConflictConsumer(conflictId, conflictConsumer);
+                    applyConflictConsumer(allowed, conflictId, conflictConsumer);
                 }
             }
             return true;
         }
     }
 
-    private void applyConflictConsumer(int conflictId, Consumer<Conflict> conflictConsumer) {
+    private void applyConflictConsumer(Predicate<Conflict> allowed, int conflictId, Consumer<Conflict> conflictConsumer) {
         Conflict conflict = conflictMap.get(conflictId);
-        if (conflict != null) {
+        if (conflict != null && allowed.test(conflict)) {
             conflictConsumer.accept(conflict);
         }
     }
 
-    public boolean updateWar(DBWar previous, DBWar current) {
+    public boolean updateWar(DBWar previous, DBWar current, Predicate<Conflict> allowedConflicts) {
         long turn = TimeUtil.getTurn(current.getDate());
         if (turn > lastTurn) initTurn();
-        return applyConflicts(turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn));
+        return applyConflicts(allowedConflicts, turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn));
     }
 
     @Subscribe
@@ -166,14 +167,14 @@ public class ConflictManager {
         AbstractCursor attack = event.getAttack();
         DBWar war = attack.getWar();
         if (war != null) {
-            updateAttack(war, attack);
+            updateAttack(war, attack, f -> true);
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack) {
+    public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Conflict> allowed) {
         long turn = TimeUtil.getTurn(war.getDate());
         if (turn > lastTurn) initTurn();
-        applyConflicts(turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn));
+        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn));
     }
 
     private void recreateConflictsByAlliance() {
@@ -315,53 +316,81 @@ public class ConflictManager {
 //            saveDefaultNames();
 //        }
         System.out.println("Default names: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-        initTurn();
+
         System.out.println("Init turns: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+
+        Locutus.imp().getExecutor().submit(() -> loadConflictWars(null, false));
+        System.out.println("Load graph data: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+    }
+
+    public void loadConflictWars(Collection<Conflict> conflicts, boolean clearBeforeUpdate) {
+        initTurn();
+
+        if (clearBeforeUpdate) {
+            Collection<Conflict> tmp = conflicts == null ? conflictMap.values() : conflicts;
+            for (Conflict conflict : tmp) {
+                conflict.clearWarData();
+            }
+        }
+
+        long startMs, endMs;
+        Predicate<Conflict> allowedConflicts;
+        if (conflicts != null) {
+            long startTurn = Long.MAX_VALUE;
+            long endTurn = 0;
+            for (Conflict conflict : conflicts) {
+                startTurn = Math.min(startTurn, conflict.getStartTurn());
+                endTurn = Math.max(endTurn, conflict.getEndTurn());
+            }
+            if (endTurn == 0) return;
+            startMs = TimeUtil.getTimeFromTurn(startTurn);
+            endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn + 60);
+
+            Set<Integer> allowedConflictIds = new IntOpenHashSet(conflicts.stream().map(Conflict::getId).collect(Collectors.toSet()));
+            allowedConflicts = f -> allowedConflictIds.contains(f.getId());
+        } else {
+            startMs = 0;
+            endMs = Long.MAX_VALUE;
+            allowedConflicts = f -> true;
+        }
+
         ObjectOpenHashSet<DBWar> wars = new ObjectOpenHashSet<>();
         long currentTurn = TimeUtil.getTurn();
         for (DBWar war : this.db.getWars()) {
-            if (updateWar(null, war)) {
-                if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < currentTurn) {
-                    System.out.println("INVALID WAR EPIRED " + war.getWarId() + " | " + war.getDate() + " | " + war.getStatus());
+            if (war.getDate() >= startMs && war.getDate() <= endMs) {
+                if (updateWar(null, war, allowedConflicts)) {
+                    if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < currentTurn) {
+                        System.out.println("INVALID WAR EPIRED " + war.getWarId() + " | " + war.getDate() + " | " + war.getStatus());
+                    }
+                    wars.add(war);
                 }
-                wars.add(war);
             }
         }
-        long finalStart = start;
-        Locutus.imp().getExecutor().submit(new Runnable() {
+        db.iterateAttacks(wars, f -> true, f -> true, new Consumer<AbstractCursor>() {
             @Override
-            public void run() {
-                long start = finalStart;
-                System.out.println("Load wars: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-                db.iterateAttacks(wars, f -> true, f -> true, new Consumer<AbstractCursor>() {
-                    @Override
-                    public void accept(AbstractCursor attack) {
-                        DBWar war = wars.get(new ArrayUtil.IntKey(attack.getWar_id()));
-                        updateAttack(war, attack);
-                    }
-                });
-                //
-                System.out.println("Load attacks: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-                db.query("SELECT * FROM conflict_graphs2", stmt -> {
-                }, (ThrowingConsumer<ResultSet>) rs -> {
-                    while (rs.next()) {
-                        int conflictId = rs.getInt("conflict_id");
-                        boolean side = rs.getBoolean("side");
-                        int allianceId = rs.getInt("alliance_id");
-                        int metricOrd = rs.getInt("metric");
-                        long turnOrDay = rs.getLong("turn");
-                        int city = rs.getInt("city");
-                        int value = rs.getInt("value");
-                        Conflict conflict = conflictMap.get(conflictId);
-                        if (conflict != null) {
-                            ConflictMetric metric = ConflictMetric.values[metricOrd];
-                            conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
-                        }
-                    }
-                });
+            public void accept(AbstractCursor attack) {
+                DBWar war = wars.get(new ArrayUtil.IntKey(attack.getWar_id()));
+                updateAttack(war, attack, allowedConflicts);
             }
         });
-        System.out.println("Load graph data: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+        //
+        db.query("SELECT * FROM conflict_graphs2", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int conflictId = rs.getInt("conflict_id");
+                boolean side = rs.getBoolean("side");
+                int allianceId = rs.getInt("alliance_id");
+                int metricOrd = rs.getInt("metric");
+                long turnOrDay = rs.getLong("turn");
+                int city = rs.getInt("city");
+                int value = rs.getInt("value");
+                Conflict conflict = conflictMap.get(conflictId);
+                if (conflict != null) {
+                    ConflictMetric metric = ConflictMetric.values[metricOrd];
+                    conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
+                }
+            }
+        });
     }
 
     private Map<String, Integer> getDefaultNames() {
@@ -720,6 +749,12 @@ public class ConflictManager {
 
     public void createTables() {
         System.out.println("Create tables");
+//        // drop table conflicts
+//        db.executeStmt("DROP TABLE IF EXISTS conflict_participant");
+//        db.executeStmt("DROP TABLE IF EXISTS conflicts");
+//        db.executeStmt("DROP TABLE IF EXISTS conflict_announcements2");
+//        db.executeStmt("DROP TABLE IF EXISTS conflict_graphs2");
+
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL)");
         // add col1 and col2 (string) to conflicts, default ""
@@ -739,10 +774,6 @@ public class ConflictManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         // drop conflict_graphs
         db.executeStmt("DROP TABLE conflict_graphs");
-
-        // announcements
-        // conflict_id (foreign key), long timestamp, int post_id, string post_stub,
-
     }
 
     public void addAnnouncement(int conflictId, int topicId, String description) {
@@ -808,13 +839,15 @@ public class ConflictManager {
         }
         if (otherId == null || otherId != id) {
             byDate.put(date, id);
+            synchronized (legacyNames2) {
+                legacyNames2.putIfAbsent(id, name);
+            }
             db.update("INSERT OR IGNORE INTO legacy_names2 (id, name, date) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                 stmt.setInt(1, id);
                 stmt.setString(2, name);
                 stmt.setLong(3, date);
             });
         }
-
     }
 
     public Conflict addConflict(String name, ConflictCategory category, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
@@ -844,6 +877,7 @@ public class ConflictManager {
                     }
                 }
 
+                conflictMap.put(id, conflict);
                 return conflict;
             }
             return null;
