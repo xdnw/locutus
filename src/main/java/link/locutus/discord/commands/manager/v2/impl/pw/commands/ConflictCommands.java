@@ -467,16 +467,6 @@ public class ConflictCommands {
                 }
 
             }
-            if (loadGraphData && graphData == null) {
-                graphData = new LinkedHashSet<>(manager.getConflictMap().values());
-                manager.loadConflictWars(graphData, true);
-            }
-            if (graphData != null) {
-                for (Conflict conflict : graphData) {
-                    System.out.println("Updating graphs " + conflict.getName() + " | " + conflict.getId());
-                    conflict.updateGraphsLegacy(manager);
-                }
-            }
             // announcements
             // participants
 
@@ -513,6 +503,15 @@ public class ConflictCommands {
 //                System.out.println("- Col2-DB: " + value.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
 //                System.out.println("- Col2-Wiki: " + closest.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
 //            }
+        }
+        if (loadGraphData && graphData == null) {
+            graphData = new LinkedHashSet<>(manager.getConflictMap().values());
+            manager.loadConflictWars(graphData, true);
+        }
+        if (graphData != null) {
+            for (Conflict conflict : graphData) {
+                conflict.updateGraphsLegacy(manager);
+            }
         }
         return "Done!";
     }

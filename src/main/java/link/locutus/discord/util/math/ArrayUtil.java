@@ -587,6 +587,26 @@ public class ArrayUtil {
         return sortMap(unsorted, valueComparator);
     }
 
+    public static <T extends Number, V> Map<T, V> sortMapKeys(Map<T, V> unsorted, boolean ascending) {
+        Comparator<T> keyComparator = ascending ?
+                Comparator.comparingDouble(Number::doubleValue) :
+                (o1, o2) -> Double.compare(o2.doubleValue(), o1.doubleValue());
+        return sortMapKeys(unsorted, keyComparator);
+    }
+
+    public static <T, V> Map<T, V> sortMapKeys(Map<T, V> unsorted, Comparator<T> keyComparator) {
+        // Sort the entries of the map by keys using the provided comparator
+        List<Map.Entry<T, V>> sortedEntries = unsorted.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey(keyComparator))
+                .toList();
+        Map<T, V> sortedMap = new LinkedHashMap<>();
+        for (Map.Entry<T, V> entry : sortedEntries) {
+            sortedMap.put(entry.getKey(), entry.getValue());
+        }
+        return sortedMap;
+    }
+
     public static <T, V> Map<T, V> sortMap(Map<T, V> unsorted, Comparator<V> valueComparator) {
         // Sort the entries of the map by values using the provided comparator
         List<Map.Entry<T, V>> sortedEntries = unsorted.entrySet()

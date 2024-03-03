@@ -1215,7 +1215,8 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts e.g. for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requiresWhitelisted()); // .requireValidAlliance() TODO FIXME
+    }.setupRequirements(f -> f.nonPublic().requiresWhitelisted()); // .requireValidAlliance() TODO FIXME
+
     public static GuildSetting<MessageChannel> REROLL_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")

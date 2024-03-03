@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -352,12 +353,17 @@ public class Conflict {
         List<Integer> metricsTurn = new IntArrayList();
 
         for (ConflictMetric metric : ConflictMetric.values) {
-            metricNames.add(metric.name());
             (metric.isDay() ? metricsDay : metricsTurn).add(metricNames.size());
+            metricNames.add(metric.name().toLowerCase(Locale.ROOT));
         }
         Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeaders = DamageStatGroup.createRanking();
-        for (Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>> entry : damageHeaders.entrySet()) {
-            ConflictColumn column = entry.getKey();
+        List<ConflictColumn> columns = new ObjectArrayList<>(damageHeaders.keySet());
+        List<Function<DamageStatGroup, Object>> valueFuncs = columns.stream().map(damageHeaders::get).toList();
+
+        int columnMetricOffset = metricNames.size();
+
+        for (ConflictColumn column : columns) {
+            metricsDay.add(metricNames.size());
             String defPrefix = column.isCount() ? "def:" : "loss:";
             metricNames.add(defPrefix + column.getName());
             metricsDay.add(metricNames.size());
@@ -368,11 +374,9 @@ public class Conflict {
         root.put("metrics_turn", metricsTurn);
         root.put("metrics_day", metricsDay);
 
-        long endTurn = turnEnd == Long.MAX_VALUE ? TimeUtil.getTurn() : turnEnd;
-
         List<Map<String, Object>> coalitions = new ObjectArrayList<>();
-        coalitions.add(coalition1.toGraphMap(manager, turnStart, endTurn, metricsTurn, metricsDay, new ArrayList<>(damageHeaders.values())));
-        coalitions.add(coalition2.toGraphMap(manager, turnStart, endTurn, metricsTurn, metricsDay, new ArrayList<>(damageHeaders.values())));
+        coalitions.add(coalition1.toGraphMap(manager, metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
+        coalitions.add(coalition2.toGraphMap(manager, metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
 
         root.put("coalitions", coalitions);
         return bsonCompressed = JteUtil.compress(JteUtil.toBinary(root));
@@ -517,7 +521,6 @@ public class Conflict {
         side.updateAttack(war, attack, true);
         otherSide.updateAttack(war, attack, false);
         getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
-
         getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
         getWarWebEntry(defenderAA, attackerAA).apply(attack, false);
 

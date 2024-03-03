@@ -120,7 +120,7 @@ public class PsonEncoder extends PsonWriter {
         }
         writeStartObject(map.size());
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-            writeString(entry.getKey(), true);
+            write(entry.getKey());
             write(entry.getValue());
         }
     }

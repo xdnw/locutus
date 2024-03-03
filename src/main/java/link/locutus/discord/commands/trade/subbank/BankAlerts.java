@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
@@ -33,6 +34,8 @@ public class BankAlerts extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        GuildKey.LARGE_TRANSFERS_CHANNEL.get(Locutus.imp().getGuildDB(guild));
+
         if (me == null) {
             return "You must be registered to use this command. " + CM.register.cmd.toSlashMention();
         }
