@@ -174,6 +174,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new IACommands(), List.of("stats_war", "attack_breakdown"), "attackBreakdownSheet", "sheet");
         getCommands().registerMethod(new IACommands(), List.of("interview", "questions"), "viewInterview", "view");
         getCommands().registerMethod(new IACommands(), List.of("interview", "questions"), "setInterview", "set");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncWars", "wars");

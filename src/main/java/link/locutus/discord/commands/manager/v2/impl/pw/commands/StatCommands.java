@@ -10,6 +10,7 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -17,6 +18,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
@@ -1966,5 +1968,137 @@ public class StatCommands {
             }
         }
         return PnwUtil.convertedTotal(total);
+    }
+
+    @Command(desc = "Create a google sheet of nations and the number of bad attacks they did over a timeframe")
+    public void attackBreakdownSheet(@Me IMessageIO io, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp Long start, @Timestamp @Default Long end, @Switch("s") SpreadSheet sheet, @Switch("a") @Arg("Also checks defender activity, to provide more fine grained attack information, but takes longer") boolean checkActivity) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.ATTACK_BREAKDOWN_SHEET);
+        }
+        WarParser parser1 = WarParser.of(attackers, defenders, start, end == null ? Long.MAX_VALUE : end);
+
+        Map<Integer, Integer> offWarsByNat = new Int2IntOpenHashMap();
+        Map<Integer, Integer> defWarsByNat = new Int2IntOpenHashMap();
+
+        Map<Integer, DBWar> wars = parser1.getWars();
+        Set<Integer> aaIds = attackers.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Set<Integer> natIds = attackers.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        {
+            Set<Integer> attackerNations = new IntOpenHashSet();
+            for (DBWar war : wars.values()) {
+                if (natIds.contains(war.getAttacker_id()) || aaIds.contains(war.getAttacker_aa())) {
+                    attackerNations.add(war.getAttacker_id());
+                    offWarsByNat.merge(war.getAttacker_id(), 1, Integer::sum);
+                }
+                if (natIds.contains(war.getDefender_id()) || aaIds.contains(war.getDefender_aa())) {
+                    attackerNations.add(war.getDefender_id());
+                    defWarsByNat.merge(war.getDefender_id(), 1, Integer::sum);
+                }
+            }
+            if (attackerNations.size() > 1000) {
+                throw new IllegalArgumentException("Too many attackers (max: 1000, provided: " + attackerNations.size() + ")");
+            }
+        }
+
+        List<AbstractCursor> allAttacks = parser1.getAttacks();
+
+        Predicate<AbstractCursor> isAttacker = f -> {
+            if (natIds.contains(f.getAttacker_id())) return true;
+            DBWar war = wars.get(f.getWar_id());
+            if (war != null) {
+                int aaId = war.getAttacker_id() == f.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                return aaIds.contains(aaId);
+            }
+            return false;
+        };
+
+        Set<AttackTypeSubCategory> types = new LinkedHashSet<>();
+        types.add(AttackTypeSubCategory.DOUBLE_FORTIFY);
+        types.add(AttackTypeSubCategory.GROUND_TANKS_MUNITIONS_USED_UNNECESSARY);
+        types.add(AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY);
+        types.add(AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE);
+        types.add(AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR_INACTIVE);
+        types.add(AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_NONE);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_SHOULD_USE_GROUND);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_TANKS_NONE);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_INACTIVE_NO_GROUND);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_INACTIVE_NO_SHIP);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_FAILED_NOT_DOGFIGHT);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE_INACTIVE);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_LOW);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_INFRA);
+        types.add(AttackTypeSubCategory.AIRSTRIKE_MONEY);
+        types.add(AttackTypeSubCategory.NAVAL_MAX_VS_NONE);
+        boolean[] allowedTypes = new boolean[AttackTypeSubCategory.values().length];
+        types.forEach(f -> allowedTypes[f.ordinal()] = true);
+
+        Map<Integer, Integer> attacksByNation = new Int2IntOpenHashMap();
+        Map<Integer, Map<AttackTypeSubCategory, Integer>> countsByType = new Int2ObjectOpenHashMap<>();
+        for (AbstractCursor attack : allAttacks) {
+            if (!isAttacker.test(attack)) continue;
+            attacksByNation.merge(attack.getAttacker_id(), 1, Integer::sum);
+            AttackTypeSubCategory subType = attack.getSubCategory(true);
+            if (allowedTypes[subType.ordinal()]) {
+                countsByType.computeIfAbsent(attack.getAttacker_id(), f -> new EnumMap<>(AttackTypeSubCategory.class)).merge(subType, 1, Integer::sum);
+            }
+        }
+
+        StringBuilder response = new StringBuilder();
+        if (!checkActivity) {
+            response.append("Set `checkActivity: True` to also check for unnecessary attacks against inactive nations (slower)");
+        }
+
+        sheet.updateClearCurrentTab();
+
+        List<Object> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "alliance",
+                "cities",
+                "off",
+                "def",
+                "attacks",
+                "bad_attacks"
+        ));
+        for (AttackTypeSubCategory type : types) {
+            header.add(type.name().toLowerCase());
+        }
+
+        sheet.setHeader(header);
+
+        for (Map.Entry<Integer, Integer> entry : attacksByNation.entrySet()) {
+            int id = entry.getKey();
+            DBNation nation = DBNation.getById(entry.getKey());
+            int aaId = nation == null ? 0 : nation.getAlliance_id();
+            int cities = nation == null ? 0 : nation.getCities();
+            int off = offWarsByNat.getOrDefault(entry.getKey(), 0);
+            int def = defWarsByNat.getOrDefault(entry.getKey(), 0);
+            int attacks = entry.getValue();
+
+            Map<AttackTypeSubCategory, Integer> counts = countsByType.getOrDefault(entry.getKey(), Collections.emptyMap());
+            int badAttacks = counts.values().stream().mapToInt(f -> f).sum();
+
+            header.set(0, MarkupUtil.sheetUrl(PnwUtil.getName(id, false), PnwUtil.getNationUrl(id)));
+            header.set(1, MarkupUtil.sheetUrl(PnwUtil.getName(aaId, true), PnwUtil.getAllianceUrl(aaId)));
+            header.set(2, cities);
+            header.set(3, off);
+            header.set(4, def);
+            header.set(5, attacks);
+            header.set(6, badAttacks);
+            for (int i = 0; i < types.size(); i++) {
+                header.set(i + 7, counts.getOrDefault(AttackTypeSubCategory.values()[i], 0));
+            }
+            sheet.addRow(header);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        IMessageBuilder msg = io.create();
+        sheet.attach(msg, "attack_breakdown");
+        if (!response.isEmpty()) msg.append(response.toString());
+        msg.send();
     }
 }
