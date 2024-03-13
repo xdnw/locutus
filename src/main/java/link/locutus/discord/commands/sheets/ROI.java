@@ -65,7 +65,7 @@ public class ROI extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user));
+        return Roles.MEMBER.has(user, server);
     }
 
     public static class ROIResult {
@@ -198,9 +198,9 @@ public class ROI extends Command {
             if (nations.isEmpty()) {
                 return "No nations found";
             }
-            for (DBNation nation : nations) {
-//                if (nation.getAlliance_id() != allianceId) return "Invalid alliance for: " + nation.getNation();
-            }
+//            for (DBNation nation : nations) {
+////                if (nation.getAlliance_id() != allianceId) return "Invalid alliance for: " + nation.getNation();
+//            }
             useSheet = nations.size() > 1;
             for (DBNation nation : nations) {
                 try {

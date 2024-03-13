@@ -56,7 +56,7 @@ public enum SheetKey {
     RAID_SHEET,
     ATTACK_BREAKDOWN_SHEET,
 
-    ;
+    MERGES_SHEET;
 
 
 }

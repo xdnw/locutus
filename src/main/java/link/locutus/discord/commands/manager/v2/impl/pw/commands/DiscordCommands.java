@@ -407,19 +407,23 @@ public class DiscordCommands {
 
     @Command(desc = "Unregister a nation to a discord user")
     public String unregister(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Default("%user%") DBNation nation, @Switch("f") boolean force) {
-        User nationUser = nation.getUser();
-//        if (nationUser == null) return "That nation is not registered.";
+        DBNation originalNation = nation;
+        if (nation == null) nation = DiscordUtil.getNation(user);
+        Long nationUserId = nation == null ? user.getIdLong() : nation.getUserId();
+        DBNation userNation = DiscordUtil.getNation(user);
         if (force && !Roles.INTERNAL_AFFAIRS.hasOnRoot(user)) return "You do not have permission to force un-register.";
-        if (!user.equals(nationUser) && !force) {
+        if (originalNation != null && (userNation == null || !userNation.equals(originalNation)) && !force) {
             String title = "Unregister another user.";
-            String body = nation.getNationUrlMarkup(true) + " | " + nationUser.getAsMention() + " | " + nationUser.getName();
+            String body = nation.getNationUrlMarkup(true) + " | " + "<@" + nationUserId + ">";
             io.create().confirmation(title, body, command).send();
             return null;
         }
         if (nation != null) {
             Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nation.getNation_id());
+            Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
+        } else {
+            Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());
         }
-        Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
         return "Unregistered user from " + nation.getNationUrl();
     }
 

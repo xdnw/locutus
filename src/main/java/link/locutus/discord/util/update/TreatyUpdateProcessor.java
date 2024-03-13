@@ -65,7 +65,7 @@ public class TreatyUpdateProcessor {
         byte[] img = null;
         try {
             img = ImageUtil.generateTreatyGraph(treaties);
-        } catch (IOException e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
 

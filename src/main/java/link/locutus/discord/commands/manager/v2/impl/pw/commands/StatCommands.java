@@ -10,14 +10,20 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
+import de.siegmar.fastcsv.reader.CsvRow;
+import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv3.DataDumpParser;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -27,6 +33,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
@@ -38,6 +45,7 @@ import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
+import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
@@ -51,6 +59,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
@@ -63,11 +72,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -146,11 +159,13 @@ public class StatCommands {
     public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
                                  @Timestamp long timeStart, @Timestamp @Default Long timeEnd,
                                  @Default("*") Set<NationOrAlliance> coalition1, @Default() Set<NationOrAlliance> coalition2,
+
                                  @Switch("i") boolean excludeInfra,
                                  @Switch("c") boolean excludeConsumption,
                                  @Switch("l") boolean excludeLoot,
                                  @Switch("b") boolean excludeBuildings,
                                  @Switch("u") boolean excludeUnits,
+
                                  @Arg("Return total war costs instead of average per war") @Switch("t") boolean total,
                                  @Arg("Rank by net profit") @Switch("p") boolean netProfit,
                                  @Arg("Rank by damage") @Switch("d") boolean damage,
@@ -169,7 +184,9 @@ public class StatCommands {
                                  @Switch("a") boolean onlyRankCoalition1,
 
                                  @Arg("Rank the specific resource costs") @Switch("r") ResourceType resource,
-                                 @Switch("f") boolean uploadFile
+                                 @Switch("f") boolean uploadFile,
+                                 @Switch("off") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars
+//                                 @Switch("def") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars
     ) {
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
 
@@ -177,7 +194,28 @@ public class StatCommands {
                 .allowWarStatuses(allowedWarStatuses)
                 .allowedWarTypes(allowedWarTypes)
                 .allowedAttackTypes(allowedAttacks);
-
+        if (onlyOffensiveWars) {
+            parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
+        }
+//        if (onlyDefensiveWars) {
+//            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
+//        }
+//        if (onlyOffensiveAttacks) {
+//            parser.getAttacks().removeIf(f -> {
+//                DBWar war = f.getWar();
+//                if (war == null) return true;
+//                boolean warDeclarerCol1 = parser.getIsPrimary().apply(war);
+//                return warDeclarerCol1 != (f.getAttacker_id() == war.getAttacker_id());
+//            });
+//        }
+//        if (onlyDefensiveAttacks) {
+//            parser.getAttacks().removeIf(f -> {
+//                DBWar war = f.getWar();
+//                if (war == null) return true;
+//                boolean warDeclarerCol2 = parser.getIsSecondary().apply(war);
+//                return warDeclarerCol2 != (f.getAttacker_id() == war.getAttacker_id());
+//            });
+//        }
         if (netProfit && unitKill != null)
             throw new IllegalArgumentException("The netProfit flag cannot be combined with unitKill.");
         if (netProfit && unitLoss != null)
@@ -2012,7 +2050,7 @@ public class StatCommands {
             return false;
         };
 
-        Set<AttackTypeSubCategory> types = new LinkedHashSet<>();
+        List<AttackTypeSubCategory> types = new ObjectArrayList<>();
         types.add(AttackTypeSubCategory.DOUBLE_FORTIFY);
         types.add(AttackTypeSubCategory.GROUND_TANKS_MUNITIONS_USED_UNNECESSARY);
         types.add(AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY);
@@ -2036,13 +2074,14 @@ public class StatCommands {
         types.forEach(f -> allowedTypes[f.ordinal()] = true);
 
         Map<Integer, Integer> attacksByNation = new Int2IntOpenHashMap();
-        Map<Integer, Map<AttackTypeSubCategory, Integer>> countsByType = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Map<AttackTypeSubCategory, Integer>> countsByNation = new Int2ObjectOpenHashMap<>();
         for (AbstractCursor attack : allAttacks) {
             if (!isAttacker.test(attack)) continue;
             attacksByNation.merge(attack.getAttacker_id(), 1, Integer::sum);
             AttackTypeSubCategory subType = attack.getSubCategory(true);
+            if (subType == null) continue;
             if (allowedTypes[subType.ordinal()]) {
-                countsByType.computeIfAbsent(attack.getAttacker_id(), f -> new EnumMap<>(AttackTypeSubCategory.class)).merge(subType, 1, Integer::sum);
+                countsByNation.computeIfAbsent(attack.getAttacker_id(), f -> new EnumMap<>(AttackTypeSubCategory.class)).merge(subType, 1, Integer::sum);
             }
         }
 
@@ -2077,7 +2116,7 @@ public class StatCommands {
             int def = defWarsByNat.getOrDefault(entry.getKey(), 0);
             int attacks = entry.getValue();
 
-            Map<AttackTypeSubCategory, Integer> counts = countsByType.getOrDefault(entry.getKey(), Collections.emptyMap());
+            Map<AttackTypeSubCategory, Integer> counts = countsByNation.getOrDefault(entry.getKey(), Collections.emptyMap());
             int badAttacks = counts.values().stream().mapToInt(f -> f).sum();
 
             header.set(0, MarkupUtil.sheetUrl(PnwUtil.getName(id, false), PnwUtil.getNationUrl(id)));
@@ -2088,7 +2127,7 @@ public class StatCommands {
             header.set(5, attacks);
             header.set(6, badAttacks);
             for (int i = 0; i < types.size(); i++) {
-                header.set(i + 7, counts.getOrDefault(AttackTypeSubCategory.values()[i], 0));
+                header.set(i + 7, counts.getOrDefault(types.get(i), 0));
             }
             sheet.addRow(header);
         }
@@ -2100,5 +2139,180 @@ public class StatCommands {
         sheet.attach(msg, "attack_breakdown");
         if (!response.isEmpty()) msg.append(response.toString());
         msg.send();
+    }
+
+    private void add(SpreadSheet sheet,
+                     Map<Integer, String> aaNames,
+                     Map<Long, Map<Integer, Set<Integer>>> nationsByAAByDay,
+                     Map<Long, Map<Integer, Integer>> nationAllianceByDay,
+                     int aaId, long day, long currentDay, long dayWindow) {
+        Set<Integer> nations = new IntOpenHashSet();
+        for (long prevDay = day - dayWindow; prevDay <= Math.min(currentDay, day + dayWindow); prevDay++) {
+            nations.addAll(nationsByAAByDay.getOrDefault(prevDay, Map.of()).getOrDefault(aaId, Set.of()));
+        }
+        int prevMembers = nations.size();
+        int currMembers = nationsByAAByDay.getOrDefault(day, Map.of()).getOrDefault(aaId, Set.of()).size();
+
+        long futureDay = Math.min(currentDay, day + dayWindow);
+        Map<Integer, Integer> countsByAA = new Int2IntOpenHashMap();
+        for (int nationId : nations) {
+            int futureAA = nationAllianceByDay.getOrDefault(futureDay, Map.of()).getOrDefault(nationId, 0);
+            if (futureAA != 0 && futureAA != aaId) {
+                countsByAA.merge(futureAA, 1, Integer::sum);
+            }
+        }
+        Map<Integer, Integer> sorted = ArrayUtil.sortMap(countsByAA, false);
+        if (sorted.isEmpty()) return;
+//        for (Map.Entry<Integer, Integer> entry3 : sorted.entrySet()) {
+//            double percent = 100d * entry3.getValue() / nations.size();
+//        }
+
+        int mergedAA = sorted.keySet().iterator().next();
+        int mergedAAAmt = sorted.values().iterator().next();
+        String dayStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(TimeUtil.getTimeFromDay(day)));
+        List<String> row = new ArrayList<>(Arrays.asList(
+                MarkupUtil.sheetUrl(aaNames.getOrDefault(aaId, "AA:" + aaId), PnwUtil.getAllianceUrl(aaId)),
+                dayStr,
+                prevMembers + "",
+                currMembers + "",
+                (prevMembers - currMembers) + "",
+                (100d * (prevMembers - currMembers) / prevMembers) + "%",
+                MarkupUtil.sheetUrl(aaNames.getOrDefault(mergedAA, "AA:" + mergedAA), PnwUtil.getAllianceUrl(mergedAA)),
+                mergedAAAmt + "",
+                (100d * mergedAAAmt / (nations.size())) + "%"
+        ));
+
+        sheet.addRow(row);
+    }
+
+    @Command
+    @RolePermission(Roles.ADMIN)
+    @WhitelistPermission
+    public void listMerges(
+            @Me GuildDB db,
+            @Me IMessageIO io,
+                           @Switch("s") SpreadSheet sheet,
+                           @Arg("Required percent of departures percent(between 0 and 1)\n" +
+                                   "Default: 0.3")
+                           @Switch("t") Double threshold,
+                           @Arg("Number of days to check the departures over\n" +
+                                   "Default: 30")
+                           @Switch("w") Integer dayWindow,
+                           @Arg("Minimum number of starting members per alliance\n" +
+                                   "Default: 10")
+                           @Switch("m") Integer minMembers) throws IOException, ParseException, GeneralSecurityException {
+        if (threshold == null) threshold = 0.3;
+        if (dayWindow == null) dayWindow = 30;
+        if (minMembers == null) minMembers = 10;
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.MERGES_SHEET);
+        }
+
+        CompletableFuture<IMessageBuilder> msg = io.create().append("Please wait...").send();
+        long currentDay = TimeUtil.getDay() - 1;
+
+        Map<Long, Map<Integer, Set<Integer>>> nationsByAAByDay = new Long2ObjectLinkedOpenHashMap<>();
+        Map<Long, Map<Integer, Integer>> nationAllianceByDay = new Long2ObjectLinkedOpenHashMap<>();
+        Map<Integer, String> allianceNames = new Int2ObjectOpenHashMap<>();
+
+        Map<Integer, Map<Long, Integer>> membersByAAByTurn = new Int2ObjectLinkedOpenHashMap<>();
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
+        dumper.downloadNationFilesByDay();
+
+        AtomicLong start = new AtomicLong(System.currentTimeMillis());
+        dumper.iterateAll(f -> true, (day, header, row) -> {
+            int position = Integer.parseInt(row.getField(header.alliance_position));
+            if (position <= 1) return;
+            int aaId = Integer.parseInt(row.getField(header.alliance_id));
+            membersByAAByTurn.computeIfAbsent(aaId, k -> new Long2IntLinkedOpenHashMap()).merge(day, 1, Integer::sum);
+            int nationId = Integer.parseInt(row.getField(header.nation_id));
+            nationsByAAByDay.computeIfAbsent(day, k -> new Int2ObjectLinkedOpenHashMap<>()).computeIfAbsent(aaId, k -> new IntOpenHashSet()).add(nationId);
+            nationAllianceByDay.computeIfAbsent(day, k -> new Int2IntLinkedOpenHashMap()).put(nationId, aaId);
+
+            if (!allianceNames.containsKey(aaId)) {
+                String aaName = row.getField(header.alliance);
+                allianceNames.put(aaId, aaName);
+            }
+        }, null, aLong -> {
+            long now = System.currentTimeMillis();
+            if (start.get() + 5000 < now) {
+                start.set(now);
+                io.updateOptionally(msg, "Processing day " + aLong + "/" + (currentDay + 1));
+            }
+        });;
+
+//        System.out.println("Alliance " + conflictManager.getAllianceName(aaId) + "\t" + aaId + "\t" + PnwUtil.getMarkdownUrl(aaId, true) + "\t" + new Date(TimeUtil.getTimeFromDay(day)) + "\t" + prevMembers + "\t" + members + "\t" + diff + "\t" + MathMan.format(100d * diff / prevMembers) + "%");
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "alliance",
+                "date",
+                "members",
+                "remaining",
+                "left",
+                "percent",
+                "joined_aa",
+                "joined_aa_amt",
+                "joined_percent"
+        ));
+
+        sheet.setHeader(header);
+
+        System.out.println("START CHECK ALLIANCE MEMBERS");
+        for (Map.Entry<Integer, Map<Long, Integer>> entry : membersByAAByTurn.entrySet()) {
+            int aaId = entry.getKey();
+            Map<Long, Integer> membersByDay = entry.getValue();
+            long[] lastDayBuffer = new long[dayWindow]; // circular buffer
+            int[] membersBuffer = new int[dayWindow];
+            boolean unfilled = true;
+            int index = 0;
+
+            long maxDiff = 0;
+            long maxDay = 0;
+            for (Map.Entry<Long, Integer> entry2 : membersByDay.entrySet()) {
+                long day = entry2.getKey();
+
+                int members = entry2.getValue();
+                lastDayBuffer[index] = day;
+                membersBuffer[index] = members;
+
+                int prevIndex = unfilled ? 0 : (index + dayWindow - 1) % dayWindow;
+
+                index++;
+                if (index >= dayWindow) {
+                    index = 0;
+                    unfilled = false;
+                }
+                int prevMembers = membersBuffer[prevIndex];
+                if (prevMembers < minMembers) {
+                    if (maxDay > 0) {
+                        add(sheet, allianceNames, nationsByAAByDay, nationAllianceByDay, aaId, maxDay, currentDay, dayWindow);
+                    }
+                    maxDiff = 0;
+                    maxDay = 0;
+                    continue;
+                }
+
+                int diff = (int) (prevMembers - members);
+
+                if ((double) diff / prevMembers > threshold) {
+                    if (diff > maxDiff) {
+                        maxDiff = diff;
+                        maxDay = day;
+                    }
+                } else {
+                    if (maxDay > 0) {
+                        add(sheet, allianceNames, nationsByAAByDay, nationAllianceByDay, aaId, maxDay, currentDay, dayWindow);
+                    }
+                    maxDiff = 0;
+                    maxDay = 0;
+                }
+            }
+            if (maxDay != 0) {
+                add(sheet, allianceNames, nationsByAAByDay, nationAllianceByDay, aaId, maxDay, currentDay, dayWindow);
+            }
+        }
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "merges").send();
     }
 }

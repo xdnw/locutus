@@ -582,7 +582,7 @@ public class WarUpdateProcessor {
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
             case NAVAL:
-                int attShips = (int) (root.getAtt_gas_used() / 2);
+                int attShips = (int) (root.getAtt_gas_used() / MilitaryUnit.SHIP.getConsumption()[ResourceType.GASOLINE.ordinal()]);
                 if (root.getDefcas1() == 0) {
                     if (attShips == 1) {
                         return AttackTypeSubCategory.NAVY_1_SHIP;
@@ -809,9 +809,9 @@ public class WarUpdateProcessor {
                 break;
             }
             case NAVAL:
-                int defShips = (int) (root.getDef_gas_used() / 2);
+                int defShips = (int) (root.getDef_gas_used() / MilitaryUnit.SHIP.getConsumption()[ResourceType.GASOLINE.ordinal()]);
                 if (defender.getShips() == 0 && defShips == 0 && root.getDefcas1() == 0) {
-                    int attShips = (int) (root.getAtt_gas_used() / 2);
+                    int attShips = (int) (root.getAtt_gas_used() / MilitaryUnit.SHIP.getConsumption()[ResourceType.GASOLINE.ordinal()]);
                     if (attShips > 1 && defender.getAvg_infra() < 1850 && root.getCity_infra_before() <= 1850) {
                         String message = AttackTypeSubCategory.NAVAL_MAX_VS_NONE.message;
 

@@ -69,8 +69,10 @@ public class TransferCommand extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         String decayStr = DiscordUtil.parseArg(args, "decay");
+        if (decayStr == null) decayStr = DiscordUtil.parseArg(args, "#decay");
         Long decay = decayStr == null ? null : PrimitiveBindings.timediff(decayStr);
         String expireStr = DiscordUtil.parseArg(args, "expire");
+        if (expireStr == null) expireStr = DiscordUtil.parseArg(args, "#expire");
         Long expire = expireStr == null ? null : PrimitiveBindings.timediff(expireStr);
 
         String escrowModeStr = DiscordUtil.parseArg(args, "escrow");

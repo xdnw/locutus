@@ -166,13 +166,21 @@ public class AutoRoleTask implements IAutoRoleTask {
             String listStr = "- " + String.join("\n- ", aaNamesList);
             info.put("Found Alliance Roles", listStr);
         }
+
+        Set<Integer> aaIds = db.getAllianceIds();
+        Set<Integer> allies = db.getCoalition(Coalition.ALLIES);
+
         info.put(Roles.REGISTERED.name(), registeredRole == null ? "None" : registeredRole.getName());
         if (cityRoles.isEmpty()) {
             info.put("Found City Roles", "None (Make one e.g. `c10-20` or `c21+`)");
         } else {
             // join by markdown list
+            String key = "Found City Roles";
+            if (aaIds.isEmpty() && allies.isEmpty()) {
+                key += " (No Alliance Set)";
+            }
             List<String> cityNamesList = cityRoles.stream().map(Role::getName).toList();
-            info.put("Found City Roles", String.join("\n", cityNamesList));
+            info.put(key, String.join("\n", cityNamesList));
         }
         if (taxRoles.isEmpty()) {
             info.put("Found Tax Roles", "None (Make one e.g. `25/25`)");
@@ -201,6 +209,17 @@ public class AutoRoleTask implements IAutoRoleTask {
         } else {
             info.put("Conditional Roles", "None (see: " + GuildKey.CONDITIONAL_ROLES.getCommandMention() + ")");
         }
+
+        if (!aaIds.isEmpty()) {
+            info.put("Alliances", aaIds.stream().map(f -> Integer.toString(f)).collect(Collectors.joining("\n")));
+        } else {
+            if (!allies.isEmpty()) {
+                info.put("Alliances (Allies)", allies.stream().map(f -> Integer.toString(f)).collect(Collectors.joining("\n")));
+            } else {
+                info.put("Alliances", "None (see: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")");
+            }
+        }
+
 
         StringBuilder result = new StringBuilder();
         for (Map.Entry<String, String> entry : info.entrySet()) {
