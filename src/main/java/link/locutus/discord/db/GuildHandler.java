@@ -1661,6 +1661,7 @@ public class GuildHandler {
                         Locutus.imp().getExecutor().submit(() -> {
                             try {
                                 ApiKeyPool key = db.getMailKey();
+                                if (key == null) return;
                                 for (DBWar war : dnrViolations) {
                                     DBNation nation = war.getNation(true);
                                     if (nation == null) continue;

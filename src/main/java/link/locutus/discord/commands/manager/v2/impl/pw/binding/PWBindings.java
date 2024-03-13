@@ -452,7 +452,7 @@ public class PWBindings extends BindingHelper {
         if (input.contains("city/id=")) {
             cityId = Integer.parseInt(input.split("=")[1]);
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
+            if (cityEntry == null) throw new IllegalArgumentException("No city found in cache with id " + cityId + " (expecting city id or url)");
             int nationId = cityEntry.getNationId();
             DBNation nation2 = DBNation.getById(nationId);
             if (nation2 != null) nation = nation2;
@@ -490,7 +490,7 @@ public class PWBindings extends BindingHelper {
             throw new IllegalArgumentException("Not a valid city url: `" + input + "`");
         }
         DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-        if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
+        if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for id: " + cityId + " (expecting city id or url)");
         return cityEntry;
     }
 

@@ -54,9 +54,9 @@ public enum SheetKey {
     NEWSLETTER,
     CONTINENT_SHEET,
     RAID_SHEET,
-    MILITARY_RANKING
-
-    ;
+    ATTACK_BREAKDOWN_SHEET,
+    MERGES_SHEET,
+    MILITARY_RANKING;
 
 
 }

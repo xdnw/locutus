@@ -323,6 +323,7 @@ public final class Locutus extends ListenerAdapter {
                     .setChunkingFilter(ChunkingFilter.NONE)
                     .setBulkDeleteSplittingEnabled(false)
                     .setCompression(Compression.ZLIB)
+                    .setLargeThreshold(250)
                     .setMemberCachePolicy(MemberCachePolicy.ALL);
             if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
                 builder.enableIntents(GatewayIntent.GUILD_MEMBERS);
@@ -1057,16 +1058,21 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildMemberJoin(@Nonnull GuildMemberJoinEvent event) {
+        System.out.println(":||Remove Guild member join debug| " + event.getGuild() + " | " + event.getUser());
         executor.submit(() -> {
-            Guild guild = event.getGuild();
-            GuildDB db = getGuildDB(guild);
+            try {
+                Guild guild = event.getGuild();
+                GuildDB db = getGuildDB(guild);
 
-            DBNation nation = DiscordUtil.getNation(event.getUser());
-            AutoRoleInfo task = db.getAutoRoleTask().autoRole(event.getMember(), nation);
-            task.execute();
-            db.getHandler().onGuildMemberJoin(event);
+                DBNation nation = DiscordUtil.getNation(event.getUser());
+                AutoRoleInfo task = db.getAutoRoleTask().autoRole(event.getMember(), nation);
+                task.execute();
+                db.getHandler().onGuildMemberJoin(event);
 
-            eventBus.post(event);
+                eventBus.post(event);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         });
     }
 

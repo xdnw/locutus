@@ -3,6 +3,7 @@ package link.locutus.discord.pnw;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -117,7 +118,9 @@ public class AllianceList {
     public List<BankDB.TaxDeposit> updateTaxes(Long startDate) {
         List<BankDB.TaxDeposit> deposits = new ArrayList<>();
         for (DBAlliance alliance : getAlliances()) {
-            deposits.addAll(alliance.updateTaxes(startDate));
+            List<BankDB.TaxDeposit> taxRecs = alliance.updateTaxes(startDate);
+            if (taxRecs == null) throw new IllegalStateException("Failed to update taxes for " + alliance.getMarkdownUrl() + ". Are you sure the API_KEY set has the scope `" + AlliancePermission.TAX_BRACKETS.name() + "`");
+            deposits.addAll(taxRecs);
         }
         return deposits;
     }

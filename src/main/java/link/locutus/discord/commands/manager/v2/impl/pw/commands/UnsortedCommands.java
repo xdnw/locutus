@@ -374,6 +374,9 @@ public class UnsortedCommands {
                 return "You do not have " + Roles.ECON_STAFF + " in " + otherDb;
             }
             totals = alliance.getStockpile();
+            if (totals == null) {
+                return "No stockpile found for " + alliance.getMarkdownUrl() + ". Ensure the api key is set correctly: " + CM.settings.info.cmd.create(GuildKey.API_KEY.name(), null, null);
+            }
         } else {
             DBNation nation = nationOrAlliance.asNation();
             if (nation.getId() != me.getId()) {
@@ -386,6 +389,9 @@ public class UnsortedCommands {
                 if (noPerm) return "You do not have permission to check that account's stockpile!";
             }
             totals = nation.getStockpile();
+            if (totals == null) {
+                return "No stockpile found for " + nation.getMarkdownUrl() + ". Have they disabled alliance information access?";
+            }
         }
 
         String out = PnwUtil.resourcesToFancyString(totals);
@@ -528,7 +534,7 @@ public class UnsortedCommands {
     public String addApiKey(@Me IMessageIO io, @Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
         apiKey = apiKey.trim();
         // check if string is HEX (case insensitive)
-        if (apiKey.matches("^[0-9a-fA-F]+$")) {
+        if (!apiKey.matches("[0-9a-fA-F]+")) {
             return "Invalid API key. Please use the API key found on the account page: <https://politicsandwar.com/account/>";
         }
         try {

@@ -1237,7 +1237,7 @@ public class UtilityCommands {
             sheet.attach(msg, "projects");
 
             counts = ArrayUtil.sortMap(counts, false);
-            response.append("Total:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
+            response.append("\nTotal:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
             // append counts
             response.append("# Bought: `" + StringMan.getString(counts) + "`\n");
             // Add total cost

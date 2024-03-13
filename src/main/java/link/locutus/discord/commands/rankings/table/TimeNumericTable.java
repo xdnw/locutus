@@ -532,7 +532,11 @@ public abstract class TimeNumericTable<T> {
             default:
                 for (int i = 0; i < amt; i++) {
                     Color color = CIEDE2000.randomColor(13 + amt, Color.WHITE, colors);
-                    colors.add(color);
+                    if (color != null) {
+                        colors.add(color);
+                    } else {
+                        break;
+                    }
                 }
                 break;
         }

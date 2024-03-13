@@ -89,11 +89,13 @@ public class GrantCmd extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String expireStr = DiscordUtil.parseArg(args, "expire");
+        if (expireStr == null) expireStr = DiscordUtil.parseArg(args, "#expire");
         Long expire = expireStr == null ? null : TimeUtil.timeToSec(expireStr) * 1000L;
         if (flags.contains('e')) {
             expire = TimeUnit.DAYS.toMillis(60);
         }
         String decayStr = DiscordUtil.parseArg(args, "decay");
+        if (decayStr == null) decayStr = DiscordUtil.parseArg(args, "#decay");
         Long decay = decayStr == null ? null : TimeUtil.timeToSec(decayStr) * 1000L;
         if (flags.contains('d')) {
             decay = TimeUnit.DAYS.toMillis(60);
