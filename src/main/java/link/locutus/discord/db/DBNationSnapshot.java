@@ -23,6 +23,11 @@ public class DBNationSnapshot extends DBNation {
     }
 
     @Override
+    public long getBeigeAbsoluteTurn() {
+        throw unsupported();
+    }
+
+    @Override
     public Long getSnapshot() {
         return snapshotDate;
     }
@@ -111,12 +116,6 @@ public class DBNationSnapshot extends DBNation {
 
     @Override
     public Long getProjectAbsoluteTurn() {
-        throw unsupported();
-    }
-
-    // getBeigeAbsoluteTurn
-    @Override
-    public long getBeigeAbsoluteTurn() {
         throw unsupported();
     }
 }

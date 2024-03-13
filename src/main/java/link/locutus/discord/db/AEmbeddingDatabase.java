@@ -19,12 +19,10 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.jooq.TransactionalRunnable;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -511,7 +509,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
             if (hashes != null && !hashes.isEmpty()) {
                 for (long hash : hashes) {
                     float[] vector = vectors.get(hash);
-                    source_hash_vector_consumer.consume(source, hash, vector);
+                    source_hash_vector_consumer.accept(source, hash, vector);
                 }
             }
         }

@@ -4,8 +4,8 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.apiv3.DataDumpParser;
-import link.locutus.discord.apiv3.ParsedRow;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriConsumer;
@@ -17,9 +17,9 @@ import java.util.stream.Collectors;
 
 public class UnitPctMetric implements IAllianceMetric {
     private final MilitaryUnit unit;
-    private final Function<DataDumpParser.NationHeader, Integer> getHeader;
+    private final Function<NationHeader, Integer> getHeader;
 
-    public UnitPctMetric(MilitaryUnit unit, Function<DataDumpParser.NationHeader, Integer> getHeader) {
+    public UnitPctMetric(MilitaryUnit unit, Function<NationHeader, Integer> getHeader) {
         this.unit = unit;
         this.getHeader = getHeader;
     }
@@ -35,9 +35,9 @@ public class UnitPctMetric implements IAllianceMetric {
 
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+        importer.setNationReader(metric, new TriConsumer<Long, NationHeader, ParsedRow>() {
             @Override
-            public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+            public void accept(Long day, NationHeader header, ParsedRow row) {
                 int position = row.get(header.alliance_position, Integer::parseInt);
                 if (position <= Rank.APPLICANT.id) return;
                 int allianceId = row.get(header.alliance_id, Integer::parseInt);

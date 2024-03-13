@@ -32,38 +32,6 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class JteUtil {
-//    public static void main(String[] args) {
-//
-//        Map<String, Object> root = new LinkedHashMap<>();
-//        Map<String, Object> values = new LinkedHashMap<>();
-//        values.put("testing", Map.of("one", 1, "two", 2, "three", 3));
-//        ArrayList<Integer> myList = new ArrayList<>();
-//        for (int i = 1; i < 65; i+=2) {
-//            myList.add(i);
-//        }
-//        values.put("one", myList);
-//
-//        root.put("Test", List.of(values, values));
-//
-//        byte[] encoded = PSON.encode(root);
-//        System.out.println("Encoded");
-//
-//        Map<String, Number> decoded = (Map<String, Number>) PSON.decode(encoded);
-//        System.out.println("Decoded");
-////
-//        System.out.println(root);
-//        System.out.println(decoded);
-////
-//        byte[] compressed = JteUtil.compress(encoded);
-//        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-//        String key = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
-//        String secret = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
-//        String region = Settings.INSTANCE.WEB.S3.REGION;
-//        String bucket = Settings.INSTANCE.WEB.S3.BUCKET;
-//        AwsManager aws = new AwsManager(key, secret, bucket, region);
-//        aws.putObject("test.gzip", compressed);
-//        System.out.println("done");
-//    }
 
     public static String toB64(JsonObject json) {
         return Base64.getEncoder().encodeToString(json.toString().getBytes());

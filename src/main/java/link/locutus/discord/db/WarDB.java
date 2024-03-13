@@ -8,7 +8,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
@@ -18,7 +17,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv3.DataDumpParser;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
@@ -44,7 +43,6 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import org.sqlite.core.DB;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -56,6 +54,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -431,7 +430,7 @@ public class WarDB extends DBMainV2 {
 
     public void loadWarCityCountsLegacy() throws IOException, ParseException {
         DataDumpParser parser = Locutus.imp().getDataDumper(true);
-        Map<Long, Map<Integer, Byte>> counts = parser.backCalculateCityCounts();
+        Map<Long, Map<Integer, Byte>> counts = parser.getUtil().backCalculateCityCounts();
         Set<DBWar> toSave = new ObjectOpenHashSet<>();
         AtomicLong failed = new AtomicLong();
         synchronized (warsById) {
@@ -478,7 +477,7 @@ public class WarDB extends DBMainV2 {
             System.out.println("Loaded legacy attacks");
             long start = System.currentTimeMillis();
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
-            System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
+            System.out.println("Loaded wardb attacks in " + (System.currentTimeMillis() - start) + "ms");
 
             System.out.println("Updating attacks");
 
@@ -564,7 +563,36 @@ public class WarDB extends DBMainV2 {
         iterateAttacks(wars, loader, forEachAttack);
     }
 
+    public void iterateWarAttacks(Iterable<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
+        BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
+        iterateWarAttacks(wars, loader, forEachAttack);
+    }
+
     public void iterateAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader, Consumer<AbstractCursor> forEachAttack) {
+        if (forEachAttack != null) {
+            BiFunction<DBWar, byte[], AbstractCursor> parent = loader;
+            loader = (war, data) -> {
+                AbstractCursor cursor = parent.apply(war, data);
+                forEachAttack.accept(cursor);
+                return cursor;
+            };
+        }
+        iterateAttacks(wars, loader);
+    }
+
+    public void iterateWarAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
+        if (forEachAttack != null) {
+            BiFunction<DBWar, byte[], AbstractCursor> parent = loader;
+            loader = (war, data) -> {
+                AbstractCursor cursor = parent.apply(war, data);
+                forEachAttack.accept(war, cursor);
+                return cursor;
+            };
+        }
+        iterateAttacks(wars, loader);
+    }
+
+    public void iterateAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader) {
         List<Integer> warIdsFetch = null;
 
         boolean fetchFromDB = !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS;
@@ -586,9 +614,6 @@ public class WarDB extends DBMainV2 {
 
                 for (byte[] data : attacks) {
                     AbstractCursor cursor = loader.apply(war, data);
-                    if (cursor != null) {
-                        forEachAttack.accept(cursor);
-                    }
                 }
             }
         }
@@ -611,9 +636,6 @@ public class WarDB extends DBMainV2 {
                             }
                             byte[] data = rs.getBytes("data");
                             AbstractCursor cursor = loader.apply(war, data);
-                            if (cursor != null) {
-                                forEachAttack.accept(cursor);
-                            }
                         }
                     }
                 } catch (SQLException e) {
@@ -635,9 +657,6 @@ public class WarDB extends DBMainV2 {
                         }
                         byte[] data = rs.getBytes("data");
                         AbstractCursor cursor = loader.apply(war, data);
-                        if (cursor != null) {
-                            forEachAttack.accept(cursor);
-                        }
                     }
                 }
             } catch (SQLException e) {

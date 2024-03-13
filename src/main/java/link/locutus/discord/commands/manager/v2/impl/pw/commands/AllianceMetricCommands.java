@@ -8,7 +8,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.apiv3.DataDumpParser;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -34,14 +35,11 @@ import link.locutus.discord.db.entities.metric.AllianceMetricMode;
 import link.locutus.discord.db.entities.metric.CountNationMetric;
 import link.locutus.discord.db.entities.metric.IAllianceMetric;
 import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
-import org.jooq.meta.derby.sys.Sys;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
@@ -238,14 +236,14 @@ public class AllianceMetricCommands {
         AtomicDouble cityTotal = new AtomicDouble();
 
         long dayStart = TimeUtil.getDay() - 365;
-        parser.iterateAll(f -> f > dayStart, new TriConsumer<Long, DataDumpParser.NationHeader, CsvRow>() {
+        parser.iterateAll(f -> f > dayStart, new TriConsumer<Long, NationHeader, CsvRow>() {
 
             private double[] dailyOld = ResourceType.getBuffer();
             private double[] dailyNew = ResourceType.getBuffer();
             private double citExpenses = 0;
 
             @Override
-            public void consume(Long day, DataDumpParser.NationHeader header, CsvRow row) {
+            public void accept(Long day, NationHeader header, CsvRow row) {
                 if (day != previousDay.get()) {
                     System.out.println(
                             TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day)) + "\t" +

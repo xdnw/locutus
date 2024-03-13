@@ -6,9 +6,11 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -3267,6 +3269,32 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         });
         return result;
     }
+
+    public Map<DBAlliance, Map<Long, Double>> getAllianceMetrics(AllianceMetric metric, long startTurn) {
+        Map<DBAlliance, Map<Long, Double>> result = new LinkedHashMap<>();
+        String query = "SELECT * FROM ALLIANCE_METRICS WHERE metric = ? and turn >= ? ORDER BY turn ASC";
+        query(query, new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, metric.ordinal());
+                stmt.setLong(2, startTurn);
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws Exception {
+                while (rs.next()) {
+                    int allianceId = rs.getInt("alliance_id");
+                    long turn = rs.getLong("turn");
+                    double value = rs.getDouble("value");
+                    DBAlliance alliance = getOrCreateAlliance(allianceId);
+                    result.computeIfAbsent(alliance, f -> new Long2DoubleLinkedOpenHashMap()).put(turn, value);
+                }
+            }
+        });
+        return result;
+    }
+
+
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turnStart, long turnEnd) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         String allianceQueryStr = StringMan.getString(allianceIds);
@@ -4282,6 +4310,29 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
+        }
+        return kickDates;
+    }
+
+    public Map<Integer, Map<Integer, Map<Long, Rank>>> getAllRemovesByNationAlliance(long cutoff) {
+        Map<Integer, Map<Integer, Map<Long, Rank>>> kickDates = new Int2ObjectLinkedOpenHashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS " + (cutoff > 0 ? "WHERE date > ? " : "") + "ORDER BY date DESC")) {
+            if (cutoff > 0) {
+                stmt.setLong(1, cutoff);
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt("nation");
+                    int alliance = rs.getInt("alliance");
+                    long date = rs.getLong("date");
+                    int type = rs.getInt("type");
+                    Rank rank = Rank.byId(type);
+                    kickDates.computeIfAbsent(nationId, k -> new Int2ObjectLinkedOpenHashMap<>()).computeIfAbsent(alliance, f -> new Long2ObjectLinkedOpenHashMap<>()).put(date, rank);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         return kickDates;
     }

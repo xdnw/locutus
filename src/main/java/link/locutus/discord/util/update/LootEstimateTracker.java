@@ -288,7 +288,7 @@ public class LootEstimateTracker {
                     double[] oldDiff = getDiffByTaxId(this.tax_id);
                     if (!ResourceType.isZero(oldDiff)) {
                         addDiffByTaxId(this.tax_id, oldDiff);
-                        parent.saveTaxDiff.consume(nationId, this.tax_id, oldDiff);
+                        parent.saveTaxDiff.accept(nationId, this.tax_id, oldDiff);
                     }
                     dirty = true;
                 }
@@ -328,7 +328,7 @@ public class LootEstimateTracker {
             parent.resolve(minCopy, requiredOffset, maxCopy, resources, diff, tax_id, diffByTaxId);
 
             // delete diff
-            parent.saveTaxDiff.consume(nationId, 0, null);
+            parent.saveTaxDiff.accept(nationId, 0, null);
 
             diffByTaxId = null;
 

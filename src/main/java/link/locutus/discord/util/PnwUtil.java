@@ -7,7 +7,7 @@ import com.google.gson.JsonParseException;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv3.DataDumpParser;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;

@@ -3,8 +3,9 @@ package link.locutus.discord.db.entities.metric;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv3.DataDumpParser;
-import link.locutus.discord.apiv3.ParsedRow;
+import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
@@ -20,7 +21,7 @@ public class CountCityMetric implements IAllianceMetric {
     private final Function<DBCity, Double> countCity;
     private final AllianceMetricMode mode;
     private final Predicate<DBNation> filter;
-    private final Function<DataDumpParser.CityHeader, Integer> getHeader;
+    private final Function<CityHeader, Integer> getHeader;
 
     public CountCityMetric(Function<DBCity, Double> countCity) {
         this(countCity, null, AllianceMetricMode.TOTAL);
@@ -30,15 +31,15 @@ public class CountCityMetric implements IAllianceMetric {
         this(countCity, null, mode);
     }
 
-    public CountCityMetric(Function<DBCity, Double> countCity, Function<DataDumpParser.CityHeader, Integer> getHeader) {
+    public CountCityMetric(Function<DBCity, Double> countCity, Function<CityHeader, Integer> getHeader) {
         this(countCity, getHeader, AllianceMetricMode.TOTAL, f -> true);
     }
 
-    public CountCityMetric(Function<DBCity, Double> countCity, Function<DataDumpParser.CityHeader, Integer> getHeader, AllianceMetricMode mode) {
+    public CountCityMetric(Function<DBCity, Double> countCity, Function<CityHeader, Integer> getHeader, AllianceMetricMode mode) {
         this(countCity, getHeader, mode, f -> true);
     }
 
-    public CountCityMetric(Function<DBCity, Double> countCity, Function<DataDumpParser.CityHeader, Integer> getHeader, AllianceMetricMode mode, Predicate<DBNation> filter) {
+    public CountCityMetric(Function<DBCity, Double> countCity, Function<CityHeader, Integer> getHeader, AllianceMetricMode mode, Predicate<DBNation> filter) {
         this.countCity = countCity;
         this.getHeader = getHeader;
         this.mode = mode;
@@ -71,9 +72,9 @@ public class CountCityMetric implements IAllianceMetric {
     private final Map<Integer, Integer> countModeByAA = new Int2IntOpenHashMap();
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+        importer.setNationReader(metric, new TriConsumer<Long, NationHeader, ParsedRow>() {
             @Override
-            public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+            public void accept(Long day, NationHeader header, ParsedRow row) {
                 int position = row.get(header.alliance_position, Integer::parseInt);
                 if (position <= Rank.APPLICANT.id) return;
                 int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -95,9 +96,9 @@ public class CountCityMetric implements IAllianceMetric {
             }
         });
 
-        importer.setCityReader(metric, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+        importer.setCityReader(metric, new TriConsumer<Long, CityHeader, ParsedRow>() {
             @Override
-            public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+            public void accept(Long day, CityHeader header, ParsedRow parsedRow) {
                 int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                 Integer allianceId = allianceByNationId.get(nationId);
                 if (allianceId == null) return;

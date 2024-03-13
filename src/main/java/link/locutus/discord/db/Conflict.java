@@ -1,15 +1,10 @@
 package link.locutus.discord.db;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.jpson.PSON;
-import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -18,8 +13,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv3.DataDumpParser;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
@@ -28,7 +24,6 @@ import link.locutus.discord.db.entities.conflict.ConflictColumn;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
@@ -42,11 +37,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Conflict {
     private final int id;
+    private final int ordinal;
     private ConflictCategory category;
     private String wiki;
     private String name;
@@ -57,7 +52,8 @@ public class Conflict {
     private final Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance = new Int2ObjectOpenHashMap<>();
     private final CoalitionSide coalition1;
     private final CoalitionSide coalition2;
-    private byte[] bsonCompressed;
+    private byte[] flatStatsGzip;
+    private byte[] graphStatsGzip;
     private volatile boolean dirtyWars = false;
     private volatile boolean dirtyJson = true;
     private final Map<String, DBTopic> announcements = new Object2ObjectLinkedOpenHashMap<>();
@@ -73,8 +69,9 @@ public class Conflict {
 
     }
 
-    public Conflict(int id, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
+    public Conflict(int id, int ordinal, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
         this.id = id;
+        this.ordinal = ordinal;
         this.category = category;
         this.name = name;
         this.wiki = wiki == null ? "" : wiki;
@@ -148,49 +145,34 @@ public class Conflict {
         long dayStart = TimeUtil.getDay(TimeUtil.getTimeFromTurn(getStartTurn()));
         long dayEnd = getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getDay(TimeUtil.getTimeFromTurn(getEndTurn() + 11));
 
-        parser.iterateAll(new Predicate<Long>() {
-            @Override
-            public boolean test(Long day) {
-                if (day >= dayStart && day <= dayEnd) {
-                    System.out.println("Run for day " + day);
-                    return true;
-                }
-                return false;
+        parser.iterateAll(day -> {
+            if (day >= dayStart && day <= dayEnd) {
+                System.out.println("Run for day " + day);
+                return true;
             }
-        }, new TriConsumer<Long, DataDumpParser.NationHeader, CsvRow>() {
-            @Override
-            public void consume(Long day, DataDumpParser.NationHeader header, CsvRow row) {
-                int nationId = Integer.parseInt(row.getField(header.nation_id));
-                if (!nationIds.contains(nationId)) {
-                    int position = Integer.parseInt(row.getField(header.alliance_position));
-                    if (position <= Rank.APPLICANT.id) return;
-                    int allianceId = Integer.parseInt(row.getField(header.alliance_id));
-                    if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) return;
-                }
-                long currentTimeMs = TimeUtil.getTimeFromDay(day);
-                try {
-                    DBNationSnapshot nation = parser.loadNation(header, row, f -> true, f -> true, false, true, true, currentTimeMs);
-                    if (nation != null) {
-                        nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
-                    }
-                } catch (ParseException e) {
-                    throw new RuntimeException(e);
-                }
+            return false;
+        }, null, null,
+                (day, header) -> {
+            int nationId = header.nation_id.get();
+            if (!nationIds.contains(nationId)) {
+                Rank position = header.alliance_position.get();
+                if (position.id <= Rank.APPLICANT.id) return;
+                int allianceId = header.alliance_id.get();
+                if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) return;
             }
-        }, new TriConsumer<Long, DataDumpParser.CityHeader, CsvRow>() {
-            @Override
-            public void consume(Long day, DataDumpParser.CityHeader cityHeader, CsvRow csvRow) {
-                Map<Integer, DBNation> nationMap = nationsByDay.get(day);
-                if (nationMap == null) return;
-                int nationId = Integer.parseInt(csvRow.getField(cityHeader.nation_id));
-                DBNationSnapshot nation = (DBNationSnapshot) nationMap.get(nationId);
-                if (nation == null) return;
-                try {
-                    nation.addCity(parser.loadCity(cityHeader, csvRow, nationId));
-                } catch (ParseException e) {
-                    throw new RuntimeException(e);
-                }
+            long currentTimeMs = TimeUtil.getTimeFromDay(day);
+            DBNationSnapshot nation = header.loadNation(f -> true, f -> true, false, true, true, currentTimeMs);
+            if (nation != null) {
+                nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
             }
+        }, (day, cityHeader) -> {
+            Map<Integer, DBNation> nationMap = nationsByDay.get(day);
+            if (nationMap == null) return;
+            int nationId = cityHeader.nation_id.get();
+            DBNationSnapshot nation = (DBNationSnapshot) nationMap.get(nationId);
+            if (nation == null) return;
+            DBCity city = cityHeader.loadCity();
+            nation.addCity(city);
         }, null);
 
         System.out.println("Graph 4");
@@ -379,7 +361,7 @@ public class Conflict {
         coalitions.add(coalition2.toGraphMap(manager, metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
 
         root.put("coalitions", coalitions);
-        return bsonCompressed = JteUtil.compress(JteUtil.toBinary(root));
+        return graphStatsGzip = JteUtil.compress(JteUtil.toBinary(root));
     }
 
     private Map<String, Object> warsVsAllianceJson() {
@@ -389,6 +371,7 @@ public class Conflict {
         Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
         // headers
         result.put("headers", combinedList.stream().map(e -> e.getKey().getName()).toList());
+        result.put("header_desc", combinedList.stream().map(e -> e.getKey().getDescription()).toList());
         // alliance ids
         List<Integer> aaIdsFull = new IntArrayList();
         aaIdsFull.addAll(coalition1.getAllianceIdsSorted());
@@ -433,7 +416,7 @@ public class Conflict {
         if (dirtyWars) {
             // TODO
         }
-        if (dirtyJson || bsonCompressed == null) {
+        if (dirtyJson || flatStatsGzip == null) {
             try {
                 Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
                 root.put("name", getName());
@@ -454,13 +437,13 @@ public class Conflict {
                 root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
                 root.put("war_web", warsVsAllianceJson());
                 byte[] compressed = JteUtil.compress(JteUtil.toBinary(root));
-                bsonCompressed = compressed;
+                flatStatsGzip = compressed;
                 return compressed;
             } finally {
                 dirtyJson = false;
             }
         }
-        return bsonCompressed;
+        return flatStatsGzip;
     }
 
     public long getStartTurn(int allianceId) {
@@ -551,14 +534,14 @@ public class Conflict {
 
     public Conflict setStart(long time) {
         this.turnStart = TimeUtil.getTurn(time);
-        getManager().updateConflict(id, turnStart, turnEnd);
+        getManager().updateConflict(this, turnStart, turnEnd);
         dirtyJson = true;
         return this;
     }
 
     public Conflict setEnd(long time) {
         this.turnEnd = TimeUtil.getTurn(time) + 1;
-        getManager().updateConflict(id, turnStart, turnEnd);
+        getManager().updateConflict(this, turnStart, turnEnd);
         dirtyJson = true;
         return this;
     }
@@ -577,7 +560,7 @@ public class Conflict {
         if (side) coalition1.add(allianceId);
         else coalition2.add(allianceId);
         if (save) {
-            getManager().addParticipant(allianceId, id, side, startTime.getOrDefault(allianceId, 0L), endTime.getOrDefault(allianceId, Long.MAX_VALUE));
+            getManager().addParticipant(this, allianceId, side, startTime.getOrDefault(allianceId, 0L), endTime.getOrDefault(allianceId, Long.MAX_VALUE));
             dirtyWars = true;
         }
         dirtyJson = true;
@@ -589,7 +572,7 @@ public class Conflict {
         coalition2.remove(allianceId);
         startTime.remove(allianceId);
         endTime.remove(allianceId);
-        getManager().removeParticipant(allianceId, id);
+        getManager().removeParticipant(this, allianceId);
         dirtyWars = true;
         dirtyJson = true;
         return this;
@@ -597,6 +580,10 @@ public class Conflict {
 
     public int getId() {
         return id;
+    }
+
+    public int getOrdinal() {
+        return ordinal;
     }
 
     public String getName() {

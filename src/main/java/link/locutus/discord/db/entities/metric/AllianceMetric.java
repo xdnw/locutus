@@ -16,8 +16,10 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.apiv3.DataDumpParser;
-import link.locutus.discord.apiv3.ParsedRow;
+import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
@@ -457,9 +459,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+            importer.setNationReader(this, new TriConsumer<Long, NationHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                public void accept(Long day, NationHeader header, ParsedRow row) {
                     int position = row.get(header.alliance_position, Integer::parseInt);
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -470,9 +472,9 @@ public enum AllianceMetric implements IAllianceMetric {
                 }
             });
 
-            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+            importer.setCityReader(this, new TriConsumer<Long, CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                public void accept(Long day, CityHeader header, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -516,9 +518,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+            importer.setNationReader(this, new TriConsumer<Long, NationHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                public void accept(Long day, NationHeader header, ParsedRow row) {
                     int position = row.get(header.alliance_position, Integer::parseInt);
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -529,9 +531,9 @@ public enum AllianceMetric implements IAllianceMetric {
                 }
             });
 
-            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+            importer.setCityReader(this, new TriConsumer<Long, CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+                public void accept(Long day, CityHeader header, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -647,9 +649,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+            importer.setNationReader(this, new TriConsumer<Long, NationHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                public void accept(Long day, NationHeader header, ParsedRow row) {
                     int position = row.get(header.alliance_position, Integer::parseInt);
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -678,9 +680,9 @@ public enum AllianceMetric implements IAllianceMetric {
                     }
                 }
             });
-            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+            importer.setCityReader(this, new TriConsumer<Long, CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.CityHeader cityHeader, ParsedRow parsedRow) {
+                public void accept(Long day, CityHeader cityHeader, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(cityHeader.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -754,9 +756,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+            importer.setNationReader(this, new TriConsumer<Long, NationHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                public void accept(Long day, NationHeader header, ParsedRow row) {
                     int position = row.get(header.alliance_position, Integer::parseInt);
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -771,9 +773,9 @@ public enum AllianceMetric implements IAllianceMetric {
                     allianceByNationId.put(nationId, allianceId);
                 }
             });
-            importer.setCityReader(this, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+            importer.setCityReader(this, new TriConsumer<Long, CityHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.CityHeader cityHeader, ParsedRow parsedRow) {
+                public void accept(Long day, CityHeader cityHeader, ParsedRow parsedRow) {
                     int nationId = parsedRow.get(cityHeader.nation_id, Integer::parseInt);
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
@@ -829,9 +831,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+            importer.setNationReader(this, new TriConsumer<Long, NationHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                public void accept(Long day, NationHeader header, ParsedRow row) {
                     int position = row.get(header.alliance_position, Integer::parseInt);
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -913,9 +915,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+            importer.setNationReader(this, new TriConsumer<Long, NationHeader, ParsedRow>() {
                 @Override
-                public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+                public void accept(Long day, NationHeader header, ParsedRow row) {
                     int position = row.get(header.alliance_position, Integer::parseInt);
                     if (position <= Rank.APPLICANT.id) return;
                     int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -1189,8 +1191,8 @@ public enum AllianceMetric implements IAllianceMetric {
             metric.setupReaders(metric, importer);
         }
 
-        TriConsumer<Long, DataDumpParser.NationHeader, CsvRow> nationRows = importer.getNationReader();
-        TriConsumer<Long, DataDumpParser.CityHeader, CsvRow> cityRows = importer.getCityReader();
+        TriConsumer<Long, NationHeader, CsvRow> nationRows = importer.getNationReader();
+        TriConsumer<Long, CityHeader, CsvRow> cityRows = importer.getCityReader();
 
         parser.iterateAll(acceptDay, nationRows, cityRows, new Consumer<Long>() {
             @Override
@@ -1198,7 +1200,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 for (IAllianceMetric metric : metrics) {
                     Map<Integer, Double> value = metric.getDayValue(importer, day);
                     if (value != null) {
-                        metricDayData.consume(metric, day, value);
+                        metricDayData.accept(metric, day, value);
                     }
                 }
             }

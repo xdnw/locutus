@@ -640,7 +640,7 @@ public class PWWikiUtil {
             String status = page.getStatus();
             long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
             long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
-            Conflict conflict = new Conflict(0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, cb, status, startTurn, endTurn);
+            Conflict conflict = new Conflict(0, 0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, cb, status, startTurn, endTurn);
             combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
             combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
             conflicts.add(conflict);

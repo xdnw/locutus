@@ -747,6 +747,7 @@ public class AdminCommands {
         }
 
         int annId = db.addAnnouncement(author, subject, announcement, replacements, sendTo.getFilter(), false);
+        output.append("\n\nAnnouncement ID: " + annId);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(announcement, entry.getValue());
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);

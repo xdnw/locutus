@@ -77,7 +77,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
-import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -354,7 +353,7 @@ public class BankCommands {
         Set<DBNation> finalNations = nations;
         TriConsumer<IMessageBuilder, List<List<String>>, String> attachErrors = new TriConsumer<IMessageBuilder, List<List<String>>, String>() {
             @Override
-            public void consume(IMessageBuilder msg, List<List<String>> errors, String title) {
+            public void accept(IMessageBuilder msg, List<List<String>> errors, String title) {
                 if (errors.size() > 0) {
                     errors = new ArrayList<>(errors);
                     errors.add(0, header);
@@ -372,7 +371,7 @@ public class BankCommands {
 
         if (toDepositMap.isEmpty()) {
             IMessageBuilder msg = io.create().append("Nothing to deposit");
-            attachErrors.consume(msg, errorRows, "errors");
+            attachErrors.accept(msg, errorRows, "errors");
             msg.send();
             return null;
         }
@@ -472,7 +471,7 @@ public class BankCommands {
             body.append("\n**Remaining:** `" + PnwUtil.resourcesToString(remainingTotal) + "` worth ~$" + MathMan.format(PnwUtil.convertedTotal(remainingTotal)) + "\n");
             // errors
             if (!errorRows.isEmpty()) {
-                attachErrors.consume(msg, errorRows, "errors");
+                attachErrors.accept(msg, errorRows, "errors");
             }
             msg.confirmation(title, body.toString(), command).send();
             return null;
@@ -589,7 +588,7 @@ public class BankCommands {
         }
         IMessageBuilder msg = io.create();
         if (nations.size() == 1) {
-            attachErrors.consume(msg, errorRows, "errors");
+            attachErrors.accept(msg, errorRows, "errors");
             if (customMessage != null && !customMessage.isEmpty()) {
                 result.append("> " + StringMan.join(customMessage.split("\n"), "\n> ")).append("\n");
             }
@@ -597,8 +596,8 @@ public class BankCommands {
             return "**Excess resources can be deposited in the alliance bank.**\n" +
                     "Use the pre-filled link below to deposit the recommended amount:\n" + result.toString();
         } else {
-            attachErrors.consume(msg, errorRows, "errors");
-            attachErrors.consume(msg, rows, "results");
+            attachErrors.accept(msg, errorRows, "errors");
+            attachErrors.accept(msg, rows, "results");
             msg.append(result.toString());
             msg.send();
         }

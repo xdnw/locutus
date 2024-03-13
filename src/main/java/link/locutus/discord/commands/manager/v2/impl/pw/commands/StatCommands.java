@@ -1351,6 +1351,7 @@ public class StatCommands {
                                                @Arg("Date to start from")
                                                @Timestamp long time, @Switch("j") boolean attachJson,
                                                @Switch("c") boolean attachCsv) throws IOException {
+        System.out.println("Alliances " + alliances.size());
         long turnStart = TimeUtil.getTurn(time);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());

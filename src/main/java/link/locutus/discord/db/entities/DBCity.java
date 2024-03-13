@@ -45,9 +45,32 @@ public class DBCity {
         this.buildings3 = new byte[Buildings.size()];
     }
 
+    public void setBuilding(Building building, int amt) {
+        if (buildings3.length != Buildings.size()) {
+            buildings3 = this.toFull();
+        }
+        buildings3[building.ordinal()] = (byte) amt;
+    }
+
+    public void setPowered(boolean powered) {
+        this.powered = powered;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setNation_id(int nation_id) {
+        this.nation_id = nation_id;
+    }
+
     public DBCity(City cityV3) {
         this.buildings3 = new byte[Buildings.size()];
         set(cityV3);
+    }
+
+    public void setDateCreated(long date_created) {
+        this.created = date_created;
     }
 
     public DBCity(DBCity toCopy) {
@@ -157,6 +180,10 @@ public class DBCity {
         this.buildings3 = toCopy.buildings3;
         this.nuke_turn = toCopy.nuke_turn;
         this.nation_id = toCopy.nation_id;
+    }
+
+    public void setNuke_turn(long nuke_turn) {
+        this.nuke_turn = (int) nuke_turn;
     }
 
     public boolean set(City cityV3) {

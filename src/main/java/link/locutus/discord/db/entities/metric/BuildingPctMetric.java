@@ -1,13 +1,12 @@
 package link.locutus.discord.db.entities.metric;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.apiv3.DataDumpParser;
-import link.locutus.discord.apiv3.ParsedRow;
+import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriConsumer;
@@ -19,10 +18,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class BuildingPctMetric implements IAllianceMetric {
-    private final Function<DataDumpParser.CityHeader, Integer> getHeader;
+    private final Function<CityHeader, Integer> getHeader;
     private final MilitaryBuilding building;
 
-    public BuildingPctMetric(MilitaryBuilding building, Function<DataDumpParser.CityHeader, Integer> getHeader) {
+    public BuildingPctMetric(MilitaryBuilding building, Function<CityHeader, Integer> getHeader) {
         this.getHeader = getHeader;
         this.building = building;
     }
@@ -44,9 +43,9 @@ public class BuildingPctMetric implements IAllianceMetric {
 
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new TriConsumer<Long, DataDumpParser.NationHeader, ParsedRow>() {
+        importer.setNationReader(metric, new TriConsumer<Long, NationHeader, ParsedRow>() {
             @Override
-            public void consume(Long day, DataDumpParser.NationHeader header, ParsedRow row) {
+            public void accept(Long day, NationHeader header, ParsedRow row) {
                 int position = row.get(header.alliance_position, Integer::parseInt);
                 if (position <= Rank.APPLICANT.id) return;
                 int allianceId = row.get(header.alliance_id, Integer::parseInt);
@@ -59,9 +58,9 @@ public class BuildingPctMetric implements IAllianceMetric {
             }
         });
 
-        importer.setCityReader(metric, new TriConsumer<Long, DataDumpParser.CityHeader, ParsedRow>() {
+        importer.setCityReader(metric, new TriConsumer<Long, CityHeader, ParsedRow>() {
             @Override
-            public void consume(Long day, DataDumpParser.CityHeader header, ParsedRow parsedRow) {
+            public void accept(Long day, CityHeader header, ParsedRow parsedRow) {
                 int nationId = parsedRow.get(header.nation_id, Integer::parseInt);
                 Integer allianceId = allianceByNationId.get(nationId);
                 if (allianceId == null || allianceId == 0) return;

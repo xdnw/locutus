@@ -343,7 +343,7 @@ public class GPTCommands {
         SpreadSheet finalSheet = sheet;
         embeddings.iterateVectors(sources, new TriConsumer<EmbeddingSource, Long, float[]>() {
             @Override
-            public void consume(EmbeddingSource source, Long hash, float[] vector) {
+            public void accept(EmbeddingSource source, Long hash, float[] vector) {
                 String text = embeddings.getText(hash);
                 header.set(0, text);
                 if (getAnswers) {

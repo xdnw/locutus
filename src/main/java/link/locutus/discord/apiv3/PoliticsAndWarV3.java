@@ -375,9 +375,13 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    private static class PageError extends RuntimeException {
+    public static class PageError extends RuntimeException {
         public PageError() {
             super("");
+        }
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
         }
     }
 

@@ -260,23 +260,20 @@ public class CoalitionSide {
     private void applyAttackerStats(int allianceId, int nationId, int cities, long day, Consumer<DamageStatGroup> onEach) {
         allianceIdByNation.putIfAbsent(nationId, allianceId);
         onEach.accept(getDamageStats(false, allianceId, true));
-        onEach.accept(getDamageStats(false, nationId, true));
+        onEach.accept(getDamageStats(false, nationId, false));
         onEach.accept(getAllianceDamageStatsByDay(false, allianceId, cities, day));
     }
 
     private void applyDefenderStats(int allianceId, int nationId, int cities, long day, Consumer<DamageStatGroup> onEach) {
         allianceIdByNation.putIfAbsent(nationId, allianceId);
         onEach.accept(getDamageStats(true, allianceId, true));
-        onEach.accept(getDamageStats(true, nationId, true));
+        onEach.accept(getDamageStats(true, nationId, false));
         onEach.accept(getAllianceDamageStatsByDay(true, allianceId, cities, day));
     }
 
     public void updateWar(DBWar previous, DBWar current, boolean isAttacker) {
         int cities;
         long day = TimeUtil.getDay(current.getDate());
-        if (parent.getId() == 61 && day == 18520) {
-            throw new IllegalArgumentException("Invalid day");
-        }
         int attackerAA, attackerId;
         if (isAttacker) {
             cities = current.getAttCities();
@@ -307,9 +304,6 @@ public class CoalitionSide {
         AttackTypeSubCategory subCategory = attack.getSubCategory(true);
         int attackerAA, attackerId, cities;
         long day = TimeUtil.getDay(attack.getDate());
-        if (parent.getId() == 61 && day == 18520) {
-            throw new IllegalArgumentException("Invalid day");
-        }
         if (isAttacker) {
             attackerId = attack.getAttacker_id();
             if (attack.getAttacker_id() == war.getAttacker_id()) {
@@ -396,6 +390,55 @@ public class CoalitionSide {
         turnData.putAll(trimmed);
     }
 
+    private Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> sortTimeMap(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data) {
+        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> copy = new Long2ObjectLinkedOpenHashMap<>();
+        List<Long> turns = new LongArrayList(data.keySet());
+        turns.sort(Long::compareTo);
+        for (long turn : turns) {
+            Map<Integer, Map<Integer, Map<Byte, Long>>> map = data.get(turn);
+            Map<Integer, Map<Integer, Map<Byte, Long>>> sorted = new Int2ObjectLinkedOpenHashMap<>();
+            IntArrayList keysSorted = new IntArrayList(map.keySet());
+            keysSorted.sort(Integer::compareTo);
+            for (int metricId : keysSorted) {
+                Map<Integer, Map<Byte, Long>> allianceMap = map.get(metricId);
+                Map<Integer, Map<Byte, Long>> allianceSorted = new Int2ObjectLinkedOpenHashMap<>();
+                IntArrayList allianceKeySorted = new IntArrayList(allianceMap.keySet());
+                allianceKeySorted.sort(Integer::compareTo);
+                for (int allianceId : allianceKeySorted) {
+                    Map<Byte, Long> cityMap = allianceMap.get(allianceId);
+                    Map<Byte, Long> citySorted = new Byte2LongLinkedOpenHashMap();
+                    ByteArrayList cityKeySorted = new ByteArrayList(cityMap.keySet());
+                    cityKeySorted.sort(Byte::compareTo);
+                    for (byte city : cityKeySorted) {
+                        Long value = cityMap.get(city);
+                        if (value != 0) {
+                            citySorted.put(city, value);
+                        }
+                    }
+                    allianceSorted.put(allianceId, citySorted);
+                }
+                sorted.put(metricId, allianceSorted);
+            }
+            copy.put(turn, sorted);
+        }
+        return copy;
+    }
+
+    public static void main(String[] args) {
+        Long2ObjectArrayMap<String> map = new Long2ObjectArrayMap<>();
+
+        // Insert values
+        map.put(3L, "Three");
+        map.put(1L, "One");
+        map.put(2L, "Two");
+
+        // Iterate over the map
+        for (Long key : map.keySet()) {
+            System.out.println("Key: " + key + ", Value: " + map.get(key));
+        }
+    }
+
+    public Map<String, Object> toGraphMap(ConflictManager manager, List<Integer> metricsTurn, List<Integer> metricsDay, List<Function<DamageStatGroup, Object>> damageHeaders, int columnMetricOffset) {
         List<ConflictMetric.Entry> entries = getGraphEntries();
         // day -> metric -> alliance -> city -> value
         Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData = new Long2ObjectArrayMap<>();
@@ -413,9 +456,6 @@ public class CoalitionSide {
         }
         trimTimeData(turnData);
         trimTimeData(dayData);
-
-        Map<Integer, Long> defValueTotal = new Int2LongOpenHashMap();
-        Map<Integer, Long> offValueTotal = new Int2LongOpenHashMap();
 
         List<Long> days = new LongArrayList(damageByDayByAllianceByCity.keySet());
         days.sort(Long::compareTo);
@@ -435,6 +475,7 @@ public class CoalitionSide {
                         Function<DamageStatGroup, Object> dmgHeader = damageHeaders.get(j);
                         int defI = columnMetricOffset + j * 2;
                         int offI = defI + 1;
+
                         long defValue = ((Number) dmgHeader.apply(defDamage)).longValue();
                         long offValue = ((Number) dmgHeader.apply(offDamage)).longValue();
                         if (defValue != 0) {
@@ -479,8 +520,6 @@ public class CoalitionSide {
         dayRoot.put("range", List.of(minDay, maxDay));
         dayRoot.put("data", toGraphMap(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted));
         root.put("day", dayRoot);
-
-//        Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createRanking();
 
         List<String> allianceNames = new ObjectArrayList<>();
         for (int id : allianceIds) {

@@ -452,8 +452,8 @@ public class ConflictCommands {
                     if (existingSet.size() == 1 && !conflict.getName().equalsIgnoreCase(existing.getName())) {
                         existing.setName(conflict.getName());
                     }
-                    if (existing.getAnnouncement().isEmpty() && !conflict.getAnnouncement().isEmpty()) {
-                        for (Map.Entry<String, DBTopic> entry : conflict.getAnnouncement().entrySet()) {
+                    if (existing.getAnnouncement().isEmpty() && !original.getAnnouncement().isEmpty()) {
+                        for (Map.Entry<String, DBTopic> entry : original.getAnnouncement().entrySet()) {
                             existing.addAnnouncement(entry.getKey(), entry.getValue(), true);
                         }
                     }
@@ -510,6 +510,7 @@ public class ConflictCommands {
         }
         if (graphData != null) {
             for (Conflict conflict : graphData) {
+                System.out.println("Updating graphs " + conflict.getName() + " | " + conflict.getId());
                 conflict.updateGraphsLegacy(manager);
             }
         }

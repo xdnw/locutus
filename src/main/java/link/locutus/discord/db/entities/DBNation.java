@@ -273,7 +273,7 @@ public class DBNation implements NationOrAlliance {
 
     public DBNation() {
         projects = -1;
-        beigeTimer = 14 * 12;
+        beigeTimer = 0;
         war_policy = WarPolicy.TURTLE;
         domestic_policy = DomesticPolicy.MANIFEST_DESTINY;
         color = NationColor.BEIGE;
@@ -2960,7 +2960,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void setLeaving_vm(long leaving_vm) {
-        long currentTurn = TimeUtil.getTurn();
+        long currentTurn = TimeUtil.getTurn(getSnapshot());
         if (this.leaving_vm <= currentTurn) {
             this.entered_vm = currentTurn;
         }
