@@ -597,10 +597,10 @@ public class PWWikiUtil {
                     errorsByPage.put(name, "No date found");
                 } else if (dateList.isEmpty()) {
                     errorsByPage.put(name, "Empty date found");
-                } else if (!dateList.getFirst().contains("-")){
+                } else if (!dateList.get(0).contains("-")){
                     errorsByPage.put(name, "No end date specified (in the format `start date - end date`)");
                 } else {
-                    errorsByPage.put(name, "Unparseable date range: `" + dateList.getFirst() + "`");
+                    errorsByPage.put(name, "Unparseable date range: `" + dateList.get(0) + "`");
                 }
                 continue;
             }

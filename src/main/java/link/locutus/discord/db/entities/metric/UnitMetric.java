@@ -4,9 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
-import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.List;
 import java.util.Map;
@@ -30,10 +28,10 @@ public class UnitMetric implements IAllianceMetric {
 
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new TriConsumer<Long, NationHeader, ParsedRow>() {
+        importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
             @Override
-            public void accept(Long day, NationHeader header, ParsedRow row) {
-                int position = row.get(header.alliance_position, Integer::parseInt);
+            public void accept(Long day, NationHeader header) {
+                int position = header.alliance_position.get();
                 if (position <= Rank.APPLICANT.id) return;
                 int allianceId = row.get(header.alliance_id, Integer::parseInt);
                 if (allianceId == 0) return;

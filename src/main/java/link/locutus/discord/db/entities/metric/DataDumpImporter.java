@@ -1,15 +1,13 @@
 package link.locutus.discord.db.entities.metric;
 
-import de.siegmar.fastcsv.reader.CsvRow;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
-import link.locutus.discord.apiv3.csv.ParsedRow;
-import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 class DataDumpImporter {
@@ -24,35 +22,31 @@ class DataDumpImporter {
         return parser;
     }
 
-    Map<IAllianceMetric, TriConsumer<Long, NationHeader, ParsedRow>> nationReaders = new LinkedHashMap<>();
-    Map<IAllianceMetric, TriConsumer<Long, CityHeader, ParsedRow>> cityReaders = new LinkedHashMap<>();
+    Map<IAllianceMetric, BiConsumer<Long, NationHeader>> nationReaders = new LinkedHashMap<>();
+    Map<IAllianceMetric, BiConsumer<Long, CityHeader>> cityReaders = new LinkedHashMap<>();
 
-    public void setNationReader(IAllianceMetric metric, TriConsumer<Long, NationHeader, ParsedRow> nationReader) {
+    public void setNationReader(IAllianceMetric metric, BiConsumer<Long, NationHeader> nationReader) {
         this.nationReaders.put(metric, nationReader);
     }
 
-    public void setCityReader(IAllianceMetric metric, TriConsumer<Long, CityHeader, ParsedRow> cityReader) {
+    public void setCityReader(IAllianceMetric metric, BiConsumer<Long, CityHeader> cityReader) {
         this.cityReaders.put(metric, cityReader);
     }
 
-    public TriConsumer<Long, NationHeader, CsvRow> getNationReader() {
+    public BiConsumer<Long, NationHeader> getNationReader() {
         if (nationReaders.isEmpty()) return null;
-        ParsedRow parsedRow = new ParsedRow(parser);
-        return (day, header, row) -> {
-            parsedRow.setRow(row, day);
-            for (Map.Entry<IAllianceMetric, TriConsumer<Long, NationHeader, ParsedRow>> entry : nationReaders.entrySet()) {
-                entry.getValue().accept(day, header, parsedRow);
+        return (day, header) -> {
+            for (Map.Entry<IAllianceMetric, BiConsumer<Long, NationHeader>> entry : nationReaders.entrySet()) {
+                entry.getValue().accept(day, header);
             }
         };
     }
 
-    public TriConsumer<Long, CityHeader, CsvRow> getCityReader() {
+    public BiConsumer<Long, CityHeader> getCityReader() {
         if (cityReaders.isEmpty()) return null;
-        ParsedRow parsedRow = new ParsedRow(parser);
-        return (day, header, row) -> {
-            parsedRow.setRow(row, day);
-            for (Map.Entry<IAllianceMetric, TriConsumer<Long, CityHeader, ParsedRow>> entry : cityReaders.entrySet()) {
-                entry.getValue().accept(day, header, parsedRow);
+        return (day, header) -> {
+            for (Map.Entry<IAllianceMetric, BiConsumer<Long, CityHeader>> entry : cityReaders.entrySet()) {
+                entry.getValue().accept(day, header);
             }
         };
     }

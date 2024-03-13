@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
-import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriConsumer;

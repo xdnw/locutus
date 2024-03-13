@@ -19,7 +19,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
-import link.locutus.discord.apiv3.csv.ParsedRow;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
@@ -49,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -1191,8 +1191,8 @@ public enum AllianceMetric implements IAllianceMetric {
             metric.setupReaders(metric, importer);
         }
 
-        TriConsumer<Long, NationHeader, CsvRow> nationRows = importer.getNationReader();
-        TriConsumer<Long, CityHeader, CsvRow> cityRows = importer.getCityReader();
+        BiConsumer<Long, NationHeader> nationRows = importer.getNationReader();
+        BiConsumer<Long, CityHeader> cityRows = importer.getCityReader();
 
         parser.iterateAll(acceptDay, nationRows, cityRows, new Consumer<Long>() {
             @Override

@@ -558,7 +558,7 @@ public class PoliticsAndWarV3 {
                         List<ResourceStat> txs = paginator.getData();
                         if (!txs.isEmpty()) {
                             allResults.addAll(txs);
-                            if (txs.getLast().getDate().toEpochMilli() < date) {
+                            if (txs.get(txs.size() - 1).getDate().toEpochMilli() < date) {
                                 throw new PageError();
                             }
                         }
