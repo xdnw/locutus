@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv3.csv;
 
 import de.siegmar.fastcsv.reader.CsvRow;
+import link.locutus.discord.apiv3.csv.header.DataHeader;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -9,25 +10,39 @@ import java.util.function.BiConsumer;
 
 public abstract class ColumnInfo<P, V> {
     private final boolean alwaysSkip;
+    private final DataHeader<P> header;
     private int index;
+    private int offset;
     private final BiConsumer<P, V> setter;
-    private V cacheValue;
+    protected V cacheValue;
 
-    public ColumnInfo(BiConsumer<P, V> setter) {
+    public ColumnInfo(DataHeader<P> header, BiConsumer<P, V> setter) {
+        this.header = header;
         this.index = -1;
         this.setter = setter == null ? (_1, _2) -> {} : setter;
         this.alwaysSkip = setter == null;
     }
 
+    public final DataHeader<P> getHeader() {
+        return header;
+    }
+
+    public abstract int getBytes();
+
     public boolean isAlwaysSkip() {
         return alwaysSkip;
     }
 
-    public void setIndex(int index) {
+    public void setIndex(int index, int offset) {
         this.index = index;
+        this.offset = offset;
     }
 
-    public void setCachedValue(V value) {
+    public final int getOffset() {
+        return offset;
+    }
+
+    public final void setCachedValue(V value) {
         this.cacheValue = value;
     }
 
@@ -39,9 +54,11 @@ public abstract class ColumnInfo<P, V> {
         return index;
     }
 
-    public abstract V read(DataInputStream dis) throws IOException;
+    public abstract V read(byte[] buffer, int offset) throws IOException;
 
-    public abstract void skip(DataInputStream dis) throws IOException;
+    public final void skip(DataInputStream dis) throws IOException {
+        dis.skipBytes(getBytes());
+    }
 
     public abstract void write(DataOutputStream dos, V value) throws IOException;
 
@@ -52,12 +69,13 @@ public abstract class ColumnInfo<P, V> {
     }
 
     public void set(P parent) {
-        setter.accept(parent, cacheValue);
+        setter.accept(parent, get());
     }
 
     public void setIfPresent(P parent) {
-        if (cacheValue != null) {
-            setter.accept(parent, cacheValue);
+        V tmp = get();
+        if (tmp != null) {
+            setter.accept(parent, tmp);
         }
     }
 }

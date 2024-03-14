@@ -20,6 +20,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
 import javax.security.auth.login.LoginException;
+import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -30,6 +31,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -837,9 +840,16 @@ public class DataUtil {
             @Override
             public void accept(Long day, NationsFile nationsFile, CitiesFile citiesFile) {
                 try {
-                    nationsFile.reader().all().read(nationHeader -> {
+                    long start = System.currentTimeMillis();
+//                    nationsFile.testCsv();
+//                    nationsFile.testRead();
+                    AtomicInteger i = new AtomicInteger();
+                    nationsFile.reader().all(false).read(nationHeader -> {
                         // do nothing
+                        i.getAndIncrement();
                     });
+                    long diff = System.currentTimeMillis() - start;
+                    System.out.println("Read " + nationsFile.getDay() + " in " + diff + "ms (" + i.get() + ")");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -847,6 +857,50 @@ public class DataUtil {
         });
         long diff = System.currentTimeMillis() - start;
         System.out.println("Diff " + diff + "ms");
+        start = System.currentTimeMillis();
+        instance.iterateFiles(new TriConsumer<Long, NationsFile, CitiesFile>() {
+            @Override
+            public void accept(Long day, NationsFile nationsFile, CitiesFile citiesFile) {
+                try {
+                    long start = System.currentTimeMillis();
+//                    nationsFile.testCsv();
+//                    nationsFile.testRead();
+                    AtomicInteger i = new AtomicInteger();
+                    nationsFile.reader().all(false).read(nationHeader -> {
+                        // do nothing
+                        i.getAndIncrement();
+                    });
+                    long diff = System.currentTimeMillis() - start;
+                    System.out.println("Read " + nationsFile.getDay() + " in " + diff + "ms (" + i.get() + ")");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        diff = System.currentTimeMillis() - start;
+        System.out.println("Diff2 " + diff + "ms");
+//        try {
+//            File file = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS, "nations-2022-09-25.csv");
+//            NationsFile natFile = new NationsFile(file, instance.getDict(true));
+//            AtomicLong i = new AtomicLong();
+//            long start = System.currentTimeMillis();
+//            natFile.reader().read(new Consumer<NationHeader>() {
+//                @Override
+//                public void accept(NationHeader h) {
+////                    if (i.get() > 30890) {
+////                        System.out.println(i.get() + " | " + h.nation_name.get() + " | " + h.cities.get());
+////                    }
+//                    i.getAndIncrement();
+//                }
+//            });
+//            long diff = System.currentTimeMillis() - start;
+//            System.out.println("Diff " + diff + "ms");
+//        } catch (Throwable e) {
+//            e.printStackTrace();
+//        } finally {
+//            System.out.println("Done");
+//            System.exit(0);
+//        }
 
 //        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
 //        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();

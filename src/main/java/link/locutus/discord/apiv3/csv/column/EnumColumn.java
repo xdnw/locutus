@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv3.csv.column;
 
 import link.locutus.discord.apiv3.csv.ColumnInfo;
+import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.util.IOUtil;
 
 import java.io.DataInputStream;
@@ -15,30 +16,30 @@ public class EnumColumn<P, V extends Enum> extends ColumnInfo<P, V> {
     private final V[] constants;
     private final Function<String, V> parser;
 
-    public EnumColumn(Class<V> enumClass, BiConsumer<P, V> setter) {
-        this(enumClass, setter, string -> (V) Enum.valueOf(enumClass, string.toUpperCase(Locale.ROOT)));
+    public EnumColumn(DataHeader<P> header, Class<V> enumClass, BiConsumer<P, V> setter) {
+        this(header, enumClass, setter, string -> (V) Enum.valueOf(enumClass, string.toUpperCase(Locale.ROOT)));
     }
 
-    public EnumColumn(Class<V> enumClass, BiConsumer<P, V> setter, Function<String, V> parser) {
-        super(setter);
+    public EnumColumn(DataHeader<P> header, Class<V> enumClass, BiConsumer<P, V> setter, Function<String, V> parser) {
+        super(header, setter);
         this.enumClass = enumClass;
         this.constants = enumClass.getEnumConstants();
         this.parser = parser;
     }
 
     @Override
-    public V read(DataInputStream dis) throws IOException {
-        return constants[IOUtil.readVarInt(dis)];
+    public V read(byte[] buffer, int offset) throws IOException {
+        return constants[buffer[offset] & 0xFF];
     }
 
     @Override
-    public void skip(DataInputStream dis) throws IOException {
-        read(dis);
+    public int getBytes() {
+        return 1;
     }
 
     @Override
     public void write(DataOutputStream dos, V value) throws IOException {
-        IOUtil.writeVarInt(dos, value.ordinal());
+        dos.writeByte(value.ordinal());
     }
 
     @Override

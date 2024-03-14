@@ -3,30 +3,29 @@ package link.locutus.discord.apiv3.csv.file;
 import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
+import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import org.anarres.parallelgzip.ParallelGZIPInputStream;
-import org.anarres.parallelgzip.ParallelGZIPOutputStream;
-import org.jetbrains.annotations.Nullable;
+import net.jpountz.util.SafeUtils;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.ref.SoftReference;
+import java.nio.file.Files;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -40,6 +39,7 @@ public class DataFile<T, H extends DataHeader<T>> {
     private final long date;
     private final long day;
     private final String filePart;
+    private SoftReference<byte[]> cachedBytes = new SoftReference<>(null);
 
     public static boolean isValidName(File file, String requirePrefix) {
         String[] split = file.getName().split("\\.", 2);
@@ -118,33 +118,83 @@ public class DataFile<T, H extends DataHeader<T>> {
                 String header = csvHeader.get(i);
                 ColumnInfo<T, Object> column = headers.get(header);
                 if (column != null) {
-                    column.setIndex(i);
+                    column.setIndex(i, 0);
                     columns.add(column);
                 } else {
                     throw new IllegalArgumentException("Unknown header: `" + header + "` in " + csvFile);
                 }
             }
-            try (DataOutputStream dos = new DataOutputStream(new ParallelGZIPOutputStream(new FileOutputStream(binFile)))) {
+            FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
+            try (DataOutputStream dos = new DataOutputStream(baos)) {
                 dos.writeInt(headers.size());
                 for (ColumnInfo<T, ?> header : headers.values()) {
                     dos.writeBoolean(header.getIndex() != -1);
                 }
+                List<List<Object>> all = new ObjectArrayList<>();
                 while (row.hasNext()) {
                     CsvRow csvRow = row.next();
+                    ObjectArrayList<Object> rowData = new ObjectArrayList<>(columns.size());
                     for (ColumnInfo<T, Object> column : columns) {
                         String cell = csvRow.getField(column.getIndex());
                         Object value = column.read(cell);
-                        column.write(dos, value);
+                        rowData.add(value);
+                    }
+                    all.add(rowData);
+                }
+                dos.writeInt(all.size());
+                for (List<Object> rowData : all) {
+                    for (ColumnInfo<T, Object> column : columns) {
+                        column.write(dos, rowData.get(column.getIndex()));
                     }
                 }
             }
+
+            baos.trim();
+            byte[] compressed = ArrayUtil.compressLZ4(baos.array);
+            try (FileOutputStream fos = new FileOutputStream(binFile)) {
+                fos.write(compressed);
+            }
         });
+        header.getDictionary().save();
         binExists = true;
         if (deleteCsv) {
             csvFile.deleteOnExit();
         }
         return binFile;
     }
+
+//    public void testCsv() throws IOException {
+//        readAllCsv(csvFile, (csvHeader, row) -> {
+//            while (row.hasNext()) {
+//                CsvRow csvRow = row.next();
+//            }
+//        });
+//    }
+//
+//    public void testRead() throws IOException {
+//        File file = getCompressedFile(true, false);
+//        byte[] decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(file.toPath()));
+//
+//        // read with gzip, ignore all data
+//        int fileSize = 524288;
+//        try (DataInputStream dis = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), fileSize)))) {
+//            // skip all
+//            ObjectArrayList<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
+//            int rowBytes = 0;
+//            int size = dis.readInt();
+//            for (int i = 0; i < size; i++) {
+//                boolean hasIndex = dis.readBoolean();
+//                if (hasIndex) {
+//                    ColumnInfo<T, Object> column = allColumns.get(i);
+//                    rowBytes += column.getBytes();
+//                }
+//            }
+//            int numLines = IOUtil.readVarInt(dis);
+//            for (int i = 0; i < numLines; i++) {
+//                dis.skipBytes(rowBytes);
+//            }
+//        }
+//    }
 
     public class Builder {
         List<ColumnInfo<T, Object>> requiredColumns = new ObjectArrayList<>();
@@ -202,75 +252,57 @@ public class DataFile<T, H extends DataHeader<T>> {
         }
 
         public void read(Consumer<H> onEachRow) throws IOException {
-            if (requiredColumns.isEmpty() && optionalColumns.isEmpty()) {
-                throw new IllegalArgumentException("No columns specified");
-            }
-            File binFile = getCompressedFile(true, false);
             List<ColumnInfo<T, Object>> presentColumns = new ObjectArrayList<>();
             List<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
             for (ColumnInfo<T, Object> col : allColumns) {
-                col.setIndex(-1);
+                col.setIndex(-1, -1);
                 col.setCachedValue(null);
             }
             header.clear();
-            try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new ParallelGZIPInputStream(new FileInputStream(binFile), 8192), 8192))) {
-                int size = dis.readInt();
-                for (int i = 0; i < size; i++) {
-                    boolean hasIndex = dis.readBoolean();
-                    if (hasIndex) {
-                        ColumnInfo<T, Object> column = allColumns.get(i);
-                        column.setIndex(i);
-                        presentColumns.add(column);
-                    }
-                }
-                for (ColumnInfo<T, Object> column : requiredColumns) {
-                    if (column.getIndex() == -1) {
-                        throw new IllegalArgumentException("Required column `" + column + "` is missing in " + filePart);
-                    }
-                }
-                Consumer<DataInputStream> readRow = getDataInputStreamConsumer(presentColumns);
-//                int linesRead = 0;
-                try {
-                    while (dis.available() > 0) {
-                        readRow.accept(dis);
-                        onEachRow.accept(header);
-//                        linesRead++;
-                    }
-                } catch (RuntimeException e) {
-                    Throwable root = e;
-                    while (e.getCause() != null && e.getCause() != e) {
-                        root = e.getCause();
-                    }
-                    if (root instanceof EOFException) {
-//                        System.out.println("Read file " + binFile.getName() + " with " + presentColumns.size() + " columns" + " and " + linesRead + " lines");
-                    } else {
-                        throw e;
-                    }
+            byte[] decompressed = cachedBytes.get();
+            if (decompressed == null) {
+                File binFile = getCompressedFile(true, false);
+                decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
+                cachedBytes = new SoftReference<>(decompressed);
+            }
+            int index = 0;
+            int size = SafeUtils.readIntBE(decompressed, index);
+            index += 4;
+            int rowBytes = 0;
+            for (int i = 0; i < size; i++) {
+                boolean hasIndex = decompressed[index++] != 0;
+                if (hasIndex) {
+                    ColumnInfo<T, Object> column = allColumns.get(i);
+                    column.setIndex(i, rowBytes);
+                    presentColumns.add(column);
+                    rowBytes += column.getBytes();
                 }
             }
-        }
 
-        @Nullable
-        private Consumer<DataInputStream> getDataInputStreamConsumer(List<ColumnInfo<T, Object>> presentColumns) {
-            Consumer<DataInputStream> onEach = null;
-            for (ColumnInfo<T, Object> column : presentColumns) {
-                boolean shouldRead = requiredColumns.contains(column) || optionalColumns.contains(column);
-                Consumer<DataInputStream> reader;
-                if (shouldRead) {
-                    reader = (ThrowingConsumer<DataInputStream>) dis1 -> {
-                        Object value = column.read(dis1);
-                        column.setCachedValue(value);
-                    };
-                } else {
-                    reader = (ThrowingConsumer<DataInputStream>) column::skip;
+            Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
+            for (ColumnInfo<T, Object> column : requiredColumns) {
+                if (column.getIndex() == -1) {
+                    throw new IllegalArgumentException("Required column `" + column + "` is missing in " + filePart);
                 }
-                if (onEach == null) {
-                    onEach = reader;
-                } else {
-                    onEach = onEach.andThen(reader);
+                presetAndSpecified.add(column);
+            }
+            for (ColumnInfo<T, Object> column : optionalColumns) {
+                if (column.getIndex() != -1) {
+                    presetAndSpecified.add(column);
                 }
             }
-            return onEach;
+            ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
+            int numLines = SafeUtils.readIntBE(decompressed, index);
+            index += 4;
+
+            for (int i = 0; i < numLines; i++) {
+                header.setOffset(index);
+                for (ColumnInfo<T, Object> column : shouldRead) {
+                    column.setCachedValue(column.read(decompressed, index + column.getOffset()));
+                }
+                onEachRow.accept(header);
+                index += rowBytes;
+            }
         }
     }
 

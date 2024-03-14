@@ -1,5 +1,8 @@
 package link.locutus.discord.util;
 
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

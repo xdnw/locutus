@@ -6,29 +6,25 @@ import link.locutus.discord.apiv3.csv.column.DoubleColumn;
 import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.column.LongColumn;
 import link.locutus.discord.apiv3.csv.column.StringColumn;
+import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;
 
 // city_id,nation_id,date_created,name,capital,infrastructure,maxinfra,land,oil_power_plants,wind_power_plants,coal_power_plants,nuclear_power_plants,coal_mines,oil_wells,uranium_mines,iron_mines,lead_mines,bauxite_mines,farms,police_stations,hospitals,recycling_centers,subway,supermarkets,banks,shopping_malls,stadiums,oil_refineries,aluminum_refineries,steel_mills,munitions_factories,barracks,factories,hangars,drydocks,last_nuke_date
-public class CityHeader implements DataHeader<DBCity> {
-    private final long date;
+public class CityHeader extends DataHeader<DBCity> {
 
-    public CityHeader(long date) {
-        this.date = date;
-    }
-
-    public long getDate() {
-        return date;
+    public CityHeader(long date, Dictionary dict) {
+        super(date, dict);
     }
 
     //    public int city_id;
-    public final IntColumn<DBCity> city_id = new IntColumn<>(DBCity::setId);
+    public final IntColumn<DBCity> city_id = new IntColumn<>(this, DBCity::setId);
 //    public int nation_id;
-    public final IntColumn<DBCity> nation_id = new IntColumn<>(DBCity::setNation_id);
+    public final IntColumn<DBCity> nation_id = new IntColumn<>(this, DBCity::setNation_id);
 //    public int date_created; // TimeUtil.YYYY_MM_DD_FORMAT.parse(
-    public final LongColumn<DBCity> date_created = new LongColumn<>(DBCity::setDateCreated) {
+    public final LongColumn<DBCity> date_created = new LongColumn<>(this, DBCity::setDateCreated) {
         @Override
         public Long read(String string) {
             try {
@@ -39,71 +35,71 @@ public class CityHeader implements DataHeader<DBCity> {
         }
     };
 //    public int name; // string ignore
-    public final StringColumn<DBCity> name = new StringColumn<>(null);
+    public final StringColumn<DBCity> name = new StringColumn<>(this, null);
 //    public int capital; // string ignore
-    public final StringColumn<DBCity> capital = new StringColumn<>(null);
+    public final StringColumn<DBCity> capital = new StringColumn<>(this, null);
 //    public int infrastructure; // double
-    public final DoubleColumn<DBCity> infrastructure = new DoubleColumn<>(DBCity::setInfra);
+    public final DoubleColumn<DBCity> infrastructure = new DoubleColumn<>(this, DBCity::setInfra);
 //    public int maxinfra; // double ignore
-    public final DoubleColumn<DBCity> maxinfra = new DoubleColumn<>(null);
+    public final DoubleColumn<DBCity> maxinfra = new DoubleColumn<>(this, null);
 //    public int land; // double
-    public final DoubleColumn<DBCity> land = new DoubleColumn<>(DBCity::setLand);
+    public final DoubleColumn<DBCity> land = new DoubleColumn<>(this, DBCity::setLand);
 //    public int oil_power_plants; // int
-    public final IntColumn<DBCity> oil_power_plants = new IntColumn<>((city, value) -> city.setBuilding(Buildings.OIL_POWER, value));
+    public final IntColumn<DBCity> oil_power_plants = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.OIL_POWER, value));
 //    public int wind_power_plants; // int
-    public final IntColumn<DBCity> wind_power_plants = new IntColumn<>((city, value) -> city.setBuilding(Buildings.WIND_POWER, value));
+    public final IntColumn<DBCity> wind_power_plants = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.WIND_POWER, value));
 //    public int coal_power_plants; // int
-    public final IntColumn<DBCity> coal_power_plants = new IntColumn<>((city, value) -> city.setBuilding(Buildings.COAL_POWER, value));
+    public final IntColumn<DBCity> coal_power_plants = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.COAL_POWER, value));
 //    public int nuclear_power_plants; // int
-    public final IntColumn<DBCity> nuclear_power_plants = new IntColumn<>((city, value) -> city.setBuilding(Buildings.NUCLEAR_POWER, value));
+    public final IntColumn<DBCity> nuclear_power_plants = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.NUCLEAR_POWER, value));
 //    public int coal_mines; // int
-    public final IntColumn<DBCity> coal_mines = new IntColumn<>((city, value) -> city.setBuilding(Buildings.COAL_MINE, value));
+    public final IntColumn<DBCity> coal_mines = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.COAL_MINE, value));
 //    public int oil_wells; // int
-    public final IntColumn<DBCity> oil_wells = new IntColumn<>((city, value) -> city.setBuilding(Buildings.OIL_WELL, value));
+    public final IntColumn<DBCity> oil_wells = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.OIL_WELL, value));
 //    public int uranium_mines;
-    public final IntColumn<DBCity> uranium_mines = new IntColumn<>((city, value) -> city.setBuilding(Buildings.URANIUM_MINE, value));
+    public final IntColumn<DBCity> uranium_mines = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.URANIUM_MINE, value));
 //    public int iron_mines;
-    public final IntColumn<DBCity> iron_mines = new IntColumn<>((city, value) -> city.setBuilding(Buildings.IRON_MINE, value));
+    public final IntColumn<DBCity> iron_mines = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.IRON_MINE, value));
 //    public int lead_mines;
-    public final IntColumn<DBCity> lead_mines = new IntColumn<>((city, value) -> city.setBuilding(Buildings.LEAD_MINE, value));
+    public final IntColumn<DBCity> lead_mines = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.LEAD_MINE, value));
 //    public int bauxite_mines;
-    public final IntColumn<DBCity> bauxite_mines = new IntColumn<>((city, value) -> city.setBuilding(Buildings.BAUXITE_MINE, value));
+    public final IntColumn<DBCity> bauxite_mines = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.BAUXITE_MINE, value));
 //    public int farms;
-    public final IntColumn<DBCity> farms = new IntColumn<>((city, value) -> city.setBuilding(Buildings.FARM, value));
+    public final IntColumn<DBCity> farms = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.FARM, value));
 //    public int police_stations;
-    public final IntColumn<DBCity> police_stations = new IntColumn<>((city, value) -> city.setBuilding(Buildings.POLICE_STATION, value));
+    public final IntColumn<DBCity> police_stations = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.POLICE_STATION, value));
 //    public int hospitals;
-    public final IntColumn<DBCity> hospitals = new IntColumn<>((city, value) -> city.setBuilding(Buildings.HOSPITAL, value));
+    public final IntColumn<DBCity> hospitals = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.HOSPITAL, value));
 //    public int recycling_centers;
-    public final IntColumn<DBCity> recycling_centers = new IntColumn<>((city, value) -> city.setBuilding(Buildings.RECYCLING_CENTER, value));
+    public final IntColumn<DBCity> recycling_centers = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.RECYCLING_CENTER, value));
 //    public int subway;
-    public final IntColumn<DBCity> subway = new IntColumn<>((city, value) -> city.setBuilding(Buildings.SUBWAY, value));
+    public final IntColumn<DBCity> subway = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.SUBWAY, value));
 //    public int supermarkets;
-    public final IntColumn<DBCity> supermarkets = new IntColumn<>((city, value) -> city.setBuilding(Buildings.SUPERMARKET, value));
+    public final IntColumn<DBCity> supermarkets = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.SUPERMARKET, value));
 //    public int banks;
-    public final IntColumn<DBCity> banks = new IntColumn<>((city, value) -> city.setBuilding(Buildings.BANK, value));
+    public final IntColumn<DBCity> banks = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.BANK, value));
 //    public int shopping_malls;
-    public final IntColumn<DBCity> shopping_malls = new IntColumn<>((city, value) -> city.setBuilding(Buildings.MALL, value));
+    public final IntColumn<DBCity> shopping_malls = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.MALL, value));
 //    public int stadiums;
-    public final IntColumn<DBCity> stadiums = new IntColumn<>((city, value) -> city.setBuilding(Buildings.STADIUM, value));
+    public final IntColumn<DBCity> stadiums = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.STADIUM, value));
 //    public int oil_refineries;
-    public final IntColumn<DBCity> oil_refineries = new IntColumn<>((city, value) -> city.setBuilding(Buildings.GAS_REFINERY, value));
+    public final IntColumn<DBCity> oil_refineries = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.GAS_REFINERY, value));
 //    public int aluminum_refineries;
-    public final IntColumn<DBCity> aluminum_refineries = new IntColumn<>((city, value) -> city.setBuilding(Buildings.ALUMINUM_REFINERY, value));
+    public final IntColumn<DBCity> aluminum_refineries = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.ALUMINUM_REFINERY, value));
 //    public int steel_mills;
-    public final IntColumn<DBCity> steel_mills = new IntColumn<>((city, value) -> city.setBuilding(Buildings.STEEL_MILL, value));
+    public final IntColumn<DBCity> steel_mills = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.STEEL_MILL, value));
 //    public int munitions_factories;
-    public final IntColumn<DBCity> munitions_factories = new IntColumn<>((city, value) -> city.setBuilding(Buildings.MUNITIONS_FACTORY, value));
+    public final IntColumn<DBCity> munitions_factories = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.MUNITIONS_FACTORY, value));
 //    public int barracks;
-    public final IntColumn<DBCity> barracks = new IntColumn<>((city, value) -> city.setBuilding(Buildings.BARRACKS, value));
+    public final IntColumn<DBCity> barracks = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.BARRACKS, value));
 //    public int factories;
-    public final IntColumn<DBCity> factories = new IntColumn<>((city, value) -> city.setBuilding(Buildings.FACTORY, value));
+    public final IntColumn<DBCity> factories = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.FACTORY, value));
 //    public int hangars;
-    public final IntColumn<DBCity> hangars = new IntColumn<>((city, value) -> city.setBuilding(Buildings.HANGAR, value));
+    public final IntColumn<DBCity> hangars = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.HANGAR, value));
 //    public int drydocks;
-    public final IntColumn<DBCity> drydocks = new IntColumn<>((city, value) -> city.setBuilding(Buildings.DRYDOCK, value));
+    public final IntColumn<DBCity> drydocks = new IntColumn<>(this, (city, value) -> city.setBuilding(Buildings.DRYDOCK, value));
 //    public int last_nuke_date; // long, TimeUtil.YYYY_MM_DD_FORMAT.parse(
-    public final LongColumn<DBCity> last_nuke_date = new LongColumn<>((city, value) -> {
+    public final LongColumn<DBCity> last_nuke_date = new LongColumn<>(this, (city, value) -> {
         if (value > 0) {
             long turn = TimeUtil.getTurn(value);
             city.setNuke_turn(turn);
@@ -119,7 +115,7 @@ public class CityHeader implements DataHeader<DBCity> {
         }
     };
 //    public int powered;  // boolean
-    public final BooleanColumn<DBCity> powered = new BooleanColumn<>(DBCity::setPowered);
+    public final BooleanColumn<DBCity> powered = new BooleanColumn<>(this, DBCity::setPowered);
 
     private DBCity cached;
 

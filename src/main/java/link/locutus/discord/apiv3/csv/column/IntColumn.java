@@ -1,8 +1,10 @@
 package link.locutus.discord.apiv3.csv.column;
 
 import link.locutus.discord.apiv3.csv.ColumnInfo;
+import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.IOUtil;
+import net.jpountz.util.SafeUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -10,23 +12,23 @@ import java.io.IOException;
 import java.util.function.BiConsumer;
 
 public class IntColumn<P> extends NumberColumn<P, Integer> {
-    public IntColumn(BiConsumer<P, Integer> setter) {
-        super(setter);
+    public IntColumn(DataHeader<P> header, BiConsumer<P, Integer> setter) {
+        super(header, setter);
     }
 
     @Override
-    public Integer read(DataInputStream dis) throws IOException {
-        return IOUtil.readVarInt(dis);
+    public Integer read(byte[] buffer, int offset) throws IOException {
+        return buffer[offset] << 24 | (buffer[offset + 1] & 0xFF) << 16 | (buffer[offset + 2] & 0xFF) << 8 | (buffer[offset + 3] & 0xFF);
     }
 
     @Override
-    public void skip(DataInputStream dis) throws IOException {
-        read(dis);
+    public int getBytes() {
+        return 4;
     }
 
     @Override
     public void write(DataOutputStream dos, Integer value) throws IOException {
-        IOUtil.writeVarInt(dos, value);
+        dos.writeInt(value);
     }
 
     @Override

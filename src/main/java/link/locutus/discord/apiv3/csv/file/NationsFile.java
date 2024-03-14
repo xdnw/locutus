@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 public class NationsFile extends DataFile<DBNation, NationHeader> {
-    public NationsFile(File file) {
-        super(file, new NationHeader(parseDateFromFile(file.getName())));
+    public NationsFile(File file, Dictionary dict) {
+        super(file, new NationHeader(parseDateFromFile(file.getName()), dict));
     }
 
     public Map<Integer, DBNationSnapshot> readNations(Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted) throws IOException {

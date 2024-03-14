@@ -30,6 +30,7 @@ import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
+import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -1345,14 +1346,14 @@ public class WarDB extends DBMainV2 {
                     return stat;
                 }
             }
-            return updateCounter(war);
+            Locutus.imp().runEventsAsync(e -> updateCounter(war, e));
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    public CounterStat updateCounter(DBWar war) {
+    public CounterStat updateCounter(DBWar war, Consumer<Event> eventConsumer) {
         DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
         DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
         if (war.getAttacker_aa() == 0 || war.getDefender_aa() == 0) {
@@ -1373,8 +1374,14 @@ public class WarDB extends DBMainV2 {
         boolean isOngoing = war.getStatus() == WarStatus.ACTIVE || war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE || war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE;
         boolean isActive = war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE || war.getStatus() == WarStatus.DEFENDER_VICTORY || war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE;
         for (AbstractCursor attack : attacks) {
-            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.getAttacker_id()) {
+            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.getAttacker_id() && war.getStatus() != WarStatus.ATTACKER_VICTORY) {
+                DBWar oldWar = new DBWar(war);
                 war.setStatus(WarStatus.ATTACKER_VICTORY);
+                if (eventConsumer != null) {
+                    eventConsumer.accept(new WarStatusChangeEvent(oldWar, war));
+                }
+                activeWars.makeWarInactive(war);
+                activeWars.processWarChange(oldWar, war, eventConsumer);
             }
             if (attack.getAttacker_id() == war.getDefender_id()) isActive = true;
             switch (attack.getAttack_type()) {
@@ -2437,6 +2444,9 @@ public class WarDB extends DBMainV2 {
                                 warsToSave.add(war);
                                 if (eventConsumer != null) {
                                     warsToProcess.add(new AbstractMap.SimpleEntry<>(oldWar, war));
+                                }
+                                if (!war.isActive()) {
+                                    activeWars.makeWarInactive(war);
                                 }
                             }
                         }

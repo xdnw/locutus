@@ -11,8 +11,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class CitiesFile extends DataFile<DBCity, CityHeader> {
-    public CitiesFile(File file) {
-        super(file, new CityHeader(parseDateFromFile(file.getName())));
+    public CitiesFile(File file, Dictionary dict) {
+        super(file, new CityHeader(parseDateFromFile(file.getName()), dict));
     }
 
     public Map<Integer, Map<Integer, DBCity>> readCities(Predicate<Integer> allowedNationIds, boolean condense) throws IOException {

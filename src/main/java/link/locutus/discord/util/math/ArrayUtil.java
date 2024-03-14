@@ -23,6 +23,9 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.ia.IACheckup;
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.math3.util.DoubleArray;
 
@@ -70,6 +73,30 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class ArrayUtil {
+    public static byte[] compressLZ4(byte[] data) {
+        LZ4Factory factory = LZ4Factory.fastestInstance();
+        LZ4Compressor compressor = factory.highCompressor(5);
+        int maxCompressedLength = compressor.maxCompressedLength(data.length);
+        byte[] compressed = new byte[maxCompressedLength];
+        int compressedLength = compressor.compress(data, 0, data.length, compressed, 0, maxCompressedLength);
+        ByteBuffer buffer = ByteBuffer.allocate(4 + compressedLength);
+        buffer.putInt(data.length);
+        buffer.put(compressed, 0, compressedLength);
+        return buffer.array();
+    }
+
+    public static byte[] decompressLZ4(byte[] compressedData) throws IOException {
+        ByteBuffer buffer = ByteBuffer.wrap(compressedData);
+        int originalLength = buffer.getInt();
+
+        LZ4Factory factory = LZ4Factory.fastestInstance();
+        LZ4FastDecompressor decompressor = factory.fastDecompressor();
+        byte[] restored = new byte[originalLength];
+        decompressor.decompress(compressedData, 4, restored, 0, originalLength);
+
+        return restored;
+    }
+
     public static final DoubleBinaryOperator DOUBLE_ADD = Double::sum;
     public static final DoubleBinaryOperator DOUBLE_SUBTRACT = (x, y) -> x - y;
     public static final IntBinaryOperator INT_ADD = Integer::sum;

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.DataFile;
+import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
@@ -39,10 +40,13 @@ public class DataDumpParser {
     private long lastUpdatedNations = 0;
     private long lastUpdatedCities = 0;
     private final File cityDir, nationDir;
+    private final Dictionary nationDict, cityDict;
 
     public DataDumpParser() {
         this.cityDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES);
         this.nationDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS);
+        this.nationDict = new Dictionary(nationDir);
+        this.cityDict = new Dictionary(cityDir);
     }
 
     public Map<Integer, DBNation> getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, Predicate<DBNation> nationFilter) throws IOException, ParseException {
@@ -243,7 +247,7 @@ public class DataDumpParser {
             String prefix = "nations";
             for (File file : nationDir.listFiles()) {
                 if (!DataFile.isValidName(file, prefix)) continue;
-                NationsFile natFile = new NationsFile(file);
+                NationsFile natFile = new NationsFile(file, nationDict);
                 long day = natFile.getDay();
                 nationFilesByDay.putIfAbsent(day, natFile);
             }
@@ -253,7 +257,7 @@ public class DataDumpParser {
         if (currentDay > lastUpdatedNations) {
             Map<Long, File> downloaded = load("https://politicsandwar.com/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
             downloaded.forEach((day, file) -> {
-                NationsFile natFile = new NationsFile(file);
+                NationsFile natFile = new NationsFile(file, nationDict);
                 nationFilesByDay.putIfAbsent(day, natFile);
             });
             lastUpdatedNations = currentDay;
@@ -271,7 +275,7 @@ public class DataDumpParser {
             String prefix = "cities";
             for (File file : cityDir.listFiles()) {
                 if (!DataFile.isValidName(file, prefix)) continue;
-                CitiesFile cityFile = new CitiesFile(file);
+                CitiesFile cityFile = new CitiesFile(file, cityDict);
                 long day = cityFile.getDay();
                 cityFilesByDay.putIfAbsent(day, cityFile);
             }
@@ -281,12 +285,16 @@ public class DataDumpParser {
         if (currentDay > lastUpdatedCities) {
             Map<Long, File> downloaded = load("https://politicsandwar.com/data/cities/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
             downloaded.forEach((day, file) -> {
-                CitiesFile cityFile = new CitiesFile(file);
+                CitiesFile cityFile = new CitiesFile(file, cityDict);
                 cityFilesByDay.putIfAbsent(day, cityFile);
             });
             lastUpdatedCities = currentDay;
         }
 
         return cityFilesByDay;
+    }
+
+    public Dictionary getDict(boolean isNations) {
+        return isNations ? nationDict : cityDict;
     }
 }
