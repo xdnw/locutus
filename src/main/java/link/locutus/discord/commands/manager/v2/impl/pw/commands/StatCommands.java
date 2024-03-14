@@ -2521,7 +2521,6 @@ public class StatCommands {
 
         Map<Integer, Map<Long, Integer>> membersByAAByTurn = new Int2ObjectLinkedOpenHashMap<>();
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);
-        dumper.downloadNationFilesByDay();
 
         AtomicLong start = new AtomicLong(System.currentTimeMillis());
         dumper.iterateAll(f -> true, (day, header) -> {

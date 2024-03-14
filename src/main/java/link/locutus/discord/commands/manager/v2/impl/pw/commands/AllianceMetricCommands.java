@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -236,7 +237,7 @@ public class AllianceMetricCommands {
         AtomicDouble cityTotal = new AtomicDouble();
 
         long dayStart = TimeUtil.getDay() - 365;
-        parser.iterateAll(f -> f > dayStart, new BiConsumer<Long, NationHeader>() {
+        parser.iterateAll(f -> f > dayStart, null, null, new BiConsumer<Long, NationHeader>() {
 
             private double[] dailyOld = ResourceType.getBuffer();
             private double[] dailyNew = ResourceType.getBuffer();
@@ -260,45 +261,38 @@ public class AllianceMetricCommands {
                     previousDay.set(day);
                 }
 
-                long now = TimeUtil.getTimeFromDay(day);
-                try {
-                    DBNation nation = parser.loadNation(header, row, f -> true, f -> true, true, true, now);
-                    currentProjects.put(nation.getId(), nation.getProjects());
-                    currentCities.put(nation.getId(), nation.getCities());
-                    Set<Project> previous = previousProjects.get(nation.getId());
-                    if (previous == null) return;
-                    int numCities = previousCities.getOrDefault(nation.getId(), 0);
-                    if (numCities < nation.getCities()) {
-                        double cityCost = PnwUtil.cityCost(nation, numCities, nation.getCities());
-                        citExpenses += cityCost;
-                        cityTotal.addAndGet(cityCost);
-                        citiesByTier.merge(numCities, cityCost, Double::sum);
-                    }
-
-                    for (Project project : nation.getProjects()) {
-                        if (!previous.contains(project)) {
-                            double[] oldCost = cost(project, false).clone();
-                            double[] newCost = cost(project, true).clone();
-
-                            // add to maps
-                            PnwUtil.add(dailyOld, oldCost.clone());
-                            PnwUtil.add(dailyNew, newCost.clone());
-                            // add to totals
-                            PnwUtil.add(totalOld, oldCost.clone());
-                            PnwUtil.add(totalNew, newCost.clone());
-
-                            PnwUtil.add(oldCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), oldCost.clone());
-                            PnwUtil.add(newCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), newCost.clone());
-
-                            amtByTier.computeIfAbsent(project, f -> new HashMap<>()).merge(nation.getCities(), 1, Integer::sum);
-                            numProject.merge(project, 1, Integer::sum);
-                        }
-                    }
-
-                } catch (ParseException e) {
-                    throw new RuntimeException(e);
+                DBNation nation = header.getNation(f -> true, f -> true, true, true, true);
+                currentProjects.put(nation.getId(), nation.getProjects());
+                currentCities.put(nation.getId(), nation.getCities());
+                Set<Project> previous = previousProjects.get(nation.getId());
+                if (previous == null) return;
+                int numCities = previousCities.getOrDefault(nation.getId(), 0);
+                if (numCities < nation.getCities()) {
+                    double cityCost = PnwUtil.cityCost(nation, numCities, nation.getCities());
+                    citExpenses += cityCost;
+                    cityTotal.addAndGet(cityCost);
+                    citiesByTier.merge(numCities, cityCost, Double::sum);
                 }
 
+                for (Project project : nation.getProjects()) {
+                    if (!previous.contains(project)) {
+                        double[] oldCost = cost(project, false).clone();
+                        double[] newCost = cost(project, true).clone();
+
+                        // add to maps
+                        PnwUtil.add(dailyOld, oldCost.clone());
+                        PnwUtil.add(dailyNew, newCost.clone());
+                        // add to totals
+                        PnwUtil.add(totalOld, oldCost.clone());
+                        PnwUtil.add(totalNew, newCost.clone());
+
+                        PnwUtil.add(oldCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), oldCost.clone());
+                        PnwUtil.add(newCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), newCost.clone());
+
+                        amtByTier.computeIfAbsent(project, f -> new HashMap<>()).merge(nation.getCities(), 1, Integer::sum);
+                        numProject.merge(project, 1, Integer::sum);
+                    }
+                }
             }
         }, null, new Consumer<Long>() {
             @Override
