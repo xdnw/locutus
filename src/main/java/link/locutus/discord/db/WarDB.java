@@ -1346,7 +1346,7 @@ public class WarDB extends DBMainV2 {
                     return stat;
                 }
             }
-            Locutus.imp().runEventsAsync(e -> updateCounter(war, e));
+            return updateCounter(war, f -> Locutus.imp().runEventsAsync(List.of(f)));
         } catch (Exception e) {
             e.printStackTrace();
         }
