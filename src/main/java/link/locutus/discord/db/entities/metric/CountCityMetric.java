@@ -109,7 +109,7 @@ public class CountCityMetric implements IAllianceMetric {
                     DBCity city = header.getCity();
                     value = countCity.apply(city);
                 } else {
-                    value = getHeader.apply(header).get().doubleValue()
+                    value = getHeader.apply(header).get().doubleValue();
                 }
                 countByAA.merge(allianceId, value, Double::sum);
             }
