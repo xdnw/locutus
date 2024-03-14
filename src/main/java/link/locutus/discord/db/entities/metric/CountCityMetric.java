@@ -106,10 +106,10 @@ public class CountCityMetric implements IAllianceMetric {
                 if (allianceId == null) return;
                 double value;
                 if (getHeader == null) {
-                    DBCity city = parsedRow.getCity(header, nationId);
+                    DBCity city = header.getCity();
                     value = countCity.apply(city);
                 } else {
-                    value = parsedRow.get(getHeader.apply(header), Double::parseDouble);
+                    value = getHeader.apply(header).get().doubleValue()
                 }
                 countByAA.merge(allianceId, value, Double::sum);
             }

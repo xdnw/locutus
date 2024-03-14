@@ -47,7 +47,7 @@ public class BuildingPctMetric implements IAllianceMetric {
         importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
             @Override
             public void accept(Long day, NationHeader header) {
-                int position = header.header.alliance_position.get();
+                Rank position = header.alliance_position.get();
                 if (position.id <= Rank.APPLICANT.id) return;
                 int allianceId = header.alliance_id.get();
                 if (allianceId == 0) return;
@@ -65,7 +65,7 @@ public class BuildingPctMetric implements IAllianceMetric {
                 int nationId = header.nation_id.get();
                 Integer allianceId = allianceByNationId.get(nationId);
                 if (allianceId == null || allianceId == 0) return;
-                int num = parsedRow.get(getHeader.apply(header), Integer::parseInt);
+                int num = getHeader.apply(header).get();
                 buildingsByAA.merge(allianceId, num, Integer::sum);
             }
         });

@@ -12,6 +12,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,7 +50,7 @@ public class ProjectileAvg implements IAllianceMetric {
                 if (allianceId == 0) return;
                 Integer vm_turns = header.vm_turns.get();
                 if (vm_turns == null || vm_turns > 0) return;
-                unitsByAA.merge(allianceId, row.get(getHeader.apply(header), Integer::parseInt), (a, b) -> ((Number) a).intValue() + ((Number) b).intValue());
+                unitsByAA.merge(allianceId, getHeader.apply(header).get(), (a, b) -> ((Number) a).intValue() + ((Number) b).intValue());
                 citiesByAA.merge(allianceId, header.cities.get(), (a, b) -> ((Number) a).intValue() + ((Number) b).intValue());
             }
         });

@@ -12,6 +12,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,7 +45,7 @@ public class UnitPctMetric implements IAllianceMetric {
                 if (allianceId == 0) return;
                 Integer vm_turns = header.vm_turns.get();
                 if (vm_turns == null || vm_turns > 0) return;
-                int units = row.get(getHeader.apply(header), Integer::parseInt);
+                int units = getHeader.apply(header).get();
                 unitsByAA.merge(allianceId, units, Integer::sum);
                 int cities = header.cities.get();
                 citiesByAA.merge(allianceId, cities, Integer::sum);

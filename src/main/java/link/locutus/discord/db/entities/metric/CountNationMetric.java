@@ -90,9 +90,9 @@ public class CountNationMetric implements IAllianceMetric {
                 if (vm_turns == null || vm_turns > 0) return;
                 double amt;
                 if (getHeader != null) {
-                    amt = ((Number) row.get(getHeader.apply(header), Double::parseDouble)).doubleValue();
+                    amt = getHeader.apply(header).get().doubleValue();
                 } else {
-                    DBNation nation = row.getNation(header, false, true);
+                    DBNation nation = header.getNation(false, true);
                     if (filter != null && !filter.test(nation)) return;
                     amt = countNation.apply(nation).doubleValue();
                 }

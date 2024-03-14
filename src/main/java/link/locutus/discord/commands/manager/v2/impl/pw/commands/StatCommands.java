@@ -2523,17 +2523,19 @@ public class StatCommands {
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);
 
         AtomicLong start = new AtomicLong(System.currentTimeMillis());
-        dumper.iterateAll(f -> true, (day, header) -> {
-            int position = Integer.parseInt(row.getField(header.alliance_position));
-            if (position <= 1) return;
-            int aaId = Integer.parseInt(row.getField(header.alliance_id));
+        dumper.iterateAll(f -> true, (h, r) -> {
+            r.required(h.alliance_position, h.alliance_id, h.nation_id, h.alliance);
+        }, null, (day, header) -> {
+            Rank position = header.alliance_position.get();
+            if (position.id <= Rank.APPLICANT.id) return;
+            int aaId = header.alliance_id.get();
             membersByAAByTurn.computeIfAbsent(aaId, k -> new Long2IntLinkedOpenHashMap()).merge(day, 1, Integer::sum);
-            int nationId = Integer.parseInt(row.getField(header.nation_id));
+            int nationId = header.nation_id.get();
             nationsByAAByDay.computeIfAbsent(day, k -> new Int2ObjectLinkedOpenHashMap<>()).computeIfAbsent(aaId, k -> new IntOpenHashSet()).add(nationId);
             nationAllianceByDay.computeIfAbsent(day, k -> new Int2IntLinkedOpenHashMap()).put(nationId, aaId);
 
             if (!allianceNames.containsKey(aaId)) {
-                String aaName = row.getField(header.alliance);
+                String aaName = header.alliance.get();
                 allianceNames.put(aaId, aaName);
             }
         }, null, aLong -> {
