@@ -38,6 +38,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
@@ -492,17 +493,34 @@ public class StatCommands {
     }
 
     @Command(desc = "List resources available and radiation level in each continent")
-    public String continent(TradeManager manager) {
-        StringBuilder response = new StringBuilder();
-        for (Continent continent : Continent.values) {
-            List<ResourceType> types = Arrays.stream(ResourceType.values).filter(f -> {
-                Building build = f.getBuilding();
-                return build != null && build.canBuild(continent);
-            }).collect(Collectors.toList());
-            response.append(continent.name()).append(": (rads=").append(MathMan.format(continent.getRadIndex())).append(")\n");
-            response.append(StringMan.join(types, "\n- ")).append("\n");
+    public String continent(@Me IMessageIO io) {
+        List<List<String>> table = new ArrayList<>();
+        List<String> header = new ArrayList<>(Arrays.asList(""));
+        for (ResourceType type : ResourceType.values) {
+            if (!type.isRaw()) continue;
+            header.add(type.getShorthand().toLowerCase(Locale.ROOT));
         }
-        return response.toString();
+        table.add(header);
+        for (Continent continent : Continent.values) {
+            List<String> row = new ArrayList<>();
+            row.add(continent.getAcronym());
+            for (ResourceType type : ResourceType.values) {
+                if (!type.isRaw()) continue;
+                boolean available = continent.hasResource(type);
+                row.add(available ? "" : "X");
+            }
+            table.add(row);
+        }
+        IMessageBuilder msg = io.create().writeTable("Continents", table, true, "");
+
+        List<List<String>> radsTable = new ArrayList<>();
+        radsTable.add(Arrays.asList("continent", "rads"));
+        for (Continent continent : Continent.values) {
+            radsTable.add(Arrays.asList(continent.name().toLowerCase(Locale.ROOT), MathMan.format(continent.getRadIndex())));
+        }
+        String footer = "See also: " + CM.stats_other.radiationByTurn.cmd.toSlashMention();
+        msg.writeTable("Radiation", radsTable, true, footer).send();
+        return null;
     }
 
     @Command(desc = "Rank alliances by a metric")
