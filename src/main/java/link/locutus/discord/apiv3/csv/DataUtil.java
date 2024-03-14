@@ -9,11 +9,15 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.TriConsumer;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
@@ -826,6 +830,24 @@ public class DataUtil {
 //    }
 
     public static void main(String[] args) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
+        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+        DataDumpParser instance = new DataDumpParser().load();
+        long start = System.currentTimeMillis();
+        instance.iterateFiles(new TriConsumer<Long, NationsFile, CitiesFile>() {
+            @Override
+            public void accept(Long day, NationsFile nationsFile, CitiesFile citiesFile) {
+                try {
+                    nationsFile.reader().all().read(nationHeader -> {
+                        // do nothing
+                    });
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        long diff = System.currentTimeMillis() - start;
+        System.out.println("Diff " + diff + "ms");
+
 //        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
 //        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
 //        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
@@ -848,13 +870,5 @@ public class DataUtil {
 //
 //        long diff = System.currentTimeMillis() - start;
 //        System.out.println("Diff " + diff + "ms");'
-
-        DataDumpParser instance = new DataDumpParser().load();
-        long start = System.currentTimeMillis();
-
-        // TODO TEST
-
-        long diff = System.currentTimeMillis() - start;
-        System.out.println("Diff " + diff + "ms");
     }
 }
