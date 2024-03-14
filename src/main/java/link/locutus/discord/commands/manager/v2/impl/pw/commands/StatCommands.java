@@ -2490,7 +2490,6 @@ public class StatCommands {
 
     @Command
     @RolePermission(Roles.ADMIN)
-    @WhitelistPermission
     public void listMerges(
             @Me GuildDB db,
             @Me IMessageIO io,
