@@ -58,7 +58,7 @@ public class DataFile<T, H extends DataHeader<T>> {
         this.binExists = binFile.exists();
         this.header = unloaded;
         this.headers = unloaded.getHeaders();
-        this.date = parseDateFromFile(file.getName());
+        this.date = unloaded.getDate();
         this.day = TimeUtil.getDay(date);
     }
 
@@ -200,6 +200,7 @@ public class DataFile<T, H extends DataHeader<T>> {
                 col.setIndex(-1);
                 col.setCachedValue(null);
             }
+            header.clear();
             try (DataInputStream dis = new DataInputStream(new BufferedInputStream(new ParallelGZIPInputStream(new FileInputStream(binFile), 8192), 8192))) {
                 int size = dis.readInt();
                 for (int i = 0; i < size; i++) {

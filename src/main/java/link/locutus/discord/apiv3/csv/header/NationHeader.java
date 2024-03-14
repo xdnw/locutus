@@ -20,6 +20,16 @@ import java.text.ParseException;
 import java.util.function.Predicate;
 
 public class NationHeader implements DataHeader<DBNation> {
+    private final long date;
+
+    public NationHeader(long date) {
+        this.date = date;
+    }
+
+    public long getDate() {
+        return date;
+    }
+
     public final IntColumn<DBNation> nation_id = new IntColumn<>(DBNation::setNation_id);
     public final StringColumn<DBNation> nation_name = new StringColumn<>(DBNation::setNation);
     public final StringColumn<DBNation> leader_name = new StringColumn<>(DBNation::setLeader);
@@ -177,12 +187,53 @@ public class NationHeader implements DataHeader<DBNation> {
     public final BooleanColumn<DBNation> surveillance_network_np = new BooleanColumn<>((nation, value) -> nation.setProject(Projects.SURVEILLANCE_NETWORK));
 
     private DBNationSnapshot cached;
+    private int nationLoaded;
+    private static final int LOADED = 1;
+    private static final int ALLOW_VM = 2;
+    private static final int ALLOW_DELETED = 4;
+    private static final Predicate<Integer> ALLOW_ALL = b -> true;
 
-    public DBNationSnapshot loadNation(Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted, long currentTimeMs) {
+    @Override
+    public void clear() {
+        cached = null;
+        nationLoaded = 0;
+    }
+
+    public DBNation getNation(boolean allowVm, boolean allowDeleted) {
         int nationId = this.nation_id.get();
-        if (cached != null && cached.getId() == nationId) {
-            return cached;
+        if (cached != null) {
+            if (cached.getId() == nationId) {
+                if (!allowVm && (nationLoaded & ALLOW_VM) != 0 && cached.getVm_turns() > 0) return null;
+                if (!allowDeleted && (nationLoaded & ALLOW_DELETED) != 0 && !cached.isValid()) return null;
+                return cached;
+            }
+            cached = null;
+            nationLoaded = 0;
         }
+        if ((nationLoaded & LOADED) != 0 && (!allowVm || (nationLoaded & ALLOW_VM) == 0) && (!allowDeleted || (nationLoaded & ALLOW_DELETED) == 0)) return null;
+        nationLoaded |= LOADED | (allowVm ? ALLOW_VM : 0) | (allowDeleted ? ALLOW_DELETED : 0);
+        return cached = loadNationUnchecked(nationId, ALLOW_ALL, ALLOW_ALL, allowVm, allowVm, allowDeleted);
+    }
+
+    public DBNationSnapshot getNation(Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted) {
+        int nationId = this.nation_id.get();
+        if (cached != null) {
+            if (cached.getId() == nationId) {
+                if (!allowVm && (nationLoaded & ALLOW_VM) != 0 && cached.getVm_turns() > 0) return null;
+                if (!allowDeleted && (nationLoaded & ALLOW_DELETED) != 0 && !cached.isValid()) return null;
+                if (!allowedNationIds.test(nationId)) return null;
+                if (!allowedAllianceIds.test(cached.getAlliance_id())) return null;
+                return cached;
+            }
+            cached = null;
+            nationLoaded = 0;
+        }
+        if ((nationLoaded & LOADED) != 0 && (!allowVm || (nationLoaded & ALLOW_VM) == 0) && (!allowDeleted || (nationLoaded & ALLOW_DELETED) == 0)) return null;
+        nationLoaded = LOADED | (allowVm ? ALLOW_VM : 0) | (allowDeleted ? ALLOW_DELETED : 0);
+        return cached = loadNationUnchecked(nationId, allowedNationIds, allowedAllianceIds, allowVm, allowNoVmCol, allowDeleted);
+    }
+
+    private DBNationSnapshot loadNationUnchecked(int nationId, Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted) {
         if (!allowedNationIds.test(nationId)) return null;
         Integer vm_turns = this.vm_turns.get();
         if (vm_turns != null) {
@@ -204,10 +255,10 @@ public class NationHeader implements DataHeader<DBNation> {
                 return null;
             }
         }
-        DBNationSnapshot nation = new DBNationSnapshot(currentTimeMs);
+        DBNationSnapshot nation = new DBNationSnapshot(getDate());
         this.date_created.set(nation);
         if (vm_turns > 0) {
-            nation.setLeaving_vm(TimeUtil.getTurn(currentTimeMs) + vm_turns);
+            nation.setLeaving_vm(TimeUtil.getTurn(getDate()) + vm_turns);
         }
         nation.setAlliance_id(aaId);
         this.nation_id.set(nation);
@@ -264,7 +315,7 @@ public class NationHeader implements DataHeader<DBNation> {
         setProject(nation, this.bureau_of_domestic_affairs_np);
         setProject(nation, this.mars_landing_np);
         setProject(nation, this.surveillance_network_np);
-        return cached = nation;
+        return nation;
     }
 
     private void setProject(DBNation nation, BooleanColumn<DBNation> col) {

@@ -22,4 +22,8 @@ public interface DataHeader<T> {
         }
         return headers;
     }
+
+    public long getDate();
+
+    void clear();
 }

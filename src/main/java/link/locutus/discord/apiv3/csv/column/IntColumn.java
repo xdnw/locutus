@@ -9,7 +9,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.function.BiConsumer;
 
-public class IntColumn<P> extends ColumnInfo<P, Integer> {
+public class IntColumn<P> extends NumberColumn<P, Integer> {
     public IntColumn(BiConsumer<P, Integer> setter) {
         super(setter);
     }

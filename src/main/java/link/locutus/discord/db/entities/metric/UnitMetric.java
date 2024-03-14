@@ -3,19 +3,22 @@ package link.locutus.discord.db.entities.metric;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UnitMetric implements IAllianceMetric {
     private final MilitaryUnit unit;
-    private final Function<NationHeader, Integer> getHeader;
+    private final Function<NationHeader, IntColumn<DBNation>> getHeader;
 
-    public UnitMetric(MilitaryUnit unit, Function<NationHeader, Integer> getHeader) {
+    public UnitMetric(MilitaryUnit unit, Function<NationHeader, IntColumn<DBNation>> getHeader) {
         this.unit = unit;
         this.getHeader = getHeader;
     }
@@ -31,13 +34,13 @@ public class UnitMetric implements IAllianceMetric {
         importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
             @Override
             public void accept(Long day, NationHeader header) {
-                int position = header.alliance_position.get();
-                if (position <= Rank.APPLICANT.id) return;
-                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+                Rank position = header.alliance_position.get();
+                if (position.id <= Rank.APPLICANT.id) return;
+                int allianceId = header.alliance_id.get();
                 if (allianceId == 0) return;
-                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
-                if (vmTurns > 0) return;
-                int units = row.get(getHeader.apply(header), Integer::parseInt);
+                Integer vm_turns = header.vm_turns.get();
+                if (vm_turns == null || vm_turns > 0) return;
+                int units = getHeader.apply(header).get();
                 unitsByAA.merge(allianceId, units, Integer::sum);
             }
         });

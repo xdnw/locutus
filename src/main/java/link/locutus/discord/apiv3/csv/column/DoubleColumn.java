@@ -7,7 +7,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.function.BiConsumer;
 
-public class DoubleColumn<P> extends ColumnInfo<P, Double> {
+public class DoubleColumn<P> extends NumberColumn<P, Double> {
     public DoubleColumn(BiConsumer<P, Double> setter) {
         super(setter);
     }

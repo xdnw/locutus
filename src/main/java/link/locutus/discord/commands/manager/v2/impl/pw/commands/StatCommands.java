@@ -2524,7 +2524,7 @@ public class StatCommands {
         dumper.downloadNationFilesByDay();
 
         AtomicLong start = new AtomicLong(System.currentTimeMillis());
-        dumper.iterateAll(f -> true, (day, header, row) -> {
+        dumper.iterateAll(f -> true, (day, header) -> {
             int position = Integer.parseInt(row.getField(header.alliance_position));
             if (position <= 1) return;
             int aaId = Integer.parseInt(row.getField(header.alliance_id));

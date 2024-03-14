@@ -8,7 +8,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.function.BiConsumer;
 
-public class LongColumn<P> extends ColumnInfo<P, Long> {
+public class LongColumn<P> extends NumberColumn<P, Long> {
     public LongColumn(BiConsumer<P, Long> setter) {
         super(setter);
     }

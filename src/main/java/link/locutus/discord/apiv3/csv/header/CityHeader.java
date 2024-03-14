@@ -2,6 +2,7 @@ package link.locutus.discord.apiv3.csv.header;
 
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.column.BooleanColumn;
+import link.locutus.discord.apiv3.csv.column.DoubleColumn;
 import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.column.LongColumn;
 import link.locutus.discord.apiv3.csv.column.StringColumn;
@@ -12,7 +13,17 @@ import java.text.ParseException;
 
 // city_id,nation_id,date_created,name,capital,infrastructure,maxinfra,land,oil_power_plants,wind_power_plants,coal_power_plants,nuclear_power_plants,coal_mines,oil_wells,uranium_mines,iron_mines,lead_mines,bauxite_mines,farms,police_stations,hospitals,recycling_centers,subway,supermarkets,banks,shopping_malls,stadiums,oil_refineries,aluminum_refineries,steel_mills,munitions_factories,barracks,factories,hangars,drydocks,last_nuke_date
 public class CityHeader implements DataHeader<DBCity> {
-//    public int city_id;
+    private final long date;
+
+    public CityHeader(long date) {
+        this.date = date;
+    }
+
+    public long getDate() {
+        return date;
+    }
+
+    //    public int city_id;
     public final IntColumn<DBCity> city_id = new IntColumn<>(DBCity::setId);
 //    public int nation_id;
     public final IntColumn<DBCity> nation_id = new IntColumn<>(DBCity::setNation_id);
@@ -32,11 +43,11 @@ public class CityHeader implements DataHeader<DBCity> {
 //    public int capital; // string ignore
     public final StringColumn<DBCity> capital = new StringColumn<>((_1, _2) -> {});
 //    public int infrastructure; // double
-    public final IntColumn<DBCity> infrastructure = new IntColumn<>(DBCity::setInfra);
+    public final DoubleColumn<DBCity> infrastructure = new DoubleColumn<>(DBCity::setInfra);
 //    public int maxinfra; // double ignore
-    public final IntColumn<DBCity> maxinfra = new IntColumn<>((_1, _2) -> {});
+    public final DoubleColumn<DBCity> maxinfra = new DoubleColumn<>((_1, _2) -> {});
 //    public int land; // double
-    public final IntColumn<DBCity> land = new IntColumn<>(DBCity::setLand);
+    public final DoubleColumn<DBCity> land = new DoubleColumn<>(DBCity::setLand);
 //    public int oil_power_plants; // int
     public final IntColumn<DBCity> oil_power_plants = new IntColumn<>((city, value) -> city.setBuilding(Buildings.OIL_POWER, value));
 //    public int wind_power_plants; // int
@@ -112,7 +123,12 @@ public class CityHeader implements DataHeader<DBCity> {
 
     private DBCity cached;
 
-    public DBCity loadCity() {
+    @Override
+    public void clear() {
+        cached = null;
+    }
+
+    public DBCity getCity() {
         int cityId = this.city_id.get();
         if (cached != null && cached.id == cityId) {
             return cached;

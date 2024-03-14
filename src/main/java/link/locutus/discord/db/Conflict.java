@@ -161,7 +161,7 @@ public class Conflict {
                 if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) return;
             }
             long currentTimeMs = TimeUtil.getTimeFromDay(day);
-            DBNationSnapshot nation = header.loadNation(f -> true, f -> true, false, true, true, currentTimeMs);
+            DBNationSnapshot nation = header.getNation(f -> true, f -> true, false, true, true);
             if (nation != null) {
                 nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
             }
@@ -171,7 +171,7 @@ public class Conflict {
             int nationId = cityHeader.nation_id.get();
             DBNationSnapshot nation = (DBNationSnapshot) nationMap.get(nationId);
             if (nation == null) return;
-            DBCity city = cityHeader.loadCity();
+            DBCity city = cityHeader.getCity();
             nation.addCity(city);
         }, null);
 

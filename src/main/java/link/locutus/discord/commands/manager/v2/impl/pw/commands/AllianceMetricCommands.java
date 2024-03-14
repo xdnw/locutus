@@ -236,14 +236,14 @@ public class AllianceMetricCommands {
         AtomicDouble cityTotal = new AtomicDouble();
 
         long dayStart = TimeUtil.getDay() - 365;
-        parser.iterateAll(f -> f > dayStart, new TriConsumer<Long, NationHeader, CsvRow>() {
+        parser.iterateAll(f -> f > dayStart, new BiConsumer<Long, NationHeader>() {
 
             private double[] dailyOld = ResourceType.getBuffer();
             private double[] dailyNew = ResourceType.getBuffer();
             private double citExpenses = 0;
 
             @Override
-            public void accept(Long day, NationHeader header, CsvRow row) {
+            public void accept(Long day, NationHeader header) {
                 if (day != previousDay.get()) {
                     System.out.println(
                             TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day)) + "\t" +

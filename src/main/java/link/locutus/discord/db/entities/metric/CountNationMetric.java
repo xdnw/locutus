@@ -3,13 +3,16 @@ package link.locutus.discord.db.entities.metric;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv3.csv.column.NumberColumn;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -18,7 +21,7 @@ public class CountNationMetric implements IAllianceMetric {
     private final Function<DBNation, Number> countNation;
     private final AllianceMetricMode mode;
     private final Predicate<DBNation> filter;
-    private final Function<NationHeader, Integer> getHeader;
+    private final Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader;
     private Predicate<Integer> allianceFilter;
 
 
@@ -30,15 +33,15 @@ public class CountNationMetric implements IAllianceMetric {
         this(countNation, null, AllianceMetricMode.TOTAL);
     }
 
-    public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, Integer> getHeader) {
+    public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader) {
         this(countNation, getHeader, AllianceMetricMode.TOTAL, f -> true);
     }
 
-    public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, Integer> getHeader, AllianceMetricMode mode) {
+    public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader, AllianceMetricMode mode) {
         this(countNation, getHeader, mode, f -> true);
     }
 
-    public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, Integer> getHeader, AllianceMetricMode mode, Predicate<DBNation> filter) {
+    public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader, AllianceMetricMode mode, Predicate<DBNation> filter) {
         this.countNation = countNation;
         this.getHeader = getHeader;
         this.mode = mode;
@@ -75,16 +78,16 @@ public class CountNationMetric implements IAllianceMetric {
 
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new TriConsumer<Long, NationHeader, ParsedRow>() {
+        importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
             @Override
-            public void accept(Long day, NationHeader header, ParsedRow row) {
-                int position = row.get(header.alliance_position, Integer::parseInt);
-                if (position <= Rank.APPLICANT.id) return;
-                int allianceId = row.get(header.alliance_id, Integer::parseInt);
+            public void accept(Long day, NationHeader header) {
+                Rank position = header.alliance_position.get();
+                if (position.id <= Rank.APPLICANT.id) return;
+                int allianceId = header.alliance_id.get();
                 if (allianceId == 0) return;
                 if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
-                int vmTurns = row.get(header.vm_turns, Integer::parseInt);
-                if (vmTurns > 0) return;
+                Integer vm_turns = header.vm_turns.get();
+                if (vm_turns == null || vm_turns > 0) return;
                 double amt;
                 if (getHeader != null) {
                     amt = ((Number) row.get(getHeader.apply(header), Double::parseDouble)).doubleValue();
@@ -99,7 +102,7 @@ public class CountNationMetric implements IAllianceMetric {
                         countAllianceMetricModeByAA.merge(allianceId, 1, Integer::sum);
                         break;
                     case PER_CITY:
-                        int cities = row.getNumber(header.cities, Integer::parseInt).intValue();
+                        int cities = header.cities.get();
                         countAllianceMetricModeByAA.merge(allianceId, cities, Integer::sum);
                         break;
                     case TOTAL:

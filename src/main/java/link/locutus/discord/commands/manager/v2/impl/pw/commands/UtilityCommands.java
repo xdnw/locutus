@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
@@ -1504,7 +1505,7 @@ public class UtilityCommands {
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
-                      @Default() NationPlaceholder sortBy,
+                      @Default() NationAttributeDouble sortBy,
                       @Arg("List the nations instead of just providing a summary")
                       @Switch("l") boolean list,
                       @Arg("List the alliances of the provided nation")
@@ -1710,16 +1711,28 @@ public class UtilityCommands {
 
             if (listAlliances) {
                 // alliances
-                Set<Integer> alliances = new HashSet<>();
-                for (DBNation nation : nations) {
-                    if (!alliances.contains(nation.getAlliance_id())) {
-                        alliances.add(nation.getAlliance_id());
-                        nationList.add(nation.getAllianceUrlMarkup(true));
-                    }
+                Set<DBAlliance> alliances = nations.stream().map(DBNation::getAlliance).filter(Objects::nonNull).collect(Collectors.toSet());
+                List<DBAlliance> alliancesSorted = new ArrayList<>(alliances);
+                if (sortBy != null) {
+                    alliancesSorted.sort((o1, o2) -> {
+                        double v1 = o1.getTotal(sortBy, null);
+                        double v2 = o2.getTotal(sortBy, null);
+                        return Double.compare(v2, v1);
+                    });
                 }
+                alliancesSorted.forEach(f -> nationList.add(f.getMarkdownUrl()));
             } else {
                 IACategory iaCat = listChannels && db != null ? db.getIACategory() : null;
-                for (DBNation nation : nations) {
+                List<DBNation> nationsSorted = new ArrayList<>(nations);
+                if (sortBy != null) {
+                    nationsSorted.sort((o1, o2) -> {
+                        double v1 = sortBy.apply(o1);
+                        double v2 = sortBy.apply(o2);
+                        return Double.compare(v2, v1);
+                    });
+                }
+
+                for (DBNation nation : nationsSorted) {
                     String nationStr = list ? nation.getNationUrlMarkup(true) : "";
                     if (listMentions) {
                         PNWUser user = nation.getDBUser();
