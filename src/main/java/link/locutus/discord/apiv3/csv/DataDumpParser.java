@@ -134,7 +134,7 @@ public class DataDumpParser {
                 if (nationRows != null) {
                     DataFile<DBNation, NationHeader>.Builder reader = nationFile.reader();
                     if (nationColumns == null) {
-                        reader.all();
+                        reader.all(false);
                     } else {
                         nationColumns.accept(nationFile.getHeader(), reader);
                     }
@@ -143,7 +143,7 @@ public class DataDumpParser {
                 if (cityRows != null) {
                     DataFile<DBCity, CityHeader>.Builder reader = cityFile.reader();
                     if (cityColumns == null) {
-                        reader.all();
+                        reader.all(false);
                     } else {
                         cityColumns.accept(cityFile.getHeader(), reader);
                     }

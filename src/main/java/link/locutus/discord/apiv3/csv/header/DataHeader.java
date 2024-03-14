@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Map;
 
 public interface DataHeader<T> {
@@ -11,6 +12,7 @@ public interface DataHeader<T> {
     default Map<String, ColumnInfo<T, Object>> getHeaders() {
         Map<String, ColumnInfo<T, Object>> headers = new Object2ObjectLinkedOpenHashMap<>();
         for (Field field : getClass().getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) || !field.canAccess(this)) continue;
             try {
                 ColumnInfo<T, Object> column = (ColumnInfo<T, Object>) field.get(this);
                 column.setIndex(-1);

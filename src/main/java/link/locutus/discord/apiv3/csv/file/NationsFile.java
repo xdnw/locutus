@@ -19,7 +19,7 @@ public class NationsFile extends DataFile<DBNation, NationHeader> {
 
     public Map<Integer, DBNationSnapshot> readNations(Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted) throws IOException {
        Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>();
-        this.reader().all().read(new ThrowingConsumer<NationHeader>() {
+        this.reader().all(false).read(new ThrowingConsumer<NationHeader>() {
             @Override
             public void acceptThrows(NationHeader header) throws ParseException {
                 DBNationSnapshot nation = header.getNation(allowedNationIds, allowedAllianceIds, allowVm, allowNoVmCol, allowDeleted);

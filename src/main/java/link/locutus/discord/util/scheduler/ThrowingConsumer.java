@@ -10,7 +10,6 @@ public interface ThrowingConsumer<T> extends Consumer<T> {
         try {
             acceptThrows(elem);
         } catch (final Exception e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }

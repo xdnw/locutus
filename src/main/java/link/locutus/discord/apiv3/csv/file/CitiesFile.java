@@ -18,7 +18,7 @@ public class CitiesFile extends DataFile<DBCity, CityHeader> {
     public Map<Integer, Map<Integer, DBCity>> readCities(Predicate<Integer> allowedNationIds, boolean condense) throws IOException {
         Consumer<DBCity> condenseFunc = condense ? DBCity::condense : city -> {};
         Map<Integer, Map<Integer, DBCity>> result = new Int2ObjectOpenHashMap<>();
-        this.reader().all().read(header -> {
+        this.reader().all(false).read(header -> {
             int nationId = header.nation_id.get();
             if (allowedNationIds.test(nationId)) {
                 DBCity city = header.getCity();

@@ -39,13 +39,13 @@ public class CityHeader implements DataHeader<DBCity> {
         }
     };
 //    public int name; // string ignore
-    public final StringColumn<DBCity> name = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBCity> name = new StringColumn<>(null);
 //    public int capital; // string ignore
-    public final StringColumn<DBCity> capital = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBCity> capital = new StringColumn<>(null);
 //    public int infrastructure; // double
     public final DoubleColumn<DBCity> infrastructure = new DoubleColumn<>(DBCity::setInfra);
 //    public int maxinfra; // double ignore
-    public final DoubleColumn<DBCity> maxinfra = new DoubleColumn<>((_1, _2) -> {});
+    public final DoubleColumn<DBCity> maxinfra = new DoubleColumn<>(null);
 //    public int land; // double
     public final DoubleColumn<DBCity> land = new DoubleColumn<>(DBCity::setLand);
 //    public int oil_power_plants; // int

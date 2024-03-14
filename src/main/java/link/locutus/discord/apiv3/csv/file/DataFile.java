@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -27,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DataFile<T, H extends DataHeader<T>> {
     private final File csvFile;
@@ -87,7 +89,7 @@ public class DataFile<T, H extends DataHeader<T>> {
         try (CsvReader reader = CsvReader.builder().fieldSeparator(',').quoteCharacter('"').build(file.toPath())) {
             try (CloseableIterator<CsvRow> iter = reader.iterator()) {
                 CsvRow header = iter.next();
-                List<String> fields = header.getFields();
+                List<String> fields = header.getFields().stream().map(s -> s.replaceAll("[^a-z_]", "")).toList();
                 onEach.accept(fields, iter);
             }
         } catch (PoliticsAndWarV3.PageError e) {
@@ -148,8 +150,18 @@ public class DataFile<T, H extends DataHeader<T>> {
         List<ColumnInfo<T, Object>> requiredColumns = new ObjectArrayList<>();
         List<ColumnInfo<T, Object>> optionalColumns = new ObjectArrayList<>();
 
-        public Builder all() {
-            optionalColumns.addAll(headers.values());
+        public Builder all(boolean includeNonData) {
+            optionalColumns.addAll(headers.values().stream().filter(f -> includeNonData || !f.isAlwaysSkip()).toList());
+            return this;
+        }
+
+        public Builder required(Function<H, List<ColumnInfo>> columns) {
+            columns.apply(header).forEach(requiredColumns::add);
+            return this;
+        }
+
+        public Builder optional(Function<H, List<ColumnInfo>> columns) {
+            columns.apply(header).forEach(optionalColumns::add);
             return this;
         }
 
@@ -217,9 +229,23 @@ public class DataFile<T, H extends DataHeader<T>> {
                     }
                 }
                 Consumer<DataInputStream> readRow = getDataInputStreamConsumer(presentColumns);
-                while (dis.available() > 0) {
-                    readRow.accept(dis);
-                    onEachRow.accept(header);
+//                int linesRead = 0;
+                try {
+                    while (dis.available() > 0) {
+                        readRow.accept(dis);
+                        onEachRow.accept(header);
+//                        linesRead++;
+                    }
+                } catch (RuntimeException e) {
+                    Throwable root = e;
+                    while (e.getCause() != null && e.getCause() != e) {
+                        root = e.getCause();
+                    }
+                    if (root instanceof EOFException) {
+//                        System.out.println("Read file " + binFile.getName() + " with " + presentColumns.size() + " columns" + " and " + linesRead + " lines");
+                    } else {
+                        throw e;
+                    }
                 }
             }
         }

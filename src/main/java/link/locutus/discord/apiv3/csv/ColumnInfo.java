@@ -8,13 +8,19 @@ import java.io.IOException;
 import java.util.function.BiConsumer;
 
 public abstract class ColumnInfo<P, V> {
+    private final boolean alwaysSkip;
     private int index;
     private final BiConsumer<P, V> setter;
     private V cacheValue;
 
     public ColumnInfo(BiConsumer<P, V> setter) {
         this.index = -1;
-        this.setter = setter;
+        this.setter = setter == null ? (_1, _2) -> {} : setter;
+        this.alwaysSkip = setter == null;
+    }
+
+    public boolean isAlwaysSkip() {
+        return alwaysSkip;
     }
 
     public void setIndex(int index) {

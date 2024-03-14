@@ -46,19 +46,19 @@ public class NationHeader implements DataHeader<DBNation> {
 //    public int continent;
     public final EnumColumn<DBNation, Continent> continent = new EnumColumn<>(Continent.class, DBNation::setContinent, Continent::parseV3);
 //    public int latitude;
-    public final DoubleColumn<DBNation> latitude = new DoubleColumn<>((_1, _2) -> {});
+    public final DoubleColumn<DBNation> latitude = new DoubleColumn<>(null);
 //    public int longitude;
-    public final DoubleColumn<DBNation> longitude = new DoubleColumn<>((_1, _2) -> {});
+    public final DoubleColumn<DBNation> longitude = new DoubleColumn<>(null);
 //    public int leader_title;
-    public final StringColumn<DBNation> leader_title = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBNation> leader_title = new StringColumn<>(null);
 //    public int nation_title;
-    public final StringColumn<DBNation> nation_title = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBNation> nation_title = new StringColumn<>(null);
 //    public int score;
     public final DoubleColumn<DBNation> score = new DoubleColumn<>(DBNation::setScore);
 //    public int population;
-    public final IntColumn<DBNation> population = new IntColumn<>((_1, _2) -> {});
+    public final IntColumn<DBNation> population = new IntColumn<>(null);
 //    public int flag_url;
-    public final StringColumn<DBNation> flag_url = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBNation> flag_url = new StringColumn<>(null);
 //    public int color; // enum NationColor
     public final EnumColumn<DBNation, NationColor> color = new EnumColumn<>(NationColor.class, DBNation::setColor);
 //    public int beige_turns_remaining; // int
@@ -69,19 +69,19 @@ public class NationHeader implements DataHeader<DBNation> {
         }
 });
 //    public int portrait_url; // string ignore
-    public final StringColumn<DBNation> portrait_url = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBNation> portrait_url = new StringColumn<>(null);
 //    public int cities; // int
     public final IntColumn<DBNation> cities = new IntColumn<>(DBNation::setCities);
 //    public int gdp; // long ignore
-    public final LongColumn<DBNation> gdp = new LongColumn<>((_1, _2) -> {});
+    public final LongColumn<DBNation> gdp = new LongColumn<>(null);
 //    public int currency; // string ignore
-    public final StringColumn<DBNation> currency = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBNation> currency = new StringColumn<>(null);
 //    public int wars_won; // int
     public final IntColumn<DBNation> wars_won = new IntColumn<>(DBNation::setWars_won);
 //    public int wars_lost; // int
     public final IntColumn<DBNation> wars_lost = new IntColumn<>(DBNation::setWars_lost);
 //    public int alliance; // string
-    public final StringColumn<DBNation> alliance = new StringColumn<>((_1, _2) -> {});
+    public final StringColumn<DBNation> alliance = new StringColumn<>(null);
 //    public int alliance_id; // int
     public final IntColumn<DBNation> alliance_id = new IntColumn<>(DBNation::setAlliance_id);
 //    public int alliance_position; // int
@@ -103,7 +103,7 @@ public class NationHeader implements DataHeader<DBNation> {
 //    public int war_policy; // enum WarPolicy
     public final EnumColumn<DBNation, WarPolicy> war_policy = new EnumColumn<>(WarPolicy.class, DBNation::setWarPolicy, WarPolicy::parse);
 //    public int projects; // int
-    public final IntColumn<DBNation> projects = new IntColumn<>((_1, _2) -> {});
+    public final IntColumn<DBNation> projects = new IntColumn<>(null);
     //    public int vm_turns;
     public final IntColumn<DBNation> vm_turns = new IntColumn<>((nation, turns) -> {
         if (turns > 0) {
