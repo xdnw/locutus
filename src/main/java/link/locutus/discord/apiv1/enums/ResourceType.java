@@ -78,13 +78,102 @@ public enum ResourceType {
         }
         return null;
     }
+
+    public String getShorthand() {
+        return switch (this) {
+            case MONEY -> "$";
+            case CREDITS -> "CRED";
+            case FOOD -> name();
+            case COAL -> name();
+            case OIL -> name();
+            case URANIUM -> "URA";
+            case LEAD -> "PB";
+            case IRON -> "FE";
+            case BAUXITE -> "BAUX";
+            case GASOLINE -> "GAS";
+            case MUNITIONS -> "MUNI";
+            case STEEL -> "STEEL";
+            case ALUMINUM -> "ALU";
+        };
+    }
+
     public static final ResourceType parse(String input) {
         switch (input.toUpperCase()) {
+            case "$":
+            case "MO":
+            case "MON":
+            case "MONE":
+                return MONEY;
+            case "CR":
+            case "CRE":
+            case "CRED":
+            case "CREDI":
+                return CREDITS;
+            case "F":
+            case "FO":
+            case "FOO":
+                return FOOD;
+            case "CO":
+            case "COA":
+                return COAL;
+            case "O":
+            case "OI":
+                return OIL;
+            case "U":
+            case "UR":
+            case "URA":
+            case "URAN":
+            case "URANI":
+            case "URANIU":
+                return URANIUM;
+            case "L":
+            case "LE":
+            case "LEA":
+            case "PB":
+                return LEAD;
+            case "FE":
+            case "I":
+            case "IR":
+            case "IRO":
+                return IRON;
+            case "B":
+            case "BA":
+            case "BAU":
+            case "BAUX":
+            case "BAUXI":
+            case "BAUXIT":
+                return BAUXITE;
+            case "G":
+            case "GA":
+            case "GAS":
+            case "GASO":
+            case "GASOL":
+            case "GASOLI":
+            case "GASOLIN":
+                return GASOLINE;
+            case "MU":
+            case "MUN":
+            case "MUNI":
+            case "MUNIT":
+            case "MUNITI":
+            case "MUNITIO":
+            case "MUNITION":
+                return MUNITIONS;
+            case "S":
+            case "ST":
+            case "STE":
+            case "STEE":
+                return STEEL;
+            case "AL":
+            case "ALU":
             case "ALUM":
+            case "ALUMI":
+            case "ALUMIN":
+            case "ALUMINU":
+            case "ALUMINI":
+            case "ALUMINIU":
             case "ALUMINIUM":
                 return ALUMINUM;
-            case "URA":
-                return URANIUM;
         }
         return valueOf(input.toUpperCase());
     }
@@ -562,7 +651,7 @@ public enum ResourceType {
             int numResources = 0;
             boolean noCredits = resources[CREDITS.ordinal()] == 0;
             ResourceType latestType = null;
-            for (ResourceType type : ResourceType.values) {
+            for (ResourceType type : link.locutus.discord.apiv1.enums.ResourceType.values) {
                 double amt = resources[type.ordinal()];
                 if (amt > 0) {
                     numResources++;
@@ -599,8 +688,8 @@ public enum ResourceType {
 
         public ArrayNoCredits(double[] loot) {
             FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
+            for (ResourceType type : link.locutus.discord.apiv1.enums.ResourceType.values) {
+                if (type == link.locutus.discord.apiv1.enums.ResourceType.CREDITS) continue;
                 try {
                     IOUtil.writeVarLong(baos, (long) (loot[type.ordinal()] * 100));
                 } catch (IOException e) {
@@ -613,8 +702,8 @@ public enum ResourceType {
         public double[] get() {
             double[] data = ResourceType.getBuffer();
             FastByteArrayInputStream in = new FastByteArrayInputStream(this.data);
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
+            for (ResourceType type : link.locutus.discord.apiv1.enums.ResourceType.values) {
+                if (type == link.locutus.discord.apiv1.enums.ResourceType.CREDITS) continue;
                 try {
                     data[type.ordinal()] = IOUtil.readVarLong(in) / 100d;
                 } catch (IOException e) {
@@ -630,7 +719,7 @@ public enum ResourceType {
 
         public VarArray(double[] loot) {
             FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
-            for (ResourceType type : ResourceType.values) {
+            for (ResourceType type : link.locutus.discord.apiv1.enums.ResourceType.values) {
                 long amtCents = (long) (loot[type.ordinal()] * 100);
                 if (amtCents == 0) continue;
                 try {
@@ -669,7 +758,7 @@ public enum ResourceType {
         }
 
         public ResourceType getType() {
-            return ResourceType.values[(int) (data & 0xF)];
+            return link.locutus.discord.apiv1.enums.ResourceType.values[(int) (data & 0xF)];
         }
         public long getAmountCents() {
             return data >> 4;

@@ -17,12 +17,15 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
@@ -223,5 +226,16 @@ public enum Continent {
     @Command(desc = "Returns the radiation index for this continent")
     public double getRadIndex() {
         return Locutus.imp().getTradeManager().getGlobalRadiation(this);
+    }
+
+    public String getAcronym() {
+        String[] split = name().split("_");
+        return switch (split.length) {
+            case 1 -> name.substring(0, 2);
+            case 2 -> split[0].charAt(0) + "" + split[1].charAt(0);
+            default -> Arrays.stream(split)
+                    .map(s -> s.substring(0, 1))
+                    .collect(Collectors.joining());
+        };
     }
 }
