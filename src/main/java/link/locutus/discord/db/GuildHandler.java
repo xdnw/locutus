@@ -2465,8 +2465,7 @@ public class GuildHandler {
                         if (!sentNoIAMessage) {
                             try {
                                 sentNoIAMessage = true;
-                                RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently offline (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)\n" +
-                                        "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
+                                RateLimitUtil.queueWhenFree(output.sendMessage("No `INTERNAL_AFFAIRS` is currently online (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)"));
                             } catch (Throwable e) {
                                 db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                                 e.printStackTrace();
@@ -2494,6 +2493,7 @@ public class GuildHandler {
                 public void runUnsafe() {
                     try {
                         JsonObject response = db.sendRecruitMessage(current);
+                        sentNoIAMessage = false;
                         RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
                     } catch (Throwable e) {
                         try {
