@@ -21,10 +21,7 @@ public class WikiFindingTargetsPage extends BotWikiGen {
 //                war find raid
 //                loot
 //                unprotected
-            "# Target alerts",
-//                WAR_ALERT_OPT_OUT
-//                BOUNTY_ALERT
-                // TODO bank alerts
+                // TODO spy target commands
             "# Target embeds",
                 commandMarkdownSpoiler(CM.embed.template.guerilla.cmd),
                 commandMarkdownSpoiler(CM.embed.template.war_contested_range.cmd),
@@ -39,12 +36,6 @@ public class WikiFindingTargetsPage extends BotWikiGen {
                 linkPage("blitzes")
         );
        /*
-       Enemies coalition
-
-
-
-       TODO /war find target commands
-       TODO spy target commands
 
        TODO embed templates that find targets
 

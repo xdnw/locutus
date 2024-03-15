@@ -922,7 +922,6 @@ public class DataUtil {
                     ResourceType type = entry.getKey();
                     Map<Integer, Integer> counts = ArrayUtil.sortMapKeys(entry.getValue(), true);
                     for (Map.Entry<Integer, Integer> entry3 : counts.entrySet()) {
-                        type.getBaseProduction()
                         System.out.println(continent.name() + "\t" + type + "\t" + entry3.getKey() + "\t" + entry3.getValue());
                     }
 
