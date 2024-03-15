@@ -70,6 +70,7 @@ public class WarUpdateProcessor {
                     bounty.toCard(channel, false);
 
                     Role bountyRole = Roles.BOUNTY_ALERT.toRole(guild);
+                    Role optOut = Roles.BOUNTY_ALERT_OPT_OUT.toRole(guild);
                     if (bountyRole == null) return;
                     List<Member> members = guild.getMembersWithRoles(bountyRole);
                     StringBuilder mentions = new StringBuilder();
@@ -81,6 +82,7 @@ public class WarUpdateProcessor {
                     double maxScore = enemy.getScore() / 0.75;
 
                     for (Member member : members) {
+                        if (member.getRoles().contains(optOut)) continue;
                         DBNation nation = DiscordUtil.getNation(member.getUser());
                         if (nation == null) continue;
 
@@ -88,7 +90,7 @@ public class WarUpdateProcessor {
                             mentions.append(member.getAsMention() + " ");
                         }
                     }
-                    if (mentions.length() != 0) {
+                    if (!mentions.isEmpty()) {
                         RateLimitUtil.queueWhenFree(channel.sendMessage(mentions));
                     }
                 } catch (Throwable ignore) {

@@ -72,7 +72,7 @@ public enum Roles {
     },
 
     INTERNAL_AFFAIRS(14, "Access to IA related commands", GuildKey.ALLIANCE_ID),
-    INTERNAL_AFFAIRS_STAFF(15, "Role for some basic IA commands", GuildKey.ALLIANCE_ID) {
+    INTERNAL_AFFAIRS_STAFF(15, "Role for some basic IA commands, such as accepting applicants", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -90,7 +90,7 @@ public enum Roles {
     APPLICANT(16, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
     INTERVIEWER(17, "Role to get pinged when a user requests an interview to join the alliance", GuildKey.INTERVIEW_PENDING_ALERTS),
     MENTOR(18, "Role for mentoring applicants who have completed their interview", GuildKey.INTERVIEW_PENDING_ALERTS),
-    GRADUATED(19, "Members with this role will have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
+    GRADUATED(19, "Members with this role can have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
         @Override
         public boolean has(Member member) {
             return super.has(member)
@@ -116,6 +116,7 @@ public enum Roles {
     BEIGE_ALERT_OPT_OUT(23, "Overrides the beige alert role", GuildKey.BEIGE_ALERT_CHANNEL),
 
     BOUNTY_ALERT(24, "Gets pings when bounties are placed in their score range"),
+    BOUNTY_ALERT_OPT_OUT(38, "Opt out of received bounty alerts", GuildKey.BOUNTY_ALERT_CHANNEL),
 //    MAP_FULL_ALERT("Gets pinged when you are on 12 MAPs in an offensive war", GuildKey.MEMBER_AUDIT_ALERTS),
 
 //    WAR_ALERT("Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
@@ -132,7 +133,7 @@ public enum Roles {
     UNBLOCKADED_ALERT(32, "Gets a ping when you are unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
 
     UNBLOCKADED_GOV_ROLE_ALERT(33, "Pings this role when any member is fully unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
-    ESCROW_GOV_ALERT(33, "Pings this role when any member is fully unblockaded and has an escrow balance", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
+    ESCROW_GOV_ALERT(39, "Pings this role when any member is fully unblockaded and has an escrow balance", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
 
     TREASURE_ALERT(34, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),
     TREASURE_ALERT_OPT_OUT(35, "Does not receive treasure alerts (even with the treasure alert role)", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
@@ -141,7 +142,7 @@ public enum Roles {
 
     GROUND_MILITARIZE_ALERT(37, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS, "GROUND_MILITARIZE_ROLE"),
 
-    AI_COMMAND_ACCESS(37, "Access to AI commands on the discord server"),
+    AI_COMMAND_ACCESS(40, "Access to AI commands on the discord server"),
 
 
     ;
@@ -204,7 +205,9 @@ public enum Roles {
         if (ROLES_ID_MAP.isEmpty()) {
             synchronized (ROLES_ID_MAP) {
                 for (Roles role : values) {
-                    ROLES_ID_MAP.put(role.getId(), role);
+                    if (ROLES_ID_MAP.put(role.getId(), role) != null) {
+                        throw new IllegalStateException("Duplicate role id: " + role.getId());
+                    }
                 }
             }
         }

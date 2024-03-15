@@ -97,7 +97,7 @@ public class WikiGenHandler {
         // Grant templates
         pages.add(new WikiGrantTemplate(manager));
 //        //Interview System
-        pages.add(new WikiInterviewPage(manager)); // <--- 1
+        pages.add(new WikiInterviewPage(manager));
         //Recruitment System
         pages.add(new WikiRecruitmentPage(manager));
 //        //DNR system
@@ -145,18 +145,6 @@ public class WikiGenHandler {
         pages.add(new WikiSelfRoles(manager)); // <--- 10
 
         pages.add(new WikiAiTools(manager)); // <--- 10
-
-        // # Delegate servers // <---
-        // war rooms delegate
-        // war alerts delegate
-        // copy channel id
-        // fa delegate
-
-        // # Self roles // <---
-        // /settings_role ASSIGNABLE_ROLES
-        // and the commansd role self
-        // add role to all members
-        // mask command?
         return pages;
     }
 

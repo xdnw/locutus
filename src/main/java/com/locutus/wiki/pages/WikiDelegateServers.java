@@ -10,6 +10,10 @@ public class WikiDelegateServers extends BotWikiGen {
 
     @Override
     public String generateMarkdown() {
+        // war rooms delegate
+        // war alerts delegate
+        // copy channel id
+        // fa delegate
         return build(
 
         );
