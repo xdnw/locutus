@@ -69,7 +69,6 @@ public class GPTModerator implements IModerator{
     }
 
     public JSONObject checkModeration(List<String> inputs) {
-        if (true) throw new IllegalArgumentException("Test");
         String url = "https://api.openai.com/v1/moderations";
         String apiKey = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY;
 

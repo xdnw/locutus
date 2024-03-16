@@ -534,7 +534,7 @@ public class GPTCommands {
     public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-            return pwGpt.getClosestCommands(store, search, 100);
+            return pwGpt.getClosestCommands(store, search, 100, true);
         };
 
         Function<ParametricCallable, String> getMention = command -> {
@@ -566,7 +566,7 @@ public class GPTCommands {
     public String find_placeholder(NationPlaceholders placeholders, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-            return pwGpt.getClosestNationAttributes(store, search, 100);
+            return pwGpt.getClosestNationAttributes(store, search, 100, true);
         };
 
         Function<ParametricCallable, String> getMention = command -> {
