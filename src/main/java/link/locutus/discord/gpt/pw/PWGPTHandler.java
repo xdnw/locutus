@@ -287,7 +287,7 @@ public class PWGPTHandler {
 
     public List<Parser> getClosestArguments(ValueStore store, String input, int top) {
         EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Argument);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource), true);
         List<Parser> commands = new ArrayList<>();
         ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) adapterMap2.get(commandSource);
         for (EmbeddingInfo info : closest) {
@@ -299,7 +299,7 @@ public class PWGPTHandler {
 
     public List<GuildSetting> getClosestSettings(ValueStore store, String input, int top) {
         EmbeddingSource settingSource = sourceMap.get(EmbeddingType.Configuration);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(settingSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(settingSource), true);
         List<GuildSetting> settings = new ArrayList<>();
         SettingEmbeddingAdapter adapter = (SettingEmbeddingAdapter) adapterMap2.get(settingSource);
         for (EmbeddingInfo info : closest) {

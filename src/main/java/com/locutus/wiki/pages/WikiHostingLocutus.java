@@ -62,7 +62,7 @@ public class WikiHostingLocutus extends BotWikiGen {
                             
                 To run the Locutus `.jar` file, you need to have Java installed on your system. Follow these steps:
                             
-                1. Download and install Java. You will need Java 17 or a newer version. You can download Java from the [Oracle website](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html).
+                1. Download and install Java. You will need Java 21 or a newer version. You can download Java from Oracle. I use Oracle's GraalVM for its scripting and profiling support [GraalVM Download](https://www.graalvm.org/downloads/).
                    - Note: If you encounter an `UnsupportedClassVersionError`, it means you are using an outdated Java version. Install Java 17 and ensure it is
                  set as the default version on your system. You can refer to this guide on [how to set the default Java version in Windows](https://superuser.com/a/1057552).
                 2. Open a command prompt or terminal.
