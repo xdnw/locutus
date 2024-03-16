@@ -252,18 +252,18 @@ public class PWGPTHandler {
     public List<ParametricCallable> getClosestCommands(ValueStore store, ParametricCallable command, int top) {
         CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Command));
         String text = adapter.getDescription(command);
-        return getClosestCommands(store, text, top);
+        return getClosestCommands(store, text, top, false);
     }
 
     public List<ParametricCallable> getClosestNationAttributes(ValueStore store, ParametricCallable cmd, int top) {
         NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Nation_Statistic));
         String text = adapter.getDescription(cmd);
-        return getClosestNationAttributes(store, text, top);
+        return getClosestNationAttributes(store, text, top, false);
     }
 
-    public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top) {
+    public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top, boolean moderate) {
         EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Command);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource), false);
         List<ParametricCallable> commands = new ArrayList<>();
         CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(commandSource);
         for (EmbeddingInfo info : closest) {
@@ -273,9 +273,9 @@ public class PWGPTHandler {
         return commands;
     }
 
-    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, String input, int top) {
+    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, String input, int top, boolean moderate) {
         EmbeddingSource typeSource = sourceMap.get(EmbeddingType.Nation_Statistic);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(typeSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(typeSource), false);
         List<ParametricCallable> list = new ArrayList<>();
         NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(typeSource);
         for (EmbeddingInfo info : closest) {
@@ -319,7 +319,7 @@ public class PWGPTHandler {
         return adapterMap2.get(source);
     }
 
-    public List<EmbeddingInfo> getClosest(ValueStore store, String input, int top, Set<EmbeddingSource> allowedSources) {
+    public List<EmbeddingInfo> getClosest(ValueStore store, String input, int top, Set<EmbeddingSource> allowedSources, boolean moderate) {
         EmbeddingType userInput = EmbeddingType.User_Input;
         EmbeddingSource userInputSrc = sourceMap.get(userInput);
 
@@ -336,7 +336,7 @@ public class PWGPTHandler {
                 }
                 return true;
             }
-        }, handler::checkModeration);
+        }, moderate ? handler::checkModeration : null);
         return result;
     }
 
