@@ -233,10 +233,13 @@ public class PlaceholdersMap {
     }
 
     public static <T> Set<T> getSelection(Placeholders<T> instance, ValueStore store, String input) {
+        return getSelection(instance, store, input, true);
+    }
+    public static <T> Set<T> getSelection(Placeholders<T> instance, ValueStore store, String input, boolean throwError) {
         Class<T> type = instance.getType();
         boolean isSelection = false;
         String inputAlias = input;
-        if (input.startsWith("$")) {
+        if (input.startsWith("$") && input.length() > 1) {
             isSelection = true;
             inputAlias = input.substring(1);
         } else if (input.startsWith("select:")) {
@@ -256,6 +259,13 @@ public class PlaceholdersMap {
                 if (selection != null) {
                     String query = selection.getSelection();
                     return instance.parseSet(store, query);
+                }
+                if (throwError) {
+                    Map<String, SelectionAlias<T>> options = db.getSheetManager().getSelectionAliases(type);
+                    if (options.isEmpty()) {
+                        throw new IllegalArgumentException("No selection aliases for type: `" + type.getSimpleName() + "` Create one with `/selection_alias add " + getClassName(type) + "`");
+                    }
+                    throw new IllegalArgumentException("Invalid selection alias: `" + inputAlias + "`. Options: `" + StringMan.join(options.keySet(), "`, `") + "` (use `$` or `select:` as the prefix). See also: " + CM.selection_alias.list.cmd.toSlashMention());
                 }
             }
         }
@@ -370,6 +380,7 @@ public class PlaceholdersMap {
 
     private Placeholders<NationOrAlliance> createNationOrAlliances() {
         NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+        AlliancePlaceholders alliancePlaceholders = (AlliancePlaceholders) get(DBAlliance.class);
         return new Placeholders<NationOrAlliance>(NationOrAlliance.class, store, validators, permisser) {
             @Override
             public String getDescription() {
@@ -383,8 +394,6 @@ public class PlaceholdersMap {
 
             @Override
             public Set<NationOrAlliance> parseSet(ValueStore store2, String input) {
-                Set<NationOrAlliance> selection = getSelection(this, store, input);
-                    if (selection != null) return selection;
                 if (input.contains("#")) {
                     return (Set) nationPlaceholders.parseSet(store2, input);
                 }
@@ -393,6 +402,12 @@ public class PlaceholdersMap {
 
             @Override
             protected Set<NationOrAlliance> parseSingleElem(ValueStore store, String input) {
+                Set<DBNation> selection2 = getSelection(nationPlaceholders, store, input, false);
+                if (selection2 != null) return (Set) selection2;
+                Set<DBAlliance> selection3 = getSelection(alliancePlaceholders, store, input, false);
+                if (selection3 != null) return (Set) selection3;
+                Set<NationOrAlliance> selection = getSelection(this, store, input, true);
+                if (selection != null) return selection;
                 if (SpreadSheet.isSheet(input)) {
                     return SpreadSheet.parseSheet(input, List.of("nation", "alliance"), true, (type, str) -> {
                         switch (type) {
