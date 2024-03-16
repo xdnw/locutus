@@ -4,13 +4,18 @@ import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.account.question.Interview;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.guild.GuildCategorySetting;
 import link.locutus.discord.db.guild.GuildChannelSetting;
 import link.locutus.discord.db.guild.GuildResourceSetting;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.offshore.test.IACategory;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class WikiInterviewPage extends BotWikiGen {
     public WikiInterviewPage(CommandManager2 manager) {
@@ -20,57 +25,64 @@ public class WikiInterviewPage extends BotWikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-//                Applicant role
-//                """
-//                        - Interview alerts and tickets
-//                        - Sorted interview categories
-//                        - Interview creation prompts
-//                        - Mentor/Mentee management and auditing
-//                        - Referral, interviewing and mentoring rewards
-//                        """,
-//                        - Make a self role
-//                        - (how to do that via locutus)
-//        - OR ME6 example
-//
-//        copypasta interview
-//
-//
-//
-//
-//        Related roles
-//        INTERNAL_AFFAIRS_STAFF
-//                APPLICANT
-//        INTERVIEWER
-//                MENTOR
-//        GRADUATED
-//
-//        Interview category (name, how many to have etc.)
-//        - Categories
-//
+            "# Prerequisites",
+            "- Register the server to an alliance: " + CM.settings_default.registerAlliance.cmd.toString(),
+            "## Create discord roles",
+            "Register a role using: " + CM.role.setAlias.cmd.create("LOCUTUS_ROLE", "@discordRole", null, null),
+            "The following Locutus roles can be set",
+            "- " + Roles.APPLICANT.toString(),
+            "- " + Roles.GRADUATED.toString(),
+            "- " + Roles.INTERVIEWER.toString(),
+            "- " + Roles.MENTOR.toString(),
+            "- " + Roles.INTERNAL_AFFAIRS_STAFF.toString(),
+            "## Create `interview` category",
+            "Create a category (or several) that start with `interview` or `interview-`.",
+            "The following keywords are supported for sorting (i.e. `interview-KEYWORD`):",
+            Arrays.stream(IACategory.SortedCategory.values()).map(f -> "- `" + f.name() +"`: `" + f.getDesc() + "`").collect(Collectors.joining("\n")),
+            "Sort with: " + CM.interview.sortInterviews.cmd.toString(),
+            "### Set category management channels",
+                commandMarkdownSpoiler(CM.settings_interview.INTERVIEW_PENDING_ALERTS.cmd),
+                commandMarkdownSpoiler(CM.settings_interview.ARCHIVE_CATEGORY.cmd),
+                commandMarkdownSpoiler(CM.settings_interview.INTERVIEW_INFO_SPAM.cmd),
+            "# Set interview message (optional)",
+            "Such as for the initial questions or instructions",
+            commandMarkdownSpoiler(CM.interview.questions.set.cmd),
+            commandMarkdownSpoiler(CM.interview.questions.view.cmd),
+            "# How do applicant's apply?",
+            "The command to open an interview is " + CM.interview.create.cmd.toString(),
+            "To bind this command to a button, see: " + linkPage("embeds#create-an-embed-with-title-and-description"),
+            "OR use a discord bot such as MEE6 to give an applicant role",
+            "# Managing channels",
+            "You can manually delete channels, or use commands",
+            commandMarkdownSpoiler(CM.interview.syncInterviews.cmd),
+            commandMarkdownSpoiler(CM.channel.delete.current.cmd),
+            commandMarkdownSpoiler(CM.channel.delete.inactive.cmd),
+            "## Change an interview's category",
+            commandMarkdownSpoiler(CM.interview.iacat.cmd),
+            "## Listing channels",
+            commandMarkdownSpoiler(CM.interview.iachannels.cmd),
+            "# Managing mentees",
+            commandMarkdownSpoiler(CM.interview.setReferrer.cmd),
+            commandMarkdownSpoiler(CM.interview.mymentees.cmd),
+            commandMarkdownSpoiler(CM.interview.mentee.cmd),
+            commandMarkdownSpoiler(CM.interview.mentor.cmd),
+            commandMarkdownSpoiler(CM.interview.listMentors.cmd),
+            commandMarkdownSpoiler(CM.interview.unassignMentee.cmd),
+            "# Mentee Announcements",
+            "1. Create a channel and manually ping the applicant role",
+            "2. Use the announce command (if opsec is needed): " + linkPage("announcements_and_opsec"),
+            "3. Send message in interview channels: ",
+                commandMarkdownSpoiler(CM.interview.interviewMessage.cmd)
+
+//                "# Reward mentors",
+//                // TODO broken
+//                // This is only if you use the sorted categories listed above
+//                commandMarkdownSpoiler(CM.settings_reward.REWARD_REFERRAL.cmd),
+//                // runs on sort command
+//                commandMarkdownSpoiler(CM.settings_reward.REWARD_MENTOR.cmd),
 //                /interview adRanking
-//                /interview create
-//                /interview iacat
-//                /interview iachannels
-//                /interview incentiveRanking
-//                /interview interviewMessage
-//                /interview listMentors
-//                /interview mentee
-//                /interview mentor
-//                /interview mymentees
-//                /interview recruitmentRankings
-//                /interview setReferrer
-//                /interview sortInterviews
-//                /interview syncInterviews
-//                /interview unassignMentee
+                //                /interview recruitmentRankings
 //
-//
-//        public static GuildSetting<MessageChannel> INTERVIEW_INFO_SPAM = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
-//            public static GuildSetting<MessageChannel> INTERVIEW_PENDING_ALERTS = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
-//                public static GuildSetting<Category> ARCHIVE_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW) {
-//
-//                    public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {
-//                        public static GuildSetting<Map<ResourceType, Double>> REWARD_MENTOR = new GuildResourceSetting(GuildSettingCategory.REWARD) {
-//                        }
         );
     }
 

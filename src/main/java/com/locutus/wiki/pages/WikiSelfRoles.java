@@ -10,6 +10,10 @@ public class WikiSelfRoles extends BotWikiGen {
 
     @Override
     public String generateMarkdown() {
+        // /settings_role ASSIGNABLE_ROLES
+        // and the commansd role self
+        // add role to all members
+        // mask command?
         return build(
 
         );

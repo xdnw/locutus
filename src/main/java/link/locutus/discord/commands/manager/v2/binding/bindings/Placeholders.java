@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -729,7 +730,8 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     private TypedFunction<T, ?> format(ValueStore store, ParametricCallable command, Map<String, TypedFunction<T, ?>> arguments) {
-        Map<String, Object> resolvedArgs = new LinkedHashMap<>();
+        Map<String, Object> resolvedArgs = new Object2ObjectLinkedOpenHashMap<>();
+        Map<T, Map<String, Object>> resolvedByEntity = new Object2ObjectLinkedOpenHashMap<>();
         boolean isResolved = true;
         for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
             TypedFunction<T, ?> func = entry.getValue();
@@ -742,15 +744,23 @@ public abstract class Placeholders<T> extends BindingHelper {
 
         boolean finalIsResolved = isResolved;
         Function<T, Object[]> resolved = f -> {
+            Map<String, Object> finalArgs;
             if (!finalIsResolved) {
-                for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
-                    String argName = entry.getKey();
-                    if (!resolvedArgs.containsKey(argName)) {
-                        resolvedArgs.put(argName, entry.getValue().applyCached(f));
+                finalArgs = resolvedByEntity.get(f);
+                if (finalArgs == null) {
+                    finalArgs = new Object2ObjectLinkedOpenHashMap<>();
+                    resolvedByEntity.put(f, finalArgs);
+                    for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
+                        String argName = entry.getKey();
+                        if (!finalArgs.containsKey(argName)) {
+                            finalArgs.put(argName, entry.getValue().applyCached(f));
+                        }
                     }
                 }
+            } else {
+                finalArgs = resolvedArgs;
             }
-            return command.parseArgumentMap2(resolvedArgs, store, validators, permisser, true);
+            return command.parseArgumentMap2(finalArgs, store, validators, permisser, true);
         };
         StringBuilder full = new StringBuilder(command.getPrimaryCommandId());
         if (!arguments.isEmpty()) {
