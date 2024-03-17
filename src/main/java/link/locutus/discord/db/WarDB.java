@@ -574,7 +574,9 @@ public class WarDB extends DBMainV2 {
             BiFunction<DBWar, byte[], AbstractCursor> parent = loader;
             loader = (war, data) -> {
                 AbstractCursor cursor = parent.apply(war, data);
-                forEachAttack.accept(cursor);
+                if (cursor != null) {
+                    forEachAttack.accept(cursor);
+                }
                 return cursor;
             };
         }
@@ -586,7 +588,9 @@ public class WarDB extends DBMainV2 {
             BiFunction<DBWar, byte[], AbstractCursor> parent = loader;
             loader = (war, data) -> {
                 AbstractCursor cursor = parent.apply(war, data);
-                forEachAttack.accept(war, cursor);
+                if (cursor != null) {
+                    forEachAttack.accept(war, cursor);
+                }
                 return cursor;
             };
         }
