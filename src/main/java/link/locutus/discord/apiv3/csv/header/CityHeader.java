@@ -135,7 +135,7 @@ public class CityHeader extends DataHeader<DBCity> {
         city.setInfra(this.infrastructure.get());
         city.setLand(this.land.get());
 
-        byte[] buildings = new byte[Buildings.size()];
+        byte[] buildings = city.buildings3;
         buildings[Buildings.OIL_POWER.ordinal()] += this.oil_power_plants.get();
         buildings[Buildings.WIND_POWER.ordinal()] += this.wind_power_plants.get();
         buildings[Buildings.COAL_POWER.ordinal()] += this.coal_power_plants.get();
@@ -163,7 +163,6 @@ public class CityHeader extends DataHeader<DBCity> {
         buildings[Buildings.FACTORY.ordinal()] += this.factories.get();
         buildings[Buildings.HANGAR.ordinal()] += this.hangars.get();
         buildings[Buildings.DRYDOCK.ordinal()] += this.drydocks.get();
-        city.buildings3 = buildings;
         return cached = city;
     }
 }

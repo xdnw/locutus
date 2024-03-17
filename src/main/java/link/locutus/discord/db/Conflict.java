@@ -160,7 +160,7 @@ public class Conflict {
                 int allianceId = header.alliance_id.get();
                 if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) return;
             }
-            long currentTimeMs = TimeUtil.getTimeFromDay(day);
+//            long currentTimeMs = TimeUtil.getTimeFromDay(day);
             DBNationSnapshot nation = header.getNation(f -> true, f -> true, false, true, true);
             if (nation != null) {
                 nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
@@ -186,7 +186,7 @@ public class Conflict {
             for (int id : nationIds) {
                 DBNation nation = DBNation.getById(id);
                 if (nation != null) {
-                latest.put(id, nation);
+                    latest.put(id, nation);
                 }
             }
             long nextDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + 11));
