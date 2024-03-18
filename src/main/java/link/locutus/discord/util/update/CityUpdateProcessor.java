@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -123,7 +124,7 @@ public class CityUpdateProcessor {
                 afterAvg[i] /= beforeByCity.size();
             }
 
-            boolean isGov = nation.getPositionEnum().id > Rank.MEMBER.id;
+            boolean isGov = nation.getPositionEnum().id > Rank.MEMBER.id || nation.hasPermission(AlliancePermission.WITHDRAW_BANK);
             int reqRank = Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X;
 
             DBAlliance alliance = nation.getAlliance();
