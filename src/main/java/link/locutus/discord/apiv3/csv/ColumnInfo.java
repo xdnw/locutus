@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv3.csv;
 
 import de.siegmar.fastcsv.reader.CsvRow;
+import link.locutus.discord.apiv3.csv.column.BooleanColumn;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 
 import java.io.DataInputStream;
@@ -15,6 +16,7 @@ public abstract class ColumnInfo<P, V> {
     private int offset;
     private final BiConsumer<P, V> setter;
     protected V cacheValue;
+    private String[] aliases;
 
     public ColumnInfo(DataHeader<P> header, BiConsumer<P, V> setter) {
         this.header = header;
@@ -77,5 +79,14 @@ public abstract class ColumnInfo<P, V> {
         if (tmp != null) {
             setter.accept(parent, tmp);
         }
+    }
+
+    public <T extends ColumnInfo<P, V>> T alias(String... s) {
+        this.aliases = s;
+        return (T) this;
+    }
+
+    public String[] getAliases() {
+        return aliases;
     }
 }

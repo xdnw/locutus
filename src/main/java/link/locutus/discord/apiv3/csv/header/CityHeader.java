@@ -115,7 +115,7 @@ public class CityHeader extends DataHeader<DBCity> {
         }
     };
 //    public int powered;  // boolean
-    public final BooleanColumn<DBCity> powered = new BooleanColumn<>(this, DBCity::setPowered);
+    public final BooleanColumn<DBCity> powered = new BooleanColumn<>(this, DBCity::setPowered).alias("");
 
     private DBCity cached;
 

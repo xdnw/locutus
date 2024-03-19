@@ -2155,7 +2155,7 @@ public class UtilityCommands {
         BufferedImage image = ImageUtil.readImage(imageUrl);
         if (color == null) color = ImageUtil.getDefaultWatermarkColor(image);
         byte[] bytes = ImageUtil.addWatermark(image, watermarkText, color, opacityF, font, repeat);
-        io.create().image("watermark.png", bytes).send();
+        io.create().image("locutus-watermark.png", bytes).send();
         return null;
     }
 
@@ -2167,7 +2167,6 @@ public class UtilityCommands {
                            @Switch("d") boolean openMarkets,
                            @Switch("m") MMRInt mmr,
                            @Switch("l") Double land
-
     ) {
         DBNation nation = DBNation.getById(city.getNationId());
         if (nation == null) return "Unknown nation: `" + city.nation_id + "`";

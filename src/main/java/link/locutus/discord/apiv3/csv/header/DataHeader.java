@@ -36,6 +36,12 @@ public abstract class DataHeader<T> {
                 column.setIndex(-1, -1);
                 column.setCachedValue(null);
                 headers.put(field.getName(), column);
+                String[] aliases = column.getAliases();
+                if (aliases != null) {
+                    for (String alias : aliases) {
+                        headers.put(alias, column);
+                    }
+                }
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
