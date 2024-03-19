@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.locutus.wiki.game.PWWikiUtil;
+import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -52,7 +52,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;

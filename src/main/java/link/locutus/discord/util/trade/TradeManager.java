@@ -7,9 +7,11 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.trade.*;
@@ -59,14 +61,14 @@ public class TradeManager {
 
     private double[] gameAvg;
     private long gameAvgUpdated = 0;
-    private final link.locutus.discord.db.TradeDB tradeDb;
+    private final TradeDB tradeDb;
 
     private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
 
     private Map<ResourceType, Queue<TradeDB.BulkTradeOffer>> offersByResource = new ConcurrentHashMap<>();
 
     public TradeManager() throws SQLException, ClassNotFoundException {
-        this.tradeDb = new link.locutus.discord.db.TradeDB();
+        this.tradeDb = new TradeDB();
         loadBulkOffers();
     }
 
@@ -516,70 +518,80 @@ public class TradeManager {
     }
 
     public Map<Long, Long> getVolumeHistoryFull(ResourceType type) {
-        Map<Long, Long> result = TimeUtil.runDayTask("vmap." + type.ordinal(), new Function<Long, Map<Long, Long>>() {
-            @Override
-            public Map<Long, Long> apply(Long aLong) {
-                try {
-                    String url = "" + Settings.INSTANCE.PNW_URL() + "/world-graphs/graphID=%s";
-                    String html = FileUtil.readStringFromURL(PagePriority.WORLD_GRAPHS, String.format(url, type.getGraphId()));
-
-                    String var = String.format("total_%s_over_time_Trace1", type.name().toLowerCase());
-                    int varI = html.indexOf(var);
-                    int start = html.indexOf("{", varI);
-                    int end = StringMan.findMatchingBracket(html, start);
-                    String json = html.substring(start, end + 1);
-                    JsonParser jsonParser = new JsonParser();
-
-                    JsonObject data = jsonParser.parse(json).getAsJsonObject();
-                    JsonArray dates = data.getAsJsonArray("x");
-                    JsonArray totals = data.getAsJsonArray("y");
-
-                    Map<Long, Long> result = new Long2LongLinkedOpenHashMap();
-
-
-
-                    for (int i = 0; i < totals.size(); i++) {
-                        long volume = Long.parseLong(totals.get(i).getAsString());
-                        long date = TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(dates.get(i).getAsString()).getTime();
-                        result.put(date, volume);
-                    }
-
-                    // save
-                    {
-                        long[] resultArr = new long[result.size() * 2];
-                        int i = 0;
-                        for (Map.Entry<Long, Long> entry : result.entrySet()) {
-                            resultArr[i] = entry.getKey();
-                            resultArr[i + result.size()] = entry.getValue();
-                            i++;
-                        }
-                        byte[] array = ArrayUtil.toByteArray(resultArr);
-                        Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RESOURCE_VOLUME_TYPE, type.ordinal(), array);
-                    }
-
-                    return result;
-                } catch (IOException | ParseException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        if (result == null) {
-            ByteBuffer data = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RESOURCE_VOLUME_TYPE, type.ordinal());
-            long[] resultArr = ArrayUtil.toLongArray(data.array());
-            result = new Long2LongLinkedOpenHashMap();
-            int len2 = resultArr.length / 2;
-            for (int i = 0; i < len2; i++) {
-                result.put(resultArr[i], resultArr[i + len2]);
-            }
+        NationDB nationDB = Locutus.imp().getNationDB();
+        OrbisMetric.update(nationDB);
+        OrbisMetric metric = OrbisMetric.fromResource(type);
+        Map<Long, Double> values = nationDB.getMetrics(metric, 0, Long.MAX_VALUE);
+        // remap to long
+        Map<Long, Long> result = new Long2LongLinkedOpenHashMap();
+        for (Map.Entry<Long, Double> entry : values.entrySet()) {
+            result.put(entry.getKey(), entry.getValue().longValue());
         }
-        return result;
+        return ArrayUtil.sortMapKeys(result, true);
+//        Map<Long, Long> result = TimeUtil.runDayTask("vmap." + type.ordinal(), new Function<Long, Map<Long, Long>>() {
+//            @Override
+//            public Map<Long, Long> apply(Long aLong) {
+//                try {
+//                    String url = "" + Settings.INSTANCE.PNW_URL() + "/world-graphs/graphID=%s";
+//                    String html = FileUtil.readStringFromURL(PagePriority.WORLD_GRAPHS, String.format(url, type.getGraphId()));
+//
+//                    String var = String.format("total_%s_over_time_Trace1", type.name().toLowerCase());
+//                    int varI = html.indexOf(var);
+//                    int start = html.indexOf("{", varI);
+//                    int end = StringMan.findMatchingBracket(html, start);
+//                    String json = html.substring(start, end + 1);
+//                    JsonParser jsonParser = new JsonParser();
+//
+//                    JsonObject data = jsonParser.parse(json).getAsJsonObject();
+//                    JsonArray dates = data.getAsJsonArray("x");
+//                    JsonArray totals = data.getAsJsonArray("y");
+//
+//                    Map<Long, Long> result = new Long2LongLinkedOpenHashMap();
+//
+//
+//
+//                    for (int i = 0; i < totals.size(); i++) {
+//                        long volume = Long.parseLong(totals.get(i).getAsString());
+//                        long date = TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(dates.get(i).getAsString()).getTime();
+//                        result.put(date, volume);
+//                    }
+//
+//                    // save
+//                    {
+//                        long[] resultArr = new long[result.size() * 2];
+//                        int i = 0;
+//                        for (Map.Entry<Long, Long> entry : result.entrySet()) {
+//                            resultArr[i] = entry.getKey();
+//                            resultArr[i + result.size()] = entry.getValue();
+//                            i++;
+//                        }
+//                        byte[] array = ArrayUtil.toByteArray(resultArr);
+//                        Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RESOURCE_VOLUME_TYPE, type.ordinal(), array);
+//                    }
+//
+//                    return result;
+//                } catch (IOException | ParseException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+//        });
+//        if (result == null) {
+//            ByteBuffer data = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RESOURCE_VOLUME_TYPE, type.ordinal());
+//            long[] resultArr = ArrayUtil.toLongArray(data.array());
+//            result = new Long2LongLinkedOpenHashMap();
+//            int len2 = resultArr.length / 2;
+//            for (int i = 0; i < len2; i++) {
+//                result.put(resultArr[i], resultArr[i + len2]);
+//            }
+//        }
+//        return result;
     }
 
     public long[] getVolumeHistory(ResourceType type) {
         return getVolumeHistoryFull(type).values().stream().mapToLong(i -> i).toArray();
     }
 
-    public link.locutus.discord.db.TradeDB getTradeDb() {
+    public TradeDB getTradeDb() {
         return tradeDb;
     }
 

@@ -1,8 +1,6 @@
 package link.locutus.discord.gpt.pw;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.locutus.wiki.game.PWWikiUtil;
+import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
@@ -11,7 +9,6 @@ import org.jooq.DSLContext;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
