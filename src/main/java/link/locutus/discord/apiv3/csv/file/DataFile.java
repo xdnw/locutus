@@ -139,6 +139,8 @@ public class DataFile<T, H extends DataHeader<T>> {
                     if (alias != null) {
                         column = headers.get(alias);
                     }
+                } else if (column.getIndex() != -1) {
+                    continue;
                 }
                 if (column != null) {
                     column.setIndex(i, 0);

@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.NationResourceStat;
 import com.politicsandwar.graphql.model.ResourceStat;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.util.TimeUtil;
@@ -124,6 +125,24 @@ public enum OrbisMetric {
         if (stat.getLead() != null) output.add(new OrbisMetricValue(LEAD_ON_NATIONS, day, Long.parseLong(stat.getLead())));
     }
 
+    public static OrbisMetric fromResource(ResourceType type) {
+        return switch (type) {
+            case MONEY -> OrbisMetric.MONEY;
+            case CREDITS -> null;
+            case FOOD -> OrbisMetric.FOOD;
+            case COAL -> OrbisMetric.COAL;
+            case OIL -> OrbisMetric.OIL;
+            case URANIUM -> OrbisMetric.URANIUM;
+            case LEAD -> OrbisMetric.LEAD;
+            case IRON -> OrbisMetric.IRON;
+            case BAUXITE -> OrbisMetric.BAUXITE;
+            case GASOLINE -> OrbisMetric.GASOLINE;
+            case MUNITIONS -> OrbisMetric.MUNITIONS;
+            case STEEL -> OrbisMetric.STEEL;
+            case ALUMINUM -> OrbisMetric.ALUMINUM;
+        };
+    }
+
 
     public boolean isTurn() {
         return this.isTurn;
@@ -147,9 +166,9 @@ public enum OrbisMetric {
             List<OrbisMetricValue> subList = values.subList(i, end);
             String keyWord = replace ? "REPLACE" : "IGNORE";
             Locutus.imp().getNationDB().executeBatch(subList, "INSERT OR " + keyWord + " INTO `" + table + "`(`metric`, `" + dayOrTurnCol + "`, `value`) VALUES(?, ?, ?)", (ThrowingBiConsumer<OrbisMetricValue, PreparedStatement>) (value, stmt) -> {
-                stmt.setInt(2, value.metric.ordinal());
-                stmt.setLong(3, value.turnOrDay);
-                stmt.setDouble(4, value.value);
+                stmt.setInt(1, value.metric.ordinal());
+                stmt.setLong(2, value.turnOrDay);
+                stmt.setDouble(3, value.value);
             });
         }
     }

@@ -848,34 +848,36 @@ public class DataUtil {
         DataDumpParser instance = new DataDumpParser().load();
         long start = System.currentTimeMillis();
 
-        CitiesFile citiesFile = new CitiesFile(new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES, "cities-2022-12-16.csv"), instance.getDict(true));
-        citiesFile.getCompressedFile(true, false);
-        Map<Integer, Map<Integer, DBCity>> cities = citiesFile.readCities(f -> true, false);
+//        CitiesFile citiesFile = new CitiesFile(new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES, "cities-2022-12-16.csv"), instance.getDict(true));
+//        citiesFile.getCompressedFile(true, false);
+//        Map<Integer, Map<Integer, DBCity>> cities = citiesFile.readCities(f -> true, false);
+
+
+        instance.iterateFiles(new TriConsumer<Long, NationsFile, CitiesFile>() {
+            @Override
+            public void accept(Long day, NationsFile nationsFile, CitiesFile citiesFile) {
+                try {
+                    long start = System.currentTimeMillis();
+//                    nationsFile.testCsv();
+//                    nationsFile.testRead();
+                    AtomicInteger i = new AtomicInteger();
+                    citiesFile.reader().all(false).read(cityHeader -> {
+                        // do nothing
+                        i.getAndIncrement();
+                    });
+                    long diff = System.currentTimeMillis() - start;
+                    System.out.println("Read " + nationsFile.getDay() + " in " + diff + "ms (" + i.get() + ")");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
 
         if (true) {
             System.out.println("Done");
             System.exit(0);
         }
 
-//        instance.iterateFiles(new TriConsumer<Long, NationsFile, CitiesFile>() {
-//            @Override
-//            public void accept(Long day, NationsFile nationsFile, CitiesFile citiesFile) {
-//                try {
-//                    long start = System.currentTimeMillis();
-////                    nationsFile.testCsv();
-////                    nationsFile.testRead();
-//                    AtomicInteger i = new AtomicInteger();
-//                    nationsFile.reader().all(false).read(nationHeader -> {
-//                        // do nothing
-//                        i.getAndIncrement();
-//                    });
-//                    long diff = System.currentTimeMillis() - start;
-//                    System.out.println("Read " + nationsFile.getDay() + " in " + diff + "ms (" + i.get() + ")");
-//                } catch (IOException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//        });
 //        long diff = System.currentTimeMillis() - start;
 //        System.out.println("Diff " + diff + "ms");
 //        try {

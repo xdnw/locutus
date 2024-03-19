@@ -540,6 +540,19 @@ public class PoliticsAndWarV3 {
                     request.setAfter(new Date(date));
 
                     ResourceStatResponseProjection respProj = new ResourceStatResponseProjection();
+                    respProj.date();
+                    respProj.money();
+                    respProj.food();
+                    respProj.steel();
+                    respProj.aluminum();
+                    respProj.gasoline();
+                    respProj.munitions();
+                    respProj.uranium();
+                    respProj.coal();
+                    respProj.oil();
+                    respProj.iron();
+                    respProj.bauxite();
+                    respProj.lead();
 
                     ResourceStatPaginatorResponseProjection pagRespProj = new ResourceStatPaginatorResponseProjection()
                             .paginatorInfo(new PaginatorInfoResponseProjection()
@@ -578,6 +591,14 @@ public class PoliticsAndWarV3 {
                     request.setAfter(new Date(date));
 
                     ActivityStatResponseProjection respProj = new ActivityStatResponseProjection();
+                    respProj.date();
+                    respProj.active_1_day();
+                    respProj.active_2_days();
+                    respProj.active_3_days();
+                    respProj.active_1_week();
+                    respProj.active_1_month();
+                    respProj.nations_created();
+                    respProj.total_nations();
 
                     ActivityStatPaginatorResponseProjection pagRespProj = new ActivityStatPaginatorResponseProjection()
                             .paginatorInfo(new PaginatorInfoResponseProjection()
