@@ -4,6 +4,7 @@ import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -36,6 +37,7 @@ public class DataFile<T, H extends DataHeader<T>> {
     private boolean binExists = false;
     private final H header;
     private final Map<String, ColumnInfo<T, Object>> headers;
+    private final Map<String, String> aliases;
     private final long date;
     private final long day;
     private final String filePart;
@@ -52,6 +54,10 @@ public class DataFile<T, H extends DataHeader<T>> {
         return MathMan.isInteger(split2[1]) && MathMan.isInteger(split2[2]) && MathMan.isInteger(split2[3]);
     }
 
+    public String getFilePart() {
+        return filePart;
+    }
+
     public DataFile(File file, H unloaded) {
         this.filePart = file.getName().split("\\.")[0];
         this.csvFile = new File(file.getParent(), filePart + ".csv");
@@ -60,6 +66,17 @@ public class DataFile<T, H extends DataHeader<T>> {
         this.binExists = binFile.exists();
         this.header = unloaded;
         this.headers = unloaded.getHeaders();
+        this.aliases = new Object2ObjectLinkedOpenHashMap<>(1);
+        for (Map.Entry<String, ColumnInfo<T, Object>> entry : this.headers.entrySet()) {
+            ColumnInfo<T, Object> col = entry.getValue();
+            String[] aliases = col.getAliases();
+            if (aliases != null) {
+                for (String alias : aliases) {
+                    this.aliases.put(alias, entry.getKey());
+                }
+            }
+        }
+
         this.date = unloaded.getDate();
         this.day = TimeUtil.getDay(date);
     }
@@ -117,6 +134,12 @@ public class DataFile<T, H extends DataHeader<T>> {
             for (int i = 0; i < csvHeader.size(); i++) {
                 String header = csvHeader.get(i);
                 ColumnInfo<T, Object> column = headers.get(header);
+                if (column == null) {
+                    String alias = aliases.get(header);
+                    if (alias != null) {
+                        column = headers.get(alias);
+                    }
+                }
                 if (column != null) {
                     column.setIndex(i, 0);
                     columns.add(column);

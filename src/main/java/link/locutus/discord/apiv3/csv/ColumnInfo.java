@@ -17,12 +17,17 @@ public abstract class ColumnInfo<P, V> {
     private final BiConsumer<P, V> setter;
     protected V cacheValue;
     private String[] aliases;
+    private String name;
 
     public ColumnInfo(DataHeader<P> header, BiConsumer<P, V> setter) {
         this.header = header;
         this.index = -1;
         this.setter = setter == null ? (_1, _2) -> {} : setter;
         this.alwaysSkip = setter == null;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public final DataHeader<P> getHeader() {
@@ -88,5 +93,9 @@ public abstract class ColumnInfo<P, V> {
 
     public String[] getAliases() {
         return aliases;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }
