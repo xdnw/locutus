@@ -377,7 +377,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)")
-    public String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
+    public static String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
                           @Switch("c") boolean ignoreConsumption,
@@ -391,7 +391,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs between two coalitions over a time period")
-    public String warsCost(@Me IMessageIO channel,
+    public static String warsCost(@Me IMessageIO channel,
                            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
                            @Timestamp long timeStart,
                            @Default @Timestamp Long timeEnd,

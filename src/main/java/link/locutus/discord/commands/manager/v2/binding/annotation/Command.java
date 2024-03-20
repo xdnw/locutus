@@ -15,4 +15,5 @@ public @interface Command {
 
     String desc() default "";
     String descMethod() default "";
+    String[] groupInfo() default {};
 }
