@@ -220,7 +220,13 @@ public class ImageUtil {
             "discord.gift",
             "discordstatus.com",
             "dis.gd",
-            "discord.co"
+            "discord.co",
+            "pasteboard.co",
+            "imgur.com",
+            "imgbb.com",
+            "postimages.org",
+            "freeimage.host",
+            "doerig.dev"
     );
 
     public static boolean isDiscordImage(String url) {

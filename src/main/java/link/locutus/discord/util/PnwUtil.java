@@ -419,6 +419,9 @@ public class PnwUtil {
     }
 
     public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
+        if (MathMan.isInteger(arg)) {
+            throw new IllegalArgumentException("Please use `$" + arg + "` or `money=" + arg + "` for money, not `" + arg + "`");
+        }
         if (arg.contains("---+") && arg.contains("-+-")) {
             arg = arg.replace("-+-", "---");
             int start = arg.indexOf("---+");
