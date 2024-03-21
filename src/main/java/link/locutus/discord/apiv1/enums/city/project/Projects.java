@@ -332,7 +332,6 @@ public class Projects {
     //
     //
     //Added Advanced Pirate Economy:
-    //$50,000,000, 20,000 Aluminum, 40,000 Munitions, 20,000 Gasoline
     //Requires Pirate Economy and that the nation has won or lost 100 combined wars.
     //Adds an additional offensive war slot, 5% more loot from ground attacks, and a 1.1x modifier to loot from defeating a nation and the defeated nation’s alliance bank.
     //Pirate Economy now provides a 5% bonus to loot from ground attacks.
@@ -349,7 +348,6 @@ public class Projects {
 
     //
     //Added Mars Landing:
-    //$200,000,000, 20,000 Oil, 20,000 Aluminum, 20,000 Munitions, 20,000 Steel, 20,000 Gasoline, 20,000 Uranium
     //Requires Space Program and Moon Landing.
     //Similar to Moon Landing, provides a unique achievement to the first player to build it as well as one to every other player who builds it. All players who complete it will be tracked on a leaderboard like the Moon Landing project. Nations will also gain a daily boost to their approval rating.
     public static final Project MARS_LANDING = new Builder("mars_landing", 35)
