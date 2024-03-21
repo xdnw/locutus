@@ -119,7 +119,7 @@ public class Projects {
             .output(FOOD)
             .build();
 
-    public stat ic final Project MISSILE_LAUNCH_PAD = new Builder("missile_launch_pad", 6)
+    public static final Project MISSILE_LAUNCH_PAD = new Builder("missile_launch_pad", 6)
             .image("missilelaunchpad.png")
             .cost(MONEY, 15000000)
             .cost(MUNITIONS, 5000)
