@@ -16,12 +16,6 @@ public class LongColumn<P> extends NumberColumn<P, Long> {
         super(header, setter);
     }
 
-//    @Override
-//    public Long read(DataInputStream dis) throws IOException {
-//        return dis.readLong();
-//    }
-
-
     @Override
     public Long read(byte[] buffer, int offset) throws IOException {
         return ((long)buffer[offset] << 56) |

@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -52,6 +53,35 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class GrantCommands {
+
+//    @Command
+//    @RolePermission(Roles.ECON)
+//    public String grantCity(
+//            @Me IMessageIO io, @Me GuildDB db,
+//            Set<DBNation> receivers,
+//            int amount,
+//            @Switch("u") @Arg("If buying up to a city count, instead of additional cities") boolean upTo,
+//            @Switch("o") boolean onlySendMissingFunds,
+//
+//            @Arg("The transfer note\nUse `#IGNORE` to not deduct from deposits") @Default("#tax") DepositType.DepositTypeInfo depositType,
+//
+//            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+//            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+//            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+//            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+//            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+//            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+//            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+//
+//            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+//            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+//
+//            @Switch("f") boolean force
+//            ) {
+//
+//    }
+
+    ////////////////////////////////
 
     @Command(desc = "List all grant templates for the specified category")
     @RolePermission(Roles.MEMBER)

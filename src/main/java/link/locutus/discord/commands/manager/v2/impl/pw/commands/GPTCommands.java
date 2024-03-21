@@ -2,7 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.locutus.wiki.game.PWWikiUtil;
+import link.locutus.wiki.game.PWWikiUtil;
 import com.vdurmont.emoji.EmojiParser;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -38,7 +38,7 @@ import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
-import com.locutus.wiki.CommandWikiPages;
+import link.locutus.wiki.CommandWikiPages;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
