@@ -2146,10 +2146,10 @@ public class UtilityCommands {
     public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default Color color, @Default("0.05") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font, @Switch("r") boolean repeat) {
         float opacityF = (float) opacity;
         // remove anything after ? mark
-        imageUrl = imageUrl.split("\\?")[0];
+        String imageStub = imageUrl.split("\\?")[0];
 
         if (!ImageUtil.isDiscordImage(imageUrl)) {
-            throw new IllegalArgumentException("Image must be a discord image, not: `" + imageUrl + "`");
+            throw new IllegalArgumentException("Image must be a discord image, not: `" + imageStub + "`");
         }
 
         BufferedImage image = ImageUtil.readImage(imageUrl);
