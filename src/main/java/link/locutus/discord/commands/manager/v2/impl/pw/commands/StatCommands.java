@@ -355,7 +355,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs stats between two coalitions")
-    public String myloot(@Me IMessageIO channel, @Me DBNation nation,
+    public String myloot(@Me IMessageIO channel, @Me DBNation nation, @Me JSONObject command,
                          Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
                          @Default @Timestamp Long timeEnd,
                          @Switch("u") boolean ignoreUnits,
@@ -371,7 +371,10 @@ public class StatCommands {
                          @Switch("s") Set<WarStatus> allowedWarStatus,
                          @Switch("a") Set<AttackType> allowedAttackTypes,
                          @Switch("v") Set<SuccessType> allowedVictoryTypes) {
-        return warsCost(channel, Collections.singleton(nation), coalition2, timeStart, timeEnd,
+        if (command != null && coalition2 != null && command.getString("coalition2").equalsIgnoreCase("*")) {
+            coalition2 = null;
+        }
+        return warsCost(channel, null, Collections.singleton(nation), coalition2, timeStart, timeEnd,
                 ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, ignoreBuildings, listWarIds, showWarTypes,
                 allowedWarTypes, allowedWarStatus, allowedAttackTypes, allowedVictoryTypes, false, false, false, false);
     }
@@ -392,6 +395,7 @@ public class StatCommands {
 
     @Command(desc = "War costs between two coalitions over a time period")
     public static String warsCost(@Me IMessageIO channel,
+                           @Me JSONObject command,
                            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
                            @Timestamp long timeStart,
                            @Default @Timestamp Long timeEnd,
@@ -416,6 +420,12 @@ public class StatCommands {
         if (onlyOffensiveWars && onlyDefensiveWars) throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
         if (onlyOffensiveAttacks && onlyDefensiveAttacks) throw new IllegalArgumentException("Cannot combine `onlyOffensiveAttacks` and `onlyDefensiveAttacks`");
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+        if (coalition1 != null && command != null && command.getString("coalition1").equalsIgnoreCase("*")) {
+            coalition1 = null;
+        }
+        if (coalition2 != null && command != null && command.getString("coalition2").equalsIgnoreCase("*")) {
+            coalition2 = null;
+        }
         WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
                 .allowWarStatuses(allowedWarStatus)
                 .allowedWarTypes(allowedWarTypes)

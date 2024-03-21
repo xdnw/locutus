@@ -100,8 +100,8 @@ public class WarCostAB extends Command {
                     flags.contains('b'));
         }
 
-        Set<NationOrAlliance> col1 = PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
-        Set<NationOrAlliance> col2 = PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
+        Set<NationOrAlliance> col1 = args.get(0).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
+        Set<NationOrAlliance> col2 = args.get(1).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
         long start = PrimitiveBindings.timestamp(args.get(2));
         long end = args.size() == 4 ? PrimitiveBindings.timestamp(args.get(3)) : null;
 
@@ -112,7 +112,7 @@ public class WarCostAB extends Command {
         Set<WarStatus> warStatuses = warStatusStr == null ? null : PWBindings.WarStatuses(warStatusStr);
 
         return StatCommands.warsCost(
-                channel,
+                channel, null,
                 col1,
                 col2,
                 start,
