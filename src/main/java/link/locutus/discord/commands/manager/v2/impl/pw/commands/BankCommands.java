@@ -2513,10 +2513,15 @@ public class BankCommands {
                 double[] escrowTotal = pair.getValue();
                 aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
                 aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, escrowTotal);
+            } else {
+                noEscrowSheet = true;
             }
         }
 
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
+
+        footer.append("\n\nTo adjust member balances: " + CM.deposits.add.cmd.toSlashMention());
+        footer.append("\nTo reset member balances: " + CM.deposits.reset.cmd.toSlashMention());
 
         String type = "";
         OffshoreInstance offshore = db.getOffshore();
@@ -2534,8 +2539,8 @@ public class BankCommands {
                     aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
                 }
-                String natDepTypes = noEscrowSheet ? "deposits" : "deposits (with escrow)";
-                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+                String natDepTypes = noEscrowSheet ? "balances" : "balances (with escrow)";
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (without negative balances)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
                 footer.append("\n**Total " + type + "- nation " + natDepTypes + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
             } else {
                 footer.append("\n**No funds are currently " + type + "**");
