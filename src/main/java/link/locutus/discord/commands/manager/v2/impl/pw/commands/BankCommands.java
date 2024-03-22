@@ -2206,9 +2206,19 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Create a google sheet of escrowed resources amounts for a set of nations")
+    @Command(desc = "Create a google sheet of escrowed resources amounts for a set of nations", groups = {
+            "Optional 1: Specific Nations",
+            "Optional 2: Include past members"
+    })
     @RolePermission(Roles.ECON)
-    public String escrowSheetCmd(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Default Set<DBNation> nations, @Switch("p") Set<Integer> includePastDepositors, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String escrowSheetCmd(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild,
+                                 @Arg(value = "Specify the nations to include in the sheet\n" +
+                                         "Defaults to current members", group = 0)
+                                 @Default Set<DBNation> nations,
+                                 @Arg(value = "Include all nations that have deposited in the past", group = 1)
+                                 @Switch("p") Set<Integer> includePastDepositors,
+
+                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (nations == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
@@ -3751,14 +3761,18 @@ public class BankCommands {
         return result.toString();
     }
 
-    @Command(desc = "List all nations in the alliance and their in-game resource stockpile")
+    @Command(desc = "List all nations in the alliance and their in-game resource stockpile", groups = {
+            "Optional: Specify Nations",
+            "Display Options",
+    })
     @RolePermission(any = true, value = {Roles.ECON_STAFF, Roles.ECON})
     @IsAlliance
-    public String stockpileSheet(@Me GuildDB db, @Arg("Only include stockpiles from these nations") @Default NationList nationFilter,
-                                 @Arg("Divide stockpiles by city count") @Switch("n") boolean normalize,
-                                 @Arg("Only show the resources well above warchest and city operation requirements") @Switch("e") boolean onlyShowExcess,
-                                 @Switch("f") boolean forceUpdate,
-                                 @Me IMessageIO channel) throws IOException, GeneralSecurityException {
+    public String stockpileSheet(@Me GuildDB db, @Me IMessageIO channel,
+                                 @Arg(value = "Only include stockpiles from these nations", group = 0) @Default NationList nationFilter,
+
+                                 @Arg(value = "Divide stockpiles by city count", group = 1) @Switch("n") boolean normalize,
+                                 @Arg(value = "Only show the resources well above warchest and city operation requirements", group = 1) @Switch("e") boolean onlyShowExcess,
+                                 @Switch("f") boolean forceUpdate) throws IOException, GeneralSecurityException {
         if (!db.getAllianceIds().containsAll(nationFilter.getAllianceIds())) {
             return "You can only view stockpiles for nations in your alliance: (" + db.getAllianceIds() + ")";
         }
