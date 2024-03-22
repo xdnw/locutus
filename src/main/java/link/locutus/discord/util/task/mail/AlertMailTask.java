@@ -62,72 +62,22 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                 return;
             }
             new MailReceivedEvent(auth, mail, strings, outputChannel).post();
-
-            String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mail.id;
-
-            String title = mail.leader + " in '" + mail.subject + "'";
-
-            StringBuilder body = new StringBuilder();
-            body.append(PnwUtil.getMarkdownUrl(mail.nationId, false));
-
-            DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
-            if (nation != null) {
-                body.append(" | " + PnwUtil.getMarkdownUrl(nation.getAlliance_id(), true));
-                User user = nation.getUser();
-                if (user != null) {
-                    body.append(" | ").append(user.getAsMention());
-                }
-            }
-            body.append("\n");
-            body.append("```").append(strings.get(0)).append("```");
-            body.append("\n").append(url);
-
-
-            long output = outputChannel;
-            String[] split = mail.subject.split("/");
-            if (split.length > 1 && MathMan.isInteger(split[split.length - 1])) {
-                output = Long.parseLong(split[split.length - 1]);
-            }
-
-            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(output);
-            if (channel == null) {
-                channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
-            }
-
-            if (channel != null) {
-                DiscordChannelIO outputBuilder = new DiscordChannelIO(channel, () -> null);
-
-                Guild guild = channel.getGuild();
-
-                if (!strings.isEmpty()) {
-                    String msg = strings.get(0);
-
-                    Map.Entry<DBNation, double[]> spyReport = SpyCount.parseSpyReport(nation, msg);
-                    if (spyReport != null) {
-                        double converted = PnwUtil.convertedTotal(spyReport.getValue());
-
-                        body.append("\nWorth: ~$" + MathMan.format(converted * 0.14));
-                    }
-                }
-
-                IMessageBuilder builder = outputBuilder.create();
-
-                Role role = Roles.MAIL.toRole(guild);
-                if (role != null) {
-                    builder.append("^ " + role.getAsMention());
-                }
-
-                builder.embed(title, body.toString());
-                DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(mail.leader);
-                CM.mail.reply mailCmd = CM.mail.reply.cmd.create(receiver.getNation(), url, null, auth.getNation().getNation());
-                builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
-
-                builder.send();
-
-                processCommands(guild, mail, strings);
-
-
-            }
+//
+//            long output = outputChannel;
+//            String[] split = mail.subject.split("/");
+//            if (split.length > 1 && MathMan.isInteger(split[split.length - 1])) {
+//                output = Long.parseLong(split[split.length - 1]);
+//            }
+//
+//            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(output);
+//            if (channel == null) {
+//                channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
+//            }
+//
+//            if (channel != null) {
+//                Guild guild = channel.getGuild();
+//                processCommands(guild, mail, strings);
+//            }
 //
 //            if (nation == null) return;
 //
@@ -186,17 +136,17 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
             e.printStackTrace();
         }
     }
-
-    private void processCommands(Guild guild, Mail mail, List<String> strings) {
-        String reply = strings.get(0);
-        if (reply.isEmpty() || reply.charAt(0) != (Settings.commandPrefix(true)).charAt(0)) return;
-
-        DBNation nation = DBNation.getById(mail.nationId);
-        if (nation == null) return;
-
-        GuildDB db = Locutus.imp().getGuildDB(guild);
-        if (db == null) return;
-
-        if (nation.getPosition() <= 1 || !db.isAllianceId(nation.getAlliance_id())) return;
-    }
+//
+//    private void processCommands(Guild guild, Mail mail, List<String> strings) {
+//        String reply = strings.get(0);
+//        if (reply.isEmpty() || reply.charAt(0) != (Settings.commandPrefix(true)).charAt(0)) return;
+//
+//        DBNation nation = DBNation.getById(mail.nationId);
+//        if (nation == null) return;
+//
+//        GuildDB db = Locutus.imp().getGuildDB(guild);
+//        if (db == null) return;
+//
+//        if (nation.getPosition() <= 1 || !db.isAllianceId(nation.getAlliance_id())) return;
+//    }
 }

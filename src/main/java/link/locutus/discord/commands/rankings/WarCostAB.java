@@ -37,8 +37,10 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import retrofit2.http.HEAD;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class WarCostAB extends Command {
@@ -102,8 +104,8 @@ public class WarCostAB extends Command {
 
         Set<NationOrAlliance> col1 = args.get(0).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
         Set<NationOrAlliance> col2 = args.get(1).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
-        long start = PrimitiveBindings.timestamp(args.get(2));
-        long end = args.size() == 4 ? PrimitiveBindings.timestamp(args.get(3)) : null;
+        long start = MathMan.isInteger(args.get(2)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(2))) : PrimitiveBindings.timestamp(args.get(2));
+        Long end = args.size() == 4 ? (MathMan.isInteger(args.get(3)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(3))) : PrimitiveBindings.timestamp(args.get(3))) : null;
 
         Placeholders<IAttack> phAttacks = Locutus.imp().getCommandManager().getV2().getPlaceholders().get(IAttack.class);
         Set<AttackType> attackTypes = attackTypeStr == null ? null : PWBindings.AttackTypes(phAttacks.createLocals(guild, author, me), attackTypeStr);
