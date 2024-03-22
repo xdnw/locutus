@@ -2475,15 +2475,17 @@ public class BankCommands {
 
         if (!noEscrowSheet) {
             Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
-            SpreadSheet escrowSheet = pair.getKey();
-            // attach sheet
-            escrowSheet.updateClearCurrentTab();
-            escrowSheet.updateWrite();
-            escrowSheet.attach(msg, "escrow");
+            if (!ResourceType.isZero(pair.getValue())) {
+                SpreadSheet escrowSheet = pair.getKey();
+                // attach sheet
+                escrowSheet.updateClearCurrentTab();
+                escrowSheet.updateWrite();
+                escrowSheet.attach(msg, "escrow");
 
-            double[] escrowTotal = pair.getValue();
-            aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
-            aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, escrowTotal);
+                double[] escrowTotal = pair.getValue();
+                aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
+                aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, escrowTotal);
+            }
         }
 
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
