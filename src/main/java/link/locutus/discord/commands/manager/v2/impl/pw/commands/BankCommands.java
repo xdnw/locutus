@@ -139,44 +139,65 @@ public class BankCommands {
 //    public String roi()
 
     @Command(desc = "Instruct nations to deposit resources into the alliance bank\n" +
-     "If multiple keep modes are set the largest values will be used")
+     "If multiple calculation options are set the largest values will be used",
+            groups = {
+                "Mode 1: Using a Sheet",
+                "Mode 2: Specify an Amount",
+                "Mode 3: Calculate an Amount",
+                "Message Settings",
+                "Deposit Via Api",
+            }
+    )
     @RolePermission(Roles.MEMBER)
     @IsAlliance
-    public String depositResources(@Me User author, @Me DBNation me, @Me Member member, @Me GuildDB db, @Me JSONObject command,
-                                   @Me IMessageIO io,
+    public String depositResources(@Me User author, @Me DBNation me, @Me Member member, @Me GuildDB db, @Me JSONObject command, @Me IMessageIO io,
                                    Set<DBNation> nations,
-                                   @Arg("A spreadsheet of nations and amounts to deposit\n" +
-                                           "Columns must be named after the resource names")
+
+                                   @Arg(value = "A spreadsheet of nations and amounts to deposit\n" +
+                                           "Columns must be named after the resource names", group = 0)
                                    @Switch("s") TransferSheet sheetAmounts,
-                                   @Arg("Exact amount of resources to deposit (capped at resources on nation). Throws error if any of the other deposit modes are set")
+
+                                   @Arg(value = "Exact amount of resources to deposit (capped at resources on nation)\n" +
+                                           "Cannot be used with other deposit modes are set", group = 1)
                                    @Switch("a") Map<ResourceType, Double> amount,
-                                   @Arg("Number of days of city raw resource consumption to keep\n" +
-                                           "Recommended value: 5")
+
+                                   @Arg(value = "Number of days of city raw resource consumption to keep\n" +
+                                           "Recommended value: 5", group = 2)
                                        @Range(min = 0)
                                    @Switch("r") Double rawsDays,
-                                   @Arg("Do not keep money above the daily login bonus") @Switch("d") boolean rawsNoDailyCash,
-                                   @Arg("Do not keep any money") @Switch("c") boolean rawsNoCash,
 
-                                   @Arg("Number of default warchests to keep per city\n" +
+                                   @Arg(value = "Do not keep money above the daily login bonus\n" +
+                                           "Requires `rawsDays` to be set", group = 2) @Switch("d") boolean rawsNoDailyCash,
+                                   @Arg(value = "Do not keep any money\n" +
+                                           "Requires `rawsDays` to be set ", group = 2) @Switch("c") boolean rawsNoCash,
+
+                                   @Arg(value = "Number of default warchests to keep per city\n" +
                                            "Recommended value: 1\n" +
-                                           "Default warchest is is set via the settings command")
+                                           "Default warchest is is set via the settings command", group = 2)
                                    @Switch("wcf") Double keepWarchestFactor,
-                                   @Arg("Amount of resources to keep per city")
+                                   @Arg(value = "Amount of resources to keep per city", group = 2)
                                    @Switch("pc") Map<ResourceType, Double> keepPerCity,
-                                   @Arg("Amount of resources to keep in total")
+                                   @Arg(value = "Amount of resources to keep in total", group = 2)
                                    @Switch("kt") Map<ResourceType, Double> keepTotal,
-                                   @Arg("Keep resources for purchasing specific units")
+                                   @Arg(value = "Keep resources for purchasing specific units", group = 2)
                                    @Switch("ur") Map<MilitaryUnit, Long> unitResources,
-                                   @Arg("Note to add to the deposit")
+
+                                   @Arg(value = "Note to add to the deposit\n" +
+                                           "Defaults to deposits", group = 3)
                                    @Switch("n") DepositType.DepositTypeInfo note,
-                                   @Arg("The message to append to the mail or dm message")
+
+                                   @Arg(value = "The message to append to the mail or dm message\n" +
+                                           "You must specify either `mailResults` or `dm` if this is set", group = 4)
                                    @Switch("cm") String customMessage,
-                                   @Arg("Send deposit urls to nations via in-game mail")
+
+                                   @Arg(value = "Send deposit urls to nations via in-game mail", group = 4)
                                    @Switch("m") boolean mailResults,
-                                   @Arg("Send deposit urls to nations in discord direct messages (dm)")
+                                   @Arg(value = "Send deposit urls to nations in discord direct messages (dm)", group = 4)
                                    @Switch("dm") boolean dm,
-                                   @Arg("Deposit via the api")
+
+                                   @Arg(value = "Use the API to do a deposit instead of sending a message", group = 5)
                                    @Switch("u") boolean useApi,
+
                                    @Switch("f") boolean force) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
         if (customMessage != null && !dm && !mailResults) {
             throw new IllegalArgumentException("Cannot specify `customMessage` without specifying `dm` or `mailResults`");
@@ -686,16 +707,23 @@ public class BankCommands {
 
 
     @Command(desc = "Send the funds in the alliance bank to an alliance added to the `offshore` coalition in the bot\n" +
-            "Optionally specify warchest and offshoring account")
+            "Optionally specify warchest and offshoring account", groups = {
+            "Account Settings",
+            "Resource Amounts",
+    })
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true, any=true)
     @HasOffshore
     @IsAlliance
     public static String offshore(@Me User user, @Me GuildDB db, @Me IMessageIO io,
-                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> keepAmount,
-                                  @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account,
-                                  @Arg("Send a specific amount of resources\n" +
+                                  @Arg(value = "Specify an alternative Offshore alliance to send funds in-game to\n" +
+                                          "Defaults to the currently set offshore coalition", group = 0) @Default DBAlliance to,
+                                  @Arg(value = "Specify an alternative account to offshore with\n" +
+                                          "Defaults to the sender alliance", group = 0) @Default NationOrAllianceOrGuild account,
+                                  @Arg(value = "The amount of resources to keep in the bank\n" +
+                                          "Defaults to keep nothing", group = 1) @Default("{}") Map<ResourceType, Double> keepAmount,
+                                  @Arg(value = "Specify specific resource amounts to offshore\n" +
                                           "Defaults to all resources\n" +
-                                          "The send amount is auto capped by the resources available and `keepAmount`")
+                                          "The send amount is auto capped by the resources available and `keepAmount`", group = 1)
                                   @Default Map<ResourceType, Double> sendAmount) throws IOException {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
