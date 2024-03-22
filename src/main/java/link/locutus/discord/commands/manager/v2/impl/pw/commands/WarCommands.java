@@ -295,7 +295,6 @@ public class WarCommands {
                        @Default("*") Set<DBNation> targets,
                        @Switch("r") @Default("5") Integer numResults,
                        @Switch("a") @Timediff Long activeTimeCutoff,
-//                       @Switch('t') Integer topX,
                        @Switch("w") boolean weakground,
                        @Switch("b") Integer beigeTurns,
                        @Switch("v") Integer vmTurns,
@@ -3595,15 +3594,19 @@ public class WarCommands {
     }
 
     @Command(desc = "Generate a sheet of active wars between two coalitions (allies, enemies)\n" +
-            "Add `-i` to list concluded wars")
+            "Add `-i` to list concluded wars",
+    groups = {
+            "Additional War Options"
+    })
     @RolePermission(Roles.MILCOM)
     public String warSheet(@Me IMessageIO io, @Me GuildDB db,
                            Set<DBNation> allies,
                            Set<DBNation> enemies,
-                           @Arg("Cutoff date for wars (default 5 days ago)")
+                           @Arg(value = "Cutoff date for wars (default 5 days ago)", group = 0)
                            @Default("5d") @Timestamp long cutoff,
+                           @Arg(value = "If concluded wars within the timeframe should be included", group = 0)
                            @Switch("i") boolean includeConcludedWars,
-                           @Switch("s") String sheetId) throws GeneralSecurityException, IOException {
+                           @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         long now = System.currentTimeMillis();
 
         WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, cutoff, now);
@@ -3618,11 +3621,6 @@ public class WarCommands {
             return (!allies.contains(att) && !enemies.contains(att)) || (!allies.contains(def) && !enemies.contains(def));
         });
 
-        SpreadSheet sheet = null;
-
-        if (sheetId != null) {
-            sheet = SpreadSheet.create(sheetId);
-        }
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.WAR_SHEET);
         }
@@ -4076,27 +4074,37 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc="Get a list of nations to counter an enemy\n" +
-            "Add `-o` to ignore nations with 5 offensive slots\n" +
-            "Add `-w` to filter out weak attackers\n" +
-            "Add `-a` to only list active nations (past hour)")
-    public static String counter(@Me DBNation me, @Me GuildDB db, DBNation target,
-                          @Arg("Nations to counter with\n" +
-                                  "Default: This guild's alliance nations")
+    @Command(desc="Get a list of nations to counter an enemy",
+            groups = {
+                "Counter Options",
+                "Display Info",
+            },
+            groupDescs = {
+                "By default active alliance members with free war slots will be used",
+                ""
+            }
+    )
+    public static String counter(@Me DBNation me, @Me GuildDB db,
+                                 DBNation target,
+                          @Arg(value = "Nations to counter with\n" +
+                                  "Default: This guild's alliance nations", group = 0)
                           @Default Set<DBNation> counterWith,
                           @Arg("Show counters from nations at max offensive wars\n" +
                                   "i.e. They can counter when they finish a war")
                           @Switch("o") boolean allowAttackersWithMaxOffensives,
-                          @Arg("Remove countering nations weaker than the enemy")
+                          @Arg(value = "Remove countering nations weaker than the enemy", group = 0)
                           @Switch("w") boolean filterWeak,
-                          @Arg("Remove countering nations that are inactive (2 days)")
+                          @Arg(value = "Remove countering nations that are inactive (2 days)", group = 0)
                           @Switch("a") boolean onlyActive,
-                          @Arg("Remove countering nations NOT registered with Locutus")
+                          @Arg(value = "Remove countering nations NOT registered with Locutus", group = 0)
                           @Switch("d") boolean requireDiscord,
-                          @Arg("Include the discord mention of countering nations")
-                          @Switch("p") boolean ping,
-                          @Arg("Include counters from the same alliance as the defender")
-                          @Switch("s") boolean allowSameAlliance) {
+                          @Arg(value = "Don't filter out counters from the same alliance as the defender", group = 0)
+                          @Switch("s") boolean allowSameAlliance,
+                          @Arg(value = "Include the discord mention of countering nations", group = 1)
+                          @Switch("p") boolean ping
+
+
+    ) {
         if (counterWith == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty()) {
