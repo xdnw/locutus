@@ -1850,15 +1850,18 @@ public class BankCommands {
         return "Shifted " + PnwUtil.resourcesToString(toAdd) + " from " + from + " to " + to + " for " + nation.getNation();
     }
 
-    @Command(desc = "Resets a nations deposits to net zero (of the specific note categories)")
+    @Command(desc = "Resets a nations deposits to net zero (of the specific note categories)", groups = {
+            "Reset Options"
+    })
     @RolePermission(Roles.ECON)
-    public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io,
+                                @Me JSONObject command,
                                 NationList nations,
-                                @Arg("Do NOT reset grants") @Switch("g") boolean ignoreGrants,
-                                @Arg("Do NOT reset loans") @Switch("l") boolean ignoreLoans,
-                                @Arg("Do NOT reset taxes") @Switch("t") boolean ignoreTaxes,
-                                @Arg("Do NOT reset deposits") @Switch("d") boolean ignoreBankDeposits,
-                                @Arg("Do NOT reset escrow") @Switch("e") boolean ignoreEscrow,
+                                @Arg(value = "Do NOT reset grants", group = 0) @Switch("g") boolean ignoreGrants,
+                                @Arg(value = "Do NOT reset loans", group = 0) @Switch("l") boolean ignoreLoans,
+                                @Arg(value = "Do NOT reset taxes", group = 0) @Switch("t") boolean ignoreTaxes,
+                                @Arg(value = "Do NOT reset deposits", group = 0) @Switch("d") boolean ignoreBankDeposits,
+                                @Arg(value = "Do NOT reset escrow", group = 0) @Switch("e") boolean ignoreEscrow,
                                 @Switch("f") boolean force) throws IOException {
         if (nations.getNations().size() > 300) {
             throw new IllegalArgumentException("Due to performance issues, you can only reset up to 300 nations at a time");
@@ -2636,22 +2639,58 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver")
+    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver", groups = {
+            "Optional: Specify timeframe"
+    })
     @RolePermission(value = Roles.ECON)
-    public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db,
+                                                  Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
+                                                      @Timestamp @Default Long startTime,
+                                                  @Arg(value = "Only list transfers before this time", group = 0)
+                                                      @Timestamp @Default Long endTime, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
-        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByByReceiver(receiverIds, timeframe);
+        if (startTime == null) startTime = 0L;
+        if (endTime == null) endTime = Long.MAX_VALUE;
+        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByByReceiver(receiverIds, startTime, endTime);
         transactions.removeIf(tx -> !receivers.contains(tx.getReceiverObj()));
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }
 
-    @Command(desc = "Adjust nation's holdings by converting negative resource values of a specific note to a different resource or money")
+    @Command(desc = "Adjust nation's holdings by converting negative resource values of a specific note to a different resource or money",
+    groups = {
+            "Optional: Resources to convert",
+            "Optional (max 1): Specify the deposit notes to convert",
+            "Conversion Options",
+    },
+    groupDescs = {
+            "If no resources are specified, all negative resources are converted to money",
+            "Defaults to all types, except grants"
+    })
     @RolePermission(value = Roles.ECON)
-    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBNation me, Set<DBNation> nations, @Default("manu,raws,food") List<ResourceType> negativeResources, @Default("money") ResourceType convertTo, @Switch("g") boolean includeGrants, @Arg("Convert transfers of this note category") @Switch("t") DepositType.DepositTypeInfo depositType,
-                                          @Arg("What factor to multiple the converted resources by\n" +
-                                                  "e.g. Use a value below 1.0 to incur a fee")@Switch("f") Double conversionFactor, @Switch("s") SpreadSheet sheet, @Arg("The transfer note to use for the adjustment") @Default() @Switch("n") String note) throws IOException, GeneralSecurityException {
+    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBNation me,
+                                          Set<DBNation> nations,
+
+                                          @Arg(value = "The resources to convert", group = 0)
+                                          @Default("manu,raws,food") List<ResourceType> negativeResources,
+                                          @Arg(value = "What resource to convert to\n" +
+                                                  "Conversion uses weekly market average prices", group = 0)
+                                          @Default("money") ResourceType convertTo,
+
+
+                                          @Arg(value = "If grants are also converted", group = 1)
+                                          @Switch("g") boolean includeGrants,
+                                          @Arg(value = "Convert transfers of this note category", group = 1)
+                                              @Switch("t") DepositType.DepositTypeInfo depositType,
+
+                                          @Arg(value = "What factor to multiple the converted resources by\n" +
+                                                  "e.g. Use a value below 1.0 to incur a fee", group = 2) @Switch("f")
+                                              Double conversionFactor,
+                                          @Arg(value = "The transfer note to use for the adjustment", group = 2)
+                                              @Default() @Switch("n") String note,
+                                          @Switch("s") SpreadSheet sheet
+                                              ) throws IOException, GeneralSecurityException {
         if (nations.size() > 500) return "Too many nations > 500";
         // get deposits of nations
         // get negatives
@@ -2715,9 +2754,19 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of internal transfers for nations")
+    @Command(desc = "Get a sheet of internal transfers for nations", groups = {
+            "Optional: Specify timeframe"
+    })
     @RolePermission(value = Roles.ECON)
-    public String getNationsInternalTransfers(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations, @Default("999d") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String getNationsInternalTransfers(@Me IMessageIO channel, @Me GuildDB db,
+                                              Set<DBNation> nations,
+                                              @Arg(value = "Only list transfers after this time", group = 0)
+                                              @Timestamp @Default Long startTime,
+                                              @Arg(value = "Only list transfers before this time", group = 0)
+                                              @Timestamp @Default Long endTime,
+                                              @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (startTime == null) startTime = 0L;
+        if (endTime == null) endTime = Long.MAX_VALUE;
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         if (nations.size() > 1000) return "Too many nations >1000";
 
@@ -2726,7 +2775,9 @@ public class BankCommands {
             List<Transaction2> offsets = db.getDepositOffsetTransactions(nation.getNation_id());
             transactions.addAll(offsets);
         }
-        transactions.removeIf(f -> f.tx_datetime < timeframe);
+        Long finalStartTime = startTime;
+        Long finalEndTime = endTime;
+        transactions.removeIf(f -> f.tx_datetime < finalStartTime || f.tx_datetime > finalEndTime);
 
         sheet.addTransactionsList(channel, transactions, true);
         return null;
@@ -2743,9 +2794,22 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)")
+    @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)", groups = {
+        "Optional: Specify timeframe",
+        "Display Options",
+    })
     @RolePermission(value = Roles.ECON)
-    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, @Default("%epoch%") @Timestamp long timeframe, @Default("false") boolean useTaxBase, @Default("true") boolean useOffset, @Switch("s") SpreadSheet sheet,
+    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user,
+                               NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
+                               @Arg(value = "Only show transactions after this time", group = 0)
+                               @Default("%epoch%") @Timestamp long timeframe,
+                               @Arg(value = "Do NOT include the tax record resources below the internal tax rate\n" +
+                                       "Default: False", group = 1)
+                               @Default("false") boolean useTaxBase,
+                               @Arg(value = "Include balance offset records (i.e. from commands)\n" +
+                                       "Default: True", group = 1)
+                               @Default("true") boolean useOffset,
+                               @Switch("s") SpreadSheet sheet,
                                @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
 

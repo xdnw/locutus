@@ -9,7 +9,6 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
-import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
@@ -21,8 +20,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -33,8 +32,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -46,7 +44,6 @@ import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
-import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
@@ -69,7 +66,6 @@ import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import retrofit2.http.HEAD;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -84,7 +80,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -161,36 +156,59 @@ public class StatCommands {
 
     @Command(desc = "Rank war costs between two parties")
     public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
-                                 @Timestamp long timeStart, @Timestamp @Default Long timeEnd,
-                                 @Default("*") Set<NationOrAlliance> coalition1, @Default() Set<NationOrAlliance> coalition2,
+                                 @Arg(value = "Start time of the period to rank", group = 0)
+                                 @Timestamp long timeStart,
+                                 @Arg(value = "End time of the period to rank\n" +
+                                         "Defaults to now", group = 0)
+                                 @Timestamp @Default Long timeEnd,
 
+                                 @Arg(value = "Nations required to be in the conflicts\n" +
+                                         "Defaults to all existing nations", group = 1)
+                                 @Default("*") Set<NationOrAlliance> coalition1,
+                                 @Arg(value = "Nations required to be in the conflicts against `coalition1`\n" +
+                                         "Defaults to all nations", group = 1)
+                                 @Default() Set<NationOrAlliance> coalition2,
+                                 @Arg(value = "Only rank the nations in `coalition1`\n" +
+                                         "Defaults to false", group = 1)
+                                 @Switch("a") boolean onlyRankCoalition1,
+
+                                 @Arg(value = "Exclude infrastructure", group = 2)
                                  @Switch("i") boolean excludeInfra,
+                                    @Arg(value = "Exclude consumption", group = 2)
                                  @Switch("c") boolean excludeConsumption,
+                                    @Arg(value = "Exclude loot", group = 2)
                                  @Switch("l") boolean excludeLoot,
+                                    @Arg(value = "Exclude building losses", group = 2)
                                  @Switch("b") boolean excludeBuildings,
+                                    @Arg(value = "Exclude unit losses", group = 2)
                                  @Switch("u") boolean excludeUnits,
 
-                                 @Arg("Return total war costs instead of average per war") @Switch("t") boolean total,
-                                 @Arg("Rank by net profit") @Switch("p") boolean netProfit,
-                                 @Arg("Rank by damage") @Switch("d") boolean damage,
-                                 @Arg("Rank by net") @Switch("n") boolean netTotal,
-                                 @Arg("Rank alliances") @Switch("g") boolean groupByAlliance,
-                                 @Arg("Scale rankings by city count") @Switch("s") boolean scalePerCity,
+//                                 @Arg(value = "Return total war costs instead of average per war", group = 3) @Switch("t") boolean total,
+//                                 @Arg(value = "Rank by net profit", group = 3) @Switch("p") boolean netProfit,
+//                                 @Arg(value = "Rank by damage", group = 3) @Switch("d") boolean damage,
+//                                 @Arg(value = "Rank by net", group = 3) @Switch("n") boolean netTotal,
 
-                                 @Switch("kills") MilitaryUnit unitKill,
-                                 @Switch("deaths") MilitaryUnit unitLoss,
-                                 @Switch("attack") AttackType attackType,
+                                 @Arg(value = "Cost Type", group = 3)
+                                 @Switch("t") WarCostMode type,
+                                 @Arg(value = "Rank a specific stat, such as soldiers\n" +
+                                         "Defaults to `DAMAGE`", group = 3)
+                                 @Switch("s") WarCostStat stat,
+                                 @Arg(value = "Rank alliances", group = 4) @Switch("g") boolean groupByAlliance,
+                                 @Arg(value = "Scale rankings per war", group = 4) @Switch("w") boolean scalePerWar,
+                                 @Arg(value = "Scale rankings by city count", group = 4) @Switch("p") boolean scalePerCity,
+//                                 @Switch("stat")
+//                                 @Switch("kills") MilitaryUnit unitKill,
+//                                 @Switch("deaths") MilitaryUnit unitLoss,
+//                                 @Switch("attack") AttackType attackType,
 
                                  @Switch("wartype") Set<WarType> allowedWarTypes,
                                  @Switch("status") Set<WarStatus> allowedWarStatuses,
                                  @Switch("attacks") Set<AttackType> allowedAttacks,
 
-                                 @Switch("a") boolean onlyRankCoalition1,
-
-                                 @Arg("Rank the specific resource costs") @Switch("r") ResourceType resource,
+//                                 @Arg("Rank the specific resource costs") @Switch("r") ResourceType resource,
                                  @Switch("f") boolean uploadFile,
-                                 @Switch("off") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars
-//                                 @Switch("def") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars
+                                 @Switch("off") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars,
+                                 @Switch("def") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars
     ) {
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
 
@@ -201,9 +219,9 @@ public class StatCommands {
         if (onlyOffensiveWars) {
             parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
         }
-//        if (onlyDefensiveWars) {
-//            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
-//        }
+        if (onlyDefensiveWars) {
+            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
+        }
 //        if (onlyOffensiveAttacks) {
 //            parser.getAttacks().removeIf(f -> {
 //                DBWar war = f.getWar();

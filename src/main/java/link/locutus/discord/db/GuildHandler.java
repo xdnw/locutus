@@ -2465,7 +2465,7 @@ public class GuildHandler {
                         if (!sentNoIAMessage) {
                             try {
                                 sentNoIAMessage = true;
-                                RateLimitUtil.queueWhenFree(output.sendMessage("No `INTERNAL_AFFAIRS` is currently online (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)"));
+                                RateLimitUtil.queueWhenFree(output.sendMessage("No `INTERNAL_AFFAIRS` is currently online on discord (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)"));
                             } catch (Throwable e) {
                                 db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                                 e.printStackTrace();
