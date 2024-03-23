@@ -1361,6 +1361,16 @@ public class PWBindings extends BindingHelper {
         return emum(UnsortedCommands.ClearRolesEnum.class, input);
     }
 
+    @Binding(value = "The mode for calculating war costs")
+    public WarCostMode WarCostMode(String input) {
+        return emum(WarCostMode.class, input);
+    }
+
+    @Binding(value = "A war attack statistic")
+    public WarCostStat WarCostStat(String input) {
+        return emum(WarCostStat.class, input);
+    }
+
     @Binding(value = "Bank transaction flow type (internal, withdrawal, depost)")
     public static FlowType FlowType(String input) {
         return emum(FlowType.class, input);
