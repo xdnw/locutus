@@ -2,7 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.locutus.wiki.game.PWWikiUtil;
+import link.locutus.wiki.game.PWWikiUtil;
 import com.vdurmont.emoji.EmojiParser;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -38,7 +38,7 @@ import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
-import com.locutus.wiki.CommandWikiPages;
+import link.locutus.wiki.CommandWikiPages;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -534,7 +534,7 @@ public class GPTCommands {
     public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-            return pwGpt.getClosestCommands(store, search, 100);
+            return pwGpt.getClosestCommands(store, search, 100, true);
         };
 
         Function<ParametricCallable, String> getMention = command -> {
@@ -566,7 +566,7 @@ public class GPTCommands {
     public String find_placeholder(NationPlaceholders placeholders, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-            return pwGpt.getClosestNationAttributes(store, search, 100);
+            return pwGpt.getClosestNationAttributes(store, search, 100, true);
         };
 
         Function<ParametricCallable, String> getMention = command -> {

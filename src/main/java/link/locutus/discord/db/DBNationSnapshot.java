@@ -37,7 +37,7 @@ public class DBNationSnapshot extends DBNation {
     }
 
     public void addCity(DBCity city) {
-        if (cityMap == null) cityMap = new Int2ObjectOpenHashMap<>();
+        if (cityMap == null) cityMap = new Int2ObjectOpenHashMap<>(this.getCities());
         cityMap.put(city.id, city);
     }
 

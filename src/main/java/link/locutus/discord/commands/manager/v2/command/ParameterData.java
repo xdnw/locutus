@@ -17,6 +17,7 @@ public class ParameterData {
     private String name;
     private Parser binding;
     private String desc;
+    private int group = -1;
 
     public Type getType() {
         return type;
@@ -25,6 +26,10 @@ public class ParameterData {
     public ParameterData setType(Type type) {
         this.type = type;
         return this;
+    }
+
+    public int getGroup() {
+        return group;
     }
 
     public ParameterData setModifiers(Annotation[] annotations) {
@@ -165,5 +170,9 @@ public class ParameterData {
             if (filterClass.isAssignableFrom(annotation.annotationType())) return (T) annotation;
         }
         return null;
+    }
+
+    public void setGroup(int group) {
+        this.group = group;
     }
 }

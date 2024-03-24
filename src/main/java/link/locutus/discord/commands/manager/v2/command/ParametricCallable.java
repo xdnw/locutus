@@ -49,6 +49,8 @@ public class ParametricCallable implements ICommand {
     private final Annotation[] annotations;
     private final Type returnType;
     private final boolean isStatic;
+    private final String[] groups;
+    private final String[] groupDescs;
     private Supplier<String> descMethod;
 
     public ParametricCallable(CommandCallable parent, ParametricCallable clone, List<String> aliases) {
@@ -66,6 +68,8 @@ public class ParametricCallable implements ICommand {
         this.parent = parent;
         this.annotations = clone.annotations;
         this.returnType = clone.returnType;
+        this.groups = clone.groups;
+        this.groupDescs = clone.groupDescs;
     }
 
     public ParametricCallable(CommandCallable parent, ValueStore store, Object object, Method method, Command definition) {
@@ -120,8 +124,11 @@ public class ParametricCallable implements ICommand {
 //                } else if (parameter.getBinding() == null) {
 //                    parameter.setBinding(builder.getBindings().get(annotation.annotationType()));
 //                    parameter.setClassifier(annotation);
-                } else if (annotation instanceof Arg) {
-                    parameter.setDescription(((Arg) annotation).value());
+                } else if (annotation instanceof Arg arg) {
+                    parameter.setDescription(arg.value());
+                    if (arg.group() != -1) {
+                        parameter.setGroup(arg.group());
+                    }
                 }
             }
 
@@ -189,6 +196,18 @@ public class ParametricCallable implements ICommand {
                 throw new RuntimeException(e);
             }
         }
+        this.groups = definition.groups();
+        this.groupDescs = definition.groupDescs();
+    }
+
+    private String getGroup(int index) {
+        if (index == -1 || index >= groups.length) return "";
+        return groups[index];
+    }
+
+    private String getGroupDesc(int index) {
+        if (index == -1 || index >= groupDescs.length) return "";
+        return groupDescs[index];
     }
 
     public List<Annotation> getAnnotations() {
@@ -550,7 +569,7 @@ public class ParametricCallable implements ICommand {
                     }
 
                     String simpleName = permAnnotation.annotationType().getSimpleName().replaceFirst("(?i)permission", "");
-                    String title = simpleName + "(" + String.join(", ", permValues) + ")";
+                    String title = simpleName + (permValues.isEmpty() ? "" : "(" + String.join(", ", permValues) + ")");
                     permissionInfo.put(title, baseUrl + simpleName.toLowerCase(Locale.ROOT));
                 }
             }
@@ -572,8 +591,30 @@ public class ParametricCallable implements ICommand {
         } else {
             String typeUrlBase = (useFullLinks ? "https://t.ly/maKT" : "arguments") + "#";
 
+            int lastGroup = -1;
             result.append("**Arguments:**\n\n");
-            for (ParameterData parameter : params) {
+            for (int i = 0; i < params.size(); i++) {
+                ParameterData parameter = params.get(i);
+                Arg arg = parameter.getAnnotation(Arg.class);
+                String quotePrefix = "";
+                if (arg != null) {
+                    quotePrefix = arg.group() == -1 ? "" : "> ";
+                    if (arg.group() != -1 && arg.group() != lastGroup) {
+                        lastGroup = arg.group();
+                        String groupName = getGroup(lastGroup);
+                        String groupDesc = getGroupDesc(lastGroup);
+                        if (!groupName.isEmpty()) {
+                            result.append("__" + groupName + ":__\n");
+                            if (!groupDesc.isEmpty()) {
+                                result.append("> `" + groupDesc.replace("\n", "\n> ") + "`\n\n");
+                            }
+                        }
+                    }
+                } else if (lastGroup != -1) {
+                    lastGroup = -1;
+                    result.append("\n");
+                }
+
                 Parser<?> binding = parameter.getBinding();
                 String name = parameter.getName();
                 Key key = binding.getKey();
@@ -602,21 +643,19 @@ public class ParametricCallable implements ICommand {
                 if (spoiler) keyName = StringEscapeUtils.escapeHtml4(keyName.replace("[", "\\[").replace("]", "\\]"));
                 if (links) {
                     String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + MarkupUtil.pathName(key.toSimpleString().toLowerCase(Locale.ROOT)));
-                    result.append("`" + argFormat + "`").append(" - ").append(typeLink);
+                    result.append(quotePrefix + "`" + argFormat + "`").append(" - ").append(typeLink);
                 } else {
-                    result.append("`" + argFormat + "`").append(" - ").append(keyName);
+                    result.append(quotePrefix + "`" + argFormat + "`").append(" - ").append(keyName);
                 }
-
-                result.append("\n\n");
-
+                result.append("\n");
                 if (desc != null && !desc.isEmpty()) {
-                    result.append("> " + desc.replaceAll("\n", "\n> ") + "\n\n");
+                    result.append(quotePrefix + desc.replaceAll("\n", "\n" + quotePrefix) + "\n");
                 }
             }
         }
 
         if (!permissionInfo.isEmpty()) {
-            result.append("**Permission:**\n\n");
+            result.append("\n**Permission:**\n");
             for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
                 if (links) {
                     result.append("- " + MarkupUtil.markdownUrl(entry.getKey(), entry.getValue()) + "\n");

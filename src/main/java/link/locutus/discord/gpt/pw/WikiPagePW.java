@@ -1,15 +1,13 @@
 package link.locutus.discord.gpt.pw;
 
 import com.google.gson.Gson;
-import com.locutus.wiki.game.PWWikiUtil;
+import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
-import link.locutus.discord.util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;

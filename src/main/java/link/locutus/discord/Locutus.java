@@ -1150,6 +1150,9 @@ public final class Locutus extends ListenerAdapter {
 
             User user = event.getUser();
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
+            if (Settings.INSTANCE.MODERATION.BANNED_USERS.containsKey(user.getIdLong())) return;
+            if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.containsKey(guild.getIdLong())) return;
+
             MessageChannel channel = event.getChannel();
             List<MessageEmbed> embeds = message.getEmbeds();
             MessageEmbed embed = !embeds.isEmpty() ? embeds.get(0) : null;
@@ -1192,7 +1195,6 @@ public final class Locutus extends ListenerAdapter {
                     }
 
                     String id = info.command;
-
                     if (!deferred && !id.contains("modal create")) {
                         deferred = true;
                         if (info.behavior == CommandBehavior.EPHEMERAL) {
@@ -1218,7 +1220,6 @@ public final class Locutus extends ListenerAdapter {
                 if (hasLegacyCommand && !success) {
                     behavior = null;
                 }
-
                 if (behavior != null) {
                     switch (behavior) {
                         case DELETE_MESSAGE -> {

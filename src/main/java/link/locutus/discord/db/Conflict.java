@@ -66,7 +66,6 @@ public class Conflict {
         coalition2.clearWarData();
         dirtyWars = true;
         dirtyJson = true;
-
     }
 
     public Conflict(int id, int ordinal, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
@@ -147,7 +146,6 @@ public class Conflict {
 
         parser.iterateAll(day -> {
             if (day >= dayStart && day <= dayEnd) {
-                System.out.println("Run for day " + day);
                 return true;
             }
             return false;
@@ -160,7 +158,7 @@ public class Conflict {
                 int allianceId = header.alliance_id.get();
                 if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) return;
             }
-            long currentTimeMs = TimeUtil.getTimeFromDay(day);
+//            long currentTimeMs = TimeUtil.getTimeFromDay(day);
             DBNationSnapshot nation = header.getNation(f -> true, f -> true, false, true, true);
             if (nation != null) {
                 nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
@@ -186,7 +184,7 @@ public class Conflict {
             for (int id : nationIds) {
                 DBNation nation = DBNation.getById(id);
                 if (nation != null) {
-                latest.put(id, nation);
+                    latest.put(id, nation);
                 }
             }
             long nextDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + 11));
@@ -195,12 +193,12 @@ public class Conflict {
             latest = nationsByDay.get(lastDay);
         }
 
-        System.out.println("Graph 5");
-
         // save day data
         {
             for (Map.Entry<Long, Map<Integer, DBNation>> entry : nationsByDay.entrySet()) {
                 long day = entry.getKey();
+                long dayStartTurn = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
+                long dayEndTurn = dayStartTurn + 11;
                 Map<Integer, DBNation> nations = entry.getValue();
                 Set<DBNation> col1Nations = new ObjectOpenHashSet<>();
                 Set<DBNation> col2Nations = new ObjectOpenHashSet<>();
@@ -210,12 +208,12 @@ public class Conflict {
                     if (nation instanceof DBNationSnapshot snap && !snap.hasCityData()) continue;
                     int aaId = nation.getAlliance_id();
                     long startTurn = getStartTurn(aaId);
-                    if (TimeUtil.getDay(TimeUtil.getTimeFromTurn(startTurn)) > day) continue;
+                    if (startTurn != turnStart && startTurn > dayEndTurn) continue;
                     long endTurn = getEndTurn(aaId);
-                    if (endTurn != Long.MAX_VALUE && TimeUtil.getDay(TimeUtil.getTimeFromTurn(endTurn + 11)) < day) continue;
-                    if (coalition1.hasAlliance(nation.getAlliance_id())) {
+                    if (endTurn != turnEnd && endTurn < dayStartTurn) continue;
+                    if (coalition1.hasAlliance(aaId)) {
                         col1Nations.add(nation);
-                    } else if (coalition2.hasAlliance(nation.getAlliance_id())) {
+                    } else if (coalition2.hasAlliance(aaId)) {
                         col2Nations.add(nation);
                     }
                 }

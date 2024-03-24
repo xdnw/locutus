@@ -8,6 +8,8 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarCostMode;
+import link.locutus.discord.apiv1.enums.WarCostStat;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -80,11 +82,23 @@ public class PWCompleter extends BindingHelper {
     public List<String> commandEndpoint(String input) {
         return command(input);
     }
-    
+
     @Autocomplete
     @Binding(types={Coalition.class})
     public List<String> Coalition(String input) {
         return StringMan.completeEnum(input, Coalition.class);
+    }
+
+    @Autocomplete
+    @Binding(types={WarCostMode.class})
+    public List<String> WarCostMode(String input) {
+        return StringMan.completeEnum(input, WarCostMode.class);
+    }
+
+    @Autocomplete
+    @Binding(types={WarCostStat.class})
+    public List<String> WarCostStat(String input) {
+        return StringMan.completeEnum(input, WarCostStat.class);
     }
 
     @Autocomplete

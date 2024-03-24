@@ -9,4 +9,5 @@ import java.lang.annotation.Target;
 @Target({ElementType.PARAMETER, ElementType.METHOD})
 public @interface Arg {
     String value();
+    int group() default -1;
 }

@@ -157,7 +157,11 @@ public class DataDumpParser {
                     onEach.accept(day);
                 }
             } catch (IOException e) {
+                System.out.println("Error reading file " + day + " | " + cityFile.getFilePart());
                 throw new RuntimeException(e);
+            } catch (Throwable e) {
+                System.out.println("Error reading file (2) " + day + " | " + cityFile.getFilePart());
+                throw e;
             }
         });
     }

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -18,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -101,6 +103,10 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (!name.matches("[a-zA-Z0-9_]+")) {
             throw new IllegalArgumentException("Invalid name: `" + name + "` (must be alphanumeric_-)");
         }
+        // cannot start with number
+        if (name.matches("[0-9]+")) {
+            throw new IllegalArgumentException("Invalid name: `" + name + "` (cannot be a number)");
+        }
         if (name.length() > 20) {
             throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
         }
@@ -129,7 +135,10 @@ public abstract class Placeholders<T> extends BindingHelper {
             throw new IllegalArgumentException("Selection cannot reference itself: `" + selection + "`");
         }
         db.getSheetManager().addSelectionAlias(name, instance.getType(), selection);
-        return "Added selection `" + name + "`: `" + selection + "`. Use it with `$" + name + "`";
+        return "Added selection `" + name + "`: `" + selection + "`. Use it with `$" + name + "` or `select:" + name + "`\n" +
+                "- Rename: " + CM.selection_alias.rename.cmd.toSlashMention() + "\n" +
+                "- Remove: " + CM.selection_alias.remove.cmd.toSlashMention() + "\n" +
+                "- View: " + CM.selection_alias.list.cmd.toSlashMention();
     }
 
     public SheetTemplate getOrCreateTemplate(GuildDB db, List<String> columns, boolean save, AtomicBoolean createdFlag) {
@@ -729,7 +738,8 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     private TypedFunction<T, ?> format(ValueStore store, ParametricCallable command, Map<String, TypedFunction<T, ?>> arguments) {
-        Map<String, Object> resolvedArgs = new LinkedHashMap<>();
+        Map<String, Object> resolvedArgs = new Object2ObjectLinkedOpenHashMap<>();
+        Map<T, Map<String, Object>> resolvedByEntity = new Object2ObjectLinkedOpenHashMap<>();
         boolean isResolved = true;
         for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
             TypedFunction<T, ?> func = entry.getValue();
@@ -742,15 +752,23 @@ public abstract class Placeholders<T> extends BindingHelper {
 
         boolean finalIsResolved = isResolved;
         Function<T, Object[]> resolved = f -> {
+            Map<String, Object> finalArgs;
             if (!finalIsResolved) {
-                for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
-                    String argName = entry.getKey();
-                    if (!resolvedArgs.containsKey(argName)) {
-                        resolvedArgs.put(argName, entry.getValue().applyCached(f));
+                finalArgs = resolvedByEntity.get(f);
+                if (finalArgs == null) {
+                    finalArgs = new Object2ObjectLinkedOpenHashMap<>();
+                    resolvedByEntity.put(f, finalArgs);
+                    for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
+                        String argName = entry.getKey();
+                        if (!finalArgs.containsKey(argName)) {
+                            finalArgs.put(argName, entry.getValue().applyCached(f));
+                        }
                     }
                 }
+            } else {
+                finalArgs = resolvedArgs;
             }
-            return command.parseArgumentMap2(resolvedArgs, store, validators, permisser, true);
+            return command.parseArgumentMap2(finalArgs, store, validators, permisser, true);
         };
         StringBuilder full = new StringBuilder(command.getPrimaryCommandId());
         if (!arguments.isEmpty()) {

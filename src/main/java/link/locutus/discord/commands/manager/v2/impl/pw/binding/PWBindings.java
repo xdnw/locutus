@@ -205,8 +205,14 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of attack success types")
-    public Set<SuccessType> SuccessTypes(String input) {
-        return emumSet(SuccessType.class, input);
+    public static Set<SuccessType> SuccessTypes(String input) {
+        String[] split = input.split(",");
+        Set<SuccessType> result = new HashSet<>();
+        for (String s : split) {
+            result.add(SuccessType.parse(s));
+        }
+        if (result.isEmpty()) throw new IllegalArgumentException("No valid success types found for: `" + input + "`");
+        return result;
     }
 
     @Binding(value = "A comma separated list of deposit types")
@@ -545,7 +551,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A war id or url", examples = {"https://politicsandwar.com/nation/war/timeline/war=1234"})
-    public DBWar war(String arg0) {
+    public static DBWar war(String arg0) {
         if (arg0.contains("/war=")) {
             arg0 = arg0.split("=")[1];
         }
@@ -982,7 +988,7 @@ public class PWBindings extends BindingHelper {
 //    }
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
-    public Set<WarStatus> WarStatuses(String input) {
+    public static Set<WarStatus> WarStatuses(String input) {
         Set<WarStatus> result = new HashSet<>();
         for (String s : input.split(",")) {
             result.add(WarStatus.parse(s));
@@ -991,7 +997,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "ATTRITION,RAID", value = "A comma separated list of war declaration types")
-    public Set<WarType> WarType(String input) {
+    public static Set<WarType> WarTypes(String input) {
         return emumSet(WarType.class, input);
     }
 
@@ -1353,6 +1359,16 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "Types of users to clear roles of")
     public UnsortedCommands.ClearRolesEnum clearRolesEnum(String input) {
         return emum(UnsortedCommands.ClearRolesEnum.class, input);
+    }
+
+    @Binding(value = "The mode for calculating war costs")
+    public WarCostMode WarCostMode(String input) {
+        return emum(WarCostMode.class, input);
+    }
+
+    @Binding(value = "A war attack statistic")
+    public WarCostStat WarCostStat(String input) {
+        return emum(WarCostStat.class, input);
     }
 
     @Binding(value = "Bank transaction flow type (internal, withdrawal, depost)")

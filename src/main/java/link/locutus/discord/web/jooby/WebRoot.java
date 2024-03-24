@@ -3,7 +3,7 @@ package link.locutus.discord.web.jooby;
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
 import com.google.gson.JsonObject;
-import com.locutus.wiki.WikiGenHandler;
+import link.locutus.wiki.WikiGenHandler;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
 import gg.jte.resolve.DirectoryCodeResolver;

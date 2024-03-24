@@ -211,7 +211,7 @@ public class HelpCommands {
         try {
             IMessageBuilder msg = io.create();
 
-            List<ParametricCallable> results = getGPT().getClosestCommands(store, query, num_results);
+            List<ParametricCallable> results = getGPT().getClosestCommands(store, query, num_results, true);
             for (int i = 0; i < results.size(); i++) {
                 ParametricCallable command = results.get(i);
                 // /command [arguments]

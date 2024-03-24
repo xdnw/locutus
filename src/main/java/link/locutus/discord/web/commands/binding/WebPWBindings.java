@@ -187,6 +187,18 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
+    @Binding(types = WarCostMode.class)
+    public String WarCostMode(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(WarCostMode.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()));
+    }
+
+    @HtmlInput
+    @Binding(types = WarCostStat.class)
+    public String WarCostStat(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(WarCostStat.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()));
+    }
+
+    @HtmlInput
     @Binding(types = SheetTemplate.class)
     public String SheetTemplate(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
         Set<String> options = manager.getSheetTemplates(new ArrayList<>()).keySet();

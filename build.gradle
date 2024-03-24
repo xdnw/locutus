@@ -206,7 +206,7 @@ dependencies {
     runtimeOnly "ai.djl.pytorch:pytorch-engine:0.22.1"
     runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.22.1"
     implementation "ai.djl.huggingface:tokenizers:0.22.1"
-    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu118:2.0.0:win-x86_64'
+//    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu118:2.0.0:win-x86_64'
     runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.0.0-0.22.1'
 //    implementation 'net.sourceforge.tess4j:tess4j:4.5.1'
     implementation 'org.bytedeco:javacv:1.5.6'

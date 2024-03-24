@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -12,11 +13,13 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.TriFunction;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -30,6 +33,9 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.ToIntBiFunction;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 public class WarCostRanking extends Command {
@@ -37,7 +43,52 @@ public class WarCostRanking extends Command {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
     }
 
-    public static double scale(DBNation nation, double value, boolean enabled, boolean groupByAlliance) {
+    public static TriFunction<Integer, DBWar, Double, Double> getScaleFunction(boolean perCity, Map<Integer, Integer> warsByGroup, boolean groupByAA) {
+        ToIntBiFunction<Integer, DBWar> getGroup;
+        if (groupByAA) {
+            getGroup = (nation, war) -> war.isAttacker(nation) ? war.getAttacker_aa() : war.getDefender_aa();
+        } else {
+            getGroup = (nation, war) -> nation;
+        }
+        ToIntBiFunction<Integer, DBWar> getCities;
+        if (groupByAA) {
+            Map<Integer, Integer> citiesByAACache = new Int2IntOpenHashMap();
+            getCities = (nation, war) -> {
+                int aaId = getGroup.applyAsInt(nation, war);
+                return citiesByAACache.computeIfAbsent(aaId, i -> {
+                    DBAlliance alliance = DBAlliance.get(war.getAttacker_id() == nation ? war.getAttacker_aa() : war.getDefender_aa());
+                    if (alliance == null) return 1;
+                    int total = 0;
+                    for (DBNation n : alliance.getNations(true, 0, true)) {
+                        total += n.getCities();
+                    }
+                    return total;
+                });
+            };
+        } else {
+            getCities = (nation, war) -> {
+                int cities = war.getCities(war.isAttacker(nation));
+                return cities == 0 ? 1 : cities;
+            };
+        }
+        ToIntBiFunction<Integer, DBWar> getWarsByGroup = warsByGroup == null ? null : (nation, war) -> warsByGroup.get(getGroup.applyAsInt(nation, war));
+
+        ToIntBiFunction<Integer, DBWar> getFactor;
+        if (perCity) {
+            if (warsByGroup != null) {
+                getFactor = (nation, war) -> Math.max(1, getWarsByGroup.applyAsInt(nation, war)) * getCities.applyAsInt(nation, war);
+            } else {
+                getFactor = getCities;
+            }
+        } else if (warsByGroup != null) {
+            getFactor = (nation, war) -> Math.max(1, getWarsByGroup.applyAsInt(nation, war));
+        } else {
+            return (nation, war, value) -> value;
+        }
+        return (nation, war, value) -> value / getFactor.applyAsInt(nation, war);
+    }
+
+    private static double scale(DBNation nation, double value, boolean enabled, boolean groupByAlliance) {
         if (enabled) {
             if (groupByAlliance) {
                 DBAlliance alliance = nation.getAlliance(false);

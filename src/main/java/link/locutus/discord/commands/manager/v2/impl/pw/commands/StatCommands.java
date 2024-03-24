@@ -9,7 +9,6 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
-import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
@@ -22,7 +21,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -33,20 +31,18 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.WarCostAB;
+import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
-import link.locutus.discord.db.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
@@ -69,7 +65,6 @@ import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import retrofit2.http.HEAD;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -84,12 +79,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
 
 public class StatCommands {
     @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period")
@@ -159,146 +151,125 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Rank war costs between two parties")
+    @Command(desc = "Rank war costs between two parties", groups = {
+            "Time period",
+            "Nations",
+            "Ranking Statistic",
+            "Cost Exclusions",
+            "Grouping/Scaling",
+            "War Filtering"
+
+    }, groupDescs = {
+            "The time period to rank the wars",
+            "The nations/alliances to include",
+            "The statistic and mode to rank by",
+            "Exclude certain kinds of costs from the ranking",
+            "City, war scaling, and enable ranking by alliance (instead of nation)",
+            "Specify the kind of wars to include"
+    })
     public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
-                                 @Timestamp long timeStart, @Timestamp @Default Long timeEnd,
-                                 @Default("*") Set<NationOrAlliance> coalition1, @Default() Set<NationOrAlliance> coalition2,
-
-                                 @Switch("i") boolean excludeInfra,
-                                 @Switch("c") boolean excludeConsumption,
-                                 @Switch("l") boolean excludeLoot,
-                                 @Switch("b") boolean excludeBuildings,
-                                 @Switch("u") boolean excludeUnits,
-
-                                 @Arg("Return total war costs instead of average per war") @Switch("t") boolean total,
-                                 @Arg("Rank by net profit") @Switch("p") boolean netProfit,
-                                 @Arg("Rank by damage") @Switch("d") boolean damage,
-                                 @Arg("Rank by net") @Switch("n") boolean netTotal,
-                                 @Arg("Rank alliances") @Switch("g") boolean groupByAlliance,
-                                 @Arg("Scale rankings by city count") @Switch("s") boolean scalePerCity,
-
-                                 @Switch("kills") MilitaryUnit unitKill,
-                                 @Switch("deaths") MilitaryUnit unitLoss,
-                                 @Switch("attack") AttackType attackType,
-
-                                 @Switch("wartype") Set<WarType> allowedWarTypes,
-                                 @Switch("status") Set<WarStatus> allowedWarStatuses,
-                                 @Switch("attacks") Set<AttackType> allowedAttacks,
-
+                                 @Arg(value = "Start time of the period to rank\n" +
+                                 "Defaults to 7d", group = 0)
+                                 @Default("7d") @Timestamp long timeStart,
+                                 @Arg(value = "End time of the period to rank\n" +
+                                         "Defaults to now", group = 0)
+                                 @Timestamp @Default Long timeEnd,
+                                 @Arg(value = "Nations required to be in the conflicts\n" +
+                                         "Defaults to all existing nations", group = 1)
+                                 @Default("*") Set<NationOrAlliance> coalition1,
+                                 @Arg(value = "Nations required to be in the conflicts against `coalition1`\n" +
+                                         "Defaults to all nations", group = 1)
+                                 @Default() Set<NationOrAlliance> coalition2,
+                                 @Arg(value = "Only rank the nations in `coalition1`\n" +
+                                         "Defaults to false", group = 1)
                                  @Switch("a") boolean onlyRankCoalition1,
-
-                                 @Arg("Rank the specific resource costs") @Switch("r") ResourceType resource,
-                                 @Switch("f") boolean uploadFile,
-                                 @Switch("off") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars
-//                                 @Switch("def") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars
+                                 @Arg(value = "Cost Type", group = 2)
+                                     @Switch("t") WarCostMode type,
+                                 @Arg(value = "Rank a specific stat, such as soldiers\n" +
+                                         "Defaults to `DAMAGE`", group = 2)
+                                     @Switch("s") WarCostStat stat,
+                                 @Arg(value = "Exclude infrastructure", group = 3)
+                                 @Switch("i") boolean excludeInfra,
+                                    @Arg(value = "Exclude consumption", group = 3)
+                                 @Switch("c") boolean excludeConsumption,
+                                    @Arg(value = "Exclude loot", group = 3)
+                                 @Switch("l") boolean excludeLoot,
+                                    @Arg(value = "Exclude building losses", group = 3)
+                                 @Switch("b") boolean excludeBuildings,
+                                    @Arg(value = "Exclude unit losses", group = 3)
+                                 @Switch("u") boolean excludeUnits,
+                                 @Arg(value = "Rank alliances", group = 4) @Switch("g") boolean groupByAlliance,
+                                 @Arg(value = "Scale rankings per war", group = 4) @Switch("w") boolean scalePerWar,
+                                 @Arg(value = "Scale rankings by city count", group = 4) @Switch("p") boolean scalePerCity,
+                                 @Arg(value = "Filter the war types included", group = 5)
+                                 @Switch("wartype") Set<WarType> allowedWarTypes,
+                                 @Arg(value = "Filter the war statuses included", group = 5)
+                                 @Switch("status") Set<WarStatus> allowedWarStatuses,
+                                 @Arg(value = "Filter the attack types included", group = 5)
+                                 @Switch("attacks") Set<AttackType> allowedAttacks,
+                                 @Switch("off") @Arg(value = "Only include wars declared by coalition1", group = 5) boolean onlyOffensiveWars,
+                                 @Switch("def") @Arg(value = "Only include wars declared by coalition2", group = 5) boolean onlyDefensiveWars,
+                                 @Switch("f") boolean uploadFile
     ) {
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+        if (stat == null) stat = WarCostStat.WAR_VALUE;
+        if (type == null) type = WarCostMode.DEALT;
 
         WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
                 .allowWarStatuses(allowedWarStatuses)
                 .allowedWarTypes(allowedWarTypes)
                 .allowedAttackTypes(allowedAttacks);
-        if (onlyOffensiveWars) {
-            parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
-        }
+//        if (onlyOffensiveWars) {
+//            parser.getWars().entrySet().removeIf(f -> !parser.getIsPrimary().apply(f.getValue()));
+//        }
 //        if (onlyDefensiveWars) {
-//            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
+//            parser.getWars().entrySet().removeIf(f -> !parser.getIsPrimary().apply(f.getValue()));
 //        }
-//        if (onlyOffensiveAttacks) {
-//            parser.getAttacks().removeIf(f -> {
-//                DBWar war = f.getWar();
-//                if (war == null) return true;
-//                boolean warDeclarerCol1 = parser.getIsPrimary().apply(war);
-//                return warDeclarerCol1 != (f.getAttacker_id() == war.getAttacker_id());
-//            });
-//        }
-//        if (onlyDefensiveAttacks) {
-//            parser.getAttacks().removeIf(f -> {
-//                DBWar war = f.getWar();
-//                if (war == null) return true;
-//                boolean warDeclarerCol2 = parser.getIsSecondary().apply(war);
-//                return warDeclarerCol2 != (f.getAttacker_id() == war.getAttacker_id());
-//            });
-//        }
-        if (netProfit && unitKill != null)
-            throw new IllegalArgumentException("The netProfit flag cannot be combined with unitKill.");
-        if (netProfit && unitLoss != null)
-            throw new IllegalArgumentException("The netProfit flag cannot be combined with unitKill.");
+        if (type == WarCostMode.PROFIT && stat.unit() != null) {
+            throw new IllegalArgumentException("Cannot rank by `type: profit` with a unit stat");
+        }
+        if (type == WarCostMode.PROFIT && stat.attack() != null) {
+            throw new IllegalArgumentException("Cannot rank by `type: profit` with an attack type stat");
+        }
 
-        int sign = netProfit ? -1 : 1;
         String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, (Math.min(System.currentTimeMillis(), timeEnd) - timeStart));
 
-        String typeName = null;
-        if (unitKill != null) typeName = unitKill.getName();
-        if (unitLoss != null) typeName = unitLoss.getName();
-        if (resource != null) typeName = resource.getName();
-        if (attackType != null) typeName = attackType.getName();
-
-        String title = (damage && netTotal ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (netProfit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (!total ? "per " + (groupByAlliance ? "nation" : "war") : "of war") + " (%s)";
+        String title = (groupByAlliance ? "Alliance" : "Nation") + " " + stat.name() + " " + type.name();
+        if (scalePerWar && scalePerCity) {
+            title += "/war*city";
+        } else if (scalePerWar) {
+            title += "/war";
+        } else if (scalePerCity) {
+            title += "/city";
+        }
+        title += " (%s)";
         title = String.format(title, diffStr);
 
         Map<Integer, DBWar> wars = parser.getWars();
 
-        BiFunction<Boolean, AbstractCursor, Double> valueFunc;
-        {
-            double[] rssBuffer = ResourceType.getBuffer();
-            BiFunction<Boolean, AbstractCursor, Double> getValue = null;
-            if (unitKill != null) {
-                getValue = (attacker, attack) -> (double) attack.getUnitLosses(unitKill, !attacker);
-            }
-            if (unitLoss != null) {
-                if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (1)");
-                getValue = (attacker, attack) -> (double) attack.getUnitLosses(unitLoss, attacker);
-            }
-            if (attackType != null) {
-                if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (2)");
-                getValue = (attacker, attack) -> attack.getAttack_type() == attackType ? 1d : 0d;
-            }
-            if (resource != null) {
-                if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
-                double min = damage ? 0 : Double.NEGATIVE_INFINITY;
-                getValue = (attacker, attack) -> {
-                    rssBuffer[resource.ordinal()] = 0;
-                    return Math.max(min, attack.getLosses(rssBuffer, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()]);
-                };
-            }
-            if (getValue == null) {
-                getValue = (attacker, attack) -> {
-                    Arrays.fill(rssBuffer, 0);
-                    if (!damage) {
-                        return attack.getLossesConverted(rssBuffer, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
-                    } else {
-                        double totalVal = 0;
-                        double[] losses = attack.getLosses(rssBuffer, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
-                        for (ResourceType type : ResourceType.values) {
-                            double val = losses[type.ordinal()];
-                            if (val > 0) totalVal += PnwUtil.convertedTotal(type, val);
-                        }
-                        return totalVal;
-                    }
-                };
-            }
-            valueFunc = getValue;
-        }
+        BiFunction<Boolean, AbstractCursor, Double> valueFunc = stat.getFunction(excludeUnits, excludeInfra, excludeConsumption, excludeLoot, excludeBuildings);
 
         GroupedRankBuilder<Integer, AbstractCursor> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
                     DBWar war = wars.get(attack.getWar_id());
+                    int attId,defId;
                     if (groupByAlliance) {
-                        if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
-                            map.put(war.getAttacker_aa(), attack);
-                        }
-                        if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
-                            map.put(war.getDefender_aa(), attack);
+                        attId = war.getAttacker_aa();
+                        defId = war.getDefender_aa();
+                    } else {
+                        attId = war.getAttacker_id();
+                        defId = war.getDefender_id();
+                    }
+                    if (onlyRankCoalition1) {
+                        if (parser.getIsPrimary().apply(war)) {
+                            map.put(attId, attack);
+                        } else {
+                            map.put(defId, attack);
                         }
                     } else {
-                        if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
-                            map.put(war.getAttacker_id(), attack);
-                        }
-                        if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
-                            map.put(war.getDefender_id(), attack);
-                        }
+                        map.put(attId, attack);
+                        map.put(defId, attack);
                     }
                 });
 
@@ -310,39 +281,67 @@ public class StatCommands {
         else groupBy = (attacker, attack) -> attack.getWar_id();
 
         NumericMappedRankBuilder<Integer, Integer, Double> byGroupMap;
-        if (!damage) {
-            byGroupMap = nationAllianceGroup.map(groupBy,
-                    // Convert attack to profit value
-                    (byNatOrAA, attack) -> {
-                        DBWar war = wars.get(attack.getWar_id());
-                        int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
-                        DBNation nation = DBNation.getById(nationId);
-                        if (nation == null) return 0d;
-                        return scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationId, attack), scalePerCity, groupByAlliance);
-                    });
+
+        BiFunction<Boolean, AbstractCursor, Double> applyDealt;
+        BiFunction<Boolean, AbstractCursor, Double> applyReceived;
+        if (type.includeDealt()) {
+            if (type.addDealt()) {
+                applyDealt = (isAttacker, attack) -> valueFunc.apply(!isAttacker, attack);
+            } else {
+                applyDealt = (isAttacker, attack) -> -valueFunc.apply(!isAttacker, attack);
+            }
         } else {
-            byGroupMap = nationAllianceGroup.map(groupBy,
-                    // Convert attack to profit value
-                    (byNatOrAA, attack) -> {
-                        DBWar war = wars.get(attack.getWar_id());
-                        int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
-                        DBNation nation = parser.getNation(nationId, war);
-                        if (nation == null) return 0d;
-                        boolean primary = (attack.getAttacker_id() != nationId) == netProfit;
-                        double totalVal = valueFunc.apply(primary, attack);
-                        if (netTotal) {
-                            totalVal -= valueFunc.apply(!primary, attack);
-                        }
-                        return scale(nation, totalVal, scalePerCity, groupByAlliance);
-                    });
+            applyDealt = null;
+        }
+        if (type.includeReceived()) {
+            if (type.addReceived()) {
+                applyReceived = (isAttacker, attack) -> valueFunc.apply(isAttacker, attack);
+            } else {
+                applyReceived = (isAttacker, attack) -> -valueFunc.apply(isAttacker, attack);
+            }
+        } else {
+            applyReceived = null;
         }
 
-        SummedMapRankBuilder<Integer, Number> byGroupSum;
-        if (total) {
-            byGroupSum = byGroupMap.sum();
+        BiFunction<Boolean, AbstractCursor, Double> applyBoth;
+        if (applyDealt != null) {
+            if (applyReceived != null) {
+                applyBoth = (isAttacker, attack) -> applyDealt.apply(isAttacker, attack) + applyReceived.apply(isAttacker, attack);
+            } else {
+                applyBoth = applyDealt;
+            }
+        } else if (applyReceived != null) {
+            applyBoth = applyReceived;
         } else {
-            byGroupSum = byGroupMap.average();
+            applyBoth = (isAttacker, attack) -> 0d;
         }
+        Map<Integer, Integer> warsByGroup = null;
+        if (scalePerWar) {
+            warsByGroup = new Int2IntOpenHashMap();
+            if (groupByAlliance) {
+                for (DBWar war : wars.values()) {
+                    warsByGroup.merge(war.getAttacker_aa(), 1, Integer::sum);
+                    warsByGroup.merge(war.getDefender_aa(), 1, Integer::sum);
+                }
+            } else {
+                for (DBWar war : wars.values()) {
+                    warsByGroup.merge(war.getAttacker_id(), 1, Integer::sum);
+                    warsByGroup.merge(war.getDefender_id(), 1, Integer::sum);
+                }
+            }
+        }
+        TriFunction<Integer, DBWar, Double, Double> scaleFunc = WarCostRanking.getScaleFunction(scalePerCity, warsByGroup, groupByAlliance);
+
+        byGroupMap = nationAllianceGroup.map(groupBy, (byNatOrAA, attack) -> {
+            DBWar war = wars.get(attack.getWar_id());
+            int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
+            boolean isAttacker = attack.getAttacker_id() == nationId;
+            double totalVal = applyBoth.apply(isAttacker, attack);
+            return scaleFunc.apply(nationId, war, totalVal);
+        });
+
+        SummedMapRankBuilder<Integer, Number> byGroupSum;
+        byGroupSum = byGroupMap.sum();
 
         RankBuilder<String> ranks = byGroupSum
                 .sort()
@@ -355,7 +354,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs stats between two coalitions")
-    public String myloot(@Me IMessageIO channel, @Me DBNation nation,
+    public String myloot(@Me IMessageIO channel, @Me DBNation nation, @Me JSONObject command,
                          Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
                          @Default @Timestamp Long timeEnd,
                          @Switch("u") boolean ignoreUnits,
@@ -371,13 +370,16 @@ public class StatCommands {
                          @Switch("s") Set<WarStatus> allowedWarStatus,
                          @Switch("a") Set<AttackType> allowedAttackTypes,
                          @Switch("v") Set<SuccessType> allowedVictoryTypes) {
-        return warsCost(channel, Collections.singleton(nation), coalition2, timeStart, timeEnd,
+        if (command != null && coalition2 != null && command.getString("coalition2").equalsIgnoreCase("*")) {
+            coalition2 = null;
+        }
+        return warsCost(channel, null, Collections.singleton(nation), coalition2, timeStart, timeEnd,
                 ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, ignoreBuildings, listWarIds, showWarTypes,
                 allowedWarTypes, allowedWarStatus, allowedAttackTypes, allowedVictoryTypes, false, false, false, false);
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)")
-    public String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
+    public static String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
                           @Switch("c") boolean ignoreConsumption,
@@ -391,7 +393,8 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs between two coalitions over a time period")
-    public String warsCost(@Me IMessageIO channel,
+    public static String warsCost(@Me IMessageIO channel,
+                           @Me JSONObject command,
                            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
                            @Timestamp long timeStart,
                            @Default @Timestamp Long timeEnd,
@@ -416,6 +419,12 @@ public class StatCommands {
         if (onlyOffensiveWars && onlyDefensiveWars) throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
         if (onlyOffensiveAttacks && onlyDefensiveAttacks) throw new IllegalArgumentException("Cannot combine `onlyOffensiveAttacks` and `onlyDefensiveAttacks`");
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+        if (coalition1 != null && command != null && command.getString("coalition1").equalsIgnoreCase("*")) {
+            coalition1 = null;
+        }
+        if (coalition2 != null && command != null && command.getString("coalition2").equalsIgnoreCase("*")) {
+            coalition2 = null;
+        }
         WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
                 .allowWarStatuses(allowedWarStatus)
                 .allowedWarTypes(allowedWarTypes)

@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.locutus.wiki.WikiGenHandler;
+import link.locutus.wiki.WikiGenHandler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.core.ApiKeyPool;

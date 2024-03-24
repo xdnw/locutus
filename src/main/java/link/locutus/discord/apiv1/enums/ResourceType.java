@@ -98,7 +98,8 @@ public enum ResourceType {
     }
 
     public static final ResourceType parse(String input) {
-        switch (input.toUpperCase()) {
+        String upper = input.toUpperCase();
+        switch (upper) {
             case "$":
             case "MO":
             case "MON":
@@ -175,7 +176,7 @@ public enum ResourceType {
             case "ALUMINIUM":
                 return ALUMINUM;
         }
-        return valueOf(input.toUpperCase());
+        return valueOf(upper);
     }
 
     public static final ResourceType[] values = values();

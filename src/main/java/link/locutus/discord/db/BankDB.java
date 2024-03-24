@@ -730,8 +730,8 @@ public class BankDB extends DBMainV3 {
         return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.SENDER_ID.in(senders)), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
-    public List<Transaction2> getTransactionsByByReceiver(Set<Long> receivers, long minDateMs) {
-        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.RECEIVER_ID.in(receivers)), TRANSACTIONS_2.TX_ID.desc(), null);
+    public List<Transaction2> getTransactionsByByReceiver(Set<Long> receivers, long minDateMs, long endDate) {
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.TX_DATETIME.le(endDate)).and(TRANSACTIONS_2.RECEIVER_ID.in(receivers)), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public List<Transaction2> getTransactions(long minDateMs, boolean desc) {

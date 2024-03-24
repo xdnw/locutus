@@ -2146,16 +2146,16 @@ public class UtilityCommands {
     public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default Color color, @Default("0.05") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font, @Switch("r") boolean repeat) {
         float opacityF = (float) opacity;
         // remove anything after ? mark
-        imageUrl = imageUrl.split("\\?")[0];
+        String imageStub = imageUrl.split("\\?")[0];
 
         if (!ImageUtil.isDiscordImage(imageUrl)) {
-            throw new IllegalArgumentException("Image must be a discord image, not: `" + imageUrl + "`");
+            throw new IllegalArgumentException("Image must be a discord image, not: `" + imageStub + "`");
         }
 
         BufferedImage image = ImageUtil.readImage(imageUrl);
         if (color == null) color = ImageUtil.getDefaultWatermarkColor(image);
         byte[] bytes = ImageUtil.addWatermark(image, watermarkText, color, opacityF, font, repeat);
-        io.create().image("watermark.png", bytes).send();
+        io.create().image("locutus-watermark.png", bytes).send();
         return null;
     }
 
@@ -2167,7 +2167,6 @@ public class UtilityCommands {
                            @Switch("d") boolean openMarkets,
                            @Switch("m") MMRInt mmr,
                            @Switch("l") Double land
-
     ) {
         DBNation nation = DBNation.getById(city.getNationId());
         if (nation == null) return "Unknown nation: `" + city.nation_id + "`";

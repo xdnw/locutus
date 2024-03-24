@@ -5,6 +5,7 @@ import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.util.IOUtil;
 import net.jpountz.util.SafeUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -15,22 +16,16 @@ public class LongColumn<P> extends NumberColumn<P, Long> {
         super(header, setter);
     }
 
-//    @Override
-//    public Long read(DataInputStream dis) throws IOException {
-//        return dis.readLong();
-//    }
-
-
     @Override
     public Long read(byte[] buffer, int offset) throws IOException {
-        return buffer[offset] & 0xFFL |
-                (buffer[offset + 1] & 0xFFL) << 8 |
-                (buffer[offset + 2] & 0xFFL) << 16 |
-                (buffer[offset + 3] & 0xFFL) << 24 |
-                (buffer[offset + 4] & 0xFFL) << 32 |
-                (buffer[offset + 5] & 0xFFL) << 40 |
-                (buffer[offset + 6] & 0xFFL) << 48 |
-                (buffer[offset + 7] & 0xFFL) << 56;
+        return ((long)buffer[offset] << 56) |
+                ((long)(buffer[offset + 1] & 255) << 48) |
+                ((long)(buffer[offset + 2] & 255) << 40) |
+                ((long)(buffer[offset + 3] & 255) << 32) |
+                ((long)(buffer[offset + 4] & 255) << 24) |
+                ((buffer[offset + 5] & 255) << 16) |
+                ((buffer[offset + 6] & 255) << 8) |
+                ((buffer[offset + 7] & 255));
     }
 
     @Override

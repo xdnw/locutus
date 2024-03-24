@@ -1958,7 +1958,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (timestamp > 0) {
             PnwPusherShardManager pusher = Locutus.imp().getPusher();
             if (pusher != null) {
-                pusher.getSpyTracker().updateCasualties(nation, timestamp);
+                SpyTracker spyTracker = pusher.getSpyTracker();
+                if (spyTracker != null) {
+                    spyTracker.updateCasualties(nation, timestamp);
+                }
             }
         }
         DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
@@ -3164,12 +3167,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return 0;
     }
 
-    public Map<OrbisMetric, Map<Long, Double>> getMetrics(OrbisMetric metric, long start, long end) {
+    public Map<Long, Double> getMetrics(OrbisMetric metric, long start, long end) {
         boolean isTurn = metric.isTurn();
         String table = isTurn ? "ORBIS_METRICS_TURN" : "ORBIS_METRICS_DAY";
         String turnOrDayCol = isTurn ? "turn" : "day";
         String query = "SELECT * FROM " + table + " WHERE metric = ? AND " + turnOrDayCol + " >= ? AND " + turnOrDayCol + " <= ?";
-        Map<OrbisMetric, Map<Long, Double>> result = new Object2ObjectOpenHashMap<>();
+        Map<Long, Double> result = new Long2DoubleOpenHashMap();
         query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, metric.ordinal());
             stmt.setLong(2, start);
@@ -3178,7 +3181,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             while (rs.next()) {
                 long turnOrDay = rs.getLong(turnOrDayCol);
                 double value = rs.getDouble("value");
-                result.computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turnOrDay, value);
+                result.put(turnOrDay, value);
             }
         });
         return result;
@@ -3186,7 +3189,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public Map<OrbisMetric, Map<Long, Double>> getMetrics(Collection<OrbisMetric> metrics, long start, long end) {
         if (metrics.isEmpty()) return new HashMap<>();
-        if (metrics.size() == 1) return getMetrics(metrics.iterator().next(), start, end);
+        if (metrics.size() == 1) {
+            OrbisMetric metric = metrics.iterator().next();
+            return Collections.singletonMap(metric, getMetrics(metric, start, end));
+        }
         Map<OrbisMetric, Map<Long, Double>> result = new Object2ObjectOpenHashMap<>();
         result.putAll(getMetrics(metrics, true, start, end));
         result.putAll(getMetrics(metrics, false, start, end));
@@ -3197,7 +3203,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         List<Integer> ids = metrics.stream().filter(f -> f.isTurn() == isTurn).map(Enum::ordinal).toList();
         if (ids.isEmpty()) return new HashMap<>();
         if (ids.size() == 1) {
-            return getMetrics(metrics.iterator().next(), start, end);
+            OrbisMetric metric = metrics.iterator().next();
+            return Collections.singletonMap(metric, getMetrics(metric, start, end));
         }
         ids.sort(Comparator.naturalOrder());
         String table = isTurn ? "ORBIS_METRICS_TURN" : "ORBIS_METRICS_DAY";

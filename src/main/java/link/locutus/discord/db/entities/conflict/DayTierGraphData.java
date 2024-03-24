@@ -11,9 +11,9 @@ import java.util.Set;
 public class DayTierGraphData extends TierGraphData {
     public void update(Set<DBNation> nations) {
         metricByTier.clear();
-        Map<Integer, Map<Byte, Integer>> nationsByAllianceByTier = metricByTier.computeIfAbsent(ConflictMetric.NATION, k -> new Int2ObjectOpenHashMap());
-        Map<Integer, Map<Byte, Integer>> infraByAllianceByTier = metricByTier.computeIfAbsent(ConflictMetric.INFRA, k -> new Int2ObjectOpenHashMap());
-        Map<Integer, Map<Byte, Integer>> beigeByAllianceByTier = metricByTier.computeIfAbsent(ConflictMetric.BEIGE, k -> new Int2ObjectOpenHashMap());
+        Map<Integer, Map<Byte, Integer>> nationsByAllianceByTier = metricByTier.computeIfAbsent(ConflictMetric.NATION, k -> new Int2ObjectOpenHashMap<>());
+        Map<Integer, Map<Byte, Integer>> infraByAllianceByTier = metricByTier.computeIfAbsent(ConflictMetric.INFRA, k -> new Int2ObjectOpenHashMap<>());
+        Map<Integer, Map<Byte, Integer>> beigeByAllianceByTier = metricByTier.computeIfAbsent(ConflictMetric.BEIGE, k -> new Int2ObjectOpenHashMap<>());
         for (DBNation nation : nations) {
             int aaId = nation.getAlliance_id();
             byte cities = (byte) nation.getCities();

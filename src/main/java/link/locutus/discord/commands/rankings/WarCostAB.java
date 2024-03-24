@@ -1,12 +1,22 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CoalitionWarStatus;
@@ -16,6 +26,8 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.WarAttackParser;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -25,8 +37,10 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import retrofit2.http.HEAD;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class WarCostAB extends Command {
@@ -47,16 +61,19 @@ public class WarCostAB extends Command {
     @Override
     public String desc() {
         return "Get the war cost between two entities.\n" +
-                "Add -u to exclude unit cost\n" +
-                "Add -i to exclude infra cost\n" +
-                "Add -c to exclude consumption\n" +
-                "Add -l to exclude loot\n" +
-                "Add -b to exclude buildings\n" +
-                "Add -w to list the wars (txt file)\n" +
-                "Add -t to list the war types\n" +
+                "Add `-u` to exclude unit cost\n" +
+                "Add `-i` to exclude infra cost\n" +
+                "Add `-c` to exclude consumption\n" +
+                "Add `-l` to exclude loot\n" +
+                "Add `-b` to exclude buildings\n" +
+                "Add `-w` to list the wars (txt file)\n" +
+                "Add `-t` to list the war types\n" +
                 "Add `-s` to list war status\n" +
+                "Add `-o` to only include wars declared by coalition1\n" +
+                "Add `-d` to only include wars declared by coalition2\n" +
                 "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type\n" +
                 "Add `war_type:RAID` to filter by war type\n" +
+                "Add `status:EXPIRED` to filter by war status\n" +
                 "Add `success:0` to filter by e.g. `utter failure`";
     }
 
@@ -65,94 +82,59 @@ public class WarCostAB extends Command {
         String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
         String attackSuccesStr = DiscordUtil.parseArg(args, "success");
         String warTypeStr = DiscordUtil.parseArg(args, "war_type");
-        if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
+        String warStatusStr = DiscordUtil.parseArg(args, "status");
+        if (args.size() != 1 && args.size() != 3 && args.size() != 4 && (args.size() < 2 || !args.get(0).equalsIgnoreCase(args.get(1)))) {
             return usage(args.size(), 1, 4, channel);
         }
-
         String arg0 = args.get(0);
-
-        WarAttackParser parser = new WarAttackParser(guild, author, me, args, flags);
-        if (attackTypeStr != null) {
-            Set<AttackType> options = new HashSet<>(BindingHelper.emumList(AttackType.class, attackTypeStr.toUpperCase(Locale.ROOT)));
-            parser.getAttacks().removeIf(f -> !options.contains(f.getAttack_type()));
-        }
-        if (attackSuccesStr != null) {
-            Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
-            parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess().ordinal()));
-        }
-        if (warTypeStr != null) {
-            Set<WarType> options = new HashSet<>(BindingHelper.emumList(WarType.class, warTypeStr.toUpperCase(Locale.ROOT)));
-            parser.getAttacks().removeIf(f -> {
-                DBWar war = f.getWar();
-                return war == null || !options.contains(war.getWarType());
-            });
+        if (args.size() == 1 && arg0.contains("/war=")) {
+            // throw error for invalid flags (w, t, s)
+            if (flags.contains('w') || flags.contains('t') || flags.contains('s')) {
+                return "Cannot use flags: `-w`, `-t`, `-s` with a war url. See also " + CM.war.info.cmd.toSlashMention();
+            }
+            DBWar war = PWBindings.war(arg0);
+            return StatCommands.warCost(author, guild, channel,
+                    war,
+                    flags.contains('u'),
+                    flags.contains('i'),
+                    flags.contains('c'),
+                    flags.contains('l'),
+                    flags.contains('b'));
         }
 
-        AttackCost cost = parser.toWarCost(!flags.contains('b'), true, flags.contains('s'), flags.contains('w') || flags.contains('t'), false);
+        Set<NationOrAlliance> col1 = args.get(0).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
+        Set<NationOrAlliance> col2 = args.get(1).equalsIgnoreCase("*") ? null : PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
+        long start = MathMan.isInteger(args.get(2)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(2))) : PrimitiveBindings.timestamp(args.get(2));
+        Long end = args.size() == 4 ? (MathMan.isInteger(args.get(3)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(3))) : PrimitiveBindings.timestamp(args.get(3))) : null;
 
-        StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l'), !flags.contains('b')));
-        IMessageBuilder msg = channel.create();
-        if (flags.contains('w')) {
-            msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
-        }
-        if (flags.contains('t')) {
-            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
-            Map<WarType, Integer> byType = new HashMap<>();
-            for (DBWar war : wars) {
-                byType.put(war.getWarType(), byType.getOrDefault(war.getWarType(), 0) + 1);
-            }
-            StringBuilder response = new StringBuilder();
-            for (Map.Entry<WarType, Integer> entry : byType.entrySet()) {
-                response.append("\n" + entry.getKey() + ": " + entry.getValue());
-            }
-            msg.embed("War Types", response.toString());
-        }
-        if (flags.contains('s')) {
-            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
-            Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
-            for (DBWar war : wars) {
-                CoalitionWarStatus status = null;
-                switch (war.getStatus()) {
-                    case ATTACKER_OFFERED_PEACE:
-                    case DEFENDER_OFFERED_PEACE:
-                    case ACTIVE:
-                        status = CoalitionWarStatus.ACTIVE;
-                        break;
-                    case PEACE:
-                        status = CoalitionWarStatus.PEACE;
-                        break;
-                    case EXPIRED:
-                        status = CoalitionWarStatus.EXPIRED;
-                        break;
-                }
-                if (status != null) {
-                    byStatus.put(status, byStatus.getOrDefault(status, 0) + 1);
-                }
-            }
-            int attVictory = cost.getVictories(true).size();
-            int defVictory = cost.getVictories(false).size();
-            byStatus.put(CoalitionWarStatus.COL1_VICTORY, attVictory);
-            byStatus.put(CoalitionWarStatus.COL1_DEFEAT, defVictory);
+        Placeholders<IAttack> phAttacks = Locutus.imp().getCommandManager().getV2().getPlaceholders().get(IAttack.class);
+        Set<AttackType> attackTypes = attackTypeStr == null ? null : PWBindings.AttackTypes(phAttacks.createLocals(guild, author, me), attackTypeStr);
+        Set<SuccessType> successTypes = attackSuccesStr == null ? null : PWBindings.SuccessTypes(attackSuccesStr);
+        Set<WarType> warTypes = warTypeStr == null ? null : PWBindings.WarTypes(warTypeStr);
+        Set<WarStatus> warStatuses = warStatusStr == null ? null : PWBindings.WarStatuses(warStatusStr);
 
-            StringBuilder response = new StringBuilder();
-            for (Map.Entry<CoalitionWarStatus, Integer> entry : byStatus.entrySet()) {
-                response.append("\n" + entry.getKey() + ": " + entry.getValue());
-            }
-            msg.embed("War Status", response.toString());
-        }
-
-        if (Roles.ECON.has(author, guild)) {
-            if (arg0.contains("/war=")) {
-                arg0 = arg0.split("war=")[1];
-                int warId = Integer.parseInt(arg0);
-                DBWar warUrl = Locutus.imp().getWarDb().getWar(warId);
-                reimburse(cost, warUrl, guild, channel);
-            }
-        }
-        msg.append(result.toString());
-        msg.append("\n\nSee also: <https://wars.locutus.link/>");
-        msg.send();
-        return null;
+        return StatCommands.warsCost(
+                channel, null,
+                col1,
+                col2,
+                start,
+                end,
+                flags.contains('u'),
+                flags.contains('i'),
+                flags.contains('c'),
+                flags.contains('l'),
+                flags.contains('b'),
+                flags.contains('w'),
+                flags.contains('t'),
+                warTypes,
+                warStatuses,
+                attackTypes,
+                successTypes,
+                flags.contains('o'),
+                flags.contains('d'),
+                false,
+                false
+        );
     }
 
     public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, IMessageIO io) {

@@ -5,16 +5,13 @@ import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.DBMainV3;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
@@ -27,24 +24,19 @@ import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
 import net.dv8tion.jda.api.entities.Guild;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class PWGPTHandler {
 
@@ -252,18 +244,18 @@ public class PWGPTHandler {
     public List<ParametricCallable> getClosestCommands(ValueStore store, ParametricCallable command, int top) {
         CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Command));
         String text = adapter.getDescription(command);
-        return getClosestCommands(store, text, top);
+        return getClosestCommands(store, text, top, false);
     }
 
     public List<ParametricCallable> getClosestNationAttributes(ValueStore store, ParametricCallable cmd, int top) {
         NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Nation_Statistic));
         String text = adapter.getDescription(cmd);
-        return getClosestNationAttributes(store, text, top);
+        return getClosestNationAttributes(store, text, top, false);
     }
 
-    public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top) {
+    public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top, boolean moderate) {
         EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Command);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource), false);
         List<ParametricCallable> commands = new ArrayList<>();
         CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(commandSource);
         for (EmbeddingInfo info : closest) {
@@ -273,9 +265,9 @@ public class PWGPTHandler {
         return commands;
     }
 
-    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, String input, int top) {
+    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, String input, int top, boolean moderate) {
         EmbeddingSource typeSource = sourceMap.get(EmbeddingType.Nation_Statistic);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(typeSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(typeSource), false);
         List<ParametricCallable> list = new ArrayList<>();
         NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(typeSource);
         for (EmbeddingInfo info : closest) {
@@ -287,7 +279,7 @@ public class PWGPTHandler {
 
     public List<Parser> getClosestArguments(ValueStore store, String input, int top) {
         EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Argument);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource), true);
         List<Parser> commands = new ArrayList<>();
         ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) adapterMap2.get(commandSource);
         for (EmbeddingInfo info : closest) {
@@ -299,7 +291,7 @@ public class PWGPTHandler {
 
     public List<GuildSetting> getClosestSettings(ValueStore store, String input, int top) {
         EmbeddingSource settingSource = sourceMap.get(EmbeddingType.Configuration);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(settingSource));
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(settingSource), true);
         List<GuildSetting> settings = new ArrayList<>();
         SettingEmbeddingAdapter adapter = (SettingEmbeddingAdapter) adapterMap2.get(settingSource);
         for (EmbeddingInfo info : closest) {
@@ -319,7 +311,7 @@ public class PWGPTHandler {
         return adapterMap2.get(source);
     }
 
-    public List<EmbeddingInfo> getClosest(ValueStore store, String input, int top, Set<EmbeddingSource> allowedSources) {
+    public List<EmbeddingInfo> getClosest(ValueStore store, String input, int top, Set<EmbeddingSource> allowedSources, boolean moderate) {
         EmbeddingType userInput = EmbeddingType.User_Input;
         EmbeddingSource userInputSrc = sourceMap.get(userInput);
 
@@ -336,7 +328,7 @@ public class PWGPTHandler {
                 }
                 return true;
             }
-        }, handler::checkModeration);
+        }, moderate ? handler::checkModeration : null);
         return result;
     }
 

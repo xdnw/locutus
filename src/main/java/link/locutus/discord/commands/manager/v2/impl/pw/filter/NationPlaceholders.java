@@ -206,6 +206,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     @Override
     public Set<DBNation> parseSingleElem(ValueStore store, String name) {
         Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
+        System.out.println("Get selection `" + name + "` " + selection);
         if (selection != null) return selection;
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);

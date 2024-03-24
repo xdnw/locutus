@@ -309,7 +309,6 @@ public class ConflictManager {
         } else {
             System.out.println("Forum db is null");
         }
-
         // load legacyNames
         db.query("SELECT * FROM legacy_names2", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {

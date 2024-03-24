@@ -56,6 +56,10 @@ public class DBWar {
         return attDefCities >> 8;
     }
 
+    public int getCities(boolean isAttacker) {
+        return isAttacker ? getAttCities() : getDefCities();
+    }
+
     public void setStatus(WarStatus status) {
         warStatusType = (byte) (status.ordinal() << 2 | getWarType().ordinal());
     }

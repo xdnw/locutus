@@ -2,6 +2,7 @@ package link.locutus.discord.commands.buildcmd;
 
 import com.google.api.client.util.Lists;
 import com.google.common.collect.Maps;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
@@ -22,6 +23,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,16 +53,25 @@ public class GetBuild extends Command {
 
             Map<CityBuild, List<String>> cityPair = entry.getValue();
             nation = entry.getKey();
+            List<Map.Entry<String, String>> buildStr = new ObjectArrayList<>();
             for (Map.Entry<CityBuild, List<String>> cityEntry : cityPair.entrySet()) {
-                String title = entry.getKey().getNation();
-                StringBuilder response = new StringBuilder(cityEntry.getValue().size() + " cities");
+                String title = cityEntry.getValue().size() + " cities";
+                StringBuilder response = new StringBuilder();
                 String cityStr = StringMan.getString(cityEntry.getValue());
-                response.append('\n').append(cityStr)
+                response.append(cityStr)
                         .append("```")
                         .append(cityEntry.getKey().toString())
                         .append("```");
-
-                msg.embed(title, response.toString());
+                buildStr.add(Map.entry(title, response.toString()));
+            }
+            if (buildStr.size() <= 10) {
+                for (Map.Entry<String, String> build : buildStr) {
+                    msg.embed(build.getKey(), build.getValue());
+                }
+            } else {
+                for (Map.Entry<String, String> build : buildStr) {
+                    msg.append("### " + build.getKey() + ":\n" + build.getValue() + "\n");
+                }
             }
         }
         msg.send();
