@@ -1958,7 +1958,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (timestamp > 0) {
             PnwPusherShardManager pusher = Locutus.imp().getPusher();
             if (pusher != null) {
-                pusher.getSpyTracker().updateCasualties(nation, timestamp);
+                SpyTracker spyTracker = pusher.getSpyTracker();
+                if (spyTracker != null) {
+                    spyTracker.updateCasualties(nation, timestamp);
+                }
             }
         }
         DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
