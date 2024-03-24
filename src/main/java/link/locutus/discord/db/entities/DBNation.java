@@ -5328,15 +5328,19 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getWarsByNation(nation_id);
     }
 
-    public Map<Integer, Map.Entry<Long, Rank>> getAllianceHistory(Long date) {
+    public Map<Integer, Map.Entry<Long, Rank>> getAllianceHistoryDeprecated(Long date) {
         return Locutus.imp().getNationDB().getRemovesByNation(getNation_id(), date);
+    }
+
+    public List<AllianceChange> getAllianceHistory(Long date) {
+        return Locutus.imp().getNationDB().getNationAllianceHistory(getNation_id(), date);
     }
 
     public Map.Entry<Integer, Rank> getPreviousAlliance(boolean ignoreApplicant, Long date) {
         Long lastTime = null;
         Rank lastRank = null;
         Integer lastAAId = null;
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : getAllianceHistory(date).entrySet()) {
+        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : getAllianceHistoryDeprecated(date).entrySet()) {
             Map.Entry<Long, Rank> timeRank = entry.getValue();
             Rank rank = timeRank.getValue();
             if (rank.id == 0 || (ignoreApplicant && rank.id <= Rank.APPLICANT.id)) continue;
@@ -5353,7 +5357,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map.Entry<Integer, Rank> getAlliancePosition(long date) {
-        Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistory(date);
+        Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistoryDeprecated(date);
         return getAlliancePosition(history);
     }
 

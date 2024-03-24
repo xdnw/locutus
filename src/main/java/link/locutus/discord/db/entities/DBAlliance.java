@@ -1015,6 +1015,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
     }
 
+    public List<AllianceChange> getNationHistory() {
+        Set<Integer> currentNations = getNations().stream().map(DBNation::getId).collect(Collectors.toSet());
+        Map<Integer, Map.Entry<Long, Rank>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
+    }
+
     public Set<DBWar> getActiveWars() {
         return Locutus.imp().getWarDb().getActiveWars(Collections.singleton(allianceId), WarStatus.ACTIVE);
     }

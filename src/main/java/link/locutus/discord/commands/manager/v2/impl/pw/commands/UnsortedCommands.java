@@ -36,6 +36,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
+import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliancePosition;
@@ -1316,30 +1317,30 @@ public class UnsortedCommands {
                          @Arg("Ignore nations currently a member of an alliance")
                          @Switch("m") boolean ignoreMembers,
                          @Arg("Attach a list of all nation ids found")
-                         @Switch("i") boolean listIds) throws Exception {
+                         @Switch("i") boolean listIds,
+                         @Switch("s") SpreadSheet sheet) throws Exception {
         if (time == null) time = 0L;
         StringBuilder response = new StringBuilder();
-        Map<Integer, Map.Entry<Long, Rank>> removes;
+        List<AllianceChange> removes;
         List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
 
         boolean showCurrentAA = false;
         if (nationOrAlliance.isNation()) {
             DBNation nation = nationOrAlliance.asNation();
             removes = nation.getAllianceHistory(null);
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
-                DBNation tmp = nation;
-                if (tmp == null) {
-                    tmp = new DBNation();
-                    tmp.setNation_id(nation.getNation_id());
-                    tmp.setAlliance_id(aa.getAlliance_id());
-                    tmp.setNation(nation.getNation_id() + "");
-                }
-                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
-                Map.Entry<Long, Rank> value = entry.getValue();
-                toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
-            }
-
+//            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
+//                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
+//                DBNation tmp = nation;
+//                if (tmp == null) {
+//                    tmp = new DBNation();
+//                    tmp.setNation_id(nation.getNation_id());
+//                    tmp.setAlliance_id(aa.getAlliance_id());
+//                    tmp.setNation(nation.getNation_id() + "");
+//                }
+//                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
+//                Map.Entry<Long, Rank> value = entry.getValue();
+//                toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
+//            }
         } else {
             showCurrentAA = true;
             DBAlliance alliance = nationOrAlliance.asAlliance();
@@ -1363,6 +1364,8 @@ public class UnsortedCommands {
                 }
             }
         }
+
+
 
         Set<Integer> ids = new LinkedHashSet<>();
         long now = System.currentTimeMillis();

@@ -4128,9 +4128,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         });
     }
 
-    public List<AllianceChange> getNationAllianceHistory(int nationId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? ORDER BY date ASC")) {
+    public List<AllianceChange> getNationAllianceHistory(int nationId, Long date) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (date == null ? "" : "WHERE date < ?") + " ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
+            if (date != null) stmt.setLong(2, date);
             List<AllianceChange> list = new ArrayList<>();
             try (ResultSet rs = stmt.executeQuery()) {
                 int latestAA = 0;
@@ -4138,7 +4139,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 long latestDate = 0;
                 while (rs.next()) {
                     int alliance = rs.getInt("alliance");
-                    long date = rs.getLong("date");
+                    long timeMs = rs.getLong("date");
                     int type = rs.getInt("type");
                     Rank rank = Rank.byId(type);
 
@@ -4147,7 +4148,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     }
                     latestRank = rank;
                     latestAA = alliance;
-                    latestDate = date;
+                    latestDate = timeMs;
                 }
                 DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
                 if (latestRank != null && nation != null) {
@@ -4340,6 +4341,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId) {
         return getRemovesByAlliance(allianceId, 0L);
     }
+
     public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId, long cutoff) {
         try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, allianceId);
