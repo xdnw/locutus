@@ -65,17 +65,18 @@ public class JteUtil {
 
     public static byte[] decompress(byte[] bytes) {
         try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-            GZIPInputStream gis = new GZIPInputStream(bais);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = gis.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes)) {
+                try (GZIPInputStream gis = new GZIPInputStream(bais)) {
+                    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = gis.read(buffer)) != -1) {
+                            baos.write(buffer, 0, len);
+                        }
+                        return baos.toByteArray();
+                    }
+                }
             }
-            gis.close();
-            baos.close();
-            return baos.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to decompress data", e);
         }

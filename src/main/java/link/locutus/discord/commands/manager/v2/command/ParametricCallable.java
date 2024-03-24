@@ -606,7 +606,7 @@ public class ParametricCallable implements ICommand {
                         if (!groupName.isEmpty()) {
                             result.append("__" + groupName + ":__\n");
                             if (!groupDesc.isEmpty()) {
-                                result.append("> `" + groupDesc.replace("\n", "\n> ") + "`\n\n");
+                                result.append("> `" + groupDesc.replace("\n", "\n> ") + "`\n");
                             }
                         }
                     }
