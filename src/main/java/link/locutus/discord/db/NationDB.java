@@ -10,16 +10,18 @@ import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.CitiesFile;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -59,6 +61,8 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
@@ -2213,44 +2217,28 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         }
 
-        String kicks = "CREATE TABLE IF NOT EXISTS `KICKS` (`nation` INT NOT NULL, `alliance` INT NOT NULL, `date` BIGINT NOT NULL, `type` INT NOT NULL)";
-        try (Statement stmt = getConnection().createStatement()) {
-            stmt.addBatch(kicks);
-            stmt.executeBatch();
-            stmt.clearBatch();
+
+        String kicks = "CREATE TABLE IF NOT EXISTS `KICKS2` (`nation` INT NOT NULL, `from_aa` INT NOT NULL, `from_rank` INT NOT NULL, `to_aa` INT NOT NULL, `to_rank` INT NOT NULL, `date` BIGINT NOT NULL)";
+        executeStmt(kicks);
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_nation ON KICKS2 (nation);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
+        try {
+            if (tableExists("KICKS")) {
+                importKicks();
+            }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_nation ON KICKS (nation);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance ON KICKS (alliance);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance_date ON KICKS (alliance,date);");
+
 
         String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";
-        try (Statement stmt = getConnection().createStatement()) {
-            stmt.addBatch(spies);
-            stmt.executeBatch();
-            stmt.clearBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        executeStmt(spies);
 
         String activity = "CREATE TABLE IF NOT EXISTS `activity` (`nation` INT NOT NULL, `turn` BIGINT NOT NULL, PRIMARY KEY(nation, turn))";
-        try (Statement stmt = getConnection().createStatement()) {
-            stmt.addBatch(activity);
-            stmt.executeBatch();
-            stmt.clearBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        executeStmt(activity);
 
         String activity_m = "CREATE TABLE IF NOT EXISTS `spy_activity` (`nation` INT NOT NULL, `timestamp` BIGINT NOT NULL, `projects` BIGINT NOT NULL, `change` BIGINT NOT NULL, `spies` INT NOT NULL, PRIMARY KEY(nation, timestamp))";
-        try (Statement stmt = getConnection().createStatement()) {
-            stmt.addBatch(activity_m);
-            stmt.executeBatch();
-            stmt.clearBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        executeStmt(activity_m);
 
 //        String treaties = "CREATE TABLE IF NOT EXISTS `treaties` (`aa_from` INT NOT NULL, `aa_to` INT NOT NULL, `type` INT NOT NULL, `date` INT NOT NULL, PRIMARY KEY(aa_from, aa_to))";
 //        try (Statement stmt = getConnection().createStatement()) {
@@ -2308,6 +2296,70 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         this.loanManager = new LoanManager(this);
 
         createDeletionsTables();
+    }
+
+    public void importKicks() {
+        // check if kicks table exists
+        // get data from datacsv
+        Map<Long, Map<Integer, Integer>> allianceByDay = new Long2ObjectOpenHashMap<>();
+        Map<Long, Map<Integer, Rank>> rankByDay = new Long2ObjectOpenHashMap<>();
+
+        if (Settings.INSTANCE.DATABASE.DATA_DUMP.ENABLED) {
+            DataDumpParser data = Locutus.imp().getDataDumper(true);
+            data.iterateFiles((ThrowingTriConsumer<Long, NationsFile, CitiesFile>) (day, nationsFile, citiesFile) ->
+            nationsFile.reader().required(f -> List.of(f.nation_id, f.alliance_id, f.alliance_position)).read(header -> {
+                int nationId = header.nation_id.get();
+                int allianceId = header.alliance_id.get();
+                Rank alliancePosition = header.alliance_position.get();
+                allianceByDay.computeIfAbsent(day, f -> new Int2IntOpenHashMap()).put(nationId, allianceId);
+                rankByDay.computeIfAbsent(day, f -> new Int2ObjectOpenHashMap<>()).put(nationId, alliancePosition);
+            }));
+        }
+
+        List<AllianceChange> changes = new ObjectArrayList<>();
+
+        Map<Integer, Triple<Integer, Rank, Long>> futurePosition = new Int2ObjectOpenHashMap<>();
+        // get data from kicks
+        String select = "SELECT * FROM KICKS ORDER BY date DESC";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int nationId = rs.getInt("nation");
+                int allianceId = rs.getInt("alliance");
+                long date = rs.getLong("date");
+                Rank rank = Rank.values()[rs.getInt("type")];
+
+                Triple<Integer, Rank, Long> previous = futurePosition.get(nationId);
+                DBNation existing = DBNation.getById(nationId);
+                if (previous == null) {
+                    if (existing != null) {
+                        previous = Triple.of(existing.getAlliance_id(), existing.getPositionEnum(), 0L);
+                    } else {
+                        long day = TimeUtil.getDay(date) + 1;
+                        int futureAAId = allianceByDay.getOrDefault(day, Collections.emptyMap()).getOrDefault(nationId, 0);
+                        Rank alliancePosition = rankByDay.getOrDefault(day, Collections.emptyMap()).getOrDefault(nationId, Rank.REMOVE);
+                        previous = Triple.of(futureAAId, alliancePosition, 0L);
+                    }
+                }
+
+                changes.add(new AllianceChange(nationId, allianceId, previous.getLeft(), rank, previous.getMiddle(), date));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        String insert = "INSERT INTO KICKS2 (nation, from_aa, from_rank, to_aa, to_rank, date) VALUES (?, ?, ?, ?, ?, ?)";
+        executeBatch(changes, insert, (ThrowingBiConsumer<AllianceChange, PreparedStatement>) (change, stmt) -> {
+            stmt.setInt(1, change.getNationId());
+            stmt.setInt(2, change.getFromId());
+            stmt.setInt(3, change.getFromRank().ordinal());
+            stmt.setInt(4, change.getToId());
+            stmt.setInt(5, change.getToRank().ordinal());
+            stmt.setLong(6, change.getDate());
+        });
+
+//        executeStmt("DROP TABLE KICKS");
+
     }
 
     public void importMultiBans() {
@@ -4126,48 +4178,28 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 //        Set<Integer> projectIds = new HashSet<>();
 //    }
 
-    public void addRemove(int nationId, int allianceId, long time, Rank rank) {
-        update("INSERT INTO `KICKS`(`nation`, `alliance`, `date`, `type`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+    public void addRemove(int nationId, int fromAA, int toAA, Rank fromRank, Rank toRank, long time) {
+        update("INSERT INTO `KICKS2`(`nation`, `from_aa`, `to_aa`, `from_rank`, `to_rank`, `date`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
-            stmt.setInt(2, allianceId);
-            stmt.setLong(3, time);
-            stmt.setInt(4, rank.id);
+            stmt.setInt(2, fromAA);
+            stmt.setInt(3, toAA);
+            stmt.setInt(4, fromRank.ordinal());
+            stmt.setInt(5, toRank.ordinal());
+            stmt.setLong(6, time);
         });
     }
 
-    public List<AllianceChange> getNationAllianceHistory(int nationId, Long date) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (date == null ? "" : "WHERE date < ?") + " ORDER BY date DESC")) {
+    public AllianceChange getPreviousAlliance(int nationId, int currentAA) {
+        String query = "select * FROM KICKS2 WHERE nation = ? AND from_aa != 0 AND from_aa != ? ORDER BY date DESC LIMIT 1";
+        try (PreparedStatement stmt = prepareQuery(query)) {
             stmt.setInt(1, nationId);
-            if (date != null) stmt.setLong(2, date);
-            List<AllianceChange> list = new ArrayList<>();
+            stmt.setInt(2, currentAA);
             try (ResultSet rs = stmt.executeQuery()) {
-                int latestAA = 0;
-                Rank latestRank = null;
-                long latestDate = 0;
                 while (rs.next()) {
-                    int alliance = rs.getInt("alliance");
-                    long timeMs = rs.getLong("date");
-                    int type = rs.getInt("type");
-                    Rank rank = Rank.byId(type);
-
-                    if (latestRank != null) {
-                        list.add(new AllianceChange(latestAA, alliance, latestRank, rank, latestDate));
-                    }
-                    latestRank = rank;
-                    latestAA = alliance;
-                    latestDate = timeMs;
-                }
-                DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
-                if (latestRank != null && nation != null) {
-                    int newAA = nation.getAlliance_id();
-                    Rank newRank = Rank.byId(nation.getPosition());
-                    if (newAA != latestAA || latestRank != newRank) {
-                        list.add(new AllianceChange(latestAA, newAA, latestRank, newRank, latestDate));
-                    }
+                    return new AllianceChange(rs);
                 }
             }
-
-            return list;
+            return null;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
@@ -4176,7 +4208,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public long getAllianceApplicantSeniorityTimestamp(DBNation nation, Long snapshotDate) {
         if (nation.getAlliance_id() == 0) return Long.MAX_VALUE;
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND alliance != ? ORDER BY date DESC LIMIT 1")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND from_aa != ? ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
             stmt.setInt(2, nation.getAlliance_id());
             try (ResultSet rs = stmt.executeQuery()) {
@@ -4193,7 +4225,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public long getAllianceMemberSeniorityTimestamp(DBNation nation, Long snapshotDate) {
         if (nation.getPosition() < Rank.MEMBER.id) return Long.MAX_VALUE;
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " ORDER BY date DESC LIMIT 1")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -4207,170 +4239,111 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByNation(int nationId) {
+    public List<AllianceChange> getRemovesByNation(int nationId) {
         return getRemovesByNation(nationId, null);
     }
-    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByNation(int nationId, Long date) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (date != null ? " AND date < ? " : "") + "ORDER BY date DESC")) {
+    public List<AllianceChange> getRemovesByNation(int nationId, Long date) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (date != null ? " AND date < ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
 
-            Map<Integer, Map.Entry<Long, Rank>> kickDates = new LinkedHashMap<>();
+            List<AllianceChange> list = new ObjectArrayList<>();
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    int alliance = rs.getInt("alliance");
-                    long timestamp = rs.getLong("date");
-                    int type = rs.getInt("type");
-                    Rank rank = Rank.byId(type);
-
-                    AbstractMap.SimpleEntry<Long, Rank> dateRank = new AbstractMap.SimpleEntry<>(timestamp, rank);
-
-                    kickDates.putIfAbsent(alliance, dateRank);
+                    list.add(new AllianceChange(rs));
                 }
             }
-            return kickDates;
+            return list;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    public List<Map.Entry<Long, Map.Entry<Integer, Rank>>> getRankChanges(int allianceId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? ORDER BY date ASC")) {
-            stmt.setInt(1, allianceId);
-
-            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> kickDates = new ArrayList<>();
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    long date = rs.getLong("date");
-                    int type = rs.getInt("type");
-                    Rank rank = Rank.byId(type);
-
-                    AbstractMap.SimpleEntry<Integer, Rank> natRank = new AbstractMap.SimpleEntry<>(nationId, rank);
-                    AbstractMap.SimpleEntry<Long, Map.Entry<Integer, Rank>> dateRank = new AbstractMap.SimpleEntry<>(date, natRank);
-
-                    kickDates.add(dateRank);
-                }
-            }
-            return kickDates;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
-    public Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> getRemovesByAlliance(Set<Integer> alliances, long cutoff) {
-        return getRemovesByAlliance(Locutus.imp().getNationDB().getRemovesByNationAlliance(alliances, cutoff));
-    }
-    public Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> getRemovesByAlliance(Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removes) {
-        Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> removesByAlliance = new HashMap<>();
-        for (Map.Entry<Integer, Map<Integer, Map.Entry<Long, Rank>>> entry : removes.entrySet()) {
-            int nationId = entry.getKey();
-            Map<Integer, Map.Entry<Long, Rank>> allianceRanks = entry.getValue();
-
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> allianceRank : allianceRanks.entrySet()) {
-                int allianceId = allianceRank.getKey();
-                Map.Entry<Long, Rank> dateRank = allianceRank.getValue();
-                long date = dateRank.getKey();
-                Rank rank = dateRank.getValue();
-
-                AbstractMap.SimpleEntry<Integer, Rank> natRank = new AbstractMap.SimpleEntry<>(nationId, rank);
-                AbstractMap.SimpleEntry<Long, Map.Entry<Integer, Rank>> dateNationRank = new AbstractMap.SimpleEntry<>(date, natRank);
-
-                List<Map.Entry<Long, Map.Entry<Integer, Rank>>> kickDates = removesByAlliance.computeIfAbsent(allianceId, k -> new ArrayList<>());
-                kickDates.add(dateNationRank);
-            }
-        }
-        return removesByAlliance;
-    }
-
-    public Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> getRemovesByNationAlliance(Set<Integer> alliances, long cutoff) {
-        if (alliances.isEmpty()) return Collections.emptyMap();
-        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> kickDates = new LinkedHashMap<>();
-
-        if (alliances.size() == 1) {
-            int alliance = alliances.iterator().next();
-            Map<Integer, Map.Entry<Long, Rank>> result = getRemovesByAlliance(alliance, cutoff);
-            // map to: nation -> alliance - > Long, Rank
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : result.entrySet()) {
-                kickDates.computeIfAbsent(entry.getKey(), k -> new LinkedHashMap<>()).put(alliance, entry.getValue());
-            }
-        } else {
-            List<Integer> alliancesSorted = new ArrayList<>(alliances);
-            alliancesSorted.sort(Comparator.naturalOrder());
-            try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance in " + StringMan.getString(alliancesSorted) + " " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
-                if (cutoff > 0) {
-                    stmt.setLong(1, cutoff);
-                }
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        int nationId = rs.getInt("nation");
-                        int alliance = rs.getInt("alliance");
-                        long date = rs.getLong("date");
-                        int type = rs.getInt("type");
-                        Rank rank = Rank.byId(type);
-                        kickDates.computeIfAbsent(nationId, k -> new LinkedHashMap<>()).put(alliance, new AbstractMap.SimpleEntry<>(date, rank));
-                    }
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-        }
-        return kickDates;
-    }
-
-    public Map<Integer, Map<Integer, Map<Long, Rank>>> getAllRemovesByNationAlliance(long cutoff) {
-        Map<Integer, Map<Integer, Map<Long, Rank>>> kickDates = new Int2ObjectLinkedOpenHashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS " + (cutoff > 0 ? "WHERE date > ? " : "") + "ORDER BY date DESC")) {
+    public Map<Integer, List<AllianceChange>> getRemovesByAlliances(long cutoff) {
+        String query = "SELECT * FROM KICKS2 " + (cutoff > 0 ? "WHERE date > ? " : "") + "ORDER BY date DESC";
+        Map<Integer, List<AllianceChange>> resultsByAA = new Int2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = prepareQuery(query)) {
             if (cutoff > 0) {
                 stmt.setLong(1, cutoff);
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    int alliance = rs.getInt("alliance");
-                    long date = rs.getLong("date");
-                    int type = rs.getInt("type");
-                    Rank rank = Rank.byId(type);
-                    kickDates.computeIfAbsent(nationId, k -> new Int2ObjectLinkedOpenHashMap<>()).computeIfAbsent(alliance, f -> new Long2ObjectLinkedOpenHashMap<>()).put(date, rank);
+                    AllianceChange change = new AllianceChange(rs);
+                    if (change.getFromId() != 0) {
+                        resultsByAA.computeIfAbsent(change.getFromId(), k -> new ObjectArrayList<>()).add(change);
+                    }
+                    if (change.getToId() != 0) {
+                        resultsByAA.computeIfAbsent(change.getToId(), k -> new ObjectArrayList<>()).add(change);
+                    }
                 }
             }
+            return resultsByAA;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
-        return kickDates;
+
     }
 
-    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId) {
+    public Map<Integer, List<AllianceChange>> getRemovesByAlliances(Set<Integer> alliances, long cutoff) {
+        if (alliances.isEmpty()) return Collections.emptyMap();
+        if (alliances.size() == 1) {
+            int alliance = alliances.iterator().next();
+            List<AllianceChange> result = getRemovesByAlliance(alliance, cutoff);
+            return Collections.singletonMap(alliance, result);
+        } else {
+            Map<Integer, List<AllianceChange>> resultsByAA = new Int2ObjectOpenHashMap<>();
+
+            Set<Integer> fastMap = new IntOpenHashSet(alliances);
+            List<Integer> alliancesSorted = new ArrayList<>(alliances);
+            alliancesSorted.sort(Comparator.naturalOrder());
+            String query = "SELECT * FROM KICKS2 WHERE (from_aa IN (?) OR to_aa IN (?))" + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC";
+            String alliancesSortedStr = alliancesSorted.stream().map(String::valueOf).collect(Collectors.joining(","));
+
+            try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+                stmt.setString(1, alliancesSortedStr);
+                stmt.setString(2, alliancesSortedStr);
+                if (cutoff > 0) {
+                    stmt.setLong(3, cutoff);
+                }
+                ResultSet rs = stmt.executeQuery();
+                while (rs.next()) {
+
+                    AllianceChange change = new AllianceChange(rs);
+                    if (fastMap.contains(change.getFromId())) {
+                        resultsByAA.computeIfAbsent(change.getFromId(), k -> new ArrayList<>()).add(change);
+                    }
+                    if (fastMap.contains(change.getToId())) {
+                        resultsByAA.computeIfAbsent(change.getToId(), k -> new ArrayList<>()).add(change);
+                    }
+                }
+                return resultsByAA;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public List<AllianceChange> getRemovesByAlliance(int allianceId) {
         return getRemovesByAlliance(allianceId, 0L);
     }
 
-    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId, long cutoff) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
+    public List<AllianceChange> getRemovesByAlliance(int allianceId, long cutoff) {
+        List<AllianceChange> list = new ObjectArrayList<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE (from_aa = ? OR to_aa = ?) " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, allianceId);
             if (cutoff > 0) {
                 stmt.setLong(2, cutoff);
             }
-
-            Map<Integer, Map.Entry<Long, Rank>> kickDates = new LinkedHashMap<>();
-
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    long date = rs.getLong("date");
-                    int type = rs.getInt("type");
-                    Rank rank = Rank.byId(type);
-
-                    AbstractMap.SimpleEntry<Long, Rank> dateRank = new AbstractMap.SimpleEntry<>(date, rank);
-
-                    kickDates.putIfAbsent(nationId, dateRank);
+                    AllianceChange change = new AllianceChange(rs);
+                    list.add(change);
                 }
             }
-            return kickDates;
+            return list;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);

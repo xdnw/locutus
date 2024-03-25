@@ -40,7 +40,6 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
-import org.hibernate.annotations.Comment;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -49,7 +48,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -1007,22 +1005,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getGuildDBByAA(allianceId);
     }
 
-    public List<Map.Entry<Long, Map.Entry<Integer, Rank>>> getRankChanges() {
-        return Locutus.imp().getNationDB().getRankChanges(allianceId);
-    }
-
-    public Map<Integer, Map.Entry<Long, Rank>> getRemoves() {
+    public List<AllianceChange> getRankChanges() {
         return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
     }
 
-    public List<AllianceChange> getNationHistory() {
-        Set<Integer> currentNations = getNations().stream().map(DBNation::getId).collect(Collectors.toSet());
-        Map<Integer, Map.Entry<Long, Rank>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
+    public List<AllianceChange> getRankChanges(long timeStart) {
+        return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId, timeStart);
     }
 
     public Set<DBWar> getActiveWars() {
         return Locutus.imp().getWarDb().getActiveWars(Collections.singleton(allianceId), WarStatus.ACTIVE);
     }
+
 
     public void deleteMeta(AllianceMeta key) {
         if (metaCache != null && metaCache.remove(key.ordinal()) != null) {
@@ -1335,11 +1329,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
 
         for (DBNation member : members) {
-            Map.Entry<Integer, Rank> lastAAInfo = member.getPreviousAlliance(true, null);
+            AllianceChange lastAAInfo = member.getPreviousAlliance(true, null);
             if (lastAAInfo == null) continue;
-            int aaId = lastAAInfo.getKey();
+            int aaId = lastAAInfo.getFromId();
 
-            if (lastAAInfo.getValue().id >= Rank.OFFICER.id) {
+            if (lastAAInfo.getFromRank().id >= Rank.OFFICER.id) {
                 DBAlliance lastAA = DBAlliance.get(aaId);
                 if (lastAA != null && lastAA.getNations().size() > 3) {
                     if (lastAA == maxAlly) continue;

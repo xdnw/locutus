@@ -1319,78 +1319,110 @@ public class UnsortedCommands {
                          @Arg("Attach a list of all nation ids found")
                          @Switch("i") boolean listIds,
                          @Switch("s") SpreadSheet sheet) throws Exception {
-        if (time == null) time = 0L;
-        StringBuilder response = new StringBuilder();
         List<AllianceChange> removes;
-        List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
+        Predicate<AllianceChange> isAllowed = f -> true;
+        if (filter != null) {
+            Set<Integer> nationIds = filter.getNations().stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+            isAllowed = f -> nationIds.contains(f.getNationId());
+        }
+        if (ignoreInactives || ignoreVM || ignoreMembers) {
+            Predicate<AllianceChange> finalIsAllowed = isAllowed;
+            isAllowed = f -> {
+                DBNation nation = Locutus.imp().getNationDB().getNation(f.getNationId());
+                if (nation == null) return false;
+                if (ignoreInactives && nation.active_m() > 10080) return false;
+                if (ignoreVM && nation.getVm_turns() != 0) return false;
+                if (ignoreMembers && nation.getPosition() > 1) return false;
+                return finalIsAllowed.test(f);
+            };
+        }
 
         boolean showCurrentAA = false;
         if (nationOrAlliance.isNation()) {
             DBNation nation = nationOrAlliance.asNation();
-            removes = nation.getAllianceHistory(null);
-//            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-//                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
-//                DBNation tmp = nation;
-//                if (tmp == null) {
-//                    tmp = new DBNation();
-//                    tmp.setNation_id(nation.getNation_id());
-//                    tmp.setAlliance_id(aa.getAlliance_id());
-//                    tmp.setNation(nation.getNation_id() + "");
-//                }
-//                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
-//                Map.Entry<Long, Rank> value = entry.getValue();
-//                toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
-//            }
+            removes = nation.getAllianceHistory(time);
         } else {
             showCurrentAA = true;
             DBAlliance alliance = nationOrAlliance.asAlliance();
-            removes = alliance.getRemoves();
-
+            removes = time != null ? alliance.getRankChanges(time) : alliance.getRankChanges();
 
             if (removes.isEmpty()) return "No history found";
+        }
+        int size = removes.size();
+        Predicate<AllianceChange> finalIsAllowed1 = isAllowed;
+        removes.removeIf(f -> !finalIsAllowed1.test(f));
 
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                if (entry.getValue().getKey() < time) continue;
-
-                DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
-                if (nation != null && (filter == null || filter.getNations().contains(nation))) {
-
-                    if (ignoreInactives && nation.active_m() > 10000) continue;
-                    if (ignoreVM && nation.getVm_turns() != 0) continue;
-                    if (ignoreMembers && nation.getPosition() > 1) continue;
-
-                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, alliance);
-                    toPrint.add(new AbstractMap.SimpleEntry<>(key, entry.getValue()));
-                }
+        if (removes.isEmpty()) {
+            String msg = "No history found in the specified timeframe.";
+            if (size > 0) {
+                msg += " (" + size + " entries removed by filters)";
             }
+            throw new IllegalArgumentException(msg);
         }
 
-
-
-        Set<Integer> ids = new LinkedHashSet<>();
-        long now = System.currentTimeMillis();
-        for (Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>> entry : toPrint) {
-            long diff = now - entry.getValue().getKey();
-            Rank rank = entry.getValue().getValue();
-            String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
-
-            Map.Entry<DBNation, DBAlliance> nationAA = entry.getKey();
-            DBNation nation = nationAA.getKey();
-            ids.add(nation.getNation_id());
-
-            response.append(timeStr + " ago: " + nationAA.getKey().getNation() + " left " + nationAA.getValue().getName() + " | " + rank.name());
-            if (showCurrentAA && nation.getAlliance_id() != 0) {
-                response.append(" and joined " + nation.getAllianceName());
-            }
-            response.append("\n");
-        }
-
-        if (response.length() == 0) return "No history found in the specified timeframe";
         IMessageBuilder msg = io.create();
+
+        if (sheet != null) {
+            List<String> header = new ArrayList<>(Arrays.asList(
+                    "nation",
+                    "from_aa",
+                    "from_rank",
+                    "to_aa",
+                    "to_rank",
+                    "date"
+                    ));
+            sheet.setHeader(header);
+
+            for (AllianceChange r : removes) {
+                header.set(0, MarkupUtil.sheetUrl(PnwUtil.getName(r.getNationId(), false), PnwUtil.getNationUrl(r.getNationId())));
+                header.set(1, MarkupUtil.sheetUrl(PnwUtil.getName(r.getFromId(), true), PnwUtil.getAllianceUrl(r.getFromId())));
+                header.set(2, r.getFromRank().name());
+                header.set(3, MarkupUtil.sheetUrl(PnwUtil.getName(r.getToId(), true), PnwUtil.getAllianceUrl(r.getToId())));
+                header.set(4, r.getToRank().name());
+                header.set(5, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(r.getDate())));
+                sheet.addRow(header);
+            }
+
+            sheet.updateClearCurrentTab();
+            sheet.updateWrite();
+
+            sheet.attach(io.create(), "revenue");
+        } else {
+            long now = System.currentTimeMillis();
+            StringBuilder response = new StringBuilder("Time\tNation\tFrom AA\tRank\tTo AA\tRank\n");
+            for (AllianceChange r : removes) {
+                long diff = now - r.getDate();
+                String natStr = PnwUtil.getMarkdownUrl(r.getNationId(), false);
+                String fromStr;
+                String toStr;
+                if (r.getFromId() != 0) {
+                    fromStr = PnwUtil.getMarkdownUrl(r.getFromId(), true) + "\t" + r.getFromRank().name();
+                } else {
+                    fromStr = "0";
+                }
+                if (r.getToId() != 0) {
+                    toStr = PnwUtil.getMarkdownUrl(r.getToId(), true) + "\t" + r.getToRank().name();
+                } else {
+                    toStr = "0";
+                }
+                String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
+                response.append(diffStr + "\t" + natStr + "\t" + fromStr + "\t" + toStr + "\n");
+            }
+            if (response.length() > 2000) {
+                msg.file("history.txt", response.toString());
+                msg.append("See attached `history.txt`");
+            } else {
+                msg.append("```csv\n" + response.toString() + "\n```");
+            }
+        }
         if (listIds) {
+            Set<Integer> ids = new LinkedHashSet<>();
+            for (AllianceChange r : removes) {
+                ids.add(r.getNationId());
+            }
             msg.file("ids.txt",  StringMan.join(ids, ","));
         }
-        msg.append(response.toString()).send();
+        msg.send();
         return null;
     }
 
@@ -1746,6 +1778,7 @@ public class UnsortedCommands {
                                CityBuild build,
                                @Arg("Set the days the build is expected to last before replacement (or destruction)")
                                @Default Integer days,
+
                                @Arg("Set the MMR (military building counts) of the city to optimize")
                                @Switch("x") @Filter("[0-9]{4}") String buildMMR,
                                @Arg("Set the age of the city to optimize")

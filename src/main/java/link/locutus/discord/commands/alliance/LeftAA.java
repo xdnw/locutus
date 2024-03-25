@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
@@ -17,6 +18,8 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class LeftAA extends Command {
     public LeftAA() {
@@ -49,34 +52,21 @@ public class LeftAA extends Command {
             return usage(args.size(), 1, channel);
         }
         StringBuilder response = new StringBuilder();
-        Map<Integer, Map.Entry<Long, Rank>> removes;
         List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
 
         boolean showCurrentAA = false;
         Integer aaId = PnwUtil.parseAllianceId(args.get(0));
+        List<AllianceChange> removes;
+        Predicate<AllianceChange> filter;
         if (aaId == null || args.get(0).contains("/nation/")) {
             Integer nationId = DiscordUtil.parseNationId(args.get(0));
             if (nationId == null) return usage("Invalid nation id: `" + args.get(0) + "`", channel);
 
             DBNation nation = DBNation.getById(nationId);
             removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
-                DBNation tmp = nation;
-                if (tmp == null) {
-                    tmp = new DBNation();
-                    tmp.setNation_id(nationId);
-                    tmp.setAlliance_id(aa.getAlliance_id());
-                    tmp.setNation(nationId + "");
-                }
-                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
-                Map.Entry<Long, Rank> value = entry.getValue();
-                toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
-            }
-
         } else {
             showCurrentAA = true;
-            removes = Locutus.imp().getNationDB().getRemovesByAlliance(aaId);
+            removes = Locutus.imp().getNationDB().getRemovesByAlliance(aaId, 1);
 
             if (args.size() != 2 && args.size() != 3) return usage(args.size(), 2, channel);
 
@@ -85,9 +75,10 @@ public class LeftAA extends Command {
             long cuttOff = System.currentTimeMillis() - timeDiff;
 
             if (removes.isEmpty()) return "No history found.";
-            Set<DBNation> filter = null;
             if (args.size() == 3) {
-                filter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, true);
+                Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, author, me, args.get(2), false, true);
+                Set<Integer> nationIds = allowedNations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+                filter = a -> nationIds.contains(a.getNationId());
             }
 
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {

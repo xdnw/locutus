@@ -18,7 +18,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
@@ -73,7 +72,6 @@ import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -484,7 +482,7 @@ public class UtilityCommands {
                 Set<String> previousOfficer = new HashSet<>();
                 for (DBNation member : members) {
                     if (member.getVm_turns() != 0) continue;
-                    for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : member.getAllianceHistory(null).entrySet()) {
+                    for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : member.getAllianceHistoryDeprecated(null).entrySet()) {
                         int previousAA = aaEntry.getKey();
                         Map.Entry<Long, Rank> timeRank = aaEntry.getValue();
 

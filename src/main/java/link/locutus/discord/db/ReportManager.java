@@ -224,7 +224,7 @@ public class ReportManager {
             if (REMOVES_CACHE.containsKey(nationId)) {
                 return REMOVES_CACHE.get(nationId);
             }
-            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> removes = Locutus.imp().getNationDB().getRankChanges(nationId);
+            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(nationId);
             Map<Integer, List<Map.Entry<Long, Long>>> durations = getAllianceDurationMap(removes);
             REMOVES_CACHE.put(nationId, durations);
             return durations;

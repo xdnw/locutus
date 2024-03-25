@@ -54,16 +54,19 @@ public enum Rank {
         return key;
     }
 
-    private static Map<Integer, Rank> byId = new HashMap<>();
-
-    static {
-        for (Rank rank : values()) {
-            byId.put(rank.id, rank);
-        }
-    }
-
     public static Rank byId(int id) {
-        return byId.get(id);
+        return switch (id) {
+            case 5 -> LEADER;
+            case 4 -> HEIR;
+            case 3 -> OFFICER;
+            case 2 -> MEMBER;
+            case 1 -> APPLICANT;
+            case 0 -> REMOVE;
+            case -1 -> BAN;
+            case -2 -> UNBAN;
+            case -3 -> INVITE;
+            default -> throw new IllegalStateException("Unknown id: " + id);
+        };
     }
 
     public DefaultAlliancePosition toV3() {

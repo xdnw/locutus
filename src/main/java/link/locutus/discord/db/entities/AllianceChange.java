@@ -2,20 +2,64 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv1.enums.Rank;
 
-public class AllianceChange {
-    public DBAlliance fromAA, toAA;
-    public Rank fromRank, toRank;
-    public long date;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
-    public AllianceChange(Integer fromAA, Integer toAA, Rank fromRank, Rank toRank, long date) {
-        if (fromAA == null) fromAA = 0;
-        if (toAA == null) toAA = 0;
+public class AllianceChange {
+    private final int nationId;
+    private final int fromAA, toAA;
+    private final Rank fromRank, toRank;
+    private final long date;
+
+    public AllianceChange(int nationId, int fromAA, int toAA, Rank fromRank, Rank toRank, long date) {
+        this.nationId = nationId;
         if (fromRank == null) fromRank = Rank.REMOVE;
         if (toRank == null) fromRank = Rank.REMOVE;
-        this.fromAA = DBAlliance.getOrCreate(fromAA);
-        this.toAA = DBAlliance.getOrCreate(toAA);
+        this.fromAA = fromAA;
+        this.toAA = toAA;
         this.fromRank = fromRank;
         this.toRank = toRank;
         this.date = date;
+    }
+
+    public AllianceChange(ResultSet rs) throws SQLException {
+        this.nationId = rs.getInt("nation");
+        this.fromAA = rs.getInt("from_aa");
+        this.fromRank = Rank.values[(rs.getInt("from_rank"))];
+        this.toAA = rs.getInt("to_aa");
+        this.toRank = Rank.values[(rs.getInt("to_rank"))];
+        this.date = rs.getLong("date");
+    }
+
+    public int getNationId() {
+        return nationId;
+    }
+
+    public int getFromId() {
+        return fromAA;
+    }
+
+    public int getToId() {
+        return toAA;
+    }
+
+    public Rank getFromRank() {
+        return fromRank;
+    }
+
+    public Rank getToRank() {
+        return toRank;
+    }
+
+    public long getDate() {
+        return date;
+    }
+
+    public DBAlliance getFromAlliance() {
+        return DBAlliance.getOrCreate(fromAA);
+    }
+
+    public DBAlliance getToAlliance() {
+        return DBAlliance.getOrCreate(toAA);
     }
 }

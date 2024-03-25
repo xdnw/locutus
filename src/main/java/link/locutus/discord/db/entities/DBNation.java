@@ -5328,56 +5328,12 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getWarsByNation(nation_id);
     }
 
-    public Map<Integer, Map.Entry<Long, Rank>> getAllianceHistoryDeprecated(Long date) {
+    public List<AllianceChange> getAllianceHistory(Long date) {
         return Locutus.imp().getNationDB().getRemovesByNation(getNation_id(), date);
     }
 
-    public List<AllianceChange> getAllianceHistory(Long date) {
-        return Locutus.imp().getNationDB().getNationAllianceHistory(getNation_id(), date);
-    }
-
-    public Map.Entry<Integer, Rank> getPreviousAlliance(boolean ignoreApplicant, Long date) {
-        Long lastTime = null;
-        Rank lastRank = null;
-        Integer lastAAId = null;
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : getAllianceHistoryDeprecated(date).entrySet()) {
-            Map.Entry<Long, Rank> timeRank = entry.getValue();
-            Rank rank = timeRank.getValue();
-            if (rank.id == 0 || (ignoreApplicant && rank.id <= Rank.APPLICANT.id)) continue;
-            int aaId = entry.getKey();
-            if (aaId == 0 || aaId == alliance_id) continue;
-            if (lastTime == null || timeRank.getKey() >= lastTime) {
-                lastTime = timeRank.getKey();
-                lastRank = rank;
-                lastAAId = aaId;
-            }
-        }
-        if (lastTime == null) return null;
-        return new AbstractMap.SimpleEntry<>(lastAAId, lastRank);
-    }
-
-    public Map.Entry<Integer, Rank> getAlliancePosition(long date) {
-        Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistoryDeprecated(date);
-        return getAlliancePosition(history);
-    }
-
-    public Map.Entry<Integer, Rank> getAlliancePosition(Map<Integer, Map.Entry<Long, Rank>> history) {
-        int latestAA = alliance_id;
-        Rank latestRank = getPositionEnum();
-        long latestDate = System.currentTimeMillis();
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : history.entrySet()) {
-            int aaId = entry.getKey();
-            Map.Entry<Long, Rank> dateRank = entry.getValue();
-            long historyDate = dateRank.getKey();
-            if (historyDate < date) break;
-            latestAA = aaId;
-            latestDate = historyDate;
-            latestRank = dateRank.getValue();
-        }
-        if (latestRank != null) {
-            return new AbstractMap.SimpleEntry<>(latestAA, latestRank);
-        }
-        return new AbstractMap.SimpleEntry<>(alliance_id, getPositionEnum());
+    public AllianceChange getPreviousAlliance(boolean ignoreApplicant, Long date) {
+        return Locutus.imp().getNationDB().getPreviousAlliance(nation_id, alliance_id);
     }
 
     public String getWarInfoEmbed() {
