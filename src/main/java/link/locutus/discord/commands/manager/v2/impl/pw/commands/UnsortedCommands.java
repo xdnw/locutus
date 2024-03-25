@@ -1304,7 +1304,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List the alliance rank changes of a nation or alliance members")
-    public String leftAA(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+    public static String leftAA(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                          NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
                          @Default @Timestamp Long time,
@@ -1337,12 +1337,10 @@ public class UnsortedCommands {
             };
         }
 
-        boolean showCurrentAA = false;
         if (nationOrAlliance.isNation()) {
             DBNation nation = nationOrAlliance.asNation();
             removes = nation.getAllianceHistory(time);
         } else {
-            showCurrentAA = true;
             DBAlliance alliance = nationOrAlliance.asAlliance();
             removes = time != null ? alliance.getRankChanges(time) : alliance.getRankChanges();
 

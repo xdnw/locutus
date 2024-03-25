@@ -4,11 +4,17 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
 import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -51,80 +57,19 @@ public class LeftAA extends Command {
         if (args.isEmpty()) {
             return usage(args.size(), 1, channel);
         }
-        StringBuilder response = new StringBuilder();
-        List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
-
-        boolean showCurrentAA = false;
-        Integer aaId = PnwUtil.parseAllianceId(args.get(0));
-        List<AllianceChange> removes;
-        Predicate<AllianceChange> filter;
-        if (aaId == null || args.get(0).contains("/nation/")) {
-            Integer nationId = DiscordUtil.parseNationId(args.get(0));
-            if (nationId == null) return usage("Invalid nation id: `" + args.get(0) + "`", channel);
-
-            DBNation nation = DBNation.getById(nationId);
-            removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
-        } else {
-            showCurrentAA = true;
-            removes = Locutus.imp().getNationDB().getRemovesByAlliance(aaId, 1);
-
-            if (args.size() != 2 && args.size() != 3) return usage(args.size(), 2, channel);
-
-            long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
-            if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
-            long cuttOff = System.currentTimeMillis() - timeDiff;
-
-            if (removes.isEmpty()) return "No history found.";
-            if (args.size() == 3) {
-                Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, author, me, args.get(2), false, true);
-                Set<Integer> nationIds = allowedNations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-                filter = a -> nationIds.contains(a.getNationId());
-            }
-
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                if (entry.getValue().getKey() < cuttOff) continue;
-
-                DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
-                if (nation != null && (filter == null || filter.contains(nation))) {
-
-                    if (flags.contains('a') && nation.active_m() > 10000) continue;
-                    if (flags.contains('v') && nation.getVm_turns() != 0) continue;
-                    if (flags.contains('m') && nation.getPosition() > 1) continue;
-
-                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, DBAlliance.getOrCreate(aaId));
-                    toPrint.add(new AbstractMap.SimpleEntry<>(key, entry.getValue()));
-                }
-            }
+        NationOrAlliance target = PWBindings.nationOrAlliance(args.get(0));
+        long time = 0;
+        if (args.size() >= 2) {
+            time = PrimitiveBindings.timestamp(args.get(1));
         }
-
-        Set<Integer> ids = new LinkedHashSet<>();
-        long now = System.currentTimeMillis();
-        for (Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>> entry : toPrint) {
-            long diff = now - entry.getValue().getKey();
-            Rank rank = entry.getValue().getValue();
-            String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
-
-            Map.Entry<DBNation, DBAlliance> nationAA = entry.getKey();
-            DBNation nation = nationAA.getKey();
-            ids.add(nation.getNation_id());
-
-            response.append(timeStr).append(" ago: ").append(nationAA.getKey().getNation()).append(" left ").append(nationAA.getValue().getName()).append(" | ").append(rank.name());
-            if (showCurrentAA && nation.getAlliance_id() != 0) {
-                response.append(" and joined ").append(nation.getAllianceName());
-            }
-            response.append("\n");
+        NationList filter = null;
+        if (args.size() >= 3) {
+            filter = PWBindings.nationList(null, guild, args.get(2), author, me);
         }
-
-        IMessageBuilder msg = channel.create();
-        if (flags.contains('i')) {
-            msg.file("ids.txt", StringMan.join(ids, ","));
-        }
-        if (response.length() == 0) {
-            msg.append("No history found in the specified timeframe.");
-        } else {
-            msg.append(response.toString());
-        }
-        msg.send();
-        return null;
+        boolean ignoreInactive = flags.contains('a');
+        boolean ignoreVM = flags.contains('v');
+        boolean ignoreMembers = flags.contains('m');
+        boolean listIds = flags.contains('i');
+        return UnsortedCommands.leftAA(channel, guild, author, me, target,time,filter,ignoreInactive,ignoreVM,ignoreMembers,listIds,null);
     }
 }
