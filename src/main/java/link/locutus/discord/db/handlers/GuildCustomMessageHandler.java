@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.CustomConditionMessage;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -57,8 +58,8 @@ public class GuildCustomMessageHandler implements Runnable {
             long seniorityNone = nation.allianceSeniorityNoneMs();
             long timestamp = System.currentTimeMillis() - seniorityNone;
             if (timestamp < cutoff) continue;
-            Map.Entry<Integer, Rank> position = nation.getPreviousAlliance(false, now - seniorityNone);
-            if (position == null || position.getKey() == null || position.getValue().id >= Rank.OFFICER.id) continue;
+            AllianceChange position = nation.getPreviousAlliance(false, now - seniorityNone);
+            if (position == null || position.getFromRank().id >= Rank.OFFICER.id) continue;
             allianceLeave.put(nation.getId(), timestamp);
         }
     }

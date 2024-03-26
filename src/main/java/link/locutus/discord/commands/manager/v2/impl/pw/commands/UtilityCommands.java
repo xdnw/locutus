@@ -1,5 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
@@ -479,23 +483,32 @@ public class UtilityCommands {
             if (!treaties.isEmpty()) {
                 response.append("- Treaties: " + StringMan.join(treaties, ", ")).append("\n");
             } else{
-                Set<String> previousOfficer = new HashSet<>();
+                Map<Integer, Rank> previousIds = new Int2ObjectOpenHashMap<>();
                 for (DBNation member : members) {
                     if (member.getVm_turns() != 0) continue;
-                    for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : member.getAllianceHistoryDeprecated(null).entrySet()) {
-                        int previousAA = aaEntry.getKey();
-                        Map.Entry<Long, Rank> timeRank = aaEntry.getValue();
-
-                        Rank rank = timeRank.getValue();
-                        if (rank.id >= Rank.OFFICER.id) {
-                            List<DBNation> alliance = map.get(previousAA);
-                            if (DBAlliance.getOrCreate(previousAA).getScore() < 50000) continue;
-                            previousOfficer.add(PnwUtil.getName(previousAA, true));
-
+                    List<AllianceChange> history = member.getAllianceHistory(null);
+                    for (AllianceChange record : history) {
+                        if (record.getFromRank().id >= Rank.OFFICER.id) {
+                            Rank previous = previousIds.get(record.getFromId());
+                            if (previous == null || previous.id < record.getFromRank().id) {
+                                previousIds.put(record.getFromId(), record.getFromRank());
+                            }
+                        }
+                        if (record.getToRank().id >= Rank.OFFICER.id) {
+                            Rank previous = previousIds.get(record.getToId());
+                            if (previous == null || previous.id < record.getToRank().id) {
+                                previousIds.put(record.getToId(), record.getToRank());
+                            }
                         }
                     }
                 }
-                if (!previousOfficer.isEmpty()) {
+                previousIds.entrySet().removeIf(f -> {
+                    DBAlliance alliance = DBAlliance.get(f.getKey());
+                    return alliance == null || alliance.getScore() < 50000;
+                });
+                if (!previousIds.isEmpty()) {
+                    List<String> previousOfficer = new ArrayList<>();
+                    previousIds.forEach((id, rank) -> previousOfficer.add(PnwUtil.getName(id, true) + " (" + rank + ")"));
                     response.append("- Previous officer in: " + StringMan.join(previousOfficer, ", ")).append("\n");
                 }
             }
@@ -537,7 +550,8 @@ public class UtilityCommands {
         Set<Integer> allies = alliesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
 
         long start1 = System.currentTimeMillis();
-        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removes = Locutus.imp().getNationDB().getRemovesByNationAlliance(enemies, cutoff);
+        Map<Integer, List<AllianceChange>> removes = Locutus.imp().getNationDB().getRemovesByAlliances(enemies, cutoff);
+        Map<Integer, Set<AllianceChange>> removesByNation = removes.entrySet().stream().flatMap(f -> f.getValue().stream()).collect(Collectors.groupingBy(AllianceChange::getNationId, Collectors.toSet()));
 
         Map<Integer, Integer> offshoresWar = new HashMap<>();
         Map<Integer, Integer> offshoresTreaty = new HashMap<>();
@@ -618,14 +632,13 @@ public class UtilityCommands {
                     }
                 }
 
-                Map<Integer, Map.Entry<Long, Rank>> nationRemoves = removes.getOrDefault(nation.getNation_id(), Collections.emptyMap());
-                for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : nationRemoves.entrySet()) {
-                    int previousAA = aaEntry.getKey();
+                Set<AllianceChange> nationRemoves = removesByNation.getOrDefault(nation.getNation_id(), Collections.emptySet());
+                for (AllianceChange change : nationRemoves) {
+                    int previousAA = change.getFromId();
                     if (!enemies.contains(previousAA)) continue;
-                    Map.Entry<Long, Rank> timeRank = aaEntry.getValue();
-                    if (timeRank.getKey() < cutoff) continue;
+                    if (change.getDate() < cutoff) continue;
 
-                    Rank rank = timeRank.getValue();
+                    Rank rank = change.getFromRank();
                     if (rank.id >= Rank.OFFICER.id) {
                         offshoresOfficer.put(aaId, previousAA);
                     } else {
@@ -1962,45 +1975,55 @@ public class UtilityCommands {
         Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
 
         Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
-        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removesByNation = Locutus.imp().getNationDB().getRemovesByNationAlliance(aaIds, cutoff);
-        Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(removesByNation);
+        Map<Integer, List<AllianceChange>> removesByAlliance = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds, cutoff);
+//        Map<Integer, Set<AllianceChange>> removesByNation = removesByAlliance.entrySet().stream().flatMap(f -> f.getValue().stream()).collect(Collectors.groupingBy(AllianceChange::getNationId, Collectors.toSet()));
+
+//        Map<Integer, Set<Integer>> joinsByAA = new Int2ObjectOpenHashMap<>();
+//        Map<Integer, Set<Integer>> leavesByAA = new Int2ObjectOpenHashMap<>();
+//        for (Map.Entry<Integer, List<AllianceChange>> entry : removesByAlliance.entrySet()) {
+//
+//        }
+
 
         for (DBAlliance alliance : alliances) {
-            Set<Integer> applied = new HashSet<>();
-            Set<DBNation> potentialMembers = new HashSet<>();
+            Map<Integer, Long> noneToApp = new Int2LongOpenHashMap();
+            Map<Integer, Long> appToMember = new Int2LongOpenHashMap();
+            Map<Integer, Long> removed = new Int2LongOpenHashMap();
 
-            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> rankChanges = removes.getOrDefault(alliance.getId(), new ArrayList<>());
+            List<AllianceChange> rankChanges = removesByAlliance.getOrDefault(alliance.getId(), new ArrayList<>());
 
-            for (Map.Entry<Long, Map.Entry<Integer, Rank>> change : rankChanges) {
-                Map.Entry<Integer, Rank> natRank = change.getValue();
-                int nationId = natRank.getKey();
-                boolean alreadyApplied = (!applied.add(nationId));
-                if (alreadyApplied) continue;
-
-                long date = change.getKey();
-                if (date < cutoff) continue;
-
-                DBNation nation = DBNation.getById(nationId);
-                if (nation == null || nation.getPosition() <= 1) continue;
-
-                Rank rank = natRank.getValue();
-
-                if (rank == Rank.APPLICANT || rank == Rank.MEMBER) {
-                    potentialMembers.add(nation);
+            for (AllianceChange change : rankChanges) {
+                int nationId = change.getNationId();
+                if (change.getFromId() == alliance.getId() && change.getFromRank().id > Rank.APPLICANT.id) {
+                    removed.put(nationId, Math.max(removed.getOrDefault(nationId, 0L), change.getDate()));
+                }
+                if (change.getToId() != alliance.getId()) continue;
+                if (change.getFromId() == alliance.getId()) {
+                    if (change.getFromRank().id > Rank.APPLICANT.id) continue;
+                    if (change.getToRank().id > Rank.APPLICANT.id) {
+                        appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
+                    }
+                } else {
+                    if (change.getToRank().id > Rank.APPLICANT.id) {
+                        appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
+                    }
+                    noneToApp.put(nationId, Math.max(noneToApp.getOrDefault(nationId, 0L), change.getDate()));
                 }
             }
+            noneToApp.entrySet().removeIf(f -> removed.getOrDefault(f.getKey(), 0L) > f.getValue());
+            appToMember.entrySet().removeIf(f -> removed.getOrDefault(f.getKey(), 0L) > f.getValue());
 
-            int total =0;
-            for (DBNation nation : potentialMembers) {
-                Map.Entry<Integer, Rank> position = nation.getAlliancePosition(removesByNation.getOrDefault(nation.getNation_id(), new HashMap<>()));
-                if (position.getKey() == alliance.getAlliance_id() && position.getValue().id >= Rank.MEMBER.id) continue;
-                total++;
+            // set where number is in both noneToApp and appToMember
+            Set<Integer> both = noneToApp.keySet().stream().filter(appToMember::containsKey).collect(Collectors.toSet());
+            int total = both.size();
+            if (total > 0) {
+                rankings.put(alliance, total);
             }
-
-//            int total = potentialMembers.size();
-            rankings.put(alliance, total);
         }
-        new SummedMapRankBuilder<>(rankings).sort().nameKeys(f -> f.getName()).build(author, channel, command, "Most new members", uploadFile);
+        if (rankings.isEmpty()) {
+            return "No new members found over the specified timeframe. Check your arguments are valid";
+        }
+        new SummedMapRankBuilder<>(rankings).sort().nameKeys(DBAlliance::getName).build(author, channel, command, "Most new members", uploadFile);
         return null;
     }
 

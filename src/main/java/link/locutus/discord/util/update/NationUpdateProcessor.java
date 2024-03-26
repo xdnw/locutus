@@ -652,7 +652,7 @@ public class NationUpdateProcessor {
             }
         }
 
-        Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), System.currentTimeMillis(), rank);
+        Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), current.getAlliance_id(), rank, current.getPositionEnum(), event.getTimeCreated());
     }
 
     @Subscribe
@@ -704,7 +704,9 @@ public class NationUpdateProcessor {
         DBNation current = event.getCurrent();
         DBNation previous = event.getPrevious();
 
-        Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), System.currentTimeMillis(), Rank.byId(previous.getPosition()));
+        if (current.getAlliance_id() == previous.getAlliance_id()) {
+            Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), current.getAlliance_id(), previous.getPositionEnum(), current.getPositionEnum(), event.getTimeCreated());
+        }
     }
 
     @Subscribe
@@ -735,12 +737,17 @@ public class NationUpdateProcessor {
         int memberRemoves = 0;
 
         double scoreDrop = 0;
-        Map<Integer, Map.Entry<Long, Rank>> removes = new LinkedHashMap<>(alliance.getRemoves());
-        removes.put(current.getNation_id(), new AbstractMap.SimpleEntry<>(System.currentTimeMillis(), Rank.byId(previous.getPosition())));
-        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-            if (entry.getValue().getKey() < cutoff) continue;
-            DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
+        long now = System.currentTimeMillis();
+        long cutoff = now - TimeUnit.DAYS.toMillis(1);
+        List<AllianceChange> removes = new ArrayList<>(alliance.getRankChanges(cutoff));
+        Map<Integer, AllianceChange> changesByNation = removes.stream().collect(Collectors.toMap(AllianceChange::getNationId, f -> f));
+        changesByNation.put(current.getNation_id(), new AllianceChange(previous, current, now));
+
+        for (Map.Entry<Integer, AllianceChange> entry : changesByNation.entrySet()) {
+            int nationId = entry.getKey();
+            AllianceChange change = entry.getValue();
+            if (change.getDate() < cutoff) continue;
+            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
             if (nation == null) continue;
 
             if (nation.getAlliance_id() == alliance.getAlliance_id()) continue;
@@ -748,7 +755,7 @@ public class NationUpdateProcessor {
 
             if (nation.active_m() > 4880 || nation.getVm_turns() > 0 || nation.getCities() <= 3) continue;
 
-            String line = PnwUtil.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + entry.getValue().getValue().name();
+            String line = PnwUtil.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + change.getFromRank().name();
             if (nation.getAlliance_id() > 0) {
                 line += "-> " + nation.getAllianceUrlMarkup(true);
             } else {

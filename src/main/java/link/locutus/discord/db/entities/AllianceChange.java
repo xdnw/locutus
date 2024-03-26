@@ -31,6 +31,15 @@ public class AllianceChange {
         this.date = rs.getLong("date");
     }
 
+    public AllianceChange(DBNation previous, DBNation current, long time) {
+        this.nationId = current.getId();
+        this.fromAA = previous.getAlliance_id();
+        this.fromRank = previous.getPositionEnum();
+        this.toAA = current.getAlliance_id();
+        this.toRank = current.getPositionEnum();
+        this.date = time;
+    }
+
     public int getNationId() {
         return nationId;
     }

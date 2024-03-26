@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -29,22 +30,21 @@ import java.util.concurrent.TimeUnit;
 public class AlliancePages {
     @Command
     public Object allianceLeaves(WebStore ws, int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
-        Map<Integer, Map.Entry<Long, Rank>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
+        List<AllianceChange> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
 
         String title = "Rank changes for " + MarkupUtil.htmlUrl(PnwUtil.getName(allianceId, true), PnwUtil.getUrl(allianceId, true));
         List<String> header = Arrays.asList("time", "nation", "position", "now-alliance", "now-position", "now-activity");
         List<List<String>> rows = new ArrayList<>();
 
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
+        for (AllianceChange change : removes) {
             ArrayList<String> row = new ArrayList<>();
 
-            Map.Entry<Long, Rank> timeRank = entry.getValue();
-            int nationId = entry.getKey();
-            DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
+            int nationId = change.getNationId();
+            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
 
-            row.add(TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(timeRank.getKey())));
+            row.add(TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(change.getDate())));
             row.add(MarkupUtil.htmlUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
-            row.add(timeRank.getValue().name());
+            row.add(change.getToRank().name());
             if (nation != null) {
                 row.add(MarkupUtil.htmlUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(Rank.byId(nation.getPosition()).name());

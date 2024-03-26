@@ -7,6 +7,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
@@ -224,7 +225,7 @@ public class ReportManager {
             if (REMOVES_CACHE.containsKey(nationId)) {
                 return REMOVES_CACHE.get(nationId);
             }
-            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(nationId);
+            List<AllianceChange> removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
             Map<Integer, List<Map.Entry<Long, Long>>> durations = getAllianceDurationMap(removes);
             REMOVES_CACHE.put(nationId, durations);
             return durations;
@@ -307,19 +308,19 @@ public class ReportManager {
         }
         return overlapDuration;
     }
-    public Map<Integer, List<Map.Entry<Long, Long>>> getAllianceDurationMap(List<Map.Entry<Long, Map.Entry<Integer, Rank>>> history) {
+    public Map<Integer, List<Map.Entry<Long, Long>>> getAllianceDurationMap(List<AllianceChange> history) {
         Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap = new Int2ObjectOpenHashMap<>();
 
         long currentTime = System.currentTimeMillis();
         int currentAllianceId = -1;
         long currentStartTime = -1;
 
-        for (Map.Entry<Long, Map.Entry<Integer, Rank>> entry : history) {
-            long timestamp = entry.getKey();
-            int allianceId = entry.getValue().getKey();
+        for (AllianceChange change : history) {
+            long timestamp = change.getDate();
+            int allianceId = change.getFromId();
 
             if (allianceId != currentAllianceId) {
-                if (currentAllianceId != -1) {
+                if (currentAllianceId > 0) {
                     long endTime = timestamp;
                     if (endTime > currentTime) {
                         endTime = currentTime;
@@ -327,14 +328,13 @@ public class ReportManager {
                     allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ObjectArrayList<>())
                             .add(Map.entry(currentStartTime, endTime));
                 }
-
-                currentAllianceId = allianceId;
+                currentAllianceId = change.getToId();
                 currentStartTime = timestamp;
             }
         }
 
         // Handle the last alliance entry
-        if (currentAllianceId != -1) {
+        if (currentAllianceId > 0) {
             long endTime = currentTime;
             allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ObjectArrayList<>())
                     .add(Map.entry(currentStartTime, endTime));

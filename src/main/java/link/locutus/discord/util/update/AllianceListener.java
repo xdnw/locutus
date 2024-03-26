@@ -11,6 +11,7 @@ import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.AllianceMeta;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
@@ -317,17 +318,17 @@ public class AllianceListener {
 
         for (DBNation member : members) {
             if (member.getPosition() < Rank.HEIR.id || member.getVm_turns() > 0) continue;
-            Map.Entry<Integer, Rank> lastAA = member.getPreviousAlliance(true, null);
+            AllianceChange lastAA = member.getPreviousAlliance(true, null);
 
             body.append("Leader: " + MarkupUtil.markdownUrl(member.getNation(), member.getNationUrl()) + "\n");
 
             if (lastAA != null) {
-                String previousAAName = Locutus.imp().getNationDB().getAllianceName(lastAA.getKey());
-                body.append("- " + member.getNation() + " previously " + lastAA.getValue() + " in " + previousAAName + "\n");
+                String previousAAName = Locutus.imp().getNationDB().getAllianceName(lastAA.getFromId());
+                body.append("- " + member.getNation() + " previously " + lastAA.getFromRank().name() + " in " + previousAAName + "\n");
 
                 GuildDB db = Locutus.imp().getRootCoalitionServer();
                 if (db != null) {
-                    Set<String> coalitions = db.findCoalitions(lastAA.getKey());
+                    Set<String> coalitions = db.findCoalitions(lastAA.getFromId());
                     if (!coalitions.isEmpty()) {
                         body.append("- in coalitions: `" + StringMan.join(coalitions, ",") + "`\n");
                     }

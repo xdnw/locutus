@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
@@ -2712,7 +2713,7 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command(desc = "Generate a sheet of nations who have left the provided alliances over a timeframe")
-    public String DeserterSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances,
+    public static String DeserterSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances,
                                 @Arg("Date to start from")
                                 @Timestamp long cuttOff,
                                 @Arg("Only check these nations")
@@ -2724,40 +2725,31 @@ public class WarCommands {
                                 @Arg("Ignore nations that are member in an alliance")
                                 @Switch("n") boolean ignoreMembers) throws IOException, GeneralSecurityException {
         Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
-        Map<Integer, Map.Entry<Long, Rank>> removes = new HashMap<>();
-        Map<Integer, Integer> nationPreviousAA = new HashMap<>();
+        Map<Integer, List<AllianceChange>> removesByAA = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds, cuttOff);
+
+        Map<DBNation, Map.Entry<Long, Rank>> nations = new LinkedHashMap<>();
+        Map<Integer, Integer> nationPreviousAA = new Int2IntOpenHashMap();
 
         for (Integer aaId : aaIds) {
-            Map<Integer, Map.Entry<Long, Rank>> removesId = Locutus.imp().getNationDB().getRemovesByAlliance(aaId);
-            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removesId.entrySet()) {
-                Map.Entry<Long, Rank> existing = removes.get(entry.getKey());
-                if (existing != null && entry.getValue().getKey() > existing.getKey()) {
-                    continue;
+            for (AllianceChange change : removesByAA.getOrDefault(aaId, Collections.emptyList())) {
+                if (change.getFromRank().id >= Rank.MEMBER.id && change.getFromId() == aaId) {
+                    DBNation nation = DBNation.getById(change.getNationId());
+                    if (nation == null || nation.getAlliance_id() == aaId) continue;
+                    nations.put(nation, new AbstractMap.SimpleEntry<>(change.getDate(), change.getFromRank()));
+                    nationPreviousAA.put(nation.getId(), aaId);
                 }
-                nationPreviousAA.put(entry.getKey(), aaId);
-                removes.put(entry.getKey(), entry.getValue());
-            }
-
-            removes.putAll(removesId);
-        }
-
-        if (removes.isEmpty()) return "No history found";
-
-        List<Map.Entry<DBNation, Map.Entry<Long, Rank>>> nations = new ArrayList<>();
-
-        for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-            if (entry.getValue().getKey() < cuttOff) continue;
-
-            DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
-            if (nation != null && (filter == null || filter.contains(nation))) {
-                nations.add(new AbstractMap.SimpleEntry<>(nation, entry.getValue()));
             }
         }
 
-        if (ignoreInactive) nations.removeIf(n -> n.getKey().active_m() > 10000);
-        if (ignoreVM) nations.removeIf(n -> n.getKey().getVm_turns() != 0);
-        if (ignoreMembers) nations.removeIf(n -> n.getKey().getPosition() > 1);
-        if (nations.isEmpty()) return "No nations find over the specified timeframe";
+        if (nations.isEmpty()) return "No nations found";
+
+
+
+        int size = nations.size();
+        if (ignoreInactive) nations.entrySet().removeIf(n -> n.getKey().active_m() > 10000);
+        if (ignoreVM) nations.entrySet().removeIf(n -> n.getKey().getVm_turns() != 0);
+        if (ignoreMembers) nations.entrySet().removeIf(n -> n.getKey().getPosition() > 1);
+        if (nations.isEmpty()) return "No nations found (" + size + " removed by filters)";
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.DESERTER_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -2781,7 +2773,7 @@ public class WarCommands {
 
         sheet.setHeader(header);
 
-        for (Map.Entry<DBNation, Map.Entry<Long, Rank>> entry : nations) {
+        for (Map.Entry<DBNation, Map.Entry<Long, Rank>> entry : nations.entrySet()) {
             DBNation defender = entry.getKey();
             Map.Entry<Long, Rank> dateRank = entry.getValue();
             Long date = dateRank.getKey();
