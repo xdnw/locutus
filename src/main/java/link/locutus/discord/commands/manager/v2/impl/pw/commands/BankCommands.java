@@ -110,6 +110,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
+import static link.locutus.discord.util.PnwUtil.getUrl;
 import static link.locutus.discord.util.PnwUtil.resourcesToString;
 
 public class BankCommands {
@@ -3408,7 +3409,6 @@ public class BankCommands {
                        @Default DBAlliance sender_alliance,
 
                        @Switch("f") boolean confirm) throws IOException {
-        if (true) return "WIP";
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, confirm);
     }
@@ -3427,7 +3427,6 @@ public class BankCommands {
     public String sendAA(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBNation me,
                          @Arg(value = "The amount to send", group = 0)
                          @AllianceDepositLimit Map<ResourceType, Double> amount,
-
                          @Arg(value = "The offshore alliance or guild account to send to\n" +
                                  "Defaults to this guild", group = 1)
                          @Default GuildOrAlliance receiver_account,
@@ -3441,9 +3440,8 @@ public class BankCommands {
                          @Arg(value = "The nation to send from\n" +
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
-
                          @Switch("f") boolean confirm) throws IOException {
-        if (true) return "WIP";
+        if (me.getId() != Settings.INSTANCE.NATION_ID) return "WIP";
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
@@ -3451,8 +3449,21 @@ public class BankCommands {
         if (receiver_account == null && receiver_nation == null) {
             throw new IllegalArgumentException("Please specify a `receiver_account` or `receiver_nation` or both");
         }
+        boolean hasEcon = Roles.ECON.has(user, senderDB.getGuild());
+        if (!hasEcon) {
+            if (sender_alliance != null && sender_alliance.getId() != me.getAlliance_id()) {
+                throw new IllegalArgumentException("You do not have permission to send from another alliance (only: " + me.getAllianceUrlMarkup(true) + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+            }
+            if (sender_nation == null) {
+                throw new IllegalArgumentException("You do not have permission to omit `sender_nation` " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+            } else if (sender_nation.getId() != me.getId()) {
+                throw new IllegalArgumentException("You do not have permission to send from another nation (only: " + me.getNationUrlMarkup(true) + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+            }
+        }
+
+
         double[] amountArr = PnwUtil.resourcesToArray(amount);
-        GuildDB receiverDB = receiver_account.isGuild() ? receiverDB.asGuild() : null;
+        GuildDB receiverDB = receiver_account.isGuild() ? receiver_account.asGuild() : null;
         DBAlliance receiverAlliance = receiver_account.isAlliance() ? receiver_account.asAlliance() : null;
         List<TransferResult> results = senderDB.sendInternal(user, me, senderDB, sender_alliance, sender_nation, receiverDB, receiverAlliance, receiver_nation, amountArr, confirm);
         if (results.size() == 1) {

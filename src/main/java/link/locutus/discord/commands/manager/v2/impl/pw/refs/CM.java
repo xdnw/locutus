@@ -4765,16 +4765,16 @@ public class CM {
             }
             public static class internal{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="sendAA")
-                public static class alliance extends CommandRef {
-                    public static final alliance cmd = new alliance();
-                    public alliance create(String amount, String receiver, String receiverGuild, String receiverAlliance, String senderAlliance, String senderNation, String confirm) {
+                public static class from_offshore_account extends CommandRef {
+                    public static final from_offshore_account cmd = new from_offshore_account();
+                    public from_offshore_account create(String amount, String receiver, String receiverGuild, String receiverAlliance, String senderAlliance, String senderNation, String confirm) {
                         return createArgs("amount", amount, "receiver", receiver, "receiverGuild", receiverGuild, "receiverAlliance", receiverAlliance, "senderAlliance", senderAlliance, "senderNation", senderNation, "confirm", confirm);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="send")
-                public static class nation extends CommandRef {
-                    public static final nation cmd = new nation();
-                    public nation create(String amount, String receiver, String receiverGuild, String receiverAlliance, String senderAlliance, String confirm) {
+                public static class from_nation_account extends CommandRef {
+                    public static final from_nation_account cmd = new from_nation_account();
+                    public from_nation_account create(String amount, String receiver, String receiverGuild, String receiverAlliance, String senderAlliance, String confirm) {
                         return createArgs("amount", amount, "receiver", receiver, "receiverGuild", receiverGuild, "receiverAlliance", receiverAlliance, "senderAlliance", senderAlliance, "confirm", confirm);
                     }
                 }
