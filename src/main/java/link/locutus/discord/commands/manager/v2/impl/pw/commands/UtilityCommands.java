@@ -98,39 +98,40 @@ import static link.locutus.discord.util.math.ArrayUtil.memorize;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class UtilityCommands {
-    @Command(desc = "List the color blocs")
-    public String calculateColorRevenue(@Default Set<DBNation> forceAqua,
-                                        @Default Set<DBNation> forceBlack,
-                                        @Default Set<DBNation> forceBlue,
-                                        @Default Set<DBNation> forceBrown,
-                                        @Default Set<DBNation> forceGreen,
-                                        @Default Set<DBNation> forceLime,
-                                        @Default Set<DBNation> forceMaroon,
-                                        @Default Set<DBNation> forceOlive,
-                                        @Default Set<DBNation> forceOrange,
-                                        @Default Set<DBNation> forcePink,
-                                        @Default Set<DBNation> forcePurple,
-                                        @Default Set<DBNation> forceRed,
-                                        @Default Set<DBNation> forceWhite,
-                                        @Default Set<DBNation> forceYellow,
-                                        @Default Set<DBNation> forceGrayOrBeige
+    @Command(desc = "List the color blocs and their revenue\n" +
+            "Optionally switch nations or alliances to a color to view potential revenue changes")
+    public String calculateColorRevenue(@Default Set<DBNation> set_aqua,
+                                        @Default Set<DBNation> set_black,
+                                        @Default Set<DBNation> set_blue,
+                                        @Default Set<DBNation> set_brown,
+                                        @Default Set<DBNation> set_green,
+                                        @Default Set<DBNation> set_lime,
+                                        @Default Set<DBNation> set_maroon,
+                                        @Default Set<DBNation> set_olive,
+                                        @Default Set<DBNation> set_orange,
+                                        @Default Set<DBNation> set_pink,
+                                        @Default Set<DBNation> set_purple,
+                                        @Default Set<DBNation> set_red,
+                                        @Default Set<DBNation> set_white,
+                                        @Default Set<DBNation> set_yellow,
+                                        @Default Set<DBNation> set_gray_or_beige
     ) {
         Map<NationColor, Set<DBNation>> changeColors = new HashMap<>();
-        changeColors.put(NationColor.AQUA, forceAqua);
-        changeColors.put(NationColor.BLACK, forceBlack);
-        changeColors.put(NationColor.BLUE, forceBlue);
-        changeColors.put(NationColor.BROWN, forceBrown);
-        changeColors.put(NationColor.GREEN, forceGreen);
-        changeColors.put(NationColor.LIME, forceLime);
-        changeColors.put(NationColor.MAROON, forceMaroon);
-        changeColors.put(NationColor.OLIVE, forceOlive);
-        changeColors.put(NationColor.ORANGE, forceOrange);
-        changeColors.put(NationColor.PINK, forcePink);
-        changeColors.put(NationColor.PURPLE, forcePurple);
-        changeColors.put(NationColor.RED, forceRed);
-        changeColors.put(NationColor.WHITE, forceWhite);
-        changeColors.put(NationColor.YELLOW, forceYellow);
-        changeColors.put(NationColor.GRAY, forceGrayOrBeige);
+        changeColors.put(NationColor.AQUA, set_aqua);
+        changeColors.put(NationColor.BLACK, set_black);
+        changeColors.put(NationColor.BLUE, set_blue);
+        changeColors.put(NationColor.BROWN, set_brown);
+        changeColors.put(NationColor.GREEN, set_green);
+        changeColors.put(NationColor.LIME, set_lime);
+        changeColors.put(NationColor.MAROON, set_maroon);
+        changeColors.put(NationColor.OLIVE, set_olive);
+        changeColors.put(NationColor.ORANGE, set_orange);
+        changeColors.put(NationColor.PINK, set_pink);
+        changeColors.put(NationColor.PURPLE, set_purple);
+        changeColors.put(NationColor.RED, set_red);
+        changeColors.put(NationColor.WHITE, set_white);
+        changeColors.put(NationColor.YELLOW, set_yellow);
+        changeColors.put(NationColor.GRAY, set_gray_or_beige);
 
         Map<DBNation, NationColor> newColors = new HashMap<>();
 
