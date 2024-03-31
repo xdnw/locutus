@@ -392,29 +392,58 @@ public class StatCommands {
         return cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot, !ignoreBuildings);
     }
 
-    @Command(desc = "War costs between two coalitions over a time period")
+    @Command(desc = "War costs between two coalitions over a time period", groups = {
+        "The Sides Fighting",
+        "Time period",
+        "Cost Exclusions",
+        "Display Options",
+        "War and attack type filters"
+    })
     public static String warsCost(@Me IMessageIO channel,
                            @Me JSONObject command,
-                           Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
+                          @Arg(value = "Nations required to be in the conflict against `coalition2`", group = 0)
+                          Set<NationOrAlliance> coalition1,
+                          @Arg(value = "Nations required to be in the conflicts against `coalition1`", group = 0)
+                          Set<NationOrAlliance> coalition2,
+                           @Arg(value = "Start time of the period to include", group = 1)
                            @Timestamp long timeStart,
+                                  @Arg(value = "End time of the period to rank\n" +
+                                          "Defaults to now", group = 1)
                            @Default @Timestamp Long timeEnd,
+
+                           @Arg(value = "Exclude unit costs", group = 2)
                            @Switch("u") boolean ignoreUnits,
+                            @Arg(value = "Exclude infrastructure costs", group = 2)
                            @Switch("i") boolean ignoreInfra,
+                            @Arg(value = "Exclude consumption costs", group = 2)
                            @Switch("c") boolean ignoreConsumption,
+                            @Arg(value = "Exclude loot costs", group = 2)
                            @Switch("l") boolean ignoreLoot,
+                            @Arg(value = "Exclude building costs", group = 2)
                            @Switch("b") boolean ignoreBuildings,
 
+                           // display options
+                           @Arg(value = "Attach a list of war ids", group = 3)
                            @Switch("id") boolean listWarIds,
+                           @Arg(value = "Attach a tally of war types", group = 3)
                            @Switch("t") boolean showWarTypes,
 
+                           // War and attack type filters
+                           @Arg(value = "Filter the war types included", group = 4)
                            @Switch("w") Set<WarType> allowedWarTypes,
+                           @Arg(value = "Filter the war statuses included", group = 4)
                            @Switch("s") Set<WarStatus> allowedWarStatus,
+                            @Arg(value = "Filter the attack types included", group = 4)
                            @Switch("a") Set<AttackType> allowedAttackTypes,
+                            @Arg(value = "Filter the success types included", group = 4)
                            @Switch("v") Set<SuccessType> allowedVictoryTypes,
-                           @Switch("o") @Arg("Only include wars declared by coalition1") boolean onlyOffensiveWars,
-                           @Switch("d") @Arg("Only include wars declared by coalition2") boolean onlyDefensiveWars,
-                           @Switch("oa") @Arg("Only include attacks done by coalition1") boolean onlyOffensiveAttacks,
-                            @Switch("da") @Arg("Only include attacks done by coalition2") boolean onlyDefensiveAttacks
+
+                           @Switch("o") @Arg(value = "Only include wars declared by coalition1", group = 4)
+                                      boolean onlyOffensiveWars,
+                           @Switch("d") @Arg(value = "Only include wars declared by coalition2", group = 4)
+                                      boolean onlyDefensiveWars,
+                           @Switch("oa") @Arg(value = "Only include attacks done by coalition1", group = 4) boolean onlyOffensiveAttacks,
+                            @Switch("da") @Arg(value = "Only include attacks done by coalition2", group = 4) boolean onlyDefensiveAttacks
                            ) {
         if (onlyOffensiveWars && onlyDefensiveWars) throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
         if (onlyOffensiveAttacks && onlyDefensiveAttacks) throw new IllegalArgumentException("Cannot combine `onlyOffensiveAttacks` and `onlyDefensiveAttacks`");
