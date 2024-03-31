@@ -186,7 +186,7 @@ public class StatCommands {
                                  @Arg(value = "Cost Type", group = 2)
                                      @Switch("t") WarCostMode type,
                                  @Arg(value = "Rank a specific stat, such as soldiers\n" +
-                                         "Defaults to `DAMAGE`", group = 2)
+                                         "Defaults to `DAMAGE`", group = 2, aliases = {"attacktype", "resource", "unitloss", "unitkill"})
                                      @Switch("s") WarCostStat stat,
                                  @Arg(value = "Exclude infrastructure", group = 3)
                                  @Switch("i") boolean excludeInfra,

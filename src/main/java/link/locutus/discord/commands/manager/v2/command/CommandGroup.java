@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -15,6 +16,7 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -310,10 +312,9 @@ public class CommandGroup implements ICommandGroup {
         }
     }
 
-    public void registerCommandsWithMapping(Class<CM> remapping, boolean checkUnregisteredMethods, boolean checkCommandArguments) {
-        Class<?> clazz = remapping;
+    public void registerCommandsWithMapping(Class<CM> remapping) {
         Map<Class<?>, Object> instanceCache = new HashMap<>();
-        register(clazz, new ArrayList<>(), instanceCache, true);
+        register(remapping, new ArrayList<>(), instanceCache, true);
 
         Set<ParametricCallable> allRegistered = getParametricCallables(f -> true);
         Set<Method> registeredMethods = new HashSet<>();
@@ -323,16 +324,20 @@ public class CommandGroup implements ICommandGroup {
             }
         }
 
-
-        for (Map.Entry<Class<?>, Object> entry : instanceCache.entrySet()) {
-            Object instance = entry.getValue();
-            for (Method declaredMethod : entry.getKey().getDeclaredMethods()) {
-                if (declaredMethod.getAnnotation(Command.class) == null) continue;
-                if (!registeredMethods.contains(declaredMethod) && checkUnregisteredMethods) {
-                    throw new IllegalArgumentException("No mapping found for method " + entry.getKey() + " | " + declaredMethod);
-                }
-            }
-        }
+//        for (Map.Entry<Class<?>, Object> entry : instanceCache.entrySet()) {
+//            Object instance = entry.getValue();
+//            for (Method declaredMethod : entry.getKey().getDeclaredMethods()) {
+//                if (declaredMethod.getAnnotation(Command.class) == null) continue;
+//                if (!registeredMethods.contains(declaredMethod)) {
+//                    String msg = "No mapping found for method " + entry.getKey().getSimpleName() + " | " + declaredMethod.getName();
+//                    if (checkUnregisteredMethods) {
+//                        throw new IllegalArgumentException(msg);
+//                    } else {
+//                        System.out.println(msg);
+//                    }
+//                }
+//            }
+//        }
 
     }
 
@@ -375,6 +380,34 @@ public class CommandGroup implements ICommandGroup {
             if (callable == null) {
                 throw new IllegalStateException("Method " + methodInfo.method() + " in " + methodInfo.clazz().getName() + " is not a valid @Command");
             }
+            Set<String> userParamsLower = new HashSet<>();
+            for (Map.Entry<String, ParameterData> entry : callable.getUserParameterMap().entrySet()) {
+                userParamsLower.add(entry.getKey().toLowerCase(Locale.ROOT));
+                Arg arg = entry.getValue().getAnnotation(Arg.class);
+                if (arg != null && arg.aliases() != null) {
+                    for (String alias : arg.aliases()) {
+                        userParamsLower.add(alias.toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+
+            try {
+                CommandRef ref = (CommandRef) clazz.getDeclaredField("cmd").get(null);
+                Method create = ref.getClass().getDeclaredMethods()[0];
+                for (Parameter parameter : create.getParameters()) {
+                    String name = parameter.getName().toLowerCase(Locale.ROOT);
+                    if (userParamsLower.contains(name)) continue;
+                    // replace camelCase with under_case
+                    String nameUnder = parameter.getName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase(Locale.ROOT);
+                    if (userParamsLower.contains(nameUnder)) continue;
+                    System.out.println("Missing parameter `" + name + "` for " + methodInfo.clazz().getSimpleName() + " | " + methodInfo.method() + " | " + methodInfo.field() + " | " + clazz.getSimpleName() + " | " + callable.getUserParameterMap().keySet());
+                }
+
+            } catch (IllegalAccessException | NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
+
+
             this.registerWithPath(callable, path, clazz.getSimpleName());
         }
         ArrayList<String> subPath = new ArrayList<>(path);

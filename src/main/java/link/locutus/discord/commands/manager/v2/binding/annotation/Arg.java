@@ -10,4 +10,5 @@ import java.lang.annotation.Target;
 public @interface Arg {
     String value();
     int group() default -1;
+    String[] aliases() default {};
 }

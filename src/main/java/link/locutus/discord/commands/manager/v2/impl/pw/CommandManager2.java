@@ -266,7 +266,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "viewFlow", "flows");
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "shiftFlow", "shiftFlow");
 
-        this.commands.registerCommandsWithMapping(CM.class, false, false);
+        this.commands.registerCommandsWithMapping(CM.class);
 
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");

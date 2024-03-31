@@ -38,18 +38,18 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 public class TestCommands {
-    @Command
-    public String test(@Me IMessageIO io) throws IOException {
-        io.create().embed("Title", "Body goes here").commandButton(CM.fun.say.cmd.create("Hello World"), "test").file("test.txt", "hello world 2").send();
-//        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
-//                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
-//                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
-        return null;
-    }
+//    @Command
+//    public String test(@Me IMessageIO io, String arg1) throws IOException {
+////        io.create().embed("Title", "Body goes here").commandButton(CM.fun.say.cmd.create("Hello World"), "test").file("test.txt", "hello world 2").send();
+//////        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
+//////                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
+//////                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
+//        return "Arg " + arg1;
+//    }
 
     @Command(desc = "Dummy command. No output")
-    public String dummy() {
-        return null;
+    public String dummy(@Arg(value = "desc", aliases = "") String my_argument) {
+        return my_argument;
     }
 
     @Command(desc = "Create a discord modal for a bot command\n" +

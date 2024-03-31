@@ -1302,27 +1302,27 @@ public class BankCommands {
 
                                   @Arg("The nations to send to")
                                   NationList nationList,
-                                  @Arg(value = "Days of operation to send", group = 0) @Range(min=0, max=7) double days,
+                                  @Arg(value = "Days of operation to send", group = 0, aliases = "daysdefault") @Range(min=0, max=7) double days,
                                   @Arg(value = "Do not send money below the daily login bonus", group = 0) @Switch("dc") boolean no_daily_cash,
                                   @Arg(value = "Do not send ANY money", group = 0) @Switch("c") boolean no_cash,
 
-                                  @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 1) @Default("#tax") DepositType.DepositTypeInfo bank_note,
+                                  @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 1, aliases = "deposittype") @Default("#tax") DepositType.DepositTypeInfo bank_note,
                                   @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
                                   @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
-                                  @Arg(value = "Have the transfer valued as cash in nation holdings", group = 1) @Switch("m") boolean deduct_as_cash,
+                                  @Arg(value = "Have the transfer valued as cash in nation holdings", group = 1, aliases = "converttomoney") @Switch("m") boolean deduct_as_cash,
 
                            @Arg(value = "The guild's nation account to deduct from\n" +
-                                   "Defaults to None if bulk disburse, else the receivers account", group = 2) @Switch("n") DBNation nation_account,
+                                   "Defaults to None if bulk disburse, else the receivers account", group = 2, aliases = "depositsaccount") @Switch("n") DBNation nation_account,
                                   @Arg(value = "How to handle the transfer if the receiver is blockaded\n" +
                                           "Defaults to never escrow", group = 2) @Switch("em") EscrowMode escrow_mode,
 
-                           @Arg(value = "The in-game alliance bank to send from\nDefaults to the offshore set", group = 3) @Switch("a") DBAlliance ingame_bank,
+                           @Arg(value = "The in-game alliance bank to send from\nDefaults to the offshore set", group = 3, aliases = "usealliancebank") @Switch("a") DBAlliance ingame_bank,
                            @Arg(value = "The account with the offshore to use\n" +
                                    "The alliance must be registered to this guild\n" +
-                                   "Defaults to all the alliances of this guild", group = 3) @Switch("o") DBAlliance offshore_account,
+                                   "Defaults to all the alliances of this guild", group = 3, aliases = "useoffshoreaccount") @Switch("o") DBAlliance offshore_account,
 
                            @Arg(value = "The tax account to deduct from", group = 4) @Switch("t") TaxBracket tax_account,
-                           @Arg(value = "Deduct from the receiver's tax bracket account", group = 4) @Switch("ta") boolean use_receiver_tax_account,
+                           @Arg(value = "Deduct from the receiver's tax bracket account", group = 4, aliases = "existingtaxaccount") @Switch("ta") boolean use_receiver_tax_account,
 
 
                            @Arg("Skip checking receiver activity, blockade, VM etc.")
@@ -1790,31 +1790,31 @@ public class BankCommands {
     public String withdraw(@Me IMessageIO channel, @Me JSONObject command,
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb,
 
-                           @Arg(value = "Amount to send", group = 0)
+                           @Arg(value = "Amount to send", group = 0, aliases = "transfer")
                            @NationDepositLimit Map<ResourceType, Double> amount,
-                           @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean only_send_missing,
+                           @Arg(value = "Only send funds the receiver is lacking from the amount", aliases = "onlymissingfunds") @Switch("m") boolean only_send_missing,
 
-                           @Arg(value = "Transfer note", group = 1)
+                           @Arg(value = "Transfer note", group = 1, aliases = "deposittype")
                            @Default("#deposit") DepositType.DepositTypeInfo bank_note,
                            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
                            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
-                           @Arg(value = "Transfer valued at cash equivalent in nation balance", group = 1) @Switch("c") boolean deduct_as_cash,
+                           @Arg(value = "Transfer valued at cash equivalent in nation balance", group = 1, aliases = "convertcash") @Switch("c") boolean deduct_as_cash,
 
                            @Arg(value = "The in-game alliance bank to send from\n" +
-                                   "Defaults to the offshore set", group = 2) @Switch("a") DBAlliance ingame_bank,
+                                   "Defaults to the offshore set", group = 2, aliases = "usealliancebank") @Switch("a") DBAlliance ingame_bank,
                            @Arg(value = "The account with the offshore to use\n" +
                                    "The alliance must be registered to this guild\n" +
-                                   "Defaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance offshore_account,
+                                   "Defaults to all the alliances of this guild", group = 2, aliases = "useoffshoreaccount") @Switch("o") DBAlliance offshore_account,
 
                            @Arg(value = "The guild's nation account to use\n" +
-                                   "Defaults to your nation", group = 3) @Switch("n") DBNation nation_account,
+                                   "Defaults to your nation", group = 3, aliases = "depositsaccount") @Switch("n") DBNation nation_account,
                            @Arg(value = "How to handle the transfer if the receiver is blockaded\n" +
                                    "Defaults to never escrow", group = 3) @Switch("em") EscrowMode escrow_mode,
 
                            @Arg(value = "The guild's tax account to deduct from\n" +
                                    "Defaults to None", group = 4) @Switch("t") TaxBracket tax_account,
                            @Arg(value = "OR deduct from the receiver's tax bracket account\n" +
-                                   "Defaults to false", group = 4) @Switch("ta") boolean use_receiver_tax_account,
+                                   "Defaults to false", group = 4, aliases = "existingtaxaccount") @Switch("ta") boolean use_receiver_tax_account,
 
                            @Arg("Skip checking receiver activity, blockade, VM etc.")
                            @Switch("b") boolean bypass_checks,
