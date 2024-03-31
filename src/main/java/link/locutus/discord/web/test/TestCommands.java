@@ -48,8 +48,8 @@ public class TestCommands {
 //    }
 
     @Command(desc = "Dummy command. No output")
-    public String dummy(@Arg(value = "desc", aliases = "") String my_argument) {
-        return my_argument;
+    public String dummy() {
+        return null;
     }
 
     @Command(desc = "Create a discord modal for a bot command\n" +
