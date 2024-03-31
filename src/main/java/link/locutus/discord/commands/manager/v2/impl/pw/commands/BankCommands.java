@@ -1430,7 +1430,7 @@ public class BankCommands {
                     String.valueOf(force)
             ).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, null, deduct_as, escrow_mode, bypass_checks, force);
+            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, null, deduct_as_cash, escrow_mode, bypass_checks, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
