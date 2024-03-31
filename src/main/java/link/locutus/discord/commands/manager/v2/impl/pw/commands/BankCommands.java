@@ -1289,25 +1289,44 @@ public class BankCommands {
         );
     }
 
-    @Command(desc = "Disburse raw resources needed to operate cities", aliases = {"disburse", "disperse"})
+    @Command(desc = "Disburse raw resources needed to operate cities", aliases = {"disburse", "disperse"}, groups = {
+        "Amount Options",
+        "Optional: Bank Note",
+        "Optional: Nation Account",
+        "Optional: Specify Offshore/Bank",
+        "Optional: Tax Bracket Account (pick either or none)"
+    })
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
     @IsAlliance
     public static String disburse(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me DBNation me,
+
+                                  @Arg("The nations to send to")
                                   NationList nationList,
-                                  @Arg("Days of operation to send") @Range(min=0, max=7) double daysDefault,
-                                  @Arg("The transfer note\nUse `#IGNORE` to not deduct from deposits") @Default("#tax") DepositType.DepositTypeInfo depositType,
-                                  @Arg("Do not send money below the daily login bonus") @Switch("dc") boolean noDailyCash,
-                                  @Arg("Do not send ANY money") @Switch("c") boolean noCash,
-                           @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                           @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-                           @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-                           @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-                           @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-                                  @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                                  @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-                           @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
-                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
-                           @Switch("b") boolean bypassChecks,
+                                  @Arg(value = "Days of operation to send", group = 0) @Range(min=0, max=7) double days,
+                                  @Arg(value = "Do not send money below the daily login bonus", group = 0) @Switch("dc") boolean no_daily_cash,
+                                  @Arg(value = "Do not send ANY money", group = 0) @Switch("c") boolean no_cash,
+
+                                  @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 1) @Default("#tax") DepositType.DepositTypeInfo bank_note,
+                                  @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
+                                  @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
+                                  @Arg(value = "Have the transfer valued as cash in nation holdings", group = 1) @Switch("m") boolean deduct_as_cash,
+
+                           @Arg(value = "The guild's nation account to deduct from\n" +
+                                   "Defaults to None if bulk disburse, else the receivers account", group = 2) @Switch("n") DBNation nation_account,
+                                  @Arg(value = "How to handle the transfer if the receiver is blockaded\n" +
+                                          "Defaults to never escrow", group = 2) @Switch("em") EscrowMode escrow_mode,
+
+                           @Arg(value = "The in-game alliance bank to send from\nDefaults to the offshore set", group = 3) @Switch("a") DBAlliance ingame_bank,
+                           @Arg(value = "The account with the offshore to use\n" +
+                                   "The alliance must be registered to this guild\n" +
+                                   "Defaults to all the alliances of this guild", group = 3) @Switch("o") DBAlliance offshore_account,
+
+                           @Arg(value = "The tax account to deduct from", group = 4) @Switch("t") TaxBracket tax_account,
+                           @Arg(value = "Deduct from the receiver's tax bracket account", group = 4) @Switch("ta") boolean use_receiver_tax_account,
+
+
+                           @Arg("Skip checking receiver activity, blockade, VM etc.")
+                           @Switch("b") boolean bypass_checks,
                            @Switch("f") boolean force) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nations = new HashSet<>(nationList.getNations());
 
@@ -1337,7 +1356,7 @@ public class BankCommands {
                 if (nation.getPosition() <= 1) status = OffshoreInstance.TransferStatus.APPLICANT;
                 else if (nation.getVm_turns() > 0) status = OffshoreInstance.TransferStatus.VACATION_MODE;
                 else if (!db.isAllianceId(nation.getAlliance_id())) status = OffshoreInstance.TransferStatus.NOT_MEMBER;
-                else if (!bypassChecks) {
+                else if (!bypass_checks) {
                     if (nation.active_m() > 2880) {
                         status = OffshoreInstance.TransferStatus.INACTIVE;
                         debug += " (2+ days)";
@@ -1368,7 +1387,7 @@ public class BankCommands {
             return null;
         }
 
-        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, daysDefault, true, bypassChecks, true, noDailyCash, noCash, bypassChecks, force);
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, days, true, bypass_checks, true, no_daily_cash, no_cash, bypass_checks, force);
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
             DBNation nation = entry.getKey();
@@ -1395,23 +1414,23 @@ public class BankCommands {
             JSONObject command = CM.transfer.resources.cmd.create(
                     nation.getUrl(),
                     PnwUtil.resourcesToString(transfer),
-                    depositType.toString(),
-                    depositsAccount != null ? depositsAccount.getUrl() : null,
-                    useAllianceBank != null ? useAllianceBank.getUrl() : null,
-                    useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                    taxAccount != null ? taxAccount.getQualifiedId() : null,
-                    existingTaxAccount + "",
+                    bank_note.toString(),
+                    nation_account != null ? nation_account.getUrl() : null,
+                    ingame_bank != null ? ingame_bank.getUrl() : null,
+                    offshore_account != null ? offshore_account.getUrl() : null,
+                    tax_account != null ? tax_account.getQualifiedId() : null,
+                    use_receiver_tax_account + "",
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
                     null,
-                    String.valueOf(convertToMoney),
+                    String.valueOf(deduct_as_cash),
                     escrow_mode == null ? null : escrow_mode.name(),
-                    String.valueOf(bypassChecks),
+                    String.valueOf(bypass_checks),
                     String.valueOf(force)
             ).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, decay, null, convertToMoney, escrow_mode, bypassChecks, force);
+            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, null, deduct_as, escrow_mode, bypass_checks, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -1419,22 +1438,22 @@ public class BankCommands {
 
             JSONObject command = CM.transfer.bulk.cmd.create(
                     sheet.getSheet().getURL(),
-                    depositType.toString(),
-                    depositsAccount != null ? depositsAccount.getUrl() : null,
-                    useAllianceBank != null ? useAllianceBank.getUrl() : null,
-                    useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                    taxAccount != null ? taxAccount.getQualifiedId() : null,
-                    existingTaxAccount + "",
+                    bank_note.toString(),
+                    nation_account != null ? nation_account.getUrl() : null,
+                    ingame_bank != null ? ingame_bank.getUrl() : null,
+                    offshore_account != null ? offshore_account.getUrl() : null,
+                    tax_account != null ? tax_account.getQualifiedId() : null,
+                    use_receiver_tax_account + "",
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
                     Boolean.FALSE.toString(),
                     escrow_mode == null ? null : escrow_mode.name(),
-                    String.valueOf(bypassChecks),
+                    String.valueOf(bypass_checks),
                     String.valueOf(force),
                     key.toString()
             ).toJson();
 
-            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, convertToMoney, escrow_mode, bypassChecks, force, key);
+            return transferBulk(io, command, author, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key);
         }
     }
 
@@ -1763,7 +1782,7 @@ public class BankCommands {
     @Command(desc = "Withdraw from the alliance bank (nation balance)", groups = {
             "Amount Options",
             "Optional: Bank Note",
-            "Optional: Route and Offshore",
+            "Specify Offshore/Bank",
             "Optional: Nation Account",
             "Optional: Tax Bracket Account (pick either or none)",
     })
@@ -1779,7 +1798,7 @@ public class BankCommands {
                            @Default("#deposit") DepositType.DepositTypeInfo bank_note,
                            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
                            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
-                           @Arg(value = "Transfer valued at cash equivalent in nation balance", group = 1) @Switch("c") boolean convertCash,
+                           @Arg(value = "Transfer valued at cash equivalent in nation balance", group = 1) @Switch("c") boolean deduct_as_cash,
 
                            @Arg(value = "The in-game alliance bank to send from\n" +
                                    "Defaults to the offshore set", group = 2) @Switch("a") DBAlliance ingame_bank,
@@ -1793,13 +1812,12 @@ public class BankCommands {
                                    "Defaults to never escrow", group = 3) @Switch("em") EscrowMode escrow_mode,
 
                            @Arg(value = "The guild's tax account to deduct from\n" +
-                                   "Defaults to None", group = 4) @Switch("t") TaxBracket taxAccount,
+                                   "Defaults to None", group = 4) @Switch("t") TaxBracket tax_account,
                            @Arg(value = "OR deduct from the receiver's tax bracket account\n" +
-                                   "Defaults to false", group = 4) @Switch("ta") boolean existingTaxAccount,
-
+                                   "Defaults to false", group = 4) @Switch("ta") boolean use_receiver_tax_account,
 
                            @Arg("Skip checking receiver activity, blockade, VM etc.")
-                           @Switch("b") boolean bypassChecks,
+                           @Switch("b") boolean bypass_checks,
 
                            @Switch("f") boolean force
     ) throws IOException {
@@ -1807,15 +1825,15 @@ public class BankCommands {
                 nation_account == null ? me : nation_account,
                 ingame_bank,
                 offshore_account,
-                taxAccount,
-                existingTaxAccount,
+                tax_account,
+                use_receiver_tax_account,
                 only_send_missing,
                 expire,
                 decay,
                 null,
-                convertCash,
+                deduct_as_cash,
                 escrow_mode,
-                bypassChecks,
+                bypass_checks,
                 force);
     }
 
