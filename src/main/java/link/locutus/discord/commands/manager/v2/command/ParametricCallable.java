@@ -738,11 +738,17 @@ public class ParametricCallable implements ICommand {
         ValueStore locals = store;
         locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
-        Map<String, ParameterData> paramsByName = new HashMap<>();
         Map<String, ParameterData> paramsByNameLower = new HashMap<>();
         for (ParameterData parameter : parameters) {
-            paramsByName.put(parameter.getName(), parameter);
-            paramsByNameLower.put(parameter.getName().toLowerCase(Locale.ROOT), parameter);
+            String name = parameter.getName().toLowerCase(Locale.ROOT);
+            paramsByNameLower.put(name, parameter);
+            paramsByNameLower.put(name.replace("_", ""), parameter);
+            Arg arg = parameter.getAnnotation(Arg.class);
+            if (arg != null && arg.aliases() != null) {
+                for (String alias : arg.aliases()) {
+                    paramsByNameLower.put(alias.toLowerCase(Locale.ROOT), parameter);
+                }
+            }
         }
 
         BiFunction<ParameterData, Object, Object> parse;
@@ -803,8 +809,7 @@ public class ParametricCallable implements ICommand {
 
         Map<String, Object> flags = new HashMap<>();
         for (Map.Entry<String, Object> entry : combined.entrySet()) {
-            ParameterData param = paramsByName.get(entry.getKey());
-            if (param == null) param = paramsByNameLower.get(entry.getKey().toLowerCase(Locale.ROOT));
+            ParameterData param = paramsByNameLower.get(entry.getKey().toLowerCase(Locale.ROOT));
             if (param == null) throw new IllegalArgumentException("Could not find param: `" + entry.getKey() + "` for command " + getFullPath());
             if (param.isFlag()) {
                 flags.put(param.getFlag(), entry.getValue());
