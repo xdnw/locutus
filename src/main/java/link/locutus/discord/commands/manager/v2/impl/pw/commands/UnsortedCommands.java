@@ -1770,43 +1770,71 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Generate an optimal build json for a city")
+    @Command(desc = "Generate an optimal build json for a city", groups = {
+            "Optional: City Build Parameters",
+            "Optional: Optimization restrictions",
+            "Optional: Nation Setting (Continent, Projects, Tax Rate)",
+            "Display Options"
+    })
     public String optimalBuild(@Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                                @Arg("A city url or build json to optimize")
                                CityBuild build,
-                               @Arg("Set the days the build is expected to last before replacement (or destruction)")
+
+                               @Arg(value = "Set the days the build is expected to last before replacement (or destruction)\n" +
+                                       "This factors in the cost to switch builds\n" +
+                                       "Defaults to None", group = 0)
                                @Default Integer days,
 
-                               @Arg("Set the MMR (military building counts) of the city to optimize")
+                               @Arg(value = "Set the MMR (military building counts) of the city to optimize\n" +
+                                       "Defaults to the current MMR of the build provided, else `0000`", group = 0)
                                @Switch("x") @Filter("[0-9]{4}") String buildMMR,
-                               @Arg("Set the age of the city to optimize")
+
+                               @Arg(value = "Set the age of the city to optimize\n" +
+                                       "Defaults to the current city age, else `0`\n" +
+                                       "You can also specify `age: 1234` in the city json", group = 0)
                                @Switch("a") Integer age,
-                               @Arg("Set the infrastructure level of buildings in the city to optimize")
+                               @Arg(value = "Set the infrastructure level of buildings in the city to optimize\n" +
+                                       "Defaults to the current infrastructure level\n" +
+                                       "You can also specify `infra:1234` in the city json", group = 0)
                                @Switch("i") Integer infra,
-                               @Arg("Set the damaged infrastructure level of the city to optimize")
+                               @Arg(value = "Set the damaged infrastructure level of the city to optimize\n" +
+                                       "i.e. To simulate a city with a infra level required for its buildings\n" +
+                                       "Defaults to the infra level", group = 0)
                                @Switch("b") Integer baseReducedInfra,
-                               @Arg("Set the land level of the city to optimize")
+                               @Arg(value = "Set the land level of the city to optimize\n" +
+                                       "Defaults to the current land level, else the infra level\n" +
+                                       "You can specify `land: 1234` in the city json", group = 0)
                                @Switch("l") Integer land,
-                               @Arg("Set the maximum disease allowed")
+                               @Arg(value = "Set the radiation level\n" +
+                                       "Defaults to the cities current radiation, or your nation's radiation level", group = 0)
+                                   @Switch("r") Double radiation,
+
+
+                               @Arg(value = "Set the maximum disease allowed", group = 1)
                                @Switch("d") Double diseaseCap,
-                               @Arg("Set the maximum crime allowed")
+                               @Arg(value = "Set the maximum crime allowed", group = 1)
                                @Switch("c") Double crimeCap,
-                               @Arg("Set the minimum population allowed")
+                               @Arg(value = "Set the minimum population allowed", group = 1)
                                @Switch("p") Double minPopulation,
-                               @Arg("Set the radiation level")
-                               @Switch("r") Double radiation,
-                               @Arg("Maximize untaxed revenue for a tax rate")
+                               @Arg(value = "Require the city to produce all raw resources it uses for manufacturing", group = 1)
+                                   @Switch("u") boolean useRawsForManu,
+                               @Arg(value = "Require the city build to be cash positive", group = 1)
+                                   @Switch("m") boolean moneyPositive,
+
+                               @Arg(value = "Set the projects a city has access to\n" +
+                                       "Defaults to the projects of the nation", group = 2)
+                                   @Switch("n") Set<Project> nationalProjects,
+                               @Arg(value = "Set the continent the city is in\n" +
+                                       "Defaults the the continent of the nation", group = 2)
+                                   @Switch("g") Continent geographicContinent,
+                               @Arg(value = "Maximize untaxed revenue for a tax rate\n" +
+                                       "Defaults to 0/0", group = 2)
                                @Switch("t")TaxRate taxRate,
-                               @Arg("Require the city to produce all raw resources it uses for manufacturing")
-                               @Switch("u") boolean useRawsForManu,
-                               @Arg("Return a result on discord in plain text")
-                               @Switch("w") boolean writePlaintext,
-                               @Arg("Set the projects a city has access to")
-                               @Switch("n") Set<Project> nationalProjects,
-                               @Arg("Require the city build to be cash positive")
-                               @Switch("m") boolean moneyPositive,
-                               @Arg("Set the continent the city is in")
-                               @Switch("g") Continent geographicContinent
+
+                               @Arg(value = "Return a result on discord in plain text", group = 3)
+                               @Switch("w") boolean writePlaintext
+
+
     ) throws Exception {
         List<String> cmd = new ArrayList<>();
         Set<Character> flags = new HashSet<>();
