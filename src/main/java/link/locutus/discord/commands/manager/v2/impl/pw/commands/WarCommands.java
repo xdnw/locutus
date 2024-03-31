@@ -200,7 +200,7 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         for (DBNation nation : toRemove) {
             Locutus.imp().getNationDB().deleteBeigeReminder(me.getNation_id(), nation.getNation_id());
-            response.append("Removed reminder for <" + nation.getNationUrl() + ">\n");
+            response.append("Removed reminder for <" + nation.getUrl() + ">\n");
         }
         return response.toString();
     }
@@ -264,12 +264,12 @@ public class WarCommands {
 
 
             Locutus.imp().getNationDB().addBeigeReminder(target, me);
-            response.append("Added beige reminder for " + target.getNationUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
+            response.append("Added beige reminder for " + target.getUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
             try {
 
                 LeavingBeigeAlert.testBeigeAlert(db, target, me, null, true, false, false, false);
             } catch (IllegalArgumentException e) {
-                response.append("- " + e.getMessage() + ": <" + target.getNationUrl() + ">)\n");
+                response.append("- " + e.getMessage() + ": <" + target.getUrl() + ">)\n");
             }
         }
 
@@ -492,7 +492,7 @@ public class WarCommands {
 
             response.append("**ALLY **");
             response.append(author.getAsMention());
-            response.append("<" + me.getNationUrl() + "> Cancelled the unblockade request: `" + existing.getValue() + "`");
+            response.append("<" + me.getUrl() + "> Cancelled the unblockade request: `" + existing.getValue() + "`");
             RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
         }
 
@@ -532,7 +532,7 @@ public class WarCommands {
             response.append("**ALLY **");
             response.append(author.getAsMention());
 
-            response.append("<" + me.getNationUrl() + ">");
+            response.append("<" + me.getUrl() + ">");
             response.append(" | " + me.getAllianceName() + " | Time: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
             response.append("\nnote: `").append(note).append("`");
             response.append("\n```")
@@ -747,7 +747,7 @@ public class WarCommands {
                     response.append(status + " ");
                 }
             }
-            response.append("<" + ally.getNationUrl() + ">");
+            response.append("<" + ally.getUrl() + ">");
             response.append(" | " + ally.getAllianceName());
             response.append("\n```")
             .append(String.format("%5s", (int) ally.getScore())).append(" ns").append(" | ")
@@ -2199,8 +2199,8 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
-                                     @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
-        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, forceUpdate);
+                                     @Switch("a") boolean groupByAttacker, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, force);
 
         if (output == null) {
             output = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
@@ -2790,7 +2790,7 @@ public class WarCommands {
             row.add(dateStr);
             row.add(rank.name());
 
-            row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getNationUrl()));
+            row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getUrl()));
 
             row.add(defender.getCities());
             row.add(defender.getAvg_infra());
@@ -3291,7 +3291,7 @@ public class WarCommands {
                 for (int i = 0; i < myAttackOps.size(); i++) {
                     totalWarTargets++;
                     DBNation defender = myAttackOps.get(i);
-                    mail.append((i + 1) + ". War Target: " + MarkupUtil.htmlUrl(defender.getNation(), defender.getNationUrl()) + "\n");
+                    mail.append((i + 1) + ". War Target: " + MarkupUtil.htmlUrl(defender.getNation(), defender.getUrl()) + "\n");
                     mail.append(getStrengthInfo(defender) + "\n"); // todo
 
                     Set<DBNation> others = new LinkedHashSet<>(warDefAttMap.get(defender));
@@ -3674,7 +3674,7 @@ public class WarCommands {
             headers.set(10, att.getCities());
             headers.set(11, card.attackerMAP);
             headers.set(12, card.attackerResistance);
-            headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getNationUrl()));
+            headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getUrl()));
             headers.set(14, MarkupUtil.sheetUrl(att.getAllianceName(), att.getAllianceUrl()));
 
             long turnStart = TimeUtil.getTurn(war.getDate());
@@ -3682,7 +3682,7 @@ public class WarCommands {
             headers.set(15, turns);
 
             headers.set(16, MarkupUtil.sheetUrl(def.getAllianceName(), def.getAllianceUrl()));
-            headers.set(17, MarkupUtil.sheetUrl(def.getNation(), def.getNationUrl()));
+            headers.set(17, MarkupUtil.sheetUrl(def.getNation(), def.getUrl()));
             headers.set(18, card.defenderResistance);
             headers.set(19, card.defenderMAP);
             headers.set(20, def.getCities());

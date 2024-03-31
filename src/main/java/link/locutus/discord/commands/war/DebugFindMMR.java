@@ -43,7 +43,7 @@ public class DebugFindMMR extends Command {
             if (nation.getAircraft() != reqAircraft) continue;
             if (nation.getShips() != reqShips) continue;
 
-            found.add("<" + nation.getNationUrl() + ">");
+            found.add("<" + nation.getUrl() + ">");
         }
         if (!found.isEmpty()) {
             found = found.subList(0, Math.min(2, found.size()));

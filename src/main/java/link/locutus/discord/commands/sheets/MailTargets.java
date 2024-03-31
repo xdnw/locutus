@@ -159,7 +159,7 @@ public class MailTargets extends Command {
                 for (int i = 0; i < myAttackOps.size(); i++) {
                     totalWarTargets++;
                     DBNation defender = myAttackOps.get(i);
-                    mail.append((i + 1) + ". War Target: " + MarkupUtil.htmlUrl(defender.getNation(), defender.getNationUrl()) + "\n");
+                    mail.append((i + 1) + ". War Target: " + MarkupUtil.htmlUrl(defender.getNation(), defender.getUrl()) + "\n");
                     mail.append(getStrengthInfo(defender) + "\n"); // todo
 
                     Set<DBNation> others = new LinkedHashSet<>(warDefAttMap.get(defender));

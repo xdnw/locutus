@@ -300,7 +300,7 @@ public class FACommands {
         if (reqRank == null) reqRank = Rank.MEMBER;
         if (nation.getPosition() < reqRank.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not a member";
         User nationUser = nation.getUser();
-        if (nationUser == null) return "Nation " + nation.getNationUrl() + " is not registered";
+        if (nationUser == null) return "Nation " + nation.getUrl() + " is not registered";
         Member member = guild.getMember(nationUser);
         if (member == null) return "User " + user.getName() + " is not in this guild";
 

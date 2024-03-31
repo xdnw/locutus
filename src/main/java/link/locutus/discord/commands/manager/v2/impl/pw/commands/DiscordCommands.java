@@ -424,7 +424,7 @@ public class DiscordCommands {
         } else {
             Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());
         }
-        return "Unregistered user from " + nation.getNationUrl();
+        return "Unregistered user from " + nation.getUrl();
     }
 
     @Command(desc = "Register your discord user with your Politics And War nation.")

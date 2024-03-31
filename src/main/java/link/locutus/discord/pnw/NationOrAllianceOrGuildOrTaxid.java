@@ -1,10 +1,12 @@
 package link.locutus.discord.pnw;
 
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -165,15 +167,17 @@ public interface NationOrAllianceOrGuildOrTaxid {
         return (TaxBracket) this;
     }
 
-    default String getUrl() {
-        if (isAlliance()) return asAlliance().getUrl();
-        if (isGuild()) {
-            GuildDB guild = asGuild();
-            if (guild != null) guild.getUrl();
-        }
-        if (isTaxid()) {
-            return PnwUtil.getTaxUrl(getId());
-        }
-        return asNation().getNationUrl();
+    String getUrl();
+
+    @Command(desc = "Get the sheet url for this")
+    default String getSheetUrl() {
+        if (isGuild()) return asGuild().getGuild().toString();
+        return MarkupUtil.sheetUrl(getName(), getUrl());
+    }
+
+    @Command(desc = "Get the markdown url for this")
+    default String getMarkdownUrl() {
+        if (isGuild()) return asGuild().getGuild().toString();
+        return MarkupUtil.markdownUrl(getName(), getUrl());
     }
 }

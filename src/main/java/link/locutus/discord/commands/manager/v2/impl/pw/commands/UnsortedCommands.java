@@ -632,7 +632,7 @@ public class UnsortedCommands {
                 } else {
                     active = "inactive";
                 }
-                String url = n.getNationUrl();
+                String url = n.getUrl();
                 String general = n.toMarkdown(false, true, false);
                 String infra = n.toMarkdown(false, false, true);
 
@@ -1608,7 +1608,7 @@ public class UnsortedCommands {
                     String input = output.toString().replace("_", " ").replace(" * ", " STARPLACEHOLDER ");
                     String markdown = MarkupUtil.markdownToHTML(input);
                     markdown = MarkupUtil.transformURLIntoLinks(markdown);
-                    markdown = MarkupUtil.htmlUrl(nation.getName(), nation.getNationUrl()) + "\n" + markdown;
+                    markdown = MarkupUtil.htmlUrl(nation.getName(), nation.getUrl()) + "\n" + markdown;
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 

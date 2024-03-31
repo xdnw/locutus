@@ -1649,7 +1649,7 @@ public class StatCommands {
             if (activeCost == null) activeCost = new AttackCost("", "", false, false, false, false, false);
 
             header = new ArrayList<>();
-            header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             header.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
 
             int numWars = activeCost.getNumWars();
@@ -1976,7 +1976,7 @@ public class StatCommands {
                 }
             }
 
-            header.set(0, MarkupUtil.sheetUrl(useLeader ? nation.getLeader() : nation.getNation(), nation.getNationUrl()));
+            header.set(0, MarkupUtil.sheetUrl(useLeader ? nation.getLeader() : nation.getNation(), nation.getUrl()));
             header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
 
             header.set(2, attInactiveCost.getNumWars());

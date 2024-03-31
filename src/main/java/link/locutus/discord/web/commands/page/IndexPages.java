@@ -161,7 +161,7 @@ public class IndexPages extends PageHelper {
             }
 
             if (val > 0) {
-                String url = nation.getNationUrl();
+                String url = nation.getUrl();
                 String body = "leader: " + nation.getLeader() + "<br>" + MarkupUtil.markdownToHTML(nation.toMarkdown());
                 results.add(new SearchResult(nation.getNation(),
                         body,

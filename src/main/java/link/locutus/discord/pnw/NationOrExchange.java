@@ -126,7 +126,7 @@ public class NationOrExchange {
     }
 
     private String getUrl() {
-        if (isNation()) return getNation().getNationUrl();
+        if (isNation()) return getNation().getUrl();
         return getExchange().getInvite().getUrl();
     }
 

@@ -274,7 +274,7 @@ public class ROI extends Command {
                 double depositsConverted = PnwUtil.convertedTotal(deposits);
 
                 header.clear();
-                header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+                header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 header.add(String.format("%.2f", depositsConverted));
                 header.add("" + nation.getCityTurns());
                 header.add("" + nation.getProjectTurns());
@@ -326,7 +326,7 @@ public class ROI extends Command {
             List<DBNation> nations = new ArrayList<>();
             for (ROIResult result : roiMap) {
                 nations.add(result.nation);
-                output.append(result.nation.getNation() + " | " + result.nation.getNationUrl()).append("\n");
+                output.append(result.nation.getNation() + " | " + result.nation.getUrl()).append("\n");
                 output.append(result.investment + " @ `" + result.info + "`: " + MathMan.format(result.roi) + "%");
                 if (result.investment == Investment.RESOURCE_PROJECT) output.append(", Profit/Day: $" + MathMan.format(result.profit));
                         output.append("\n\n");

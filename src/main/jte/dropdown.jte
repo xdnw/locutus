@@ -37,7 +37,7 @@
             @if (ws.getNation() == null)
             <a class="dropdown-item-text border border-primary" href="${WebRoot.REDIRECT}/page/login?nation"><i class="bi bi-envelope-fill"></i>&nbsp;Link Nation</a>
             @else
-                <a class="dropdown-item" href="${ws.getNation().getNationUrl()}"><i class="bi bi-box-arrow-up-right"></i>&nbsp;Nation <kbd>${ws.getNation().getName()}</kbd></a>
+                <a class="dropdown-item" href="${ws.getNation().getUrl()}"><i class="bi bi-box-arrow-up-right"></i>&nbsp;Nation <kbd>${ws.getNation().getName()}</kbd></a>
                 @if (ws.getNation().getAlliance() != null)
                 <a class="dropdown-item" href="${ws.getNation().getAllianceUrl()}"><i class="bi bi-box-arrow-up-right"></i>&nbsp;Alliance <kbd>${ws.getNation().getAllianceName()}</kbd></a>
                 @endif

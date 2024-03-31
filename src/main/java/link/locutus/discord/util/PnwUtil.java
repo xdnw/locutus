@@ -752,7 +752,9 @@ public class PnwUtil {
     }
 
     public static Integer parseAllianceId(String arg) {
-        if (arg.toLowerCase().startsWith("aa:")) arg = arg.substring(3);
+        String lower = arg.toLowerCase();
+        if (lower.startsWith("aa:")) arg = arg.substring(3);
+        else if (lower.startsWith("alliance:")) arg = arg.substring(9);
         if (arg.charAt(0) == '"' && arg.charAt(arg.length() - 1) == '"') {
             arg = arg.substring(1, arg.length() - 1);
         }

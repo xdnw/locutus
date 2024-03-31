@@ -35,6 +35,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
@@ -378,6 +379,14 @@ public class OffshoreInstance {
         return PnwUtil.resourcesToMap(sum);
     }
 
+    public boolean hasAccount(GuildDB db) {
+        return getGuildDB().getCoalitionRaw(Coalition.OFFSHORING).contains(db.getIdLong());
+    }
+
+    public boolean hasAccount(DBAlliance alliance) {
+        return getGuildDB().getCoalitionRaw(Coalition.OFFSHORING).contains(alliance.getIdLong());
+    }
+
 //    public List<Transaction2> filterTransactions(int allianceId)
 
     private double[] addTransfers(List<Transaction2> transactions, Set<Long> ids, int type) {
@@ -685,7 +694,7 @@ public class OffshoreInstance {
                 if (disabledNations.containsKey(nationAccount.getId())) {
                     // Account temporarily disabled due to error. Use CM.bank.unlockTransfers.cmd.toSlashMention() to re-enable
 //                    return Map.entry(TransferStatus.AUTHORIZATION, "Transfers are temporarily disabled for this account due to an error. Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.create(nationAccount.getId() + "") + " in " + getGuild());
                 }
                 if (!depositType.isDeposits() || depositType.isIgnored()) {
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
@@ -735,7 +744,7 @@ public class OffshoreInstance {
                     if (missing != null) {
                         if (!rssConversion) {
                             String[] msg = {nationAccount.getMarkdownUrl() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
-                                    CM.deposits.check.cmd.create(nationAccount.getNationUrl(), null, null, null, null, null, null, null, null, null, null) +
+                                    CM.deposits.check.cmd.create(nationAccount.getUrl(), null, null, null, null, null, null, null, null, null, null) +
                                     " ).", "RESOURCE_CONVERSION is disabled (see " +
                                     GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
                                     ")"};
@@ -1174,8 +1183,8 @@ public class OffshoreInstance {
                 return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("No guild is registered with this offshore");
             }
 
-            if (isDisabled(senderDB.getGuild().getIdLong())) {
-                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server (" + getGuildDB().getIdLong() + ")");
+            if (isDisabled(senderDB.getIdLong())) {
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.create(senderDB.getIdLong() + "") + " in the offshore server (" + getGuild() + ")");
             }
 
             boolean hasAdmin = false;
@@ -1496,7 +1505,7 @@ public class OffshoreInstance {
                     continue;
                 }
 
-                TransferResult result = transferUnsafe2(auth, alliance, amt, routeNote);
+                TransferResult result = transferUnsafe(auth, alliance, amt, routeNote);
                 results.add(result);
                 if (!result.getStatus().isSuccess()) {
                     isError = true;
@@ -1520,7 +1529,7 @@ public class OffshoreInstance {
                 resultFinal = new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, transfer, note).addMessage(msgCombined);
             }
         } else {
-            resultFinal = transferUnsafe2(auth, receiver, transfer, note);
+            resultFinal = transferUnsafe(auth, receiver, transfer, note);
         }
         if (resultFinal.getStatus().isSuccess()) {
             setLastSuccessfulTransfer(receiver, PnwUtil.resourcesToArray(transfer));
@@ -1535,25 +1544,21 @@ public class OffshoreInstance {
         return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
     }
 
-    private TransferResult transferUnsafe2(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
         if (!TimeUtil.checkTurnChange()) {
-//            return Map.entry(TransferStatus.TURN_CHANGE, TransferStatus.TURN_CHANGE.msg);
             return new TransferResult(TransferStatus.TURN_CHANGE, receiver, transfer, note).addMessage(TransferStatus.TURN_CHANGE.msg);
         }
         if (receiver.isAlliance()) {
             DBAlliance alliance = receiver.asAlliance();
             if (alliance.getNations(true, (int) TimeUnit.DAYS.toMinutes(30), true).isEmpty()) {
-//                return Map.entry(TransferStatus.VACATION_MODE, "The alliance: " + receiver.getQualifiedName() + " has no active members (> 30 days)");
                 return new TransferResult(TransferStatus.VACATION_MODE, receiver, transfer, note).addMessage("The alliance: " + receiver.getMarkdownUrl() + " has no active members (> 30 days)");
             }
         } else if (receiver.isNation()) {
             DBNation nation = receiver.asNation();
             if (nation.getVm_turns() > 0) {
-//                return Map.entry(TransferStatus.VACATION_MODE, TransferStatus.VACATION_MODE.msg);
                 return new TransferResult(TransferStatus.VACATION_MODE, receiver, transfer, note).addMessage(TransferStatus.VACATION_MODE.msg);
             }
             if (nation.active_m() > TimeUnit.DAYS.toMinutes(30)) {
-//                return Map.entry(TransferStatus.VACATION_MODE, "Nation is inactive (>30 days)");
                 return new TransferResult(TransferStatus.VACATION_MODE, receiver, transfer, note).addMessage("Nation " + nation.getMarkdownUrl() + " is inactive (>30 days)");
             }
         }
@@ -1578,14 +1583,11 @@ public class OffshoreInstance {
                 }
                 return category;
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
-//                return Map.entry(TransferStatus.OTHER, "Timeout: " + e.getMessage());
                 return new TransferResult(TransferStatus.OTHER, receiver, transfer, note).addMessage("Timeout: " + e.getMessage());
             }
         }
 
-//        if (auth == null || !auth.isValid() || true)
         {
-            // get api
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
                 return createTransfer(api, receiver, transfer, note);
@@ -1701,6 +1703,10 @@ public class OffshoreInstance {
 
     public DBAlliance getAlliance() {
         return Locutus.imp().getNationDB().getAlliance(allianceId);
+    }
+
+    public Guild getGuild() {
+        return getGuildDB().getGuild();
     }
 
     public enum TransferStatus {

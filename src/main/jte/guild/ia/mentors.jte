@@ -74,7 +74,7 @@
         <tbody>
         @for (DBNation nation : idleMentors)
         <tr>
-            <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+            <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
             <td><a href="discord://discordapp.com/users/${nation.getUserId()}">@${nation.getUserDiscriminator()}</a></td>
             <td>${nation.getCities()}</td>
             <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
@@ -99,7 +99,7 @@
         <tbody>
         @for (DBNation nation : noMentor)
         <tr>
-            <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+            <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
             <td>${nation.getCities()}</td>
             <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
             <td>@if(iaCat.get(nation) != null && iaCat.get(nation).getChannel() != null)
@@ -131,7 +131,7 @@
         <tbody>
         @for (DBNation nation : membersNotOnDiscord)
         <tr>
-            <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+            <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
             <td>${nation.getCities()}</td>
             <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
             <td>@if(iaCat.get(nation) != null && iaCat.get(nation).getChannel() != null)
@@ -160,7 +160,7 @@
             <tbody>
                 @for (DBNation nation : membersUnverified)
                     <tr>
-                        <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+                        <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
                         <td>${nation.getCities()}</td>
                         <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
                         <td>@if(iaCat.get(nation) != null && iaCat.get(nation).getChannel() != null)
@@ -187,7 +187,7 @@
         <tbody>
         @for (DBNation nation : nationsNoIAChan)
         <tr>
-            <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+            <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
             <td>${nation.getCities()}</td>
             <td>${TimeUtil.minutesToTime(nation.active_m())}</td>
         </tr>

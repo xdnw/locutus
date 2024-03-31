@@ -138,7 +138,7 @@ public class WarSheet extends Command {
             headers.set(10, att.getCities());
             headers.set(11, card.attackerMAP);
             headers.set(12, card.attackerResistance);
-            headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getNationUrl()));
+            headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getUrl()));
             headers.set(14, MarkupUtil.sheetUrl(att.getAllianceName(), att.getAllianceUrl()));
 
             long turnStart = TimeUtil.getTurn(war.getDate());
@@ -146,7 +146,7 @@ public class WarSheet extends Command {
             headers.set(15, turns);
 
             headers.set(16, MarkupUtil.sheetUrl(def.getAllianceName(), def.getAllianceUrl()));
-            headers.set(17, MarkupUtil.sheetUrl(def.getNation(), def.getNationUrl()));
+            headers.set(17, MarkupUtil.sheetUrl(def.getNation(), def.getUrl()));
             headers.set(18, card.defenderResistance);
             headers.set(19, card.defenderMAP);
             headers.set(20, def.getCities());

@@ -92,7 +92,7 @@ public class BankPages {
             Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, true);
             long diff = System.currentTimeMillis() - start;
 
-            row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getNationUrl()));
+            row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getUrl()));
             row.set(1, MathMan.format(nation.getCities()));
             row.set(2, MathMan.format(nation.getAgeDays()));
             row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));

@@ -55,6 +55,7 @@ import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -413,10 +414,34 @@ public class WebPWBindings extends WebBindingHelper {
             values.add(obj.getValue());
         });
     }
+
     @HtmlInput
     @Binding(types= NationOrAllianceOrGuild.class)
     public String nationOrAllianceOrGuild(@Me User user, @Me GuildDB db, ParameterData param) {
         return nationOrAllianceOrGuildOrTaxid(user, db, param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= GuildOrAlliance.class)
+    public String guildOrAlliance(@Me User user, @Me GuildDB db, ParameterData param) {
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
+        List<Guild> guilds = user.getMutualGuilds();
+        List<GuildOrAlliance> options = new ArrayList<>(alliances.size() + guilds.size());
+        for (Guild guild : guilds) {
+            options.add(Locutus.imp().getGuildDB(guild));
+        }
+        options.addAll(alliances);
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            if (obj.isAlliance()) {
+                names.add(obj.getName());
+                values.add("aa:" + obj.getAlliance_id());
+                subtext.add("alliance");
+            } else if (obj.isGuild()) {
+                names.add(DiscordWebBindings.formatGuildName(obj.asGuild().getGuild()));
+                values.add("guild:" + obj.getIdLong());
+                subtext.add("guild");
+            }
+        });
     }
 
     @HtmlInput

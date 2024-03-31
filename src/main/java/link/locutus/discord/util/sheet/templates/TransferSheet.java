@@ -183,7 +183,7 @@ public class TransferSheet {
                 row.add(-1);
             } else {
                 DBNation nation = nationOrAA.asNation();
-                row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+                row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(nation.getCities());
             }

@@ -291,7 +291,7 @@ public class GuildHandler {
         if (nation != null) {
             if (nation.active_m() > 7200) return false;
 
-            body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
+            body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getUrl()) + "\n");
             if (nation.getPosition() > 1 && aaIds.contains(nation.getAlliance_id())) {
                 body.append("\n\n**ALREADY MEMBER OF " + nation.getAllianceName() + "**\n\n");
                 mentionInterviewer = false;
@@ -450,7 +450,7 @@ public class GuildHandler {
                 Rank rank = Rank.byId(previous.getPosition());
                 String title = previous.getNation() + " (" + rank.name() + ") VM";
                 StringBuilder body = new StringBuilder();
-                body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
+                body.append(MarkupUtil.markdownUrl(current.getNation(), current.getUrl()));
                 body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.active_m()));
                 User user = current.getUser();
                 if (user != null) {
@@ -472,7 +472,7 @@ public class GuildHandler {
             Rank rank = Rank.byId(previous.getPosition());
             String title = previous.getNation() + " (" + rank.name() + ") left VM";
             StringBuilder body = new StringBuilder();
-            body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
+            body.append(MarkupUtil.markdownUrl(current.getNation(), current.getUrl()));
             body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.active_m()));
             User user = current.getUser();
             if (user != null) {
@@ -582,7 +582,7 @@ public class GuildHandler {
         Rank rank = Rank.byId(previous.getPosition());
         String title = previous.getNation() + " (" + rank.name() + ") left";
         StringBuilder body = new StringBuilder();
-        body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
+        body.append(MarkupUtil.markdownUrl(current.getNation(), current.getUrl()));
 
         body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.active_m()));
         if (user != null) {
@@ -628,7 +628,7 @@ public class GuildHandler {
             Rank rank = Rank.byId(previous.getPosition());
             String title = previous.getNation() + " (" + rank.name() + ") deleted";
             StringBuilder body = new StringBuilder();
-            body.append(MarkupUtil.markdownUrl(previous.getNation(), previous.getNationUrl()));
+            body.append(MarkupUtil.markdownUrl(previous.getNation(), previous.getUrl()));
             body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, previous.active_m()));
             User user = previous.getUser();
             if (user != null) {
@@ -724,7 +724,7 @@ public class GuildHandler {
             if (channel != null) {
                 String title = "Inactive Applicant " + current.getNation() + " logged in (just now)";
                 StringBuilder body = new StringBuilder();
-                body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
+                body.append(MarkupUtil.markdownUrl(current.getNation(), current.getUrl()));
                 body.append("\n").append("Color: " + current.getColor());
                 body.append("\n").append("Cities: " + current.getCities());
                 body.append("\n").append("MMR: " + current.getMMR());
@@ -1694,8 +1694,8 @@ public class GuildHandler {
                             CounterStat counterStat = war.getCounterStat();
                             String counterStatStr = counterStat == null ? "" : counterStat.type.getDescription();
 
-                            String attUrl = attacker != null ? attacker.getNationUrl() : PnwUtil.getNationUrl(war.getAttacker_id());
-                            String defUrl = defender != null ? defender.getNationUrl() : PnwUtil.getNationUrl(war.getDefender_id());
+                            String attUrl = attacker != null ? attacker.getUrl() : PnwUtil.getNationUrl(war.getAttacker_id());
+                            String defUrl = defender != null ? defender.getUrl() : PnwUtil.getNationUrl(war.getDefender_id());
 
                             String attAAUrl = attacker != null ? attacker.getAllianceUrl() : PnwUtil.getNationUrl(war.getAttacker_aa());
                             String defAAUrl = defender != null ? defender.getAllianceUrl() : PnwUtil.getNationUrl(war.getDefender_aa());
@@ -2142,11 +2142,11 @@ public class GuildHandler {
         // war link | defensive wars
         // defender cities
         body.append(MarkupUtil.markdownUrl("War Link", war.toUrl()));
-        body.append("\nAlly: " + MarkupUtil.markdownUrl(attacker.getNation(), attacker.getNationUrl()) + " | " + MarkupUtil.markdownUrl(attacker.getAllianceName(), attacker.getAllianceUrl()));
+        body.append("\nAlly: " + MarkupUtil.markdownUrl(attacker.getNation(), attacker.getUrl()) + " | " + MarkupUtil.markdownUrl(attacker.getAllianceName(), attacker.getAllianceUrl()));
         User user = attacker.getUser();
         if (user != null) body.append("\n").append(user.getAsMention());
         body.append("\n- Cities: " + attacker.getCities());
-        body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getNationUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
+        body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
         body.append("\n- Cities: " + defender.getCities());
 
         Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2());
@@ -2187,7 +2187,7 @@ public class GuildHandler {
         String warInfoEmoji = 0 + "War Info";
         String warInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + root.getWar_id();
         String defInfoEmoji = 1 + "Defender Info";
-        String defInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + defender.getNationUrl();
+        String defInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + defender.getUrl();
 
         String emoji = "Claim";
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +

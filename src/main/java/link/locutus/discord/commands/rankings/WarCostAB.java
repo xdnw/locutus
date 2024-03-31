@@ -199,7 +199,7 @@ public class WarCostAB extends Command {
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
         String reimburseEmoji = "Reimburse";
-        String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
+        String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getUrl() + " " + totalStr + " \"" + note + "\"";
 
         String infoEmoji = "War Info";
         String infoCmd = Settings.commandPrefix(true) + "warinfo " + warUrl.toUrl();

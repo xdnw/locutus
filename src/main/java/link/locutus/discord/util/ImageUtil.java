@@ -200,6 +200,7 @@ public class ImageUtil {
         // Render the graph to an image
         BufferedImage image = mxCellRenderer.createBufferedImage(graphAdapter, null, 1, Color.WHITE, true, null);
 
+        if (image == null) return null;
         // Write the image to a file
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             ImageIO.write(image, "png", baos);

@@ -25,6 +25,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -53,7 +55,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class DBAlliance implements NationList, NationOrAlliance {
+public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance {
     private final int allianceId;
     private String name;
     private String acronym;
@@ -112,6 +114,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
     @Override
     public boolean isValid() {
         return get(allianceId) != null;
+    }
+
+    @Override
+    public AllianceList toAllianceList() {
+        return new AllianceList(allianceId);
     }
 
     @Override
@@ -671,6 +678,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
     @Command
     public String getName() {
         return name;
+    }
+
+    @Override
+    public boolean isGuild() {
+        return false;
     }
 
     @Override

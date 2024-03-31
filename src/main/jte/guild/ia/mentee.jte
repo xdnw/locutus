@@ -38,7 +38,7 @@
 @param Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
 
 <tr>
-    <td><a href="${mentee.getNationUrl()}">${mentee.getNation()}</a></td>
+    <td><a href="${mentee.getUrl()}">${mentee.getNation()}</a></td>
     <td>${mentee.getCities()}</td>
     <td>${mentee.getMMR()}</td>
     <td>${mentee.getMMRBuildingStr()}</td>

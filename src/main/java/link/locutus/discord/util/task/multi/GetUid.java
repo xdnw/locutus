@@ -29,7 +29,7 @@ public class GetUid implements Callable<BigInteger> {
     }
     @Override
     public BigInteger call() throws IOException {
-        String url = nation.getNationUrl();
+        String url = nation.getUrl();
         PagePriority pp = (priority ? PagePriority.NATION_UID_MANUAL : PagePriority.NATION_UID_AUTO);
         String html = FileUtil.readStringFromURL(pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);
 

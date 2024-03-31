@@ -688,7 +688,7 @@ public class ReportCommands {
 
             int receiverId;
             boolean isRecieverAA;
-            if (receiverStr.contains("/alliance") || receiverStr.toLowerCase().contains("aa:")) {
+            if (receiverStr.contains("/alliance") || receiverStr.toLowerCase().contains("aa:") || receiverStr.toLowerCase().contains("alliance:")) {
                 receiverId = PnwUtil.parseAllianceId(receiverStr);
                 isRecieverAA = true;
             } else {

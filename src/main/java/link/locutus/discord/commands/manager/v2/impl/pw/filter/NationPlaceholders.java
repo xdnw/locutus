@@ -229,7 +229,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         };
                     });
             return nations;
-        }  else if (nameLower.startsWith("aa:")) {
+        }  else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
@@ -305,7 +305,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                     });
             Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
             return f -> ids.contains(f.getId());
-        }  else if (nameLower.startsWith("aa:")) {
+        }  else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             return f -> alliances.contains(f.getAlliance_id());

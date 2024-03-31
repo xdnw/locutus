@@ -492,7 +492,7 @@ public class SpyTracker {
 
 
             StringBuilder message = new StringBuilder();
-            message.append("<" + attacker.getNationUrl() + ">|" + attacker.getNation() + " | " + attacker.getAlliance() + " | " + MathMan.format(odds) + "%");
+            message.append("<" + attacker.getUrl() + ">|" + attacker.getNation() + " | " + attacker.getAlliance() + " | " + MathMan.format(odds) + "%");
 
             if (killRange != null) {
                 message.append(" | " + killRange.getKey() + "-" + killRange.getValue() + " max kills");

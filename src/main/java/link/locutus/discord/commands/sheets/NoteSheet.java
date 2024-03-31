@@ -72,7 +72,7 @@ public class NoteSheet extends Command {
                 row.add("");
             }
 
-            row.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             row.set(1, nation.getCities());
             row.set(2, nation.active_m());
 

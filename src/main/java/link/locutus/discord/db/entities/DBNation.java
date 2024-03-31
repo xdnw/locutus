@@ -3862,11 +3862,11 @@ public class DBNation implements NationOrAlliance {
     public void toCard(IMessageIO channel, boolean refresh) {
         String title = nation;
         String counterEmoji = "Counter";
-        String counterCmd = Settings.commandPrefix(true) + "counter " + getNationUrl();
+        String counterCmd = Settings.commandPrefix(true) + "counter " + getUrl();
 //        String simEmoji = "Simulate";
 //        String simCommand = Settings.commandPrefix(true) + "simulate " + getNationUrl();
         String refreshEmoji = "Refresh";
-        String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
+        String refreshCmd = Settings.commandPrefix(true) + "who " + getUrl();
 
         String response = toEmbedString();
         response += "To report in-game fraud: " + CM.report.add.cmd.toSlashMention();
@@ -3962,7 +3962,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Game url for nation")
-    public String getNationUrl() {
+    public String getUrl() {
         return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + getNation_id();
     }
 
@@ -3976,7 +3976,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String getNationUrlMarkup(boolean embed) {
-        String nationUrl = getNationUrl();
+        String nationUrl = getUrl();
         nationUrl = MarkupUtil.markdownUrl(nation, "<" + nationUrl + ">");
         return nationUrl;
     }
@@ -4156,7 +4156,7 @@ public class DBNation implements NationOrAlliance {
             response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
             // add balance to expectedNation
             currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, getNation_id(), note, toDeposit);
-            response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
+            response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
 
             MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
@@ -5024,7 +5024,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map.Entry<Integer, Integer> getCommends() throws IOException {
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.COMMEND, getNationUrl()));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.COMMEND, getUrl()));
         int commend = Integer.parseInt(dom.select("#commendment_count").text());
         int denounce = Integer.parseInt(dom.select("#denouncement_count").text());
         return new AbstractMap.SimpleEntry<>(commend, denounce);

@@ -320,7 +320,7 @@ public class AllianceListener {
             if (member.getPosition() < Rank.HEIR.id || member.getVm_turns() > 0) continue;
             AllianceChange lastAA = member.getPreviousAlliance(true, null);
 
-            body.append("Leader: " + MarkupUtil.markdownUrl(member.getNation(), member.getNationUrl()) + "\n");
+            body.append("Leader: " + MarkupUtil.markdownUrl(member.getNation(), member.getUrl()) + "\n");
 
             if (lastAA != null) {
                 String previousAAName = Locutus.imp().getNationDB().getAllianceName(lastAA.getFromId());

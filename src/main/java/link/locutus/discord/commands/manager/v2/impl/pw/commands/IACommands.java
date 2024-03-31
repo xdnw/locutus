@@ -660,7 +660,7 @@ public class IACommands {
             for (DBNation myMentee : myMentees) {
                 IAChannel myChan = iaCat.get(myMentee);
                 IACategory.SortedCategory category = categoryMap.get(myMentee);
-                response.append("`" + myMentee.getNation() + "` <" + myMentee.getNationUrl() + ">\n");
+                response.append("`" + myMentee.getNation() + "` <" + myMentee.getUrl() + ">\n");
                 response.append("- " + category + " | ");
                 if (myChan != null && myChan.getChannel() != null) {
                     GuildMessageChannel tc = myChan.getChannel();
@@ -1367,7 +1367,7 @@ public class IACommands {
                 }
                 bodyFormat += cmdMsg;
 
-                header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+                header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, "");
                 header.set(3, subjectFormat);
@@ -1529,7 +1529,7 @@ public class IACommands {
                     }
                 }
             }
-            response.add(nation.getNationUrl() + " -> " + StringMan.getString(result));
+            response.add(nation.getUrl() + " -> " + StringMan.getString(result));
         }
         return "Done!\n- " + StringMan.join(response, "\n- ");
     }

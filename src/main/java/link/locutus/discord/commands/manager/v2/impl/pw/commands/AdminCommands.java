@@ -1597,7 +1597,7 @@ public class AdminCommands {
                 notice.add("\n- Owner is Unregistered");
                 printDeposits.add(id);
             } else if (nation.active_m() > 10000) {
-                notice.add("\n- Owner is inactive: <@" + owner.getIdLong() + "> | <" + nation.getNationUrl() + "> | `" + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "`");
+                notice.add("\n- Owner is inactive: <@" + owner.getIdLong() + "> | <" + nation.getUrl() + "> | `" + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "`");
                 printDeposits.add(id);
             }
         }
@@ -1939,7 +1939,7 @@ public class AdminCommands {
             for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
                 response.append(entry.getKey().toString(16)).append(":\n");
                 for (DBNation nation : entry.getValue()) {
-                    response.append("- ").append(nation.getNationUrl()).append("\n");
+                    response.append("- ").append(nation.getUrl()).append("\n");
                 }
             }
             response.append("\n");
@@ -1950,7 +1950,7 @@ public class AdminCommands {
                 DBNation nation = entry.getKey();
                 if (!nations.contains(nation)) continue;
                 // Key then dot points, with nation url
-                response.append(entry.getKey().getNationUrl()).append(":\n");
+                response.append(entry.getKey().getUrl()).append(":\n");
                 for (DBBan ban : entry.getValue()) {
                     StringBuilder banStr = new StringBuilder("nation:" + ban.nation_id);
                     if (ban.discord_id > 0) {

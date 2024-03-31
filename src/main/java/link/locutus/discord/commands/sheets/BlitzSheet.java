@@ -172,7 +172,7 @@ public class BlitzSheet extends Command {
 //                    row.set(1, defender.getNation_id());
 //                } else
             {
-                row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getNationUrl()));
+                row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getUrl()));
             }
 
             row.add(defender.getCities());
@@ -196,7 +196,7 @@ public class BlitzSheet extends Command {
 
             for (int i = 0; i < myCounters.size(); i++) {
                 DBNation counter = myCounters.get(i);
-                String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getNationUrl());
+                String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getUrl());
                 row.add(counterUrl);
             }
             RowData myRow = SheetUtil.toRowData(row);

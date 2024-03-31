@@ -69,7 +69,7 @@ public class StockpileSheet extends Command {
 
             DBNation nation = entry.getKey();
             if (nation == null) continue;
-            row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             row.add(nation.getUserDiscriminator());
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());

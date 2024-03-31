@@ -42,7 +42,7 @@
 @param Map<DBNation, Integer> numPassedMap
 @param IACheckup checkup2
 
-<h2>Mentor: <a href="${mentor.getNationUrl()}">${mentor.getNation()}</a> | <a href="discord://discordapp.com/users/${mentor.getUserId()}">@${mentor.getUserDiscriminator()}</a></h2>
+<h2>Mentor: <a href="${mentor.getUrl()}">${mentor.getNation()}</a> | <a href="discord://discordapp.com/users/${mentor.getUserId()}">@${mentor.getUserDiscriminator()}</a></h2>
 @if(mentor.active_m() > 4880)
 <div class="alert alert-danger p-1 m-1"><b>Mentor is inactive: </b> ${TimeUtil.minutesToTime(mentor.active_m())}</div>
 @endif

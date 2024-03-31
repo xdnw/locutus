@@ -794,7 +794,7 @@ public class DiscordUtil {
     }
 
     public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader) {
-        if (arg.toLowerCase().contains("/alliance/") || arg.toLowerCase().startsWith("aa:")) return null;
+        if (arg.toLowerCase().contains("/alliance/") || arg.toLowerCase().startsWith("aa:") || arg.toLowerCase().startsWith("alliance:")) return null;
         if (arg.startsWith("leader:")) {
             arg = arg.substring(7);
             useLeader = true;

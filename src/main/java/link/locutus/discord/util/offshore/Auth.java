@@ -459,7 +459,7 @@ public class Auth {
                 String title = position == DBAlliancePosition.REMOVE ? "Remove" : "Make Member";
                 Elements elems = dom.select("img[title=" + title + "]");
                 for (Element elem : elems) {
-                    if (elem.parent().parent().nextElementSibling().nextElementSibling().html().contains(nation.getNationUrl())) {
+                    if (elem.parent().parent().nextElementSibling().nextElementSibling().html().contains(nation.getUrl())) {
                         String acceptUrl = elem.parent().attr("href");
 
                         result = readStringFromURL(PagePriority.TOKEN, acceptUrl, Collections.emptyMap());
@@ -990,7 +990,7 @@ public class Auth {
                     response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
                     // add balance to expectedNation
                     currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
+                    response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
 
                     MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
                     if (logChannel != null) {

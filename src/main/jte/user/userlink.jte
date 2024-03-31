@@ -27,7 +27,7 @@
                         @if(nation != null)
                         <tr>
                             <td>Nation</td>
-                            <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+                            <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
                         </tr>
                         <tr>
                             <td>Alliance</td>
@@ -49,7 +49,7 @@
 </div>
 
 @elseif (nation != null)
-<a href="${nation.getNationUrl()}">${nation.getName()}</a>
+<a href="${nation.getUrl()}">${nation.getName()}</a>
 @else
 <a href="https://discordapp.com/users/${userId}">&lt;@${userId}&gt; (unknown user)</a>
 @endif

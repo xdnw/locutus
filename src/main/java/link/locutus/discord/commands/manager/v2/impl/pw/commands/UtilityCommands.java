@@ -1303,7 +1303,7 @@ public class UtilityCommands {
                 if (nation != null) {
                     String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m());
                     if (nation.active_m() > 10000) active = "**" + active + "**";
-                    response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
+                    response.append(nation.getName() + " | <" + nation.getUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
                 }
                 response.append("- ").append(entry.getValue());
                 response.append("\n");
@@ -1560,16 +1560,16 @@ public class UtilityCommands {
                 CM.report.search reports = CM.report.search.cmd.create(nation.getNation_id() + "", null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reports, "Reports");
                 //Projects
-                CM.project.slots projects = CM.project.slots.cmd.create(nation.getNationUrl());
+                CM.project.slots projects = CM.project.slots.cmd.create(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, projects, "Projects");
                 //Departures
-                CM.nation.departures departures = CM.nation.departures.cmd.create(nation.getNationUrl(), "9999d", null, null, null, null, null);
+                CM.nation.departures departures = CM.nation.departures.cmd.create(nation.getUrl(), "9999d", null, null, null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, departures, "Departures");
                 //Multis
-                CM.nation.list.multi multis = CM.nation.list.multi.cmd.create(nation.getNationUrl());
+                CM.nation.list.multi multis = CM.nation.list.multi.cmd.create(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, multis, "Multis");
                 //Reroll
-                CM.nation.reroll reroll = CM.nation.reroll.cmd.create(nation.getNationUrl());
+                CM.nation.reroll reroll = CM.nation.reroll.cmd.create(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reroll, "Reroll");
                 //Open alliance info
                 if (nation.getAlliance_id() != 0) {
@@ -1578,26 +1578,26 @@ public class UtilityCommands {
                 }
                 //Score command
 
-                CM.nation.score score = CM.nation.score.cmd.create(nation.getNationUrl(), null, null, null, null, null, "", "", "", "", null, "");
+                CM.nation.score score = CM.nation.score.cmd.create(nation.getUrl(), null, null, null, null, null, "", "", "", "", null, "");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, score, "Score");
                 //Revenue
-                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null, null, null, null, null, null);
+                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getUrl(), null, null, null, null, null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, revenue, "Revenue");
                 //WarInfo
-                CM.war.info warInfo = CM.war.info.cmd.create(nation.getNationUrl());
+                CM.war.info warInfo = CM.war.info.cmd.create(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, warInfo, "War Info");
                 //Counter
                 String aaIdStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
-                CM.war.counter.nation counter = CM.war.counter.nation.cmd.create(nation.getNationUrl(), aaIdStr, null, null, null, null, "", null);
+                CM.war.counter.nation counter = CM.war.counter.nation.cmd.create(nation.getUrl(), aaIdStr, null, null, null, null, "", null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, counter, "Counter");
                 //Loot
-                CM.nation.loot loot = CM.nation.loot.cmd.create(nation.getNationUrl(), null, null);
+                CM.nation.loot loot = CM.nation.loot.cmd.create(nation.getUrl(), null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, loot, "Loot");
                 //Cost
-                CM.alliance.cost cost = CM.alliance.cost.cmd.create(nation.getNationUrl(), null, null);
+                CM.alliance.cost cost = CM.alliance.cost.cmd.create(nation.getUrl(), null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 //unit history
-                CM.unit.history history = CM.unit.history.cmd.create(nation.getNationUrl(), "", null);
+                CM.unit.history history = CM.unit.history.cmd.create(nation.getUrl(), "", null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, history, "Unit History");
 
                 msg.send();
@@ -1876,7 +1876,7 @@ public class UtilityCommands {
             ArrayList<Object> row = new ArrayList<>();
             DBNation nation = entry.getKey();
 
-            row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
             row.add(nation.getCities());
             Map<ResourceType, Double> transfer = entry.getValue();

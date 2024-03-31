@@ -103,7 +103,7 @@ public class TaxBracketSheet extends Command {
 
             if (!flags.contains('a') && nation.getPosition() <= 1) continue;
 
-            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             header.set(1, Rank.byId(nation.getPosition()).name());
             header.set(2, nation.getCities());
             header.set(3, nation.getAgeDays());

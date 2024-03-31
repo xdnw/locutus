@@ -99,7 +99,7 @@ public class SheetUtil {
             List<DBNation> attackers = entry.getValue();
             ArrayList<Object> row = new ArrayList<>();
             row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
-            row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getNationUrl()));
+            row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getUrl()));
 
             row.add(defender.getCities());
             row.add(defender.getAvg_infra());
@@ -122,7 +122,7 @@ public class SheetUtil {
 
             for (int i = 0; i < myCounters.size(); i++) {
                 DBNation counter = myCounters.get(i);
-                String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getNationUrl());
+                String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getUrl());
                 row.add(counterUrl);
             }
             RowData myRow = SheetUtil.toRowData(row);

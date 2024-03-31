@@ -149,6 +149,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         int treaties = loadTreaties();
         LOGGER.info("Loaded " + treaties + " treaties");
 
+//        try {
+//            if (tableExists("KICKS")) {
+//                importKicks();
+//            }
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
 //        importLegacyNationLoot(true);
 
         markDirtyIncorrectNations(true, true);
@@ -1570,7 +1577,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 rs.getString("name"),
                 rs.getLong("date_created"),
                 rs.getInt("position_level"),
-                Rank.byId(rs.getInt("position_level")),
+                Rank.values[rs.getInt("rank")],
                 rs.getLong("permission_bits")
         );
     }
@@ -2222,13 +2229,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         executeStmt(kicks);
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_nation ON KICKS2 (nation);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
-        try {
-            if (tableExists("KICKS")) {
-                importKicks();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
 
 
         String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";

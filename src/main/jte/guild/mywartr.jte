@@ -54,7 +54,7 @@
     </thead>
     <tbody>
 <tr class="border-top border-1 border-secondary">
-    <td><a href="${enemy.getNationUrl()}">${enemy.getNation()}</a>
+    <td><a href="${enemy.getUrl()}">${enemy.getNation()}</a>
     @if(enemy.active_m() > 2440)
         <span class="badge bg-secondary">inactive ${TimeUtil.minutesToTime(enemy.active_m())}</span>
     @endif
@@ -73,7 +73,7 @@
              style="width:${Math.max(10,(isAttacker?warCard.defenderResistance:warCard.attackerResistance))}%;background-color:rgb(${MathMan.clamp(255 - (isAttacker?warCard.defenderResistance:warCard.attackerResistance) * 255 / 100, 0, 255)}, ${MathMan.clamp((isAttacker?warCard.defenderResistance:warCard.attackerResistance) * 255 / 100, 0, 255)}, 0)!important">${(isAttacker?warCard.defenderResistance:warCard.attackerResistance)}</div></td>
 </tr>
 <tr class="border-top border-1 border-secondary">
-    <td><a href="${enemy.getNationUrl()}">${nation.getNation()}</a></td>
+    <td><a href="${enemy.getUrl()}">${nation.getNation()}</a></td>
     <td><a href="${enemy.getAllianceUrl()}">${nation.getAllianceName()}</a></td>
     <td>${nation.getCities()}</td>
     <td style="color:rgb(0, ${Math.min(255, Math.max(0, 255 * nation.getGroundStrength(false, false) / ((double) 4 * enemy.getGroundStrength(false, false))))}, 0)">${nation.getSoldiers()}</td>

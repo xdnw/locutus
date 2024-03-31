@@ -360,7 +360,7 @@ public class AddBalanceBuilder {
 
                 db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
                 totalAdded = PnwUtil.add(totalAdded, amount);
-                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getNationUrl());
+                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getUrl());
             }
 
         }

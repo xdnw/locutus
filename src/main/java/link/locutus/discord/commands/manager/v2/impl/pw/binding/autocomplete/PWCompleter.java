@@ -44,6 +44,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
@@ -240,6 +241,24 @@ public class PWCompleter extends BindingHelper {
         options = StringMan.getClosest(input, options, NationOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
 
         return options.stream().map(f -> Map.entry(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
+    }
+
+    @Autocomplete
+    @Binding(types={GuildOrAlliance.class})
+    public List<Map.Entry<String, String>> GuildOrAlliance(String input, @Me User user, @Me Guild guild) {
+        if (input.isEmpty()) return null;
+        List<GuildOrAlliance> options = new ArrayList<>();
+        options.addAll(Locutus.imp().getNationDB().getAlliances());
+        if (user != null) {
+            for (Guild other : user.getMutualGuilds()) {
+                GuildDB db = Locutus.imp().getGuildDB(other);
+                if (db != null) {
+                    options.add(db);
+                }
+            }
+        }
+        options = StringMan.getClosest(input, options, GuildOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
+        return options.stream().map(f -> Map.entry((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
     @Autocomplete

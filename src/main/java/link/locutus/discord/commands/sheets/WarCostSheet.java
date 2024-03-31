@@ -193,7 +193,7 @@ public class WarCostSheet extends Command {
                 }
             }
 
-            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
 
             header.set(1, attInactiveCost.getNumWars());
             header.set(2, -total(flags, nation, attInactiveCost,true));

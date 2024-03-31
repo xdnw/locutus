@@ -57,6 +57,7 @@ import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -603,7 +604,7 @@ public class PWBindings extends BindingHelper {
 
     public static NationOrAlliance nationOrAlliance(ParameterData data, String input, boolean forceAllowDeleted) {
         String lower = input.toLowerCase();
-        if (lower.startsWith("aa:")) {
+        if (lower.startsWith("aa:") || lower.startsWith("alliance:")) {
             return alliance(data, input.split(":", 2)[1]);
         }
         if (lower.contains("alliance/id=")) {
@@ -614,6 +615,29 @@ public class PWBindings extends BindingHelper {
             return alliance(data, input);
         }
         return nation;
+    }
+
+    @Binding(value = "A guild or alliance name, url or id. Prefix with `AA:` or `guild:` to avoid ambiguity if there exists both by the same name or id", examples = {"guild:216800987002699787", "aa:1234"})
+    public static GuildOrAlliance GuildOrAlliance(ParameterData data, String input) {
+        String lower = input.toLowerCase();
+        if (lower.startsWith("aa:") || lower.startsWith("alliance:")) {
+            return alliance(data, input.split(":", 2)[1]);
+        }
+        if (lower.contains("alliance/id=")) {
+            return alliance(data, input);
+        }
+        if (lower.startsWith("guild:")) {
+            input = input.substring(6);
+            if (!MathMan.isInteger(input)) {
+                return guild(Long.parseLong(input));
+            }
+            throw new IllegalArgumentException("Invalid guild id: " + input);
+        }
+        if (MathMan.isInteger(input)) {
+            long id = Long.parseLong(input);
+            return guild(id);
+        }
+        return alliance(data, input);
     }
 
     @Binding

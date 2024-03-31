@@ -61,8 +61,6 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
-    boolean isAlliance();
-
     int getAlliance_id();
 
     String getName();
@@ -85,18 +83,6 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
             sender_type = 1;
         } else throw new IllegalArgumentException("Invalid receiver: " + this);
         return new AbstractMap.SimpleEntry<>(sender_id, sender_type);
-    }
-
-    default boolean isGuild() {
-        return getIdLong() > Integer.MAX_VALUE;
-    }
-
-    default DBAlliance asAlliance() {
-        return (DBAlliance) this;
-    }
-
-    default boolean isNation() {
-        return !isAlliance() && !isGuild();
     }
 
     default Set<DBNation> getMemberDBNations() {
@@ -158,22 +144,5 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
     @Override
     default boolean isTaxid() {
         return false;
-    }
-
-    default DBNation asNation() {
-        return (DBNation) this;
-    }
-
-    default GuildDB asGuild() {
-        return (GuildDB) this;
-    }
-
-    default String getUrl() {
-        if (isAlliance()) return asAlliance().getUrl();
-        if (isGuild()) {
-            GuildDB guild = asGuild();
-            if (guild != null) guild.getUrl();
-        }
-        return asNation().getNationUrl();
     }
 }

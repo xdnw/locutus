@@ -213,7 +213,7 @@ public class GrantCmd extends Command {
             Map<ResourceType, Double> total = new HashMap<>();
             for (DBNation nation : nations) {
                 ArrayList<Object> row = new ArrayList<>();
-                row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+                row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 row.add(nation.getCities());
                 row.add(nation.getAvg_infra());
                 try {
@@ -478,7 +478,7 @@ public class GrantCmd extends Command {
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
                 if (me.projectSlots() <= me.getNumProjects() && !flags.contains('f')) {
-                    throw new IllegalArgumentException("Error: " + me.getNationUrl() + " has full project slots " + (me.projectSlots() + "<=" + me.getNumProjects()));
+                    throw new IllegalArgumentException("Error: " + me.getUrl() + " has full project slots " + (me.projectSlots() + "<=" + me.getNumProjects()));
                 }
                 resources = project.cost();
                 if (!force && PnwUtil.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {

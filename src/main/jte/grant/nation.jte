@@ -6,7 +6,7 @@
 @param DBNation nation
 <div class="card alert p-1 my-1 alert-dismissible">
     <div class="card-body">
-        <h5 class="card-title"><a href="${nation.getNationUrl()}">
+        <h5 class="card-title"><a href="${nation.getUrl()}">
             ${nation.getNation()}</a> | <a href="${nation.getAllianceUrl()}">${nation.getAllianceName()}</a>
             @if(nation.getPosition() == 1)
             <span class="badge badge-secondary">APP</span>

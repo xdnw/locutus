@@ -160,7 +160,7 @@ public class CityUpdateProcessor {
             }
 
             if (nation.getNumWars() > 0) {
-                String warUrl = nation.getNationUrl() + "&display=war";
+                String warUrl = nation.getUrl() + "&display=war";
                 body.append("\n\nOff/Def wars: " + MarkupUtil.markdownUrl(nation.getOff() + "/" + nation.getDef(), warUrl));
             }
 

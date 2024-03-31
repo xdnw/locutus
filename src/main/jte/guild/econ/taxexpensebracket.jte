@@ -76,7 +76,7 @@
             <tbody>
                 @for (DBNation nation : nationsByBracket)
                 <tr>
-                    <td><a href="${nation.getNationUrl()}">${nation.getNation()}</a></td>
+                    <td><a href="${nation.getUrl()}">${nation.getNation()}</a></td>
                     <td>${nation.getCities()}</td>
                     <td>${nation.getOff()}/${nation.getDef()}</td>
                     @if(nation.getPosition() <= 1)

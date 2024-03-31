@@ -671,7 +671,7 @@ public class StockCommands {
             return null;
         }
 
-        return withdraw(db, me, receiver.getNationUrl(), resources);
+        return withdraw(db, me, receiver.getUrl(), resources);
     }
 
     private String withdraw(StockDB db, DBNation sender, String receiver, Map<ResourceType, Double> resources) {

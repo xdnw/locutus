@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 
@@ -11,15 +12,34 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TransferResult {
     private OffshoreInstance.TransferStatus status;
-    private final NationOrAlliance receiver;
+    private final NationOrAllianceOrGuild receiver;
     private final List<String> resultMessage;
     private final double[] amount;
     private final String note;
 
-    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAlliance receiver, Map<ResourceType, Double> amount, String note) {
+    public static Map.Entry<String, String> toEmbed(List<TransferResult> results) {
+        String title, body;
+        if (results.size() == 1) {
+            TransferResult result = results.get(0);
+            title = result.toTitleString();
+            body = result.toEmbedString();
+        } else {
+            int success = results.stream().mapToInt(f -> f.getStatus().isSuccess() ? 1 : 0).sum();
+            int failed = results.size() - success;
+            title = success > 0 ? failed > 0 ? "Error transferring" : "Successfully transferred" : "Aborted transfer";
+            if (failed > 0) {
+                title += " (" + success + " successful, " + failed + " failed)";
+            }
+            body = results.stream().map(TransferResult::toLineString).collect(Collectors.joining("\n"));
+        }
+        return Map.entry(title, body);
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {
         this(status, receiver, PnwUtil.resourcesToArray(amount), note);
     }
 
@@ -27,7 +47,7 @@ public class TransferResult {
         this.status = status;
     }
 
-    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAlliance receiver, double[] amount, String note) {
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, double[] amount, String note) {
         this.status = status;
         this.receiver = receiver;
         this.resultMessage = new ArrayList<>();
@@ -49,7 +69,7 @@ public class TransferResult {
         return status;
     }
 
-    public NationOrAlliance getReceiver() {
+    public NationOrAllianceOrGuild getReceiver() {
         return receiver;
     }
 
