@@ -501,7 +501,8 @@ public class PWBindings extends BindingHelper {
         return cityEntry;
     }
 
-    @Binding(examples = ("#grant #city=1"), value = "A DepositType optionally with a value and a city tag")
+    @Binding(examples = ("#grant #city=1"), value = "A DepositType optionally with a value and a city tag\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/deposits#transfer-notes>")
     public static DepositType.DepositTypeInfo DepositTypeInfo(String input) {
         DepositType type = null;
         long value = 0;

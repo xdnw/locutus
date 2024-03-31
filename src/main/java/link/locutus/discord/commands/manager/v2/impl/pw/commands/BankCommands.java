@@ -1760,35 +1760,59 @@ public class BankCommands {
 
     public static final Map<UUID, Grant> AUTHORIZED_TRANSFERS = new HashMap<>();
 
-    @Command(desc = "Withdraw from the alliance bank (your deposits)")
+    @Command(desc = "Withdraw from the alliance bank (nation balance)", groups = {
+            "Amount Options",
+            "Optional: Bank Note",
+            "Optional: Route and Offshore",
+            "Optional: Nation Account",
+            "Optional: Tax Bracket Account (pick either or none)",
+    })
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, any=true)
     public String withdraw(@Me IMessageIO channel, @Me JSONObject command,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") DepositType.DepositTypeInfo depositType,
+                           @Me User author, @Me DBNation me, @Me GuildDB guildDb,
 
-                           @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                           @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-                           @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-                           @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-                           @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-                           @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
-                           @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                           @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-                           @Switch("g") UUID token,
-                           @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
-                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+                           @Arg(value = "Amount to send", group = 0)
+                           @NationDepositLimit Map<ResourceType, Double> amount,
+                           @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean only_send_missing,
+
+                           @Arg(value = "Transfer note", group = 1)
+                           @Default("#deposit") DepositType.DepositTypeInfo bank_note,
+                           @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
+                           @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
+                           @Arg(value = "Transfer valued at cash equivalent in nation balance", group = 1) @Switch("c") boolean convertCash,
+
+                           @Arg(value = "The in-game alliance bank to send from\n" +
+                                   "Defaults to the offshore set", group = 2) @Switch("a") DBAlliance ingame_bank,
+                           @Arg(value = "The account with the offshore to use\n" +
+                                   "The alliance must be registered to this guild\n" +
+                                   "Defaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance offshore_account,
+
+                           @Arg(value = "The guild's nation account to use\n" +
+                                   "Defaults to your nation", group = 3) @Switch("n") DBNation nation_account,
+                           @Arg(value = "How to handle the transfer if the receiver is blockaded\n" +
+                                   "Defaults to never escrow", group = 3) @Switch("em") EscrowMode escrow_mode,
+
+                           @Arg(value = "The guild's tax account to deduct from\n" +
+                                   "Defaults to None", group = 4) @Switch("t") TaxBracket taxAccount,
+                           @Arg(value = "OR deduct from the receiver's tax bracket account\n" +
+                                   "Defaults to false", group = 4) @Switch("ta") boolean existingTaxAccount,
+
+
+                           @Arg("Skip checking receiver activity, blockade, VM etc.")
                            @Switch("b") boolean bypassChecks,
+
                            @Switch("f") boolean force
     ) throws IOException {
-        return transfer(channel, command, author, me, guildDb, me, transfer, depositType,
-                depositsAccount == null ? me : depositsAccount,
-                useAllianceBank,
-                useOffshoreAccount,
+        return transfer(channel, command, author, me, guildDb, me, amount, bank_note,
+                nation_account == null ? me : nation_account,
+                ingame_bank,
+                offshore_account,
                 taxAccount,
                 existingTaxAccount,
-                onlyMissingFunds,
+                only_send_missing,
                 expire,
                 decay,
-                token,
+                null,
                 convertCash,
                 escrow_mode,
                 bypassChecks,
