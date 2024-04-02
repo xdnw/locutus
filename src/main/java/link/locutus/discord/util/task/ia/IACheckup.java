@@ -1252,7 +1252,7 @@ public class IACheckup {
 
         String myMMR = null;
         for (Map.Entry<NationFilter, MMRMatcher> entry : requiredMmrMap.entrySet()) {
-            NationFilter nationMatcher = entry.getKey();
+            NationFilter nationMatcher = entry.getKey().recalculate(10000);
             if (myMMR == null) {
                 myMMR = nation.getMMRBuildingStr();
             }

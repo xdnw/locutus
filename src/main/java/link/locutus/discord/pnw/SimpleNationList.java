@@ -18,21 +18,6 @@ public class SimpleNationList implements NationList {
         this.nations = nations instanceof Set ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
     }
 
-    public NationFilter toFilter() {
-        Set<DBNation> nations2 = new ObjectOpenHashSet<>(this.nations);
-        return new NationFilter() {
-            @Override
-            public String getFilter() {
-                return filter;
-            }
-
-            @Override
-            public boolean test(DBNation nation) {
-                return nations2.contains(nation);
-            }
-        };
-    }
-
     public static SimpleNationList from(Collection<NationOrAlliance> nationOrAlliances) {
         Set<DBNation> nations = new HashSet<>();
         for (NationOrAlliance nationOrAlliance : nationOrAlliances) {

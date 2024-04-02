@@ -14,4 +14,12 @@ public interface NationFilter extends Predicate<DBNation> {
     default Predicate<DBNation> toCached(long expireAfter) {
         return this;
     }
+
+    default NationFilter recalculate() {
+        return this;
+    }
+
+    default NationFilter recalculate(long time) {
+
+    }
 }

@@ -416,7 +416,7 @@ public class NationUpdateProcessor {
                 if (mode == null) mode = EnemyAlertChannelMode.PING_USERS_IN_RANGE;
 
                 NationFilter filter = GuildKey.ENEMY_ALERT_FILTER.getOrNull(guildDB);
-                if (filter != null && !filter.test(current)) return;
+                if (filter != null && !filter.recalculate(10000).test(current)) return;
 
                 double strength = BlitzGenerator.getAirStrength(current, false);
                 Set<Integer> enemies = guildDB.getCoalition(Coalition.ENEMIES);
