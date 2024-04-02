@@ -14,7 +14,7 @@ import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -263,7 +263,7 @@ public class WarCostRanking extends Command {
                         double[] losses = attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings);
                         for (ResourceType type : ResourceType.values) {
                             double val = losses[type.ordinal()];
-                            if (val > 0) total += PnwUtil.convertedTotal(type, val);
+                            if (val > 0) total += ResourceType.convertedTotal(type, val);
                         }
                         return total;
                     }
@@ -328,7 +328,7 @@ public class WarCostRanking extends Command {
             }
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> PnwUtil.getName(allianceId, true));
+                    .nameKeys(allianceId -> PW.getName(allianceId, true));
         } else {
             // Sort descending
             ranks = byNation

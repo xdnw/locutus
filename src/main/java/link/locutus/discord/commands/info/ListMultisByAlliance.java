@@ -15,7 +15,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -149,7 +149,7 @@ public class ListMultisByAlliance extends Command {
     }
 
     private String url(int nationId) {
-        String name = PnwUtil.getName(nationId, false);
+        String name = PW.getName(nationId, false);
         String nationUrl = "=HYPERLINK(\"" + Settings.INSTANCE.PNW_URL() + "/nation/id=%s\",\"%s\")";
         return String.format(nationUrl, nationId, name);
     }

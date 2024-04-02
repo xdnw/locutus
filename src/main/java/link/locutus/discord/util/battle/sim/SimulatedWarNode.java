@@ -5,7 +5,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -325,7 +325,7 @@ public class SimulatedWarNode {
 
     public double raidDistance(SimulatedWarNode origin) {
         Map<ResourceType, Double> aggressorLosses = aggressor.getNetLosses(origin.getAggressor());
-        double total = PnwUtil.convertedTotal(aggressorLosses);
+        double total = ResourceType.convertedTotal(aggressorLosses);
 
         int turnDiff = origin.turnsLeft - turnsLeft;
         if (turnDiff > 0) {
@@ -515,12 +515,12 @@ public class SimulatedWarNode {
 
         response.append('\n').append('\n').append("**").append(aggressor.getNation().getNation() + " consumption: ").append("**")
                 .append("```")
-                .append(PnwUtil.resourcesToString(PnwUtil.roundResources(attUse)))
+                .append(ResourceType.resourcesToString(ResourceType.roundResources(attUse)))
                 .append("```");
 
         response.append("**").append(defender.getNation().getNation() + " consumption: ").append("**")
                 .append("```")
-                .append(PnwUtil.resourcesToString(PnwUtil.roundResources(defUse)))
+                .append(ResourceType.resourcesToString(ResourceType.roundResources(defUse)))
                 .append("```");
 
         return builder.setDescription(response).build();

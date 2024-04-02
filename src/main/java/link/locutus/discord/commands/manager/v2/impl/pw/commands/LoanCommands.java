@@ -1,24 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBLoan;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-
-import java.util.Map;
-
 public class LoanCommands {
 
 //    @Binding

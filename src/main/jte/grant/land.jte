@@ -1,8 +1,9 @@
+@import link.locutus.discord.apiv1.enums.ResourceType
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.util.offshore.Grant
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import net.dv8tion.jda.api.entities.User
 @import link.locutus.discord.db.entities.DBNation
 @import link.locutus.discord.util.MathMan
@@ -18,8 +19,8 @@
 @param List<String> override
 @param UUID grantToken
 
-!{var costFull = PnwUtil.resourcesToString(grant.cost());}
-!{var costWorth = MathMan.format(PnwUtil.convertedTotal(grant.cost()));}
+!{var costFull = ResourceType.resourcesToString(grant.cost());}
+!{var costWorth = MathMan.format(ResourceType.convertedTotal(grant.cost()));}
 
 <div class="row p-2 m-3 guild-icon guild-entry bg-light" style="border-radius:10px">
     <div class="col-md-2">
@@ -36,7 +37,7 @@
                 <b class="row">Cities:</b>
                 <ul class="list-group">
                     @for (int cityId : grant.getCities())
-                        <li class="list-group-item"><a href="${PnwUtil.getCityUrl(cityId)}">${cityId}</a></li>
+                        <li class="list-group-item"><a href="${PW.City.getCityUrl(cityId)}">${cityId}</a></li>
                     @endfor
                 </ul>
             @endif

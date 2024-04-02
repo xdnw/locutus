@@ -12,7 +12,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.war.WarCard;
@@ -112,8 +112,8 @@ public class CombatantSheet extends Command {
             DBNation loss = entry.getValue();
             DBNation kill = kills.get(loss);
 
-            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)));
             header.set(2, nation.getCities());
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());

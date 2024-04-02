@@ -6,7 +6,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
@@ -746,7 +746,7 @@ public class StockDB extends DBMain {
             if (exchange == null) continue;
             double amtDouble = entry.getValue();
             if (exchange.isResource()) {
-                total += PnwUtil.convertedTotal(exchange.getResource(), amtDouble);
+                total += ResourceType.convertedTotal(exchange.getResource(), amtDouble);
             } else {
                 Map.Entry<Double, Double> avgBuySell = getAveragePrice(exchange, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7));
                 Double value = avgBuySell.getKey();

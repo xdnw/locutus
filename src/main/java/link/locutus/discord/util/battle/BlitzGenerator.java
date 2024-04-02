@@ -7,7 +7,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -429,11 +429,11 @@ public class BlitzGenerator {
     private void init() {
         colA.removeIf(n -> n.hasUnsetMil());
         colB.removeIf(n -> n.hasUnsetMil());
-        attScores = PnwUtil.getIsNationsInScoreRange(colA);
-        defScores = PnwUtil.getIsNationsInScoreRange(colB);
+        attScores = PW.getIsNationsInScoreRange(colA);
+        defScores = PW.getIsNationsInScoreRange(colB);
 
-        attPlanes = PnwUtil.getXInRange(colA, n -> Math.pow(getAirStrength(n, true), AIR_FACTOR));
-        defPlanes = PnwUtil.getXInRange(colB, n -> Math.pow(getAirStrength(n, false), AIR_FACTOR));
+        attPlanes = PW.getXInRange(colA, n -> Math.pow(getAirStrength(n, true), AIR_FACTOR));
+        defPlanes = PW.getXInRange(colB, n -> Math.pow(getAirStrength(n, false), AIR_FACTOR));
 
         enemyPlaneRatio = new Function<Double, Double>() {
             @Override
@@ -492,7 +492,7 @@ public class BlitzGenerator {
                 }
 
                 double minScore = attacker.getScore() * 0.75;
-                double maxScore = attacker.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+                double maxScore = attacker.getScore() * PW.WAR_RANGE_MAX_MODIFIER;
 
 //                if (enemyPlaneRatio.apply(defender.getScore()) > 1) {
 //                    maxScore /= 0.75;
@@ -601,7 +601,7 @@ public class BlitzGenerator {
                 if (defActive <= defActiveThreshold) continue;
 
                 double minScore = attacker.getScore() * 0.75;
-                double maxScore = attacker.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+                double maxScore = attacker.getScore() * PW.WAR_RANGE_MAX_MODIFIER;
 
 //                if (enemyPlaneRatio.apply(defender.getScore()) > 1) {
 //                    maxScore /= 0.75;

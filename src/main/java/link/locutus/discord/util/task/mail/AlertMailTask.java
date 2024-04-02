@@ -18,7 +18,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;

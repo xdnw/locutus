@@ -8,7 +8,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -74,7 +74,7 @@ public class InactiveAlliances extends Command {
                     double size2 = allianceSize.get(o2.getKey()) / (double) (1 + o2.getValue());
                     return Double.compare(size2, size1);
                 })
-                .name(e -> PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey())).build(author, channel, fullCommandRaw, "Active in " + group + " (" + days + " days)");
+                .name(e -> PW.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey())).build(author, channel, fullCommandRaw, "Active in " + group + " (" + days + " days)");
 
         return null;
     }

@@ -262,8 +262,8 @@ public class FACommands {
 
         long turn = TimeUtil.getTurn();
         for (Treaty treaty : allTreaties) {
-            String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
-            String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+            String from = PW.getMarkdownUrl(treaty.getFromId(), true);
+            String to = PW.getMarkdownUrl(treaty.getToId(), true);
             TreatyType type = treaty.getType();
 
             response.append(from + " | " + type + " -> " + to);

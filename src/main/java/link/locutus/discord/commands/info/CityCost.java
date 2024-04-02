@@ -7,10 +7,9 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Set;
@@ -59,7 +58,7 @@ public class CityCost extends Command {
         double total = 0;
 
         for (int i = Math.max(1, current); i < max; i++) {
-            total += PnwUtil.nextCityCost(i, manifest, cp && i >= Projects.URBAN_PLANNING.requiredCities(), acp && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(), mp && i >= Projects.METROPOLITAN_PLANNING.requiredCities(), gsa);
+            total += PW.City.nextCityCost(i, manifest, cp && i >= Projects.URBAN_PLANNING.requiredCities(), acp && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(), mp && i >= Projects.METROPOLITAN_PLANNING.requiredCities(), gsa);
         }
 
         return "$" + MathMan.format(total);

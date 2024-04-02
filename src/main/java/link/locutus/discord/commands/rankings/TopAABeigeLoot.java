@@ -8,7 +8,7 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LootEntry;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -62,10 +62,10 @@ public class TopAABeigeLoot extends Command {
 
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(author, channel, fullCommandRaw, title);
+        sorted.nameKeys(i -> PW.getName(i, true)).build(author, channel, fullCommandRaw, title);
 
         for (Integer integer : sorted.get().keySet()) {
-            System.out.println(PnwUtil.getBBUrl(integer, true));
+            System.out.println(PW.getBBUrl(integer, true));
         }
 
 

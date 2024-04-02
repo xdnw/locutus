@@ -65,7 +65,7 @@ import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.task.ia.IACheckup;
@@ -824,19 +824,19 @@ public class WebPWBindings extends WebBindingHelper {
         double[] available = null;
         for (Annotation annotation : param.getAnnotations()) {
             if (annotation.annotationType() == AllianceDepositLimit.class) {
-                available = PnwUtil.normalize(db.getOffshore().getDeposits(db));
+                available = PW.normalize(db.getOffshore().getDeposits(db));
             }
             if (annotation.annotationType() == NationDepositLimit.class) {
                 DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class));
                 try {
-                    available = PnwUtil.normalize(me.getNetDeposits(db, true));
+                    available = PW.normalize(me.getNetDeposits(db, true));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
         }
         if (available != null) {
-            available = PnwUtil.normalize(available);
+            available = PW.normalize(available);
         }
 
 
@@ -1229,9 +1229,9 @@ public class WebPWBindings extends WebBindingHelper {
             names.add(obj.name());
             String sub;
             if (obj.getOutput() != null) {
-                sub = obj.getOutput() + "- " + PnwUtil.resourcesToString(obj.cost());
+                sub = obj.getOutput() + "- " + ResourceType.resourcesToString(obj.cost());
             } else {
-                sub = PnwUtil.resourcesToString(obj.cost());
+                sub = ResourceType.resourcesToString(obj.cost());
             }
             subtext.add(sub);
         });

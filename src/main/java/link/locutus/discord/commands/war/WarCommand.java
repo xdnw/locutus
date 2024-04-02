@@ -15,7 +15,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -85,7 +85,7 @@ public class WarCommand extends Command {
         String scoreStr = DiscordUtil.parseArg(args, "score");
         double score = scoreStr == null ? me.getScore() : PrimitiveBindings.Double(scoreStr);
         double minScore = score * 0.75;
-        double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
 
         if (flags.contains('d')) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()));

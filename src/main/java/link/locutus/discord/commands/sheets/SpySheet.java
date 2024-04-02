@@ -13,7 +13,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -100,11 +100,11 @@ public class SpySheet extends Command {
         }
         defenders.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > 2880);
 
-        BiFunction<Double, Double, Integer> attRange = PnwUtil.getIsNationsInSpyRange(attackers);
-        BiFunction<Double, Double, Integer> defSpyRange = PnwUtil.getIsNationsInSpyRange(defenders);
+        BiFunction<Double, Double, Integer> attRange = PW.getIsNationsInSpyRange(attackers);
+        BiFunction<Double, Double, Integer> defSpyRange = PW.getIsNationsInSpyRange(defenders);
 
-        BiFunction<Double, Double, Integer> attScoreRange = PnwUtil.getIsNationsInScoreRange(attackers);
-        BiFunction<Double, Double, Integer> defScoreRange = PnwUtil.getIsNationsInScoreRange(defenders);
+        BiFunction<Double, Double, Integer> attScoreRange = PW.getIsNationsInScoreRange(attackers);
+        BiFunction<Double, Double, Integer> defScoreRange = PW.getIsNationsInScoreRange(defenders);
 
         boolean isProlonged = turns >= 7 * 12;
 
@@ -136,8 +136,8 @@ public class SpySheet extends Command {
         }
 
         // Spies are valued by their square
-        BiFunction<Double, Double, Double> attSpyGraph = PnwUtil.getXInRange(attackers, n -> Math.pow(n.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false).doubleValue(), 2));
-        BiFunction<Double, Double, Double> defSpyGraph = PnwUtil.getXInRange(defenders, n -> Math.pow(n.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false).doubleValue(), 2));
+        BiFunction<Double, Double, Double> attSpyGraph = PW.getXInRange(attackers, n -> Math.pow(n.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false).doubleValue(), 2));
+        BiFunction<Double, Double, Double> defSpyGraph = PW.getXInRange(defenders, n -> Math.pow(n.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false).doubleValue(), 2));
 
         Integer finalMinSpies = minSpies;
         attackers.removeIf(n -> n.getSpies() <= finalMinSpies);
@@ -359,8 +359,8 @@ public class SpySheet extends Command {
             DBNation nation = entry.getKey();
 
             ArrayList<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)));
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getScore());
@@ -375,7 +375,7 @@ public class SpySheet extends Command {
 
             for (Spyop spyop : entry.getValue()) {
                 DBNation attacker = spyop.attacker;
-                String attStr = MarkupUtil.sheetUrl(attacker.getNation(), PnwUtil.getUrl(attacker.getNation_id(), false));
+                String attStr = MarkupUtil.sheetUrl(attacker.getNation(), PW.getUrl(attacker.getNation_id(), false));
                 String safety = spyop.safety == 3 ? "covert" : spyop.safety == 2 ? "normal" : "quick";
                 attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";
 

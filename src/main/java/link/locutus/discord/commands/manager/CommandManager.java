@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager;
 
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.account.*;
@@ -526,7 +527,7 @@ public class CommandManager {
                         }
                     }
 
-                    Map.Entry<DBNation, double[]> entry = PnwUtil.parseIntelRss(content, null);
+                    Map.Entry<DBNation, double[]> entry = ResourceType.parseIntelRss(content, null);
                     if (entry == null) {
                         System.out.println("Failed to parse `" + content + "`");
                         return;
@@ -542,7 +543,7 @@ public class CommandManager {
                         GuildDB db = Locutus.imp().getGuildDB(guild);
                         if (db != null) {
                             assert value != null;
-                            double converted = PnwUtil.convertedTotal(value.getValue());
+                            double converted = ResourceType.convertedTotal(value.getValue());
                             double pct = 0.1 * (1 + (attacker.looterModifier(false) - 1) + (nation.lootModifier() - 1));
                             channel.sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct));
                         }

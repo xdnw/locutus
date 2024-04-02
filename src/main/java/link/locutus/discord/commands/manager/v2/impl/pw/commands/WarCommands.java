@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -41,7 +42,7 @@ import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
@@ -225,7 +226,7 @@ public class WarCommands {
             double score = me.getScore();
             ByteBuffer scoreLeewayBuf = me.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY);
             double scoreLeeway = scoreLeewayBuf == null ? 0 : scoreLeewayBuf.getDouble();
-            targets.removeIf(f -> f.getScore() < score * 0.75 - scoreLeeway || f.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER);
+            targets.removeIf(f -> f.getScore() < score * 0.75 - scoreLeeway || f.getScore() > score * PW.WAR_RANGE_MAX_MODIFIER);
         }
 
         targets.removeIf(f -> !canRaid.apply(f));
@@ -437,11 +438,11 @@ public class WarCommands {
         if (false) {
             Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
-            BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
-            enemies.removeIf(f -> range.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
+            BiFunction<Double, Double, Integer> range = PW.getIsNationsInScoreRange(myAlliance);
+            enemies.removeIf(f -> range.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
         } else {
             List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * PnwUtil.WAR_RANGE_MAX_MODIFIER);
+            tmp.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * PW.WAR_RANGE_MAX_MODIFIER);
             if (tmp.isEmpty()) {
                 enemies.removeIf(f -> !f.isInSpyRange(finalNation));
             } else {
@@ -569,7 +570,7 @@ public class WarCommands {
                             .append(String.format("%1s", enemy.getOff())).append(" \uD83D\uDDE1").append(" | ")
                             .append(String.format("%1s", enemy.getDef())).append(" \uD83D\uDEE1").append("``` ");
 
-                    double otherOdds = PnwUtil.getOdds(maxShips, enemy.getShips(), 3);
+                    double otherOdds = PW.getOdds(maxShips, enemy.getShips(), 3);
 
                     if (otherOdds > 0.15) {
                         response.append("- Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
@@ -627,7 +628,7 @@ public class WarCommands {
         if(myShips== null) myShips = me.getShips();
 
         double min = me.getScore() * 0.75;
-        double max = me.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double max = me.getScore() * PW.WAR_RANGE_MAX_MODIFIER;
 
         Map<DBNation, Map<DBNation, Boolean>> alliesBlockadedBy = new HashMap<>();
         for (DBNation ally : allies) {
@@ -669,7 +670,7 @@ public class WarCommands {
                 value = 16;
             } else if (escrowed != null) {
                 value = 15;
-                request = new AbstractMap.SimpleEntry<>(0L, "Funds wanted: " + PnwUtil.resourcesToString(escrowed));
+                request = new AbstractMap.SimpleEntry<>(0L, "Funds wanted: " + ResourceType.resourcesToString(escrowed));
             } else if (request != null) {
                 value = 10;
             } else {
@@ -689,7 +690,7 @@ public class WarCommands {
             for (Map.Entry<DBNation, Boolean> entry2 : enemyEntries) {
                 DBNation enemy = entry2.getKey();
                 if (entry2.getValue()) {
-                    double odds = PnwUtil.getOdds(myShips, enemy.getShips(), 3);
+                    double odds = PW.getOdds(myShips, enemy.getShips(), 3);
                     if (odds >= 0.125) {
                         canUnblockade++;
                         unblockadChance += odds;
@@ -788,8 +789,8 @@ public class WarCommands {
                     .append(String.format("%1s", enemy.getOff())).append(" \uD83D\uDDE1").append(" | ")
                     .append(String.format("%1s", enemy.getDef())).append(" \uD83D\uDEE1").append("``` ");
 
-                    double otherOdds = PnwUtil.getOdds(maxShips, enemy.getShips(), 3);
-                    double myOdds = PnwUtil.getOdds(myShips, enemy.getShips(), 3);
+                    double otherOdds = PW.getOdds(maxShips, enemy.getShips(), 3);
+                    double myOdds = PW.getOdds(myShips, enemy.getShips(), 3);
 
                     if (otherOdds > 0.15) {
                         response.append("- Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
@@ -838,7 +839,7 @@ public class WarCommands {
         if (nationsToBlitzWith.stream().anyMatch(f -> f.active_m() > 7200 || f.getVm_turns() > 0) && !force) {
             throw new IllegalArgumentException("You can't blitz with nations that are inactive or VM. Add `force: True` to bypass");
         }
-        BiFunction<Double, Double, Integer> attScores = PnwUtil.getIsNationsInScoreRange(nationsToBlitzWith);
+        BiFunction<Double, Double, Integer> attScores = PW.getIsNationsInScoreRange(nationsToBlitzWith);
 
 //        double minScore = me.getScore() * 0.75;
 //        double maxScore = me.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
@@ -851,13 +852,13 @@ public class WarCommands {
                 throw new IllegalArgumentException("Please provide a list of nations for `nationsToBlitzWith`");
             }
             double minScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).max().orElse(0) * 0.75;
-            double maxScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).min().orElse(0) * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+            double maxScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).min().orElse(0) * PW.WAR_RANGE_MAX_MODIFIER;
             if (minScore >= maxScore) {
                 throw new IllegalArgumentException("Nations `nationsToBlitzWith` do not share a score range.");
             }
             nations.removeIf(f -> f.getScore() < minScore || f.getScore() > maxScore);
         } else {
-            nations.removeIf(f -> attScores.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() * 1.25) <= 0);
+            nations.removeIf(f -> attScores.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() * 1.25) <= 0);
         }
 
         if (!ignoreDNR) {
@@ -900,7 +901,7 @@ public class WarCommands {
             canCounter.removeIf(f -> f.getCities() < 10 && f.active_m() > 2880);
             canCounter.removeIf(f -> f.getCities() == 10 && f.active_m() > 3000);
             canCounter.removeIf(f -> f.getCities() > 10 && f.active_m() > 12000);
-            canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER) <= 0);
+            canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * PW.WAR_RANGE_MAX_MODIFIER) <= 0);
             canCounter.removeIf(f -> f.getOff() >= f.getMaxOff());
 //            canCounter.removeIf(f -> f.getAircraft() < me.getAircraft() * 0.6);
             canCounter.removeIf(f -> f.getNumWars() > 0 && f.getRelativeStrength() < 1);
@@ -1130,7 +1131,7 @@ public class WarCommands {
 //                nations.removeIf(n -> n.isBeige());
 
         double minScore = attackerScore * 0.75;
-        double maxScore = attackerScore * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double maxScore = attackerScore * PW.WAR_RANGE_MAX_MODIFIER;
 
         List<DBNation> strong = new ArrayList<>();
 
@@ -1417,7 +1418,7 @@ public class WarCommands {
 
         if (warRange == null || warRange == 0) warRange = me.getScore();
         double minScore = warRange * 0.75;
-        double maxScore = warRange * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double maxScore = warRange * PW.WAR_RANGE_MAX_MODIFIER;
 
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
@@ -1536,7 +1537,7 @@ public class WarCommands {
             Double infra = cityInfra.get(i);
             if (infra <= 600) break;
             double factor = Math.min(numCities, 1);
-            cost += factor * PnwUtil.calculateInfra(infra * 0.6-500, infra);
+            cost += factor * PW.City.Infra.calculateInfra(infra * 0.6-500, infra);
 
             i--;
             numCities--;
@@ -1622,8 +1623,8 @@ public class WarCommands {
 
             double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);
 
-            String nationUrl = PnwUtil.getBBUrl(nation.getNation_id(), false);
-            String allianceUrl = PnwUtil.getBBUrl(nation.getAlliance_id(), true);
+            String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
+            String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
             body.append(nationUrl).append(" | ")
                     .append(allianceUrl).append("\n");
 
@@ -1639,9 +1640,9 @@ public class WarCommands {
         }
 
         body.append("**Enemy:** ")
-                .append(PnwUtil.getBBUrl(enemy.getNation_id(), false))
+                .append(PW.getBBUrl(enemy.getNation_id(), false))
                 .append(" | ")
-                .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
+                .append(PW.getBBUrl(enemy.getAlliance_id(), true))
                 .append("\n**Spies: **").append(enemySpies).append("\n")
                 .append(enemy.toMarkdown(true, true, false, true, false, false))
                 .append(enemy.toMarkdown(true, true, false, false, true, true))
@@ -1814,8 +1815,8 @@ public class WarCommands {
             Runnable task = new Runnable() {
                 @Override
                 public void run() {
-                    String nationUrl = PnwUtil.getBBUrl(nation.getNation_id(), false);
-                    String allianceUrl = PnwUtil.getBBUrl(nation.getAlliance_id(), true);
+                    String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
+                    String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
                     body.append(nationUrl).append(" | ")
                             .append(allianceUrl).append("\n");
 
@@ -1899,9 +1900,9 @@ public class WarCommands {
             throw new IllegalArgumentException("Only attackers from this guild's alliance ids can be used: `" + StringMan.getString(aaIds) + "`. You tried generating targets for attackers in the alliance ids: `" + StringMan.getString(attackerAAs) + "`");
         }
 
-        Map.Entry<Double, Double> minMax = NationScoreMap.getMinMaxScore(attackers, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER);
+        Map.Entry<Double, Double> minMax = NationScoreMap.getMinMaxScore(attackers, 0.75, PW.WAR_RANGE_MAX_MODIFIER);
         targets.removeIf(f -> f.getScore() < minMax.getKey() || f.getScore() > minMax.getValue());
-        Map.Entry<Double, Double> enemyMinMax = NationScoreMap.getMinMaxScore(targets, 1 / PnwUtil.WAR_RANGE_MAX_MODIFIER, 1 / 0.75);
+        Map.Entry<Double, Double> enemyMinMax = NationScoreMap.getMinMaxScore(targets, 1 / PW.WAR_RANGE_MAX_MODIFIER, 1 / 0.75);
         attackers.removeIf(f -> f.getScore() < enemyMinMax.getKey() || f.getScore() > enemyMinMax.getValue());
 
         if (attackers.isEmpty()) {
@@ -1917,15 +1918,15 @@ public class WarCommands {
         targetsSorted.sort((o1, o2) -> {
             double[] loot1 = o1.getLootRevenueTotal();
             double[] loot2 = o2.getLootRevenueTotal();
-            double lootValue1 = PnwUtil.convertedTotal(loot1);
-            double lootValue2 = PnwUtil.convertedTotal(loot2);
+            double lootValue1 = ResourceType.convertedTotal(loot1);
+            double lootValue2 = ResourceType.convertedTotal(loot2);
             return Double.compare(lootValue2, lootValue1);
         });
 
         /*
         If enemy has more ships and attacker is currently blockaded, reduce loot by 2/5 * activity
          */
-        NationScoreMap<DBNation> enemyMap = new NationScoreMap<>(targetsSorted, DBNation::getScore, 1/PnwUtil.WAR_RANGE_MAX_MODIFIER, 1/0.75);
+        NationScoreMap<DBNation> enemyMap = new NationScoreMap<>(targetsSorted, DBNation::getScore, 1/ PW.WAR_RANGE_MAX_MODIFIER, 1/0.75);
 
         Map<DBNation, double[]> loots = new HashMap<>();
 
@@ -1994,7 +1995,7 @@ public class WarCommands {
                 if (defender.getGroundStrength(true, false) > attacker.getGroundStrength(true, false) && defender.getAircraft() > attacker.getAircraft() * 0.33 && defender.getShips() > attacker.getShips() * 0.33) return 0d;
 
                 double[] loot = loots.computeIfAbsent(defender, DBNation::getLootRevenueTotal);
-                double lootValue = PnwUtil.convertedTotal(loot);
+                double lootValue = ResourceType.convertedTotal(loot);
 
                 double groundFactor = easyGroundLoot ? 1.1 : canGroundLoot ? 0.8 : 0;
                 double moneyPerGround = Buildings.BARRACKS.getUnitCap() * 5 * defender.getCities() * groundFactor;
@@ -2389,8 +2390,8 @@ public class WarCommands {
             DBNation nation = entry.getKey();
 
             ArrayList<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)));
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getScore());
@@ -2420,7 +2421,7 @@ public class WarCommands {
                 } else {
                     attStr += "|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies;
                 }
-                attStr =  MarkupUtil.sheetUrl(attStr, PnwUtil.getUrl(other.getNation_id(), false));
+                attStr =  MarkupUtil.sheetUrl(attStr, PW.getUrl(other.getNation_id(), false));
 
                 row.add(attStr);
             }
@@ -2474,8 +2475,8 @@ public class WarCommands {
 
         for (DBNation nation : nations) {
 
-            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)));
             header.set(2, nation.getCities());
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
@@ -2517,7 +2518,7 @@ public class WarCommands {
                            @Arg("List the military building count of each city instead of each nation")
                            @Switch("c") boolean showCities,
                            @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "city",
@@ -2609,7 +2610,7 @@ public class WarCommands {
                     hangars += cityHangars;
                     drydocks += cityDrydocks;
                     if (showCities) {
-                        String url = MarkupUtil.sheetUrl("CITY " + (++i), PnwUtil.getCityUrl(cityEntry.getKey()));
+                        String url = MarkupUtil.sheetUrl("CITY " + (++i), PW.City.getCityUrl(cityEntry.getKey()));
                         setRowMMRSheet(url, row, nation, daysSpies, cityBarracks, cityFactories, cityHangars, cityDrydocks, 0, 0, 0, 0);
                         sheet.addRow(row);
                     }
@@ -2656,7 +2657,7 @@ public class WarCommands {
             airBuyTotal /= aaNations.size();
             navyBuyTotal /= aaNations.size();
 
-            String name = PnwUtil.getName(aaId, true);
+            String name = PW.getName(aaId, true);
             DBNation total = DBNation.createFromList("", entry.getValue(), false);
 
             total.setNation_id(0);
@@ -2677,8 +2678,8 @@ public class WarCommands {
 
     private void setRowMMRSheet(String name, List<Object> row, DBNation nation, double lastSpies, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
         row.set(0, name);
-        row.set(1, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-        row.set(2, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+        row.set(1, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+        row.set(2, MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)));
         row.set(3, nation.getCities());
         row.set(4, nation.getAvg_infra());
         row.set(5, nation.getScore());
@@ -2783,8 +2784,8 @@ public class WarCommands {
 
             ArrayList<Object> row = new ArrayList<>();
             Integer prevAA = nationPreviousAA.get(defender.getNation_id());
-            String prevAAName = PnwUtil.getName(prevAA, true);
-            row.add(MarkupUtil.sheetUrl(prevAAName, PnwUtil.getUrl(prevAA, true)));
+            String prevAAName = PW.getName(prevAA, true);
+            row.add(MarkupUtil.sheetUrl(prevAAName, PW.getUrl(prevAA, true)));
             row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
 
             row.add(dateStr);
@@ -2889,8 +2890,8 @@ public class WarCommands {
                 DBNation loss = entry.getValue();
                 DBNation kill = kills.get(loss);
 
-                header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-                header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+                header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+                header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)));
                 header.set(2, nation.getCities());
                 header.set(3, nation.getAvg_infra());
                 header.set(4, nation.getScore());
@@ -3109,7 +3110,7 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         AtomicInteger errors = new AtomicInteger();
         StringBuilder body = new StringBuilder();
-        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, useLeader, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true,
+        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, useLeader, headerRow, f -> 3, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true,
                 (dbNationDBNationEntry, s) -> {response.append(s).append("\n"); errors.incrementAndGet();},
                 info -> body.append("```\n" + info.entrySet().stream().map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.joining("\n")) + "\n```").append("\n"));
         if (!force) {
@@ -3214,7 +3215,7 @@ public class WarCommands {
         if (dm && !Roles.MAIL.hasOnRoot(author)) return "You do not have permission to dm users";
 
         if (blitzSheet != null) {
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, (a) -> blitzSheetSummary.putAll(a));
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, (a) -> blitzSheetSummary.putAll(a));
         }
 
         if (spySheet != null) {
@@ -3483,7 +3484,7 @@ public class WarCommands {
         Integer finalMaxWars = maxWars;
         if (headerRow == null) headerRow = 0;
         AtomicBoolean hasErrors = new AtomicBoolean(false);
-        BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> finalMaxWars, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> entry, String msg) {
                 hasErrors.set(true);
@@ -3921,8 +3922,8 @@ public class WarCommands {
                 row.add("");
             }
 
-            row.add(MarkupUtil.sheetUrl(enemy.getNation(), PnwUtil.getUrl(enemy.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(enemy.getAllianceName(), PnwUtil.getUrl(enemy.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(enemy.getNation(), PW.getUrl(enemy.getNation_id(), false)));
+            row.add(MarkupUtil.sheetUrl(enemy.getAllianceName(), PW.getUrl(enemy.getAlliance_id(), true)));
             row.add(actionStr);
             row.add( rank == null ? "" : rank.name());
 
@@ -4116,7 +4117,7 @@ public class WarCommands {
         if (requireDiscord) counterWith.removeIf(f -> f.getUser() == null);
 
         double score = target.getScore();
-        double scoreMin = score / PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double scoreMin = score / PW.WAR_RANGE_MAX_MODIFIER;
         double scoreMax = score / 0.75;
 
         for (DBWar activeWar : target.getActiveWars()) {
@@ -4267,7 +4268,7 @@ public class WarCommands {
                     channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is not an ally.", command).send();
                     return null;
                 }
-                if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER) {
+                if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * PW.WAR_RANGE_MAX_MODIFIER) {
 //                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", 'f');
                     channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send();
                     return null;

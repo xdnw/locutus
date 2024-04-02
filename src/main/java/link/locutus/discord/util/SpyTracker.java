@@ -561,7 +561,7 @@ public class SpyTracker {
             String title = "$" + MathMan.format(total) + " BOUNTY placed on ";
             if (bounties.size() == 1) {
                 Bounty bounty = bounties.iterator().next();
-                title += PnwUtil.getName(bounty.getNation_id(), false);
+                title += PW.getName(bounty.getNation_id(), false);
             } else {
                 title += bounties.size() + " nations";
             }
@@ -569,17 +569,17 @@ public class SpyTracker {
             body.append("**Bounties:**\n");
             for (Bounty bounty : bounties) {
                 String time = DiscordUtil.timestamp(bounty.getDate().toEpochMilli(), null);
-                body.append("\n- " + PnwUtil.getMarkdownUrl(bounty.getNation_id(), false) + ": `$" + MathMan.format(bounty.getAmount()) + "` - " + time);
+                body.append("\n- " + PW.getMarkdownUrl(bounty.getNation_id(), false) + ": `$" + MathMan.format(bounty.getAmount()) + "` - " + time);
             }
             body.append("\n<https://politicsandwar.com/world/bounties/>\n\n**Active Nations**:\n");
             for (Nation nation : active) {
                 int id = nation.getId();
                 long activeMs = start - nation.getLast_active().toEpochMilli();
                 String activeStr = activeMs < 1000 ? "Now" : TimeUtil.secToTime(TimeUnit.MILLISECONDS, activeMs);
-                body.append("- " + PnwUtil.getMarkdownUrl(id, false) + " | ");
+                body.append("- " + PW.getMarkdownUrl(id, false) + " | ");
                 DBNation dbNation = DBNation.getById(id);
                 int allianceId = dbNation == null ? 0 : dbNation.getAlliance_id();
-                body.append(PnwUtil.getMarkdownUrl(allianceId, true) + " | ");
+                body.append(PW.getMarkdownUrl(allianceId, true) + " | ");
                 body.append(activeStr + "\n");
             }
             try {
@@ -596,7 +596,7 @@ public class SpyTracker {
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
         String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE, url);
 
-        List<Integer> nationIds = PnwUtil.getNationsFromTable(html, 0);
+        List<Integer> nationIds = PW.getNationsFromTable(html, 0);
         Map<Integer, Integer> nationIdIndex = new HashMap<>();
         for (int i = 0; i < nationIds.size(); i++) {
             nationIdIndex.put(nationIds.get(i), i);

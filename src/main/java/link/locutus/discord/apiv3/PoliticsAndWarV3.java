@@ -100,7 +100,7 @@ public class PoliticsAndWarV3 {
         if (keys.isEmpty()) {
             validKeysStr = "No valid keys";
         } else {
-            validKeysStr = keys.stream().map(key -> PnwUtil.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
+            validKeysStr = keys.stream().map(key -> PW.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
         }
         message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr + "\n";
         throw new IllegalArgumentException(message);

@@ -16,7 +16,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -159,7 +159,7 @@ public class SyncTaxes extends Command {
 
             String allianceName = row.get(3).toString();
             allianceName = allianceName.replaceAll(" Bank$", "");
-            Integer allianceId = PnwUtil.parseAllianceId(allianceName);
+            Integer allianceId = PW.parseAllianceId(allianceName);
 
             int nationId;
             if (nation == null || allianceId == null) {
@@ -237,15 +237,15 @@ public class SyncTaxes extends Command {
 
         for (BankDB.TaxDeposit deposit : byTurn) {
             header.clear();
-            double total = PnwUtil.convertedTotal(deposit.resources);
+            double total = ResourceType.convertedTotal(deposit.resources);
             double totalScaled = 0;
             if (deposit.resources[0] != 0) {
-                totalScaled += PnwUtil.convertedTotal(ResourceType.MONEY, deposit.resources[0]) * 100 / deposit.moneyRate;
+                totalScaled += ResourceType.convertedTotal(ResourceType.MONEY, deposit.resources[0]) * 100 / deposit.moneyRate;
             }
             for (int i = 2; i < deposit.resources.length; i++) {
                 double amt = deposit.resources[i];
                 if (amt > 0) {
-                    totalScaled += PnwUtil.convertedTotal(ResourceType.values[i], amt) * 100 / deposit.resourceRate;
+                    totalScaled += ResourceType.convertedTotal(ResourceType.values[i], amt) * 100 / deposit.resourceRate;
                 }
             }
 

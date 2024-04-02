@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.enums.city.building.imp;
 
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -32,9 +32,9 @@ public abstract class ABuilding implements Building {
         this.cap = cap;
         this.pollution = pollution;
         this.costArr = cost;
-        this.costConverted = PnwUtil.convertedTotal(costArr);
+        this.costConverted = ResourceType.convertedTotal(costArr);
         this.upkeepArr = upkeep;
-        this.upkeepConverted = PnwUtil.convertedTotal(upkeepArr);
+        this.upkeepConverted = ResourceType.convertedTotal(upkeepArr);
     }
 
     public double getUpkeepConverted(Predicate<Project> hasProject) {

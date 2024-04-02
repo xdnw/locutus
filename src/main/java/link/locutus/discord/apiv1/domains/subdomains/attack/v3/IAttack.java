@@ -1,14 +1,14 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -80,7 +80,7 @@ public interface IAttack {
         if (before > 0) {
             double destroyed = getInfra_destroyed();
             if (destroyed == 0) return 0;
-            return PnwUtil.calculateInfra(before - destroyed, before);
+            return PW.City.Infra.calculateInfra(before - destroyed, before);
         }
         return 0;
     }
@@ -105,7 +105,7 @@ public interface IAttack {
     }
 
     default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-        return PnwUtil.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings));
+        return ResourceType.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings));
     }
 
     default double[] getLosses(double[] buffer, boolean attacker) {

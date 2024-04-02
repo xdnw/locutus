@@ -7,7 +7,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
@@ -38,7 +38,7 @@ public class GetTaxesTask implements Callable<List<BankDB.TaxDeposit>> {
 
         ResourceType[] resources = {ResourceType.MONEY, ResourceType.FOOD, ResourceType.COAL, ResourceType.OIL, ResourceType.URANIUM, ResourceType.LEAD, ResourceType.IRON, ResourceType.BAUXITE, ResourceType.GASOLINE, ResourceType.MUNITIONS, ResourceType.STEEL, ResourceType.ALUMINUM};
 
-        return PnwUtil.withLogin(new Callable<List<BankDB.TaxDeposit>>() {
+        return PW.withLogin(new Callable<List<BankDB.TaxDeposit>>() {
             @Override
             public List<BankDB.TaxDeposit> call() throws Exception {
                 try {
@@ -71,7 +71,7 @@ public class GetTaxesTask implements Callable<List<BankDB.TaxDeposit>> {
 
                         String allianceName = row.get(3).text();
                         allianceName = allianceName.replaceAll(" Bank$", "");
-                        Integer allianceId = PnwUtil.parseAllianceId(allianceName);
+                        Integer allianceId = PW.parseAllianceId(allianceName);
 
                         int nationId;
                         if (nation == null || allianceId == null) {

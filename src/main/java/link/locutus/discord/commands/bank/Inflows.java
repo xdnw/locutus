@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -77,7 +77,7 @@ public class Inflows extends Command {
                 self = Locutus.imp().getGuildDB(guild).getCoalition(arg0);
                 selfName = arg0;
             } else {
-                Integer selfId = PnwUtil.parseAllianceId(arg0);
+                Integer selfId = PW.parseAllianceId(arg0);
                 self = selfId != null ? Collections.singleton(selfId) : null;
                 selfName = selfId == null ? "" : Locutus.imp().getNationDB().getAllianceName(selfId);
             }
@@ -170,10 +170,10 @@ public class Inflows extends Command {
             Map<ResourceType, Double> totals = new HashMap<>();
             for (Transaction2 transfer : transfers) {
                 double[] rss = transfer.resources.clone();
-                totals = PnwUtil.add(totals, PnwUtil.resourcesToMap(rss));
+                totals = ResourceType.add(totals, ResourceType.resourcesToMap(rss));
             }
 
-            message.append(PnwUtil.resourcesToString(totals));
+            message.append(ResourceType.resourcesToString(totals));
 
             result.append(title).append(": ").append(message).append("\n");
         }

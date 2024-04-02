@@ -61,8 +61,8 @@ public class CityUpdateProcessor {
                 public String apply(GuildDB guildDB) {
                     int ideal = (int) (city.getInfra() - city.getInfra() % 50);
                     String msg = AutoAuditType.UNEVEN_INFRA.message
-                            .replace("{city}", PnwUtil.getCityUrl(city.id));
-                    return "You bought uneven infra in <" + PnwUtil.getCityUrl(city.id) + "> (" + MathMan.format(city.getInfra()) + " infra) but only get a building slot every `50` infra.\n" +
+                            .replace("{city}", PW.City.getCityUrl(city.id));
+                    return "You bought uneven infra in <" + PW.City.getCityUrl(city.id) + "> (" + MathMan.format(city.getInfra()) + " infra) but only get a building slot every `50` infra.\n" +
                             "You can enter e.g. `@" + ideal + "` to buy up to that amount";
                 }
             });

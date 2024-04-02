@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
@@ -30,8 +30,8 @@ public class TradePages {
         for (ResourceType type : ResourceType.values()) {
             List<String> row = new ArrayList<>();
             row.add(type.name());
-            row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getLow(type)), PnwUtil.getTradeUrl(type, true)));
-            row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getHigh(type)), PnwUtil.getTradeUrl(type, false)));
+            row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getLow(type)), PW.getTradeUrl(type, true)));
+            row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getHigh(type)), PW.getTradeUrl(type, false)));
             rows.add(row);
         }
 

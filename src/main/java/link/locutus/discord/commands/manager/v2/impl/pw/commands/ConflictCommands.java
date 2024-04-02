@@ -20,7 +20,7 @@ import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -152,8 +152,8 @@ public class ConflictCommands {
                 response.append(TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromTurn(conflict.getEndTurn())));
             }
             response.append("\n");
-            response.append("- Coalition 1: ").append(conflict.getCoalition1().stream().map(f -> PnwUtil.getName(f, true)).collect(Collectors.joining(","))).append("\n");
-            response.append("- Coalition 2: ").append(conflict.getCoalition2().stream().map(f -> PnwUtil.getName(f, true)).collect(Collectors.joining(","))).append("\n");
+            response.append("- Coalition 1: ").append(conflict.getCoalition1().stream().map(f -> PW.getName(f, true)).collect(Collectors.joining(","))).append("\n");
+            response.append("- Coalition 2: ").append(conflict.getCoalition2().stream().map(f -> PW.getName(f, true)).collect(Collectors.joining(","))).append("\n");
             response.append("---\n");
         }
         return response.toString();

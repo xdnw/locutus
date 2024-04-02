@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -129,7 +129,7 @@ public class DBBounty {
 
         String title = nation.getNation() + " | " + type + " | $" + MathMan.format(total);
         String embed = nation.toEmbedString();
-        if (deanonymize && postedBy > 0) embed += "\nPosted by: " + PnwUtil.getName(postedBy, false);
+        if (deanonymize && postedBy > 0) embed += "\nPosted by: " + PW.getName(postedBy, false);
         DiscordUtil.createEmbedCommand(channel.getIdLong(), title, embed);
     }
 

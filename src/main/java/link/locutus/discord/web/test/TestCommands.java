@@ -2,7 +2,6 @@ package link.locutus.discord.web.test;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
-import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -21,21 +20,17 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 
 public class TestCommands {
 //    @Command
@@ -64,7 +59,7 @@ public class TestCommands {
         if (defaults == null) {
             args = new HashMap<>();
         } else if (defaults.startsWith("{") && defaults.endsWith("}")) {
-            args = PnwUtil.parseMap(defaults);
+            args = PW.parseMap(defaults);
         } else {
             args = CommandManager2.parseArguments(command.getUserParameterMap().keySet(), defaults, true);
         }
@@ -118,7 +113,7 @@ public class TestCommands {
             } else {
                 fromId = ids.iterator().next();
             }
-            fromUrl = PnwUtil.getMarkdownUrl((int) fromId, true);
+            fromUrl = PW.getMarkdownUrl((int) fromId, true);
         }
 
         double[] amtNeg = ResourceType.builder().subtract(amount).build();
@@ -154,7 +149,7 @@ public class TestCommands {
             String title = "Add Transfer Flow: " + nation.getName();
             StringBuilder body = new StringBuilder();
             body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
-            body.append("Worth: `$" + MathMan.format(PnwUtil.convertedTotal(amount)) + "`\n- ");
+            body.append("Worth: `$" + MathMan.format(ResourceType.convertedTotal(amount)) + "`\n- ");
             body.append(StringMan.join(messages, "\n- "));
             io.create().confirmation(title, body.toString(), command).send();
             return null;
@@ -176,7 +171,7 @@ public class TestCommands {
 
         if (note != null) {
             String noteStr = "#" + note.name().toLowerCase(Locale.ROOT);
-            transfers.removeIf(f -> !PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(noteStr));
+            transfers.removeIf(f -> !PW.parseTransferHashNotes(f.getValue().note).containsKey(noteStr));
         }
         double[] manual = FlowType.INTERNAL.getTotal(transfers, nation.getNation_id());
 //      - Amount withdrawn via a # note
@@ -185,13 +180,13 @@ public class TestCommands {
         double[] deposited = FlowType.DEPOSIT.getTotal(transfers, nation.getNation_id());
 
         StringBuilder response = new StringBuilder();
-        response.append("**" + FlowType.INTERNAL + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(manual)) + "`\n");
+        response.append("**" + FlowType.INTERNAL + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(manual)) + "`\n");
         response.append("```json\n" + ResourceType.toString(manual) + "\n```\n");
 //        response.append("Withrawal:\n```json\n" + ResourceType.toString(withdrawn) + "\n```\n");
-        response.append("**" + FlowType.WITHDRAWAL + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(withdrawn)) + "`\n");
+        response.append("**" + FlowType.WITHDRAWAL + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(withdrawn)) + "`\n");
         response.append("```json\n" + ResourceType.toString(withdrawn) + "\n```\n");
 //        response.append("Deposits:\n```json\n" + ResourceType.toString(deposited) + "\n```\n");
-        response.append("**" + FlowType.DEPOSIT + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(deposited)) + "`\n");
+        response.append("**" + FlowType.DEPOSIT + "**: worth `$" + MathMan.format(ResourceType.convertedTotal(deposited)) + "`\n");
         response.append("```json\n" + ResourceType.toString(deposited) + "\n```\n");
         return response.toString();
     }

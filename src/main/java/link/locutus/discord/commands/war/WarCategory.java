@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -23,7 +24,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -357,10 +358,10 @@ public class WarCategory {
                 } else {
                     room.setPlanning(false);
                 }
-                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + name2;
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : ResourceType.resourcesToString(attack.getLoot())) + " from " + name2;
                 break;
             case A_LOOT:
-                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : ResourceType.resourcesToString(attack.getLoot())) + " from " + PW.getName(attack.getAllianceIdLooted(), true);
                 break;
             case PEACE:
                 if (!room.hasOtherWar(attack.getWar_id())) {
@@ -404,7 +405,7 @@ public class WarCategory {
                 message += " and looted $" + MathMan.format(attack.getMoney_looted());
             }
             if (showInfra && attack.getInfra_destroyed() != 0) {
-                double worth = PnwUtil.calculateInfra(attack.getCity_infra_before() - attack.getInfra_destroyed(), attack.getCity_infra_before());
+                double worth = PW.City.Infra.calculateInfra(attack.getCity_infra_before() - attack.getInfra_destroyed(), attack.getCity_infra_before());
                 message += ". " + MathMan.format(attack.getInfra_destroyed()) + " infra worth $" + MathMan.format(worth) + " was destroyed";
             }
             if (showCasualties) {

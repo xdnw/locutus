@@ -17,7 +17,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -430,7 +430,7 @@ public enum InterviewQuestion implements Question {
             for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
                 JavaCity city = entry.getValue();
                 if (city.getLand() < city.getInfra()) {
-                    String url = PnwUtil.getCityUrl(entry.getKey());
+                    String url = PW.City.getCityUrl(entry.getKey());
                     throw new IllegalArgumentException("**City " + url + " has < " + city.getInfra() + " land**\n\n" + getContent());
                 }
             }
@@ -491,7 +491,7 @@ public enum InterviewQuestion implements Question {
             response.append("Minimum military requirement (MMR) is what military buildings to have in a city and is in the format e.g. `mmr=1234` (1 barracks, 2 factories, 3 hangars, and 4 drydock) (don't actually use mmr=1234, this is an example)\n\n");
 
             Integer cityId = cities.keySet().iterator().next();
-            String cityUrl = PnwUtil.getCityUrl(cityId);
+            String cityUrl = PW.City.getCityUrl(cityId);
             String mmrStr = StringMan.join(mmr, "");
             response.append("The `").append(Settings.commandPrefix(true)).append("OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n").append("`").append(Settings.commandPrefix(true)).append("OptimalBuild ").append(cityUrl).append(" infra=").append(maxInfra).append(" mmr=").append(mmrStr).append("`\n\n").append("*Note: For help on using the command, use `").append(Settings.commandPrefix(true)).append("? optimalbuild`, you can also use the card in <#695194325193195580>");
 

@@ -7,7 +7,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -100,7 +100,7 @@ public class TaxRecordCategorizer2 {
             int j = i - window + 1;
 
             double[] current = byTurn[i];
-            total = PnwUtil.add(total, current);
+            total = ResourceType.add(total, current);
             if (j >= 0) {
                 double[] previous = byTurn[j];
                 total = ArrayUtil.apply((x, y) -> x - y, total, previous);
@@ -124,7 +124,7 @@ public class TaxRecordCategorizer2 {
 
         String labelY = valueType == null ? "Market Value ($)" : valueType.name();
 
-        Function<double[], Double> getValue = input -> valueType != null ? input[valueType.ordinal()] : PnwUtil.convertedTotal(input);
+        Function<double[], Double> getValue = input -> valueType != null ? input[valueType.ordinal()] : ResourceType.convertedTotal(input);
 
         double[] buffer = new double[labels.length];
 
@@ -174,7 +174,7 @@ public class TaxRecordCategorizer2 {
             if (turnRel >= totalTaxByTurn.length || turnRel < 0) continue;
             if (!acceptsNation.test(record.nationId)) continue;
 
-            PnwUtil.add(totalTaxByTurn[turnRel], record.resources);
+            ResourceType.add(totalTaxByTurn[turnRel], record.resources);
         }
 
         for (Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType> transfer : transfers) {
@@ -201,7 +201,7 @@ public class TaxRecordCategorizer2 {
             int turnRel = (int) (turn - turnStart);
             if (turnRel >= type.length || turnRel < 0) continue;
 
-            PnwUtil.add(type[turnRel], record.resources);
+            ResourceType.add(type[turnRel], record.resources);
         }
 
         Map<TransactionType, double[][]> result = new EnumMap<>(TransactionType.class);
@@ -230,7 +230,7 @@ public class TaxRecordCategorizer2 {
         if (!dontRequireTagged) {
             expenseRequirements.add(tx -> {
                 if (aaIds.contains((int) tx.sender_id) && tx.isSenderAA()) return true;
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
+                Map<String, String> notes = PW.parseTransferHashNotes(tx.note);
                 for (String value : notes.values()) {
                     if (MathMan.isInteger(value)) {
                         if (aaIds.contains((int) Long.parseLong(value))) return true;

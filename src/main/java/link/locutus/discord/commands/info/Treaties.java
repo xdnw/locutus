@@ -9,7 +9,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -40,7 +40,7 @@ public class Treaties extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
 
-        Set<Integer> alliances = PnwUtil.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(0));
+        Set<Integer> alliances = PW.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(0));
 
         if (alliances.isEmpty()) return "Invalid alliance: `" + args.get(0) + "`";
 
@@ -59,8 +59,8 @@ public class Treaties extends Command {
             if (allTreaties.contains(treaty)) continue;
             allTreaties.add(entry.getValue());
 
-            String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
-            String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+            String from = PW.getMarkdownUrl(treaty.getFromId(), true);
+            String to = PW.getMarkdownUrl(treaty.getToId(), true);
             TreatyType type = treaty.getType();
 
             response.append(from + " | " + type + " -> " + to).append("\n");

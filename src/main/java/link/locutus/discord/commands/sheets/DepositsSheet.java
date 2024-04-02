@@ -11,15 +11,15 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.util.PnwUtil.convertedTotal;
-import static link.locutus.discord.util.PnwUtil.resourcesToString;
+import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
+import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToString;
 
 public class DepositsSheet extends Command {
     public DepositsSheet() {
@@ -66,7 +66,7 @@ public class DepositsSheet extends Command {
                 Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(1));
                 tracked = new LinkedHashSet<>();
                 for (Integer alliance : alliances) tracked.add(alliance.longValue());
-                tracked = PnwUtil.expandCoalition(tracked);
+                tracked = PW.expandCoalition(tracked);
             }
         }
 

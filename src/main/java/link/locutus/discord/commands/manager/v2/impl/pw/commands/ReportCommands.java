@@ -27,7 +27,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -48,11 +48,11 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.apiv1.enums.ResourceType.subtract;
 import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
-import static link.locutus.discord.util.PnwUtil.add;
-import static link.locutus.discord.util.PnwUtil.getAllianceUrl;
-import static link.locutus.discord.util.PnwUtil.getName;
-import static link.locutus.discord.util.PnwUtil.getNationUrl;
-import static link.locutus.discord.util.PnwUtil.resourcesToArray;
+import static link.locutus.discord.apiv1.enums.ResourceType.add;
+import static link.locutus.discord.util.PW.getAllianceUrl;
+import static link.locutus.discord.util.PW.getName;
+import static link.locutus.discord.util.PW.getNationUrl;
+import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToArray;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
@@ -266,25 +266,25 @@ public class ReportCommands {
 
         for (DBLoan loan : loans) {
             header.set(0, loan.loanId + "");
-            String loanerName = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PnwUtil.getName(loan.loanerGuildOrAA, true);
-            String loanerUrl = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildUrl(loan.loanerGuildOrAA) : PnwUtil.getAllianceUrl((int) loan.loanerGuildOrAA);
+            String loanerName = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PW.getName(loan.loanerGuildOrAA, true);
+            String loanerUrl = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildUrl(loan.loanerGuildOrAA) : PW.getAllianceUrl((int) loan.loanerGuildOrAA);
             String loanerMarkup = sheetUrl(loanerName, loanerUrl);
             header.set(1, loanerMarkup + "");
-            header.set(2, sheetUrl(PnwUtil.getName(loan.loanerNation, false), PnwUtil.getNationUrl(loan.loanerNation)) + "");
-            String name = PnwUtil.getName(loan.nationOrAllianceId, loan.isAlliance);
-            String url = loan.isAlliance ? PnwUtil.getAllianceUrl(loan.nationOrAllianceId) : PnwUtil.getNationUrl(loan.nationOrAllianceId);
+            header.set(2, sheetUrl(PW.getName(loan.loanerNation, false), PW.getNationUrl(loan.loanerNation)) + "");
+            String name = PW.getName(loan.nationOrAllianceId, loan.isAlliance);
+            String url = loan.isAlliance ? PW.getAllianceUrl(loan.nationOrAllianceId) : PW.getNationUrl(loan.nationOrAllianceId);
             String receiverMarkup = sheetUrl(name, url);
             header.set(3, receiverMarkup + "");
-            header.set(4, PnwUtil.resourcesToString(loan.principal) + "");
-            header.set(4, PnwUtil.resourcesToString(loan.paid) + "");
-            header.set(5, PnwUtil.resourcesToString(loan.remaining) + "");
+            header.set(4, ResourceType.resourcesToString(loan.principal) + "");
+            header.set(4, ResourceType.resourcesToString(loan.paid) + "");
+            header.set(5, ResourceType.resourcesToString(loan.remaining) + "");
             header.set(6, loan.status.name());
             header.set(7, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.dueDate)));
             header.set(8, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.loanDate)));
             header.set(9, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.date_submitted)));
 
             if (loan.remaining != null) {
-                total = PnwUtil.add(total, loan.remaining);
+                total = ResourceType.add(total, loan.remaining);
             }
 
             sheet.addRow(header);
@@ -293,7 +293,7 @@ public class ReportCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "loans")
-                .append("Total on loan: `" + PnwUtil.resourcesToString(total) + "` worth `$" + MathMan.format(PnwUtil.convertedTotal(total)) + "`")
+                .append("Total on loan: `" + ResourceType.resourcesToString(total) + "` worth `$" + MathMan.format(ResourceType.convertedTotal(total)) + "`")
                 .send();
         return null;
     }
@@ -313,7 +313,7 @@ public class ReportCommands {
             if (overwriteLoan.isAlliance) {
                 if (!db.isAllianceId((int) overwriteLoan.loanerGuildOrAA)) {
                     // Belongs to another alliance
-                    throw new IllegalArgumentException("Cannot overwrite loan from another alliance (" + PnwUtil.getMarkdownUrl((int) overwriteLoan.loanerGuildOrAA, true) + ")");
+                    throw new IllegalArgumentException("Cannot overwrite loan from another alliance (" + PW.getMarkdownUrl((int) overwriteLoan.loanerGuildOrAA, true) + ")");
                 }
                 else if (db.getIdLong() != overwriteLoan.loanerGuildOrAA) {
                     throw new IllegalArgumentException("Cannot overwrite loan from another guild (id:" + (int) overwriteLoan.loanerGuildOrAA + ")");
@@ -367,20 +367,20 @@ public class ReportCommands {
             if (loanerId > Integer.MAX_VALUE) {
                 body.append("**Lending:** `").append(DiscordUtil.getGuildName(loanerId)).append("`\n");
             } else {
-                body.append("**Lender:** ").append(PnwUtil.getMarkdownUrl((int) loanerId, true)).append("\n");
+                body.append("**Lender:** ").append(PW.getMarkdownUrl((int) loanerId, true)).append("\n");
             }
 
             if (status != null) {
                 body.append("**Status:** ").append(status.name()).append("\n");
             }
             if (principal != null) {
-                body.append("**Principal:** ").append(PnwUtil.resourcesToString(principal)).append("\n");
+                body.append("**Principal:** ").append(ResourceType.resourcesToString(principal)).append("\n");
             }
             if (remaining != null) {
-                body.append("**Remaining:** ").append(PnwUtil.resourcesToString(remaining)).append("\n");
+                body.append("**Remaining:** ").append(ResourceType.resourcesToString(remaining)).append("\n");
             }
             if (amountPaid != null) {
-                body.append("**Amount Paid:** ").append(PnwUtil.resourcesToString(amountPaid)).append("\n");
+                body.append("**Amount Paid:** ").append(ResourceType.resourcesToString(amountPaid)).append("\n");
             }
 
             // If loan already exists to nation from this guild, prompt to update it
@@ -390,7 +390,7 @@ public class ReportCommands {
                 if (!foundLoans.isEmpty()) {
                     body.append("**A loan already exists to ")
                             .append(receiver.isAlliance() ? "alliance " : "nation ")
-                            .append(PnwUtil.getMarkdownUrl(receiver.getId(), receiver.isAlliance()))
+                            .append(PW.getMarkdownUrl(receiver.getId(), receiver.isAlliance()))
                             .append(".**\nConsider updating or closing these: " + CM.report.loan.update.cmd.toSlashMention() + " " + CM.report.loan.remove.cmd.toSlashMention() + "\n");
                     for (DBLoan loan : foundLoans) {
                         // Id, status, date, remaining
@@ -433,9 +433,9 @@ public class ReportCommands {
                     me.getNation_id(),
                     receiver.getId(),
                     receiver.isAlliance(),
-                    PnwUtil.resourcesToArray(principal),
-                    PnwUtil.resourcesToArray(remaining),
-                    PnwUtil.resourcesToArray(amountPaid),
+                    ResourceType.resourcesToArray(principal),
+                    ResourceType.resourcesToArray(remaining),
+                    ResourceType.resourcesToArray(amountPaid),
                     status,
                     dueDate,
                     System.currentTimeMillis(),
@@ -541,7 +541,7 @@ public class ReportCommands {
             } else if (guildOrAllianceId > Integer.MAX_VALUE) {
                 body.append("Deleting: All Loans from guild: " + DiscordUtil.getGuildName(guildOrAllianceId) + " (" + guildOrAllianceId + ")");
             } else {
-                body.append("Deleting: All Loans from alliance: " + PnwUtil.getMarkdownUrl(guildOrAllianceId.intValue(), true));
+                body.append("Deleting: All Loans from alliance: " + PW.getMarkdownUrl(guildOrAllianceId.intValue(), true));
             }
 
             io.create().confirmation(title, body.toString(), command).send();
@@ -689,17 +689,17 @@ public class ReportCommands {
             int receiverId;
             boolean isRecieverAA;
             if (receiverStr.contains("/alliance") || receiverStr.toLowerCase().contains("aa:") || receiverStr.toLowerCase().contains("alliance:")) {
-                receiverId = PnwUtil.parseAllianceId(receiverStr);
+                receiverId = PW.parseAllianceId(receiverStr);
                 isRecieverAA = true;
             } else {
                 receiverId = DiscordUtil.parseNationId(receiverStr);
                 isRecieverAA = false;
             }
 
-            Map<ResourceType, Double> principal = PnwUtil.parseResources(principalStr);
-            Map<ResourceType, Double> remaining = remainingStr == null ? null : PnwUtil.parseResources(remainingStr);
-            Map<ResourceType, Double> paid = paidStr == null ? null : PnwUtil.parseResources(paidStr);
-            Map<ResourceType, Double> interest = interestStr == null ? null : PnwUtil.parseResources(interestStr);
+            Map<ResourceType, Double> principal = ResourceType.parseResources(principalStr);
+            Map<ResourceType, Double> remaining = remainingStr == null ? null : ResourceType.parseResources(remainingStr);
+            Map<ResourceType, Double> paid = paidStr == null ? null : ResourceType.parseResources(paidStr);
+            Map<ResourceType, Double> interest = interestStr == null ? null : ResourceType.parseResources(interestStr);
 
             if (paid == null && remaining != null) {
                 double[] principalArr = resourcesToArray(principal);
@@ -707,10 +707,10 @@ public class ReportCommands {
                 double[] interestArr = interest == null ? null : resourcesToArray(interest);
                 if (interest != null) {
                     // paid = principal - remaining + interest
-                    paid = PnwUtil.resourcesToMap(ResourceType.add(subtract(principalArr, remainingArr), interestArr));
+                    paid = ResourceType.resourcesToMap(ResourceType.add(subtract(principalArr, remainingArr), interestArr));
                 } else {
                     // paid = principal - remaining
-                    paid = PnwUtil.resourcesToMap(PnwUtil.max(ResourceType.getBuffer(), subtract(principalArr, remainingArr)));
+                    paid = ResourceType.resourcesToMap(ResourceType.max(ResourceType.getBuffer(), subtract(principalArr, remainingArr)));
                 }
             }
 
@@ -816,7 +816,7 @@ public class ReportCommands {
             existing = updateReport;
             if (!existing.hasPermission(me, author, db)) {
                 return "You do not have permission to edit this report: `#" + updateReport.reportId +
-                        "` (owned by nation:" + PnwUtil.getName(existing.reporterNationId, false) + ")\n" +
+                        "` (owned by nation:" + PW.getName(existing.reporterNationId, false) + ")\n" +
                         "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
             }
             // set the missing fields to the values from this report
@@ -919,14 +919,14 @@ public class ReportCommands {
         if (!force) {
             String title = (existing != null ? "Update " : "Report") +
                     type + " report by " +
-                    DiscordUtil.getUserName(reporterUserId) + " | " + PnwUtil.getName(reporterNationId, false);
+                    DiscordUtil.getUserName(reporterUserId) + " | " + PW.getName(reporterNationId, false);
 
             StringBuilder body = new StringBuilder();
             if (existing != null && existing.approved) {
                 body.append("`This report will lose its approved status if you update it.`\n");
             }
             if (nationId != null) {
-                body.append("Nation: " + PnwUtil.getMarkdownUrl(nationId, false) + "\n");
+                body.append("Nation: " + PW.getMarkdownUrl(nationId, false) + "\n");
             }
             if (discord_user_id != null) {
                 body.append("Discord user: <@" + discord_user_id + ">\n");
@@ -1014,7 +1014,7 @@ public class ReportCommands {
     public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
-                    "` (owned by nation:" + PnwUtil.getName(report.reporterNationId, false) + ")\n" +
+                    "` (owned by nation:" + PW.getName(report.reporterNationId, false) + ")\n" +
                     "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
         }
         if (!force) {
@@ -1032,16 +1032,16 @@ public class ReportCommands {
         if (nationCommenting == null) nationCommenting = me;
         if (nationCommenting.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author)) {
             return "You do not have permission to remove another nation's comment on report: `#" + report.reportId +
-                    "` (owned by nation:" + PnwUtil.getName(nationCommenting.getNation_id(), false) + ")\n" +
+                    "` (owned by nation:" + PW.getName(nationCommenting.getNation_id(), false) + ")\n" +
                     "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
         }
         ReportManager.Comment comment = reportManager.loadCommentsByReportNation(report.reportId, nationCommenting.getNation_id());
         if (comment == null) {
-            return "No comment found for nation: " + PnwUtil.getName(nationCommenting.getNation_id(), false) + " on report: `#" + report.reportId + "`";
+            return "No comment found for nation: " + PW.getName(nationCommenting.getNation_id(), false) + " on report: `#" + report.reportId + "`";
         }
 
         if (!force) {
-            String title = "Remove comment by nation:" + PnwUtil.getName(comment.nationId, false);
+            String title = "Remove comment by nation:" + PW.getName(comment.nationId, false);
             StringBuilder body = new StringBuilder();
             body.append("See report: #" + report.reportId + " | " + CM.report.show.cmd.toSlashMention() + "\n");
             body.append(comment.toMarkdown());
@@ -1124,7 +1124,7 @@ public class ReportCommands {
             if (nationIdReported != null) {
                 DBNation nation = DBNation.getById(nationIdReported);
                 String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
-                body.append("Nation reported: ").append(PnwUtil.getMarkdownUrl(nationIdReported, false) + " | " + aaName).append("\n");
+                body.append("Nation reported: ").append(PW.getMarkdownUrl(nationIdReported, false) + " | " + aaName).append("\n");
             }
             if (userIdReported != null) {
                 body.append("User reported: ").append("<@" + userIdReported + ">").append("\n");
@@ -1132,7 +1132,7 @@ public class ReportCommands {
             if (reportingNation != null) {
                 DBNation nation = DBNation.getById(reportingNation);
                 String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
-                body.append("Reporting nation: ").append(PnwUtil.getMarkdownUrl(reportingNation, false) + " | " + aaName).append("\n");
+                body.append("Reporting nation: ").append(PW.getMarkdownUrl(reportingNation, false) + " | " + aaName).append("\n");
             }
             if (reportingUser != null) {
                 body.append("Reporting user: ").append("<@" + reportingUser + ">").append("\n");
@@ -1176,7 +1176,7 @@ public class ReportCommands {
             if (nation_id != null) {
                 DBNation nation = DBNation.getById(nation_id);
                 String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
-                body.append("Nation commenting: ").append(PnwUtil.getMarkdownUrl(nation_id, false) + " | " + aaName).append("\n");
+                body.append("Nation commenting: ").append(PW.getMarkdownUrl(nation_id, false) + " | " + aaName).append("\n");
             }
             if (discord_id != null) {
                 body.append("User commenting: ").append("<@" + discord_id + ">").append("\n");
@@ -1323,9 +1323,9 @@ public class ReportCommands {
                 if (loansForStatus == null) continue;
                 response.append(status.name() + " loans:\n");
                 for (DBLoan loan : loansForStatus) {
-                    double amt = PnwUtil.convertedTotal(loan.remaining);
+                    double amt = ResourceType.convertedTotal(loan.remaining);
                     String amtStr = MathMan.format(amt);
-                    String loanerStr = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PnwUtil.getMarkdownUrl((int) loan.loanerGuildOrAA, true);
+                    String loanerStr = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PW.getMarkdownUrl((int) loan.loanerGuildOrAA, true);
                     String dateLoaned = DiscordUtil.timestamp(loan.loanDate, null);
                     String dateSubmitted = DiscordUtil.timestamp(loan.date_submitted, null);
                     response.append("- ~$" + amtStr + " from " + loanerStr + " on " + dateLoaned + " (submitted: " + dateSubmitted + ")\n");
@@ -1453,7 +1453,7 @@ public class ReportCommands {
             response.append("Proximity to reported individuals:\n");
             for (Map.Entry<Integer, Long> entry : sameAAProximity.entrySet()) {
                 int nationId = entry.getKey();
-                String nationName = PnwUtil.getMarkdownUrl(nationId, false);
+                String nationName = PW.getMarkdownUrl(nationId, false);
                 String reportListStr = reportTypes.get(nationId).stream().map(ReportManager.ReportType::name).collect(Collectors.joining(","));
                 response.append("- " + nationName + " | " + reportListStr + ": " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, entry.getValue()) + "\n");
             }
@@ -1466,7 +1466,7 @@ public class ReportCommands {
             response.append("Money Trades with reported individuals:\n");
             for (Map.Entry<Integer, Double> entry : trades.entrySet()) {
                 int nationId = entry.getKey();
-                String nationName = PnwUtil.getMarkdownUrl(nationId, false);
+                String nationName = PW.getMarkdownUrl(nationId, false);
                 response.append("- " + nationName + ": " + MathMan.format(entry.getValue()) + "\n");
             }
         }

@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -188,34 +188,34 @@ public class Revenue extends Command {
         }
 
         response.append("Daily city revenue:")
-                .append("```").append(PnwUtil.resourcesToString(cityProfit)).append("```");
+                .append("```").append(ResourceType.resourcesToString(cityProfit)).append("```");
 
         if (!showTradeAndMilitary) {
-            response.append(String.format("Converted total: $" + MathMan.format(PnwUtil.convertedTotal(cityProfit))));
+            response.append(String.format("Converted total: $" + MathMan.format(ResourceType.convertedTotal(cityProfit))));
         }
 
         if (showTradeAndMilitary) {
             response.append('\n').append("Military upkeep:")
-                    .append("```").append(PnwUtil.resourcesToString(milUp)).append("```");
+                    .append("```").append(ResourceType.resourcesToString(milUp)).append("```");
 
             response.append('\n').append("Color Bonus: ```").append(MathMan.format(tradeBonus)).append("```");
 
-            Map<ResourceType, Double> total = PnwUtil.add(PnwUtil.resourcesToMap(cityProfit), PnwUtil.resourcesToMap(milUp));
+            Map<ResourceType, Double> total = ResourceType.add(ResourceType.resourcesToMap(cityProfit), ResourceType.resourcesToMap(milUp));
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + tradeBonus);
 
             response.append('\n').append("Combined Total:")
-                    .append("```").append(PnwUtil.resourcesToString(total)).append("```").append("Converted total: $").append(MathMan.format(PnwUtil.convertedTotal(total)));
+                    .append("```").append(ResourceType.resourcesToString(total)).append("```").append("Converted total: $").append(MathMan.format(ResourceType.convertedTotal(total)));
         }
 
         {
-            Map<ResourceType, Double> total = PnwUtil.add(PnwUtil.resourcesToMap(cityProfit), PnwUtil.resourcesToMap(milUp));
+            Map<ResourceType, Double> total = ResourceType.add(ResourceType.resourcesToMap(cityProfit), ResourceType.resourcesToMap(milUp));
             double consumeCost = 0;
             double taxable = 0;
             for (Map.Entry<ResourceType, Double> entry : total.entrySet()) {
                 if (entry.getValue() < 0) {
-                    consumeCost += Math.abs(PnwUtil.convertedTotal(entry.getKey(), -entry.getValue()));
+                    consumeCost += Math.abs(ResourceType.convertedTotal(entry.getKey(), -entry.getValue()));
                 } else {
-                    taxable += Math.abs(PnwUtil.convertedTotal(entry.getKey(), entry.getValue()));
+                    taxable += Math.abs(ResourceType.convertedTotal(entry.getKey(), entry.getValue()));
                 }
             }
             if (taxable > consumeCost) {

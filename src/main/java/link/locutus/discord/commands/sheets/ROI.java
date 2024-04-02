@@ -16,7 +16,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
@@ -84,7 +84,7 @@ public class ROI extends Command {
             this.info = info;
             this.roi = roi;
             this.cost = cost;
-            this.costConverted = PnwUtil.convertedTotal(cost);
+            this.costConverted = ResourceType.convertedTotal(cost);
             this.netProfit = netProfit;
             this.profit = profit;
         }
@@ -270,8 +270,8 @@ public class ROI extends Command {
             sheet.setHeader(header);
             for (ROIResult result : roiMap) {
                 DBNation nation = result.nation;
-                Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(guildDb, false));
-                double depositsConverted = PnwUtil.convertedTotal(deposits);
+                Map<ResourceType, Double> deposits = ResourceType.resourcesToMap(nation.getNetDeposits(guildDb, false));
+                double depositsConverted = ResourceType.convertedTotal(deposits);
 
                 header.clear();
                 header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
@@ -309,7 +309,7 @@ public class ROI extends Command {
                 header.add(String.format("%.2f", result.roi));
                 header.add(String.format("%.2f", result.profit));
                 header.add(String.format("%.2f", result.costConverted));
-                header.add(PnwUtil.resourcesToString(result.cost));
+                header.add(ResourceType.resourcesToString(result.cost));
 
                 sheet.addRow(header);
             }
@@ -381,8 +381,8 @@ public class ROI extends Command {
             if (optimal != null) {
                 double baseOptimizedProfit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 if (baseOptimizedProfit > baseProfit) {
-                    Map<ResourceType, Double> cost = PnwUtil.resourcesToMap(optimal.calculateCost(existingCity, new double[ResourceType.values.length]));
-                    double costConverted = PnwUtil.convertedTotal(cost);
+                    Map<ResourceType, Double> cost = ResourceType.resourcesToMap(optimal.calculateCost(existingCity, new double[ResourceType.values.length]));
+                    double costConverted = ResourceType.convertedTotal(cost);
                     double profit = (baseOptimizedProfit - baseProfit);
                     double netProfit = profit * days - costConverted;
                     if (netProfit > 0 && !optimal.equals(existingCity)) {
@@ -414,13 +414,13 @@ public class ROI extends Command {
                 JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout);
                 if (optimal != null) {
                     double profit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjectsProxy, numCities, nation.getGrossModifier());
-                    Map<ResourceType, Double> cost = PnwUtil.add(
+                    Map<ResourceType, Double> cost = ResourceType.add(
                             project.cost(),
-                            PnwUtil.multiply(
-                                    PnwUtil.resourcesToMap(optimal.calculateCost(existingCity)),
+                            PW.multiply(
+                                    ResourceType.resourcesToMap(optimal.calculateCost(existingCity)),
                                     (double) numCities)
                     );
-                    double costConverted = PnwUtil.convertedTotal(cost);
+                    double costConverted = ResourceType.convertedTotal(cost);
                     double profitOverBase = (profit - baseProfit);
                     double netProfit = profitOverBase * numCities * days - costConverted;
                     double roi = ((netProfit / costConverted) * 100 * 7) / days;
@@ -443,13 +443,13 @@ public class ROI extends Command {
                 JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout);
                 if (optimal != null) {
                     double profit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjectsProxy, numCities, nation.getGrossModifier());
-                    Map<ResourceType, Double> cost = PnwUtil.add(
+                    Map<ResourceType, Double> cost = ResourceType.add(
                             project.cost(),
-                            PnwUtil.multiply(
-                                    PnwUtil.resourcesToMap(optimal.calculateCost(existingCity)),
+                            PW.multiply(
+                                    ResourceType.resourcesToMap(optimal.calculateCost(existingCity)),
                                     (double) numCities)
                     );
-                    double costConverted = PnwUtil.convertedTotal(cost);
+                    double costConverted = ResourceType.convertedTotal(cost);
                     double profitOverBase = (profit - baseProfit);
                     double netProfit = profitOverBase * numCities * days - costConverted;
                     double roi = ((netProfit / costConverted) * 100 * 7) / days;
@@ -469,21 +469,21 @@ public class ROI extends Command {
             boolean getMetroPlanning = numCities >= Projects.METROPOLITAN_PLANNING.requiredCities() && !advCityPlanning;
             boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
 
-            double cityCost = PnwUtil.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning, metroPlanning || getMetroPlanning, gsa);
+            double cityCost = PW.City.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning, metroPlanning || getMetroPlanning, gsa);
             double[] buildCost = existingCity.calculateCost(new JavaCity());
             double[] totalCost = buildCost.clone();
 
             totalCost[ResourceType.MONEY.ordinal()] += cityCost;
-            double costConverted = PnwUtil.convertedTotal(totalCost);
+            double costConverted = ResourceType.convertedTotal(totalCost);
             double netProfit = baseProfit * days - costConverted;
             double roi = ((netProfit / costConverted) * 100 / days) * 7;
 
             if (getCityPlanning) {
-                roiMap.add(new ROIResult(nation, Investment.CITY_PROJECT, "CITY_PLANNING", roi, PnwUtil.resourcesToMap(totalCost), netProfit, baseProfit));
+                roiMap.add(new ROIResult(nation, Investment.CITY_PROJECT, "CITY_PLANNING", roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
             } else if (getAdvCityPlanning) {
-                roiMap.add(new ROIResult(nation, Investment.CITY_PROJECT, "ADVANCED_CITY_PLANNING", roi, PnwUtil.resourcesToMap(totalCost), netProfit, baseProfit));
+                roiMap.add(new ROIResult(nation, Investment.CITY_PROJECT, "ADVANCED_CITY_PLANNING", roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
             } else {
-                roiMap.add(new ROIResult(nation, Investment.CITY, (numCities + 1), roi, PnwUtil.resourcesToMap(totalCost), netProfit, baseProfit));
+                roiMap.add(new ROIResult(nation, Investment.CITY, (numCities + 1), roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
             }
         }
 
@@ -493,13 +493,13 @@ public class ROI extends Command {
             if (withInfra != null) {
                 double profit = withInfra.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 double[] cost = withInfra.calculateCost(existingCity);
-                cost[ResourceType.MONEY.ordinal()] += PnwUtil.calculateInfra((int) existingCity.getInfra(), (int) withInfra.getInfra());
-                double costConverted = PnwUtil.convertedTotal(cost);
+                cost[ResourceType.MONEY.ordinal()] += PW.City.Infra.calculateInfra((int) existingCity.getInfra(), (int) withInfra.getInfra());
+                double costConverted = ResourceType.convertedTotal(cost);
                 double profitOverBase = (profit - baseProfit);
                 double netProfit = profitOverBase * days - costConverted;
                 double roi = ((netProfit / costConverted) * 100 * 7) / days;
 
-                roiMap.add(new ROIResult(nation, Investment.INFRA, withInfra.getInfra(), roi, PnwUtil.resourcesToMap(cost), netProfit, profitOverBase));
+                roiMap.add(new ROIResult(nation, Investment.INFRA, withInfra.getInfra(), roi, ResourceType.resourcesToMap(cost), netProfit, profitOverBase));
             }
         }
 
@@ -509,13 +509,13 @@ public class ROI extends Command {
             if (withLand != null) {
                 double profit = withLand.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 double[] cost = withLand.calculateCost(existingCity);
-                cost[ResourceType.MONEY.ordinal()] += (PnwUtil.calculateLand(existingCity.getLand(), withLand.getLand()));
-                double costConverted = PnwUtil.convertedTotal(cost);
+                cost[ResourceType.MONEY.ordinal()] += (PW.City.Land.calculateLand(existingCity.getLand(), withLand.getLand()));
+                double costConverted = ResourceType.convertedTotal(cost);
                 double profitOverBase = (profit - baseProfit);
                 double netProfit = profitOverBase * days - costConverted;
                 double roi = ((netProfit / costConverted) * 100 * 7) / days;
 
-                roiMap.add(new ROIResult(nation, Investment.LAND, withLand.getLand(), roi, PnwUtil.resourcesToMap(cost), netProfit, profitOverBase));
+                roiMap.add(new ROIResult(nation, Investment.LAND, withLand.getLand(), roi, ResourceType.resourcesToMap(cost), netProfit, profitOverBase));
             }
         }
     }

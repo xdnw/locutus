@@ -34,7 +34,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
@@ -1008,7 +1008,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        double[] allowancePerCityArr = allowancePerCity == null ? null : PnwUtil.resourcesToArray(allowancePerCity);
+        double[] allowancePerCityArr = allowancePerCity == null ? null : ResourceType.resourcesToArray(allowancePerCity);
         WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
 
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
@@ -1178,13 +1178,13 @@ public class GrantCommands {
                 double totalOverDuration = 0;
                 for (GrantTemplateManager.GrantSendRecord record : records) {
                     if (record.date < cutoff) continue;
-                    totalOverDuration += PnwUtil.convertedTotal(record.amount);
+                    totalOverDuration += ResourceType.convertedTotal(record.amount);
                 }
-                double total = totalOverDuration + PnwUtil.convertedTotal(cost);
+                double total = totalOverDuration + ResourceType.convertedTotal(cost);
                 if (total > limit) {
                     throw new IllegalArgumentException("You have a grant template limit of ~$" + MathMan.format(limit) +
                             " however have withdrawn ~$" + MathMan.format(totalOverDuration) + " over the past `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "` " +
-                            " and are requesting ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) +
+                            " and are requesting ~$" + MathMan.format(ResourceType.convertedTotal(cost)) +
                             " which exceeds your limit by ~$" + MathMan.format(total - limit) + "\n" +
                             "`note: Figures are equivalent market value, not straight cash`\n" +
                             "See: " + GuildKey.GRANT_TEMPLATE_LIMITS.getCommandMention());
@@ -2172,7 +2172,7 @@ public class GrantCommands {
             }
         }
         // Ensure none of amount is negative
-        double[] amtArr = PnwUtil.resourcesToArray(amount);
+        double[] amtArr = ResourceType.resourcesToArray(amount);
         for (ResourceType type : ResourceType.values) {
             if (amtArr[type.ordinal()] < 0) {
                 return "Cannot withdraw negative amount of " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]);
@@ -2233,7 +2233,7 @@ public class GrantCommands {
                 newEscrowed[type.ordinal()] = newAmtCents * 0.01;
             }
             StringBuilder message = new StringBuilder();
-            message.append("Deducted `"  + PnwUtil.resourcesToString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
+            message.append("Deducted `"  + ResourceType.resourcesToString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
             if (!hasEscrowed) {
                 db.setEscrowed(receiver, null, escrowDate);
             } else {
@@ -2250,9 +2250,9 @@ public class GrantCommands {
                         // add amount deducted
                         message.append("Funds were deducted but the in-game transfer was aborted\n");
                         message.append("Econ gov may need to correct your escrow balance via " + CM.escrow.add.cmd.toSlashMention() + "\n");
-                        message.append("Original escrowed: `" + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
-                        message.append("Expected escrowed: `" + PnwUtil.resourcesToString(newEscrowed) + "`\n");
-                        message.append("Current escrowed: `" + PnwUtil.resourcesToString(checkEscrowed) + "`\n");
+                        message.append("Original escrowed: `" + ResourceType.resourcesToString(escrowedPair.getKey()) + "`\n");
+                        message.append("Expected escrowed: `" + ResourceType.resourcesToString(newEscrowed) + "`\n");
+                        message.append("Current escrowed: `" + ResourceType.resourcesToString(checkEscrowed) + "`\n");
                         message.append("The `expected` and `new` should match, but something went wrong when deducting the balance.\n");
                         // econ role mention
                         Role role = Roles.ECON.toRole(db);
@@ -2297,7 +2297,7 @@ public class GrantCommands {
                 case CONFIRMATION: {
                     // add balance back
                     db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
-                    result.addMessage("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
+                    result.addMessage("Adding back `" + ResourceType.resourcesToString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
                     channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
                     return null;
                 }

@@ -28,7 +28,7 @@ import link.locutus.discord.event.trade.TradeCompleteEvent;
 import link.locutus.discord.event.trade.TradeCreateEvent;
 import link.locutus.discord.event.trade.TradeEvent;
 import link.locutus.discord.event.war.AttackEvent;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -175,11 +175,11 @@ public class LootEstimateTracker {
 
 
         StringBuilder result = new StringBuilder();
-        result.append("min:" + PnwUtil.resourcesToString(min));
-        result.append(" offset:" + PnwUtil.resourcesToString(requiredOffset));
-        result.append(" max:" + PnwUtil.resourcesToString(max));
-        result.append(" actual:" + PnwUtil.resourcesToString(actual));
-        result.append(" currentDiff:" + PnwUtil.resourcesToString(currentDiff));
+        result.append("min:" + ResourceType.resourcesToString(min));
+        result.append(" offset:" + ResourceType.resourcesToString(requiredOffset));
+        result.append(" max:" + ResourceType.resourcesToString(max));
+        result.append(" actual:" + ResourceType.resourcesToString(actual));
+        result.append(" currentDiff:" + ResourceType.resourcesToString(currentDiff));
         result.append(" taxId:" + taxId);
         result.append(" diffByTaxId:" + StringMan.getString(diffByTaxId) + "\n");
 
@@ -636,7 +636,7 @@ public class LootEstimateTracker {
         if (nation != null && city.created > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
             Map<Integer, DBCity> cities = nation._getCitiesV3();
             int index = (int) cities.values().stream().filter(f -> f.created <= city.created).count();
-            double cost = PnwUtil.cityCost(nation, index - 1, index);
+            double cost = PW.City.cityCost(nation, index - 1, index);
             add(nation.getId(), event.getTimeCreated(), cost);
         }
     }

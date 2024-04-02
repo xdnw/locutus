@@ -4,13 +4,10 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.PagePriority;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
@@ -51,7 +48,7 @@ public class GetUid implements Callable<BigInteger> {
             return uuid;
         } catch (Throwable e) {
             e.printStackTrace();
-            AlertUtil.error("Failed to fetch uid", PnwUtil.getAlert(dom));
+            AlertUtil.error("Failed to fetch uid", PW.getAlert(dom));
         }
         return null;
     }

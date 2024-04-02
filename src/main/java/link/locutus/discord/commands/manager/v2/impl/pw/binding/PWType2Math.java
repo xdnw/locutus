@@ -9,7 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -25,6 +25,6 @@ import java.util.function.BiFunction;
 public class PWType2Math extends BindingHelper {
     @Binding(types = {Map.class, ResourceType.class, Double.class}, multiple = true)
     public ArrayUtil.DoubleArray toDoubleArray(Map<ResourceType, Double> input) {
-        return new ArrayUtil.DoubleArray(PnwUtil.resourcesToArray(input));
+        return new ArrayUtil.DoubleArray(ResourceType.resourcesToArray(input));
     }
 }

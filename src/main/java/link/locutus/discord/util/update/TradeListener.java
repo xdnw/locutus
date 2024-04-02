@@ -67,7 +67,7 @@ public class TradeListener {
             body.append("Current owner: " + treasure.getNation_id() + " (deleted)\n");
         } else {
             body.append(currentNation.toEmbedString());
-            body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER) + "-" + MathMan.format(currentNation.getScore() / 0.75));
+            body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / PW.WAR_RANGE_MAX_MODIFIER) + "-" + MathMan.format(currentNation.getScore() / 0.75));
         }
 
         AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {

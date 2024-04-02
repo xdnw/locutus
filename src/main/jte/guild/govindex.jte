@@ -17,7 +17,7 @@
 @import link.locutus.discord.user.Roles
 @import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 @import link.locutus.discord.config.Settings
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import link.locutus.discord.web.jooby.WebRoot
 @param WebStore ws
 @param Guild guild

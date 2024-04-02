@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -111,10 +111,10 @@ public enum MilitaryUnit {
         this.emoji = emoji;
         this.cost = cost;
         this.costMap = new EnumMap<>(ResourceType.class);
-        costMap.putAll(PnwUtil.resourcesToMap(cost));
+        costMap.putAll(resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
         if (multiplyWartimeUpkeep) {
-            this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep.clone(), 1.5);
+            this.upkeepWar = PW.multiply(peacetimeUpkeep.clone(), 1.5);
         } else {
             this.upkeepWar = peacetimeUpkeep;
         }
@@ -264,7 +264,7 @@ public enum MilitaryUnit {
 
     public double getConvertedCost() {
         if (costConverted == -1) {
-            costConverted = PnwUtil.convertedTotal(cost);
+            costConverted = convertedTotal(cost);
         }
         return costConverted;
     }
@@ -280,12 +280,12 @@ public enum MilitaryUnit {
     public double[] getCost(int amt) {
         if (amt > 0) {
             if (amt == 1) return cost;
-            return PnwUtil.multiply(cost.clone(), amt);
+            return PW.multiply(cost.clone(), amt);
         } else if (amt < 0) {
             // 0% of money + 75% of resources
             double[] copy = cost.clone();
             copy[0] = 0;
-            PnwUtil.multiply(copy, amt);
+            PW.multiply(copy, amt);
             for (int i = 1; i < copy.length; i++) {
                 copy[i] *= 0.75;
             }

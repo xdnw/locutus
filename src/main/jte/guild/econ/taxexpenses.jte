@@ -11,7 +11,7 @@
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Coalition
 @import link.locutus.discord.db.entities.TaxBracket
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import link.locutus.discord.db.entities.Transaction2
 @import link.locutus.discord.db.entities.DBNation
 @import link.locutus.discord.user.Roles
@@ -71,7 +71,7 @@
 <h2>Alliances:</h2>
 <ul class="list-inline">
 @for (int allianceId : alliances)
-    <li class="list-inline-item"><a class="btn btn-sm border rounded" href="https://politicsandwar.com/alliance/id=${allianceId}">${PnwUtil.getName(allianceId, true)}</a></li>
+    <li class="list-inline-item"><a class="btn btn-sm border rounded" href="https://politicsandwar.com/alliance/id=${allianceId}">${PW.getName(allianceId, true)}</a></li>
 @endfor
 </ul>
 </div>

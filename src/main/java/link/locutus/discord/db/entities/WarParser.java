@@ -6,7 +6,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -98,10 +98,10 @@ public class WarParser {
         this.coal2Nations = coal2Nations;
         List<String> coal1Names = new ArrayList<>();
         List<String> coal2Names = new ArrayList<>();
-        for (Integer id : coal1Alliances) coal1Names.add("AA:" + PnwUtil.getName(id, true));
-        for (Integer id : coal1Nations) coal1Names.add(PnwUtil.getName(id, false));
-        for (Integer id : coal2Alliances) coal2Names.add("AA:" + PnwUtil.getName(id, true));
-        for (Integer id : coal2Nations) coal2Names.add(PnwUtil.getName(id, false));
+        for (Integer id : coal1Alliances) coal1Names.add("AA:" + PW.getName(id, true));
+        for (Integer id : coal1Nations) coal1Names.add(PW.getName(id, false));
+        for (Integer id : coal2Alliances) coal2Names.add("AA:" + PW.getName(id, true));
+        for (Integer id : coal2Nations) coal2Names.add(PW.getName(id, false));
         this.nameA = coal1Names.isEmpty() ? "*" : coal1Names.size() > 10 ? "col1" : StringMan.join(coal1Names, ",");
         this.nameB = coal2Names.isEmpty() ? "*" : coal2Names.size() > 10 ? "col1" : StringMan.join(coal2Names, ",");
 
@@ -262,12 +262,12 @@ public class WarParser {
             if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, attacks));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PW.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, attacks));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PW.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, false);
             }
         }
@@ -282,13 +282,13 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PnwUtil.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, wars, attacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PW.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PnwUtil.getName(war.getDefender_aa(), true), other, buildings, ids, victories, wars, attacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PW.getName(war.getDefender_aa(), true), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, false);
             }
         }
@@ -303,12 +303,12 @@ public class WarParser {
             if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getAttacker_id(), false), other));
+                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackTypeBreakdown(PW.getName(attack.getAttacker_id(), false), other));
                 cost.addAttack(attack, true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getDefender_id(), false), other));
+                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackTypeBreakdown(PW.getName(attack.getDefender_id(), false), other));
                 cost.addAttack(attack, false);
             }
         }
@@ -323,13 +323,13 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackTypeBreakdown(PnwUtil.getName(war.getAttacker_aa(), true), other));
+                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackTypeBreakdown(PW.getName(war.getAttacker_aa(), true), other));
                 cost.addAttack(attack, true);
             }
 
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackTypeBreakdown(PnwUtil.getName(war.getDefender_aa(), true), other));
+                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackTypeBreakdown(PW.getName(war.getDefender_aa(), true), other));
                 cost.addAttack(attack, false);
             }
         }

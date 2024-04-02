@@ -64,7 +64,7 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -345,7 +345,7 @@ public class PlaceholdersMap {
                 return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
             }
         }
-        Integer aaId = PnwUtil.parseAllianceId(input);
+        Integer aaId = PW.parseAllianceId(input);
         if (aaId != null) {
             return Set.of(DBAlliance.getOrCreate(aaId));
         }
@@ -354,7 +354,7 @@ public class PlaceholdersMap {
             return Set.of(DBNation.getOrCreate(nationId));
         }
         if (input.contains("tax_id=")) {
-            int taxId = PnwUtil.parseTaxId(input);
+            int taxId = PW.parseTaxId(input);
             return (Set) Locutus.imp().getNationDB().getNationsByBracket(taxId);
         }
         if (input.charAt(0) == '~') input = input.substring(1);
@@ -1777,7 +1777,7 @@ public class PlaceholdersMap {
                 return f -> ids.contains(f.getId());
             }
             if (input.contains("tx_id=") || MathMan.isInteger(input)) {
-                int id = PnwUtil.parseTaxId(input);
+                int id = PW.parseTaxId(input);
                 return f -> f.getId() == id;
             }
             AlliancePlaceholders aaPlaceholders = (AlliancePlaceholders) get(DBAlliance.class);

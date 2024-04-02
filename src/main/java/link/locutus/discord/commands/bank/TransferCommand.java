@@ -19,7 +19,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.*;
 import org.json.JSONObject;
@@ -107,7 +107,7 @@ public class TransferCommand extends Command {
         if (args.size() < 3) return usage();
         NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
         String rssStr = args.size() > 3 ? args.get(1) + " " + args.get(2) : args.get(1);
-        Map<ResourceType, Double> transfer = PnwUtil.parseResources(rssStr);
+        Map<ResourceType, Double> transfer = ResourceType.parseResources(rssStr);
         String noteStr = args.get(args.size() - 1);
         DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(noteStr);
 
@@ -125,7 +125,7 @@ public class TransferCommand extends Command {
         // String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks
         JSONObject command = CM.transfer.resources.cmd.create(
                 receiver.getUrl(),
-                PnwUtil.resourcesToString(transfer),
+                ResourceType.resourcesToString(transfer),
                 depositType.toString(),
                 nationAccount != null ? nationAccount.getUrl() : null,
                 allianceAccount != null ? allianceAccount.getUrl() : null,

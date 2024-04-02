@@ -13,7 +13,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -250,8 +250,8 @@ public class CounterSheet extends Command {
                 row.add("");
             }
 
-            row.add(MarkupUtil.sheetUrl(enemy.getNation(), PnwUtil.getUrl(enemy.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(enemy.getAllianceName(), PnwUtil.getUrl(enemy.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(enemy.getNation(), PW.getUrl(enemy.getNation_id(), false)));
+            row.add(MarkupUtil.sheetUrl(enemy.getAllianceName(), PW.getUrl(enemy.getAlliance_id(), true)));
             row.add(actionStr);
             row.add( rank == null ? "" : rank.name());
 

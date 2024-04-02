@@ -1,7 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.db.AEmbeddingDatabase;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 
 public class EmbeddingSource {

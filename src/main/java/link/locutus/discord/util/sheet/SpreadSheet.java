@@ -20,7 +20,7 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -478,13 +478,13 @@ public class SpreadSheet {
                     ignore.printStackTrace();
                 }
                 if (rssName.toString().equalsIgnoreCase("cost_raw") || rssName.toString().equalsIgnoreCase("deposit_raw") || rssName.toString().equalsIgnoreCase("resources")) {
-                    for (Map.Entry<ResourceType, Double> entry : PnwUtil.parseResources(amtStr.toString()).entrySet()) {
+                    for (Map.Entry<ResourceType, Double> entry : ResourceType.parseResources(amtStr.toString()).entrySet()) {
                         transfer.putIfAbsent(entry.getKey(), entry.getValue());
                     }
                 }
             }
             if (transfer.isEmpty()) continue;
-            if (negative) transfer = PnwUtil.subResourcesToA(new LinkedHashMap<>(), transfer);
+            if (negative) transfer = ResourceType.subResourcesToA(new LinkedHashMap<>(), transfer);
 
 
             NationOrAllianceOrGuildOrTaxid account = PWBindings.nationOrAllianceOrGuildOrTaxId(nameStr, true);

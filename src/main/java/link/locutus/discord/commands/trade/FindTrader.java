@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -101,7 +101,7 @@ public class FindTrader extends Command {
             double amount = entry.getValue();
             double myPpu = ppu.get(nationId)[type.ordinal()];
 //                nationName.add(MarkupUtil.markdownUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
-            nationName.add(PnwUtil.getName(nationId, groupByAlliance));
+            nationName.add(PW.getName(nationId, groupByAlliance));
             amtList.add(MathMan.format(amount));
             ppuList.add("$" + MathMan.format(myPpu));
         }

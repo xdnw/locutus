@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.AllianceChange;
@@ -13,7 +12,7 @@ import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
@@ -375,7 +374,7 @@ public class ReportManager {
             if (offer.getResource() == ResourceType.CREDITS) continue;
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
             if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
-            double value = Math.max(PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity()), offer.getTotal());
+            double value = Math.max(ResourceType.convertedTotal(offer.getResource(), offer.getQuantity()), offer.getTotal());
             int id = offer.getBuyer() == nation.getNation_id() ? offer.getSeller() : offer.getBuyer();
             moneyTrades.compute(id, (k, v) -> v == null ? value : v + value);
         }
@@ -541,13 +540,13 @@ public class ReportManager {
         public String toMarkdown(boolean includeComments) {
             StringBuilder body = new StringBuilder("Report `#" + reportId + "` - " + type + "\n");
             if (nationId != 0) {
-                body.append("Nation: " + PnwUtil.getMarkdownUrl(nationId, false) + "\n");
+                body.append("Nation: " + PW.getMarkdownUrl(nationId, false) + "\n");
             }
             if (discordId != 0) {
                 body.append("Discord: `" + DiscordUtil.getUserName(discordId) + "` | `" + discordId + "`\n");
             }
-            String reporterNationLink = PnwUtil.getMarkdownUrl(reporterNationId, false);
-            String reporterAllianceLink = PnwUtil.getMarkdownUrl(reporterAllianceId, true);
+            String reporterNationLink = PW.getMarkdownUrl(reporterNationId, false);
+            String reporterAllianceLink = PW.getMarkdownUrl(reporterAllianceId, true);
             String reporterGuildLink = markdownUrl(getGuildName(reporterGuildId), DiscordUtil.getGuildUrl(reporterGuildId));
             body.append("Reported by: " + reporterNationLink + " | " + reporterAllianceLink  + " | <@" + reporterDiscordId + "> | " + reporterGuildLink + "\n");
             body.append("```\n" + message + "\n```\n");
@@ -581,7 +580,7 @@ public class ReportManager {
         public String getTitle() {
             String msg = "";
             if (nationId != 0) {
-                msg += PnwUtil.getName(nationId, false);
+                msg += PW.getName(nationId, false);
             }
             if (discordId != 0) {
                 if (!msg.isEmpty()) msg += " | ";
@@ -686,7 +685,7 @@ public class ReportManager {
         public String toMarkdown() {
             StringBuilder msg = new StringBuilder();
             msg.append("[" + DiscordUtil.timestamp(date, null) + "]");
-            msg.append("(by: " + PnwUtil.getName(nationId, false) + " | " + DiscordUtil.getUserName(discordId) + "):\n");
+            msg.append("(by: " + PW.getName(nationId, false) + " | " + DiscordUtil.getUserName(discordId) + "):\n");
             msg.append("> " + comment.replace("\n", "\n> "));
             return msg.toString();
         }

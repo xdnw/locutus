@@ -11,7 +11,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.Auth;
 import net.dv8tion.jda.api.entities.Guild;
@@ -46,7 +46,7 @@ public class SendTreaty extends Command {
         if (args.size() < 3) return usage(args.size(), 3, channel);
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
-        Integer aaId = PnwUtil.parseAllianceId(args.get(0));
+        Integer aaId = PW.parseAllianceId(args.get(0));
         TreatyType type;
         try {
             type = TreatyType.parse(args.get(1));

@@ -19,7 +19,7 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.TaxRecordCategorizer2;
@@ -93,7 +93,7 @@ public class EconPages {
                 double[][] buffer = total.computeIfAbsent(entry2.getKey(), f -> new double[typeDataByTurn.length][ResourceType.values.length]);
 
                 for (int i = 0; i < buffer.length; i++) {
-                    PnwUtil.add(buffer[i], typeDataByTurn[i]);
+                    ResourceType.add(buffer[i], typeDataByTurn[i]);
                 }
             }
         }

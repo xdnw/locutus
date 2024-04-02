@@ -1,11 +1,12 @@
 package link.locutus.discord.commands.bank;
 
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -31,6 +32,6 @@ public class SafekeepCommand extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
-        return me.getAuth(true).safekeep(PnwUtil.parseResources(args.get(0))) + "\nDone!";
+        return me.getAuth(true).safekeep(ResourceType.parseResources(args.get(0))) + "\nDone!";
     }
 }

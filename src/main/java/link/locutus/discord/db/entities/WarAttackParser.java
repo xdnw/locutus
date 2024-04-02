@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -26,8 +26,8 @@ public class WarAttackParser {
     private final Function<AbstractCursor, Boolean> isPrimary, isSecondary;
 
     public WarAttackParser(DBWar war, boolean attacker) {
-        nameA = PnwUtil.getName(war.getAttacker_id(), false);
-        nameB = PnwUtil.getName(war.getDefender_id(), false);
+        nameA = PW.getName(war.getAttacker_id(), false);
+        nameB = PW.getName(war.getDefender_id(), false);
         Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == war.getAttacker_id();
         Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == war.getDefender_id();
         this.isPrimary = attacker ? isPrimary : isSecondary;
@@ -58,8 +58,8 @@ public class WarAttackParser {
 
                 attacks = Locutus.imp().getWarDb().getAttacksByWarId2(warUrl, true);
 
-                nameA = PnwUtil.getName(warUrl.getAttacker_id(), false);
-                nameB = PnwUtil.getName(warUrl.getDefender_id(), false);
+                nameA = PW.getName(warUrl.getAttacker_id(), false);
+                nameB = PW.getName(warUrl.getDefender_id(), false);
                 DBWar finalWarUrl = warUrl;
                 isPrimary = a -> a.getAttacker_id() == finalWarUrl.getAttacker_id();
                 isSecondary = b -> b.getAttacker_id() == finalWarUrl.getDefender_id();
@@ -269,13 +269,13 @@ public class WarAttackParser {
 
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, inclAttacks));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PW.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, inclAttacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = isPrimary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, inclAttacks));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PW.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, inclAttacks));
                 cost.addCost(attack, false);
             }
         }
@@ -289,13 +289,13 @@ public class WarAttackParser {
             DBWar war = wars.get(attack.getWar_id());
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PnwUtil.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, inclWars, inclAttacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PW.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, inclWars, inclAttacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = isPrimary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PnwUtil.getName(war.getDefender_aa(), true), other, buildings, ids, victories, inclWars, inclAttacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PW.getName(war.getDefender_aa(), true), other, buildings, ids, victories, inclWars, inclAttacks));
                 cost.addCost(attack, false);
             }
         }

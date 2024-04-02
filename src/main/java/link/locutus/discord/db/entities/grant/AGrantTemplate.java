@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -18,7 +19,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
@@ -219,7 +220,7 @@ public abstract class AGrantTemplate<T> {
             System.out.println(6.8);
             double[] cost = getCost(db, sender, receiver, parsed);
             if (cost != null) {
-                data.append("Cost: `").append(PnwUtil.resourcesToString(cost)).append("`\n");
+                data.append("Cost: `").append(ResourceType.resourcesToString(cost)).append("`\n");
             }
             System.out.println(6.9);
             List<Grant.Requirement> requirements = getDefaultRequirements(sender, receiver, parsed);

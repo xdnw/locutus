@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.Collection;
 import java.util.Locale;
@@ -67,7 +67,7 @@ public enum  NationColor implements NationList {
         if (this == BEIGE) return 50_000;
         double totalRev = 0;
         for (DBNation nation : nationsOnColor) {
-            totalRev += PnwUtil.convertedTotal(nation.getRevenue()) / 12d;
+            totalRev += ResourceType.convertedTotal(nation.getRevenue()) / 12d;
         }
         double colorRev = Math.round((totalRev / Math.pow(nationsOnColor.size(), 2)));
         if (cap) {

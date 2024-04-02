@@ -26,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -336,7 +337,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Daily revenue value of nation")
     public double getRevenueConverted() {
-        return PnwUtil.convertedTotal(getRevenue());
+        return ResourceType.convertedTotal(getRevenue());
     }
 
     @Command(desc = "Estimated daily Gross National Income (GNI)")
@@ -643,7 +644,7 @@ public class DBNation implements NationOrAlliance {
                 lastLootDate = Math.max(lastLootDate, recent);
             }
         }
-        double cityCost = PnwUtil.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING), hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        double cityCost = PW.City.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING), hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
         double maxStockpile = cityCost * 2;
         double daysToMax = maxStockpile / (getInfra() * 300);
         if (lastLootDate == 0) {
@@ -899,7 +900,7 @@ public class DBNation implements NationOrAlliance {
         post.put("nation_id", getNation_id() + "");
         String url = String.format("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s&display=taxes", alliance_id);
 
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             String token = auth.getToken(PagePriority.BRACKET_SET_UNUSED, url);
             post.put("token", token);
 
@@ -1785,7 +1786,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double getNetDepositsConverted(GuildDB db, long updateThreshold) throws IOException {
-        return PnwUtil.convertedTotal(getNetDeposits(db, updateThreshold, false));
+        return ResourceType.convertedTotal(getNetDeposits(db, updateThreshold, false));
     }
 
     public List<Transaction2> getTransactions(boolean priority) {
@@ -2371,18 +2372,18 @@ public class DBNation implements NationOrAlliance {
             citiesNoRaws.put(cityEntry.getKey(), city);
         }
 
-        double[] daily = PnwUtil.getRevenue(null, 12, this, cityMap.values(), true, true, true, false, false, 0d);
-        double[] turn = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, false, 0d);
-        double[] turn2 = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, true, false, 0d);
+        double[] daily = PW.getRevenue(null, 12, this, cityMap.values(), true, true, true, false, false, 0d);
+        double[] turn = PW.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, false, 0d);
+        double[] turn2 = PW.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, true, false, 0d);
         turn[ResourceType.MONEY.ordinal()] = Math.min(turn[ResourceType.MONEY.ordinal()], turn2[ResourceType.MONEY.ordinal()]);
         turn[ResourceType.FOOD.ordinal()] = Math.min(turn[ResourceType.FOOD.ordinal()], turn2[ResourceType.FOOD.ordinal()]);
 
 //        turn[0] = Math.min(daily[0], turn[0]);
 
-        Map<ResourceType, Double> profit = PnwUtil.resourcesToMap(daily);
-        Map<ResourceType, Double> profitDays = PnwUtil.multiply(profit, (double) days);
+        Map<ResourceType, Double> profit = ResourceType.resourcesToMap(daily);
+        Map<ResourceType, Double> profitDays = PW.multiply(profit, (double) days);
         Map<ResourceType, Double> toSendNation = new HashMap<>();
-        Map<ResourceType, Double> minResources = PnwUtil.resourcesToMap(turn);
+        Map<ResourceType, Double> minResources = ResourceType.resourcesToMap(turn);
         for (ResourceType type : ResourceType.values) {
             double current = stockpile.getOrDefault(type, 0d);
             double required = Math.min(minResources.getOrDefault(type, 0d), profitDays.getOrDefault(type, 0d));
@@ -2425,7 +2426,7 @@ public class DBNation implements NationOrAlliance {
         }
 
         double[] stockpile = new PoliticsAndWarV3(pool).getStockPile(f -> f.setId(List.of(nation_id))).get(nation_id);
-        return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
+        return stockpile == null ? null : ResourceType.resourcesToMap(stockpile);
     }
 
     @Command(desc = "Get nation deposits")
@@ -2446,13 +2447,13 @@ public class DBNation implements NationOrAlliance {
         if (filter != null) {
             transactions.removeIf(f -> !filter.test(f.getValue()));
         }
-        Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, null, transactions, includeExpired, includeIgnored, filter);
+        Map<DepositType, double[]> sum = PW.sumNationTransactions(db, null, transactions, includeExpired, includeIgnored, filter);
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
             if (excludeTypes != null && excludeTypes.contains(entry.getKey())) continue;
-            total = PnwUtil.add(total, entry.getValue());
+            total = ResourceType.add(total, entry.getValue());
         }
-        return PnwUtil.resourcesToMap(total);
+        return ResourceType.resourcesToMap(total);
     }
 
     public ApiKeyPool.ApiKey getApiKey(boolean dummy) {
@@ -2521,7 +2522,7 @@ public class DBNation implements NationOrAlliance {
     }
     public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
         List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
-        Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
+        Map<DepositType, double[]> sum = PW.sumNationTransactions(db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         return sum;
     }
 
@@ -2775,14 +2776,14 @@ public class DBNation implements NationOrAlliance {
     public double getCityCostSince(@Timestamp long time, boolean allowProjects) {
         int numBuilt = getCitiesSince(time);
         int from = cities - numBuilt;
-        return PnwUtil.cityCost(allowProjects ? this : null, from, cities);
+        return PW.City.cityCost(allowProjects ? this : null, from, cities);
     }
 
     @Command(desc = "Cost of cities built since a date divided by the current city count")
     public double getCityCostPerCitySince(@Timestamp long time, boolean allowProjects) {
         int numBuilt = getCitiesSince(time);
         int from = cities - numBuilt;
-        return numBuilt > 0 ? PnwUtil.cityCost(allowProjects ? this : null, from, cities) / numBuilt : 0;
+        return numBuilt > 0 ? PW.City.cityCost(allowProjects ? this : null, from, cities) / numBuilt : 0;
     }
 
     /**
@@ -3392,9 +3393,9 @@ public class DBNation implements NationOrAlliance {
         for (ResourceType type : ResourceType.values) {
             double value = revenue[type.ordinal()];
             if (value < 0) {
-                consumeCost += PnwUtil.convertedTotal(type, -value);
+                consumeCost += ResourceType.convertedTotal(type, -value);
             } else {
-                taxable += -PnwUtil.convertedTotal(type, -value);
+                taxable += -ResourceType.convertedTotal(type, -value);
             }
         }
         if (taxable > consumeCost) {
@@ -3427,7 +3428,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
         double rads = forceRads != null ? forceRads : getRads();
         boolean atWar = forceAtWar != null ? forceAtWar : getNumWars() > 0;
-        double[] revenue = PnwUtil.getRevenue(null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
+        double[] revenue = PW.getRevenue(null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
         return revenue;
     }
 
@@ -3451,7 +3452,7 @@ public class DBNation implements NationOrAlliance {
     @WhitelistPermission
     public double getBeigeLootTotal() {
         LootEntry loot = getBeigeLoot();
-        return loot == null ? 0 : PnwUtil.convertedTotal(loot.getTotal_rss());
+        return loot == null ? 0 : ResourceType.convertedTotal(loot.getTotal_rss());
     }
 
     @Command(desc = "Estimated loot value including aliance bank loot when defeated in a raid war based on last war loss or espionage")
@@ -3463,7 +3464,7 @@ public class DBNation implements NationOrAlliance {
 
         if (getPosition() > 1 && alliance_id != 0) {
             Map<ResourceType, Double> aaLoot = Locutus.imp().getWarDb().getAllianceBankEstimate(getAlliance_id(), getScore());
-            convertedTotal += PnwUtil.convertedTotal(aaLoot);
+            convertedTotal += ResourceType.convertedTotal(aaLoot);
         }
         return convertedTotal;
     }
@@ -3517,14 +3518,14 @@ public class DBNation implements NationOrAlliance {
         int turnsInactive = getTurnsInactive(loot);
         double lootFactor = 0.14 * lootModifier();
 
-        double[] lootRevenue = loot == null ? ResourceType.getBuffer() : PnwUtil.multiply(loot.getTotal_rss().clone(), lootFactor);
+        double[] lootRevenue = loot == null ? ResourceType.getBuffer() : PW.multiply(loot.getTotal_rss().clone(), lootFactor);
         if (getPositionEnum().id > Rank.APPLICANT.id) {
             DBAlliance alliance = getAlliance(false);
             if (alliance != null) {
                 LootEntry aaLoot = alliance.getLoot();
                 if (aaLoot != null) {
                     double[] lootScaled = aaLoot.getAllianceLootValue(getScore());
-                    lootRevenue = PnwUtil.add(lootRevenue, lootScaled);
+                    lootRevenue = ResourceType.add(lootRevenue, lootScaled);
                 }
             }
         }
@@ -3561,20 +3562,20 @@ public class DBNation implements NationOrAlliance {
                 if (turnsUnfedUnpowered > 0) {
                     revenue = getRevenue(turnsUnfedUnpowered, true, true, false, true, true, true, 0d, false);
                 }
-                revenue = PnwUtil.capManuFromRaws(revenue, ResourceType.getBuffer());
+                revenue = PW.capManuFromRaws(revenue, ResourceType.getBuffer());
             }
             if (turnsPowered > 0) {
                 int turnsFedPowered = Math.min(turnsFed, turnsPowered);
                 int turnsUnfedPowered = turnsPowered - turnsFedPowered;
                 if (turnsFedPowered > 0) {
-                    revenue = PnwUtil.add(revenue, getRevenue(turnsFedPowered, true, true, false, true, false, false, 0d, false));
+                    revenue = ResourceType.add(revenue, getRevenue(turnsFedPowered, true, true, false, true, false, false, 0d, false));
                 }
                 if (turnsUnfedPowered > 0) {
-                    revenue = PnwUtil.add(revenue, getRevenue(turnsUnfedPowered, true, true, false, true, true, false, 0d, false));
+                    revenue = ResourceType.add(revenue, getRevenue(turnsUnfedPowered, true, true, false, true, true, false, 0d, false));
                 }
             }
             if (loot != null) {
-                revenue = PnwUtil.capManuFromRaws(revenue, loot.getTotal_rss());
+                revenue = PW.capManuFromRaws(revenue, loot.getTotal_rss());
             }
             for (int i = 0; i < lootRevenue.length; i++) {
                 lootRevenue[i] += revenue[i] * lootFactor;
@@ -3590,7 +3591,7 @@ public class DBNation implements NationOrAlliance {
                 knownResources[i] = loot[i];
             }
         }
-        return PnwUtil.convertedTotal(knownResources);
+        return ResourceType.convertedTotal(knownResources);
 //        if (active_m() > TimeUnit.DAYS.toMinutes(90)) {
 //            return 0;
 //        }
@@ -3827,6 +3828,52 @@ public class DBNation implements NationOrAlliance {
     public User getUser() {
         PNWUser dbUser = getDBUser();
         return dbUser != null ? dbUser.getUser() : null;
+    }
+
+    @Command(desc = "Get the discord user object")
+    public UserWrapper getDiscordUser(@Me Guild guild) {
+        User user = getUser();
+        if (user == null || guild == null) return null;
+        Member member = guild.getMember(user);
+        return member == null ? null : new UserWrapper(member);
+    }
+
+    @Command(desc = "Get the average value of a city attribute for this nation's cities")
+    public double getCityAvg(TypedFunction<DBCity, Double> attribute) {
+        Map<Integer, DBCity> cities = _getCitiesV3();
+        double total = 0;
+        for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+            Double value = attribute.get(entry.getValue());
+            if (value != null) total += value;
+        }
+        return total / cities.size();
+    }
+
+    @Command(desc = "Get the summed total of a city attribute for this nation's cities")
+    public double getCityTotal(TypedFunction<DBCity, Double> attribute) {
+        Map<Integer, DBCity> cities = _getCitiesV3();
+        double total = 0;
+        for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+            Double value = attribute.get(entry.getValue());
+            if (value != null) total += value;
+        }
+        return total;
+    }
+
+    @Command(desc = "Get the maximum value of a city attribute for this nation's cities")
+    public double getCityMax(TypedFunction<DBCity, Double> attribute) {
+        Map<Integer, DBCity> cities = _getCitiesV3();
+        double max = 0;
+        for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+            Double value = attribute.get(entry.getValue());
+            if (value != null) max = Math.max(max, value);
+        }
+        return max;
+    }
+
+    @Command(desc = "Get the average city disease")
+    public double getAvgDisease() {
+        return getCityAvg(DBCity::getDisease);
     }
 
     public Map.Entry<Long, String> getUnblockadeRequest() {
@@ -4112,17 +4159,17 @@ public class DBNation implements NationOrAlliance {
             }
 
             if (ResourceType.isZero(toDeposit)) {
-                response.append("\n- No trades to deposit " + PnwUtil.resourcesToString(toDeposit));
+                response.append("\n- No trades to deposit " + ResourceType.resourcesToString(toDeposit));
                 return Map.entry(ResourceType.getBuffer(), response.toString());
             }
-            double[] depositPositive = PnwUtil.max(toDeposit.clone(), ResourceType.getBuffer());
+            double[] depositPositive = ResourceType.max(toDeposit.clone(), ResourceType.getBuffer());
             int receiverId;
             try {
                 Bankrec deposit = receiverApi.depositIntoBank(depositPositive, "#ignore");
                 double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
-                response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
+                response.append("\nDeposited: `" + ResourceType.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(depositPositive, amt)) {
-                    response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(depositPositive) + " != " + PnwUtil.resourcesToString(amt));
+                    response.append("\n- Error Depositing: " + ResourceType.resourcesToString(depositPositive) + " != " + ResourceType.resourcesToString(amt));
                     return Map.entry(ResourceType.getBuffer(), response.toString());
                 }
                 receiverId = deposit.getReceiver_id();
@@ -4138,7 +4185,7 @@ public class DBNation implements NationOrAlliance {
                 for (int i = 0; i < toDeposit.length; i++) {
                     if (toDeposit[i] < 0) toDeposit[i] = 0;
                 }
-                TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(depositPositive), "#ignore", null);
+                TransferResult transferResult = bank.transfer(offshore.getAlliance(), ResourceType.resourcesToMap(depositPositive), "#ignore", null);
                 response.append("Offshore " + transferResult.toLineString());
                 if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                     response.append("\n- Depositing failed");
@@ -4153,10 +4200,10 @@ public class DBNation implements NationOrAlliance {
             response.append("\nAdding deposits:");
 
             offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), getNation_id(), note, toDeposit);
-            response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
+            response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
             // add balance to expectedNation
             currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, getNation_id(), note, toDeposit);
-            response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
+            response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
 
             MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
@@ -4239,7 +4286,7 @@ public class DBNation implements NationOrAlliance {
             return List.of(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
         }
 
-        double[] amountArr = amount == null ? null : PnwUtil.resourcesToArray(amount);
+        double[] amountArr = amount == null ? null : ResourceType.resourcesToArray(amount);
 
         tradesV3.removeIf(f -> f.getSender_id() == null || f.getSender_id() != expectedNationId);
         tradesV3.removeIf((Predicate<Trade>) f -> {
@@ -4459,19 +4506,19 @@ public class DBNation implements NationOrAlliance {
         //
         //Attack Range: War= | Spy=
         {
-            double offWarMin = PnwUtil.getAttackRange(true, true, true, score);
-            double offWarMax = PnwUtil.getAttackRange(true, true, false, score);
-            double offSpyMin = PnwUtil.getAttackRange(true, false, true, score);
-            double offSpyMax = PnwUtil.getAttackRange(true, false, false, score);
+            double offWarMin = PW.getAttackRange(true, true, true, score);
+            double offWarMax = PW.getAttackRange(true, true, false, score);
+            double offSpyMin = PW.getAttackRange(true, false, true, score);
+            double offSpyMax = PW.getAttackRange(true, false, false, score);
             // use MathMan.format to format doubles
             body.append("**Attack Range**: War=`").append(MathMan.format(offWarMin)).append("-").append(MathMan.format(offWarMax)).append("` | Spy=`").append(MathMan.format(offSpyMin)).append("-").append(MathMan.format(offSpyMax)).append("`\n");
         }
         //Defense Range: War= | Spy=
         {
-            double defWarMin = PnwUtil.getAttackRange(false, true, true, score);
-            double defWarMax = PnwUtil.getAttackRange(false, true, false, score);
-            double defSpyMin = PnwUtil.getAttackRange(false, false, true, score);
-            double defSpyMax = PnwUtil.getAttackRange(false, false, false, score);
+            double defWarMin = PW.getAttackRange(false, true, true, score);
+            double defWarMax = PW.getAttackRange(false, true, false, score);
+            double defSpyMin = PW.getAttackRange(false, false, true, score);
+            double defSpyMax = PW.getAttackRange(false, false, false, score);
             // use MathMan.format to format doubles
             body.append("**Defense Range**: War=`").append(MathMan.format(defWarMin)).append("-").append(MathMan.format(defWarMax)).append("` | Spy=`").append(MathMan.format(defSpyMin)).append("-").append(MathMan.format(defSpyMax)).append("`\n");
         }
@@ -4500,8 +4547,8 @@ public class DBNation implements NationOrAlliance {
         // - Worth: $10
         double[] revenue = getRevenue();
         body.append("**Revenue:**");
-        body.append(" worth: `$").append(MathMan.format(PnwUtil.convertedTotal(revenue))).append("`");
-        body.append("\n```json\n").append(PnwUtil.resourcesToString(revenue)).append("\n``` ");
+        body.append(" worth: `$").append(MathMan.format(ResourceType.convertedTotal(revenue))).append("`");
+        body.append("\n```json\n").append(ResourceType.resourcesToString(revenue)).append("\n``` ");
         //
         body.append("\n");
         //Projects: 5/10 | [Projects] (bold VDS and ID)
@@ -4930,7 +4977,7 @@ public class DBNation implements NationOrAlliance {
         if (db == null) return 0;
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
         double[] depo = getNetDeposits(db, includeGrants, -1, false);
-        return PnwUtil.convertedTotal(depo);
+        return ResourceType.convertedTotal(depo);
     }
 
     @Command(desc = "If on the correct MMR for their alliance (if one is set)")
@@ -5147,10 +5194,10 @@ public class DBNation implements NationOrAlliance {
                     DBNation buyer = trade.getBuyerNation();
                     DBNation seller = trade.getSellerNation();
                     if (buyer != null && nationIds.contains(buyer.getNation_id())) {
-                        value.put(buyer, value.getOrDefault(buyer, 0d) + PnwUtil.convertedTotal(trade.getResource(), trade.getQuantity()));
+                        value.put(buyer, value.getOrDefault(buyer, 0d) + ResourceType.convertedTotal(trade.getResource(), trade.getQuantity()));
                     }
                     if (seller != null && nationIds.contains(seller.getNation_id())) {
-                        value.put(seller, value.getOrDefault(seller, 0d) + PnwUtil.convertedTotal(trade.getResource(), trade.getQuantity()));
+                        value.put(seller, value.getOrDefault(seller, 0d) + ResourceType.convertedTotal(trade.getResource(), trade.getQuantity()));
                     }
                 }
                 return value;
@@ -5160,7 +5207,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double infraCost(double from, double to) {
-        return PnwUtil.calculateInfra(from, to,
+        return PW.City.Infra.calculateInfra(from, to,
                 hasProject(Projects.ADVANCED_ENGINEERING_CORPS),
                 hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING),
                 getDomesticPolicy() == DomesticPolicy.URBANIZATION,
@@ -5175,7 +5222,7 @@ public class DBNation implements NationOrAlliance {
             factor -= 0.05;
             if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
         }
-        return PnwUtil.calculateLand(from, to) * (to > from ? factor : 1);
+        return PW.City.Land.calculateLand(from, to) * (to > from ? factor : 1);
     }
 
     public double printScore() {
@@ -5212,9 +5259,9 @@ public class DBNation implements NationOrAlliance {
         double factor = 3;
         Map<ResourceType, Double> required;
         if (getCities() >= 10 && getAircraft() > 0) {
-            required = PnwUtil.multiply(db.getPerCityWarchest(), (double) getCities());
+            required = PW.multiply(db.getPerCityWarchest(), (double) getCities());
         } else {
-            required = PnwUtil.multiply(db.getPerCityWarchest(), (double) getCities() * 0.33);
+            required = PW.multiply(db.getPerCityWarchest(), (double) getCities() * 0.33);
             required.remove(ResourceType.ALUMINUM);
             required.remove(ResourceType.URANIUM);
             required.remove(ResourceType.FOOD);
@@ -5228,7 +5275,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, JavaCity> cityMap = getCityMap(update, false);
         for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(continent, getRads(), -1L, this::hasProject, null, cities, 1, 12));
+            Map<ResourceType, Double> cityProfit = ResourceType.resourcesToMap(city.profit(continent, getRads(), -1L, this::hasProject, null, cities, 1, 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue() * 7);
@@ -5245,7 +5292,7 @@ public class DBNation implements NationOrAlliance {
 
         stockpile.entrySet().removeIf(e -> e.getValue() <= 0);
 
-        double excessTotal = PnwUtil.convertedTotal(stockpile);
+        double excessTotal = ResourceType.convertedTotal(stockpile);
         if (excessTotal > 1000000L * getCities()) {
             return stockpile;
         }
@@ -5607,7 +5654,7 @@ public class DBNation implements NationOrAlliance {
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             double cityInfra = entry.getValue().getInfra();
             if (cityInfra < toInfra) {
-                total += PnwUtil.calculateInfra(cityInfra, toInfra,
+                total += PW.City.Infra.calculateInfra(cityInfra, toInfra,
                         hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC,
                         hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || forceCFCE,
                         getDomesticPolicy() == DomesticPolicy.URBANIZATION || forceUrbanization,
@@ -5630,7 +5677,7 @@ public class DBNation implements NationOrAlliance {
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             double cityLand = entry.getValue().getLand();
             if (cityLand < toLand) {
-                total += PnwUtil.calculateLand(cityLand, toLand) * factor;
+                total += PW.City.Land.calculateLand(cityLand, toLand) * factor;
             }
         }
         return total;
@@ -5664,29 +5711,29 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Can perform a spy attack against a nation of score")
     public boolean canSpyOnScore(double score) {
-        double min = PnwUtil.getAttackRange(true, false, true, score);
-        double max = PnwUtil.getAttackRange(true, false, false, score);
+        double min = PW.getAttackRange(true, false, true, score);
+        double max = PW.getAttackRange(true, false, false, score);
         return score >= min && score <= max;
     }
 
     @Command(desc = "Can be spied by a nation of score")
     public boolean canBeSpiedByScore(double score) {
-        double min = PnwUtil.getAttackRange(false, false, true, score);
-        double max = PnwUtil.getAttackRange(false, false, false, score);
+        double min = PW.getAttackRange(false, false, true, score);
+        double max = PW.getAttackRange(false, false, false, score);
         return score >= min && score <= max;
     }
 
     @Command(desc = "Can declare war on a nation of score")
         public boolean canDeclareOnScore(double score) {
-        double min = PnwUtil.getAttackRange(true, true, true, score);
-        double max = PnwUtil.getAttackRange(true, true, false, score);
+        double min = PW.getAttackRange(true, true, true, score);
+        double max = PW.getAttackRange(true, true, false, score);
         return score >= min && score <= max;
     }
 
     @Command(desc = "Can be declared on by a nation of score")
     public boolean canBeDeclaredOnByScore(double score) {
-        double min = PnwUtil.getAttackRange(false, true, true, score);
-        double max = PnwUtil.getAttackRange(false, true, false, score);
+        double min = PW.getAttackRange(false, true, true, score);
+        double max = PW.getAttackRange(false, true, false, score);
         return score >= min && score <= max;
     }
 
@@ -5964,7 +6011,7 @@ public class DBNation implements NationOrAlliance {
         for (AbstractCursor attack : attacks) {
             if (attack.getAttacker_id() == nation_id) {
                 double[] loot = attack.getLoot();
-                if (loot != null) total += PnwUtil.convertedTotal(loot);
+                if (loot != null) total += ResourceType.convertedTotal(loot);
             }
         }
         return total;
@@ -6109,7 +6156,7 @@ public class DBNation implements NationOrAlliance {
             }
         };
         try {
-            espionageFull = PnwUtil.withLogin(task, auth);
+            espionageFull = PW.withLogin(task, auth);
         } catch (Exception e) {
             e.printStackTrace();
         }

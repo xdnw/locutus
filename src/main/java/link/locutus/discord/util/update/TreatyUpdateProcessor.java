@@ -10,7 +10,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.ImageUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -82,13 +82,13 @@ public class TreatyUpdateProcessor {
         int maxRank = Integer.MAX_VALUE;
         StringBuilder body = new StringBuilder();
         body.append("Time remaining: " + DiscordUtil.timestamp(existing.getEndTime(), null) + " (" + existing.getTurnsRemaining() + " turns)\n");
-        body.append("From: " + PnwUtil.getMarkdownUrl(existing.getFromId(), true));
+        body.append("From: " + PW.getMarkdownUrl(existing.getFromId(), true));
         if (fromAA != null) {
             maxRank = fromAA.getRank();
             body.append(" - #" + maxRank + " (" + fromAA.getNations(true, 7200, true).size() + " nations)");
         }
         body.append("\n");
-        body.append("To: " + PnwUtil.getMarkdownUrl(existing.getToId(), true));
+        body.append("To: " + PW.getMarkdownUrl(existing.getToId(), true));
         if (toAA != null) {
             int rank = toAA.getRank();
             maxRank = Math.min(maxRank, rank);

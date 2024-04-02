@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -351,7 +351,7 @@ public class TradeDB extends DBMainV2 {
 
         public String toSimpleString() {
             String result = "#" + id + ": `" +
-                    PnwUtil.getName(nation, false) + "` " +
+                    PW.getName(nation, false) + "` " +
                     (isBuy ? "Buying" : "Selling") + " " +
                     MathMan.format(quantity) + "x " +
                     getResource() + " for " +
@@ -407,7 +407,7 @@ public class TradeDB extends DBMainV2 {
                 response.append(" | Ends: " + DiscordUtil.timestamp(expire, null));
             }
             DBNation dbNation = getNation();
-            response.append(" | By: " + PnwUtil.getName(nation, false));
+            response.append(" | By: " + PW.getName(nation, false));
             Long userId = dbNation == null ? null : dbNation.getUserId();
             if (userId != null) response.append(" <@" + userId + ">");
             if (negotiable) response.append(" | **NEGOTIABLE**");
@@ -416,7 +416,7 @@ public class TradeDB extends DBMainV2 {
         }
 
         public String getTitle() {
-            return "#" + id + ": " + PnwUtil.getName(nation, false) + " " + (isBuy ? "Buying" : "Selling") + " " + MathMan.format(quantity) + "x " + getResource();
+            return "#" + id + ": " + PW.getName(nation, false) + " " + (isBuy ? "Buying" : "Selling") + " " + MathMan.format(quantity) + "x " + getResource();
         }
 
         public String toPrettyString() {

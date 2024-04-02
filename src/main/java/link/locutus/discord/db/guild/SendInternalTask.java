@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -129,7 +129,7 @@ public class SendInternalTask {
                 NationOrAllianceOrGuild account = senderAlliance != null ? senderAlliance : senderDB;
                 senderOffshore.getGuildDB().addTransfer(now, 0, 0, account.getIdLong(), account.getReceiverType(), bankerNation.getId(), "#deposit", amount);
                 // ensure subtraction is correct, else throw error (include instructions to unlock account)
-                double[] newBalance = PnwUtil.resourcesToArray(senderAlliance != null ? senderOffshore.getDeposits(senderAlliance.getAlliance_id(), false) : senderOffshore.getDeposits(senderDB.getIdLong(), false));
+                double[] newBalance = ResourceType.resourcesToArray(senderAlliance != null ? senderOffshore.getDeposits(senderAlliance.getAlliance_id(), false) : senderOffshore.getDeposits(senderDB.getIdLong(), false));
                 TransferResult error = checkDiff(accountBalance, newBalance, account);
                 if (error != null) return List.of(error);
             }
@@ -137,7 +137,7 @@ public class SendInternalTask {
             // add to offshore account
             if (accountBalance != null) {
                 if (senderOffshore.getAllianceId() != receiverOffshore.getAllianceId()) {
-                    results.add(senderOffshore.transferUnsafe(null, receiverOffshore.getAlliance(), PnwUtil.resourcesToMap(amount), "#ignore").addMessage("Transferred to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game"));
+                    results.add(senderOffshore.transferUnsafe(null, receiverOffshore.getAlliance(), ResourceType.resourcesToMap(amount), "#ignore").addMessage("Transferred to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game"));
                 }
                 if (receiverAlliance == null) {
                     receiverOffshore.getGuildDB().addTransfer(now, receiverDB.getIdLong(), receiverDB.getReceiverType(), 0, 0, bankerNation.getId(), "#deposit", amount);
@@ -175,7 +175,7 @@ public class SendInternalTask {
                     if (receiverAlliance != null && !Objects.equals(senderAlliance, receiverAlliance))
                         message.append(" AA:" + receiverAlliance.getName());
                     if (receiverNation != null) message.append(" " + receiverNation.getName());
-                    message.append(": " + PnwUtil.resourcesToString(amount) + ", note: `#deposit`");
+                    message.append(": " + ResourceType.resourcesToString(amount) + ", note: `#deposit`");
                     RateLimitUtil.queueMessage(receiverChannel, message.toString(), true);
                 }
             } catch (Throwable e) {
@@ -217,11 +217,11 @@ public class SendInternalTask {
         String senderStr;
         if (senderAlliance != null) {
             Map<ResourceType, Double> balance = senderOffshore.getDeposits(senderAlliance.getAlliance_id(), !requireConfirmation);
-            depoArr = checkNotNull(PnwUtil.resourcesToArray(balance), "Sender alliance balance cannot be null");
+            depoArr = checkNotNull(ResourceType.resourcesToArray(balance), "Sender alliance balance cannot be null");
             senderStr = senderAlliance.getMarkdownUrl();
         } else {
             Map<ResourceType, Double> balance = senderOffshore.getDeposits(senderDB.getIdLong(), !requireConfirmation);
-            depoArr = checkNotNull(PnwUtil.resourcesToArray(balance), "Sender guild balance cannot be null");
+            depoArr = checkNotNull(ResourceType.resourcesToArray(balance), "Sender guild balance cannot be null");
             senderStr = senderDB.getGuild().toString();
         }
         checkDeposits(depoArr, amount, "offshore account", senderStr);
@@ -265,14 +265,14 @@ public class SendInternalTask {
         String receiverName = receivers.isEmpty() ? "[Donate]" : receivers.stream()
                 .map(NationOrAllianceOrGuild::getQualifiedName).collect(Collectors.joining(" | "));
         String type = notInternal ? "Account" : "Internal";
-        String title = type + " transfer ~$" + MathMan.format(PnwUtil.convertedTotal(amount)) + " to " + receiverName;
+        String title = type + " transfer ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + " to " + receiverName;
         body.append("**" + title + "**\n");
 
         actions.forEach(f -> body.append("- " + f + "\n"));
         body.append("\n");
 
         String note = "#deposit";
-        body.append("**Amount:** `" + PnwUtil.resourcesToString(amount) + "`\n- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(amount)) + "\n");
+        body.append("**Amount:** `" + ResourceType.resourcesToString(amount) + "`\n- worth: ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + "\n");
         body.append("**Sender**: " + toMarkdown(senders, true) + "\n");
         body.append("**Receiver**: " + receiverName + "\n");
         body.append("**Note**: `" + note + "`\n");
@@ -351,7 +351,7 @@ public class SendInternalTask {
         for (int i = 0; i < amount.length; i++) {
             if (Math.round((diff[i] - amount[i]) * 100) > 1) {
                 String name = account.isGuild() ? account.asGuild().getGuild().toString() : account.isAlliance() ? account.asAlliance().getMarkdownUrl() : account.asNation().getMarkdownUrl();
-                String[] message = {"Internal error: " + PnwUtil.resourcesToString(diff) + " != " + PnwUtil.resourcesToString(amount),
+                String[] message = {"Internal error: " + ResourceType.resourcesToString(diff) + " != " + ResourceType.resourcesToString(amount),
                         "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.create(account.getQualifiedId()) + " in " + senderOffshore.getGuildDB().getIdLong()};
                 return new TransferResult(OffshoreInstance.TransferStatus.OTHER, account, amount, "#deposit").addMessage(message);
             }
@@ -528,9 +528,9 @@ public class SendInternalTask {
     }
 
     private void checkDeposits(double[] deposits, double[] amount, String senderTypeStr, String senderName) {
-        double[] normalized = PnwUtil.normalize(deposits);
+        double[] normalized = PW.normalize(deposits);
 
-        if (PnwUtil.convertedTotal(deposits) <= 0) throw new IllegalArgumentException("Sender " + senderTypeStr + " (" + senderName + ") does not have any deposits");
+        if (ResourceType.convertedTotal(deposits) <= 0) throw new IllegalArgumentException("Sender " + senderTypeStr + " (" + senderName + ") does not have any deposits");
 
         for (int i = 0; i < deposits.length; i++) {
             if (Math.round(amount[i] * 100) < Math.round(normalized[i] * 100)) {

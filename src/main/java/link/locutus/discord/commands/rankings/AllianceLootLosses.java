@@ -10,7 +10,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -63,13 +63,13 @@ public class AllianceLootLosses extends Command {
             if (allianceId == 0) continue;
 
             Double existing = totals.getOrDefault(allianceId, 0d);
-            totals.put(allianceId, existing + PnwUtil.convertedTotal(loot));
+            totals.put(allianceId, existing + ResourceType.convertedTotal(loot));
         }
 
         totals.entrySet().removeIf(e -> !allianceScores.containsKey(e.getKey()) || e.getValue() <= 0);
 
 
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(totals).sort().nameKeys(i -> PnwUtil.getName(i, true));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(totals).sort().nameKeys(i -> PW.getName(i, true));
 
 
         String title = "Alliance bank loot losses (" + args.get(0) + ")";

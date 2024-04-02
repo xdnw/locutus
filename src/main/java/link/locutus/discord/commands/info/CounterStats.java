@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -30,7 +30,7 @@ public class CounterStats extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
-        Integer id = PnwUtil.parseAllianceId(args.get(0));
+        Integer id = PW.parseAllianceId(args.get(0));
         if (id == null) return "Invalid id: `" + id + "`";
 
         Set<Integer> ids = new HashSet<>(Collections.singleton(id));
@@ -72,7 +72,7 @@ public class CounterStats extends Command {
         if (!Double.isFinite(chanceActive)) chanceActive = 0.5;
         if (!Double.isFinite(chanceInactive)) chanceInactive = 0.5;
 
-        String title = "% of wars that are countered (" + PnwUtil.getName(id, true) + ")";
+        String title = "% of wars that are countered (" + PW.getName(id, true) + ")";
         String response = MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)" + '\n' +
                 MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)";
 

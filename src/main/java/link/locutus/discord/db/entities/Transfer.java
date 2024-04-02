@@ -1,7 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.jsoup.nodes.Element;
@@ -237,13 +237,13 @@ public class Transfer {
     public String toSimpleString() {
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC).toLocalDate() +
                 " | " + note +
-                " | sender: " + PnwUtil.getName(sender, isSenderAA) +
-                " | receiver: " + PnwUtil.getName(receiver, isReceiverAA) +
-                " | banker: " + PnwUtil.getName(banker, false) +
+                " | sender: " + PW.getName(sender, isSenderAA) +
+                " | receiver: " + PW.getName(receiver, isReceiverAA) +
+                " | banker: " + PW.getName(banker, false) +
                 " | " + MathMan.format(amount) + "x" + rss.name();
     }
 
     public double convertedTotal() {
-        return PnwUtil.convertedTotal(getRss(), getAmount());
+        return ResourceType.convertedTotal(getRss(), getAmount());
     }
 }

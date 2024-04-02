@@ -2,14 +2,12 @@ package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.io.IOException;
@@ -105,7 +103,7 @@ public class NationOrExchange {
                     body.append(" (worth ~$" + MathMan.format(value) + ")");
                 }
             }
-            body.append("\n\n<b>Your current account totals:</b>\n" + PnwUtil.sharesToString(db.getSharesByNation(receiver.getId())));
+            body.append("\n\n<b>Your current account totals:</b>\n" + PW.sharesToString(db.getSharesByNation(receiver.getId())));
             body.append("\n\n<a href='https://discord.gg/TAF5zkh6WJ'>For more info, contact us on discord.</a>");
             body.append("\n\nNote: This is an automated message");
 

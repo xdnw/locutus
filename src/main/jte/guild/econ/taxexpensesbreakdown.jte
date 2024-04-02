@@ -11,7 +11,7 @@
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Coalition
 @import link.locutus.discord.db.entities.TaxBracket
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import link.locutus.discord.db.entities.Transaction2
 @import link.locutus.discord.db.entities.DBNation
 @import link.locutus.discord.user.Roles
@@ -34,7 +34,7 @@
 @param double[] a
 @param double[] b
 @param boolean showByResource
-@template.guild.econ.incomeexpensebar(ws = ws, titleA = "Monetary Income", titleB = "Monetary Expense", a = PnwUtil.convertedTotal(a), b = PnwUtil.convertedTotal(b))
+@template.guild.econ.incomeexpensebar(ws = ws, titleA = "Monetary Income", titleB = "Monetary Expense", a = ResourceType.convertedTotal(a), b = ResourceType.convertedTotal(b))
 @if(showByResource)
     <div class="accordion" id="Accordion${id + ""}">
         <div class="accordion-item">

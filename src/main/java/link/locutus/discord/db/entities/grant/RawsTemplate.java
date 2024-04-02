@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import org.jetbrains.annotations.Nullable;
@@ -119,7 +119,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
         double[] revenue = receiver.getRevenue();
         if (overdrawPercent > 0) {
-            PnwUtil.multiply(revenue, 1 + (overdrawPercent / 100d));
+            PW.multiply(revenue, 1 + (overdrawPercent / 100d));
         }
         ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
         if (!db.isAllianceId(receiver.getAlliance_id())) {
@@ -130,7 +130,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
         for (Transaction2 record : receiver.getTransactions(true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
+                Map<String, String> notes = PW.parseTransferHashNotes(record.note);
                 if (notes.containsKey("#raws") || notes.containsKey("#tax")) {
                     minDate = Math.min(record.tx_datetime, minDate);
                     receivedBuilder.add(record.resources);
@@ -148,7 +148,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
         if (minDate != Long.MAX_VALUE) {
             double[] totalReceived = receivedBuilder.build();
-            double[] revenueOverTime = PnwUtil.multiply(revenue, (TimeUtil.getTurn() - TimeUtil.getTimeFromTurn(minDate)) / 12d);
+            double[] revenueOverTime = PW.multiply(revenue, (TimeUtil.getTurn() - TimeUtil.getTimeFromTurn(minDate)) / 12d);
             double[] expectedStockpile = ResourceType.subtract(totalReceived, revenueOverTime);
 
             for (ResourceType type : ResourceType.values) {
@@ -160,7 +160,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
             }
         }
 
-        return PnwUtil.resourcesToArray(needed);
+        return ResourceType.resourcesToArray(needed);
     }
 
     @Override

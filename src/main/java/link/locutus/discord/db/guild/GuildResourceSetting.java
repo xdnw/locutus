@@ -3,7 +3,7 @@ package link.locutus.discord.db.guild;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.nio.charset.StandardCharsets;
@@ -27,21 +27,21 @@ public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType
 
     @Override
     public String toString(Map<ResourceType, Double> value) {
-        double[] arr = PnwUtil.resourcesToArray(value);
+        double[] arr = ResourceType.resourcesToArray(value);
         byte[] bytes = ArrayUtil.toByteArray(arr);
         return new String(bytes, StandardCharsets.ISO_8859_1);
     }
 
     @Override
     public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
-        return PnwUtil.resourcesToString(value);
+        return ResourceType.resourcesToString(value);
     }
 
     @Override
     public Map<ResourceType, Double> parse(GuildDB db, String input) {
         if (input.startsWith("{") && input.endsWith("}")) {
-            return PnwUtil.parseResources(input);
+            return ResourceType.parseResources(input);
         }
-        return PnwUtil.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes(StandardCharsets.ISO_8859_1)));
+        return ResourceType.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes(StandardCharsets.ISO_8859_1)));
     }
 }

@@ -2,12 +2,9 @@ package link.locutus.discord.util.math;
 
 import it.unimi.dsi.fastutil.doubles.Double2DoubleFunction;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;

@@ -11,7 +11,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -83,7 +83,7 @@ public class Damage extends Command {
 
         if (score == null) score = me.getScore();
         double minScore = score * 0.75;
-        double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
 
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
@@ -205,7 +205,7 @@ public class Damage extends Command {
             Double infra = cityInfra.get(i);
             if (infra <= 600) break;
             double factor = Math.min(numCities, 1);
-            cost += factor * PnwUtil.calculateInfra(infra * 0.6-500, infra);
+            cost += factor * PW.City.Infra.calculateInfra(infra * 0.6-500, infra);
 
             i--;
             numCities--;

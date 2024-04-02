@@ -16,7 +16,7 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarAttackParser;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -180,14 +180,14 @@ public class WarCostRankingByDay extends Command {
         if (flags.contains('u')) tables.add(new TimeNumericTable<>("Unit Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
-                add2(this, day, finalMin, costMap, coalitionsByDay, f -> PnwUtil.convertedTotal(f.getUnitCost(primary)));
+                add2(this, day, finalMin, costMap, coalitionsByDay, f -> ResourceType.convertedTotal(f.getUnitCost(primary)));
                 processTotal(total, this);
             }
         });
         if (flags.contains('g')) tables.add(new TimeNumericTable<>("Gasoline", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
-                add2(this, day, finalMin, costMap, coalitionsByDay, f -> PnwUtil.convertedTotal(f.getUnitCost(primary)));
+                add2(this, day, finalMin, costMap, coalitionsByDay, f -> ResourceType.convertedTotal(f.getUnitCost(primary)));
                 processTotal(total, this);
             }
         });
@@ -201,21 +201,21 @@ public class WarCostRankingByDay extends Command {
         if (flags.contains('c')) tables.add(new TimeNumericTable<>("Consumption", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
-                add2(this, day, finalMin, costMap, coalitionsByDay, cost -> PnwUtil.convertedTotal(cost.getConsumption(primary)));
+                add2(this, day, finalMin, costMap, coalitionsByDay, cost -> ResourceType.convertedTotal(cost.getConsumption(primary)));
                 processTotal(total, this);
             }
         });
         if (flags.contains('l')) tables.add(new TimeNumericTable<>("Looted", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
-                add2(this, day, finalMin, costMap, coalitionsByDay, cost -> PnwUtil.convertedTotal(cost.getLoot(primary)));
+                add2(this, day, finalMin, costMap, coalitionsByDay, cost -> ResourceType.convertedTotal(cost.getLoot(primary)));
                 processTotal(total, this);
             }
         });
         if (flags.contains('f')) tables.add(new TimeNumericTable<>("Full Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
-                add2(this, day, finalMin, costMap, coalitionsByDay, cost -> PnwUtil.convertedTotal(cost.getTotal(primary)));
+                add2(this, day, finalMin, costMap, coalitionsByDay, cost -> ResourceType.convertedTotal(cost.getTotal(primary)));
                 processTotal(total, this);
             }
         });

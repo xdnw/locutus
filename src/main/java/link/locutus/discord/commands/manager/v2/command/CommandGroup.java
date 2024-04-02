@@ -419,4 +419,42 @@ public class CommandGroup implements ICommandGroup {
             register(subClass, subPath, instanceCache, false);
         }
     }
+
+    public void checkUnregisteredMethods(boolean throwError) {
+        Set<Class> classes = new HashSet<>();
+        Set<Method> methods = new HashSet<>();
+        for (ParametricCallable callable : getParametricCallables(f -> true)) {
+            Method method = callable.getMethod();
+            if (methods.contains(method)) continue;
+            methods.add(method);
+            classes.add(method.getDeclaringClass());
+        }
+        Map<Class, List<Method>> missingMethods = new HashMap<>();
+        for (Class clazz : classes) {
+            // get methods with @Command annotation
+            // Add any missing methods to missing methods
+            for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                if (declaredMethod.getAnnotation(Command.class) == null) continue;
+                if (!methods.contains(declaredMethod)) {
+                    missingMethods.computeIfAbsent(clazz, f -> new ArrayList<>()).add(declaredMethod);
+                }
+            }
+        }
+        // throw error if there are any missing methods
+        if (!missingMethods.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<Class, List<Method>> entry : missingMethods.entrySet()) {
+                sb.append("Missing methods for ").append(entry.getKey().getSimpleName()).append(":\n");
+                for (Method method : entry.getValue()) {
+                    sb.append(" - ").append(method.getName()).append("\n");
+                }
+            }
+            if (throwError) {
+                throw new IllegalStateException(sb.toString());
+            } else {
+                System.out.println(sb.toString());
+            }
+        }
+
+    }
 }

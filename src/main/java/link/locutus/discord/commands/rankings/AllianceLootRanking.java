@@ -9,7 +9,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -63,7 +63,7 @@ public class AllianceLootRanking extends Command {
                 if (map == null) {
                     map = new HashMap<>();
                 }
-                Map<ResourceType, Double> add = PnwUtil.add(map, PnwUtil.resourcesToMap(loot));
+                Map<ResourceType, Double> add = ResourceType.add(map, ResourceType.resourcesToMap(loot));
                 byAlliance.put(allianceId, add);
             }
         }
@@ -83,7 +83,7 @@ public class AllianceLootRanking extends Command {
             int allianceId = entry.getKey();
             Double value = entry.getValue().getOrDefault(ResourceType.MONEY, 0d);
 
-            String name = PnwUtil.getName(allianceId, true);
+            String name = PW.getName(allianceId, true);
             name = name.substring(0, Math.min(32, name.length()));
 
             response.append('\n').append(String.format("%4s", i + 1)).append(". ").append(String.format("%32s", name)).append(": $").append(format(value));

@@ -15,7 +15,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -325,10 +325,10 @@ public class ExchangeCommands {
         }
         StringBuilder response = new StringBuilder();
         if (!added.isEmpty()) {
-            response.append("Added: ").append(PnwUtil.resourcesToString(added)).append("\n");
+            response.append("Added: ").append(ResourceType.resourcesToString(added)).append("\n");
         }
         if (!failed.isEmpty()) {
-            response.append("Failed: ").append(PnwUtil.resourcesToString(failed)).append("\n");
+            response.append("Failed: ").append(ResourceType.resourcesToString(failed)).append("\n");
         }
         return response.toString().trim();
     }

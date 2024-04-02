@@ -9,7 +9,7 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -57,7 +57,7 @@ public class RemoveCoalition extends Command {
                 if (MathMan.isInteger(args.get(1)) && Long.parseLong(args.get(1)) > Integer.MAX_VALUE) {
                     alliancesOrGuilds.add(Long.parseLong(args.get(1)));
                 } else {
-                    Set<Integer> alliances = PnwUtil.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(1));
+                    Set<Integer> alliances = PW.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(1));
                     if (alliances.isEmpty()) {
                         return "Invalid alliance: `" + args.get(1) + "`";
                     }
@@ -68,7 +68,7 @@ public class RemoveCoalition extends Command {
                 StringBuilder result = new StringBuilder();
                 for (Long allianceOrGuild : alliancesOrGuilds) {
                     Locutus.imp().getGuildDB(guild).removeCoalition(allianceOrGuild, coalition);
-                    String name = allianceOrGuild <= Integer.MAX_VALUE ? PnwUtil.getName(allianceOrGuild, true) : allianceOrGuild + "";
+                    String name = allianceOrGuild <= Integer.MAX_VALUE ? PW.getName(allianceOrGuild, true) : allianceOrGuild + "";
                     result.append("Removed `").append(name).append("`").append(" from `").append(coalition).append("`").append("\n");
                 }
                 return result.toString();

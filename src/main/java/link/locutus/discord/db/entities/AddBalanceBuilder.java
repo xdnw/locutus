@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -40,7 +40,7 @@ public class AddBalanceBuilder {
     }
 
     public AddBalanceBuilder add(NationOrAllianceOrGuildOrTaxid account, double[] amount, String note) {
-        return add(account, PnwUtil.resourcesToMap(amount), note);
+        return add(account, ResourceType.resourcesToMap(amount), note);
     }
 
     public Map<DBAlliance, Map<String, double[]>> getFundsToSendAAs() {
@@ -68,7 +68,7 @@ public class AddBalanceBuilder {
                 double[] amt = entry2.getValue();
 
                 Map<ResourceType, Double> current = total.computeIfAbsent(account, f -> new HashMap<>());
-                current = PnwUtil.add(current, PnwUtil.resourcesToMap(amt));
+                current = ResourceType.add(current, ResourceType.resourcesToMap(amt));
                 total.put(account, current);
             }
         }
@@ -130,11 +130,11 @@ public class AddBalanceBuilder {
 
     public AddBalanceBuilder resetWithTracked(DBNation nation, @Nullable Set<Long> tracked) throws IOException {
         if (tracked != null) {
-            tracked = PnwUtil.expandCoalition(tracked);
+            tracked = PW.expandCoalition(tracked);
         }
 
         double[] total = nation.getNetDeposits(db, tracked, true, true, 0L, 0L, true);
-        Map<ResourceType, Double> transfer = PnwUtil.subResourcesToA(new HashMap<>(), PnwUtil.resourcesToMap(total));
+        Map<ResourceType, Double> transfer = ResourceType.subResourcesToA(new HashMap<>(), ResourceType.resourcesToMap(total));
         return add(nation, transfer, "#deposit");
     }
 
@@ -167,7 +167,7 @@ public class AddBalanceBuilder {
                 Transaction2 tx = entry.getValue();
                 if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
                 if (tx.sender_id == tx.receiver_id) continue;
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
+                Map<String, String> notes = PW.parseTransferHashNotes(tx.note);
                 String decay2 = notes.get("#decay");
                 String expire2 = notes.get("#expire");
                 long expireEpoch = 0;
@@ -250,7 +250,7 @@ public class AddBalanceBuilder {
                 if (aaIds.size() > 1) {
                     body.append("\n" + getFundsToSendNations().size() + " nations in " + aaIds.size() + " alliances:");
                 } else {
-                    String aaName = PnwUtil.getMarkdownUrl(aaIds.iterator().next(), true);
+                    String aaName = PW.getMarkdownUrl(aaIds.iterator().next(), true);
                     body.append("\n" + getFundsToSendNations().size() + " nations in " + aaName + ":");
                 }
                 if (gray > 0) body.append("\n- gray: " + gray);
@@ -271,7 +271,7 @@ public class AddBalanceBuilder {
 
         body.append("\nNotes: `" + StringMan.getString(getNotes(f -> true)) + "`");
 
-        body.append("\nNet Total: ").append(PnwUtil.resourcesToFancyString(total));
+        body.append("\nNet Total: ").append(ResourceType.resourcesToFancyString(total));
 
         body.append("\n\nPress `" + emoji + "` to confirm");
 
@@ -326,8 +326,8 @@ public class AddBalanceBuilder {
                         String note = entry2.getKey();
                         double[] amount = entry2.getValue();
                         db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
-                        totalAdded = PnwUtil.add(totalAdded, amount);
-                        response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender);
+                        totalAdded = ResourceType.add(totalAdded, amount);
+                        response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender);
                     }
                 }
             } else {
@@ -343,8 +343,8 @@ public class AddBalanceBuilder {
                         String note = entry2.getKey();
                         double[] amount = entry2.getValue();
                         db.addTransfer(tx_datetime, sender.getIdLong(), sender.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
-                        totalAdded = PnwUtil.add(totalAdded, amount);
-                        response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getGuild());
+                        totalAdded = ResourceType.add(totalAdded, amount);
+                        response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender.getGuild());
                     }
                 }
             } else {
@@ -359,8 +359,8 @@ public class AddBalanceBuilder {
                 double[] amount = entry2.getValue();
 
                 db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
-                totalAdded = PnwUtil.add(totalAdded, amount);
-                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getUrl());
+                totalAdded = ResourceType.add(totalAdded, amount);
+                response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender.getUrl());
             }
 
         }
@@ -372,15 +372,15 @@ public class AddBalanceBuilder {
                 double[] amount = entry2.getValue();
 
                 db.addBalanceTaxId(tx_datetime, sender.taxId, 0, banker, note, amount);
-                totalAdded = PnwUtil.add(totalAdded, amount);
-                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getQualifiedId());
+                totalAdded = ResourceType.add(totalAdded, amount);
+                response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender.getQualifiedId());
             }
 
         }
 
         return "Done:\n- " +
                 StringMan.join(response, "\n- ") +
-                "\nTotal added: `" + PnwUtil.resourcesToString(totalAdded) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalAdded));
+                "\nTotal added: `" + ResourceType.resourcesToString(totalAdded) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalAdded));
     }
 
     public AddBalanceBuilder add(Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, String note) {

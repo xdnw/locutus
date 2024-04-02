@@ -5,7 +5,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import org.jsoup.Jsoup;
@@ -14,7 +14,6 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,7 +59,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
     @Override
     public List<Mail> call() {
-        return PnwUtil.withLogin(new Callable<List<Mail>>() {
+        return PW.withLogin(new Callable<List<Mail>>() {
             @Override
             public List<Mail> call() throws Exception {
                 ArrayList<Mail> response = new ArrayList<Mail>();
@@ -81,7 +80,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
                 Elements tables = dom.getElementsByClass("nationtable");
                 if (tables.isEmpty()) {
-                    String alerts = PnwUtil.getAlert(dom);
+                    String alerts = PW.getAlert(dom);
                     if (alerts != null && !alerts.isEmpty()) {
                         AlertUtil.error("Could not check mail: " + auth.getNationId(), alerts);
                     } else {

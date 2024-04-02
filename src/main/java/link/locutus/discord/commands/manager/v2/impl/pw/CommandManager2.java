@@ -202,6 +202,8 @@ public class CommandManager2 {
 
         getCommands().registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertRequiredValue", "min_value");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncWarrooms", "warrooms");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncDiscordBans", "bans");
+        getCommands().registerMethod(new AdminCommands(), List.of("fun"), "resetCityNames", "reset_borgs_cities");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "queue"), "conditionalMessageSettings", "custom_messages");
 
         getCommands().registerMethod(new UtilityCommands(), List.of("announcement"), "addWatermark", "watermark");
@@ -268,11 +270,13 @@ public class CommandManager2 {
 
         this.commands.registerCommandsWithMapping(CM.class);
 
+        this.commands.registerMethod(new UtilityCommands(), List.of("treaty"), "nap", "gw_nap");
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "savePojos", "pojos");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "list"), "hasSameNetworkAsBan", "multis");
 
+        this.commands.registerMethod(new GPTCommands(), List.of("chat", "dataset"), "embeddingSelect", "select");
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");
         this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheetCmd", "view_sheet");
 
@@ -347,7 +351,6 @@ public class CommandManager2 {
 
         this.commands.registerMethod(help, List.of("help"), "command", "command");
         this.commands.registerMethod(help, List.of("help"), "nation_placeholder", "nation_placeholder");
-
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_argument", "find_argument");
         this.commands.registerMethod(help, List.of("help"), "argument", "argument");
 
@@ -422,6 +425,8 @@ public class CommandManager2 {
         if (!missing.isEmpty()) {
             System.out.println("Missing methods for placeholders:\n- " + String.join("\n- ", missing));
         }
+
+        commands.checkUnregisteredMethods(true);
 
         return this;
     }

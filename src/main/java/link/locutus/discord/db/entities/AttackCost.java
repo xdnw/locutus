@@ -12,7 +12,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -198,20 +198,20 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
     }
 
     public Map<ResourceType, Double> getLoot(boolean isPrimary) {
-        return PnwUtil.resourcesToMap(isPrimary ? loot1 : loot2);
+        return ResourceType.resourcesToMap(isPrimary ? loot1 : loot2);
     }
 
     public Map<ResourceType, Double> getTotal(boolean isPrimary, boolean units, boolean infra, boolean consumption, boolean loot) {
         Map<ResourceType, Double> result = new HashMap<>();
-        if (units) result = PnwUtil.add(result, getUnitCost(isPrimary));
-        if (infra) result = PnwUtil.add(result, Collections.singletonMap(ResourceType.MONEY, getInfraLost(isPrimary)));
-        if (consumption) result = PnwUtil.add(result, getConsumption(isPrimary));
-        if (loot) result = PnwUtil.add(result, getLoot(isPrimary));
+        if (units) result = ResourceType.add(result, getUnitCost(isPrimary));
+        if (infra) result = ResourceType.add(result, Collections.singletonMap(ResourceType.MONEY, getInfraLost(isPrimary)));
+        if (consumption) result = ResourceType.add(result, getConsumption(isPrimary));
+        if (loot) result = ResourceType.add(result, getLoot(isPrimary));
         return result;
     }
 
     public Map<ResourceType, Double> getTotal(boolean isPrimary) {
-        return PnwUtil.resourcesToMap(isPrimary ? total1 : total2);
+        return ResourceType.resourcesToMap(isPrimary ? total1 : total2);
     }
 
     private Map<ResourceType, Double> getNetCost(Map<ResourceType, Double> map1, Map<ResourceType, Double> map2) {
@@ -247,7 +247,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
     }
 
     public double convertedTotal(boolean isPrimary) {
-        return PnwUtil.convertedTotal(getTotal(isPrimary));
+        return ResourceType.convertedTotal(getTotal(isPrimary));
     }
 
     public double getInfraLost(boolean isPrimary) {
@@ -255,7 +255,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
     }
 
     public Map<ResourceType, Double> getConsumption(boolean isPrimary) {
-        return PnwUtil.resourcesToMap(isPrimary ? consumption1 : consumption2);
+        return ResourceType.resourcesToMap(isPrimary ? consumption1 : consumption2);
     }
 
     public Map<ResourceType, Double> getUnitCost(boolean isPrimary) {
@@ -384,50 +384,50 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
 
         if (units) {
             response.append("Units: ```" + StringMan.getString(getUnitsLost(true))).append("```");
-            totalA = PnwUtil.add(totalA, getUnitCost(true));
+            totalA = ResourceType.add(totalA, getUnitCost(true));
         }
         if (infra) {
             response.append("Infra: `$" + MathMan.format(getInfraLost(true))).append("`\n");
-            totalA = PnwUtil.add(totalA, Collections.singletonMap(ResourceType.MONEY, getInfraLost(true)));
+            totalA = ResourceType.add(totalA, Collections.singletonMap(ResourceType.MONEY, getInfraLost(true)));
         }
         if (consumption) {
-            response.append("Consumption: ```" + PnwUtil.resourcesToString(getConsumption(true))).append("```");
-            totalA = PnwUtil.add(totalA, getConsumption(true));
+            response.append("Consumption: ```" + ResourceType.resourcesToString(getConsumption(true))).append("```");
+            totalA = ResourceType.add(totalA, getConsumption(true));
         }
         if (loot) {
-            response.append("Loot: ```" + PnwUtil.resourcesToString(getLoot(true))).append("```");
-            totalA = PnwUtil.add(totalA, getLoot(true));
+            response.append("Loot: ```" + ResourceType.resourcesToString(getLoot(true))).append("```");
+            totalA = ResourceType.add(totalA, getLoot(true));
         }
         if (buildings) {
             response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(true))).append("```");
         }
-        response.append("Total: ```" + PnwUtil.resourcesToString(totalA)).append("```");
-        response.append("Converted Total: `$" + MathMan.format(PnwUtil.convertedTotal(totalA))).append("`\n\n");
+        response.append("Total: ```" + ResourceType.resourcesToString(totalA)).append("```");
+        response.append("Converted Total: `$" + MathMan.format(ResourceType.convertedTotal(totalA))).append("`\n\n");
 
 
         response.append("**" + nameB + " losses:** (" + getIds(false).size() + " nations)\n");
         Map<ResourceType, Double> totalB = new HashMap<>();
         if (units) {
             response.append("Units: ```" + StringMan.getString(getUnitsLost(false))).append("```");
-            totalB = PnwUtil.add(totalB, getUnitCost(false));
+            totalB = ResourceType.add(totalB, getUnitCost(false));
         }
         if (infra) {
             response.append("Infra: `$" + MathMan.format(getInfraLost(false))).append("`\n");
-            totalB = PnwUtil.add(totalB, Collections.singletonMap(ResourceType.MONEY, getInfraLost(false)));
+            totalB = ResourceType.add(totalB, Collections.singletonMap(ResourceType.MONEY, getInfraLost(false)));
         }
         if (consumption) {
-            response.append("Consumption: ```" + PnwUtil.resourcesToString(getConsumption(false))).append("```");
-            totalB = PnwUtil.add(totalB, getConsumption(false));
+            response.append("Consumption: ```" + ResourceType.resourcesToString(getConsumption(false))).append("```");
+            totalB = ResourceType.add(totalB, getConsumption(false));
         }
         if (loot) {
-            response.append("Loot: ```" + PnwUtil.resourcesToString(getLoot(false))).append("```");
-            totalB = PnwUtil.add(totalB, getLoot(false));
+            response.append("Loot: ```" + ResourceType.resourcesToString(getLoot(false))).append("```");
+            totalB = ResourceType.add(totalB, getLoot(false));
         }
         if (buildings) {
             response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(false))).append("```");
         }
-        response.append("Total: ```" + PnwUtil.resourcesToString(totalB)).append("```");
-        response.append("Converted Total: `$" + MathMan.format(PnwUtil.convertedTotal(totalB))).append("`\n");
+        response.append("Total: ```" + ResourceType.resourcesToString(totalB)).append("```");
+        response.append("Converted Total: `$" + MathMan.format(ResourceType.convertedTotal(totalB))).append("`\n");
 
         return response.toString();
     }

@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums.city;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBCity;
@@ -9,7 +10,7 @@ import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.search.BFSUtil;
@@ -28,7 +29,6 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
-import link.locutus.discord.apiv1.domains.City;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -372,8 +372,8 @@ public class JavaCity {
         StringBuilder response = new StringBuilder();
         int i = 0;
         response.append(++i+". Ensure you have the following resources:");
-        Map<ResourceType, Double> totalMap = PnwUtil.resourcesToMap(total);
-        if (!totalMap.isEmpty()) response.append('\n').append("```" + PnwUtil.resourcesToString(totalMap) + "```");
+        Map<ResourceType, Double> totalMap = ResourceType.resourcesToMap(total);
+        if (!totalMap.isEmpty()) response.append('\n').append("```" + ResourceType.resourcesToString(totalMap) + "```");
         if (!infraPurchases.isEmpty()) {
             for (Map.Entry<Integer, Double> entry : infraPurchases.entrySet()) {
                 if (entry.getValue() > 0) {
@@ -506,22 +506,6 @@ public class JavaCity {
     @Override
     public int hashCode() {
         if (hashCode == 0) {
-//            long longHc = 0;
-//            int shift = 0;
-//            for (int i = 0; i < buildings.length; i++) {
-//                int amt = buildings[i];
-//                if (amt != 0) {
-//                    longHc ^= ((long) amt) << shift;
-//                }
-//                Building building = Buildings.get(i);
-//                if (building instanceof PowerBuilding) {
-//                    shift += 2;
-//                } else if (building instanceof ResourceBuilding && ((ResourceBuilding) building).resource().isRaw()) {
-//                    shift += 4;
-//                } else {
-//                    shift += 3;
-//                }
-//            }
             hashCode = Arrays.hashCode(buildings);
         }
         return hashCode;
@@ -758,7 +742,7 @@ public class JavaCity {
         double basePopulation = getInfra() * 100;
         double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
 
-        profit -= PnwUtil.convertedTotalNegative(ResourceType.FOOD, food);
+        profit -= ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
 
         return profit;
     }
@@ -844,10 +828,10 @@ public class JavaCity {
         }
 
         if (this.getInfra() > from.getInfra()) {
-            total += PnwUtil.calculateInfra(from.getInfra(), getInfra());
+            total += PW.City.Infra.calculateInfra(from.getInfra(), getInfra());
         }
         if (!Objects.equals(getLand(), from.getLand())) {
-            total += PnwUtil.calculateLand(from.getLand(), getLand());
+            total += PW.City.Land.calculateLand(from.getLand(), getLand());
         }
         return total;
     }
@@ -870,10 +854,10 @@ public class JavaCity {
         }
 
         if (infra && this.getInfra() > from.getInfra()) {
-            buffer[ResourceType.MONEY.ordinal()] += PnwUtil.calculateInfra(from.getInfra(), getInfra());
+            buffer[ResourceType.MONEY.ordinal()] += PW.City.Infra.calculateInfra(from.getInfra(), getInfra());
         }
         if (land && !Objects.equals(getLand(), from.getLand())) {
-            buffer[ResourceType.MONEY.ordinal()] += PnwUtil.calculateLand(from.getLand(), getLand());
+            buffer[ResourceType.MONEY.ordinal()] += PW.City.Land.calculateLand(from.getLand(), getLand());
         }
         return buffer;
     }

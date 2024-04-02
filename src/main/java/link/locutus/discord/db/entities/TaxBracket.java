@@ -3,7 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.*;
 
@@ -100,7 +100,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     }
 
     public String getUrl() {
-        return PnwUtil.getTaxUrl(taxId);
+        return PW.getTaxUrl(taxId);
     }
 
     @Override

@@ -8,7 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
@@ -53,7 +53,7 @@ public class WarCostByCitySheet extends Command {
             String arg = args.get(column);
             Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, arg, false, false);
             nations.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > 2440);
-            BiFunction<Integer, Integer, Integer> scores = PnwUtil.getIsNationsInCityRange(nations);
+            BiFunction<Integer, Integer, Integer> scores = PW.getIsNationsInCityRange(nations);
 
             for (int i = 0; i < 50; i++) {
                 List<String> row = rows[i];

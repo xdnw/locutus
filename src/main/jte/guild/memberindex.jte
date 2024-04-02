@@ -1,3 +1,4 @@
+@import link.locutus.discord.apiv1.enums.ResourceType
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.web.commands.page.IndexPages
@@ -17,7 +18,7 @@
 @import link.locutus.discord.util.task.ia.IACheckup
 @import link.locutus.discord.user.Roles
 @import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import java.util.Collection
 @import link.locutus.discord.db.guild.GuildKey
 @import link.locutus.discord.db.entities.DBWar
@@ -82,7 +83,7 @@
     <p class="lead">It is recommended to safekeep funds you aren't using, as to avoid becoming a target and taking unnecessary losses.</p>
     <p>
         <b>Your deposits: </b>
-        ${PnwUtil.resourcesToString(PnwUtil.normalize(deposits))}
+        ${ResourceType.resourcesToString(PW.normalize(deposits))}
     </p>
     <a href="${WebRoot.REDIRECT}/command/withdraw"  class="btn btn-primary btn">&#128279; Withdraw Funds</a>
     <a href="https://politicsandwar.com/alliance/id=${nation.getAlliance_id()}&display=bank" class="btn btn-primary btn">Deposit Funds <i class="bi bi-box-arrow-up-right text-light"></i></a>

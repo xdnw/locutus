@@ -13,7 +13,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -69,15 +69,15 @@ public class DamageStatGroup {
     }
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createHeader() {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
-        map.put(ranking("loss_value", "Total market value of damage", false), p -> (long) PnwUtil.convertedTotal(p.totalCost));
+        map.put(ranking("loss_value", "Total market value of damage", false), p -> (long) ResourceType.convertedTotal(p.totalCost));
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
             map.put(header("loss_" + type.name().toLowerCase(), "Total " + type.name().toLowerCase(Locale.ROOT) + " damage", false), p -> (long) p.totalCost[type.ordinal()]);
         }
         map.put(ranking("consume_gas", "Total gasoline consumed", false), p -> (long) p.consumption[ResourceType.GASOLINE.ordinal()]);
         map.put(ranking("consume_mun", "Total munitions consumed", false), p -> (long) p.consumption[ResourceType.MUNITIONS.ordinal()]);
-        map.put(ranking("consume_value", "Total market value of consumed resources", false), p -> (long) PnwUtil.convertedTotal(p.consumption));
-        map.put(ranking("loot_value", "Total market value of looted resources", false), p -> (long) PnwUtil.convertedTotal(p.loot));
+        map.put(ranking("consume_value", "Total market value of consumed resources", false), p -> (long) ResourceType.convertedTotal(p.consumption));
+        map.put(ranking("loot_value", "Total market value of looted resources", false), p -> (long) ResourceType.convertedTotal(p.loot));
         for (MilitaryUnit unit : MilitaryUnit.values) {
             if (unit == MilitaryUnit.SPIES || unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) continue;
             String name = unit.name().toLowerCase() + "_loss";
@@ -220,7 +220,7 @@ public class DamageStatGroup {
     }
 
     public double getTotalConverted() {
-        return PnwUtil.convertedTotal(totalCost);
+        return ResourceType.convertedTotal(totalCost);
     }
 
 

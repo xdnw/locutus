@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import gg.jte.Content;
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -42,7 +42,7 @@ public class ParametricCallable implements ICommand {
     private final Set<String> valueFlags;
     private final Set<String> provideFlags;
     private final ArrayList<ParameterData> userParameters;
-    private final Map<String, ParameterData> paramaterMap;
+    private final Map<String, ParameterData> parameterMap;
     private final String help;
     private final ArrayList<String> aliases;
     private final CommandCallable parent;
@@ -61,7 +61,7 @@ public class ParametricCallable implements ICommand {
         this.valueFlags = clone.valueFlags;
         this.provideFlags = clone.provideFlags;
         this.userParameters = clone.userParameters;
-        this.paramaterMap = clone.paramaterMap;
+        this.parameterMap = clone.parameterMap;
         this.descMethod = clone.descMethod;
         this.help = clone.help;
         this.aliases = new ArrayList<>(aliases);
@@ -90,7 +90,7 @@ public class ParametricCallable implements ICommand {
 
         this.parameters = new ParameterData[types.length];
         this.userParameters = new ArrayList<>();
-        this.paramaterMap = new LinkedHashMap<>();
+        this.parameterMap = new LinkedHashMap<>();
 
         // This helps keep tracks of @Nullables that appear in the middle of a list
         // of parameters
@@ -170,7 +170,7 @@ public class ParametricCallable implements ICommand {
             // Make a list of "real" parameters
             if (binding.isConsumer(locals)) {
                 userParameters.add(parameter);
-                paramaterMap.put(parameter.getName().toLowerCase(Locale.ROOT), parameter);
+                parameterMap.put(parameter.getName().toLowerCase(Locale.ROOT), parameter);
             }
         }
 
@@ -310,7 +310,7 @@ public class ParametricCallable implements ICommand {
 
     @Override
     public Map<String, ParameterData> getUserParameterMap() {
-        return paramaterMap;
+        return parameterMap;
     }
 
     @Override
@@ -738,16 +738,17 @@ public class ParametricCallable implements ICommand {
         ValueStore locals = store;
         locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
-        Map<String, ParameterData> paramsByNameLower = new HashMap<>();
-        for (ParameterData parameter : parameters) {
-            String name = parameter.getName().toLowerCase(Locale.ROOT);
-            paramsByNameLower.put(name, parameter);
-            paramsByNameLower.put(name.replace("_", ""), parameter);
+        Map<String, String> aliases = new Object2ObjectOpenHashMap<>();
+        for (Map.Entry<String, ParameterData> entry : parameterMap.entrySet()) {
+            ParameterData parameter = entry.getValue();
             Arg arg = parameter.getAnnotation(Arg.class);
             if (arg != null && arg.aliases() != null) {
                 for (String alias : arg.aliases()) {
-                    paramsByNameLower.put(alias.toLowerCase(Locale.ROOT), parameter);
+                    aliases.put(alias, parameter.getName());
                 }
+            }
+            if (entry.getKey().contains("_")) {
+                aliases.put(entry.getKey().replace("_", ""), entry.getKey());
             }
         }
 
@@ -807,10 +808,19 @@ public class ParametricCallable implements ICommand {
             };
         }
 
+
+        Map<ParameterData, Object> argsByParams = new Object2ObjectOpenHashMap<>();
         Map<String, Object> flags = new HashMap<>();
         for (Map.Entry<String, Object> entry : combined.entrySet()) {
-            ParameterData param = paramsByNameLower.get(entry.getKey().toLowerCase(Locale.ROOT));
+            String name = entry.getKey().toLowerCase(Locale.ROOT);
+            ParameterData param = parameterMap.get(name);
+            if (param == null && !aliases.isEmpty()) {
+                String alias = aliases.get(name);
+                if (alias != null) param = parameterMap.get(alias);
+            }
             if (param == null) throw new IllegalArgumentException("Could not find param: `" + entry.getKey() + "` for command " + getFullPath());
+
+            argsByParams.put(param, entry.getValue());
             if (param.isFlag()) {
                 flags.put(param.getFlag(), entry.getValue());
             }
@@ -820,10 +830,7 @@ public class ParametricCallable implements ICommand {
         for (int i = 0; i < parameters.length; i++) {
             ParameterData parameter = parameters[i];
             locals.addProvider(ParameterData.class, parameter);
-
-            Object arg = combined.get(parameter.getName());
-            if (arg == null) arg = combined.get(parameter.getName().toLowerCase(Locale.ROOT));
-
+            Object arg = argsByParams.get(parameter);
             Object value;
             // flags
             if (parameter.isFlag()) {

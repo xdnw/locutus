@@ -25,7 +25,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -232,8 +232,8 @@ public class RaidCommand extends Command {
                 } else if (aa.equalsIgnoreCase("*")) {
                     nations = new LinkedHashSet<>(allNations);
                 } else {
-                    double min = PnwUtil.getAttackRange(true, true, true, score);
-                    double max = PnwUtil.getAttackRange(true, true, false, score);
+                    double min = PW.getAttackRange(true, true, true, score);
+                    double max = PW.getAttackRange(true, true, false, score);
                     String arg = "#score>" + min + ",#score<" + max + "," + aa;
                     if (!beige) arg = "#isbeige=0," + arg;
                     if (slots == -1) arg = "#def<3," + arg;
@@ -271,8 +271,8 @@ public class RaidCommand extends Command {
 
         CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
 
-        double minScore = score * PnwUtil.WAR_RANGE_MIN_MODIFIER;
-        double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double minScore = score * PW.WAR_RANGE_MIN_MODIFIER;
+        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
 
         int count = 0;
 
@@ -308,7 +308,7 @@ public class RaidCommand extends Command {
             enemies.add(enemy);
         }
 
-        double infraCost = PnwUtil.calculateInfra(me.getAvg_infra(), me.getAvg_infra() - me.getAvg_infra() * 0.05) * me.getCities();
+        double infraCost = PW.City.Infra.calculateInfra(me.getAvg_infra(), me.getAvg_infra() - me.getAvg_infra() * 0.05) * me.getCities();
 
         long diffRevenue = 0;
         long diffBankLootEst = 0;
@@ -354,9 +354,9 @@ public class RaidCommand extends Command {
                     if (turnsInactive > 0) {
                         double[] revenue = enemy.getRevenue(turnsInactive + 24, true, true, false, true, false, false, 0d, false);
                         if (loot != null) {
-                            revenue = PnwUtil.capManuFromRaws(revenue, loot.getTotal_rss());
+                            revenue = PW.capManuFromRaws(revenue, loot.getTotal_rss());
                         }
-                        revenueEst = PnwUtil.convertedTotal(revenue);
+                        revenueEst = ResourceType.convertedTotal(revenue);
                     }
                 }
                 value += revenueEst;

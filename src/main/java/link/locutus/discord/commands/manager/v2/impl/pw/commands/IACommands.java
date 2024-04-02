@@ -33,7 +33,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -790,7 +790,7 @@ public class IACommands {
 
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null || !transaction.note.contains("#incentive")) continue;
-            Map<String, String> notes = PnwUtil.parseTransferHashNotes(transaction.note);
+            Map<String, String> notes = PW.parseTransferHashNotes(transaction.note);
             String incentive = notes.get("#incentive");
             DBNation member = DBNation.getById(transaction.banker_nation);
             DBNation gov = DBNation.getById((int) transaction.sender_id);
@@ -860,7 +860,7 @@ public class IACommands {
 
         for (DBNation nation : attackers) {
             List<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
+            row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
             row.add(nation.getCities() + "");
             row.add(nation.getAvg_infra() + "");
             row.add(nation.getMMRBuildingStr() + "");
@@ -1022,7 +1022,7 @@ public class IACommands {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.contains(aaId)) {
-            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + GuildKey.ALLIANCE_ID.getCommandObj(db, Collections.singleton(aaId)) + " to register it.";
+            return "Alliance: " + PW.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + GuildKey.ALLIANCE_ID.getCommandObj(db, Collections.singleton(aaId)) + " to register it.";
         }
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
@@ -1109,7 +1109,7 @@ public class IACommands {
         if (!db.isAllianceId(nation.getAlliance_id())) return "This guild is not in the same alliance as " + nation.getAllianceName();
 
         if ((nation.getAlliance_id() != allianceId || nation.getAlliance_id() != position.getAlliance_id()) && position != DBAlliancePosition.APPLICANT && position != DBAlliancePosition.REMOVE) {
-            return "That nation is not in the alliance: " + PnwUtil.getName(allianceId, true);
+            return "That nation is not in the alliance: " + PW.getName(allianceId, true);
         }
         // Cannot promote above your own permissions
         DBAlliancePosition myPosition = me.getAlliancePosition();

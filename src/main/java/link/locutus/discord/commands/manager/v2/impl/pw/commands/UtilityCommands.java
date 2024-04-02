@@ -2,8 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
@@ -176,8 +174,8 @@ public class UtilityCommands {
                 continue;
             }
             if (!newColors.isEmpty()) {
-                Supplier<Double> oldRevenueTotal = memorize(() -> PnwUtil.convertedTotal(new SimpleNationList(oldNations).getRevenue()));
-                Supplier<Double> newRevenueTotal = memorize(() -> PnwUtil.convertedTotal(new SimpleNationList(nations).getRevenue()));
+                Supplier<Double> oldRevenueTotal = memorize(() -> ResourceType.convertedTotal(new SimpleNationList(oldNations).getRevenue()));
+                Supplier<Double> newRevenueTotal = memorize(() -> ResourceType.convertedTotal(new SimpleNationList(nations).getRevenue()));
 
                 double scalingFactor = -1;
                 if (oldColorRev > 0 && oldColorRev < 75_000) {
@@ -286,7 +284,7 @@ public class UtilityCommands {
         for (Transaction2 t : transactions) {
             numTransactions.put((int) t.getSender(), numTransactions.getOrDefault((int) t.getSender(), 0) + 1);
 
-            double value = PnwUtil.convertedTotal(t.resources);
+            double value = ResourceType.convertedTotal(t.resources);
 
             valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
         }
@@ -296,7 +294,7 @@ public class UtilityCommands {
         new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, String>() {
             @Override
             public String apply(Map.Entry<Integer, Integer> e) {
-                return PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey()));
+                return PW.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey()));
             }
         }).build(channel, command, "Potential offshores", true);
 
@@ -480,7 +478,7 @@ public class UtilityCommands {
 
             response.append(aa.getName() + ": " + aa.getUrl()).append("\n");
 
-            List<String> treaties = aa.getTreaties().keySet().stream().map(f -> PnwUtil.getName(f, true)).collect(Collectors.toList());
+            List<String> treaties = aa.getTreaties().keySet().stream().map(f -> PW.getName(f, true)).collect(Collectors.toList());
             if (!treaties.isEmpty()) {
                 response.append("- Treaties: " + StringMan.join(treaties, ", ")).append("\n");
             } else{
@@ -509,7 +507,7 @@ public class UtilityCommands {
                 });
                 if (!previousIds.isEmpty()) {
                     List<String> previousOfficer = new ArrayList<>();
-                    previousIds.forEach((id, rank) -> previousOfficer.add(PnwUtil.getName(id, true) + " (" + rank + ")"));
+                    previousIds.forEach((id, rank) -> previousOfficer.add(PW.getName(id, true) + " (" + rank + ")"));
                     response.append("- Previous officer in: " + StringMan.join(previousOfficer, ", ")).append("\n");
                 }
             }
@@ -654,7 +652,7 @@ public class UtilityCommands {
             if (!offshoresWar.isEmpty()) {
                 response.append("Attacking us:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresWar.entrySet()) {
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> attacking " + PnwUtil.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> attacking " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -662,7 +660,7 @@ public class UtilityCommands {
             if (!offshoresTreaty.isEmpty()) {
                 response.append("Has treaty:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresTreaty.entrySet()) {
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> treatied " + PnwUtil.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> treatied " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -670,7 +668,7 @@ public class UtilityCommands {
             if (!offshoresOfficer.isEmpty()) {
                 response.append("Former Officer:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresOfficer.entrySet()) {
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> formerly officer in " + PnwUtil.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> formerly officer in " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -678,7 +676,7 @@ public class UtilityCommands {
             if (!offshoresMember.isEmpty()) {
                 response.append("Former Member:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresMember.entrySet()) {
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> formerly member in " + PnwUtil.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> formerly member in " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -691,7 +689,7 @@ public class UtilityCommands {
                     int num = transferEntry.getValue().getKey();
                     double value = transferEntry.getValue().getValue();
 
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> has " + num + " transfers with " + PnwUtil.getName(otherAAId, true) + " worth ~$" + MathMan.format(value) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> has " + num + " transfers with " + PW.getName(otherAAId, true) + " worth ~$" + MathMan.format(value) + "\n");
                 }
             }
             if (response.length() == 0) return "No results founds in the specified timeframe";
@@ -701,9 +699,8 @@ public class UtilityCommands {
 
     @Command(aliases = {"nap", "napdown"})
     public String nap() {
-        // TODO update this every NAP
-        long turnEnd = 227742;
-        String napLink = "https://politicsandwar.fandom.com/wiki/Brawlywood";
+        long turnEnd = 238338;
+        String napLink = "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>";
         long turn = TimeUtil.getTurn();
 
         long diff = (turnEnd - turn) * TimeUnit.HOURS.toMillis(2);
@@ -803,7 +800,7 @@ public class UtilityCommands {
             });
         }
 
-        RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PnwUtil.getName(i, !rankByNation));
+        RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PW.getName(i, !rankByNation));
         String offOrDef ="";
         if (onlyOffensives != onlyDefensives) {
             if (!onlyDefensives) offOrDef = "offensive ";
@@ -825,7 +822,7 @@ public class UtilityCommands {
         double total = 0;
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
-            total += PnwUtil.nextCityCost(i, manifestDestiny,
+            total += PW.City.nextCityCost(i, manifestDestiny,
                     urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
                     advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
                     metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
@@ -843,7 +840,7 @@ public class UtilityCommands {
                             @Default("false") boolean government_support_agency,
                             @Switch("c") @Default("1") int cities) {
         if (maxInfra > 40000) throw new IllegalArgumentException("Max infra 40000");
-        double total = PnwUtil.calculateInfra(currentInfra, maxInfra);
+        double total = PW.City.Infra.calculateInfra(currentInfra, maxInfra);
 
         double discountFactor = 1;
         if (urbanization) {
@@ -872,7 +869,7 @@ public class UtilityCommands {
 
         double total = 0;
 
-        total = PnwUtil.calculateLand(currentLand, maxLand);
+        total = PW.City.Land.calculateLand(currentLand, maxLand);
 
         double discountFactor = 1;
         if (rapidExpansion) {
@@ -943,8 +940,8 @@ public class UtilityCommands {
         if (score == 0) throw new IllegalArgumentException("No arguments provided");
 
         return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PnwUtil.WAR_RANGE_MAX_MODIFIER) + "\n" +
-                "Can be Attacked By: " + MathMan.format(score / PnwUtil.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
+                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
+                "Can be Attacked By: " + MathMan.format(score / PW.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
                 "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
 
 
@@ -970,7 +967,7 @@ public class UtilityCommands {
         Set<Project> projects = nation.getProjects();
         Map<ResourceType, Double> value = new HashMap<>();
         for (Project project : projects) {
-            value = PnwUtil.add(value, project.cost());
+            value = ResourceType.add(value, project.cost());
         }
 
 
@@ -980,8 +977,8 @@ public class UtilityCommands {
         for (Project project : projects) {
             result.append("\n- " + project.name());
         }
-        result.append("\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(value)));
-        result.append("\n`" + PnwUtil.resourcesToString(value) + "`");
+        result.append("\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(value)));
+        result.append("\n`" + ResourceType.resourcesToString(value) + "`");
         return result.toString();
     }
 
@@ -1002,7 +999,7 @@ public class UtilityCommands {
                 Double rssValue = project.cost().getOrDefault(type, 0d);
                 response.append("\t").append(MathMan.format(rssValue));
             }
-            response.append("\t" + MathMan.format(PnwUtil.convertedTotal(project.cost())));
+            response.append("\t" + MathMan.format(ResourceType.convertedTotal(project.cost())));
         }
         return response.toString();
     }
@@ -1039,7 +1036,7 @@ public class UtilityCommands {
                 double aaScore = alliance.getScore();
                 double ratio = ((nationScore * 10000) / aaScore) / 2d;
                 double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
-                allianceLoot = PnwUtil.multiply(totalStored.clone(), percent);
+                allianceLoot = PW.multiply(totalStored.clone(), percent);
             } else {
                 extraInfo.add("Alliance has not been looted yet");
             }
@@ -1055,9 +1052,9 @@ public class UtilityCommands {
             if (revenueTurns > 0) {
                 revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, 0d, false);
                 if (lootInfo != null) {
-                    revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
+                    revenue = PW.capManuFromRaws(revenue, lootInfo.getTotal_rss());
                 }
-                revenue = PnwUtil.multiply(revenue, revenueFactor);
+                revenue = PW.multiply(revenue, revenueFactor);
 
                 // cap revenue at loot total
                 if (lootInfo != null) {
@@ -1073,7 +1070,7 @@ public class UtilityCommands {
 
             if (lootInfo != null) {
                 totalStored = lootInfo.getTotal_rss();
-                nationLoot = PnwUtil.multiply(totalStored.clone(), revenueFactor);
+                nationLoot = PW.multiply(totalStored.clone(), revenueFactor);
 
                 double originalValue = lootInfo.convertedTotal();
                 double originalLootable = originalValue * revenueFactor;
@@ -1104,20 +1101,20 @@ public class UtilityCommands {
 
         StringBuilder response = new StringBuilder();
 
-        response.append("Total Stored: ```" + PnwUtil.resourcesToString(totalStored) + "``` ");
+        response.append("Total Stored: ```" + ResourceType.resourcesToString(totalStored) + "``` ");
         if (nationLoot != null) {
-            response.append("Nation Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(nationLoot)) + "): ```" + PnwUtil.resourcesToString(nationLoot) + "``` ");
-            PnwUtil.add(total, nationLoot);
+            response.append("Nation Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(nationLoot)) + "): ```" + ResourceType.resourcesToString(nationLoot) + "``` ");
+            ResourceType.add(total, nationLoot);
         }
         if (allianceLoot != null) {
-            response.append("Alliance Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(allianceLoot)) + "): ```" + PnwUtil.resourcesToString(allianceLoot) + "``` ");
-            PnwUtil.add(total, allianceLoot);
+            response.append("Alliance Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(allianceLoot)) + "): ```" + ResourceType.resourcesToString(allianceLoot) + "``` ");
+            ResourceType.add(total, allianceLoot);
         }
         if (revenue != null) {
-            response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(PnwUtil.convertedTotal(revenue)) + ") ```" + PnwUtil.resourcesToString(revenue) + "``` ");
-            PnwUtil.add(total, revenue);
+            response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(ResourceType.convertedTotal(revenue)) + ") ```" + ResourceType.resourcesToString(revenue) + "``` ");
+            ResourceType.add(total, revenue);
         }
-        response.append("Total Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + "): ```" + PnwUtil.resourcesToString(total) + "``` ");
+        response.append("Total Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(total)) + "): ```" + ResourceType.resourcesToString(total) + "``` ");
         if (!extraInfo.isEmpty()) response.append("\n`notes:`\n`- " + StringMan.join(extraInfo, "`\n`- ") +"`");
 
         CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
@@ -1160,19 +1157,19 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder();
         if (nations == null) {
             for (Project project : projectsList) {
-                double[] cost = PnwUtil.resourcesToArray(project.cost());
+                double[] cost = ResourceType.resourcesToArray(project.cost());
                 if (technologicalAdvancement) {
                     double factor = 0.05;
                     if (governmentSupportAgency) {
                         factor *= 1.5;
                     }
-                    cost = PnwUtil.multiply(cost, 1 - factor);
+                    cost = PW.multiply(cost, 1 - factor);
                 }
-                costs = PnwUtil.add(costs, cost);
-                response.append(project.name() + ":\n```" + PnwUtil.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) + "\n");
+                costs = ResourceType.add(costs, cost);
+                response.append(project.name() + ":\n```" + ResourceType.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(cost)) + "\n");
             }
             if (projectsList.size() > 1) {
-                response.append("Total:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
+                response.append("Total:\n```" + ResourceType.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(costs)) + "\n");
             }
             return response.toString();
         } else {
@@ -1223,20 +1220,20 @@ public class UtilityCommands {
                         canBuy = true;
                         counts.merge(project, 1, Integer::sum);
                         double[] cost = nation.projectCost(project);
-                        nationCost = PnwUtil.add(nationCost, cost);
-                        PnwUtil.add(costByProject.computeIfAbsent(project, p -> ResourceType.getBuffer()), cost);
+                        nationCost = ResourceType.add(nationCost, cost);
+                        ResourceType.add(costByProject.computeIfAbsent(project, p -> ResourceType.getBuffer()), cost);
                     }
                     buy.add(canBuy ? 1 : 0);
                 }
-                costs = PnwUtil.add(costs, nationCost);
+                costs = ResourceType.add(costs, nationCost);
 
                 header.set(0, MarkupUtil.sheetUrl(nation.getName(), nation.getUrl()));
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, String.valueOf(nation.getCities()));
                 header.set(3, nationCopy.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? "true" : "false");
                 header.set(4, nationCopy.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) ? "true" : "false");
-                header.set(5, PnwUtil.resourcesToString(nationCost));
-                header.set(6, MathMan.format(PnwUtil.convertedTotal(nationCost)));
+                header.set(5, ResourceType.resourcesToString(nationCost));
+                header.set(6, MathMan.format(ResourceType.convertedTotal(nationCost)));
                 header.set(7, StringMan.join(errors, ","));
                 for (int i = 0; i < projectsList.size(); i++) {
                     header.set(i + indexOffset, String.valueOf(buy.get(i)));
@@ -1250,19 +1247,19 @@ public class UtilityCommands {
             sheet.attach(msg, "projects");
 
             counts = ArrayUtil.sortMap(counts, false);
-            response.append("\nTotal:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
+            response.append("\nTotal:\n```" + ResourceType.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(costs)) + "\n");
             // append counts
             response.append("# Bought: `" + StringMan.getString(counts) + "`\n");
             // Add total cost
             if (projects.size() > 1) {
                 Map<Project, Double> costByProjectValue = new LinkedHashMap<>();
                 for (Map.Entry<Project, double[]> entry : costByProject.entrySet()) {
-                    costByProjectValue.put(entry.getKey(), PnwUtil.convertedTotal(entry.getValue()));
+                    costByProjectValue.put(entry.getKey(), ResourceType.convertedTotal(entry.getValue()));
                 }
                 ArrayUtil.sortMap(costByProjectValue, false);
                 for (Map.Entry<Project, Double> entry : costByProjectValue.entrySet()) {
                     if (entry.getValue() == 0) continue;
-                    response.append(entry.getKey().name() + ": ~$" + MathMan.format(entry.getValue()) + "\n- `" + PnwUtil.resourcesToString(costByProject.get(entry.getKey())) + "`\n");
+                    response.append(entry.getKey().name() + ": ~$" + MathMan.format(entry.getValue()) + "\n- `" + ResourceType.resourcesToString(costByProject.get(entry.getKey())) + "`\n");
                 }
             }
             response.append("\nSee " + CM.transfer.bulk.cmd.toSlashMention());
@@ -1364,7 +1361,7 @@ public class UtilityCommands {
             Integer id = entry.getKey();
             DBAlliance alliance = DBAlliance.get(id);
             if (alliance == null) continue;
-            DBNation total = DBNation.createFromList(PnwUtil.getName(id, true), entry.getValue(), false);
+            DBNation total = DBNation.createFromList(PW.getName(id, true), entry.getValue(), false);
             totals.put(alliance, total);
         }
 
@@ -1408,7 +1405,7 @@ public class UtilityCommands {
                                    @TextArea List<String> columns,
                                    @Switch("t") @Timestamp Long snapshotTime,
                                    @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), true);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), true);
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
@@ -1457,11 +1454,11 @@ public class UtilityCommands {
         MultiReport report = new MultiReport(nation.getNation_id());
         String result = report.toString();
 
-        String title = PnwUtil.getName(nation.getNation_id(), false) + " multi report";
+        String title = PW.getName(nation.getNation_id(), false) + " multi report";
         if (result.length() + title.length() >= 2000) {
             String condensed = report.toString(true);
             if (condensed.length() + title.length() < 2000) {
-                channel.create().embed(PnwUtil.getName(nation.getNation_id(), false), condensed).send();
+                channel.create().embed(PW.getName(nation.getNation_id(), false), condensed).send();
             }
         }
         channel.create().embed(title, result).send();
@@ -1537,7 +1534,7 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder();
         String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
         if (filter == null && me != null) filter = me.getQualifiedId();
-        final Set<DBNation> nations = PnwUtil.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild(), true);
+        final Set<DBNation> nations = PW.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild(), true);
 
         String arg0;
         String title;
@@ -1676,8 +1673,8 @@ public class UtilityCommands {
                 }
             }
             if (allianceId != -2) {
-                String name = PnwUtil.getName(allianceId, true);
-                String url = PnwUtil.getUrl(allianceId, true);
+                String name = PW.getName(allianceId, true);
+                String url = PW.getUrl(allianceId, true);
                 title = "AA: " + name;
                 arg0 = MarkupUtil.markdownUrl(name, url);
             } else {
@@ -1840,9 +1837,9 @@ public class UtilityCommands {
         Map<DBNation, Map<ResourceType, Double>> transfers = new HashMap<>();
 
         for (DBNation nation : nations) {
-            Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(db, false));
+            Map<ResourceType, Double> deposits = ResourceType.resourcesToMap(nation.getNetDeposits(db, false));
             deposits.remove(ResourceType.CREDITS);
-            deposits = PnwUtil.normalize(deposits);
+            deposits = PW.normalize(deposits);
 
             Map<ResourceType, Double> toAdd = new LinkedHashMap<>();
             for (Map.Entry<ResourceType, Double> entry : deposits.entrySet()) {
@@ -1858,7 +1855,7 @@ public class UtilityCommands {
 
                 toAdd.put(type, interest);
             }
-            total = PnwUtil.add(total, toAdd);
+            total = ResourceType.add(total, toAdd);
 
             if (toAdd.isEmpty()) continue;
             transfers.put(nation, toAdd);
@@ -1899,8 +1896,8 @@ public class UtilityCommands {
         StringBuilder result = new StringBuilder();
         sheet.attach(msg, "interest", result, false, 0);
 
-        result.append("Total: `" + PnwUtil.resourcesToString(total) + "`" +
-                "\nWorth: $" + MathMan.format(PnwUtil.convertedTotal(total)));
+        result.append("Total: `" + ResourceType.resourcesToString(total) + "`" +
+                "\nWorth: $" + MathMan.format(ResourceType.convertedTotal(total)));
         result.append("\n\nUse " + CM.transfer.bulk.cmd.toSlashMention());
         result.append("\nOr press \uD83C\uDFE6 to run " + cmd.toSlashCommand() + "");
 
@@ -1960,9 +1957,9 @@ public class UtilityCommands {
     @Command(aliases = {"setloot"})
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setLoot(@Me IMessageIO channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("ESPIONAGE") NationLootType type, @Default("1") double fraction) {
-        resources = PnwUtil.multiply(resources, 1d / fraction);
-        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), PnwUtil.resourcesToArray(resources), type);
-        return "Set " + nation.getNation() + " to " + PnwUtil.resourcesToString(resources) + " worth: ~$" + PnwUtil.convertedTotal(resources);
+        resources = PW.multiply(resources, 1d / fraction);
+        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), ResourceType.resourcesToArray(resources), type);
+        return "Set " + nation.getNation() + " to " + ResourceType.resourcesToString(resources) + " worth: ~$" + ResourceType.convertedTotal(resources);
     }
 
     @Command(desc = "Rank alliances by their new members over a timeframe")
@@ -2046,18 +2043,18 @@ public class UtilityCommands {
             double[] unitCost = unit.getCost(amt.intValue()).clone();
             double[] unitUpkeep = unit.getUpkeep(wartime).clone();
 
-            unitUpkeep = PnwUtil.multiply(unitUpkeep, amt);
+            unitUpkeep = PW.multiply(unitUpkeep, amt);
 
-            PnwUtil.add(cost, unitCost);
-            PnwUtil.add(upkeep, unitUpkeep);
+            ResourceType.add(cost, unitCost);
+            ResourceType.add(upkeep, unitUpkeep);
         }
-        response.append("Cost:\n```" + PnwUtil.resourcesToString(cost) + "``` ");
-        if (PnwUtil.resourcesToMap(cost).size() > 1) {
-            response.append("Worth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost))).append("\n");
+        response.append("Cost:\n```" + ResourceType.resourcesToString(cost) + "``` ");
+        if (ResourceType.resourcesToMap(cost).size() > 1) {
+            response.append("Worth: ~$" + MathMan.format(ResourceType.convertedTotal(cost))).append("\n");
         }
-        response.append("\nUpkeep:\n```" + PnwUtil.resourcesToString(upkeep) + "``` ");
-        if (PnwUtil.resourcesToMap(upkeep).size() > 1) {
-            response.append("Worth: ~$" + MathMan.format(PnwUtil.convertedTotal(upkeep))).append("\n");
+        response.append("\nUpkeep:\n```" + ResourceType.resourcesToString(upkeep) + "``` ");
+        if (ResourceType.resourcesToMap(upkeep).size() > 1) {
+            response.append("Worth: ~$" + MathMan.format(ResourceType.convertedTotal(upkeep))).append("\n");
         }
 
         return response.toString();
@@ -2066,7 +2063,7 @@ public class UtilityCommands {
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
                                NationList nations, @Switch("u") boolean update, @Switch("s") @Timestamp Long snapshotDate) {
-        Set<DBNation> nationSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;
@@ -2076,11 +2073,11 @@ public class UtilityCommands {
         for (DBNation nation : nationSet) {
             Set<Project> projects = nation.getProjects();
             for (Project project : projects) {
-                projectCost = PnwUtil.addResourcesToA(projectCost, project.cost());
+                projectCost = ResourceType.addResourcesToA(projectCost, project.cost());
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int units = nation.getUnits(unit);
-                militaryCost = PnwUtil.addResourcesToA(militaryCost, PnwUtil.resourcesToMap(unit.getCost(units)));
+                militaryCost = ResourceType.addResourcesToA(militaryCost, ResourceType.resourcesToMap(unit.getCost(units)));
             }
             int cities = nation.getCities();
             for (int i = 1; i <= cities; i++) {
@@ -2089,7 +2086,7 @@ public class UtilityCommands {
                 boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
                 boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                cityCost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp, gsa);
+                cityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa);
             }
             Map<Integer, JavaCity> cityMap = nation.getCityMap(update, false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
@@ -2099,15 +2096,15 @@ public class UtilityCommands {
                     double infraFactor = 0.95;
                     if (projects.contains(Projects.ARABLE_LAND_AGENCY)) landFactor *= 0.95;
                     if (projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING)) infraFactor *= 0.95;
-                    landCost += PnwUtil.calculateLand(250, city.getLand()) * landFactor;
-                    infraCost += PnwUtil.calculateInfra(10, city.getInfra()) * infraFactor;
+                    landCost += PW.City.Land.calculateLand(250, city.getLand()) * landFactor;
+                    infraCost += PW.City.Infra.calculateInfra(10, city.getInfra()) * infraFactor;
                 }
                 city = cityEntry.getValue();
                 JavaCity empty = new JavaCity();
                 empty.setLand(city.getLand());
                 empty.setInfra(city.getInfra());
                 double[] myBuildingCost = city.calculateCost(empty);
-                buildingCost = PnwUtil.addResourcesToA(buildingCost, PnwUtil.resourcesToMap(myBuildingCost));
+                buildingCost = ResourceType.addResourcesToA(buildingCost, ResourceType.resourcesToMap(myBuildingCost));
             }
         }
 
@@ -2115,20 +2112,20 @@ public class UtilityCommands {
         total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + infraCost);
         total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + landCost);
         total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + cityCost);
-        total = PnwUtil.add(total, projectCost);
-        total = PnwUtil.add(total, militaryCost);
-        total = PnwUtil.add(total, buildingCost);
-        double totalConverted = PnwUtil.convertedTotal(total);
+        total = ResourceType.add(total, projectCost);
+        total = ResourceType.add(total, militaryCost);
+        total = ResourceType.add(total, buildingCost);
+        double totalConverted = ResourceType.convertedTotal(total);
         String title = nationSet.size() + " nations worth ~$" + MathMan.format(totalConverted);
 
         StringBuilder response = new StringBuilder();
         response.append("**Infra**: $" + MathMan.format(infraCost));
         response.append("\n").append("**Land**: $" + MathMan.format(landCost));
         response.append("\n").append("**Cities**: $" + MathMan.format(cityCost));
-        response.append("\n").append("**Projects**: $" + MathMan.format(PnwUtil.convertedTotal(projectCost)) + "\n`" + PnwUtil.resourcesToString(projectCost) + "`");
-        response.append("\n").append("**Military**: $" + MathMan.format(PnwUtil.convertedTotal(militaryCost)) + "\n`" + PnwUtil.resourcesToString(militaryCost) + "`");
-        response.append("\n").append("**Buildings**: $" + MathMan.format(PnwUtil.convertedTotal(buildingCost)) + "\n`" + PnwUtil.resourcesToString(buildingCost) + "`");
-        response.append("\n").append("**Total**: $" + MathMan.format(PnwUtil.convertedTotal(total)) + "\n`" + PnwUtil.resourcesToString(total) + "`");
+        response.append("\n").append("**Projects**: $" + MathMan.format(ResourceType.convertedTotal(projectCost)) + "\n`" + ResourceType.resourcesToString(projectCost) + "`");
+        response.append("\n").append("**Military**: $" + MathMan.format(ResourceType.convertedTotal(militaryCost)) + "\n`" + ResourceType.resourcesToString(militaryCost) + "`");
+        response.append("\n").append("**Buildings**: $" + MathMan.format(ResourceType.convertedTotal(buildingCost)) + "\n`" + ResourceType.resourcesToString(buildingCost) + "`");
+        response.append("\n").append("**Total**: $" + MathMan.format(ResourceType.convertedTotal(total)) + "\n`" + ResourceType.resourcesToString(total) + "`");
 
         channel.create().embed(title, response.toString()).send();
         return null;
@@ -2155,8 +2152,8 @@ public class UtilityCommands {
         // Append buildings
         response.append("**Buildings:**\n```json\n" + buildings + "\n```");
         // append cost
-        response.append("\n**Cost:** ~$" + MathMan.format(PnwUtil.convertedTotal(cost)));
-        response.append("\n```json\n" + PnwUtil.resourcesToString(cost) + "\n```");
+        response.append("\n**Cost:** ~$" + MathMan.format(ResourceType.convertedTotal(cost)));
+        response.append("\n```json\n" + ResourceType.resourcesToString(cost) + "\n```");
         return response.toString();
     }
 

@@ -9,7 +9,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.task.mail.SearchMailTask;
@@ -94,8 +94,8 @@ public class CheckMail extends Command {
 
                 if (row.isEmpty()) {
                     int allianceId = nation != null ? nation.getAlliance_id() : 0;
-                    row.add(MarkupUtil.sheetUrl(PnwUtil.getName(mail.nationId, false), PnwUtil.getUrl(mail.nationId, false)));
-                    row.add(MarkupUtil.sheetUrl(PnwUtil.getName(allianceId, true), PnwUtil.getUrl(allianceId, true)));
+                    row.add(MarkupUtil.sheetUrl(PW.getName(mail.nationId, false), PW.getUrl(mail.nationId, false)));
+                    row.add(MarkupUtil.sheetUrl(PW.getName(allianceId, true), PW.getUrl(allianceId, true)));
                     row.add(mail.id + "");
                     row.add(mail.subject);
                 }

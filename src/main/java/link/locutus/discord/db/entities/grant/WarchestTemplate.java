@@ -10,7 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
 
@@ -51,7 +51,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.warchest.cmd.create(name,
                 allowedRecipients,
-                allowancePerCity == null ? null : PnwUtil.resourcesToString(allowancePerCity),
+                allowancePerCity == null ? null : ResourceType.resourcesToString(allowancePerCity),
                 trackDays <= 0 ? null : trackDays + "",
                 subtractExpenditure ? "true" : null,
                 overdrawPercentCents <= 0 ? null : overdrawPercentCents + "",
@@ -72,7 +72,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         StringBuilder result = new StringBuilder();
         // add the fields as "key: value"
         if (allowancePerCity != null) {
-            result.append("allowance per city: " + PnwUtil.resourcesToString(allowancePerCity));
+            result.append("allowance per city: " + ResourceType.resourcesToString(allowancePerCity));
         }
         if (trackDays > 0) {
             result.append("track days: " + trackDays);
@@ -131,7 +131,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         }
         if (allowancePerCity != null) {
             result.append(" | city=");
-            result.append(PnwUtil.resourcesToString(allowancePerCity));
+            result.append(ResourceType.resourcesToString(allowancePerCity));
         }
         return result.toString();
     }
@@ -170,7 +170,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         List<Grant.Requirement> list = new ArrayList<>();
 
         if (template == null || parsed != null) {
-            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (template == null ? "{amount}" : ResourceType.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     for (Map.Entry<ResourceType, Double> entry : parsed.entrySet()) {
@@ -189,7 +189,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
             } else {
                 allowance = null;
             }
-            list.add(new Grant.Requirement("Amount must NOT exceed remaining allowance: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
+            list.add(new Grant.Requirement("Amount must NOT exceed remaining allowance: `" + (template == null ? "{amount}" : ResourceType.resourcesToString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
                     allowanceStr, false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
@@ -214,9 +214,9 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed, StringBuilder debugOutput) {
         double[] allowance;
         if (allowancePerCity != null) {
-            allowance = PnwUtil.multiply(allowancePerCity.clone(), receiver.getCities());
+            allowance = PW.multiply(allowancePerCity.clone(), receiver.getCities());
         } else {
-            allowance = PnwUtil.resourcesToArray(getDb().getPerCityWarchest(receiver));
+            allowance = ResourceType.resourcesToArray(getDb().getPerCityWarchest(receiver));
         }
 
         long cutoff = trackDays <= 0 ? 0 : System.currentTimeMillis() - TimeUnit.DAYS.toMillis(trackDays);
@@ -233,8 +233,8 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                     false,
                     false
             );
-            spent = ResourceType.add(spent, PnwUtil.resourcesToArray(cost.getNetCost(true)));
-            PnwUtil.max(spent, ResourceType.getBuffer());
+            spent = ResourceType.add(spent, ResourceType.resourcesToArray(cost.getNetCost(true)));
+            ResourceType.max(spent, ResourceType.getBuffer());
         }
 
         // received #warchest
@@ -242,7 +242,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
         for (Transaction2 record : receiver.getTransactions(true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
+                Map<String, String> notes = PW.parseTransferHashNotes(record.note);
                 if (notes.containsKey("#warchest")) {
                     received = ResourceType.add(received, record.resources);
                 }
@@ -251,22 +251,22 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         if (overdrawPercentCents > 0) {
             double factor = overdrawPercentCents * 0.0001;
             if (!ResourceType.isZero(received)) {
-                received = PnwUtil.multiply(received, 1 - factor);
+                received = PW.multiply(received, 1 - factor);
             }
             if (!ResourceType.isZero(spent)) {
-                spent = PnwUtil.multiply(spent, 1 + factor);
+                spent = PW.multiply(spent, 1 + factor);
             }
         }
 
         if (debugOutput != null) {
-            debugOutput.append("[Allowance: `" + PnwUtil.resourcesToString(allowance) + "`, ");
-            debugOutput.append("Received: `" + PnwUtil.resourcesToString(received) + "`, ");
-            debugOutput.append("Spent: `" + PnwUtil.resourcesToString(spent) + "`]");
+            debugOutput.append("[Allowance: `" + ResourceType.resourcesToString(allowance) + "`, ");
+            debugOutput.append("Received: `" + ResourceType.resourcesToString(received) + "`, ");
+            debugOutput.append("Spent: `" + ResourceType.resourcesToString(spent) + "`]");
         }
 
         double[] canSend = ResourceType.builder(allowance).subtract(received).add(spent).min(allowance).build();
         if (parsed != null) {
-            canSend = PnwUtil.min(canSend, PnwUtil.resourcesToArray(parsed));
+            canSend = ResourceType.min(canSend, ResourceType.resourcesToArray(parsed));
         }
         return canSend;
     }

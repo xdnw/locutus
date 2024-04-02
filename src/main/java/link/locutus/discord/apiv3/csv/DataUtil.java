@@ -1,49 +1,35 @@
 package link.locutus.discord.apiv3.csv;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
 import javax.security.auth.login.LoginException;
-import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -147,7 +133,7 @@ public class DataUtil {
                     double cost = 0;
                     for (Map.Entry<Integer, Double> entry : cityInfra.entrySet()) {
                         double infraAmt = entry.getValue();
-                        cost += PnwUtil.calculateInfra(infraAmt * (1 - infraPercent_cached), infraAmt);
+                        cost += PW.City.Infra.calculateInfra(infraAmt * (1 - infraPercent_cached), infraAmt);
                     }
 
                     if (att instanceof VictoryCursor victory) {

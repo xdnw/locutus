@@ -5,6 +5,7 @@ import gg.jte.generated.precompiled.grant.JteinfrasGenerated;
 import gg.jte.generated.precompiled.grant.JtelandsGenerated;
 import gg.jte.generated.precompiled.grant.JteprojectsGenerated;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -13,7 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.User;
@@ -38,7 +39,7 @@ public class GrantPages {
         for (Grant grant : grants) {
             grant.getNote();
             grant.getInstructions();
-            PnwUtil.resourcesToString(grant.cost());
+            ResourceType.resourcesToString(grant.cost());
 
             boolean allowed = true;
             for (Grant.Requirement requirement : grant.getRequirements()) {

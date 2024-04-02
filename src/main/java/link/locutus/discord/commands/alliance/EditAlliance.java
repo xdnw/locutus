@@ -10,7 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -56,7 +56,7 @@ public class EditAlliance extends Command {
         StringBuilder response = new StringBuilder();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Integer allianceId = PnwUtil.parseAllianceId(args.get(0));
+        Integer allianceId = PW.parseAllianceId(args.get(0));
         if (allianceId == null) {
 
         }

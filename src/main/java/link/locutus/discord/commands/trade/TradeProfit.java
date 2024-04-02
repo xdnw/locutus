@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -128,10 +128,10 @@ public class TradeProfit extends Command {
             ppuSell.put(type, (double) salesPrice.get(type) / entry.getValue());
         }
 
-        double profitTotal = PnwUtil.convertedTotal(netOutflows);
+        double profitTotal = ResourceType.convertedTotal(netOutflows);
         double profitMin = 0;
         for (Map.Entry<ResourceType, Long> entry : netOutflows.entrySet()) {
-            profitMin += -PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
+            profitMin += -ResourceType.convertedTotal(entry.getKey(), -entry.getValue());
         }
         profitTotal = Math.min(profitTotal, profitMin);
 
@@ -150,16 +150,16 @@ public class TradeProfit extends Command {
         StringBuilder response = new StringBuilder();
         response
             .append('\n').append("Buy (PPU):```")
-            .append(String.format("%16s", PnwUtil.resourcesToString(ppuBuy)))
+            .append(String.format("%16s", ResourceType.resourcesToString(ppuBuy)))
             .append("```")
             .append(' ').append("Sell (PPU):```")
-            .append(String.format("%16s", PnwUtil.resourcesToString(ppuSell)))
+            .append(String.format("%16s", ResourceType.resourcesToString(ppuSell)))
             .append("```")
             .append(' ').append("Net inflows:```")
-            .append(String.format("%16s", PnwUtil.resourcesToString(netOutflows)))
+            .append(String.format("%16s", ResourceType.resourcesToString(netOutflows)))
             .append("```")
             .append(' ').append("Total Volume:```")
-            .append(String.format("%16s", PnwUtil.resourcesToString(totalVolume)))
+            .append(String.format("%16s", ResourceType.resourcesToString(totalVolume)))
             .append("```");
         response.append("Profit total: $").append(MathMan.format(profitTotal) + " (" + numTrades + " trades)");
         return response.toString().trim();

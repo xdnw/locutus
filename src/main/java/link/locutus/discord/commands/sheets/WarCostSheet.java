@@ -14,7 +14,7 @@ import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -240,17 +240,17 @@ public class WarCostSheet extends Command {
         Map<ResourceType, Double> total = new HashMap<>();
 
         if (!flags.contains('c')) {
-            total = PnwUtil.add(total, cost.getConsumption(isPrimary));
+            total = ResourceType.add(total, cost.getConsumption(isPrimary));
         }
         if (!flags.contains('i')) {
             double infraCost = cost.getInfraLost(isPrimary);
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + infraCost);
         }
         if (!flags.contains('l')) {
-            total = PnwUtil.add(total, cost.getLoot(isPrimary));
+            total = ResourceType.add(total, cost.getLoot(isPrimary));
         }
         if (!flags.contains('u')) {
-            total = PnwUtil.add(total, cost.getUnitCost(isPrimary));
+            total = ResourceType.add(total, cost.getUnitCost(isPrimary));
         }
 
         if (flags.contains('n')) {
@@ -258,6 +258,6 @@ public class WarCostSheet extends Command {
                 entry.setValue(entry.getValue() / nation.getCities());
             }
         }
-        return PnwUtil.convertedTotal(total);
+        return ResourceType.convertedTotal(total);
     }
 }

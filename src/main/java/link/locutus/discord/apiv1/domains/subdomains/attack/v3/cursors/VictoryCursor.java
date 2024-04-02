@@ -4,18 +4,16 @@ import com.politicsandwar.graphql.model.CityInfraDamage;
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +58,7 @@ public class VictoryCursor extends FailedCursor {
                 int before = entry.getValue();
                 int after = (int) Math.round(before * pct);
                 if (after < before) {
-                    double value = PnwUtil.calculateInfra(after * 0.01, before * 0.01);
+                    double value = PW.City.Infra.calculateInfra(after * 0.01, before * 0.01);
                     infra_destroyed_cents += (before - after);
                     infra_destroyed_value_cents += (value * 100);
                 }
@@ -111,7 +109,7 @@ public class VictoryCursor extends FailedCursor {
             for (CityInfraDamage cityInfraDamage : infraBefore) {
                 double before = cityInfraDamage.getInfrastructure();
                 double after = before * (1 - attack.getInfra_destroyed_percentage());
-                double value = PnwUtil.calculateInfra(after, before);
+                double value = PW.City.Infra.calculateInfra(after, before);
                 infra_destroyed_cents += (before - after) * 100;
                 infra_destroyed_value_cents += (value * 100);
                 city_infra_before_cents.put(cityInfraDamage.getId(), (int) (before * 100));

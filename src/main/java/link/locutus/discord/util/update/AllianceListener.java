@@ -26,7 +26,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -344,7 +344,7 @@ public class AllianceListener {
 
             if (!wars.isEmpty()) body.append("Wars:\n");
             for (Map.Entry<Integer, Integer> entry : wars.entrySet()) {
-                body.append("- " + entry.getValue() + " wars vs " + PnwUtil.getMarkdownUrl(entry.getKey(), true) + "\n");
+                body.append("- " + entry.getValue() + " wars vs " + PW.getMarkdownUrl(entry.getKey(), true) + "\n");
             }
         }
 
@@ -353,7 +353,7 @@ public class AllianceListener {
             body.append("**Potential offshore for**: " + parent.getMarkdownUrl()).append("\n");
         }
 
-        body.append(PnwUtil.getUrl(aaId, true));
+        body.append(PW.getUrl(aaId, true));
 
         AlertUtil.forEachChannel(f -> true, GuildKey.ALLIANCE_CREATE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override

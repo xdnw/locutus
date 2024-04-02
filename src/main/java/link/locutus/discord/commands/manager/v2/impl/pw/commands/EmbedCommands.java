@@ -34,7 +34,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
@@ -949,7 +949,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         List<Boolean> isModals = new ArrayList<>();
 
         if (isCorp) {
-            body += "\nTo deposit, send a PRIVATE trade offer to " + PnwUtil.getMarkdownUrl(nationId, false) + ":\n" +
+            body += "\nTo deposit, send a PRIVATE trade offer to " + PW.getMarkdownUrl(nationId, false) + ":\n" +
                     "- Selling a resource for $0\n" +
                     "- Buying food for OVER $100,000\n" +
                     "Press `trade deposit` if you have sent trades\n" +
@@ -1057,8 +1057,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "{score}",
                         "{off}",
                         "{def}",
-                        "'=MROUND({score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
-                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1)'",
+                        "'=MROUND({score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
+                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1)'",
                         "{color}",
                         "{beigeturns}",
                         "{soldiers}",
@@ -1090,8 +1090,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "{off}",
                         "{def}",
                         "{beigeturns}",
-                        "'=MROUND({score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
-                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1)'",
+                        "'=MROUND({score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
+                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1)'",
                         "{soldiers}",
                         "{tanks}",
                         "{aircraft}",
@@ -1119,8 +1119,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "{score}",
                         "{off}",
                         "{def}",
-                        "'=MROUND({score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
-                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1)'",
+                        "'=MROUND({score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
+                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1)'",
                         "{soldiers}",
                         "{tanks}",
                         "{aircraft}",
@@ -1146,8 +1146,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "{off}",
                         "{def}",
                         "{beigeturns}",
-                        "'=MROUND({score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
-                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1)'",
+                        "'=MROUND({score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
+                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1)'",
                         "{soldiers}",
                         "{tanks}",
                         "{aircraft}",
@@ -1239,7 +1239,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 "{score}",
                 "{off}",
                 "{def}",
-                "'=MROUND({score}/" + PnwUtil.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
+                "'=MROUND({score}/" + PW.WAR_RANGE_MAX_MODIFIER + ",1) & \"-\" & MROUND({score}/0.75,1)'",
                 "'=MROUND({score}/0.4,1) & \"-\" & MROUND({score}/2.5,1)'",
                 "{soldiers}",
                 "{tanks}",

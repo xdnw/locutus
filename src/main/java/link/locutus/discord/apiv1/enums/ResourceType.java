@@ -1,10 +1,18 @@
 package link.locutus.discord.apiv1.enums;
 
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -13,21 +21,34 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.IOUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public enum ResourceType {
     MONEY("money", "withmoney", 16),
@@ -66,6 +87,32 @@ public enum ResourceType {
     MUNITIONS("munitions", "withmunitions", 19, 3500 , 32, 18, 5, 1.34, () -> Projects.ARMS_STOCKPILE, 6, LEAD),
     STEEL("steel", "withsteel", 23, 4000, 40, 9, 5, 1.36, () -> Projects.IRON_WORKS, 3, IRON, COAL),
     ALUMINUM("aluminum", "withaluminum", 8, 2500, 40, 9, 5, 1.36, () -> Projects.BAUXITEWORKS, 3, BAUXITE);
+    private static final Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
+    private static final Gson RESOURCE_GSON = new GsonBuilder()
+            .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
+            .create();
+
+    private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {
+        @Override
+        public Map<ResourceType, Double> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            Map<ResourceType, Double> map = new LinkedHashMap<>();
+            json.getAsJsonObject().entrySet().forEach(entry -> {
+                ResourceType key = ResourceType.valueOf(entry.getKey());
+                Double value = PrimitiveBindings.Double(entry.getValue().getAsString());
+                map.put(key, value);
+            });
+            return map;
+        }
+    }
+    private static final Pattern RSS_PATTERN;;
+
+    static {
+        String regex = "\\$([0-9|,.]+), ([0-9|,.]+) coal, ([0-9|,.]+) oil, " +
+                "([0-9|,.]+) uranium, ([0-9|,.]+) lead, ([0-9|,.]+) iron, ([0-9|,.]+) bauxite, ([0-9|,.]+) " +
+                "gasoline, ([0-9|,.]+) munitions, ([0-9|,.]+) steel, ([0-9|,.]+) aluminum, and " +
+                "([0-9|,.]+) food";
+        RSS_PATTERN = Pattern.compile(regex);
+    }
 
     public static final ResourceType parseChar(Character s) {
         if (s == '$') return MONEY;
@@ -77,6 +124,436 @@ public enum ResourceType {
             }
         }
         return null;
+    }
+
+    public static Map<ResourceType, Double> roundResources(Map<ResourceType, Double> resources) {
+        HashMap<ResourceType, Double> copy = new HashMap<>(resources);
+        for (Map.Entry<ResourceType, Double> entry : copy.entrySet()) {
+            entry.setValue(Math.round(entry.getValue() * 100.0) / 100.0);
+        }
+        return copy;
+    }
+
+    public static String resourcesToJson(String receiver, boolean isNation, Map<ResourceType, Double> rss, String note) {
+        Map<String, String> post = new LinkedHashMap<>();
+        if (isNation) {
+            post.put("withrecipient", receiver);
+            post.put("withtype", "Nation");
+        } else {
+            post.put("withrecipient", "" + receiver);
+            post.put("withtype", "Alliance");
+        }
+        for (ResourceType type : values) {
+            if (type == CREDITS) continue;
+            double amt = rss.getOrDefault(type, 0d);
+            if (amt == 0) continue;
+            String key = "with" + type.name().toLowerCase();
+            post.put(key, String.format("%.2f", amt));
+        }
+        post.put("withnote", note == null ? "" : note);
+        post.put("withsubmit", "Withdraw");
+
+//        for (Map.Entry<String, String> entry : post.entrySet()) {
+//            entry.setValue("\"" + entry.getValue() + "\"");
+//        }
+        return new Gson().toJson(post);
+    }
+
+    public static Map<ResourceType, Double> parseResources(String arg) {
+        boolean allowBodmas = arg.contains("{") && StringMan.containsAny("+-*/^%", arg.replaceAll("\\{[^}]+}", ""));
+        return parseResources(arg, allowBodmas);
+    }
+
+    public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
+        if (MathMan.isInteger(arg)) {
+            throw new IllegalArgumentException("Please use `$" + arg + "` or `money=" + arg + "` for money, not `" + arg + "`");
+        }
+        if (arg.contains("---+") && arg.contains("-+-")) {
+            arg = arg.replace("-+-", "---");
+            int start = arg.indexOf("---+");
+            arg = arg.substring(start + 4).trim();
+            arg = arg.replaceAll("([0-9.]+)[ ]+", "$1,");
+            arg = arg.replace("\n", "");
+            arg = arg.replaceAll("[ ]+", " ");
+            arg = "{" + arg.replace(" | ", ":") + "}";
+        }
+        if (arg.contains("\t") || arg.contains("    ")) {
+            String[] split = arg.split("[\t]");
+            if (split.length == 1) split = arg.split("[ ]{4}");
+            boolean credits = (split.length == values.length);
+            if (credits || split.length == values.length - 1) {
+                ArrayList<ResourceType> types = new ArrayList<>(Arrays.asList(values));
+                if (!credits) types.remove(CREDITS);
+                Map<ResourceType, Double> result = new LinkedHashMap<>();
+                for (int i = 0; i < types.size(); i++) {
+                    result.put(types.get(i), MathMan.parseDouble(split[i].trim()));
+                }
+                return result;
+            }
+        } else if (arg.contains(" and ")) {
+            arg = arg.replace(" and ", ", ");
+            if (arg.contains(" taking:")) {
+                arg = arg.split(" taking:")[1].trim();
+            } else if (arg.contains(" looted ")) {
+                arg = arg.split(" looted ")[1].trim();
+            } else if (arg.contains(" spies, ")) {
+                arg = arg.split(" spies, ")[1].trim();
+            }
+            if (arg.contains(". ")) {
+                arg = arg.substring(0, arg.indexOf(". "));
+            }
+            arg = arg.replace(",,", ",");
+        }
+        arg = arg.trim();
+        String original = arg;
+        if (!arg.contains(":") && !arg.contains("=")) {
+            arg = arg.replaceAll("([-0-9])[ ]([a-zA-Z])", "$1:$2");
+            arg = arg.replaceAll("([a-zA-Z])[ ]([-0-9])", "$1:$2");
+        }
+        arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
+        arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
+        arg = arg.replace(" ", "");
+        if (arg.startsWith("$") || arg.startsWith("-$")) {
+            if (!arg.contains(",")) {
+                int sign = 1;
+                if (arg.startsWith("-")) {
+                    sign = -1;
+                    arg = arg.substring(1);
+                }
+                Map<ResourceType, Double> result = new LinkedHashMap<>();
+                result.put(MONEY, MathMan.parseDouble(arg) * sign);
+                return result;
+            }
+            arg = arg.replace("$", MONEY +":");
+        }
+
+        arg = arg.replace("GAS:", "GASOLINE:");
+        arg = arg.replace("URA:", "URANIUM:");
+        arg = arg.replace("BAUX:", "BAUXITE:");
+        arg = arg.replace("MUNI:", "MUNITIONS:");
+        arg = arg.replace("ALU:", "ALUMINUM:");
+        arg = arg.replace("ALUMINIUM:", "ALUMINUM:");
+        arg = arg.replace("CASH:", "MONEY:");
+
+        if (!arg.contains("{") && !arg.contains("}")) {
+            arg = "{" + arg + "}";
+        }
+        if (arg.startsWith("-{")) {
+            arg = "{}" + arg;
+        }
+        arg = arg.replace("(-{", "({}-{");
+
+        Map<ResourceType, Double> result;
+        try {
+            Function<String, Map<ResourceType, Double>> parse = f -> {
+                if (f.contains("TRANSACTION_COUNT")) {
+                    f = f.replaceAll("\"TRANSACTION_COUNT\":[0-9]+,", "");
+                    f = f.replaceAll(",\"TRANSACTION_COUNT\":[0-9]+", "");
+                }
+                return RESOURCE_GSON.fromJson(f, RESOURCE_TYPE);
+            };
+            if (allowBodmas) {
+                System.out.println("Input " + arg);
+                List<ArrayUtil.DoubleArray> resources = (ArrayUtil.calculate(arg, arg1 -> {
+                    if (!arg1.contains("{")) {
+                        return new ArrayUtil.DoubleArray(PrimitiveBindings.Double(arg1));
+                    }
+                    Map<ResourceType, Double> map = parse.apply(arg1);
+                    double[] arr = resourcesToArray(map);
+                    return new ArrayUtil.DoubleArray(arr);
+                }));
+                result = resourcesToMap(resources.get(0).toArray());
+            } else {
+                result = parse.apply(arg);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
+                String[] split = original.split(" ");
+                result = new LinkedHashMap<>();
+                for (String s : split) {
+                    Character typeChar = s.charAt(s.length() - 1);
+                    ResourceType type1 = parseChar(typeChar);
+                    double amount = MathMan.parseDouble(s.substring(0, s.length() - 1));
+                    result.put(type1, amount);
+                }
+            } else {
+                return handleResourceError(arg, e);
+            }
+        }
+        if (result.containsKey(null)) {
+            return handleResourceError(arg, null);
+        }
+        return result;
+    }
+
+    private static Map<ResourceType, Double> handleResourceError(String arg, Exception e) {
+        StringBuilder response = new StringBuilder("Invalid resource amounts: `" + arg + "`\n");
+        if (e != null) {
+            String msg = e.getMessage();
+            if (msg.startsWith("No enum constant")) {
+                String rssInput = msg.substring(msg.lastIndexOf(".") + 1);
+                List<ResourceType> closest = StringMan.getClosest(rssInput, valuesList, false);
+
+                response.append("You entered `" + rssInput + "` which is not a valid resource.");
+                if (closest.size() > 0) {
+                    response.append(" Did you mean: `").append(closest.get(0)).append("`");
+                }
+                response.append("\n");
+            } else {
+                response.append("Error: `").append(e.getMessage()).append("`\n");
+            }
+        }
+        response.append("Valid resources are: `").append(StringMan.join(values, ", ")).append("`").append("\n");
+        response.append("""
+                You can enter a single resource like this:
+                `food=10`
+                `$15`
+                Use commas for multiple resources:
+                `food=10,gas=20,money=30`
+                Use k,m,b,t for thousands, millions, billions, trillions:
+                `food=10k,gas=20m,money=30b`
+                Use curly braces for operations:
+                `{food=3*(2+1),coal=-3}*{food=112,coal=2513}*1.5+{coal=1k}^0.5`""");
+        throw new IllegalArgumentException(response.toString());
+    }
+
+    public static String resourcesToFancyString(double[] resources) {
+        return resourcesToFancyString(resourcesToMap(resources));
+    }
+
+    public static String resourcesToFancyString(double[] resources, String totalName) {
+        return resourcesToFancyString(resourcesToMap(resources), totalName);
+    }
+
+    public static String resourcesToFancyString(Map<ResourceType, Double> resources) {
+        return resourcesToFancyString(resources, null);
+    }
+
+    public static String resourcesToFancyString(Map<ResourceType, Double> resources, String totalName) {
+        StringBuilder out = new StringBuilder();
+        String leftAlignFormat = "%-10s | %-17s\n";
+        out.append("```");
+        out.append("Resource   | Amount   \n");
+        out.append("-----------+-----------------+\n");
+        for (ResourceType type : values) {
+            Double amt = resources.get(type);
+            if (amt != null) out.append(String.format(leftAlignFormat, type.name(), MathMan.format(amt)));
+        }
+        out.append("```\n");
+        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(convertedTotal(resources)) + "\n```" + resourcesToString(resources) + "``` ");
+        return out.toString();
+    }
+
+    public static <T extends Number> Map<ResourceType, T> addResourcesToA(Map<ResourceType, T> a, Map<ResourceType, T> b) {
+        if (b.isEmpty()) {
+            return a;
+        }
+        for (ResourceType type : values) {
+            Number v1 = a.get(type);
+            Number v2 = b.get(type);
+            Number total = v1 == null ? v2 : (v2 == null ? v1 : MathMan.add(v1, v2));
+            if (total != null && total.doubleValue() != 0) {
+                a.put(type, (T) total);
+            } else {
+                a.remove(type);
+            }
+        }
+        return a;
+    }
+
+    public static <T extends Number> Map<ResourceType, T> negate(Map<ResourceType, T> b) {
+        return subResourcesToA(new LinkedHashMap<>(), b);
+    }
+
+    public static <T extends Number> Map<ResourceType, T> subResourcesToA(Map<ResourceType, T> a, Map<ResourceType, T> b) {
+        for (ResourceType type : values) {
+            Number v1 = a.get(type);
+            Number v2 = b.get(type);
+            if (v2 == null) continue;
+            Number total = MathMan.subtract(v1, v2);
+            if (total != null && total.doubleValue() != 0) {
+                a.put(type, (T) total);
+            }
+        }
+        return a;
+    }
+
+    public static <K, T extends Number> Map<K, T> add(Map<K, T> a, Map<K, T> b) {
+        if (a.isEmpty()) {
+            return b;
+        } else if (b.isEmpty()) {
+            return a;
+        }
+        LinkedHashMap<K, T> copy = new LinkedHashMap<>();
+        Set<K> keys = new HashSet<>(a.keySet());
+        keys.addAll(b.keySet());
+        for (K type : keys) {
+            Number v1 = a.get(type);
+            Number v2 = b.get(type);
+            Number total = v1 == null ? v2 : (v2 == null ? v1 : MathMan.add(v1, v2));
+            if (total != null && total.doubleValue() != 0) {
+                copy.put(type, (T) total);
+            }
+        }
+        return copy;
+    }
+
+    public static Map<ResourceType, Double> resourcesToMap(double[] resources) {
+        Map<ResourceType, Double> map = new LinkedHashMap<>();
+        for (ResourceType type : values) {
+            double value = resources[type.ordinal()];
+            if (value != 0) {
+                map.put(type, value);
+            }
+        }
+        return map;
+    }
+
+    public static double[] resourcesToArray(Map<ResourceType, Double> resources) {
+        double[] result = new double[values.length];
+        for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+            result[entry.getKey().ordinal()] += entry.getValue();
+        }
+        return result;
+    }
+
+    public static String resourcesToString(double[] values) {
+        return resourcesToString(resourcesToMap(values));
+    }
+
+    public static String resourcesToString(Map<ResourceType, ? extends Number> resources) {
+        Map<ResourceType, String> newMap = new LinkedHashMap<>();
+        for (ResourceType resourceType : values()) {
+            if (resources.containsKey(resourceType)) {
+                Number value = resources.get(resourceType);
+                if (value.doubleValue() == 0) continue;
+                if (value.doubleValue() == value.longValue()) {
+                    newMap.put(resourceType, MathMan.format(value.longValue()));
+                } else {
+                    newMap.put(resourceType, MathMan.format(value.doubleValue()));
+                }
+            }
+        }
+        return StringMan.getString(newMap);
+    }
+
+    public static double convertedTotal(double[] resources, boolean max) {
+        if (max) return convertedTotal(resources);
+        double total = 0;
+        for (int i = 0; i < resources.length; i++) {
+            double amt = resources[i];
+            if (amt != 0) {
+                total += -convertedTotal(values[i], -amt);
+            }
+        }
+        return total;
+    }
+
+    public static double convertedTotal(double[] resources) {
+        double total = 0;
+        for (int i = 0; i < resources.length; i++) {
+            double amt = resources[i];
+            if (amt != 0) {
+                total += convertedTotal(values[i], amt);
+            }
+        }
+        return total;
+    }
+
+    public static Map.Entry<DBNation, double[]> parseIntelRss(String input, double[] resourceOutput) {
+        if (resourceOutput == null) {
+            resourceOutput = new double[values.length];
+        }
+
+        Matcher matcher = RSS_PATTERN.matcher(input.toLowerCase());
+        matcher.matches();
+        matcher.groupCount();
+        matcher.find();
+        String moneyStr;
+        try {
+            moneyStr = matcher.group(1);
+        } catch (IllegalStateException | IndexOutOfBoundsException e) {
+            return null;
+        }
+        double money = MathMan.parseDouble(moneyStr.substring(0, moneyStr.length() - 1));
+        double coal = MathMan.parseDouble(matcher.group(2));
+        double oil = MathMan.parseDouble(matcher.group(3));
+        double uranium = MathMan.parseDouble(matcher.group(4));
+        double iron = MathMan.parseDouble(matcher.group(5));
+        double bauxite = MathMan.parseDouble(matcher.group(6));
+        double lead = MathMan.parseDouble(matcher.group(7));
+        double gasoline = MathMan.parseDouble(matcher.group(8));
+        double munitions = MathMan.parseDouble(matcher.group(9));
+        double steel = MathMan.parseDouble(matcher.group(10));
+        double aluminum = MathMan.parseDouble(matcher.group(11));
+        double food = MathMan.parseDouble(matcher.group(12));
+
+        resourceOutput[MONEY.ordinal()] = money;
+        resourceOutput[COAL.ordinal()] = coal;
+        resourceOutput[OIL.ordinal()] = oil;
+        resourceOutput[URANIUM.ordinal()] = uranium;
+        resourceOutput[IRON.ordinal()] = iron;
+        resourceOutput[BAUXITE.ordinal()] = bauxite;
+        resourceOutput[LEAD.ordinal()] = lead;
+        resourceOutput[GASOLINE.ordinal()] = gasoline;
+        resourceOutput[MUNITIONS.ordinal()] = munitions;
+        resourceOutput[STEEL.ordinal()] = steel;
+        resourceOutput[ALUMINUM.ordinal()] = aluminum;
+        resourceOutput[FOOD.ordinal()] = food;
+        for (int i = 0; i < resourceOutput.length; i++) {
+            if (resourceOutput[i] < 0) resourceOutput[i] = 0;
+        }
+
+        String name = input.split("You successfully gathered intelligence about ")[1].split("\\. Your spies discovered that")[0];
+        DBNation nation = Locutus.imp().getNationDB().getNation(name);
+
+        return new AbstractMap.SimpleEntry<>(nation, resourceOutput);
+    }
+
+    public static double convertedTotal(Map<ResourceType, ? extends Number> resources) {
+        double total = 0;
+        for (Map.Entry<ResourceType, ? extends Number> entry : resources.entrySet()) {
+            total += convertedTotal(entry.getKey(), entry.getValue().doubleValue());
+        }
+        return total;
+    }
+
+    public static double convertedTotalPositive(ResourceType type, double amt) {
+        return Locutus.imp().getTradeManager().getHighAvg(type) * amt;
+    }
+
+    public static double convertedTotalNegative(ResourceType type, double amt) {
+        return Locutus.imp().getTradeManager().getLowAvg(type) * amt;
+    }
+
+    public static double convertedTotal(ResourceType type, double amt) {
+        if (amt != 0) {
+            try {
+                Locutus locutus = Locutus.imp();
+//                if (amt < 0) {
+//                    return locutus.getTradeManager().getLowAvg(type) * amt;
+//                } else
+//                {
+                return locutus.getTradeManager().getHighAvg(type) * amt;
+//                }
+            } catch (NullPointerException ignore) {}
+        }
+        return 0;
+    }
+
+    public static double[] max(double[] rss1, double[] rss2) {
+        for (int i = 0; i < rss1.length; i++) {
+            rss1[i] = Math.max(rss1[i], rss2[i]);
+        }
+        return rss1;
+    }
+
+    public static double[] min(double[] rss1, double[] rss2) {
+        for (int i = 0; i < rss1.length; i++) {
+            rss1[i] = Math.min(rss1[i], rss2[i]);
+        }
+        return rss1;
     }
 
     public String getShorthand() {
@@ -218,14 +695,6 @@ public enum ResourceType {
         }
         return resources;
     }
-
-    public static double[] add(Collection<double[]> values) {
-        double[] result = getBuffer();
-        for (double[] value : values) {
-            add(result, value);
-        }
-        return result;
-    }
     public static double[] add(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
             double amt = values[i];
@@ -234,6 +703,14 @@ public enum ResourceType {
         }
         return resources;
     }
+    public static double[] add(Collection<double[]> values) {
+        double[] result = getBuffer();
+        for (double[] value : values) {
+            add(result, value);
+        }
+        return result;
+    }
+
 
     public static double[] round(double[] resources) {
         for (int i = 0; i < resources.length; i++) {
@@ -272,11 +749,11 @@ public enum ResourceType {
     }
 
     public static String toString(double[] resources, boolean fancy) {
-        return fancy ? PnwUtil.resourcesToFancyString(resources) : toString(resources);
+        return fancy ? resourcesToFancyString(resources) : toString(resources);
     }
 
     public static String toString(double[] resources) {
-        return PnwUtil.resourcesToString(resources);
+        return resourcesToString(resources);
     }
 
     public double[] toArray(double amt) {
@@ -291,9 +768,9 @@ public enum ResourceType {
         for (ResourceType type : values) {
             double amt = total[type.ordinal()];
             if (amt < 0) {
-                consumeCost += Math.abs(PnwUtil.convertedTotal(type, -amt));
+                consumeCost += Math.abs(convertedTotal(type, -amt));
             } else if (amt > 0){
-                taxable += Math.abs(PnwUtil.convertedTotal(type, amt));
+                taxable += Math.abs(convertedTotal(type, amt));
             }
         }
         if (taxable > consumeCost) {
@@ -400,7 +877,7 @@ public enum ResourceType {
         }
 
         public Map<ResourceType, Double> buildMap() {
-            return PnwUtil.resourcesToMap(build());
+            return resourcesToMap(build());
         }
 
         public ResourcesBuilder max(double[] amounts) {
@@ -638,7 +1115,7 @@ public enum ResourceType {
                 }
             }
         }
-        return PnwUtil.resourcesToMap(total);
+        return resourcesToMap(total);
     }
 
     public String getBankString() {

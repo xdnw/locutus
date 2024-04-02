@@ -1,7 +1,6 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import it.unimi.dsi.fastutil.bytes.Byte2IntArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.config.Settings;
@@ -9,7 +8,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -125,7 +124,7 @@ public class DBAttack {
             }
             return Collections.emptyMap();
         }
-        return PnwUtil.resourcesToMap(loot);
+        return ResourceType.resourcesToMap(loot);
     }
 
     public double[] parseLootLegacy(String note) {
@@ -326,11 +325,11 @@ public class DBAttack {
     }
 
     public double getLossesConverted(boolean attacker) {
-        return PnwUtil.convertedTotal(getLosses(attacker));
+        return ResourceType.convertedTotal(getLosses(attacker));
     }
 
     public double getLossesConverted(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot) {
-        return PnwUtil.convertedTotal(getLosses(attacker, units, infra, consumption, includeLoot));
+        return ResourceType.convertedTotal(getLosses(attacker, units, infra, consumption, includeLoot));
     }
 
     public Map<ResourceType, Double> getLosses(boolean attacker) {
@@ -364,11 +363,11 @@ public class DBAttack {
         if (includeLoot) {
             if (getVictor() != 0) {
                 if (loot != null) {
-                    Map<ResourceType, Double> lootDouble = PnwUtil.resourcesToMap(loot);
+                    Map<ResourceType, Double> lootDouble = ResourceType.resourcesToMap(loot);
                     if (attacker ? getVictor() == getAttacker_id() : getVictor() == getDefender_id()) {
-                        losses = PnwUtil.subResourcesToA(losses, lootDouble);
+                        losses = ResourceType.subResourcesToA(losses, lootDouble);
                     } else if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
-                        losses = PnwUtil.addResourcesToA(losses, lootDouble);
+                        losses = ResourceType.addResourcesToA(losses, lootDouble);
                     }
                 }
                 else if (getMoney_looted() != 0) {
@@ -380,7 +379,7 @@ public class DBAttack {
         if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
             if (infra && getInfra_destroyed_value() != 0) {
                 if (getInfra_destroyed_value() == intOverflow) {
-                    setInfra_destroyed_value(PnwUtil.calculateInfra(this.getCity_infra_before() - getInfra_destroyed(), this.getCity_infra_before()));
+                    setInfra_destroyed_value(PW.City.Infra.calculateInfra(this.getCity_infra_before() - getInfra_destroyed(), this.getCity_infra_before()));
                 }
                 losses.put(ResourceType.MONEY, (losses.getOrDefault(ResourceType.MONEY, 0d) + getInfra_destroyed_value()));
             }

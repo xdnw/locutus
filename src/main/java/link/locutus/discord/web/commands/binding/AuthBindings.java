@@ -23,7 +23,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -514,7 +514,7 @@ public class AuthBindings extends WebBindingHelper {
             String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
             Set<Integer> allianceIdFilter = null;
             if (!allianceStr.isEmpty()) {
-                allianceIdFilter = PnwUtil.parseAlliances(null, allianceStr);
+                allianceIdFilter = PW.parseAlliances(null, allianceStr);
             }
             // Please select your nation
             List<DBNation> nations;

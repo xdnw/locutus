@@ -24,7 +24,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -86,7 +86,7 @@ public class PermissionBinding extends BindingHelper {
                 if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
                     if (offshoreInfo.getValue() == Settings.INSTANCE.ALLIANCE_ID()) {
-                        String markdown = PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true);
+                        String markdown = PW.getMarkdownUrl(offshoreInfo.getValue(), true);
                         markdown += " (Bot Owner)";
                         publicOffshores.add(markdown);
                     }

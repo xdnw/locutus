@@ -13,7 +13,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -155,7 +155,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         info.put(GuildKey.AUTOROLE_ALLIANCE_RANK.name(), autoRoleRank == null ? "Member" : autoRoleRank.name());
         info.put(GuildKey.AUTOROLE_TOP_X.name(), allowedAAs == null ? "All" : "Top " + topX);
         if (!masked.isEmpty()) {
-            info.put("Masked Alliances", masked.stream().map(f -> PnwUtil.getName(f, true)).collect(Collectors.joining("\n")));
+            info.put("Masked Alliances", masked.stream().map(f -> PW.getName(f, true)).collect(Collectors.joining("\n")));
         }
         info.put(GuildKey.AUTOROLE_ALLY_GOV.name() + " (for coalition servers)", autoRoleAllyGov + "");
         if (allianceRoles.isEmpty()) {

@@ -1,7 +1,7 @@
 package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
@@ -753,7 +753,7 @@ Soldiers is rand (88, 110) / 100 * Soldiers
     }
 
     public Map<ResourceType, Double> getConsumption() {
-        return PnwUtil.resourcesToMap(consumption);
+        return ResourceType.resourcesToMap(consumption);
     }
 
     public double getConsumption(ResourceType type) {
@@ -811,7 +811,7 @@ Soldiers is rand (88, 110) / 100 * Soldiers
             }
         }
         if (includeInfra) {
-            double infraLosses = PnwUtil.calculateInfra(getAvg_infra(), origin.getAvg_infra());
+            double infraLosses = PW.City.Infra.calculateInfra(getAvg_infra(), origin.getAvg_infra());
             total += infraLosses;
         }
 
@@ -839,7 +839,7 @@ Soldiers is rand (88, 110) / 100 * Soldiers
     }
 
     public Map<ResourceType, Double> getNetLosses(WarNation original, boolean loot, boolean includeConsumption, boolean includeInfra) {
-        Map<ResourceType, Double> map = includeConsumption ? PnwUtil.resourcesToMap(consumption) : new HashMap<>();
+        Map<ResourceType, Double> map = includeConsumption ? ResourceType.resourcesToMap(consumption) : new HashMap<>();
 
         int soldierLosses = original.getSoldiers() - getSoldiers();
         int tankLosses = original.getTanks() - getTanks();
@@ -858,7 +858,7 @@ Soldiers is rand (88, 110) / 100 * Soldiers
         map.put(ResourceType.STEEL, navalLosses * 30 + map.getOrDefault(ResourceType.STEEL, 0d));
 
         if (includeInfra) {
-            double infraLosses = PnwUtil.calculateInfra(getAvg_infra(), original.getAvg_infra());
+            double infraLosses = PW.City.Infra.calculateInfra(getAvg_infra(), original.getAvg_infra());
             map.put(ResourceType.MONEY, infraLosses * getCities() + map.getOrDefault(ResourceType.MONEY, 0d));
         }
 

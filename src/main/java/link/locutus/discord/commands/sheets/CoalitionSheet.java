@@ -9,7 +9,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
@@ -46,7 +46,7 @@ public class CoalitionSheet extends Command {
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.COALITION_SHEET);
         sheet.setHeader("Alliance", "Coalitions");
         for (Map.Entry<Integer, List<String>> entry : coalitionsInverse.entrySet()) {
-            String aaUrl = MarkupUtil.sheetUrl(PnwUtil.getName(entry.getKey(), true), PnwUtil.getUrl(entry.getKey(), true));
+            String aaUrl = MarkupUtil.sheetUrl(PW.getName(entry.getKey(), true), PW.getUrl(entry.getKey(), true));
             sheet.addRow(aaUrl, StringMan.join(entry.getValue(), ","));
         }
 

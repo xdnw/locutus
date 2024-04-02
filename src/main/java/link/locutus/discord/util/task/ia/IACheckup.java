@@ -13,7 +13,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -587,7 +587,7 @@ public class IACheckup {
                 response.append("Minimum military requirement (MMR) is what military buildings to have in a city and is in the format e.g. `mmr=1234` (1 barracks, 2 factories, 3 hangars, and 4 drydock) (don't actually use mmr=1234, this is an example)\n\n");
 
                 Integer cityId = cities.keySet().iterator().next();
-                String cityUrl = PnwUtil.getCityUrl(cityId);
+                String cityUrl = PW.City.getCityUrl(cityId);
                 String mmrStr = StringMan.join(mmr, "");
                 response.append("The " + CM.city.optimalBuild.cmd.toSlashMention() + " command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
                         "" + CM.city.optimalBuild.cmd.create(cityUrl,
@@ -666,7 +666,7 @@ public class IACheckup {
 
         StringBuilder response = new StringBuilder();
         response.append(blockaders.size() + " nations are blockading you: ");
-        String listStr = StringMan.join(blockaders.stream().map(f -> PnwUtil.getName(f, false)).collect(Collectors.toList()), ",");
+        String listStr = StringMan.join(blockaders.stream().map(f -> PW.getName(f, false)).collect(Collectors.toList()), ",");
         response.append(listStr).append("\n\n");
 
         response.append(Messages.BLOCKADE_HELP);
@@ -682,7 +682,7 @@ public class IACheckup {
         int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.getUnitCap();
         double airPct = (double) nation.getAircraft() / airCap;
         if (airPct < 0.8) return null;
-        Map<ResourceType, Double> required = PnwUtil.multiply(perCity, (double) nation.getCities());
+        Map<ResourceType, Double> required = PW.multiply(perCity, (double) nation.getCities());
         Map<ResourceType, Double> lacking = new LinkedHashMap<>();
         for (Map.Entry<ResourceType, Double> entry : required.entrySet()) {
             double lackingAmt = entry.getValue() - stockpile.getOrDefault(entry.getKey(), 0d);
@@ -695,8 +695,8 @@ public class IACheckup {
         if (nation.getOff() > 0 || nation.getDef() > 0) return null;
 
         String message = "It is important to be able to fight a war with your military\n" +
-                "The alliance recommends keeping the following on your nation: `" + PnwUtil.resourcesToString(required) + "`\n" +
-                "You are lacking: `" + PnwUtil.resourcesToString(lacking) + "`";
+                "The alliance recommends keeping the following on your nation: `" + ResourceType.resourcesToString(required) + "`\n" +
+                "You are lacking: `" + ResourceType.resourcesToString(lacking) + "`";
         return new AbstractMap.SimpleEntry<>(lacking, message);
     }
 
@@ -876,7 +876,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkRevenue(DBNation nation) {
         double[] revenue = nation.getRevenue(12, true, true, false, false, false, false, 0d, false);
 
-        double total = PnwUtil.convertedTotal(revenue, false);
+        double total = ResourceType.convertedTotal(revenue, false);
         if (total < 0) {
             return new AbstractMap.SimpleEntry<>(total, "Your nation's city revenue is negative. Please fix your cities and/or ask a gov member for funds for a new build");
         }
@@ -953,7 +953,7 @@ public class IACheckup {
         if (nation.getCities() < 10) {
             // raided 200m
             AttackCost cost = nation.getWarCost(false, false, false, false, false);
-            double total = PnwUtil.convertedTotal(cost.getLoot(true));
+            double total = ResourceType.convertedTotal(cost.getLoot(true));
             if (total < 200000000) {
                 return null;
             }
@@ -961,7 +961,7 @@ public class IACheckup {
         if (nation.getCityTurns() <= 0 && nation.getCities() < 20) {
             if (nation.isBlockaded()) return null;
 
-            double cost = PnwUtil.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING), nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+            double cost = PW.City.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING), nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
             Map<ResourceType, Double> resources = Collections.singletonMap(ResourceType.MONEY, cost);
             return new AbstractMap.SimpleEntry<>(nation.getCities(), "Your city timer is up. Use the #resource-request channel to request funds for a city");
         }
@@ -977,7 +977,7 @@ public class IACheckup {
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), -1L, nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
+            Map<ResourceType, Double> cityProfit = ResourceType.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), -1L, nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue());
@@ -993,7 +993,7 @@ public class IACheckup {
             }
         }
         if (!toSend.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>(toSend, "Requires: " + PnwUtil.resourcesToString(toSend));
+            return new AbstractMap.SimpleEntry<>(toSend, "Requires: " + ResourceType.resourcesToString(toSend));
         }
         return null;
     }
@@ -1003,11 +1003,11 @@ public class IACheckup {
 
         double factor = 3;
 
-        Map<ResourceType, Double> required = PnwUtil.multiply(db.getPerCityWarchest(), (double) nation.getCities());
+        Map<ResourceType, Double> required = PW.multiply(db.getPerCityWarchest(), (double) nation.getCities());
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), -1L, nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
+            Map<ResourceType, Double> cityProfit = ResourceType.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), -1L, nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue() * 7);
@@ -1017,7 +1017,7 @@ public class IACheckup {
 
         required.put(ResourceType.MONEY, 1000000d * nation.getCities());
 
-        double convertedTotal = PnwUtil.convertedTotal(resources);
+        double convertedTotal = ResourceType.convertedTotal(resources);
 
         resources = new HashMap<>(resources);
         for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
@@ -1028,12 +1028,12 @@ public class IACheckup {
 
         resources.entrySet().removeIf(e -> e.getValue() <= 0);
 
-        double excessTotal = PnwUtil.convertedTotal(resources);
+        double excessTotal = ResourceType.convertedTotal(resources);
         if (excessTotal > 1000000L * nation.getCities()) {
             if (nation.isBlockaded()) return null;
             String url = nation.getAllianceUrl() + "&display=bank";
-            String message = "Excess resources can be deposited so you don't lose it in a war or attract pirates: `" + PnwUtil.resourcesToString(resources) + "` @ <" + url + ">";
-            return new AbstractMap.SimpleEntry<>(PnwUtil.resourcesToString(resources), message);
+            String message = "Excess resources can be deposited so you don't lose it in a war or attract pirates: `" + ResourceType.resourcesToString(resources) + "` @ <" + url + ">";
+            return new AbstractMap.SimpleEntry<>(ResourceType.resourcesToString(resources), message);
         }
         return null;
     }
@@ -1081,7 +1081,7 @@ public class IACheckup {
         Set<DBNation> targets = new LinkedHashSet<>();
 
         double score = nation.getScore();
-        double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
         double minScore = score * 0.75;
 
         boolean hasEnemies = false;
@@ -1448,7 +1448,7 @@ public class IACheckup {
             response.append("The following cities are unpowered (insufficient power buildings) " + StringMan.getString(unpoweredInfra));
         }
         if (!unpoweredRss.isEmpty()) {
-            double[] revenue = PnwUtil.getRevenue(null, 12, nation, cities.values(), true, false, false, true, false, 0d);
+            double[] revenue = PW.getRevenue(null, 12, nation, cities.values(), true, false, false, true, false, 0d);
             for (int i = 0; i < revenue.length; i++) {
                 if (revenue[i] >= 0) revenue[i] = 0;
                 else revenue[i] = -revenue[i];
@@ -1456,7 +1456,7 @@ public class IACheckup {
             if (response.length() > 0) response.append("\n\n");
             response.append("The following cities are unpowered (insufficient resources) " + StringMan.getString(unpowered) +
                     "\nPlease ensure you have the resources to power your city for several days. " +
-                    "You currently consume the following each day:\n" + PnwUtil.resourcesToString(revenue));
+                    "You currently consume the following each day:\n" + ResourceType.resourcesToString(revenue));
         }
         return new AbstractMap.SimpleEntry<>(unpowered, response.toString());
     }

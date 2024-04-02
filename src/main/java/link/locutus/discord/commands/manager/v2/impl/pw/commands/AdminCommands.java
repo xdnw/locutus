@@ -46,7 +46,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -213,7 +213,7 @@ public class AdminCommands {
             for (Map.Entry<Integer, WarCategory.WarCatReason> entry : toDelete.entrySet()) {
                 int id = entry.getKey();
                 WarCategory.WarCatReason reason = entry.getValue();
-                response.append("- " + PnwUtil.getMarkdownUrl(id, false) + ": " + reason.name() + " - " + reason.getReason() + "\n");
+                response.append("- " + PW.getMarkdownUrl(id, false) + ": " + reason.name() + " - " + reason.getReason() + "\n");
             }
         }
         if (!toReassign.isEmpty()) {
@@ -229,7 +229,7 @@ public class AdminCommands {
             for (Map.Entry<Integer, Set<TextChannel>> entry : duplicates.entrySet()) {
                 int id = entry.getKey();
                 Set<TextChannel> channels = entry.getValue();
-                response.append("- " + PnwUtil.getMarkdownUrl(id, false) + ": " + channels.stream().map(Channel::getAsMention).collect(Collectors.joining(", ")) + "\n");
+                response.append("- " + PW.getMarkdownUrl(id, false) + ": " + channels.stream().map(Channel::getAsMention).collect(Collectors.joining(", ")) + "\n");
             }
         }
 
@@ -1197,7 +1197,7 @@ public class AdminCommands {
                             long aaId =discEntry.getKey();
                             if (alliance != null && aaId != alliance.getAlliance_id()) continue;
                             if (discEntry.getValue() == discordRole.getIdLong()) {
-                                String aaStr =  aaId == 0 ? "*" : PnwUtil.getName(aaId, true);
+                                String aaStr =  aaId == 0 ? "*" : PW.getName(aaId, true);
                                 rolesListStr.add("Removed " + locEntry.getKey().name() + " from " + discordRole.getName() + " (AA:" + aaId + ")");
                                 db.deleteRole(locEntry.getKey(), aaId);
                             }
@@ -1617,7 +1617,7 @@ public class AdminCommands {
                 } else {
                     depo = offshore.getDeposits((int) id, false);
                 }
-                response.append("\n- Deposits: `" + PnwUtil.resourcesToString(depo) + "` worth: `$" + MathMan.format(PnwUtil.convertedTotal(depo)) + "`");
+                response.append("\n- Deposits: `" + ResourceType.resourcesToString(depo) + "` worth: `$" + MathMan.format(ResourceType.convertedTotal(depo)) + "`");
             }
             response.append("\n\n");
         }
@@ -1722,25 +1722,25 @@ public class AdminCommands {
         return result.toString();
     }
 
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncCitiesTest2(NationDB db, @Me DBNation me) throws IOException, ParseException {
-        Map<Integer, JavaCity> cities = me.getCityMap(true);
-        StringBuilder result = new StringBuilder();
-        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
-
-        List<Event> events = new ArrayList<>();
-        db.updateCitiesV2(events::add);
-        if (events.size() > 0) {
-            Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events) event.post();;
-            });
-        }
-        result.append("events: " + events.size() + "\n");
-        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
-        result.append("Updated all cities. " + events.size() + " changes detected");
-        return result.toString();
-    }
+//    @Command()
+//    @RolePermission(value = Roles.ADMIN, root = true)
+//    public String syncCitiesTest2(NationDB db, @Me DBNation me) throws IOException, ParseException {
+//        Map<Integer, JavaCity> cities = me.getCityMap(true);
+//        StringBuilder result = new StringBuilder();
+//        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+//
+//        List<Event> events = new ArrayList<>();
+//        db.updateCitiesV2(events::add);
+//        if (events.size() > 0) {
+//            Locutus.imp().getExecutor().submit(() -> {
+//                for (Event event : events) event.post();;
+//            });
+//        }
+//        result.append("events: " + events.size() + "\n");
+//        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+//        result.append("Updated all cities. " + events.size() + " changes detected");
+//        return result.toString();
+//    }
 
 
     @Command()

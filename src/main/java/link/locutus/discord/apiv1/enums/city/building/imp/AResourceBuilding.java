@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.enums.city.building.imp;
 
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -64,7 +64,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
 
         double production = output.getProduction(continent, rads, hasProjects, city.getLand(), improvements, -1);
         if (production != 0) {
-            profit += PnwUtil.convertedTotalPositive(output, production);
+            profit += ResourceType.convertedTotalPositive(output, production);
 
             double inputAmt = output.getInput(continent, rads, hasProjects, city, improvements);
 
@@ -73,11 +73,11 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
                     case 0:
                         break;
                     case 1:
-                        profit -= PnwUtil.convertedTotalNegative(inputs[0], inputAmt);
+                        profit -= ResourceType.convertedTotalNegative(inputs[0], inputAmt);
                         break;
                     default:
                         for (ResourceType input : inputs) {
-                            profit -= PnwUtil.convertedTotalNegative(input, inputAmt);
+                            profit -= ResourceType.convertedTotalNegative(input, inputAmt);
                         }
                 }
             }

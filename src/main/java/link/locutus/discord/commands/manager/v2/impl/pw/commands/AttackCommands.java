@@ -13,7 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +36,7 @@ public class AttackCommands {
             response.append("\n" + SuccessType.UTTER_FAILURE);
         } else {
             for (int success = 0; success <= 3; success++) {
-                double odds = PnwUtil.getOdds(attStr, defStr, success);
+                double odds = PW.getOdds(attStr, defStr, success);
                 if (odds <= 0) continue;
                 odds = Math.min(1, odds);
                 String pctStr = MathMan.format(odds * 100) + "%";
@@ -63,7 +63,7 @@ public class AttackCommands {
 
         StringBuilder response = new StringBuilder("**Airstrike**: " + attAircraft + " -> " + defAircraft);
         for (int success = 0; success <= 3; success++) {
-            double odds = PnwUtil.getOdds(attStr, defStr, success);
+            double odds = PW.getOdds(attStr, defStr, success);
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";
@@ -77,20 +77,31 @@ public class AttackCommands {
 
     // TODO muni/gas usage
     @Command(desc = "Simulate an attack between two nations and return the odds and casualties")
-    public String casualties(AttackType attack, WarType warType,
-                             DBNation enemy, @Default("%user%") DBNation me,
-                             @Default Map<MilitaryUnit, Long> attackerMilitary,
-                             @Default Map<MilitaryUnit, Long> defenderMilitary,
-                             @Switch("att_policy") WarPolicy attackerPolicy,
-                             @Switch("def_policy") WarPolicy defenderPolicy,
-                             @Switch("f") boolean defFortified,
-                             @Switch("ac") boolean attAirControl,
-                             @Switch("dac") boolean defAirControl,
-                             @Switch("s") boolean selfIsDefender,
-                             @Switch("ua") boolean unequipAttackerSoldiers,
-                             @Switch("ud") boolean unequipDefenderSoldiers,
-                             @Switch("ap") Set<Project> attackerProjects,
-                             @Switch("dp") Set<Project> defenderProjects) {
+    public String casualties(
+                            AttackType attack,
+                            WarType warType,
+                            DBNation enemy,
+
+                            @Default("%user%") DBNation me,
+
+                            @Default Map<MilitaryUnit, Long> attackerMilitary,
+                            @Default Map<MilitaryUnit, Long> defenderMilitary,
+
+                            @Switch("att_policy") WarPolicy attackerPolicy,
+                            @Switch("def_policy") WarPolicy defenderPolicy,
+
+                            @Switch("f") boolean defFortified,
+                            @Switch("ac") boolean attAirControl,
+                            @Switch("dac") boolean defAirControl,
+
+                            @Switch("s") boolean selfIsDefender,
+
+                            @Switch("ua") boolean unequipAttackerSoldiers,
+                            @Switch("ud") boolean unequipDefenderSoldiers,
+
+                            @Switch("ap") Set<Project> attackerProjects,
+                            @Switch("dp") Set<Project> defenderProjects
+    ) {
         DBNation attacker = new DBNation(selfIsDefender ? enemy : me);
         DBNation defender = new DBNation(selfIsDefender ? me : enemy);
         if (attackerMilitary != null) {
@@ -167,7 +178,7 @@ public class AttackCommands {
                 response.append("\n");
 
                 for (SuccessType success : SuccessType.values) {
-                    double odds = PnwUtil.getOdds(attStr, defStr, success.ordinal());
+                    double odds = PW.getOdds(attStr, defStr, success.ordinal());
                     if (odds <= 0) continue;
                     odds = Math.min(1, odds);
                     String pctStr = MathMan.format(odds * 100) + "%";
@@ -204,7 +215,7 @@ public class AttackCommands {
 
         StringBuilder response = new StringBuilder("**Naval**: " + attShips + " -> " + defShips);
         for (int success = 0; success <= 3; success++) {
-            double odds = PnwUtil.getOdds(attStr, defStr, success);
+            double odds = PW.getOdds(attStr, defStr, success);
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";

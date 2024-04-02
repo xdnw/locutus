@@ -20,7 +20,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -29,7 +29,7 @@ import net.dv8tion.jda.api.entities.User;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.util.PnwUtil.convertedTotal;
+import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
 
 public class BankPages {
 
@@ -95,14 +95,14 @@ public class BankPages {
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getUrl()));
             row.set(1, MathMan.format(nation.getCities()));
             row.set(2, MathMan.format(nation.getAgeDays()));
-            row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
-            row.set(4, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
-            row.set(5, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
-            row.set(6, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
+            row.set(3, MathMan.format(ResourceType.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
+            row.set(4, MathMan.format(ResourceType.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
+            row.set(5, MathMan.format(ResourceType.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
+            row.set(6, MathMan.format(ResourceType.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
 
             double[] total = ResourceType.getBuffer();
             for (double[] value : deposits.values()) total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
-            row.set(7, MathMan.format(PnwUtil.convertedTotal(total)));
+            row.set(7, MathMan.format(ResourceType.convertedTotal(total)));
 
             List<Transaction2> transactions = nation.getTransactions(-1, true);
 

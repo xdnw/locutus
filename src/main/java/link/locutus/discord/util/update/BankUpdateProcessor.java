@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -18,7 +19,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -57,7 +58,7 @@ public class BankUpdateProcessor {
             Set<Integer> trackedAlliances = new HashSet<>();
             trackedAlliances.add(aaId);
             if (transfer.note != null) {
-                for (Map.Entry<String, String> entry : PnwUtil.parseTransferHashNotes(transfer.note).entrySet()) {
+                for (Map.Entry<String, String> entry : PW.parseTransferHashNotes(transfer.note).entrySet()) {
                     if (MathMan.isInteger(entry.getValue())) {
                         try {
                             int id = Integer.parseInt(entry.getValue());
@@ -158,23 +159,23 @@ public class BankUpdateProcessor {
     }
 
     public static Map.Entry<String, String> createCard(Transaction2 transfer, int nationid) {
-        String fromName = (transfer.isSenderAA() ? "AA:" : "") + PnwUtil.getName(transfer.getSender(), transfer.isSenderAA());
-        String toName = (transfer.isReceiverAA() ? "AA:" : "") + PnwUtil.getName(transfer.getReceiver(), transfer.isReceiverAA());
+        String fromName = (transfer.isSenderAA() ? "AA:" : "") + PW.getName(transfer.getSender(), transfer.isSenderAA());
+        String toName = (transfer.isReceiverAA() ? "AA:" : "") + PW.getName(transfer.getReceiver(), transfer.isReceiverAA());
         String title = "#" + transfer.tx_id + " worth $" + MathMan.format(transfer.convertedTotal()) + " | " + fromName + " > " + toName;
         StringBuilder body = new StringBuilder();
-        body.append(PnwUtil.getBBUrl((int) transfer.getSender(), transfer.isSenderAA()) + " > " + PnwUtil.getBBUrl((int) transfer.getReceiver(), transfer.isReceiverAA()));
+        body.append(PW.getBBUrl((int) transfer.getSender(), transfer.isSenderAA()) + " > " + PW.getBBUrl((int) transfer.getReceiver(), transfer.isReceiverAA()));
 
         String note = transfer.note == null ? "~~NO NOTE~~" : transfer.note;
-        String url = PnwUtil.getBBUrl(nationid, false) + "&display=bank";
+        String url = PW.getBBUrl(nationid, false) + "&display=bank";
 
         if (transfer.note != null) {
             body.append(transfer.note);
         }
-        body.append("\n").append("From: " + PnwUtil.getBBUrl((int) transfer.sender_id, transfer.isSenderAA()));
-        body.append("\n").append("To: " + PnwUtil.getBBUrl((int) transfer.receiver_id, transfer.isReceiverAA()));
-        body.append("\n").append("Banker: " + PnwUtil.getBBUrl(transfer.banker_nation, false));
+        body.append("\n").append("From: " + PW.getBBUrl((int) transfer.sender_id, transfer.isSenderAA()));
+        body.append("\n").append("To: " + PW.getBBUrl((int) transfer.receiver_id, transfer.isReceiverAA()));
+        body.append("\n").append("Banker: " + PW.getBBUrl(transfer.banker_nation, false));
         body.append("\n").append("Date: " + TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(transfer.tx_datetime)));
-        body.append("\n").append(PnwUtil.resourcesToString(transfer.resources));
+        body.append("\n").append(ResourceType.resourcesToString(transfer.resources));
 
         return new AbstractMap.SimpleEntry<>(title, body.toString());
     }

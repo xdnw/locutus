@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.Collection;
 import java.util.Map;
@@ -19,7 +19,7 @@ public interface Project {
 
     @Command(desc = "Market value of project")
     default double getMarketValue() {
-        return PnwUtil.convertedTotal(cost());
+        return ResourceType.convertedTotal(cost());
     }
 
     @Command(desc = "Get cost for a specific resource")
@@ -67,9 +67,9 @@ public interface Project {
     }
 
     default double[] cost(boolean technologicalAdvancement) {
-        double[] cost = PnwUtil.resourcesToArray(cost());
+        double[] cost = ResourceType.resourcesToArray(cost());
         if (technologicalAdvancement) {
-            cost = PnwUtil.multiply(cost, 0.95);
+            cost = PW.multiply(cost, 0.95);
         }
         return cost;
     }

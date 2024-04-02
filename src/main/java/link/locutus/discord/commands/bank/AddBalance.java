@@ -13,7 +13,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -69,9 +69,9 @@ public class AddBalance extends Command {
 
         String arg = args.get(0);
         if (arg.matches(".*tax_id[=:].*")) {
-            int taxId = PnwUtil.parseTaxId(arg);
+            int taxId = PW.parseTaxId(arg);
             TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
-            builder.add(bracket, PnwUtil.parseResources(args.get(1)), note);
+            builder.add(bracket, ResourceType.parseResources(args.get(1)), note);
         } else if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             boolean negative = false;
             if (arg.charAt(0) == '-') {
@@ -90,14 +90,14 @@ public class AddBalance extends Command {
 
                     GuildDB otherGuildDb = Locutus.imp().getGuildDB(Long.parseLong(arg));
                     if (otherGuildDb == null) return "Invalid guild id: `" + arg + "`";
-                    Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
+                    Map<ResourceType, Double> transfer = ResourceType.parseResources(args.get(1));
                     builder.add(otherGuildDb, transfer, note);
                 } else {
-                    Integer alliance = PnwUtil.parseAllianceId(arg);
+                    Integer alliance = PW.parseAllianceId(arg);
                     if (alliance == null) {
                         return "Invalid nation/alliance: `" + arg + "`";
                     }
-                    Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
+                    Map<ResourceType, Double> transfer = ResourceType.parseResources(args.get(1));
                     builder.add(DBAlliance.getOrCreate(alliance), transfer, note);
                 }
             } else {
@@ -111,11 +111,11 @@ public class AddBalance extends Command {
                             return "Invalid alliance: `" + args.get(2) + "`";
                         }
                         for (Integer alliance : alliances) tracked.add(alliance.longValue());
-                        tracked = PnwUtil.expandCoalition(tracked);
+                        tracked = PW.expandCoalition(tracked);
                     }
 
                     double[] total = nation.getNetDeposits(guildDb, tracked, true, true, 0L, 0L, false);
-                    transfer = PnwUtil.subResourcesToA(new HashMap<>(), PnwUtil.resourcesToMap(total));
+                    transfer = ResourceType.subResourcesToA(new HashMap<>(), ResourceType.resourcesToMap(total));
                 } else if (args.size() == 3) {
                     ResourceType resource = ResourceType.parse(args.get(1).toUpperCase());
                     Double amount = MathMan.parseDouble(args.get(2));
@@ -123,7 +123,7 @@ public class AddBalance extends Command {
                     if (resource == null) return "Invalid resource: `" + args.get(1) + "`";
                     transfer.put(resource, amount);
                 } else if (args.size() == 2) {
-                    transfer = PnwUtil.parseResources(args.get(1));
+                    transfer = ResourceType.parseResources(args.get(1));
                 } else {
                     return usage(args.size(), 2, channel);
                 }

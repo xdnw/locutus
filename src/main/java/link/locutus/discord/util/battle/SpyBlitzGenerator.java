@@ -7,7 +7,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.Spyop;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -70,16 +70,16 @@ public class SpyBlitzGenerator {
     }
 
     public Map<DBNation, List<Spyop>> assignTargets(boolean isDayChange, Map<DBNation, Integer> subtractOffensiveSlots, Map<DBNation, Integer> subtractDefensiveSlots) {
-        BiFunction<Double, Double, Integer> attRange = PnwUtil.getIsNationsInSpyRange(attList.keySet());
-        BiFunction<Double, Double, Integer> defSpyRange = PnwUtil.getIsNationsInSpyRange(defList.keySet());
+        BiFunction<Double, Double, Integer> attRange = PW.getIsNationsInSpyRange(attList.keySet());
+        BiFunction<Double, Double, Integer> defSpyRange = PW.getIsNationsInSpyRange(defList.keySet());
 
-        BiFunction<Double, Double, Integer> attScoreRange = PnwUtil.getIsNationsInScoreRange(attList.keySet());
-        BiFunction<Double, Double, Integer> defScoreRange = PnwUtil.getIsNationsInScoreRange(defList.keySet());
+        BiFunction<Double, Double, Integer> attScoreRange = PW.getIsNationsInScoreRange(attList.keySet());
+        BiFunction<Double, Double, Integer> defScoreRange = PW.getIsNationsInScoreRange(defList.keySet());
 
         defList.entrySet().removeIf(n -> attScoreRange.apply(n.getKey().getScore() * 0.75, n.getKey().getScore() / 0.75) == 0);
 
-        BiFunction<Double, Double, Double> attSpyGraph = PnwUtil.getXInRange(attList.keySet(), n -> Math.pow(attList.get(n), 3));
-        BiFunction<Double, Double, Double> defSpyGraph = PnwUtil.getXInRange(defList.keySet(), n -> Math.pow(defList.get(n), 3));
+        BiFunction<Double, Double, Double> attSpyGraph = PW.getXInRange(attList.keySet(), n -> Math.pow(attList.get(n), 3));
+        BiFunction<Double, Double, Double> defSpyGraph = PW.getXInRange(defList.keySet(), n -> Math.pow(defList.get(n), 3));
 
         if (forceUpdate) {
             forceUpdate = false;

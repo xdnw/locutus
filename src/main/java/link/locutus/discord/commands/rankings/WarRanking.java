@@ -11,7 +11,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -94,7 +94,7 @@ public class WarRanking extends Command {
             });
         }
 
-        RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PnwUtil.getName(i, byAA));
+        RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PW.getName(i, byAA));
         String offOrDef = "";
         if (offensive != defensive) {
             if (offensive) offOrDef = "offensive ";

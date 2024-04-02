@@ -17,7 +17,6 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
-import link.locutus.discord.event.city.CityCreateEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.nation.*;
@@ -32,7 +31,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -596,7 +595,7 @@ public class GuildHandler {
                 double[] depoTotal = current.getNetDeposits(db, false);
                 body.append("\n\nPlease check the following:\n" +
                         "- Discord roles\n" +
-                        "- Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
+                        "- Deposits: `" + ResourceType.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(depoTotal)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -1529,7 +1528,7 @@ public class GuildHandler {
 
 
 
-            double revenue = PnwUtil.convertedTotal(defender.getRevenue());
+            double revenue = ResourceType.convertedTotal(defender.getRevenue());
 
 
         }
@@ -1611,7 +1610,7 @@ public class GuildHandler {
                         }
                         if (pingMilcom) {
                             if (getDb().getCoalition(Coalition.FA_FIRST).contains(attacker.getAlliance_id()) && faRole != null) {
-                                String response = "```" + PnwUtil.getName(attacker.getAlliance_id(), true) + " is marked as FA_FIRST:\n" +
+                                String response = "```" + PW.getName(attacker.getAlliance_id(), true) + " is marked as FA_FIRST:\n" +
                                         "- Solicit peace in that alliance embassy before taking military action\n" +
                                         "- Set a reminder for 24h, to remind milcom if peace has not been obtained\n" +
                                         "- React to this message```\n" + faRole.getAsMention();
@@ -1630,7 +1629,7 @@ public class GuildHandler {
                     }
                     if (attacker != null && defender.getPosition() == Rank.APPLICANT.id && !enemies.contains(attacker.getAlliance_id())) {
                         if (counterAAs.contains(attacker.getAlliance_id())) {
-                            String msg = "```" + PnwUtil.getName(attacker.getAlliance_id(), true) + " is added to the COUNTER coalition which forbids raiding inactive applicants (typically due to them countering for their own applicants)```";
+                            String msg = "```" + PW.getName(attacker.getAlliance_id(), true) + " is added to the COUNTER coalition which forbids raiding inactive applicants (typically due to them countering for their own applicants)```";
                             pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(msg);
                             if (milcomRole != null) {
                                 pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(milcomRole.getAsMention());
@@ -1639,7 +1638,7 @@ public class GuildHandler {
                                 pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(faRole.getAsMention());
                             }
                         } else if (dnrAAs.contains(attacker.getAlliance_id())) {
-                            String msg = "```" + PnwUtil.getName(attacker.getAlliance_id(), true) + " is added to DNR coalition which forbids raiding inactive applicants```";
+                            String msg = "```" + PW.getName(attacker.getAlliance_id(), true) + " is added to DNR coalition which forbids raiding inactive applicants```";
                             pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(msg);
                             if (counterAAs.contains(attacker.getAlliance_id()) && milcomRole != null) {
                                 pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(milcomRole.getAsMention());
@@ -1694,11 +1693,11 @@ public class GuildHandler {
                             CounterStat counterStat = war.getCounterStat();
                             String counterStatStr = counterStat == null ? "" : counterStat.type.getDescription();
 
-                            String attUrl = attacker != null ? attacker.getUrl() : PnwUtil.getNationUrl(war.getAttacker_id());
-                            String defUrl = defender != null ? defender.getUrl() : PnwUtil.getNationUrl(war.getDefender_id());
+                            String attUrl = attacker != null ? attacker.getUrl() : PW.getNationUrl(war.getAttacker_id());
+                            String defUrl = defender != null ? defender.getUrl() : PW.getNationUrl(war.getDefender_id());
 
-                            String attAAUrl = attacker != null ? attacker.getAllianceUrl() : PnwUtil.getNationUrl(war.getAttacker_aa());
-                            String defAAUrl = defender != null ? defender.getAllianceUrl() : PnwUtil.getNationUrl(war.getDefender_aa());
+                            String attAAUrl = attacker != null ? attacker.getAllianceUrl() : PW.getNationUrl(war.getAttacker_aa());
+                            String defAAUrl = defender != null ? defender.getAllianceUrl() : PW.getNationUrl(war.getDefender_aa());
                             {
                                 if (!offensive && !counterStatStr.isEmpty())
                                     body.append("**" + counterStatStr + "**\n");
@@ -1755,7 +1754,7 @@ public class GuildHandler {
                                 }
                                 bodyRaw.append("\n");
                                 if (!offensive && war.getAttacker_aa() != 0) {
-                                    bodyRaw.append("AA: <" + attAAUrl + "> (" + PnwUtil.getName(war.getAttacker_aa(), true) + ")\n");
+                                    bodyRaw.append("AA: <" + attAAUrl + "> (" + PW.getName(war.getAttacker_aa(), true) + ")\n");
                                 }
                                 if (attacker != null) {
                                     bodyRaw.append(attacker.toMarkdown(false, true, true));
@@ -1767,7 +1766,7 @@ public class GuildHandler {
                                 }
                                 bodyRaw.append("\n");
                                 if (offensive && war.getAttacker_aa() != 0) {
-                                    bodyRaw.append("AA: <" + defAAUrl + "> (" + PnwUtil.getName(war.getDefender_aa(), true) + ")\n");
+                                    bodyRaw.append("AA: <" + defAAUrl + "> (" + PW.getName(war.getDefender_aa(), true) + ")\n");
                                 }
                                 if (defender != null) {
                                     bodyRaw.append(defender.toMarkdown(false, true, true));
@@ -2153,7 +2152,7 @@ public class GuildHandler {
         int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
         body.append("\nMy Resistance: " + otherRes);
 
-        double lootValue = PnwUtil.convertedTotal(root.getLoot());
+        double lootValue = ResourceType.convertedTotal(root.getLoot());
         if (lootValue > 0) {
             body.append("\nLoot Value: $" + MathMan.format(lootValue));
         }
@@ -2274,7 +2273,7 @@ public class GuildHandler {
             String note = "#deposit #incentive=" + meta.name();
             if (!Arrays.equals(amt, ResourceType.getBuffer())) {
                 getDb().addBalance(System.currentTimeMillis(), referrer, referred.getNation_id(), note, amt);
-                message += "\n- Added `" + PnwUtil.resourcesToString(amt) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
+                message += "\n- Added `" + ResourceType.resourcesToString(amt) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
             }
             MessageChannel output = getDb().getResourceChannel(0);
             if (output != null) {
@@ -2316,7 +2315,7 @@ public class GuildHandler {
                 if (cityBuild != null && cityBuild.getImpTotal() > 30) {
                     String title = "Rebuilt infra: " + existing.infra + "->" + newCity.infra;
                     StringBuilder body = new StringBuilder();
-                    body.append(MarkupUtil.markdownUrl("City Link", PnwUtil.getCityUrl(existing.cityId)));
+                    body.append(MarkupUtil.markdownUrl("City Link", PW.City.getCityUrl(existing.cityId)));
                     body.append("\n").append(nation.getNationUrlMarkup(true));
                     User user = nation.getUser();
                     if (user != null) {
@@ -2528,7 +2527,7 @@ public class GuildHandler {
         if (!aaIds.isEmpty() && nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPosition() > Rank.APPLICANT.id) {
             Map<ResourceType, Double> amtMap = getDb().getOrNull(GuildKey.REWARD_REFERRAL);
             if (amtMap == null) return;
-            double[] amt = PnwUtil.resourcesToArray(amtMap);
+            double[] amt = ResourceType.resourcesToArray(amtMap);
 
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override
@@ -2620,7 +2619,7 @@ public class GuildHandler {
         boolean blockaded = nation.isBlockaded();
         String title;
         if (blockaded) {
-            title = "Unblockaded by " + PnwUtil.getName(event.getBlockader(), false) + " (but still blockaded)";
+            title = "Unblockaded by " + PW.getName(event.getBlockader(), false) + " (but still blockaded)";
         } else {
             title = "Unblockaded";
         }
@@ -2680,7 +2679,7 @@ public class GuildHandler {
 
                     IMessageIO io = new DiscordChannelIO(channel);
                     IMessageBuilder msg = io.create().embed(title, body);
-                    msg = msg.commandButton(CM.escrow.withdraw.cmd.create(receiver.getQualifiedId(), PnwUtil.resourcesToString(escrowed), "true"), "send");
+                    msg = msg.commandButton(CM.escrow.withdraw.cmd.create(receiver.getQualifiedId(), ResourceType.resourcesToString(escrowed), "true"), "send");
                     if (!mentions.isEmpty()) {
                         msg = msg.append(StringMan.join(mentions, ", "));
                     }
@@ -2722,10 +2721,10 @@ public class GuildHandler {
         String title = "War " + previous.getStatus() + " -> " + current.getStatus();
         StringBuilder body = new StringBuilder();
         body.append("War: " + MarkupUtil.markdownUrl("Click Here", current.toUrl())).append("\n");
-        body.append("ATT: " + PnwUtil.getMarkdownUrl(current.getAttacker_id(), false) +
-                " | " + PnwUtil.getMarkdownUrl(current.getAttacker_aa(), true)).append("\n");
-        body.append("DEF: " + PnwUtil.getMarkdownUrl(current.getDefender_id(), false) +
-                " | " + PnwUtil.getMarkdownUrl(current.getDefender_aa(), true)).append("\n");
+        body.append("ATT: " + PW.getMarkdownUrl(current.getAttacker_id(), false) +
+                " | " + PW.getMarkdownUrl(current.getAttacker_aa(), true)).append("\n");
+        body.append("DEF: " + PW.getMarkdownUrl(current.getDefender_id(), false) +
+                " | " + PW.getMarkdownUrl(current.getDefender_aa(), true)).append("\n");
 
         System.out.println("Create peace alert");
         DiscordUtil.createEmbedCommand(channel, title, body.toString());

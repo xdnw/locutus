@@ -13,7 +13,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -111,7 +111,7 @@ public class Auth {
             String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN, url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
                 System.out.println(loginResult);
-                throw new IllegalArgumentException("Error: " + PnwUtil.parseDom(Jsoup.parse(loginResult), "columnheader"));
+                throw new IllegalArgumentException("Error: " + PW.parseDom(Jsoup.parse(loginResult), "columnheader"));
             }
             loggedIn = true;
         }
@@ -121,7 +121,7 @@ public class Auth {
         String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT, "" + Settings.INSTANCE.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
         clearCookies();
-        return PnwUtil.getAlert(dom);
+        return PW.getAlert(dom);
     }
 
     public void clearCookies() {
@@ -174,7 +174,7 @@ public class Auth {
     public synchronized ApiKeyPool.ApiKey fetchApiKey() {
         if (apiKey == null || apiKey.isEmpty()) {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/";
-            apiKey = PnwUtil.withLogin(new Callable<String>() {
+            apiKey = PW.withLogin(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
                     try {
@@ -182,7 +182,7 @@ public class Auth {
                         Document dom = Jsoup.parse(html);
                         Elements tables = dom.select(".nationtable");
                         if (tables.isEmpty()) {
-                            String alerts = PnwUtil.getAlert(dom);
+                            String alerts = PW.getAlert(dom);
                             if (alerts == null || alerts.isEmpty()) {
                                 System.out.println(html);
                             }
@@ -239,7 +239,7 @@ public class Auth {
         post.put("leaderpersonal", leadername);
         post.put("submit", isBuy ? "Buy" : "Sell");
 
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             String result = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=sesh]").attr("value");
@@ -247,10 +247,10 @@ public class Auth {
 
             result = Auth.this.readStringFromURL(PagePriority.TOKEN, url, post);
             dom = Jsoup.parse(result);
-            String alert = PnwUtil.getAlert(dom);
+            String alert = PW.getAlert(dom);
             if (alert == null) {
                 if (result.contains("/human/")) {
-                    throw new IllegalArgumentException("Nation " + PnwUtil.getMarkdownUrl(nationId, false) + " has a captcha to complete: https://politicsandwar.com/human/");
+                    throw new IllegalArgumentException("Nation " + PW.getMarkdownUrl(nationId, false) + " has a captcha to complete: https://politicsandwar.com/human/");
                 }
             }
             if (alert == null || alert.isEmpty()) {
@@ -271,11 +271,11 @@ public class Auth {
         post.put("validation_token", "");
 
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + embargoFrom + "&display=embargoes";
-        return PnwUtil.withLogin(new Callable<String>() {
+        return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
                 String result = Auth.this.readStringFromURL(PagePriority.EMBARGO, url, post);
-                return PnwUtil.getAlert(Jsoup.parse(result));
+                return PW.getAlert(Jsoup.parse(result));
             }
         }, this);
 
@@ -283,7 +283,7 @@ public class Auth {
     }
 
     public String setCityName(int id, String name) throws IOException {
-        String url = PnwUtil.getCityUrl(id);
+        String url = PW.City.getCityUrl(id);
         String result = readStringFromURL(PagePriority.CITY_NAME, url, Collections.emptyMap());
         Document dom = Jsoup.parse(result);
         String token = dom.select("input[name=token]").attr("value");
@@ -297,7 +297,7 @@ public class Auth {
     }
 
     public String setBounty(DBNation target, WarType type, long amount) {
-        return PnwUtil.withLogin(new Callable<String>() {
+        return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/world/bounties";
@@ -315,7 +315,7 @@ public class Auth {
                 post.put("token", token);
 
                 result = Auth.this.readStringFromURL(PagePriority.TOKEN, url, post);
-                return PnwUtil.getAlert(Jsoup.parse(result));
+                return PW.getAlert(Jsoup.parse(result));
             }
         }, this);
     }
@@ -327,7 +327,7 @@ public class Auth {
 
         String url = "" + Settings.INSTANCE.PNW_URL() + "/city/improvements/import/id=" + cityId;
 
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             return readStringFromURL(PagePriority.IMPORT_BUILD, url, post);
         }, this);
     }
@@ -340,15 +340,15 @@ public class Auth {
         if (approve) post.put("approveTreatyId", "" + treatyId);
         else post.put("cancelTreatyId", "" + treatyId);
 
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             String html = Auth.this.readStringFromURL(PagePriority.MODIFY_TREATY_UNUSED, url, post);
             Document dom = Jsoup.parse(html);
-            return PnwUtil.getAlert(dom);
+            return PW.getAlert(dom);
         }, this);
     }
 
     public String sendTreaty(int allianceId, TreatyType type, String message, int days) {
-        String aaName = PnwUtil.getName(allianceId, true);
+        String aaName = PW.getName(allianceId, true);
         if (aaName == null) throw new IllegalArgumentException("Invalid aa: " + allianceId);
 
         Map<String, String> post = new HashMap<>();
@@ -361,17 +361,17 @@ public class Auth {
         int aaId = getAllianceId();
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=acp#treaties";
 
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             String html = Auth.this.readStringFromURL(PagePriority.MODIFY_TREATY_UNUSED, url, post);
             Document dom = Jsoup.parse(html);
-            return PnwUtil.getAlert(dom);
+            return PW.getAlert(dom);
         }, this);
     }
 
     public List<PendingTreaty> getTreaties() {
         int aaId = getAllianceId();
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=acp";
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             List<PendingTreaty> result = new ArrayList<>();
             String html = Auth.this.readStringFromURL(PagePriority.GET_TREATIES_UNUSED, url, emptyMap());
             Document dom = Jsoup.parse(html);
@@ -430,7 +430,7 @@ public class Auth {
 
                 result = Auth.this.readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
                 dom = Jsoup.parse(result);
-                String alert = PnwUtil.getAlert(dom);
+                String alert = PW.getAlert(dom);
                 if (alert.length() == 0) {
                     return "(no output)";
                 }
@@ -438,14 +438,14 @@ public class Auth {
             }
         };
         if (login) {
-            return PnwUtil.withLogin(task, this);
+            return PW.withLogin(task, this);
         } else {
             return task.call();
         }
     }
 
     public String setRank(DBNation nation, DBAlliancePosition position) {
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp#assign_positions";
             String result = readStringFromURL(PagePriority.RANK_SET, url, Collections.emptyMap());
 
@@ -463,7 +463,7 @@ public class Auth {
                         String acceptUrl = elem.parent().attr("href");
 
                         result = readStringFromURL(PagePriority.TOKEN, acceptUrl, Collections.emptyMap());
-                        response.append(PnwUtil.getAlert(Jsoup.parse(result)));
+                        response.append(PW.getAlert(Jsoup.parse(result)));
 
                         if (position == DBAlliancePosition.REMOVE) {
                             nation.update(false);
@@ -480,13 +480,13 @@ public class Auth {
             String token = dom.select("input[name=validation_token]").attr("value");
             if (token == null || token.isEmpty()) {
                 if (result.contains("/human/")) {
-                    throw new IllegalArgumentException("Captcha required (nation: " + PnwUtil.getName(this.nationId, false) + "/" + this.nationId + ") " + Settings.INSTANCE.PNW_URL() + "/human/");
+                    throw new IllegalArgumentException("Captcha required (nation: " + PW.getName(this.nationId, false) + "/" + this.nationId + ") " + Settings.INSTANCE.PNW_URL() + "/human/");
                 }
-                String alert = PnwUtil.getAlert(dom);
+                String alert = PW.getAlert(dom);
                 if (alert == null || alert.isEmpty()) {
                     System.out.println(result);;
                 }
-                throw new IllegalArgumentException("No token found: " + PnwUtil.getAlert(dom));
+                throw new IllegalArgumentException("No token found: " + PW.getAlert(dom));
             }
 
             Map<String, String> post = new HashMap<>();
@@ -526,7 +526,7 @@ public class Auth {
         }
         int aaId = getAllianceId();
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=taxes";
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             Map<Integer, TaxBracket> result = new HashMap<>();
             String html = Auth.this.readStringFromURL(PagePriority.GET_BRACKETS_UNUSED, url, emptyMap());
             Document dom = Jsoup.parse(html);
@@ -700,7 +700,7 @@ public class Auth {
                         post.put("token", token);
                         post.put("acctrade", "");
 
-                        String tradeAlert = PnwUtil.getAlert(Jsoup.parse(Auth.this.readStringFromURL(PagePriority.TOKEN, url, post)));
+                        String tradeAlert = PW.getAlert(Jsoup.parse(Auth.this.readStringFromURL(PagePriority.TOKEN, url, post)));
                         if (tradeAlert == null) {
                             response.setResult(TradeResultType.UNKNOWN_ERROR);
                             continue;
@@ -731,7 +731,7 @@ public class Auth {
                 return responses;
             }
         };
-        return login ? PnwUtil.withLogin(task, auth) : task.call();
+        return login ? PW.withLogin(task, auth) : task.call();
     }
 
     ///////////////////////
@@ -874,7 +874,7 @@ public class Auth {
             }
         }
         if (total < 3000000) return null;
-        return PnwUtil.withLogin(() -> {
+        return PW.withLogin(() -> {
             String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
@@ -944,7 +944,7 @@ public class Auth {
 
             StringBuilder response = new StringBuilder("Checking trades...");
 
-            double[] amtDeposited = PnwUtil.withLogin(new Callable<double[]>() {
+            double[] amtDeposited = PW.withLogin(new Callable<double[]>() {
                 @Override
                 public double[] call() throws Exception {
                     Set<Auth.TradeResult> trades = Auth.this.acceptTrades(expectedNationId, false);
@@ -957,21 +957,21 @@ public class Auth {
                             toDeposit[ResourceType.MONEY.ordinal()] += ((long) trade.getPpu()) * trade.getAmount() * sign * -1;
                         }
                     }
-                    if (PnwUtil.convertedTotal(toDeposit) > 0) {
+                    if (ResourceType.convertedTotal(toDeposit) > 0) {
                         String safekeepResult = Auth.this.safekeep(false, toDeposit, "#ignore");
                         if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
                             response.append("\n- " + "Could not safekeep: " + safekeepResult);
                             return ResourceType.getBuffer();
                         }
                     }
-                    if (PnwUtil.convertedTotal(toDeposit) == 0) return ResourceType.getBuffer();
+                    if (ResourceType.convertedTotal(toDeposit) == 0) return ResourceType.getBuffer();
 
                     OffshoreInstance bank = nation.getAlliance().getBank();
                     if (bank != offshore) {
                         for (int i = 0; i < toDeposit.length; i++) {
                             if (toDeposit[i] < 0) toDeposit[i] = 0;
                         }
-                        TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore", null);
+                        TransferResult transferResult = bank.transfer(offshore.getAlliance(), ResourceType.resourcesToMap(toDeposit), "#ignore", null);
                         response.append("Offshore " + transferResult.toLineString());
                         if (!transferResult.getStatus().isSuccess()) {
                             return ResourceType.getBuffer();
@@ -987,10 +987,10 @@ public class Auth {
                     response.append("\nAdding deposits:");
 
                     offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
+                    response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
                     // add balance to expectedNation
                     currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
+                    response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
 
                     MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
                     if (logChannel != null) {

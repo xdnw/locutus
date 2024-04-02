@@ -53,7 +53,6 @@ import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.AttackType.*;
@@ -78,7 +77,7 @@ public class WarUpdateProcessor {
                     DBNation enemy = Locutus.imp().getNationDB().getNation(bounty.getNationId());
                     if (enemy == null || enemy.getDef() >= 3 || enemy.getVm_turns() != 0 || enemy.isBeige()) return;
 
-                    double minScore = enemy.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER;
+                    double minScore = enemy.getScore() / PW.WAR_RANGE_MAX_MODIFIER;
                     double maxScore = enemy.getScore() / 0.75;
 
                     for (Member member : members) {
@@ -644,7 +643,7 @@ public class WarUpdateProcessor {
                     String message = AttackTypeSubCategory.GROUND_TANKS_USED_UNNECESSARY.message;
                     if (attSoldiers * 0.4 > enemyStrength * 0.75) message += " (unarmed)";
 
-                    double usageCostPerTank = (PnwUtil.convertedTotal(ResourceType.MUNITIONS, 1) + PnwUtil.convertedTotal(ResourceType.GASOLINE, 1)) / 100d;
+                    double usageCostPerTank = (ResourceType.convertedTotal(ResourceType.MUNITIONS, 1) + ResourceType.convertedTotal(ResourceType.GASOLINE, 1)) / 100d;
                     double cost = MilitaryUnit.TANK.getConvertedCost() * root.getAttcas2() + usageCostPerTank * attTanks;
 
                     double extraInfraDestroyed = ((attTanks - (defTanks * 0.5)) * 0.01) * 0.95 * (root.getSuccess().ordinal() / 3d);
@@ -657,7 +656,7 @@ public class WarUpdateProcessor {
                         }
                     }
 
-                    double extraInfraDestroyedValue = root.getCity_infra_before() > 0 ? PnwUtil.calculateInfra(root.getCity_infra_before() - extraInfraDestroyed, root.getCity_infra_before()) : 0;
+                    double extraInfraDestroyedValue = root.getCity_infra_before() > 0 ? PW.City.Infra.calculateInfra(root.getCity_infra_before() - extraInfraDestroyed, root.getCity_infra_before()) : 0;
                     if (cost > extraInfraDestroyedValue) {
                         message += "\nBy using tanks unnecessarily, you used $" + MathMan.format(cost) + " worth of resources, and only destroyed $" + MathMan.format(extraInfraDestroyedValue) + " extra worth of infra";
                     } else {
@@ -1099,7 +1098,7 @@ public class WarUpdateProcessor {
                 StringBuilder body = new StringBuilder();
                 body.append("#" + alliance.getRank() + " | " + alliance.getMarkdownUrl() + "\n");
                 for (Map.Entry<Integer, Integer> warEntry : notableByAA.entrySet()) {
-                    body.append("- " + warEntry.getValue() + " unprovoked wars from " + PnwUtil.getMarkdownUrl(warEntry.getKey(), true) + "\n");
+                    body.append("- " + warEntry.getValue() + " unprovoked wars from " + PW.getMarkdownUrl(warEntry.getKey(), true) + "\n");
                 }
                 double planePct = planes * 100d / MilitaryUnit.AIRCRAFT.getMaxMMRCap(cities, f -> false);
                 body.append("\nPlane % of Attackers: " + MathMan.format(planePct) + " (" + numAttacking.size() + " nations)\n");

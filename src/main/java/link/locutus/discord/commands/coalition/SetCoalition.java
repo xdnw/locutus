@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -61,7 +61,7 @@ public class SetCoalition extends Command {
             if (MathMan.isInteger(args.get(0)) && Long.parseLong(args.get(0)) > Integer.MAX_VALUE) {
                 alliancesOrGuilds.add(Long.parseLong(args.get(0)));
             } else {
-                Set<Integer> alliances = PnwUtil.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(0));
+                Set<Integer> alliances = PW.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(0));
                 for (Integer aaId : alliances) {
                     alliancesOrGuilds.add(aaId.longValue());
                 }

@@ -5,7 +5,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.CIEDE2000;
 
@@ -68,7 +68,7 @@ public class SphereGenerator {
                 if (sphere.size() > 1) {
                     sphereAllianceMembers.computeIfAbsent(sphereId, f -> new HashMap<>()).put(0, nationList);
                 }
-                sphereNames.put(sphereId, PnwUtil.getSphereName(sphereId));
+                sphereNames.put(sphereId, PW.getSphereName(sphereId));
             }
 
             String colorStr = "#" + Integer.toHexString(color.getRGB()).substring(2);

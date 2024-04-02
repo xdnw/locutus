@@ -19,7 +19,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -228,10 +228,10 @@ public class StockCommands {
 
         StringBuilder response = new StringBuilder();
         if (!resourceShares.isEmpty()) {
-            double rssValue = PnwUtil.convertedTotal(resourceShares);
+            double rssValue = ResourceType.convertedTotal(resourceShares);
             total += rssValue;
             response.append("**Resources**: worth: ~$").append(MathMan.format(rssValue)).append("\n");
-            response.append(PnwUtil.resourcesToString(resourceShares)).append("\n");
+            response.append(ResourceType.resourcesToString(resourceShares)).append("\n");
         }
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         for (Map.Entry<Exchange, Long> entry : myShares.entrySet()) {
@@ -621,7 +621,7 @@ public class StockCommands {
         Map<Integer, Long> shareholders = db.getShareholdersByCorp(exchange.id);
         if (shareholders.isEmpty()) return "No shareholders.";
 
-        List<String> results = new SummedMapRankBuilder<>(shareholders).sort().name(nationId -> PnwUtil.getName(nationId, false), f -> MathMan.format(f / 100d)).get();
+        List<String> results = new SummedMapRankBuilder<>(shareholders).sort().name(nationId -> PW.getName(nationId, false), f -> MathMan.format(f / 100d)).get();
 
         int perPage = 15;
         int pages = (results.size() + perPage - 1) / perPage;
@@ -664,8 +664,8 @@ public class StockCommands {
         if (receiver.getVm_turns() != 0) throw new IllegalArgumentException("Receiver is on vacation mode.");
 
         if (!force) {
-            String title = "Confirm transfer worth: $" + MathMan.format(PnwUtil.convertedTotal(resources));
-            String body = "Amount: " + PnwUtil.resourcesToString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAllianceName();
+            String title = "Confirm transfer worth: $" + MathMan.format(ResourceType.convertedTotal(resources));
+            String body = "Amount: " + ResourceType.resourcesToString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAllianceName();
 
             channel.create().confirmation(title, body, command).send();
             return null;
@@ -729,8 +729,8 @@ public class StockCommands {
     @Command(desc = "Withdraw your cash/resources from the exchange")
     public String withdrawAA(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Me DBNation me, DBAlliance alliance, Map<ResourceType, Double> resources, @Switch("f") boolean force) {
         if (!force) {
-            String title = "Confirm transfer worth: $" + MathMan.format(PnwUtil.convertedTotal(resources));
-            String body = "Amount: " + PnwUtil.resourcesToString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";
+            String title = "Confirm transfer worth: $" + MathMan.format(ResourceType.convertedTotal(resources));
+            String body = "Amount: " + ResourceType.resourcesToString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";
 
             channel.create().confirmation(title, body, command).send();
             return null;

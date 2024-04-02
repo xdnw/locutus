@@ -11,7 +11,7 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.multi.GetUid;
@@ -57,7 +57,7 @@ public class MultiReport {
 
         if (diffMap.isEmpty()) return "No multis founds. Networks: " + uuidByNation.getOrDefault(nationId, Collections.emptySet()).size();
 
-        response.append("**Possible multis for: **" + PnwUtil.getMarkdownUrl(nationId, false)).append("\n");
+        response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 
         Set<BigInteger> myUUIDS = uuidByNation.get(nationId);
 
@@ -72,7 +72,7 @@ public class MultiReport {
             if (nation == null) name = nationId + "";
             else name = nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true);
 
-            response.append("**Possible multis for: **" + PnwUtil.getMarkdownUrl(nationId, false)).append("\n");
+            response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 
             Set<BigInteger> multiUUIDS = uuidByNation.get(nationId);
             Set<BigInteger> shared = new HashSet<>(multiUUIDS);
@@ -141,7 +141,7 @@ public class MultiReport {
                     ResourceType type = offer.getResource();
                     if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000)) || type == ResourceType.CREDITS) {
                         tradeIds.add(offer.getTradeId());
-                        worth += Math.abs(PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity()));
+                        worth += Math.abs(ResourceType.convertedTotal(offer.getResource(), offer.getQuantity()));
                     }
                 }
                 if (!tradeIds.isEmpty()) {

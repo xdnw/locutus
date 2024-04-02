@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings.builder;
 
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,13 +24,13 @@ public class NumericMappedRankBuilder<T, G, N extends Number> {
         if (existing == null) {
             existing = value;
         } else {
-            existing = PnwUtil.add(value, existing);
+            existing = ResourceType.add(value, existing);
         }
         mapped.put(key, existing);
     }
 
     public SummedMapRankBuilder<T, Double> sumResources() {
-        return sum(g -> PnwUtil.convertedTotal((Map<ResourceType, ? extends Number>) g));
+        return sum(g -> ResourceType.convertedTotal((Map<ResourceType, ? extends Number>) g));
     }
 
     public <H extends Number> SummedMapRankBuilder<T, H> sum(Function<Map<G, N>, H> toNumber) {

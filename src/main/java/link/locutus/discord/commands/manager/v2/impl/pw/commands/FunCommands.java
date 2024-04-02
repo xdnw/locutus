@@ -10,9 +10,8 @@ import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
 
 import java.io.IOException;
@@ -47,7 +46,7 @@ public class FunCommands {
 
         String result = auth.setCityName(id, name);
 
-        String url = PnwUtil.getCityUrl(id);
+        String url = PW.City.getCityUrl(id);
 
         stolenCities.put(id, me.getNation_id());
 

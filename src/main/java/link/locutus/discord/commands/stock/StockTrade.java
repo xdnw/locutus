@@ -2,7 +2,7 @@ package link.locutus.discord.commands.stock;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -59,10 +59,10 @@ public class StockTrade {
     @Override
     public String toString() {
         StringBuilder desc = new StringBuilder();
-        if (seller != 0) desc.append(PnwUtil.getName(seller, false));
+        if (seller != 0) desc.append(PW.getName(seller, false));
         else desc.append("SELLER WANTED");
         desc.append("- ");
-        if (buyer != 0) desc.append(PnwUtil.getName(buyer, false));
+        if (buyer != 0) desc.append(PW.getName(buyer, false));
         else desc.append("BUYER WANTED");
         desc.append(": ");
         desc.append(MathMan.format(amount / 100d) + "x ");

@@ -1,5 +1,5 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import link.locutus.discord.util.discord.DiscordUtil
 @import link.locutus.discord.web.commands.binding.AuthBindings
 @import link.locutus.discord.web.jooby.WebRoot

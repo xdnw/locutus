@@ -12,7 +12,7 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -107,7 +107,7 @@ public class NetProfitPerWar extends Command {
                     // Sort descending
                     .sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> PnwUtil.getName(allianceId, true))
+                    .nameKeys(allianceId -> PW.getName(allianceId, true))
                     .limit(25);
         } else {
             // Sort descending

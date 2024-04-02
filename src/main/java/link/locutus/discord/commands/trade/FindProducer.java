@@ -11,15 +11,12 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -113,7 +110,7 @@ public class FindProducer extends Command {
             } else {
                 value = 0;
                 for (ResourceType type : types) {
-                    value += PnwUtil.convertedTotal(type, profit[type.ordinal()]);
+                    value += ResourceType.convertedTotal(type, profit[type.ordinal()]);
                 }
             }
             if (value > 0 || includeNegative) {
@@ -138,11 +135,11 @@ public class FindProducer extends Command {
             // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(id -> PnwUtil.getName(id, true));
+                    .nameKeys(id -> PW.getName(id, true));
         } else {
             ranks = byNation.sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> PnwUtil.getName(allianceId, false));
+                    .nameKeys(allianceId -> PW.getName(allianceId, false));
         }
 
         String title = "Daily " + args.get(0) + " production";

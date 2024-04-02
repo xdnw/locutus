@@ -6,7 +6,7 @@ import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
@@ -114,7 +114,7 @@ public class Transaction2 {
 
     public boolean isSelfWithdrawal(DBNation nation) {
         if (this.isSenderAA() && this.note != null) {
-            Map<String, String> notes = PnwUtil.parseTransferHashNotes(this.note);
+            Map<String, String> notes = PW.parseTransferHashNotes(this.note);
             if (notes.containsKey("#deposit")) {
                 String banker = notes.get("#banker");
                 return MathMan.isInteger(banker) && Long.parseLong(banker) == nation.getNation_id();
@@ -365,16 +365,16 @@ public class Transaction2 {
     }
 
     public double convertedTotal() {
-        return PnwUtil.convertedTotal(resources);
+        return ResourceType.convertedTotal(resources);
     }
 
     public String toSimpleString() {
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(tx_datetime), ZoneOffset.UTC).toLocalDate() +
                 " | " + note +
-                " | sender: " + PnwUtil.getName(sender_id, sender_type == 2) +
-                " | receiver: " + PnwUtil.getName(receiver_id, receiver_type == 2) +
-                " | banker: " + PnwUtil.getName(banker_nation, false) +
-                " | " + PnwUtil.resourcesToString(resources);
+                " | sender: " + PW.getName(sender_id, sender_type == 2) +
+                " | receiver: " + PW.getName(receiver_id, receiver_type == 2) +
+                " | banker: " + PW.getName(banker_nation, false) +
+                " | " + ResourceType.resourcesToString(resources);
     }
 
     @Override

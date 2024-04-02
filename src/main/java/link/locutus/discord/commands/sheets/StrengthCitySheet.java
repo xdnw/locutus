@@ -10,7 +10,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -78,7 +78,7 @@ public class StrengthCitySheet extends Command {
             HashMap<Integer, Set<DBNation>> byCity = new HashMap<Integer, Set<DBNation>>();
             for (DBNation n : nations) byCity.computeIfAbsent(n.getCities(), f -> new HashSet<>()).add(n);
 
-            BiFunction<Integer, Integer, Integer> scores = PnwUtil.getIsNationsInCityRange(nations);
+            BiFunction<Integer, Integer, Integer> scores = PW.getIsNationsInCityRange(nations);
 
             for (int i = 0; i < 50; i++) {
                 List<String> row = rows[i];

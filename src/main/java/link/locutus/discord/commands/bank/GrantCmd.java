@@ -24,7 +24,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
@@ -219,12 +219,12 @@ public class GrantCmd extends Command {
                 try {
                     Grant grant = generateGrant(typeArg, guildDb, nation, num, flags, false, ignore);
                     row.add(grant.getInstructions());
-                    row.add(PnwUtil.convertedTotal(grant.cost()));
-                    row.add(PnwUtil.resourcesToString(grant.cost()));
+                    row.add(ResourceType.convertedTotal(grant.cost()));
+                    row.add(ResourceType.resourcesToString(grant.cost()));
 
-                    total = PnwUtil.add(total, PnwUtil.resourcesToMap(grant.cost()));
+                    total = ResourceType.add(total, ResourceType.resourcesToMap(grant.cost()));
                     if (factor != null) {
-                        total = PnwUtil.multiply(total, factor);
+                        total = PW.multiply(total, factor);
                     }
                 } catch (IllegalArgumentException e) {
                     row.add(e.getMessage());
@@ -236,7 +236,7 @@ public class GrantCmd extends Command {
 
             sheet.updateWrite();
 
-            String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
+            String totalStr = ResourceType.resourcesToString(total) + " worth ~$" + MathMan.format(ResourceType.convertedTotal(total));
             sheet.attach(channel.create().append(totalStr), "grant", null, false, 0).send();
             return null;
         }
@@ -262,15 +262,15 @@ public class GrantCmd extends Command {
         UUID uuid = UUID.randomUUID();
         BankCommands.AUTHORIZED_TRANSFERS.put(uuid, grant);
 
-        Map<ResourceType, Double> resources = PnwUtil.resourcesToMap(grant.cost());
+        Map<ResourceType, Double> resources = ResourceType.resourcesToMap(grant.cost());
 
         if (factor != null) {
-            resources = PnwUtil.multiply(resources, factor);
+            resources = PW.multiply(resources, factor);
         }
 
         JSONObject command = CM.transfer.resources.cmd.create(
                 me.getUrl(),
-                PnwUtil.resourcesToString(resources),
+                ResourceType.resourcesToString(resources),
                 grant.getType().toString(),
                 (nationAccount == null ? me : nationAccount).getUrl(),
                 allianceAccount != null ? allianceAccount.getUrl() : null,
@@ -287,7 +287,7 @@ public class GrantCmd extends Command {
                 "false"
         ).toJson();
         StringBuilder msg = new StringBuilder();
-        msg.append(PnwUtil.resourcesToString(resources)).append("\n")
+        msg.append(ResourceType.resourcesToString(resources)).append("\n")
                 .append("Current values for: " + me.getNation()).append('\n')
                 .append("Cities: " + me.getCities()).append('\n')
                 .append("Infra: " + me.getAvg_infra()).append('\n')
@@ -400,11 +400,11 @@ public class GrantCmd extends Command {
                 if (!noLand) grant.addNote("#land=" + city.getLand());
                 double[] buffer = new double[ResourceType.values.length];
                 grant.setInstructions(city.instructions(from, buffer));
-                resources = PnwUtil.resourcesToMap(buffer);
+                resources = ResourceType.resourcesToMap(buffer);
             } else {
                 grant = new Grant(me, DepositType.GRANT.withValue().ignore(ignore));
                 grant.setInstructions("transfer resources");
-                resources = PnwUtil.parseResources(arg);
+                resources = ResourceType.parseResources(arg);
             }
         } else if (arg.equalsIgnoreCase("build")) {
             throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <json> 1");
@@ -415,11 +415,11 @@ public class GrantCmd extends Command {
             Map<ResourceType, Double> stockpile = me.getStockpile();
             if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
             Map<ResourceType, Double> cityWc = guildDb.getPerCityWarchest(me);
-            resources = PnwUtil.multiply(cityWc, (double) me.getCities());
+            resources = PW.multiply(cityWc, (double) me.getCities());
             if (amt > 0 && amt != 1) {
 //                Double multiplier = MathMan.parseDouble(args.get(2));
 //                if (multiplier == null) return "Invalid multiplier: `" + args.get(2) + "`";
-                resources = PnwUtil.multiply(resources, amt);
+                resources = PW.multiply(resources, amt);
             }
 
             for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
@@ -473,7 +473,7 @@ public class GrantCmd extends Command {
                     throw new IllegalArgumentException(me.getNation() + " can only have up to " + max + " " + unit.getName());
                 }
 
-                resources = PnwUtil.resourcesToMap(unit.getCost((int) amt));
+                resources = ResourceType.resourcesToMap(unit.getCost((int) amt));
                 grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
@@ -481,7 +481,7 @@ public class GrantCmd extends Command {
                     throw new IllegalArgumentException("Error: " + me.getUrl() + " has full project slots " + (me.projectSlots() + "<=" + me.getNumProjects()));
                 }
                 resources = project.cost();
-                if (!force && PnwUtil.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
+                if (!force && ResourceType.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
                     throw new IllegalArgumentException("Please set your Domestic Policy to `Technological Advancement` in <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/> to save 5%.");
                 }
                 if (me.hasProject(project)) {
@@ -496,7 +496,7 @@ public class GrantCmd extends Command {
                     }
                 }
                 if (factor != 1) {
-                    resources = PnwUtil.multiply(resources, factor);
+                    resources = PW.multiply(resources, factor);
                 }
 
                 grant = new Grant(me, DepositType.PROJECT.withAmount(project.ordinal()).ignore(ignore));
@@ -505,7 +505,7 @@ public class GrantCmd extends Command {
         }
 
         if (flags.contains('m')) {
-            resources = PnwUtil.multiply(resources, (double) me.getCities());
+            resources = PW.multiply(resources, (double) me.getCities());
         }
 
         if (existing) {
@@ -526,7 +526,7 @@ public class GrantCmd extends Command {
         }
 
         Map<ResourceType, Double> finalResources = resources;
-        grant.setCost(f -> PnwUtil.resourcesToArray(finalResources));
+        grant.setCost(f -> ResourceType.resourcesToArray(finalResources));
 
         return grant;
     }
@@ -549,7 +549,7 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerRebuy = (int) (Math.floor(building.getUnitCap() * numBuildings));
             int numUnits = numUnitsPerRebuy * numBuys;
-            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            resources = ResourceType.addResourcesToA(resources, ResourceType.resourcesToMap(unit.getCost(numUnits)));
             response.append("- " + numUnits + " x " + unit);
             if (numBuys != 1) {
                 response.append(" (" + numUnitsPerRebuy + " per full buy)");
@@ -579,7 +579,7 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerDay = (int) (Math.floor(building.getUnitDailyBuy() * numBuildings));
             int numUnits = numUnitsPerDay * numBuys;
-            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            resources = ResourceType.addResourcesToA(resources, ResourceType.resourcesToMap(unit.getCost(numUnits)));
             response.append("- " + numUnits + " x " + unit);
             if (numBuys != 1) {
                 response.append(" (" + numUnitsPerDay + " per day)");
@@ -601,7 +601,7 @@ public class GrantCmd extends Command {
         for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
             double land = entry.getValue().getLand();
             if (land < numBuy) {
-                totalCost += PnwUtil.calculateLand((int) land, numBuy);
+                totalCost += PW.City.Land.calculateLand((int) land, numBuy);
             }
         }
         double factor = 1;
@@ -664,7 +664,7 @@ public class GrantCmd extends Command {
         for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
             double infra = entry.getValue().getInfra();
             if (infra < numBuy) {
-                totalCost += PnwUtil.calculateInfra((int) infra, numBuy);
+                totalCost += PW.City.Infra.calculateInfra((int) infra, numBuy);
             }
         }
 
@@ -738,7 +738,7 @@ public class GrantCmd extends Command {
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp, gsa);
+            cost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa);
         }
 
         StringBuilder result = new StringBuilder();

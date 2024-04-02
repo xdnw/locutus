@@ -8,7 +8,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -48,7 +48,7 @@ public class UnsubBank extends Command {
         } else {
             Integer nationId = DiscordUtil.parseNationId(args.get(0));
             if (nationId == null || args.get(0).contains("/alliance/")) {
-                Integer allianceId = PnwUtil.parseAllianceId(args.get(0));
+                Integer allianceId = PW.parseAllianceId(args.get(0));
                 if (allianceId == null) {
                     return "Invalid alliance: `" + args.get(0) + "`";
                 }

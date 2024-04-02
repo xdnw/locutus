@@ -6,7 +6,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,7 +40,7 @@ public class TransferResult {
     }
 
     public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {
-        this(status, receiver, PnwUtil.resourcesToArray(amount), note);
+        this(status, receiver, ResourceType.resourcesToArray(amount), note);
     }
 
     public void setStatus(OffshoreInstance.TransferStatus status) {
@@ -93,7 +93,7 @@ public class TransferResult {
     }
 
     public String toLineString() {
-        String msg = "Transfer: `" + status.name() + "` to " + receiver.getMarkdownUrl() + " for `" + PnwUtil.resourcesToString(amount) + "` using note `" + note + "`";
+        String msg = "Transfer: `" + status.name() + "` to " + receiver.getMarkdownUrl() + " for `" + ResourceType.resourcesToString(amount) + "` using note `" + note + "`";
         if (!resultMessage.isEmpty()) {
             msg += "\n" + getMessageJoined(true);
         }
@@ -116,8 +116,8 @@ public class TransferResult {
             }
         }
         body.append("\n");
-        body.append("**Amount:** `").append(PnwUtil.resourcesToString(amount)).append("`\n");
-        body.append(" - worth: `$" + MathMan.format(PnwUtil.convertedTotal(amount)) + "`\n");
+        body.append("**Amount:** `").append(ResourceType.resourcesToString(amount)).append("`\n");
+        body.append(" - worth: `$" + MathMan.format(ResourceType.convertedTotal(amount)) + "`\n");
         body.append("**Note:** `").append(note).append("`\n");
         if (status != OffshoreInstance.TransferStatus.SUCCESS) {
             if (resultMessage.size() == 1) {

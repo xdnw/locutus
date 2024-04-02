@@ -31,7 +31,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -186,7 +186,7 @@ public class WarCostAB extends Command {
                 break;
         }
 
-        String totalStr = PnwUtil.resourcesToString(total);
+        String totalStr = ResourceType.resourcesToString(total);
 
         String note = "#counter=" + warUrl.warId;
         List<Transaction2> transactions = db.getTransactionsByNote(note, false);
@@ -195,7 +195,7 @@ public class WarCostAB extends Command {
             return;
         }
 
-        String title = "Reimburse: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
+        String title = "Reimburse: ~$" + MathMan.format(ResourceType.convertedTotal(total));
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
         String reimburseEmoji = "Reimburse";

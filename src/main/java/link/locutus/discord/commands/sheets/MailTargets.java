@@ -76,7 +76,7 @@ public class MailTargets extends Command {
 
         if (!args.get(0).equalsIgnoreCase("null")) {
             SpreadSheet blitzSheet = SpreadSheet.create(args.get(0));
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, a -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, a -> {});
         }
 
         if (!args.get(1).equalsIgnoreCase("null")) {

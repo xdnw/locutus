@@ -1,12 +1,13 @@
 package link.locutus.discord.event.mail;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.test.IACategory;
@@ -100,7 +101,7 @@ public class MailReceivedEvent extends Event {
 
             Map.Entry<DBNation, double[]> spyReport = SpyCount.parseSpyReport(nation, msg);
             if (spyReport != null) {
-                double converted = PnwUtil.convertedTotal(spyReport.getValue());
+                double converted = ResourceType.convertedTotal(spyReport.getValue());
 
                 body.append("\nWorth: ~$" + MathMan.format(converted * 0.14));
             }

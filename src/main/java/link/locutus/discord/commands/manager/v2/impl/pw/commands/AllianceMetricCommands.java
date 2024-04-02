@@ -37,7 +37,7 @@ import link.locutus.discord.db.entities.metric.IAllianceMetric;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
@@ -150,7 +150,7 @@ public class AllianceMetricCommands {
                 for (int i = 0; i < projects.length; i++) {
                     String projectStr = projects[i];
                     String costStr = costs[i];
-                    double[] cost = PnwUtil.resourcesToArray(PnwUtil.parseResources(costStr));
+                    double[] cost = ResourceType.resourcesToArray(ResourceType.parseResources(costStr));
                     Project curr = Projects.get(projectStr);
                     String[] costSplit = costStr.split("\t");
                     newCosts.put(curr, cost);
@@ -159,7 +159,7 @@ public class AllianceMetricCommands {
             double[] newCost = newCosts.get(project);
             if (newCost != null) return newCost;
         }
-        return PnwUtil.resourcesToArray(project.cost());
+        return ResourceType.resourcesToArray(project.cost());
     }
 
 //    public static void main(String[] args) throws IOException, ParseException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
@@ -248,8 +248,8 @@ public class AllianceMetricCommands {
                 if (day != previousDay.get()) {
                     System.out.println(
                             TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day)) + "\t" +
-                                    MathMan.format(PnwUtil.convertedTotal(dailyOld)) + "\t" +
-                                    MathMan.format(PnwUtil.convertedTotal(dailyNew)) + "\t" +
+                                    MathMan.format(ResourceType.convertedTotal(dailyOld)) + "\t" +
+                                    MathMan.format(ResourceType.convertedTotal(dailyNew)) + "\t" +
                                     MathMan.format(citExpenses)
                     );
 
@@ -268,7 +268,7 @@ public class AllianceMetricCommands {
                 if (previous == null) return;
                 int numCities = previousCities.getOrDefault(nation.getId(), 0);
                 if (numCities < nation.getCities()) {
-                    double cityCost = PnwUtil.cityCost(nation, numCities, nation.getCities());
+                    double cityCost = PW.City.cityCost(nation, numCities, nation.getCities());
                     citExpenses += cityCost;
                     cityTotal.addAndGet(cityCost);
                     citiesByTier.merge(numCities, cityCost, Double::sum);
@@ -280,14 +280,14 @@ public class AllianceMetricCommands {
                         double[] newCost = cost(project, true).clone();
 
                         // add to maps
-                        PnwUtil.add(dailyOld, oldCost.clone());
-                        PnwUtil.add(dailyNew, newCost.clone());
+                        ResourceType.add(dailyOld, oldCost.clone());
+                        ResourceType.add(dailyNew, newCost.clone());
                         // add to totals
-                        PnwUtil.add(totalOld, oldCost.clone());
-                        PnwUtil.add(totalNew, newCost.clone());
+                        ResourceType.add(totalOld, oldCost.clone());
+                        ResourceType.add(totalNew, newCost.clone());
 
-                        PnwUtil.add(oldCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), oldCost.clone());
-                        PnwUtil.add(newCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), newCost.clone());
+                        ResourceType.add(oldCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), oldCost.clone());
+                        ResourceType.add(newCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), newCost.clone());
 
                         amtByTier.computeIfAbsent(project, f -> new HashMap<>()).merge(nation.getCities(), 1, Integer::sum);
                         numProject.merge(project, 1, Integer::sum);
@@ -302,13 +302,13 @@ public class AllianceMetricCommands {
         });
         // print output
         System.out.println("Total annual revenue:");
-        System.out.println("Total " + PnwUtil.resourcesToString(revenueTotal));
-        System.out.println("Taxable " + PnwUtil.resourcesToString(revenueTaxable));
+        System.out.println("Total " + ResourceType.resourcesToString(revenueTotal));
+        System.out.println("Taxable " + ResourceType.resourcesToString(revenueTaxable));
 
         // print totals
         System.out.println("\n\n");
-        System.out.println("Old " + PnwUtil.resourcesToString(totalOld));
-        System.out.println("New " + PnwUtil.resourcesToString(totalNew));
+        System.out.println("Old " + ResourceType.resourcesToString(totalOld));
+        System.out.println("New " + ResourceType.resourcesToString(totalNew));
         System.out.println("City " + MathMan.format(cityTotal.get()));
         // Note: Revenue may be innaccurate
 
@@ -321,11 +321,11 @@ public class AllianceMetricCommands {
             double[] newCost = newCostByTier.get(i);
             if (oldCost == null) oldCost = ResourceType.getBuffer();
             if (newCost == null) newCost = ResourceType.getBuffer();
-            System.out.println(i + "\t" + PnwUtil.convertedTotal(oldCost) + "\t" +
-                    PnwUtil.convertedTotal(newCost) + "\t" +
+            System.out.println(i + "\t" + ResourceType.convertedTotal(oldCost) + "\t" +
+                    ResourceType.convertedTotal(newCost) + "\t" +
                     citiesByTier.getOrDefault(i, 0D) + "\t" +
-                    PnwUtil.resourcesToString(oldCost) + "\t" +
-                    PnwUtil.resourcesToString(newCost));
+                    ResourceType.resourcesToString(oldCost) + "\t" +
+                    ResourceType.resourcesToString(newCost));
         }
 
         // print
@@ -371,7 +371,7 @@ public class AllianceMetricCommands {
                                 @Switch("s") @Timestamp Long snapshotDate,
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv) throws IOException {
-        Set<DBNation> nationsSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total);
         table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
     }
@@ -476,16 +476,16 @@ public class AllianceMetricCommands {
         return null;
     }
 
-    @Command
-    public String AlliancesCityDataByDay(@Me IMessageIO io, TypedFunction<DBCity, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Default Set<DBAlliance> alliances) {
-        return null;
-    }
-
-    @Command
-    public String AllianceDataCsvByDay(@Me IMessageIO io, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Default Set<DBAlliance> alliances) {
-        List<IAllianceMetric> metrics = new ArrayList<>();
-        return null;
-    }
+//    @Command
+//    public String AlliancesCityDataByDay(@Me IMessageIO io, TypedFunction<DBCity, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Default Set<DBAlliance> alliances) {
+//        return null;
+//    }
+//
+//    @Command
+//    public String AllianceDataCsvByDay(@Me IMessageIO io, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Default Set<DBAlliance> alliances) {
+//        List<IAllianceMetric> metrics = new ArrayList<>();
+//        return null;
+//    }
 
     // then equivalent nation, city, nations metrics
 

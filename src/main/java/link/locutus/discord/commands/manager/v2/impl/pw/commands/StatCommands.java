@@ -345,7 +345,7 @@ public class StatCommands {
 
         RankBuilder<String> ranks = byGroupSum
                 .sort()
-                .nameKeys(id -> PnwUtil.getName(id, groupByAlliance));
+                .nameKeys(id -> PW.getName(id, groupByAlliance));
 
         // Embed the rank list
 
@@ -623,7 +623,7 @@ public class StatCommands {
                               @Switch("r") boolean reverseOrder,
                               @Switch("s") @Timestamp Long snapshotDate,
                               @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
-        Set<DBNation> nationsSet = PnwUtil.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
         Map<DBNation, Double> attributeByNation = new HashMap<>();
         for (DBNation nation : nationsSet) {
             Double value = attribute.apply(nation);
@@ -645,7 +645,7 @@ public class StatCommands {
                 summed = grouped.average();
             }
             summed = reverseOrder ? summed.sortAsc() : summed.sort();
-            named = summed.nameKeys(f -> PnwUtil.getName(f, true));
+            named = summed.nameKeys(f -> PW.getName(f, true));
         } else {
             builder = reverseOrder ? builder.sortAsc() : builder.sort();
             named = builder.nameKeys(DBNation::getName);
@@ -733,8 +733,8 @@ public class StatCommands {
                                      @Arg("Compare the sum of each nation's attribute in the coalition instead of average")
                                          @Switch("t") boolean total,
                                      @Switch("s") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         int num1 = coalition1Nations.size();
         int num2 = coalition2Nations.size();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -870,8 +870,8 @@ public class StatCommands {
                                     @Switch("s") @Timestamp Long snapshotDate,
                                     @Switch("j") boolean attachJson,
                                     @Switch("v") boolean attachCsv) throws IOException {
-        Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -885,8 +885,8 @@ public class StatCommands {
             maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
             minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
         }
-        double[] coal1Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
-        double[] coal2Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
+        double[] coal1Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
+        double[] coal2Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
 
         double[] coal1StrSpread = new double[coal1Str.length];
         double[] coal2StrSpread = new double[coal2Str.length];
@@ -1003,8 +1003,8 @@ public class StatCommands {
                                  @Switch("s") @Timestamp Long snapshotDate,
                                  @Switch("j") boolean attachJson,
                                  @Switch("c") boolean attachCsv) throws IOException {
-        Set<DBNation> coalition1Nations = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1019,8 +1019,8 @@ public class StatCommands {
             maxScore = (int) Math.max(maxScore, nation.getScore());
             minScore = (int) Math.min(minScore, nation.getScore());
         }
-        double[] coal1Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
-        double[] coal2Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
+        double[] coal1Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
+        double[] coal2Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
 
         double[] coal1StrSpread = new double[coal1Str.length];
         double[] coal2StrSpread = new double[coal2Str.length];
@@ -1034,7 +1034,7 @@ public class StatCommands {
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];
             if (val == 0) continue;
-            int max = Math.min(coal1StrSpread.length, (int) (PnwUtil.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
+            int max = Math.min(coal1StrSpread.length, (int) (PW.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
 
             for (int i = min; i < max; i++) {
                 coal1StrSpread[i] += val;
@@ -1043,7 +1043,7 @@ public class StatCommands {
         for (int min = 10; min < coal2Str.length; min++) {
             double val = coal2Str[min];
             if (val == 0) continue;
-            int max = Math.min(coal2StrSpread.length, (int) (PnwUtil.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
+            int max = Math.min(coal2StrSpread.length, (int) (PW.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
 
             for (int i = min; i < max; i++) {
                 coal2StrSpread[i] += val;
@@ -1083,7 +1083,7 @@ public class StatCommands {
         }
 
         String title = "# BB Games (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PW.getName(f, byAlliance));
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1107,7 +1107,7 @@ public class StatCommands {
         }
 
         String title = "# Challenge BB Games";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PW.getName(f, byAlliance));
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1121,23 +1121,23 @@ public class StatCommands {
         if (games.isEmpty()) return "No games found";
 
         {
-            String title = "# Wagers with " + PnwUtil.getName(nationId, false);
+            String title = "# Wagers with " + PW.getName(nationId, false);
             Map<Integer, Integer> mostWageredGames = new HashMap<>();
             for (BBGame game : games) {
                 mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
                 mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
             }
-            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PnwUtil.getName(f, false));
+            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PW.getName(f, false));
             ranks.build(channel, command, title, uploadFile);
         }
         {
-            String title = "$ Wagered with " + PnwUtil.getName(nationId, false);
+            String title = "$ Wagered with " + PW.getName(nationId, false);
             Map<Integer, Long> mostWageredWinnings = new HashMap<>();
             for (BBGame game : games) {
                 int otherId = game.getAway_nation_id() == nationId ? game.getHome_nation_id() : game.getAway_nation_id();
                 mostWageredWinnings.merge(otherId, game.getWager().longValue(), Long::sum);
             }
-            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
+            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PW.getName(f, false));
             ranks.build(channel, command, title, uploadFile);
         }
         return null;
@@ -1169,7 +1169,7 @@ public class StatCommands {
         }
 
         String title = "BB Earnings $ (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PW.getName(f, byAlliance));
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1197,7 +1197,7 @@ public class StatCommands {
         }
 
         String title = "BB Challenge Earnings $";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PW.getName(f, byAlliance));
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1240,9 +1240,9 @@ public class StatCommands {
         }
 
         if (!victoryByEntity.isEmpty())
-            new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> PnwUtil.getName(f, isAA)).build(channel, command, "Victories");
+            new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> PW.getName(f, isAA)).build(channel, command, "Victories");
         if (!expireByEntity.isEmpty())
-            new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> PnwUtil.getName(f, isAA)).build(channel, command, "Expiries");
+            new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> PW.getName(f, isAA)).build(channel, command, "Expiries");
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions")
@@ -1252,8 +1252,8 @@ public class StatCommands {
                                 @Arg("Graph the average military buildings instead of units")
                                @Switch("b") boolean buildings,
                                @Switch("t") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> nations1 = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> nations2 = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
 
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1412,8 +1412,8 @@ public class StatCommands {
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv,
                                 @Switch("s") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> nations1 = PnwUtil.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> nations2 = PnwUtil.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> allNations = new HashSet<>();
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1687,17 +1687,17 @@ public class StatCommands {
             Map<ResourceType, Double> total = new HashMap<>();
 
             if (!excludeConsumption) {
-                total = PnwUtil.add(total, activeCost.getConsumption(true));
+                total = ResourceType.add(total, activeCost.getConsumption(true));
             }
             if (!excludeInfra) {
                 double infraCost = activeCost.getInfraLost(true);
                 total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + infraCost);
             }
             if (!excludeLoot) {
-                total = PnwUtil.add(total, activeCost.getLoot(true));
+                total = ResourceType.add(total, activeCost.getLoot(true));
             }
             if (!excludeUnitCost) {
-                total = PnwUtil.add(total, activeCost.getUnitCost(true));
+                total = ResourceType.add(total, activeCost.getUnitCost(true));
             }
 
             if (normalizePerCity) {
@@ -1714,7 +1714,7 @@ public class StatCommands {
             for (ResourceType type : ResourceType.values) {
                 header.add(total.getOrDefault(type, 0d));
             }
-            header.add(PnwUtil.convertedTotal(total));
+            header.add(ResourceType.convertedTotal(total));
 
             sheet.addRow(header);
         }
@@ -1825,21 +1825,21 @@ public class StatCommands {
             row.add(aaMembers.getScore());
             row.add(aaMembers.getTotal().getCities());
 
-            row.add(-PnwUtil.convertedTotal(warCost.getNetUnitCost(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getNetInfraCost(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getLoot(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getNetConsumptionCost(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getNetCost(true)));
+            row.add(-ResourceType.convertedTotal(warCost.getNetUnitCost(true)));
+            row.add(-ResourceType.convertedTotal(warCost.getNetInfraCost(true)));
+            row.add(-ResourceType.convertedTotal(warCost.getLoot(true)));
+            row.add(-ResourceType.convertedTotal(warCost.getNetConsumptionCost(true)));
+            row.add(-ResourceType.convertedTotal(warCost.getNetCost(true)));
 
-            row.add(PnwUtil.convertedTotal(warCost.getUnitCost(true)));
+            row.add(ResourceType.convertedTotal(warCost.getUnitCost(true)));
             row.add((warCost.getInfraLost(true)));
-            row.add(PnwUtil.convertedTotal(warCost.getConsumption(true)));
-            row.add(PnwUtil.convertedTotal(warCost.getTotal(true)));
+            row.add(ResourceType.convertedTotal(warCost.getConsumption(true)));
+            row.add(ResourceType.convertedTotal(warCost.getTotal(true)));
 
-            row.add(PnwUtil.convertedTotal(warCost.getUnitCost(false)));
+            row.add(ResourceType.convertedTotal(warCost.getUnitCost(false)));
             row.add((warCost.getInfraLost(false)));
-            row.add(PnwUtil.convertedTotal(warCost.getConsumption(false)));
-            row.add(PnwUtil.convertedTotal(warCost.getTotal(false)));
+            row.add(ResourceType.convertedTotal(warCost.getConsumption(false)));
+            row.add(ResourceType.convertedTotal(warCost.getTotal(false)));
 
             row.add(warCost.getUnitCost(true).getOrDefault(ResourceType.MONEY, 0d) - warCost.getLoot(true).getOrDefault(ResourceType.MONEY, 0d));
             row.add(warCost.getTotal(true).getOrDefault(ResourceType.GASOLINE, 0d));
@@ -2047,17 +2047,17 @@ public class StatCommands {
         Map<ResourceType, Double> total = new HashMap<>();
 
         if (consumption) {
-            total = PnwUtil.add(total, cost.getConsumption(isPrimary));
+            total = ResourceType.add(total, cost.getConsumption(isPrimary));
         }
         if (infra) {
             double infraCost = cost.getInfraLost(isPrimary);
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + infraCost);
         }
         if (loot) {
-            total = PnwUtil.add(total, cost.getLoot(isPrimary));
+            total = ResourceType.add(total, cost.getLoot(isPrimary));
         }
         if (units) {
-            total = PnwUtil.add(total, cost.getUnitCost(isPrimary));
+            total = ResourceType.add(total, cost.getUnitCost(isPrimary));
         }
 
         if (normalize) {
@@ -2065,7 +2065,7 @@ public class StatCommands {
                 entry.setValue(entry.getValue() / nation.getCities());
             }
         }
-        return PnwUtil.convertedTotal(total);
+        return ResourceType.convertedTotal(total);
     }
 
     @Command(desc = """
@@ -2090,7 +2090,7 @@ public class StatCommands {
         } else {
             Set<DBNation> tmp;
             if (snapshotDate != null) {
-                tmp = PnwUtil.getNationsSnapshot(nations2.getNations(), nations2.getFilter(), snapshotDate, db.getGuild(), false);
+                tmp = PW.getNationsSnapshot(nations2.getNations(), nations2.getFilter(), snapshotDate, db.getGuild(), false);
             } else {
                 tmp = nations2.getNations();
             }
@@ -2415,8 +2415,8 @@ public class StatCommands {
             Map<AttackTypeSubCategory, Integer> counts = countsByNation.getOrDefault(entry.getKey(), Collections.emptyMap());
             int badAttacks = counts.values().stream().mapToInt(f -> f).sum();
 
-            header.set(0, MarkupUtil.sheetUrl(PnwUtil.getName(id, false), PnwUtil.getNationUrl(id)));
-            header.set(1, MarkupUtil.sheetUrl(PnwUtil.getName(aaId, true), PnwUtil.getAllianceUrl(aaId)));
+            header.set(0, MarkupUtil.sheetUrl(PW.getName(id, false), PW.getNationUrl(id)));
+            header.set(1, MarkupUtil.sheetUrl(PW.getName(aaId, true), PW.getAllianceUrl(aaId)));
             header.set(2, cities);
             header.set(3, off);
             header.set(4, def);
@@ -2530,13 +2530,13 @@ public class StatCommands {
         int mergedAAAmt = sorted.values().iterator().next();
         String dayStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(TimeUtil.getTimeFromDay(day)));
         List<String> row = new ArrayList<>(Arrays.asList(
-                MarkupUtil.sheetUrl(aaNames.getOrDefault(aaId, "AA:" + aaId), PnwUtil.getAllianceUrl(aaId)),
+                MarkupUtil.sheetUrl(aaNames.getOrDefault(aaId, "AA:" + aaId), PW.getAllianceUrl(aaId)),
                 dayStr,
                 prevMembers + "",
                 currMembers + "",
                 (prevMembers - currMembers) + "",
                 (100d * (prevMembers - currMembers) / prevMembers) + "%",
-                MarkupUtil.sheetUrl(aaNames.getOrDefault(mergedAA, "AA:" + mergedAA), PnwUtil.getAllianceUrl(mergedAA)),
+                MarkupUtil.sheetUrl(aaNames.getOrDefault(mergedAA, "AA:" + mergedAA), PW.getAllianceUrl(mergedAA)),
                 mergedAAAmt + "",
                 (100d * mergedAAAmt / (nations.size())) + "%"
         ));

@@ -17,7 +17,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -1083,7 +1083,7 @@ public class DiscordUtil {
             if (aaName.startsWith("~") && allowCoalitions) {
                 aaName = aaName.substring(1);
             } else {
-                aaId = PnwUtil.parseAllianceId(aaName);
+                aaId = PW.parseAllianceId(aaName);
             }
 
             if (aaId == null) {

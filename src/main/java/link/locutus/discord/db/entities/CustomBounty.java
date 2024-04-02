@@ -12,7 +12,7 @@ import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,7 +73,7 @@ public class CustomBounty {
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
                 JavaCity city = cityEntry.getValue();
                 {
-                    nationInfra += PnwUtil.calculateInfra(0, city.getInfra());
+                    nationInfra += PW.City.Infra.calculateInfra(0, city.getInfra());
                 }
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {
@@ -118,7 +118,7 @@ public class CustomBounty {
             }
         }
         // if value < 1 million
-        if (PnwUtil.convertedTotal(resources) < 1_000_000) {
+        if (ResourceType.convertedTotal(resources) < 1_000_000) {
             throw new IllegalArgumentException("Total value must be at least $1 (see: " + CM.trade.value.cmd.toSlashMention() + ")");
         }
         // if allowedWarStatus contains active war status

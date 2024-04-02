@@ -33,7 +33,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
@@ -213,7 +213,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         if (name.equals("*")) {
             return new ObjectArraySet<>(Locutus.imp().getNationDB().getNations().values());
         } else if (name.contains("tax_id=")) {
-            int taxId = PnwUtil.parseTaxId(name);
+            int taxId = PW.parseTaxId(name);
             return Locutus.imp().getNationDB().getNationsByBracket(taxId);
         } else if (SpreadSheet.isSheet(nameLower)) {
             Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
@@ -288,7 +288,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         if (name.equals("*")) {
             return f -> true;
         } else if (name.contains("tax_id=")) {
-            int taxId = PnwUtil.parseTaxId(name);
+            int taxId = PW.parseTaxId(name);
             return f -> f.getTax_id() == taxId;
         } else if (SpreadSheet.isSheet(nameLower)) {
             Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
@@ -313,7 +313,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             int id = Integer.parseInt(nameLower);
             return f -> f.getId() == id || f.getAlliance_id() == id;
         } else if (nameLower.contains("tax_id=")) {
-            int taxId = PnwUtil.parseTaxId(name);
+            int taxId = PW.parseTaxId(name);
             return f -> f.getTax_id() == taxId;
         }
 

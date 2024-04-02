@@ -1,9 +1,8 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
 import link.locutus.discord.apiv1.enums.BuildingType;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 
 import java.util.Collections;
@@ -24,11 +23,11 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
         } else {
             this.input = Map.of(input, inputAmt);
         }
-        this.inputArr = PnwUtil.resourcesToArray(this.input);
+        this.inputArr = ResourceType.resourcesToArray(this.input);
         this.resource = input;
         this.infraLevels = infraLevels;
         this.infra = infraPowered;
-        this.resourceValue = resource != null ? PnwUtil.convertedTotal(resource, 1) : 0;
+        this.resourceValue = resource != null ? ResourceType.convertedTotal(resource, 1) : 0;
     }
 
     @Override
@@ -39,7 +38,7 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
     @Override
     public Map<ResourceType, Double> input(int infra) {
         double levels = (infra + infraLevels - 1d) / infraLevels;
-        return PnwUtil.multiply(input, levels);
+        return PW.multiply(input, levels);
     }
 
     @Override

@@ -11,7 +11,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -92,7 +92,7 @@ public class StockpileSheet extends Command {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
+        String totalStr = ResourceType.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
         channel.create().embed("Nation Stockpiles", totalStr).send();
 

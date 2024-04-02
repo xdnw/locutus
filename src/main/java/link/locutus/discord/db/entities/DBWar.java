@@ -9,7 +9,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -364,8 +364,8 @@ public class DBWar {
     }
 
     public AttackCost toCost(List<AbstractCursor> attacks, boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
-        String nameA = PnwUtil.getName(getAttacker_id(), false);
-        String nameB = PnwUtil.getName(getDefender_id(), false);
+        String nameA = PW.getName(getAttacker_id(), false);
+        String nameB = PW.getName(getDefender_id(), false);
         Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == getAttacker_id();
         Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == getDefender_id();
         AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, wars, inclAttacks);
@@ -375,12 +375,12 @@ public class DBWar {
 
     public String getNationHtmlUrl(boolean attacker) {
         int id = attacker ? getAttacker_id() : getDefender_id();
-        return MarkupUtil.htmlUrl(PnwUtil.getName(id, false), PnwUtil.getNationUrl(id));
+        return MarkupUtil.htmlUrl(PW.getName(id, false), PW.getNationUrl(id));
     }
 
     public String getAllianceHtmlUrl(boolean attacker) {
         int id = attacker ? getAttacker_aa() : getDefender_aa();
-        return MarkupUtil.htmlUrl(PnwUtil.getName(id, true), PnwUtil.getAllianceUrl(id));
+        return MarkupUtil.htmlUrl(PW.getName(id, true), PW.getAllianceUrl(id));
     }
 
     public int getNationId(int allianceId) {

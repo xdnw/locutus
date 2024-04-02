@@ -9,7 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.Grant;
 
 import javax.annotation.Nullable;
@@ -221,7 +221,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Integer amount) {
         if (amount == null) amount = 1;
         int cities = receiver.getCities();
-        double cost = PnwUtil.nextCityCost(receiver, amount);
+        double cost = PW.City.nextCityCost(receiver, amount);
         return ResourceType.MONEY.toArray(cost);
     }
 

@@ -12,7 +12,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -73,7 +73,7 @@ public class Bank extends Command {
             totals = nation.getStockpile();
             if (totals == null) return "They are not a member of " + alliance;
         } else {
-            alliance = PnwUtil.parseAllianceId(args.get(0));
+            alliance = PW.parseAllianceId(args.get(0));
             if (alliance == null) {
                 return "Invalid alliance: `" + args.get(0) + "`";
             }
@@ -85,7 +85,7 @@ public class Bank extends Command {
             }
             totals = DBAlliance.getOrCreate(alliance).getStockpile();
         }
-        String out = PnwUtil.resourcesToFancyString(totals);
+        String out = ResourceType.resourcesToFancyString(totals);
         channel.create().embed(args.get(0) + " stockpile", out).send();
         return null;
     }

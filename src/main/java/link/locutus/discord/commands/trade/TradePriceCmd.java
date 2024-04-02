@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
@@ -161,7 +161,7 @@ public class TradePriceCmd extends Command {
 
     public String toString(DBTrade offer) {
         int id = offer.getBuyer() == 0 ? offer.getSeller() : offer.getBuyer();
-        String name = PnwUtil.getName(id, false);
+        String name = PW.getName(id, false);
         String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + id;
         return "$" + MathMan.format(offer.getPpu()) + "\n" + MathMan.format(offer.getQuantity()) + "\n" + MarkupUtil.markdownUrl(name, url);
     }

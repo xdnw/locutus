@@ -19,7 +19,7 @@ import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -272,7 +272,7 @@ public interface NationList extends NationFilter {
                 sorted = sorted.stream().limit(20).collect(Collectors.toList());
             }
             for (Map.Entry<DBAlliance, Integer> entry : sorted) {
-                body.append("- ").append(PnwUtil.getMarkdownUrl(entry.getKey().getId(), true))
+                body.append("- ").append(PW.getMarkdownUrl(entry.getKey().getId(), true))
                         .append(": ").append(entry.getValue()).append(" wars\n");
             }
             if (cappedMsg != null) {
@@ -285,8 +285,8 @@ public interface NationList extends NationFilter {
             body.append("`No taxable revenue`\n");
         } else {
             body.append("\n**Taxable Nation Revenue:**");
-            body.append("`").append(PnwUtil.resourcesToString(revenue)).append("`\n");
-            body.append("- worth: `$" + MathMan.format(PnwUtil.convertedTotal(revenue)) + "`\n");
+            body.append("`").append(ResourceType.resourcesToString(revenue)).append("`\n");
+            body.append("- worth: `$" + MathMan.format(ResourceType.convertedTotal(revenue)) + "`\n");
         }
         return body.toString();
     }
@@ -312,7 +312,7 @@ public interface NationList extends NationFilter {
         for (DBNation nation : nations) {
             total = ResourceType.add(total, nation.getRevenue());
         }
-        return PnwUtil.resourcesToMap(total);
+        return ResourceType.resourcesToMap(total);
     }
 
     default double[] getMilitaryBuyPct(boolean update) {

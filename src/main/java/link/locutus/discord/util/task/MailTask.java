@@ -6,7 +6,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.Auth;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -36,7 +36,7 @@ public class MailTask implements Callable<String> {
     }
 
     public synchronized String call() throws IOException {
-        return PnwUtil.withLogin(new Callable<String>() {
+        return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
                 Map<String, String> msgPost = new HashMap<>();
@@ -62,7 +62,7 @@ public class MailTask implements Callable<String> {
                     }), 3, TimeUnit.MINUTES);
                     return "Account is too new. Scheduled to try again later: " + nation.getLeader();
                 } else {
-                    return "Mail error: " + PnwUtil.getAlert(Jsoup.parse(msgResponse));
+                    return "Mail error: " + PW.getAlert(Jsoup.parse(msgResponse));
                 }
             }
         }, auth);

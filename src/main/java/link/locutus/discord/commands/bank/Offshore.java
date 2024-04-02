@@ -14,12 +14,11 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collections;
 import java.util.List;
@@ -63,7 +62,7 @@ public class Offshore extends Command {
 
         NationOrAllianceOrGuild account = null;
         Map<ResourceType, Double> warchest;
-        if (args.size() >= 2) warchest = PnwUtil.parseResources(args.get(1));
+        if (args.size() >= 2) warchest = ResourceType.parseResources(args.get(1));
         else warchest = Collections.emptyMap();
         if (args.size() >= 3) {
             account = PWBindings.nationOrAllianceOrGuild(args.get(2));
@@ -72,7 +71,7 @@ public class Offshore extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
         DBAlliance to = null;
-        if (args.size() > 0) to = DBAlliance.getOrCreate(PnwUtil.parseAllianceId(args.get(0)));
+        if (args.size() > 0) to = DBAlliance.getOrCreate(PW.parseAllianceId(args.get(0)));
         return BankCommands.offshore(author, db, channel, to, account, warchest, null);
     }
 }

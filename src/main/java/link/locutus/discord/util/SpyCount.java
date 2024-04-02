@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.LootEntry;
@@ -313,7 +314,7 @@ public class SpyCount {
     }
 
     public static Map.Entry<DBNation, double[]> parseSpyReport(DBNation reportBy, String input) {
-        Map.Entry<DBNation, double[]> entry = PnwUtil.parseIntelRss(input, null);
+        Map.Entry<DBNation, double[]> entry = ResourceType.parseIntelRss(input, null);
         DBNation target = entry != null ? entry.getKey() : null;
         double[] loot = entry != null ? entry.getValue() : null;
 
@@ -321,7 +322,7 @@ public class SpyCount {
             int numOps = StringUtils.countMatches(input, "of your spies were captured and executed.");
             if (entry != null) numOps = Math.max(1, numOps);
 
-            if (entry != null && PnwUtil.convertedTotal(entry.getValue()) > 12_000_000_000d) {
+            if (entry != null && ResourceType.convertedTotal(entry.getValue()) > 12_000_000_000d) {
                 AlertUtil.error("Invalid spy report", "reported by: " + reportBy + "\n\n`" + input +"`");
                 return entry;
             }

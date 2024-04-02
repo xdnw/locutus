@@ -7,7 +7,7 @@ import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 
 import java.io.IOException;
@@ -146,7 +146,7 @@ public class SheetUtil {
 
         double score = nation.getScore();
         double minScore = Math.ceil(nation.getScore() * 0.75);
-        double maxScore = Math.floor(nation.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER);
+        double maxScore = Math.floor(nation.getScore() * PW.WAR_RANGE_MAX_MODIFIER);
         note.append("War Range: " + MathMan.format(minScore) + "-" + MathMan.format(maxScore) + " (" + score + ")").append("\n");
         note.append("ID: " + nation.getNation_id()).append("\n");
         note.append("Alliance: " + nation.getAllianceName()).append("\n");

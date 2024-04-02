@@ -5,7 +5,7 @@ import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -127,7 +127,7 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#land")) continue;
-            String landAmt = PnwUtil.parseTransferHashNotes(transaction.note).get("#land");
+            String landAmt = PW.parseTransferHashNotes(transaction.note).get("#land");
             if (landAmt != null) {
                 try {
                     double amt = Double.parseDouble(landAmt);
@@ -152,7 +152,7 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#infra")) continue;
-            String infraAmt = PnwUtil.parseTransferHashNotes(transaction.note).get("#infra");
+            String infraAmt = PW.parseTransferHashNotes(transaction.note).get("#infra");
             if (infraAmt != null) {
                 try {
                     double amt = Double.parseDouble(infraAmt);
@@ -180,7 +180,7 @@ public class Grant {
                     for (boolean mp : new boolean[]{true, false}) {
                         for (boolean gsa : new boolean[]{true, false}) {
                             if (gsa && !nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) continue;
-                            double cost = PnwUtil.nextCityCost(city - 1, md, cp, aup, mp, gsa);
+                            double cost = PW.City.nextCityCost(city - 1, md, cp, aup, mp, gsa);
                             costs.add(Math.round(cost));
                         }
                     }
@@ -233,8 +233,8 @@ public class Grant {
             for (Project project : Projects.values) {
                 if (result.contains(project)) continue;
 
-                double[] cost = PnwUtil.resourcesToArray(project.cost());
-                double[] cost2 = PnwUtil.resourcesToArray(PnwUtil.multiply(project.cost(), 0.95d));
+                double[] cost = ResourceType.resourcesToArray(project.cost());
+                double[] cost2 = ResourceType.resourcesToArray(PW.multiply(project.cost(), 0.95d));
                 if (Arrays.equals(transaction.resources, cost) || Arrays.equals(transaction.resources, cost2)) {
                     if (nation.hasProject(project)) {
                         result.add(project);
@@ -334,7 +334,7 @@ public class Grant {
      * @return
      */
     public static Set<Integer> getCities(DBNation nation, String note, long date) {
-        Map<String, String> parsed = PnwUtil.parseTransferHashNotes(note);
+        Map<String, String> parsed = PW.parseTransferHashNotes(note);
         String citiesStr = parsed.get("cities");
         if (citiesStr != null) {
             Set<Integer> result = new LinkedHashSet<>();
@@ -351,13 +351,13 @@ public class Grant {
     }
 
     public static Double getAmount(String note) {
-        Map<String, String> parsed = PnwUtil.parseTransferHashNotes(note);
+        Map<String, String> parsed = PW.parseTransferHashNotes(note);
         String amountStr = parsed.get("amount");
         return amountStr == null ? null : MathMan.parseDouble(amountStr);
     }
 
     public static String getAmountStr(String note) {
-        return PnwUtil.parseTransferHashNotes(note).get("amount");
+        return PW.parseTransferHashNotes(note).get("amount");
     }
 
     public Grant setAmount(double amount) {
@@ -375,7 +375,7 @@ public class Grant {
     }
 
     public String title() {
-        return "Grant " + nation.getNation() + " " + type + (title != null ? " " + title : "") + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(cost()));
+        return "Grant " + nation.getNation() + " " + type + (title != null ? " " + title : "") + " worth ~$" + MathMan.format(ResourceType.convertedTotal(cost()));
     }
 
     public Grant setTitle(String title) {

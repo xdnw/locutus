@@ -67,7 +67,7 @@ import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -687,7 +687,7 @@ public class PWBindings extends BindingHelper {
             return nationOrAlliance(data, input);
         } catch (IllegalArgumentException ignore) {
             if (includeTaxId && !input.startsWith("#") && input.contains("tax_id")) {
-                int taxId = PnwUtil.parseTaxId(input);
+                int taxId = PW.parseTaxId(input);
                 return new TaxBracket(taxId, -1, "", 0, 0, 0L);
             }
             if (input.startsWith("guild:")) {
@@ -737,7 +737,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"}, value = "An alliance name id or url")
     public static DBAlliance alliance(ParameterData data, String input) {
-        Integer aaId = PnwUtil.parseAllianceId(input);
+        Integer aaId = PW.parseAllianceId(input);
         if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + input);
         return DBAlliance.getOrCreate(aaId);
     }
@@ -932,7 +932,7 @@ public class PWBindings extends BindingHelper {
         for (String arg : args) {
             arg = arg.trim();
             if (includeTaxId && !arg.startsWith("#") && arg.contains("tax_id")) {
-                int taxId = PnwUtil.parseTaxId(arg);
+                int taxId = PW.parseTaxId(arg);
                 TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
                 result.add(bracket);
                 continue;
@@ -1090,14 +1090,14 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = {"{money=1.2,food=6}", "food 5,money 3", "5f 3$ 10.5c", "$53", "{food=1}*1.5"}, value = "A comma separated list of resources and their amounts")
     public Map<ResourceType, Double> resources(String resources) {
-        Map<ResourceType, Double> map = PnwUtil.parseResources(resources);
+        Map<ResourceType, Double> map = ResourceType.parseResources(resources);
         if (map == null) throw new IllegalArgumentException("Invalid resources: " + resources);
         return map;
     }
 
     @Binding(examples = {"{soldiers=12,tanks=56}"}, value = "A comma separated list of units and their amounts")
     public Map<MilitaryUnit, Long> units(String input) {
-        Map<MilitaryUnit, Long> map = PnwUtil.parseUnits(input);
+        Map<MilitaryUnit, Long> map = PW.parseUnits(input);
         if (map == null) throw new IllegalArgumentException("Invalid units: " + input + ". Valid types: " + StringMan.getString(MilitaryUnit.values()) + ". In the form: `{SOLDIERS=1234,TANKS=5678}`");
         return map;
     }
@@ -1178,7 +1178,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public Map<ResourceType, Double> deposits(@Me GuildDB db, @Me DBNation nation) throws IOException {
-        return PnwUtil.resourcesToMap(deposits2(db, nation));
+        return ResourceType.resourcesToMap(deposits2(db, nation));
     }
 
     @Binding
@@ -1337,7 +1337,7 @@ public class PWBindings extends BindingHelper {
         if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
 
         String[] split = name.split(":", 2);
-        Integer aaId = split.length == 2 ? PnwUtil.parseAllianceId(split[0]) : null;
+        Integer aaId = split.length == 2 ? PW.parseAllianceId(split[0]) : null;
         String positionName = split[split.length - 1];
 
         if (aaId != null && !alliances.contains(aaId)) throw new IllegalArgumentException("Alliance " + aaId + " is not in the list of alliances registered to this guild: " + StringMan.getString(alliances.getIds()));
@@ -1547,7 +1547,7 @@ public class PWBindings extends BindingHelper {
         if (MathMan.isInteger(input)) {
             taxId = Integer.parseInt(input);
         } else if (input.toLowerCase(Locale.ROOT).contains("tax_id")) {
-            taxId = PnwUtil.parseTaxId(input);
+            taxId = PW.parseTaxId(input);
         } else {
             taxId = null;
         }

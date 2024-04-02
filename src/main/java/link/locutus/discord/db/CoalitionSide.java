@@ -28,7 +28,7 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.db.entities.conflict.DayTierGraphData;
 import link.locutus.discord.db.entities.conflict.TurnTierGraphData;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.jooby.JteUtil;

@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -137,10 +137,10 @@ public class TradeRanking extends Command {
                 ppuSell.put(type, (double) container.salesPrice.get(type) / entry.getValue());
             }
 
-            double profitTotal = PnwUtil.convertedTotal(container.netOutflows);
+            double profitTotal = ResourceType.convertedTotal(container.netOutflows);
             double profitMin = 0;
             for (Map.Entry<ResourceType, Long> entry : container.netOutflows.entrySet()) {
-                profitMin += -PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
+                profitMin += -ResourceType.convertedTotal(entry.getKey(), -entry.getValue());
             }
             profitTotal = Math.min(profitTotal, profitMin);
             profitByGroup.put(containerEntry.getKey(), profitTotal);
@@ -148,7 +148,7 @@ public class TradeRanking extends Command {
 
 
         String title = (isAA ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
-        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PnwUtil.getName(id, isAA)).build(author, channel, fullCommandRaw, title);
+        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PW.getName(id, isAA)).build(author, channel, fullCommandRaw, title);
         return null;
     }
 }

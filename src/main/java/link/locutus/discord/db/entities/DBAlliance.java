@@ -33,7 +33,7 @@ import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
@@ -169,7 +169,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public static DBAlliance parse(String arg, boolean throwError) {
-        Integer id = PnwUtil.parseAllianceId(arg);
+        Integer id = PW.parseAllianceId(arg);
         if (id == null) {
             if (throwError) throw new IllegalArgumentException("Invalid alliance id: `" + arg + "`");
             return null;
@@ -534,7 +534,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 sorted = sorted.stream().limit(20).collect(Collectors.toList());
             }
             for (Map.Entry<DBAlliance, Integer> entry : sorted) {
-                body.append("- ").append(PnwUtil.getMarkdownUrl(entry.getKey().getId(), true))
+                body.append("- ").append(PW.getMarkdownUrl(entry.getKey().getId(), true))
                         .append(": ").append(entry.getValue()).append(" wars\n");
             }
             if (cappedMsg != null) {
@@ -554,7 +554,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             for (Treaty treaty : treaties.values()) {
                 int otherId = treaty.getToId() == allianceId ? treaty.getFromId() : treaty.getToId();
                 body.append("- ").append(treaty.getType())
-                        .append(": ").append(PnwUtil.getMarkdownUrl(otherId, true))
+                        .append(": ").append(PW.getMarkdownUrl(otherId, true))
                         .append(" (").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(treaty.getTurnEnds()), null))
                         .append(")\n");
             }
@@ -568,8 +568,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             body.append("`No taxable revenue`\n");
         } else {
             body.append("\n**Taxable Nation Revenue:**");
-            body.append("`").append(PnwUtil.resourcesToString(revenue)).append("`\n");
-            body.append("- worth: `$" + MathMan.format(PnwUtil.convertedTotal(revenue)) + "`\n");
+            body.append("`").append(ResourceType.resourcesToString(revenue)).append("`\n");
+            body.append("- worth: `$" + MathMan.format(ResourceType.convertedTotal(revenue)) + "`\n");
         }
         // Last loot
         LootEntry lastLoot = this.getLoot();
@@ -579,7 +579,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             body.append("\n**Last Resources:** (from ")
                     .append(lootEntry.getType().name()).append(" ")
                     .append(DiscordUtil.timestamp(lootEntry.getDate(), null)).append(")\n");
-            body.append("`").append(PnwUtil.resourcesToString(lootEntry.getTotal_rss())).append("`\n");
+            body.append("`").append(ResourceType.resourcesToString(lootEntry.getTotal_rss())).append("`\n");
             body.append("- worth: `$").append(MathMan.format(lootEntry.convertedTotal())).append("`\n");
         }
         return body.toString();
@@ -656,12 +656,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         for (DBNation nation : nations) {
             total = ResourceType.add(total, nation.getRevenue());
         }
-        return PnwUtil.resourcesToMap(total);
+        return ResourceType.resourcesToMap(total);
     }
 
 
     public String getMarkdownUrl() {
-        return PnwUtil.getMarkdownUrl(allianceId, true);
+        return PW.getMarkdownUrl(allianceId, true);
     }
 
     @Override
@@ -1167,7 +1167,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         for (Map.Entry<Integer, double[]> entry : stockPile.entrySet()) {
             DBNation nation = DBNation.getById(entry.getKey());
             if (nation == null) continue;
-            result.put(nation, PnwUtil.resourcesToMap(entry.getValue()));
+            result.put(nation, ResourceType.resourcesToMap(entry.getValue()));
         }
         return result;
     }
@@ -1216,7 +1216,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (stockpile == null && throwError) {
             api.throwInvalid(AlliancePermission.VIEW_BANK, "for alliance " + getMarkdownUrl());
         }
-        return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
+        return stockpile == null ? null : ResourceType.resourcesToMap(stockpile);
     }
 
     public void updateCities() throws IOException, ParseException {
@@ -1476,7 +1476,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             }
             Map<ResourceType, Double> needed = nation.getResourcesNeeded(stockpile, daysDefault, false);
             if (!needed.isEmpty()) {
-                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.SUCCESS, PnwUtil.resourcesToArray(needed)));
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.SUCCESS, ResourceType.resourcesToArray(needed)));
             } else {
                 result.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
             }

@@ -17,7 +17,7 @@
 @import link.locutus.discord.util.task.ia.IACheckup
 @import link.locutus.discord.user.Roles
 @import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import java.util.Collection
 @import link.locutus.discord.db.entities.DBWar
 @import link.locutus.discord.util.task.war.WarCard

@@ -17,7 +17,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -463,7 +463,7 @@ public class BankDB extends DBMainV3 {
 
         @Command(desc = "Get market value of tax record")
         public double getMarketValue() {
-            return PnwUtil.convertedTotal(this.resources);
+            return ResourceType.convertedTotal(this.resources);
         }
 
         @Command(desc = "The alliance class for this tax record")
@@ -538,12 +538,12 @@ public class BankDB extends DBMainV3 {
 
         @Command(desc = "Get the resources map")
         public Map<ResourceType, Double> getResourcesMap() {
-            return PnwUtil.resourcesToMap(resources);
+            return ResourceType.resourcesToMap(resources);
         }
 
         @Command(desc = "Get the resources json")
         public String getResourcesJson() {
-            return PnwUtil.resourcesToString(resources);
+            return ResourceType.resourcesToString(resources);
         }
 
         @Command(desc = "Get the internal money rate")
@@ -1486,7 +1486,7 @@ public class BankDB extends DBMainV3 {
             if (tx.note.contains("#")) {
                 try {
                     if (StringMan.containsIgnoreCase(tx.note, "#guild")) {
-                        String idStr = PnwUtil.parseTransferHashNotes(tx.note).get("#guild");
+                        String idStr = PW.parseTransferHashNotes(tx.note).get("#guild");
                         if (MathMan.isInteger(idStr)) {
                             long id = Long.parseLong(idStr);
                             if (id > Integer.MAX_VALUE) {
@@ -1500,7 +1500,7 @@ public class BankDB extends DBMainV3 {
                         }
                     }
                     if (StringMan.containsIgnoreCase(tx.note, "#alliance")) {
-                        String idStr = PnwUtil.parseTransferHashNotes(tx.note).get("#alliance");
+                        String idStr = PW.parseTransferHashNotes(tx.note).get("#alliance");
                         if (MathMan.isInteger(idStr)) {
                             long id = Long.parseLong(idStr);
                             if (id < Integer.MAX_VALUE) {

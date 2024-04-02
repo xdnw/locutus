@@ -18,7 +18,7 @@ import link.locutus.discord.event.trade.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
@@ -221,10 +221,10 @@ public class TradeManager {
         }
 
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
-        lowAvg = PnwUtil.resourcesToArray(averages.getKey());
+        lowAvg = ResourceType.resourcesToArray(averages.getKey());
         lowAvg[0] = 1;
         lowAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
-        highAvg = PnwUtil.resourcesToArray(averages.getValue());
+        highAvg = ResourceType.resourcesToArray(averages.getValue());
         highAvg[0] = 1;
         highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
 
@@ -483,7 +483,7 @@ public class TradeManager {
 
     public Map<ResourceType, int[]> getPriceHistory() {
         Auth auth = Locutus.imp().getRootAuth();
-        return PnwUtil.withLogin(new Callable<Map<ResourceType, int[]>>() {
+        return PW.withLogin(new Callable<Map<ResourceType, int[]>>() {
             @Override
             public Map<ResourceType, int[]> call() throws Exception {
                 Map<ResourceType, int[]> result = new EnumMap<ResourceType, int[]>(ResourceType.class);

@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -334,7 +334,7 @@ public class OptimalBuild extends Command {
                         profit[i] *= rssFactor;
                     }
                 }
-                return PnwUtil.convertedTotal(profit) / javaCity.getImpTotal();
+                return ResourceType.convertedTotal(profit) / javaCity.getImpTotal();
             };
         } else {
             valueFunc = javaCity -> javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getImpTotal();
@@ -527,7 +527,7 @@ public class OptimalBuild extends Command {
         optimized.setInfra(origin.getInfra());
         optimized.getMetrics(hasProject).recalculate(optimized, hasProject);
         double profit = optimized.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier());
-        double cost = PnwUtil.convertedTotal(optimized.calculateCost(origin));
+        double cost = ResourceType.convertedTotal(optimized.calculateCost(origin));
 
         String json = optimized.toCityBuild().toString();
 
@@ -597,7 +597,7 @@ public class OptimalBuild extends Command {
                 message.append(audit.getValue()).append("\n");
             }
             message.append("```");
-            io.send("<" + PnwUtil.getCityUrl(cityId) + "> notes:" + message);
+            io.send("<" + PW.City.getCityUrl(cityId) + "> notes:" + message);
         }
     }
 }

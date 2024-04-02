@@ -17,7 +17,7 @@
 @import link.locutus.discord.util.task.ia.IACheckup
 @import link.locutus.discord.user.Roles
 @import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
-@import link.locutus.discord.util.PnwUtil
+@import link.locutus.discord.util.PW
 @import java.util.Collection
 @import link.locutus.discord.db.entities.DBWar
 @import link.locutus.discord.util.task.war.WarCard
@@ -33,7 +33,7 @@
 <h5>Odds ${title}:${MathMan.format(attStr)} vs ${MathMan.format(defStr)}</h5>
 <div class="progress">
     @for (int success = 0; success <= 3; success++)
-    @template.guild.oddssuccess(ws = ws, odds = (PnwUtil.getOdds(attStr, defStr, success) * 100), success = success)
+    @template.guild.oddssuccess(ws = ws, odds = (PW.getOdds(attStr, defStr, success) * 100), success = success)
     @endfor
 </div>
 </div>

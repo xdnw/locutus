@@ -7,10 +7,9 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Iterator;
 import java.util.List;
@@ -70,7 +69,7 @@ public class InfraCost extends Command {
 
         double total = 0;
 
-        total = PnwUtil.calculateInfra(current, max);
+        total = PW.City.Infra.calculateInfra(current, max);
 
         double discountFactor = 1;
         if (urban) {

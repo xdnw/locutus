@@ -13,7 +13,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -638,7 +638,7 @@ public class IACategory {
                             int times = sort.ordinal() - previousMaxStage;
                             Map<ResourceType, Double> amtMap = db.getOrNull(GuildKey.REWARD_MENTOR);
                             if (amtMap != null) {
-                                double[] amt = PnwUtil.resourcesToArray(PnwUtil.multiply(amtMap, (double) times));
+                                double[] amt = ResourceType.resourcesToArray(PW.multiply(amtMap, (double) times));
                                 String msg = "Mentoring from " + currentSort.name() + " -> " + sort.name();
                                 db.getHandler().reward(nation, NationMeta.INCENTIVE_MENTOR, false, amt, msg, new Supplier<DBNation>() {
                                     @Override
@@ -788,7 +788,7 @@ public class IACategory {
                 }
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null && nation.getOff() < 5) {
                     Set<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
-                    enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER || f.getScore() < nation.getScore() * 0.75 || f.active_m() < 10000);
+                    enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * PW.WAR_RANGE_MAX_MODIFIER || f.getScore() < nation.getScore() * 0.75 || f.active_m() < 10000);
                     int raids = Math.min(4, enemies.size());
                     if (nation.getOff() < raids) return true;
                 }

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -9,7 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -40,7 +41,7 @@ public class FindOffshore extends Command {
         if (args.isEmpty()) {
             return usage(args.size(), 1, channel);
         }
-        Integer alliance = PnwUtil.parseAllianceId(args.get(0));
+        Integer alliance = PW.parseAllianceId(args.get(0));
         if (alliance == null) {
             return "Invalid alliance: `" + args.get(0) + "`";
         }
@@ -64,13 +65,13 @@ public class FindOffshore extends Command {
         for (Transaction2 t : transactions) {
             numTransactions.put((int) t.getSender(), numTransactions.getOrDefault((int) t.getSender(), 0) + 1);
 
-            double value = PnwUtil.convertedTotal(t.resources);
+            double value = ResourceType.convertedTotal(t.resources);
 
             valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
         }
 
         new SummedMapRankBuilder<>(numTransactions).sort()
-        .name(e -> PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey())))
+        .name(e -> PW.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey())))
         .build(author, channel, fullCommandRaw, "Potential offshores");
 
         return null;

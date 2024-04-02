@@ -9,7 +9,7 @@ import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
@@ -234,8 +234,8 @@ public class WarCard {
 
     public String getTitle() {
         String title = String.format("%s > %s- %s- %s",
-                PnwUtil.getName(war.getAttacker_id(), false),
-                PnwUtil.getName(war.getDefender_id(), false),
+                PW.getName(war.getAttacker_id(), false),
+                PW.getName(war.getDefender_id(), false),
                 war.getWarType(),
                 war.getStatus()
         );
@@ -508,7 +508,7 @@ public class WarCard {
         resBar = resBar + ("(" + resistance + "/100)");
 
         int allianceId = attacker ? war.getAttacker_aa() : war.getDefender_aa();
-        String alliance = PnwUtil.getName(allianceId, true);
+        String alliance = PW.getName(allianceId, true);
 
         DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
         String active_m = "";
@@ -524,8 +524,8 @@ public class WarCard {
         }
 
         return String.format(nationFormat,
-                PnwUtil.getName(nationId, false),
-                PnwUtil.getUrl(nationId, false),
+                PW.getName(nationId, false),
+                PW.getUrl(nationId, false),
                 alliance,
                 allianceId,
                 control,

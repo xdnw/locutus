@@ -34,7 +34,7 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -230,7 +230,7 @@ public class NationUpdateProcessor {
                 String title = "Detected reroll: " + current.getNation();
                 StringBuilder body = new StringBuilder(current.getNationUrlMarkup(true));
                 if (rerollId != current.getNation_id()) {
-                    body.append("\nReroll of: " + PnwUtil.getNationUrl(rerollId));
+                    body.append("\nReroll of: " + PW.getNationUrl(rerollId));
                 }
 
                 AlertUtil.forEachChannel(f -> true, GuildKey.REROLL_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
@@ -316,7 +316,7 @@ public class NationUpdateProcessor {
         }
         body.append("\n" + ban.reason + "\nDays Left: `" + ban.days_left + "`\n");
 
-        String title = "Nation Banned: " + PnwUtil.getName(ban.nation_id, true) + "/" + ban.nation_id;
+        String title = "Nation Banned: " + PW.getName(ban.nation_id, true) + "/" + ban.nation_id;
 
         if (ban.discord_id != 0) {
             User user = DiscordUtil.getUser(ban.discord_id);
@@ -406,7 +406,7 @@ public class NationUpdateProcessor {
             return false;
         }
 
-        double minScore = current.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER;
+        double minScore = current.getScore() / PW.WAR_RANGE_MAX_MODIFIER;
         double maxScore = current.getScore() / 0.75;
 
         AlertUtil.forEachChannel(GuildDB::isValidAlliance, GuildKey.ENEMY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
@@ -565,7 +565,7 @@ public class NationUpdateProcessor {
                 List<Member> members = guild.getMembersWithRoles(beigeAlert);
                 StringBuilder mentions = new StringBuilder();
 
-                double minScore = defender.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER;
+                double minScore = defender.getScore() / PW.WAR_RANGE_MAX_MODIFIER;
                 double maxScore = defender.getScore() / 0.75;
 
                 Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
@@ -755,7 +755,7 @@ public class NationUpdateProcessor {
 
             if (nation.active_m() > 4880 || nation.getVm_turns() > 0 || nation.getCities() <= 3) continue;
 
-            String line = PnwUtil.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + change.getFromRank().name();
+            String line = PW.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + change.getFromRank().name();
             if (nation.getAlliance_id() > 0) {
                 line += "-> " + nation.getAllianceUrlMarkup(true);
             } else {
@@ -792,7 +792,7 @@ public class NationUpdateProcessor {
                 }
             }
 
-            String body = PnwUtil.getMarkdownUrl(alliance.getId(), true) +
+            String body = PW.getMarkdownUrl(alliance.getId(), true) +
                     "(-" + MathMan.format(scoreDrop) + " score)";
 
             int remaining = 3950 - body.length();
@@ -841,7 +841,7 @@ public class NationUpdateProcessor {
                 map = outflows;
                 otherId = (int) transfer.getReceiver();
             }
-            String name = PnwUtil.getBBUrl(otherId, true);
+            String name = PW.getBBUrl(otherId, true);
 
             double value = transfer.convertedTotal();
             map.put(name, map.getOrDefault(name, 0d) + value);
@@ -863,7 +863,7 @@ public class NationUpdateProcessor {
                 map = outflows;
             }
             int otherId = seller.equals(current.getNation_id()) ? buyer : seller;
-            String name = PnwUtil.getBBUrl(otherId, false);
+            String name = PW.getBBUrl(otherId, false);
 
             double value = offer.getPpu() > 1 ? offer.getQuantity() * offer.getPpu() : Locutus.imp().getTradeManager().getLow(offer.getResource()) * offer.getQuantity();
             map.put(name, map.getOrDefault(name, 0d) + value);
@@ -872,7 +872,7 @@ public class NationUpdateProcessor {
         }
         if (total > 10000000) {
             StringBuilder body = new StringBuilder();
-            body.append(PnwUtil.getBBUrl(current.getNation_id(), false) + " | " + PnwUtil.getBBUrl(current.getAlliance_id(), true) + " | " + current.getNation_id());
+            body.append(PW.getBBUrl(current.getNation_id(), false) + " | " + PW.getBBUrl(current.getAlliance_id(), true) + " | " + current.getNation_id());
             if (current.getDate() != 0) {
                 long ageDays = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis()) - current.getDate() / 65536;
                 body.append("\nDays old: " + ageDays);

@@ -37,7 +37,7 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -66,11 +66,11 @@ public class TradeCommands {
     public static final long BULK_TRADE_SERVER = 672217848311054346L; // 1080313938937389207L
     public static final long BULK_TRADE_CHANNEL = 672310912090243092L; // 1080573769048932372L
 
-    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
-    public String topList(TradeManager tMan, @Me DBNation me) {
-        return null;
-    }
+//    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
+//    @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
+//    public String topList(TradeManager tMan, @Me DBNation me) {
+//        return null;
+//    }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "List the bot trade offers you have on discord")
@@ -197,7 +197,7 @@ public class TradeCommands {
         }
         offer = new TradeDB.BulkTradeOffer(offer);
         if (offer.nation != me.getNation_id()) {
-            return "You are not the owner of offer " + offerId + " (owner: " + PnwUtil.getName(offer.nation, false) + ")";
+            return "You are not the owner of offer " + offerId + " (owner: " + PW.getName(offer.nation, false) + ")";
         }
         if (quantity != null) {
             if (quantity <= 0) {
@@ -248,7 +248,7 @@ public class TradeCommands {
         }
 
         if (exchangePPU != null || exchangeFor != null) {
-            offer.setExchangeFor(exchangeFor, PnwUtil.resourcesToArray(exchangePPU));
+            offer.setExchangeFor(exchangeFor, ResourceType.resourcesToArray(exchangePPU));
         }
 
         if (!force) {
@@ -293,7 +293,7 @@ public class TradeCommands {
                 return "No offer found with ID " + deleteId;
             }
             if (offer.nation != me.getNation_id()) {
-                return "You can only delete your own offers (offer by: " + PnwUtil.getName(offer.nation, false) + ")";
+                return "You can only delete your own offers (offer by: " + PW.getName(offer.nation, false) + ")";
             }
             idsToDelete.add(deleteId);
         }
@@ -365,7 +365,7 @@ public class TradeCommands {
         // int id, int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeForBits, double[] exchangePPU
         if (minPPU == null) minPPU = 0;
         if (maxPPU == null) maxPPU = 0;
-        double[] exchangePPUDouble = exchangePPU == null ? null : PnwUtil.resourcesToArray(exchangePPU);
+        double[] exchangePPUDouble = exchangePPU == null ? null : ResourceType.resourcesToArray(exchangePPU);
         // int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU
         TradeDB.BulkTradeOffer offer = new TradeDB.BulkTradeOffer(resource.ordinal(), me.getNation_id(), quantity, true, minPPU, maxPPU, negotiable, expireMs, exchangeFor, exchangePPUDouble);
 
@@ -454,7 +454,7 @@ public class TradeCommands {
         // int id, int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeForBits, double[] exchangePPU
         if (minPPU == null) minPPU = 0;
         if (maxPPU == null) maxPPU = 0;
-        double[] exchangePPUDouble = exchangePPU == null ? null : PnwUtil.resourcesToArray(exchangePPU);
+        double[] exchangePPUDouble = exchangePPU == null ? null : ResourceType.resourcesToArray(exchangePPU);
         // int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU
         TradeDB.BulkTradeOffer offer = new TradeDB.BulkTradeOffer(resource.ordinal(), me.getNation_id(), quantity, false, minPPU, maxPPU, negotiable, expireMs, exchangeFor, exchangePPUDouble);
 
@@ -521,8 +521,8 @@ public class TradeCommands {
 
         String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
         MessageEmbed embed = new EmbedBuilder()
-                .appendDescription("low: `" + PnwUtil.resourcesToString(lowMap) + "`\n")
-                .appendDescription("high: `" + PnwUtil.resourcesToString(highMap) + "`\n")
+                .appendDescription("low: `" + ResourceType.resourcesToString(lowMap) + "`\n")
+                .appendDescription("high: `" + ResourceType.resourcesToString(highMap) + "`\n")
                 .setTitle("Global Trade Average " + timeStr)
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("Low", StringMan.join(low, "\n"), true)
@@ -589,7 +589,7 @@ public class TradeCommands {
                                  @Arg("Show total value in a resource instead of money")
                                  @Switch("t") ResourceType convertType) {
         if (normalize) {
-            double total = PnwUtil.convertedTotal(resources);
+            double total = ResourceType.convertedTotal(resources);
             if (total <= 0) {
                 return "Total is negative";
             }
@@ -604,7 +604,7 @@ public class TradeCommands {
                     iter.remove();
                 }
             }
-            double postiveTotal = PnwUtil.convertedTotal(resources);
+            double postiveTotal = ResourceType.convertedTotal(resources);
 
 
             double factor = total / postiveTotal;
@@ -618,9 +618,9 @@ public class TradeCommands {
             }
         }
 
-        StringBuilder result = new StringBuilder("```" + PnwUtil.resourcesToString(resources) + "```");
+        StringBuilder result = new StringBuilder("```" + ResourceType.resourcesToString(resources) + "```");
 
-        double value = PnwUtil.convertedTotal(resources);
+        double value = ResourceType.convertedTotal(resources);
         if (useBuyPrice || useSellPrice) {
             value = 0;
             boolean buy = useBuyPrice;
@@ -631,7 +631,7 @@ public class TradeCommands {
         }
         result.append("\n" + "Worth: $" + MathMan.format(value));
         if (convertType != null && convertType != ResourceType.MONEY) {
-            double convertTypeValue = PnwUtil.convertedTotal(convertType, 1);
+            double convertTypeValue = ResourceType.convertedTotal(convertType, 1);
             double amtConvertType = value / convertTypeValue;
             result.append(" OR " + MathMan.format(amtConvertType) + "x " + convertType);
         }
@@ -706,8 +706,8 @@ public class TradeCommands {
 
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Price")
-                .appendDescription("low: `" + PnwUtil.resourcesToString(low) + "`\n")
-                .appendDescription("high: `" + PnwUtil.resourcesToString(high) + "`\n")
+                .appendDescription("low: `" + ResourceType.resourcesToString(low) + "`\n")
+                .appendDescription("high: `" + ResourceType.resourcesToString(high) + "`\n")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)
@@ -786,10 +786,10 @@ public class TradeCommands {
                 ppuSell.put(type, (double) container.salesPrice.get(type) / entry.getValue());
             }
 
-            double profitTotal = PnwUtil.convertedTotal(container.netOutflows);
+            double profitTotal = ResourceType.convertedTotal(container.netOutflows);
             double profitMin = 0;
             for (Map.Entry<ResourceType, Long> entry : container.netOutflows.entrySet()) {
-                profitMin += -PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
+                profitMin += -ResourceType.convertedTotal(entry.getKey(), -entry.getValue());
             }
             profitTotal = Math.min(profitTotal, profitMin);
             profitByGroup.put(containerEntry.getKey(), profitTotal);
@@ -797,7 +797,7 @@ public class TradeCommands {
 
 
         String title = (groupByAlliance ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
-        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PnwUtil.getName(id, groupByAlliance)).build(channel, command, title, uploadFile);
+        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PW.getName(id, groupByAlliance)).build(channel, command, title, uploadFile);
         return null;
     }
 
@@ -962,10 +962,10 @@ public class TradeCommands {
             ppuSell.put(type, (double) salesPrice.get(type) / entry.getValue());
         }
 
-        double profitTotal = PnwUtil.convertedTotal(netOutflows);
+        double profitTotal = ResourceType.convertedTotal(netOutflows);
         double profitMin = 0;
         for (Map.Entry<ResourceType, Long> entry : netOutflows.entrySet()) {
-            profitMin += -PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
+            profitMin += -ResourceType.convertedTotal(entry.getKey(), -entry.getValue());
         }
         profitTotal = Math.min(profitTotal, profitMin);
 
@@ -984,16 +984,16 @@ public class TradeCommands {
         StringBuilder response = new StringBuilder();
         response
                 .append('\n').append("Buy (PPU):```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(ppuBuy)))
+                .append(String.format("%16s", ResourceType.resourcesToString(ppuBuy)))
                 .append("```")
                 .append(' ').append("Sell (PPU):```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(ppuSell)))
+                .append(String.format("%16s", ResourceType.resourcesToString(ppuSell)))
                 .append("```")
                 .append(' ').append("Net inflows:```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(netOutflows)))
+                .append(String.format("%16s", ResourceType.resourcesToString(netOutflows)))
                 .append("```")
                 .append(' ').append("Total Volume:```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(totalVolume)))
+                .append(String.format("%16s", ResourceType.resourcesToString(totalVolume)))
                 .append("```");
         response.append("Profit total: $").append(MathMan.format(profitTotal));
         return response.toString().trim();
@@ -1039,19 +1039,19 @@ public class TradeCommands {
         for (Map.Entry<Integer, Map<ResourceType, Long>> entry : netInflows.entrySet()) {
             Integer clientId = entry.getKey();
             DBNation client = Locutus.imp().getNationDB().getNation(clientId);
-            String name = PnwUtil.getName(clientId, false);
+            String name = PW.getName(clientId, false);
             if (addBalance) {
                 response.append("\n**" + name);
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append(CM.deposits.add.cmd.create(url, PnwUtil.resourcesToString(entry.getValue()), "#deposit", null).toSlashCommand());
+                response.append(CM.deposits.add.cmd.create(url, ResourceType.resourcesToString(entry.getValue()), "#deposit", null).toSlashCommand());
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
                     response.append(String.format("%16s", client.getAllianceName()));
                 }
-                response.append(String.format("%16s", PnwUtil.resourcesToString(entry.getValue())))
+                response.append(String.format("%16s", ResourceType.resourcesToString(entry.getValue())))
                         .append("```");
             }
 
@@ -1087,8 +1087,8 @@ public class TradeCommands {
         Set<Long> corpIds = coalitions.stream().filter(f -> f.intValue() != f).collect(Collectors.toSet());
         body.append("Alliances: " + StringMan.join(aaIds, ",")).append("\n");
         body.append("Corporations: " + StringMan.join(corpIds, ",")).append("\n");
-        body.append("Stockpile: `" + PnwUtil.resourcesToString(stockpile) + "`\n");
-        body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(stockpile))).append("\n");
+        body.append("Stockpile: `" + ResourceType.resourcesToString(stockpile) + "`\n");
+        body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(stockpile))).append("\n");
 
         List<String> errors = new ArrayList<>();
         Set<Long> testedIds = new HashSet<>();
@@ -1131,7 +1131,7 @@ public class TradeCommands {
                 Map<NationOrAllianceOrGuild, double[]> byAA = offshore.getDepositsByAA(otherDb, f -> true, false);
                 double[] deposits = ResourceType.getBuffer();
                 byAA.forEach((a, b) -> ResourceType.add(deposits, b));
-                allDeposits = PnwUtil.add(allDeposits, deposits);
+                allDeposits = ResourceType.add(allDeposits, deposits);
 
                 for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : byAA.entrySet()) {
                     NationOrAllianceOrGuild account = entry.getKey();
@@ -1139,8 +1139,8 @@ public class TradeCommands {
                     if (ResourceType.isZero(amount)) continue;
                     header.set(0, MarkupUtil.sheetUrl(account.getQualifiedName(), account.getUrl()));
                     header.set(1, account.getId() + "");
-                    header.set(2, PnwUtil.resourcesToString(amount));
-                    header.set(3, MathMan.format(PnwUtil.convertedTotal(amount)));
+                    header.set(2, ResourceType.resourcesToString(amount));
+                    header.set(3, MathMan.format(ResourceType.convertedTotal(amount)));
                     int i = 4;
                     for (ResourceType type : ResourceType.values) {
                         if (type != ResourceType.CREDITS) header.set(i++, MathMan.format(amount[type.ordinal()]));
@@ -1154,20 +1154,20 @@ public class TradeCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        double[] diff = ResourceType.subtract(allDeposits.clone(), PnwUtil.resourcesToArray(stockpile));
+        double[] diff = ResourceType.subtract(allDeposits.clone(), ResourceType.resourcesToArray(stockpile));
 
-        body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");
-        body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
+        body.append("Offshored Deposits: `" + ResourceType.resourcesToString(allDeposits) + "`\n");
+        body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(allDeposits))).append("\n");
 
-        body.append("Diff: `" + PnwUtil.resourcesToString(diff) + "`\n");
-        body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(diff))).append("\n");
+        body.append("Diff: `" + ResourceType.resourcesToString(diff) + "`\n");
+        body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(diff))).append("\n");
 
         String emoji = "Show Day Graph";
 
         body.append("\nPress `" + emoji + "` to compare by day (200 days)");
 
 
-        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.create(PnwUtil.resourcesToString(stockpile), PnwUtil.resourcesToString(allDeposits), "200", null, null);
+        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.create(ResourceType.resourcesToString(stockpile), ResourceType.resourcesToString(allDeposits), "200", null, null);
 
         IMessageBuilder msg = channel.create().embed(title, body.toString())
                 .commandButton(cmd, "Show Graph (200d)")
@@ -1561,7 +1561,7 @@ public class TradeCommands {
             double amount = entry.getValue();
             double myPpu = ppu.get(nationId)[type.ordinal()];
 //                nationName.add(MarkupUtil.markdownUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
-            nationName.add(PnwUtil.getName(nationId, groupByAlliance));
+            nationName.add(PW.getName(nationId, groupByAlliance));
             amtList.add(MathMan.format(amount));
             ppuList.add("$" + MathMan.format(myPpu));
         }

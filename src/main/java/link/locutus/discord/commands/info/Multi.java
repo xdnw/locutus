@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.nation.MultiReport;
 import net.dv8tion.jda.api.entities.Guild;
@@ -48,13 +48,13 @@ public class Multi extends Command {
         MultiReport report = new MultiReport(nationId);
         String result = report.toString();
 
-        String title = PnwUtil.getName(nationId, false) + " multi report";
+        String title = PW.getName(nationId, false) + " multi report";
         IMessageBuilder msg = channel.create();
         boolean sendCondensed = false;
         if (result.length() + title.length() >= 2000) {
             String condensed = report.toString(true);
             if (condensed.length() + title.length() < 2000) {
-                msg.embed( PnwUtil.getName(nationId, false), condensed);
+                msg.embed( PW.getName(nationId, false), condensed);
                 sendCondensed = true;
             }
         }

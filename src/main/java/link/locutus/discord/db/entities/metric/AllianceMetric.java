@@ -27,7 +27,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -188,7 +187,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
             aaRevenueCache = new AbstractMap.SimpleEntry<>(alliance.getAlliance_id(), totalRss);
 
-            return PnwUtil.convertedTotal(totalRss);
+            return ResourceType.convertedTotal(totalRss);
         }
 
 
@@ -243,14 +242,14 @@ public enum AllianceMetric implements IAllianceMetric {
                 double[] buffer = result.computeIfAbsent(allianceId, f -> ResourceType.getBuffer());
                 double rads = radsMap.getOrDefault(nation.getContinent(), 0d);
                 boolean atWar = nationsAtWar.contains(nation.getNation_id());
-                PnwUtil.getRevenue(buffer, 12, date, nation, javaCities, true, false, true, false, false, rads, atWar, 0);
+                PW.getRevenue(buffer, 12, date, nation, javaCities, true, false, true, false, false, rads, atWar, 0);
             }
             importer.setRevenue(result);
             cityMap.clear();
             nationMap.clear();
             warEndDates.clear();
 
-            return result.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> PnwUtil.convertedTotal(f.getValue())));
+            return result.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> ResourceType.convertedTotal(f.getValue())));
         }
 
         @Override
@@ -480,7 +479,7 @@ public enum AllianceMetric implements IAllianceMetric {
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
                     double infra = header.infrastructure.get();
-                    double value = PnwUtil.calculateInfra(0, infra);
+                    double value = PW.City.Infra.calculateInfra(0, infra);
                     infraValueByAA.merge(allianceId, value, Double::sum);
                 }
             });
@@ -539,7 +538,7 @@ public enum AllianceMetric implements IAllianceMetric {
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
                     double land = header.land.get();
-                    double value = PnwUtil.calculateLand(0, land);
+                    double value = PW.City.Land.calculateLand(0, land);
                     landValueByAA.merge(allianceId, value, Double::sum);
                 }
             });
@@ -561,7 +560,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
     PROJECT_VALUE(false, SI_UNIT, new CountNationMetric(f -> f.getProjects().stream().mapToDouble(Project::getMarketValue).sum())),
 
-    CITY_VALUE(false, SI_UNIT, new CountNationMetric(f -> PnwUtil.cityCost(f, 0, f.getCities()))),
+    CITY_VALUE(false, SI_UNIT, new CountNationMetric(f -> PW.City.cityCost(f, 0, f.getCities()))),
 
     NUKE(false, SI_UNIT, new UnitMetric(MilitaryUnit.NUKE, f -> f.nukes)),
     NUKE_AVG(true, DECIMAL_ROUNDED, new ProjectileAvg(MilitaryUnit.NUKE, f -> f.nukes)),
@@ -632,7 +631,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 int currentCity = nation.getCities();
                 int previousCities = nation.getCitiesSince(ms);
                 if (currentCity > previousCities) {
-                    total += PnwUtil.cityCost(nation, currentCity - previousCities, currentCity);
+                    total += PW.City.cityCost(nation, currentCity - previousCities, currentCity);
                 }
             }
             return total;
@@ -710,7 +709,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 boolean aup = advancedUrbanPlanningByNation.getOrDefault(nationId, false);
                 boolean mp = metropolitanPlanningByNation.getOrDefault(nationId, false);
                 boolean gsa = governmentSupportAgencyByNation.getOrDefault(nationId, false);
-                double cost = PnwUtil.cityCost(previousCities, totalCities, md, up, aup, mp, gsa);
+                double cost = PW.City.cityCost(previousCities, totalCities, md, up, aup, mp, gsa);
                 int allianceId = allianceByNationId.get(nationId);
                 cities10D.merge(allianceId, cost, Double::sum);
             }

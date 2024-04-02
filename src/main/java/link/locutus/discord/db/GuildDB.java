@@ -44,7 +44,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
@@ -557,10 +557,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         body.append("mmr[build]: " + nation.getMMRBuildingStr() + "\n");
         body.append("mmr[unit]: " + nation.getMMR() + "\n\n");
 
-        body.append("**Deposits:**\n`" + PnwUtil.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(deposits)) + "\n");
+        body.append("**Deposits:**\n`" + ResourceType.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
 
-        body.append("**To Withdraw:**\n`" + PnwUtil.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalPair.getKey())) + "\n");
+        body.append("**To Withdraw:**\n`" + ResourceType.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalPair.getKey())) + "\n");
         if (totalPair.getValue() > 0) {
             body.append("Expires: " + DiscordUtil.timestamp(totalPair.getValue(), null) + "\n");
         }
@@ -1414,7 +1414,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Map.Entry<Integer, Transaction2>> offset = getDepositOffsetTransactionsTaxId(taxId);
         if (!offset.isEmpty()) {
             Set<Long> allowedIdsLong = allowedAAIds.stream().map(f -> (long) f).collect(Collectors.toSet());
-            Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
+            Map<DepositType, double[]> sum = PW.sumNationTransactions(this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
             for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
                 ResourceType.add(result.computeIfAbsent(entry.getKey(), f -> ResourceType.getBuffer()), entry.getValue());
             }
@@ -1719,7 +1719,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public Map<NationOrAllianceOrGuild, double[]> subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, int banker, String offshoreNote) {
         for (int i = 0; i < amount.length; i++) {
-            if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + PnwUtil.resourcesToString(amount));
+            if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + ResourceType.resourcesToString(amount));
         }
 
         double[] amountLeft = amount.clone();
@@ -1743,12 +1743,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
             if (toSubtract != null) {
                 ammountEach.put(account, toSubtract.clone());
-                System.out.println("Add balance to: " + account.getQualifiedId() + " " + PnwUtil.resourcesToString(toSubtract) + "");
+                System.out.println("Add balance to: " + account.getQualifiedId() + " " + ResourceType.resourcesToString(toSubtract) + "");
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }
         if (!ResourceType.isZero(amountLeft)) {
-            throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + PnwUtil.resourcesToString(amountLeft));
+            throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + ResourceType.resourcesToString(amountLeft));
         }
         return ammountEach;
     }
@@ -3018,7 +3018,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));
         for (Integer id : getAllianceIds()) tracked.add(id.longValue());
-        tracked = PnwUtil.expandCoalition(tracked);
+        tracked = PW.expandCoalition(tracked);
         return tracked;
     }
 

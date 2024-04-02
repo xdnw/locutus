@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 
@@ -32,7 +32,7 @@ public class AlliancePages {
     public Object allianceLeaves(WebStore ws, int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
         List<AllianceChange> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
 
-        String title = "Rank changes for " + MarkupUtil.htmlUrl(PnwUtil.getName(allianceId, true), PnwUtil.getUrl(allianceId, true));
+        String title = "Rank changes for " + MarkupUtil.htmlUrl(PW.getName(allianceId, true), PW.getUrl(allianceId, true));
         List<String> header = Arrays.asList("time", "nation", "position", "now-alliance", "now-position", "now-activity");
         List<List<String>> rows = new ArrayList<>();
 
@@ -43,7 +43,7 @@ public class AlliancePages {
             DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
 
             row.add(TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(change.getDate())));
-            row.add(MarkupUtil.htmlUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
+            row.add(MarkupUtil.htmlUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));
             row.add(change.getToRank().name());
             if (nation != null) {
                 row.add(MarkupUtil.htmlUrl(nation.getAllianceName(), nation.getAllianceUrl()));

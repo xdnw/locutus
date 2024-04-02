@@ -11,7 +11,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
@@ -178,8 +178,8 @@ public class CounterSpy extends Command {
 
                 double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);
 
-                String nationUrl = PnwUtil.getBBUrl(nation.getNation_id(), false);
-                String allianceUrl = PnwUtil.getBBUrl(nation.getAlliance_id(), true);
+                String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
+                String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
                 body.append(nationUrl).append(" | ")
                         .append(allianceUrl).append("\n");
 
@@ -195,9 +195,9 @@ public class CounterSpy extends Command {
             }
 
             body.append("**Enemy:** ")
-                    .append(PnwUtil.getBBUrl(enemy.getNation_id(), false))
+                    .append(PW.getBBUrl(enemy.getNation_id(), false))
                     .append(" | ")
-                    .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
+                    .append(PW.getBBUrl(enemy.getAlliance_id(), true))
                     .append("\n**Spies: **").append(enemySpies).append("\n")
                     .append(enemy.toMarkdown(true, true, false, true, false, false))
                     .append(enemy.toMarkdown(true, true, false, false, true, true))

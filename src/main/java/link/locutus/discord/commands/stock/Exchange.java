@@ -5,7 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -222,7 +222,7 @@ public class Exchange {
             body.append("\n**Invite**: " + invite.getUrl());
         }
         if (exchange.owner != 0) {
-            body.append("\n**Owner:** " + PnwUtil.getMarkdownUrl(exchange.owner, false));
+            body.append("\n**Owner:** " + PW.getMarkdownUrl(exchange.owner, false));
         }
         body.append("\n**Shares**: " + MathMan.format(exchange.shares / 100d));
 

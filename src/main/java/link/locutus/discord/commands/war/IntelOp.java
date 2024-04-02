@@ -10,7 +10,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -98,11 +98,11 @@ public class IntelOp extends Command {
         if (false) {
             Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
-            BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
-            enemies.removeIf(f -> range.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
+            BiFunction<Double, Double, Integer> range = PW.getIsNationsInScoreRange(myAlliance);
+            enemies.removeIf(f -> range.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
         } else {
             List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < score * 0.75 || f.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER);
+            tmp.removeIf(f -> f.getScore() < score * 0.75 || f.getScore() > score * PW.WAR_RANGE_MAX_MODIFIER);
             if (tmp.isEmpty()) {
                 enemies.removeIf(f -> !f.isInSpyRange(finalNation));
             } else {

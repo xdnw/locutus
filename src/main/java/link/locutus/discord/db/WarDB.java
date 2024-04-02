@@ -35,7 +35,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -273,10 +273,10 @@ public class WarDB extends DBMainV2 {
                 System.out.println("Money looted mismatch " + legacy.getAttack_type() + " " + legacy.getMoney_looted() + " | " + cursor.getMoney_looted());
                 System.out.println("Loot : " + (legacy.loot != null) + " | " + (cursor.getLoot() != null));
                 if (legacy.loot != null) {
-                    System.out.println("loot l " + PnwUtil.resourcesToString(legacy.loot));
+                    System.out.println("loot l " + ResourceType.resourcesToString(legacy.loot));
                 }
                 if (cursor.getLoot() != null) {
-                    System.out.println("loot c " + PnwUtil.resourcesToString(cursor.getLoot()));
+                    System.out.println("loot c " + ResourceType.resourcesToString(cursor.getLoot()));
                 }
                 throw new IllegalArgumentException("Money looted mismatch");
             }
@@ -298,11 +298,11 @@ public class WarDB extends DBMainV2 {
             System.out.println("Loot percent mismatch " + legacy.getAttack_type() + " " + legacy.getLootPercent() + " | " + cursor.getLootPercent());
             if (legacy.loot != null) {
                 // print
-                System.out.println("loot l " + PnwUtil.resourcesToString(legacy.loot));
+                System.out.println("loot l " + ResourceType.resourcesToString(legacy.loot));
             }
             if (cursor.getLoot() != null) {
                 // print
-                System.out.println("loot c " + PnwUtil.resourcesToString(cursor.getLoot()));
+                System.out.println("loot c " + ResourceType.resourcesToString(cursor.getLoot()));
             }
             // print count by type (or 0)
             throw new IllegalArgumentException("Loot percent mismatch");
@@ -2729,8 +2729,8 @@ public class WarDB extends DBMainV2 {
 
         double ratio = ((nationScore * 10000) / aaScore) / 2d;
         double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
-        Map<ResourceType, Double> yourLoot = PnwUtil.resourcesToMap(allianceLoot);
-        yourLoot = PnwUtil.multiply(yourLoot, percent);
+        Map<ResourceType, Double> yourLoot = ResourceType.resourcesToMap(allianceLoot);
+        yourLoot = PW.multiply(yourLoot, percent);
         return yourLoot;
     }
 

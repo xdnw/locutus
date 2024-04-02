@@ -94,7 +94,7 @@ public class LeavingBeigeAlert {
         }
         double score = attacker.getScore();
         double leeway = scoreLeewayFunc.apply(attacker);
-        if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER) {
+        if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * PW.WAR_RANGE_MAX_MODIFIER) {
             if (throwError) throw new IllegalArgumentException("Target is not within 75% to 175% of attacker's score (leeway: " + leeway + ")\nSee: " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention());
             return false;
         }
@@ -223,7 +223,7 @@ public class LeavingBeigeAlert {
                 ByteBuffer leewayBits = attacker.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY);
                 leeway = leewayBits != null ? leewayBits.getDouble() : 0;
             }
-            if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER) {
+            if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * PW.WAR_RANGE_MAX_MODIFIER) {
                 if (throwError) throw new IllegalArgumentException("You are not in range of target " + MathMan.format(target.getScore()) + ". See: " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention());
             };
         }

@@ -51,13 +51,141 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class PnwUtil {
-    public static Map<ResourceType, Double> roundResources(Map<ResourceType, Double> resources) {
-        HashMap<ResourceType, Double> copy = new HashMap<>(resources);
-        for (Map.Entry<ResourceType, Double> entry : copy.entrySet()) {
-            entry.setValue(Math.round(entry.getValue() * 100.0) / 100.0);
+public class PW {
+
+    public static class City {
+        public static class Land {
+            public static double calculateLand(double from, double to) {
+                if (from < 0 || from == to) return 0;
+                if (to <= from) return (from - to) * -50;
+                if (to > 20000) throw new IllegalArgumentException("Land cannot exceed 10,000");
+                double[] tmp = LAND_COST_CACHE;
+                if (tmp != null && from == tmp[0] && to == tmp[1]) {
+                    return tmp[2];
+                }
+
+                double total = 0;
+                for (double i = Math.max(0, from); i < to; i += 500) {
+                    double cost = 0.002d * Math.pow(Math.max(20, i - 20), 2) + 50;
+                    double amt = Math.min(500, to - i);
+                    total += cost * amt;
+                }
+                LAND_COST_CACHE = new double[]{from, to, total};
+
+                return total;
+            }
         }
-        return copy;
+
+        public static class Infra {
+            private static int getInfraCostCents(double infra) {
+                if (infra <= 4000) {
+                    int index = Math.max(0, (int) (infra * 100) - 3000);
+                    return INFRA_COST_FAST_CACHE[index];
+                }
+                return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra - 10d, 20), (2.2d))) * 0.00140845070422535211267605633803));
+            }
+
+            private static int getInfraCostCents(int infra_cents) {
+                if (infra_cents <= 400000) {
+                    int index = Math.max(0, infra_cents - 3000);
+                    return INFRA_COST_FAST_CACHE[index];
+                }
+                return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra_cents - 1000, 2000) * 0.01, (2.2d))) * 0.00140845070422535211267605633803));
+            }
+
+            public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
+                double factor = 1;
+                if (aec) factor -= 0.05;
+                if (cfce) factor -= 0.05;
+                if (urbanization) {
+                    factor -= 0.05;
+                    if (gsa) factor -= 0.025;
+                }
+                return calculateInfra(from, to) * (to > from ? factor : 1);
+            }
+
+            // precompute the cost for first 4k infra
+            public static double calculateInfra(double from, double to) {
+                if (from < 0) return 0;
+                if (to <= from) return (from - to) * -150;
+                if (to > 20000) throw new IllegalArgumentException("Infra cannot exceed 10,000 (" + to + ")");
+                long total_cents = 0;
+                int to_cents = (int) Math.round(to * 100);
+                int from_cents = (int) Math.round(from * 100);
+                for (int i = to_cents; i >= from_cents; i -= 10000) {
+                    int amt = Math.min(10000, i - from_cents);
+                    int cost_cents = getInfraCostCents(i - amt);
+                    total_cents += ((long) cost_cents * amt);
+                }
+                total_cents = (total_cents + 50)  / 100;
+                return total_cents * 0.01;
+            }
+
+            /**
+             * Value of attacking target with infra, to take them from current infra -> 1500
+             *
+             * @param avg_infra
+             * @param cities
+             * @return net damage value that should be done
+             */
+            public static int calculateInfraAttackValue(int avg_infra, int cities) {
+                if (avg_infra < 1500) return 0;
+                double total = 0;
+                for (int i = 1500; i < avg_infra; i++) {
+                    total += 300d + (Math.pow((i - 10d), (2.2d))) / 710d;
+                }
+                return (int) (total * cities);
+            }
+        }
+
+        public static double nextCityCost(DBNation nation, int amount) {
+            int current = nation.getCities();
+            return cityCost(nation, current, current + amount);
+        }
+
+        public static double cityCost(DBNation nation, int from, int to) {
+            return cityCost(from, to,
+                    nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
+                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
+                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
+                    nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        }
+
+        public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
+            double total = 0;
+            for (int city = Math.max(1, from); city < to; city++) {
+                total += nextCityCost(city,
+                        manifestDestiny,
+                        cityPlanning,
+                        advCityPlanning,
+                        metPlanning, govSupportAgency);
+            }
+            return total;
+        }
+
+        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
+            double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
+            if (cityPlanning) {
+                cost -= 50000000;
+            }
+            if (advCityPlanning) {
+                cost -= 100000000;
+            }
+            if (metPlanning) {
+                cost -= 150_000_000;
+            }
+            if (manifestDestiny) {
+                double factor = 0.05;
+                if (govSupportAgency) factor += 0.025;
+                cost *= (1 - factor);
+            }
+            return Math.max(0, cost);
+        }
+
+        public static String getCityUrl(int cityId) {
+            return "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
+        }
     }
 
     public static List<Integer> getNationsFromTable(String html, int tableIndex) {
@@ -164,7 +292,7 @@ public class PnwUtil {
             boolean allowConversion = record.tx_id != -1 && isOffshoreSender;
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PnwUtil.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
@@ -388,194 +516,6 @@ public class PnwUtil {
 
     private static String CONVERSION_SECRET = "fe51a236d437901bc1650b0187ac3e46";
 
-    public static String resourcesToJson(String receiver, boolean isNation, Map<ResourceType, Double> rss, String note) {
-        Map<String, String> post = new LinkedHashMap<>();
-        if (isNation) {
-            post.put("withrecipient", receiver);
-            post.put("withtype", "Nation");
-        } else {
-            post.put("withrecipient", "" + receiver);
-            post.put("withtype", "Alliance");
-        }
-        for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.CREDITS) continue;
-            double amt = rss.getOrDefault(type, 0d);
-            if (amt == 0) continue;
-            String key = "with" + type.name().toLowerCase();
-            post.put(key, String.format("%.2f", amt));
-        }
-        post.put("withnote", note == null ? "" : note);
-        post.put("withsubmit", "Withdraw");
-
-//        for (Map.Entry<String, String> entry : post.entrySet()) {
-//            entry.setValue("\"" + entry.getValue() + "\"");
-//        }
-        return new Gson().toJson(post);
-    }
-
-    public static Map<ResourceType, Double> parseResources(String arg) {
-        boolean allowBodmas = arg.contains("{") && StringMan.containsAny("+-*/^%", arg.replaceAll("\\{[^}]+}", ""));
-        return parseResources(arg, allowBodmas);
-    }
-
-    public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
-        if (MathMan.isInteger(arg)) {
-            throw new IllegalArgumentException("Please use `$" + arg + "` or `money=" + arg + "` for money, not `" + arg + "`");
-        }
-        if (arg.contains("---+") && arg.contains("-+-")) {
-            arg = arg.replace("-+-", "---");
-            int start = arg.indexOf("---+");
-            arg = arg.substring(start + 4).trim();
-            arg = arg.replaceAll("([0-9.]+)[ ]+", "$1,");
-            arg = arg.replace("\n", "");
-            arg = arg.replaceAll("[ ]+", " ");
-            arg = "{" + arg.replace(" | ", ":") + "}";
-        }
-        if (arg.contains("\t") || arg.contains("    ")) {
-            String[] split = arg.split("[\t]");
-            if (split.length == 1) split = arg.split("[ ]{4}");
-            boolean credits = (split.length == ResourceType.values.length);
-            if (credits || split.length == ResourceType.values.length - 1) {
-                ArrayList<ResourceType> types = new ArrayList<>(Arrays.asList(ResourceType.values));
-                if (!credits) types.remove(ResourceType.CREDITS);
-                Map<ResourceType, Double> result = new LinkedHashMap<>();
-                for (int i = 0; i < types.size(); i++) {
-                    result.put(types.get(i), MathMan.parseDouble(split[i].trim()));
-                }
-                return result;
-            }
-        } else if (arg.contains(" and ")) {
-            arg = arg.replace(" and ", ", ");
-            if (arg.contains(" taking:")) {
-                arg = arg.split(" taking:")[1].trim();
-            } else if (arg.contains(" looted ")) {
-                arg = arg.split(" looted ")[1].trim();
-            } else if (arg.contains(" spies, ")) {
-                arg = arg.split(" spies, ")[1].trim();
-            }
-            if (arg.contains(". ")) {
-                arg = arg.substring(0, arg.indexOf(". "));
-            }
-            arg = arg.replace(",,", ",");
-        }
-        arg = arg.trim();
-        String original = arg;
-        if (!arg.contains(":") && !arg.contains("=")) {
-            arg = arg.replaceAll("([-0-9])[ ]([a-zA-Z])", "$1:$2");
-            arg = arg.replaceAll("([a-zA-Z])[ ]([-0-9])", "$1:$2");
-        }
-        arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
-        arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
-        arg = arg.replace(" ", "");
-        if (arg.startsWith("$") || arg.startsWith("-$")) {
-            if (!arg.contains(",")) {
-                int sign = 1;
-                if (arg.startsWith("-")) {
-                    sign = -1;
-                    arg = arg.substring(1);
-                }
-                Map<ResourceType, Double> result = new LinkedHashMap<>();
-                result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
-                return result;
-            }
-            arg = arg.replace("$",ResourceType.MONEY +":");
-        }
-
-        arg = arg.replace("GAS:", "GASOLINE:");
-        arg = arg.replace("URA:", "URANIUM:");
-        arg = arg.replace("BAUX:", "BAUXITE:");
-        arg = arg.replace("MUNI:", "MUNITIONS:");
-        arg = arg.replace("ALU:", "ALUMINUM:");
-        arg = arg.replace("ALUMINIUM:", "ALUMINUM:");
-        arg = arg.replace("CASH:", "MONEY:");
-
-        if (!arg.contains("{") && !arg.contains("}")) {
-            arg = "{" + arg + "}";
-        }
-        if (arg.startsWith("-{")) {
-            arg = "{}" + arg;
-        }
-        arg = arg.replace("(-{", "({}-{");
-
-        Map<ResourceType, Double> result;
-        try {
-            Function<String, Map<ResourceType, Double>> parse = f -> {
-                if (f.contains("TRANSACTION_COUNT")) {
-                    f = f.replaceAll("\"TRANSACTION_COUNT\":[0-9]+,", "");
-                    f = f.replaceAll(",\"TRANSACTION_COUNT\":[0-9]+", "");
-                }
-                return RESOURCE_GSON.fromJson(f, RESOURCE_TYPE);
-            };
-            if (allowBodmas) {
-                System.out.println("Input " + arg);
-                List<ArrayUtil.DoubleArray> resources = (ArrayUtil.calculate(arg, arg1 -> {
-                    if (!arg1.contains("{")) {
-                        return new ArrayUtil.DoubleArray(PrimitiveBindings.Double(arg1));
-                    }
-                    Map<ResourceType, Double> map = parse.apply(arg1);
-                    double[] arr = resourcesToArray(map);
-                    return new ArrayUtil.DoubleArray(arr);
-                }));
-                result = resourcesToMap(resources.get(0).toArray());
-            } else {
-                result = parse.apply(arg);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
-                String[] split = original.split(" ");
-                result = new LinkedHashMap<>();
-                for (String s : split) {
-                    Character typeChar = s.charAt(s.length() - 1);
-                    ResourceType type1 = ResourceType.parseChar(typeChar);
-                    double amount = MathMan.parseDouble(s.substring(0, s.length() - 1));
-                    result.put(type1, amount);
-                }
-            } else {
-                return handleResourceError(arg, e);
-            }
-        }
-        if (result.containsKey(null)) {
-            return handleResourceError(arg, null);
-        }
-        return result;
-    }
-
-    private static Map<ResourceType, Double> handleResourceError(String arg, Exception e) {
-        StringBuilder response = new StringBuilder("Invalid resource amounts: `" + arg + "`\n");
-        if (e != null) {
-            String msg = e.getMessage();
-            if (msg.startsWith("No enum constant")) {
-                String rssInput = msg.substring(msg.lastIndexOf(".") + 1);
-                List<ResourceType> closest = StringMan.getClosest(rssInput, ResourceType.valuesList, false);
-
-                response.append("You entered `" + rssInput + "` which is not a valid resource.");
-                if (closest.size() > 0) {
-                    response.append(" Did you mean: `").append(closest.get(0)).append("`");
-                }
-                response.append("\n");
-            } else {
-                response.append("Error: `").append(e.getMessage()).append("`\n");
-            }
-        }
-        response.append("Valid resources are: `").append(StringMan.join(ResourceType.values, ", ")).append("`").append("\n");
-        response.append("""
-                You can enter a single resource like this:
-                `food=10`
-                `$15`
-                Use commas for multiple resources:
-                `food=10,gas=20,money=30`
-                Use k,m,b,t for thousands, millions, billions, trillions:
-                `food=10k,gas=20m,money=30b`
-                Use curly braces for operations:
-                `{food=3*(2+1),coal=-3}*{food=112,coal=2513}*1.5+{coal=1k}^0.5`""");
-        throw new IllegalArgumentException(response.toString());
-    }
-    private static Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
-    private static Gson RESOURCE_GSON = new GsonBuilder()
-            .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
-            .create();
-
     public static double WAR_RANGE_MAX_MODIFIER = 2.50;
     public static double WAR_RANGE_MIN_MODIFIER = 0.75;
 
@@ -605,7 +545,7 @@ public class PnwUtil {
         } else {
             if (isWar) {
                 if (isMin) {
-                    range = Math.round(scoreInt / PnwUtil.WAR_RANGE_MAX_MODIFIER);
+                    range = Math.round(scoreInt / PW.WAR_RANGE_MAX_MODIFIER);
                 } else {
                     range = Math.round(scoreInt / 0.75);
                 }
@@ -623,7 +563,7 @@ public class PnwUtil {
     public static Map.Entry<double[], String> createDepositEmbed(GuildDB db, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, Map<DepositType, double[]> categorized, Boolean showCategories, double[] escrowed, long escrowExpire, boolean condenseFormat) {
         boolean withdrawIgnoresGrants = GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS.getOrNull(db) == Boolean.TRUE;
 
-        boolean hasEscrowed = (escrowed != null && !ResourceType.isZero(escrowed) && PnwUtil.convertedTotal(escrowed) > 0);
+        boolean hasEscrowed = (escrowed != null && !ResourceType.isZero(escrowed) && ResourceType.convertedTotal(escrowed) > 0);
 
         StringBuilder response = new StringBuilder();
 
@@ -656,43 +596,43 @@ public class PnwUtil {
 
         if (showCategories) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
-                response.append("**`#DEPOSIT`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("```\n");
+                response.append("**`#DEPOSIT`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.DEPOSIT))));
+                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("```\n");
             }
             if (categorized.containsKey(DepositType.TAX)) {
-                response.append("**`#TAX`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("```\n");
+                response.append("**`#TAX`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.TAX))));
+                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.TAX))).append("```\n");
             } else if (nationOrAllianceOrGuild.isNation()) {
                 footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("**`#LOAN/#GRANT`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("```\n");
+                response.append("**`#LOAN/#GRANT`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.LOAN))));
+                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.LOAN))).append("```\n");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("**`#EXPIRE`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("```\n");
+                response.append("**`#EXPIRE`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.GRANT))));
+                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.GRANT))).append("```\n");
             }
             if (hasEscrowed) {
-                response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)));
+                response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(ResourceType.convertedTotal(escrowed)));
                 if (escrowExpire > 0) {
                     response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
                 }
-                response.append("\n```").append(PnwUtil.resourcesToString(escrowed)).append("``` ");
+                response.append("\n```").append(ResourceType.resourcesToString(escrowed)).append("``` ");
             }
             if (categorized.size() > 1) {
-                response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(PnwUtil.convertedTotal(balance)) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(balance)).append("``` ");
+                response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(ResourceType.convertedTotal(balance)) + ")");
+                response.append("\n```").append(ResourceType.resourcesToString(balance)).append("``` ");
             }
         } else {
             String prefix = condenseFormat ? "**" : "## ";
             String suffix = condenseFormat ? "**" : "";
             response.append(prefix + "Balance:" + suffix);
             if (condenseFormat) {
-                response.append(" worth: `$" + MathMan.format(PnwUtil.convertedTotal(balance)) + "`\n");
-                response.append("```" + PnwUtil.resourcesToString(balance) + "``` ");
+                response.append(" worth: `$" + MathMan.format(ResourceType.convertedTotal(balance)) + "`\n");
+                response.append("```" + ResourceType.resourcesToString(balance) + "``` ");
             } else {
-                response.append("\n").append(PnwUtil.resourcesToFancyString(balance)).append("\n");
+                response.append("\n").append(ResourceType.resourcesToFancyString(balance)).append("\n");
             }
             response.append("**Includes:** `" + StringMan.join(balanceNotes, "`, `")).append("`\n");
             response.append("**Excludes:** `" + StringMan.join(excluded, "`, `")).append("`\n");
@@ -700,10 +640,10 @@ public class PnwUtil {
             if (hasEscrowed) {
                 response.append("\n" + prefix + CM.escrow.withdraw.cmd.toSlashMention() + ":" + suffix);
                 if (condenseFormat) {
-                    response.append(" worth: `$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "`\n");
-                    response.append("```" + PnwUtil.resourcesToString(escrowed) + "``` ");
+                    response.append(" worth: `$" + MathMan.format(ResourceType.convertedTotal(escrowed)) + "`\n");
+                    response.append("```" + ResourceType.resourcesToString(escrowed) + "``` ");
                 } else {
-                    response.append("\n").append(PnwUtil.resourcesToFancyString(escrowed)).append("\n");
+                    response.append("\n").append(ResourceType.resourcesToFancyString(escrowed)).append("\n");
                 }
                 if (escrowExpire > 0) {
                     response.append("- expires: " + DiscordUtil.timestamp(escrowExpire, null) + "\n");
@@ -713,7 +653,7 @@ public class PnwUtil {
             if (!ResourceType.isZero(nonBalance)) {
                 response.append("\n" + prefix + "Expiring Debt:" + suffix + "\n");
                 response.append("In addition to your balance, you owe the following:\n");
-                response.append("```\n" + PnwUtil.resourcesToString(nonBalance)).append("```\n- worth: $" + MathMan.format(PnwUtil.convertedTotal(nonBalance)) + "\n");
+                response.append("```\n" + ResourceType.resourcesToString(nonBalance)).append("```\n- worth: $" + MathMan.format(ResourceType.convertedTotal(nonBalance)) + "\n");
             }
         }
         return Map.entry(balance, response.toString());
@@ -735,19 +675,6 @@ public class PnwUtil {
             return new ObjectOpenHashSet<>(nationMap.values());
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {
-        @Override
-        public Map<ResourceType, Double> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            Map<ResourceType, Double> map = new LinkedHashMap<>();
-            json.getAsJsonObject().entrySet().forEach(entry -> {
-                ResourceType key = ResourceType.valueOf(entry.getKey());
-                Double value = PrimitiveBindings.Double(entry.getValue().getAsString());
-                map.put(key, value);
-            });
-            return map;
         }
     }
 
@@ -797,12 +724,12 @@ public class PnwUtil {
     }
 
     public static double[] normalize(double[] resources) {
-        return PnwUtil.resourcesToArray(PnwUtil.normalize(PnwUtil.resourcesToMap(resources)));
+        return ResourceType.resourcesToArray(PW.normalize(ResourceType.resourcesToMap(resources)));
     }
 
     public static Map<ResourceType, Double> normalize(Map<ResourceType, Double> resources) {
         resources = new LinkedHashMap<>(resources);
-        double total = PnwUtil.convertedTotal(resources);
+        double total = ResourceType.convertedTotal(resources);
         if (total == 0) return new HashMap<>();
         if (total < 0) {
             return new HashMap<>();
@@ -818,7 +745,7 @@ public class PnwUtil {
                 iter.remove();
             }
         }
-        double postiveTotal = PnwUtil.convertedTotal(resources);
+        double postiveTotal = ResourceType.convertedTotal(resources);
 
         double factor = Math.max(0, Math.min(1, total / postiveTotal));
 //            factor = Math.min(factor, postiveTotal / (negativeTotal + postiveTotal));
@@ -832,98 +759,7 @@ public class PnwUtil {
         return resources;
     }
 
-    public static String resourcesToFancyString(double[] resources) {
-        return resourcesToFancyString(resourcesToMap(resources));
-    }
-    public static String resourcesToFancyString(double[] resources, String totalName) {
-        return resourcesToFancyString(resourcesToMap(resources), totalName);
-    }
-
-    public static String resourcesToFancyString(Map<ResourceType, Double> resources) {
-        return resourcesToFancyString(resources, null);
-    }
-
-    public static String resourcesToFancyString(Map<ResourceType, Double> resources, String totalName) {
-        StringBuilder out = new StringBuilder();
-        String leftAlignFormat = "%-10s | %-17s\n";
-        out.append("```");
-        out.append("Resource   | Amount   \n");
-        out.append("-----------+-----------------+\n");
-        for (ResourceType type : ResourceType.values) {
-            Double amt = resources.get(type);
-            if (amt != null) out.append(String.format(leftAlignFormat, type.name(), MathMan.format(amt)));
-        }
-        out.append("```\n");
-        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n```" + PnwUtil.resourcesToString(resources) + "``` ");
-        return out.toString();
-    }
-
     private static double[] LAND_COST_CACHE = null;
-
-    public static double calculateLand(double from, double to) {
-        if (from < 0 || from == to) return 0;
-        if (to <= from) return (from - to) * -50;
-        if (to > 20000) throw new IllegalArgumentException("Land cannot exceed 10,000");
-        double[] tmp = LAND_COST_CACHE;
-        if (tmp != null && from == tmp[0] && to == tmp[1]) {
-            return tmp[2];
-        }
-
-        double total = 0;
-        for (double i = Math.max(0, from); i < to; i += 500) {
-            double cost = 0.002d * Math.pow(Math.max(20, i - 20), 2) + 50;
-            double amt = Math.min(500, to - i);
-            total += cost * amt;
-        }
-        LAND_COST_CACHE = new double[]{from, to, total};
-
-        return total;
-    }
-
-    public static double nextCityCost(DBNation nation, int amount) {
-        int current = nation.getCities();
-        return cityCost(nation, current, current + amount);
-    }
-
-    public static double cityCost(DBNation nation, int from, int to) {
-        return cityCost(from, to,
-                nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                nation != null && nation.hasProject(Projects.URBAN_PLANNING),
-                nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
-                nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
-    }
-
-    public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
-        double total = 0;
-        for (int city = Math.max(1, from); city < to; city++) {
-            total += nextCityCost(city,
-                    manifestDestiny,
-                    cityPlanning,
-                    advCityPlanning,
-                    metPlanning, govSupportAgency);
-        }
-        return total;
-    }
-
-    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
-        double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
-        if (cityPlanning) {
-            cost -= 50000000;
-        }
-        if (advCityPlanning) {
-            cost -= 100000000;
-        }
-        if (metPlanning) {
-            cost -= 150_000_000;
-        }
-        if (manifestDestiny) {
-            double factor = 0.05;
-            if (govSupportAgency) factor += 0.025;
-            cost *= (1 - factor);
-        }
-        return Math.max(0, cost);
-    }
 
     public static Map<ResourceType, Double> adapt(AllianceBankContainer bank) {
         Map<ResourceType, Double> totals = new LinkedHashMap<ResourceType, Double>();
@@ -950,66 +786,6 @@ public class PnwUtil {
             int cost = Math.toIntExact(Math.round(100 * (300d + (Math.pow(x, (2.2d))) * 0.00140845070422535211267605633803)));
             INFRA_COST_FAST_CACHE[i - minCents] = cost;
         }
-    }
-
-    private static int getInfraCostCents(double infra) {
-        if (infra <= 4000) {
-            int index = Math.max(0, (int) (infra * 100) - 3000);
-            return INFRA_COST_FAST_CACHE[index];
-        }
-        return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra - 10d, 20), (2.2d))) * 0.00140845070422535211267605633803));
-    }
-
-    private static int getInfraCostCents(int infra_cents) {
-        if (infra_cents <= 400000) {
-            int index = Math.max(0, infra_cents - 3000);
-            return INFRA_COST_FAST_CACHE[index];
-        }
-        return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra_cents - 1000, 2000) * 0.01, (2.2d))) * 0.00140845070422535211267605633803));
-    }
-
-    public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
-        double factor = 1;
-        if (aec) factor -= 0.05;
-        if (cfce) factor -= 0.05;
-        if (urbanization) {
-            factor -= 0.05;
-            if (gsa) factor -= 0.025;
-        }
-        return PnwUtil.calculateInfra(from, to) * (to > from ? factor : 1);
-    }
-
-    // precompute the cost for first 4k infra
-    public static double calculateInfra(double from, double to) {
-        if (from < 0) return 0;
-        if (to <= from) return (from - to) * -150;
-        if (to > 20000) throw new IllegalArgumentException("Infra cannot exceed 10,000 (" + to + ")");
-        long total_cents = 0;
-        int to_cents = (int) Math.round(to * 100);
-        int from_cents = (int) Math.round(from * 100);
-        for (int i = to_cents; i >= from_cents; i -= 10000) {
-            int amt = Math.min(10000, i - from_cents);
-            int cost_cents = getInfraCostCents(i - amt);
-            total_cents += ((long) cost_cents * amt);
-        }
-        total_cents = (total_cents + 50)  / 100;
-        return total_cents * 0.01;
-    }
-
-    /**
-     * Value of attacking target with infra, to take them from current infra -> 1500
-     *
-     * @param avg_infra
-     * @param cities
-     * @return net damage value that should be done
-     */
-    public static int calculateInfraAttackValue(int avg_infra, int cities) {
-        if (avg_infra < 1500) return 0;
-        double total = 0;
-        for (int i = 1500; i < avg_infra; i++) {
-            total += 300d + (Math.pow((i - 10d), (2.2d))) / 710d;
-        }
-        return (int) (total * cities);
     }
 
     public static <T> T withLogin(Callable<T> task, Auth auth) {
@@ -1049,190 +825,6 @@ public class PnwUtil {
             return element.text();
         }
         return null;
-    }
-
-    public static <T extends Number> Map<ResourceType, T> addResourcesToA(Map<ResourceType, T> a, Map<ResourceType, T> b) {
-        if (b.isEmpty()) {
-            return a;
-        }
-        for (ResourceType type : ResourceType.values) {
-            Number v1 = a.get(type);
-            Number v2 = b.get(type);
-            Number total = v1 == null ? v2 : (v2 == null ? v1 : MathMan.add(v1, v2));
-            if (total != null && total.doubleValue() != 0) {
-                a.put(type, (T) total);
-            } else {
-                a.remove(type);
-            }
-        }
-        return a;
-    }
-
-    public static <T extends Number> Map<ResourceType, T> negate(Map<ResourceType, T> b) {
-        return subResourcesToA(new LinkedHashMap<>(), b);
-    }
-
-    public static <T extends Number> Map<ResourceType, T> subResourcesToA(Map<ResourceType, T> a, Map<ResourceType, T> b) {
-        for (ResourceType type : ResourceType.values) {
-            Number v1 = a.get(type);
-            Number v2 = b.get(type);
-            if (v2 == null) continue;
-            Number total = MathMan.subtract(v1, v2);
-            if (total != null && total.doubleValue() != 0) {
-                a.put(type, (T) total);
-            }
-        }
-        return a;
-    }
-
-    public static <K, T extends Number> Map<K, T> add(Map<K, T> a, Map<K, T> b) {
-        if (a.isEmpty()) {
-            return b;
-        } else if (b.isEmpty()) {
-            return a;
-        }
-        LinkedHashMap<K, T> copy = new LinkedHashMap<>();
-        Set<K> keys = new HashSet<>(a.keySet());
-        keys.addAll(b.keySet());
-        for (K type : keys) {
-            Number v1 = a.get(type);
-            Number v2 = b.get(type);
-            Number total = v1 == null ? v2 : (v2 == null ? v1 : MathMan.add(v1, v2));
-            if (total != null && total.doubleValue() != 0) {
-                copy.put(type, (T) total);
-            }
-        }
-        return copy;
-    }
-
-    public static Map<ResourceType, Double> resourcesToMap(double[] resources) {
-        Map<ResourceType, Double> map = new LinkedHashMap<>();
-        for (ResourceType type : ResourceType.values) {
-            double value = resources[type.ordinal()];
-            if (value != 0) {
-                map.put(type, value);
-            }
-        }
-        return map;
-    }
-
-    public static double[] resourcesToArray(Map<ResourceType, Double> resources) {
-        double[] result = new double[ResourceType.values.length];
-        for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-            result[entry.getKey().ordinal()] += entry.getValue();
-        }
-        return result;
-    }
-
-    public static String resourcesToString(double[] values) {
-        return resourcesToString(resourcesToMap(values));
-    }
-
-    public static String resourcesToString(Map<ResourceType, ? extends Number> resources) {
-        Map<ResourceType, String> newMap = new LinkedHashMap<>();
-        for (ResourceType resourceType : ResourceType.values()) {
-            if (resources.containsKey(resourceType)) {
-                Number value = resources.get(resourceType);
-                if (value.doubleValue() == 0) continue;
-                if (value.doubleValue() == value.longValue()) {
-                    newMap.put(resourceType, MathMan.format(value.longValue()));
-                } else {
-                    newMap.put(resourceType, MathMan.format(value.doubleValue()));
-                }
-            }
-        }
-        return StringMan.getString(newMap);
-    }
-
-    public static double convertedTotal(double[] resources, boolean max) {
-        if (max) return convertedTotal(resources);
-        double total = 0;
-        for (int i = 0; i < resources.length; i++) {
-            double amt = resources[i];
-            if (amt != 0) {
-                total += -convertedTotal(ResourceType.values[i], -amt);
-            }
-        }
-        return total;
-    }
-
-    public static double convertedTotal(double[] resources) {
-        double total = 0;
-        for (int i = 0; i < resources.length; i++) {
-            double amt = resources[i];
-            if (amt != 0) {
-                total += convertedTotal(ResourceType.values[i], amt);
-            }
-        }
-        return total;
-    }
-
-    private static Pattern RSS_PATTERN;;
-
-    static {
-        String regex = "\\$([0-9|,.]+), ([0-9|,.]+) coal, ([0-9|,.]+) oil, " +
-                "([0-9|,.]+) uranium, ([0-9|,.]+) lead, ([0-9|,.]+) iron, ([0-9|,.]+) bauxite, ([0-9|,.]+) " +
-                "gasoline, ([0-9|,.]+) munitions, ([0-9|,.]+) steel, ([0-9|,.]+) aluminum, and " +
-                "([0-9|,.]+) food";
-        RSS_PATTERN = Pattern.compile(regex);
-    }
-
-    public static Map.Entry<DBNation, double[]> parseIntelRss(String input, double[] resourceOutput) {
-        if (resourceOutput == null) {
-            resourceOutput = new double[ResourceType.values.length];
-        }
-
-        Matcher matcher = RSS_PATTERN.matcher(input.toLowerCase());
-        matcher.matches();
-        matcher.groupCount();
-        matcher.find();
-        String moneyStr;
-        try {
-            moneyStr = matcher.group(1);
-        } catch (IllegalStateException | IndexOutOfBoundsException e) {
-            return null;
-        }
-        double money = MathMan.parseDouble(moneyStr.substring(0, moneyStr.length() - 1));
-        double coal = MathMan.parseDouble(matcher.group(2));
-        double oil = MathMan.parseDouble(matcher.group(3));
-        double uranium = MathMan.parseDouble(matcher.group(4));
-        double iron = MathMan.parseDouble(matcher.group(5));
-        double bauxite = MathMan.parseDouble(matcher.group(6));
-        double lead = MathMan.parseDouble(matcher.group(7));
-        double gasoline = MathMan.parseDouble(matcher.group(8));
-        double munitions = MathMan.parseDouble(matcher.group(9));
-        double steel = MathMan.parseDouble(matcher.group(10));
-        double aluminum = MathMan.parseDouble(matcher.group(11));
-        double food = MathMan.parseDouble(matcher.group(12));
-
-        resourceOutput[ResourceType.MONEY.ordinal()] = money;
-        resourceOutput[ResourceType.COAL.ordinal()] = coal;
-        resourceOutput[ResourceType.OIL.ordinal()] = oil;
-        resourceOutput[ResourceType.URANIUM.ordinal()] = uranium;
-        resourceOutput[ResourceType.IRON.ordinal()] = iron;
-        resourceOutput[ResourceType.BAUXITE.ordinal()] = bauxite;
-        resourceOutput[ResourceType.LEAD.ordinal()] = lead;
-        resourceOutput[ResourceType.GASOLINE.ordinal()] = gasoline;
-        resourceOutput[ResourceType.MUNITIONS.ordinal()] = munitions;
-        resourceOutput[ResourceType.STEEL.ordinal()] = steel;
-        resourceOutput[ResourceType.ALUMINUM.ordinal()] = aluminum;
-        resourceOutput[ResourceType.FOOD.ordinal()] = food;
-        for (int i = 0; i < resourceOutput.length; i++) {
-            if (resourceOutput[i] < 0) resourceOutput[i] = 0;
-        }
-
-        String name = input.split("You successfully gathered intelligence about ")[1].split("\\. Your spies discovered that")[0];
-        DBNation nation = Locutus.imp().getNationDB().getNation(name);
-
-        return new AbstractMap.SimpleEntry<>(nation, resourceOutput);
-    }
-
-    public static double convertedTotal(Map<ResourceType, ? extends Number> resources) {
-        double total = 0;
-        for (Map.Entry<ResourceType, ? extends Number> entry : resources.entrySet()) {
-            total += convertedTotal(entry.getKey(), entry.getValue().doubleValue());
-        }
-        return total;
     }
 
     public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus) {
@@ -1289,31 +881,8 @@ public class PnwUtil {
         return profitBuffer;
     }
 
-    public static double convertedTotalPositive(ResourceType type, double amt) {
-        return Locutus.imp().getTradeManager().getHighAvg(type) * amt;
-    }
-
-    public static double convertedTotalNegative(ResourceType type, double amt) {
-        return Locutus.imp().getTradeManager().getLowAvg(type) * amt;
-    }
-
-    public static double convertedTotal(ResourceType type, double amt) {
-        if (amt != 0) {
-            try {
-                Locutus locutus = Locutus.imp();
-//                if (amt < 0) {
-//                    return locutus.getTradeManager().getLowAvg(type) * amt;
-//                } else
-//                {
-                return locutus.getTradeManager().getHighAvg(type) * amt;
-//                }
-            } catch (NullPointerException ignore) {}
-        }
-        return 0;
-    }
-
     public static String getMarkdownUrl(int nationId, boolean isAA) {
-        return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), "<" + PnwUtil.getUrl(nationId, isAA) + ">");
+        return MarkupUtil.markdownUrl(PW.getName(nationId, isAA), "<" + PW.getUrl(nationId, isAA) + ">");
     }
 
     public static int parseTaxId(String url) {
@@ -1367,10 +936,6 @@ public class PnwUtil {
             name = nation != null ? nation.getNation() : nationOrAllianceId + "";
         }
         return "" + Settings.INSTANCE.PNW_URL() + "/" + type + "/id=" + nationOrAllianceId;
-    }
-
-    public static String getCityUrl(int cityId) {
-        return "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
     }
 
     public static String getNationUrl(int nationId) {
@@ -1484,7 +1049,7 @@ public class PnwUtil {
     }
 
     public static String getPostScript(String name, boolean nation, Map<ResourceType, Double> rss, String note) {
-        return resourcesToJson(name, nation, rss, note);
+        return ResourceType.resourcesToJson(name, nation, rss, note);
     }
 
     public static double getOdds(double attStrength, double defStrength, int success) {
@@ -1524,19 +1089,12 @@ public class PnwUtil {
             Set<Integer> coalition = db == null ? Collections.emptySet() : db.getCoalition(allianceName);
             if (!coalition.isEmpty()) aaIds.addAll(coalition);
             else {
-                Integer aaId = PnwUtil.parseAllianceId(allianceName);
+                Integer aaId = PW.parseAllianceId(allianceName);
                 if (aaId == null) throw new IllegalArgumentException("Unknown alliance: `" + allianceName + "`");
                 aaIds.add(aaId);
             }
         }
         return aaIds;
-    }
-
-    public static double[] add(double[] origin, double[] toAdd) {
-        for (int i = 0; i < toAdd.length; i++) {
-            origin[i] += toAdd[i];
-        }
-        return origin;
     }
 
     public static Map<MilitaryUnit, Long> parseUnits(String arg) {
@@ -1624,17 +1182,4 @@ public class PnwUtil {
         return String.format("" + Settings.INSTANCE.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
     }
 
-    public static double[] max(double[] rss1, double[] rss2) {
-        for (int i = 0; i < rss1.length; i++) {
-            rss1[i] = Math.max(rss1[i], rss2[i]);
-        }
-        return rss1;
-    }
-
-    public static double[] min(double[] rss1, double[] rss2) {
-        for (int i = 0; i < rss1.length; i++) {
-            rss1[i] = Math.min(rss1[i], rss2[i]);
-        }
-        return rss1;
-    }
 }

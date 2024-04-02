@@ -42,7 +42,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -510,7 +510,7 @@ public class GuildKey {
                 String endWith = key.charAt(key.length() - 1) + "";
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key, false);
                 if (nationId != null) {
-                    redacted.add(PnwUtil.getName(nationId, false));
+                    redacted.add(PW.getName(nationId, false));
                 } else {
                     redacted.add(startWith + "..." + endWith);
                 }
@@ -818,7 +818,7 @@ public class GuildKey {
 
         @Override
         public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
-            return PnwUtil.resourcesToString(value);
+            return ResourceType.resourcesToString(value);
         }
 
         @Override
@@ -2037,9 +2037,9 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The #channel for users to request grants in";
+            return "The #channel for users to request grants in. No additional functionality is added, you can setup a ticket bot or an embed there";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requiresWhitelisted().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore());
+    }.setupRequirements(f -> f.requireValidAlliance().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore());
     public static GuildSetting<MessageChannel> TREATY_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
         @NoFormat
         @Command(descMethod = "help")

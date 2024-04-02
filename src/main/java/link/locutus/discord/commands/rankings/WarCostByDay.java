@@ -17,7 +17,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -96,8 +96,8 @@ public class WarCostByDay extends Command {
 
                 attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war, true);
 
-                nameA = PnwUtil.getName(war.getAttacker_id(), false);
-                nameB = PnwUtil.getName(war.getDefender_id(), false);
+                nameA = PW.getName(war.getAttacker_id(), false);
+                nameB = PW.getName(war.getDefender_id(), false);
                 isPrimary = a -> a.getAttacker_id() == war.getAttacker_id();
                 isSecondary = b -> b.getAttacker_id() == war.getDefender_id();
             }
@@ -254,7 +254,7 @@ public class WarCostByDay extends Command {
         if (flags.contains('u')) tables.add(new TimeDualNumericTable<>("Unit Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
-                add(day, PnwUtil.convertedTotal(cost.getUnitCost(true)), PnwUtil.convertedTotal(cost.getUnitCost(false)));
+                add(day, ResourceType.convertedTotal(cost.getUnitCost(true)), ResourceType.convertedTotal(cost.getUnitCost(false)));
                 processTotal(total, this);
             }
         });
@@ -275,7 +275,7 @@ public class WarCostByDay extends Command {
         if (flags.contains('c')) tables.add(new TimeDualNumericTable<>("Consumption", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
-                add(day, PnwUtil.convertedTotal(cost.getConsumption(true)), PnwUtil.convertedTotal(cost.getConsumption(false)));
+                add(day, ResourceType.convertedTotal(cost.getConsumption(true)), ResourceType.convertedTotal(cost.getConsumption(false)));
                 processTotal(total, this);
             }
         });
@@ -289,14 +289,14 @@ public class WarCostByDay extends Command {
         if (flags.contains('l')) tables.add(new TimeDualNumericTable<>("Looted", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
-                add(day, -PnwUtil.convertedTotal(cost.getLoot(true)), -PnwUtil.convertedTotal(cost.getLoot(false)));
+                add(day, -ResourceType.convertedTotal(cost.getLoot(true)), -ResourceType.convertedTotal(cost.getLoot(false)));
                 processTotal(total, this);
             }
         });
         if (flags.contains('f')) tables.add(new TimeDualNumericTable<>("Full Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
-                add(day, PnwUtil.convertedTotal(cost.getTotal(true)), PnwUtil.convertedTotal(cost.getTotal(false)));
+                add(day, ResourceType.convertedTotal(cost.getTotal(true)), ResourceType.convertedTotal(cost.getTotal(false)));
                 processTotal(total, this);
             }
         });

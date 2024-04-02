@@ -18,7 +18,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -300,8 +300,8 @@ public class Spyops extends Command {
             Runnable task = new Runnable() {
                 @Override
                 public void run() {
-                    String nationUrl = PnwUtil.getBBUrl(nation.getNation_id(), false);
-                    String allianceUrl = PnwUtil.getBBUrl(nation.getAlliance_id(), true);
+                    String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
+                    String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
                     body.append(nationUrl).append(" | ")
                             .append(allianceUrl).append("\n");
 
@@ -322,7 +322,7 @@ public class Spyops extends Command {
 
         if (flags.contains('s')) {
             Auth auth = Locutus.imp().getRootAuth();
-            PnwUtil.withLogin(new Callable<Void>() {
+            PW.withLogin(new Callable<Void>() {
                 @Override
                 public Void call() throws Exception {
                     try {

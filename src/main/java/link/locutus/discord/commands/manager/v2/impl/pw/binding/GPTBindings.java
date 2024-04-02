@@ -12,7 +12,7 @@ import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 
@@ -78,7 +78,7 @@ public class GPTBindings extends BindingHelper {
 
     @Binding
     public Map<String, String> map(String input) {
-        Map<String, String> map = PnwUtil.parseMap(input);
+        Map<String, String> map = PW.parseMap(input);
         return map;
     }
 

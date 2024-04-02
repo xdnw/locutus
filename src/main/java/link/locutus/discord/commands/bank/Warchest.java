@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -90,11 +90,11 @@ public class Warchest extends Command {
         }
 
         if (args.size() < 3) {
-            return usage("Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)), channel);
+            return usage("Current warchest (per city): " + ResourceType.resourcesToString(guildDb.getPerCityWarchest(me)), channel);
         }
 
 
-        Map<ResourceType, Double> perCity = PnwUtil.parseResources(args.get(1));
+        Map<ResourceType, Double> perCity = ResourceType.parseResources(args.get(1));
         if (perCity.isEmpty()) return "Invalid amount: `" + args.get(1) + "`";
         boolean ignoreInactives = !flags.contains('i');
 

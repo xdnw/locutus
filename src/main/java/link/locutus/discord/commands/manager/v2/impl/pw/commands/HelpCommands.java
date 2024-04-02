@@ -206,38 +206,6 @@ public class HelpCommands {
         }
     }
 
-    @Command
-    public void find_command(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
-        try {
-            IMessageBuilder msg = io.create();
-
-            List<ParametricCallable> results = getGPT().getClosestCommands(store, query, num_results, true);
-            for (int i = 0; i < results.size(); i++) {
-                ParametricCallable command = results.get(i);
-                // /command [arguments]
-                String mention = Locutus.imp().getSlashCommands().getSlashMention(command.getFullPath());
-                String path = command.getFullPath();
-                if (mention == null) {
-                    mention = "**/" + path + "**";
-                }
-                String help = command.help(store).replaceFirst(path, "").trim();
-                msg.append("__**" + (i + 1) + ".**__ ");
-                msg.append(mention);
-                if (!help.isEmpty()) {
-                    msg.append(" " + help);
-                }
-                msg.append("\n");
-                msg.append("> " + command.simpleDesc().replaceAll("\n", "\n > "));
-                msg.append("\n");
-            }
-            msg.send();
-        } catch (IllegalArgumentException e) {
-            io.send(e.getMessage());
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-    }
-
 //    @Command
 //    public String setting(@Default GuildDB key, @Default String query) {
 //        return null;

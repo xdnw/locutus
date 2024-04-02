@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -86,19 +86,19 @@ public class MoneyTrades extends Command {
         for (Map.Entry<Integer, Map<ResourceType, Long>> entry : netInflows.entrySet()) {
             Integer clientId = entry.getKey();
             DBNation client = Locutus.imp().getNationDB().getNation(clientId);
-            String name = PnwUtil.getName(clientId, false);
+            String name = PW.getName(clientId, false);
             if (flags.contains('a')) {
                 response.append("\n**" + name);
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
+                response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + ResourceType.resourcesToString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
                     response.append(String.format("%16s", client.getAllianceName()));
                 }
-                response.append(String.format("%16s", PnwUtil.resourcesToString(entry.getValue())))
+                response.append(String.format("%16s", ResourceType.resourcesToString(entry.getValue())))
                         .append("```");
             }
 

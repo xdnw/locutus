@@ -8,7 +8,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -72,9 +72,9 @@ public class TransferSheet {
         for (Map.Entry<NationOrAlliance, double[]> entry : transfer.entrySet()) {
             NationOrAlliance key = entry.getKey();
             if (key.isNation()) {
-                fundsToSendNations.put(key.asNation(), PnwUtil.resourcesToMap(entry.getValue()));
+                fundsToSendNations.put(key.asNation(), ResourceType.resourcesToMap(entry.getValue()));
             } else if (key.isAlliance()) {
-                fundsToSendAAs.put(key.asAlliance(), PnwUtil.resourcesToMap(entry.getValue()));
+                fundsToSendAAs.put(key.asAlliance(), ResourceType.resourcesToMap(entry.getValue()));
             }
         }
         return write(fundsToSendNations, fundsToSendAAs);
@@ -133,7 +133,7 @@ public class TransferSheet {
                     continue;
                 } catch (IllegalArgumentException ignore) {}
                 if (rssName.toString().equalsIgnoreCase("cost_raw") || rssName.toString().equalsIgnoreCase("deposit_raw") || rssName.toString().equalsIgnoreCase("resources")) {
-                    for (Map.Entry<ResourceType, Double> entry : PnwUtil.parseResources(amtStr.toString()).entrySet()) {
+                    for (Map.Entry<ResourceType, Double> entry : ResourceType.parseResources(amtStr.toString()).entrySet()) {
                         transfer.putIfAbsent(entry.getKey(), entry.getValue());
                     }
                 }
@@ -141,7 +141,7 @@ public class TransferSheet {
             if (transfer.isEmpty()) continue;
 
             if (nameStr.contains("/alliance/")) {
-                Integer allianceId = PnwUtil.parseAllianceId(nameStr);
+                Integer allianceId = PW.parseAllianceId(nameStr);
                 if (allianceId == null) invalidNationOrAlliance.add(nameStr);
                 else {
                     transfers.put(DBAlliance.getOrCreate(allianceId), transfer);
