@@ -81,4 +81,11 @@ public interface ICity {
         double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150));
         return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
     }
+
+    @Command(desc = "Get the MMR of the city\n" +
+            "In the form `5553`\n" +
+            "Each digit is the number of buildings (barracks, factory, hangar, drydock)")
+    default String getMMR() {
+        return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + "" + getBuilding(Buildings.HANGAR) + "" + getBuilding(Buildings.DRYDOCK);
+    }
 }

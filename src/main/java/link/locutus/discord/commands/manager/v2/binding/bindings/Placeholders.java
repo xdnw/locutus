@@ -526,7 +526,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                 LocalValueStore locals = new LocalValueStore<>(store);
                 locals.addProvider(param);
                 Object val = binding.apply(locals, input);
-                return new ResolvedFunction<>(param.getType(), val,input);
+                return new ResolvedFunction<>(param.getType(), val, input);
             }
         }
 
@@ -874,11 +874,13 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     @Binding(value = "Format text containing placeholders")
     public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg) {
+        arg = wrapHashLegacy(arg);
         return getFormatFunction(store, arg, true);
     }
 
     @Binding(value = "Format text containing placeholders")
     public TypedFunction<T, Double> getDoubleFunction(ValueStore store, String arg) {
+        arg = wrapHashLegacy(arg);
         TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, true);
         Class type = (Class) result.getType();
         if (type == boolean.class || type == Boolean.class) {

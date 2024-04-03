@@ -3843,7 +3843,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, DBCity> cities = _getCitiesV3();
         double total = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
-            Double value = attribute.get(entry.getValue());
+            Double value = attribute.apply(entry.getValue());
             if (value != null) total += value;
         }
         return total / cities.size();
@@ -3854,7 +3854,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, DBCity> cities = _getCitiesV3();
         double total = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
-            Double value = attribute.get(entry.getValue());
+            Double value = attribute.apply(entry.getValue());
             if (value != null) total += value;
         }
         return total;
@@ -3865,7 +3865,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, DBCity> cities = _getCitiesV3();
         double max = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
-            Double value = attribute.get(entry.getValue());
+            Double value = attribute.apply(entry.getValue());
             if (value != null) max = Math.max(max, value);
         }
         return max;

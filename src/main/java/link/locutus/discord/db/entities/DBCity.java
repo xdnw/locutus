@@ -622,7 +622,6 @@ public class DBCity implements ICity {
         return PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
     }
 
-    //        toJavaCity(hasProject).getCachedMetrics().population
     @Command(desc = "Get the population of the city")
     public int getPopulation() {
         return calcPopulation(getProjectPredicate());
@@ -649,7 +648,6 @@ public class DBCity implements ICity {
         return powered;
     }
 
-//        toJavaCity(hasProject).profit()
     @Command(desc = "Get the profit of the city")
     public Map<ResourceType, Double> getRevenue() {
         double[] profitBuffer = ResourceType.getBuffer();
@@ -668,7 +666,6 @@ public class DBCity implements ICity {
         return ResourceType.resourcesToMap(profit);
     }
 
-//        toJavaCity(hasProject).profitConvertedCached()
     @Command(desc = "Get the monetary value of the cities income")
     public double getRevenueValue() {
         DBNation nation = getNation();
@@ -679,11 +676,4 @@ public class DBCity implements ICity {
         double grossModifier = nation == null ? 1 : nation.getGrossModifier();
         return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);
     }
-
-//        toJavaCity(hasProject).getMissileDamage()
-//        toJavaCity(hasProject).getNukeDamage()
-//        toJavaCity(hasProject).getMMR()
-    // get infra cost
-    // get land cost
-    // get buildings cost
 }

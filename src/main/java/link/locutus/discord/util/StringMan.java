@@ -426,7 +426,13 @@ public class StringMan {
             }
             result.append(c);
         }
-
+        if (inFunction) {
+            if (isValidFunction.test(function.toString())) {
+                result.append('{').append(function).append('}');
+            } else {
+                result.append('#').append(function);
+            }
+        }
         return result.toString();
     }
 

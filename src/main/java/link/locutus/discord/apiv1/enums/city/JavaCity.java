@@ -112,10 +112,6 @@ public class JavaCity implements ICity {
         return nuke_turn;
     }
 
-    public String getMMR() {
-        return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + "" + getBuilding(Buildings.HANGAR) + "" + getBuilding(Buildings.DRYDOCK);
-    }
-
     public int[] getMMRArray() {
         return new int[]{getBuilding(Buildings.BARRACKS), getBuilding(Buildings.FACTORY), getBuilding(Buildings.HANGAR), getBuilding(Buildings.DRYDOCK)};
     }
