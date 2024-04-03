@@ -96,7 +96,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
         boolean buildMoreCommerce = true;
         {
             Building minBuildingType = Buildings.get(minBuilding);
-            int amt = origin.getBuilding(minBuilding);
+            int amt = origin.getBuildingOrdinal(minBuilding);
             if (amt != 0) {
                 if (minBuildingType instanceof ResourceBuilding rssBuild) {
                     if (amt < minBuildingType.cap(hasProject)) {
@@ -125,7 +125,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
         for (int i = minBuilding; i < maxBuilding; i++) {
             Building building = Buildings.get(i);
             if (!building.canBuild(continent)) continue;
-            int amt = origin.getBuilding(i);
+            int amt = origin.getBuildingOrdinal(i);
             if (amt >= building.cap(hasProject)) continue;
 
             if (building instanceof ResourceBuilding rssBuild) {

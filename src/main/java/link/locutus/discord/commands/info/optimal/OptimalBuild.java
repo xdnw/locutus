@@ -415,7 +415,7 @@ public class OptimalBuild extends Command {
 
                     int latestBuilding = 0;
                     for (int j = Buildings.SUBWAY.ordinal(); j <= Buildings.RECYCLING_CENTER.ordinal(); j++) {
-                        if (city.getBuilding(j) > 0) latestBuilding = j;
+                        if (city.getBuildingOrdinal(j) > 0) latestBuilding = j;
                     }
 
                     double pollutionDisease = city.calcPollution(hasProject) * 0.05;

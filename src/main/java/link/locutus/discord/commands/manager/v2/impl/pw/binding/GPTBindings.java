@@ -71,6 +71,12 @@ public class GPTBindings extends BindingHelper {
         return emumSet(EmbeddingType.class, input);
     }
 
+    @WikiCategory
+    @Binding(value = "A comma separated list of wiki categories")
+    public Set<String> includeWikiCategories(String input) {
+        throw new IllegalArgumentException("Not implemented (wiki category)");
+    }
+
     @Binding
     public GPTProvider provider(PWGPTHandler handler, @Me GuildDB db, String input) {
         for (GPTProvider provider : handler.getProviderManager().getProviders(db)) {

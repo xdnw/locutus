@@ -107,7 +107,7 @@ public class DBCity implements ICity {
         // convert to full size
         byte[] full = new byte[Buildings.size()];
         for (int i = 0; i < full.length; i++) {
-            full[i] = (byte) get(i);
+            full[i] = (byte) getBuildingOrdinal(i);
         }
         return full;
 
@@ -134,7 +134,7 @@ public class DBCity implements ICity {
         return total;
     }
 
-    public int get(int ordinal) {
+    public int getBuildingOrdinal(int ordinal) {
         if (buildings3.length == Buildings.size()) {
             return buildings3[ordinal];
         } else {
@@ -148,13 +148,9 @@ public class DBCity implements ICity {
         }
     }
 
-    public int get(Building building) {
-        return get(building.ordinal());
-    }
-
     @Command(desc = "Get building amount")
     public int getBuilding(Building building) {
-        return get(building);
+        return getBuildingOrdinal(building.ordinal());
     }
 
     public void set(SCityContainer container) {
@@ -214,111 +210,111 @@ public class DBCity implements ICity {
         }
 
         byte[] newBuildings = null;
-        if (this.get(Buildings.OIL_POWER) != cityV3.getOil_power()) {
+        if (this.getBuilding(Buildings.OIL_POWER) != cityV3.getOil_power()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.OIL_POWER.ordinal()] = (byte) (int) cityV3.getOil_power();
         }
-        if (this.get(Buildings.WIND_POWER) != cityV3.getWind_power()) {
+        if (this.getBuilding(Buildings.WIND_POWER) != cityV3.getWind_power()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.WIND_POWER.ordinal()] = (byte) (int) cityV3.getWind_power();
         }
-        if (this.get(Buildings.COAL_POWER) != cityV3.getCoal_power()) {
+        if (this.getBuilding(Buildings.COAL_POWER) != cityV3.getCoal_power()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.COAL_POWER.ordinal()] = (byte) (int) cityV3.getCoal_power();
         }
-        if (this.get(Buildings.NUCLEAR_POWER) != cityV3.getNuclear_power()) {
+        if (this.getBuilding(Buildings.NUCLEAR_POWER) != cityV3.getNuclear_power()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.NUCLEAR_POWER.ordinal()] = (byte) (int) cityV3.getNuclear_power();
         }
-        if (this.get(Buildings.COAL_MINE) != cityV3.getCoal_mine()) {
+        if (this.getBuilding(Buildings.COAL_MINE) != cityV3.getCoal_mine()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.COAL_MINE.ordinal()] = (byte) (int) cityV3.getCoal_mine();
         }
-        if (this.get(Buildings.LEAD_MINE) != cityV3.getLead_mine()) {
+        if (this.getBuilding(Buildings.LEAD_MINE) != cityV3.getLead_mine()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.LEAD_MINE.ordinal()] = (byte) (int) cityV3.getLead_mine();
         }
-        if (this.get(Buildings.IRON_MINE) != cityV3.getIron_mine()) {
+        if (this.getBuilding(Buildings.IRON_MINE) != cityV3.getIron_mine()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.IRON_MINE.ordinal()] = (byte) (int) cityV3.getIron_mine();
         }
-        if (this.get(Buildings.BAUXITE_MINE) != cityV3.getBauxite_mine()) {
+        if (this.getBuilding(Buildings.BAUXITE_MINE) != cityV3.getBauxite_mine()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.BAUXITE_MINE.ordinal()] = (byte) (int) cityV3.getBauxite_mine();
         }
-        if (this.get(Buildings.OIL_WELL) != cityV3.getOil_well()) {
+        if (this.getBuilding(Buildings.OIL_WELL) != cityV3.getOil_well()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.OIL_WELL.ordinal()] = (byte) (int) cityV3.getOil_well();
         }
-        if (this.get(Buildings.URANIUM_MINE) != cityV3.getUranium_mine()) {
+        if (this.getBuilding(Buildings.URANIUM_MINE) != cityV3.getUranium_mine()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.URANIUM_MINE.ordinal()] = (byte) (int) cityV3.getUranium_mine();
         }
-        if (this.get(Buildings.FARM) != cityV3.getFarm()) {
+        if (this.getBuilding(Buildings.FARM) != cityV3.getFarm()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.FARM.ordinal()] = (byte) (int) cityV3.getFarm();
         }
-        if (this.get(Buildings.POLICE_STATION) != cityV3.getPolice_station()) {
+        if (this.getBuilding(Buildings.POLICE_STATION) != cityV3.getPolice_station()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.POLICE_STATION.ordinal()] = (byte) (int) cityV3.getPolice_station();
         }
-        if (this.get(Buildings.HOSPITAL) != cityV3.getHospital()) {
+        if (this.getBuilding(Buildings.HOSPITAL) != cityV3.getHospital()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.HOSPITAL.ordinal()] = (byte) (int) cityV3.getHospital();
         }
-        if (this.get(Buildings.RECYCLING_CENTER) != cityV3.getRecycling_center()) {
+        if (this.getBuilding(Buildings.RECYCLING_CENTER) != cityV3.getRecycling_center()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.RECYCLING_CENTER.ordinal()] = (byte) (int) cityV3.getRecycling_center();
         }
-        if (this.get(Buildings.SUBWAY) != cityV3.getSubway()) {
+        if (this.getBuilding(Buildings.SUBWAY) != cityV3.getSubway()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.SUBWAY.ordinal()] = (byte) (int) cityV3.getSubway();
         }
-        if (this.get(Buildings.SUPERMARKET) != cityV3.getSupermarket()) {
+        if (this.getBuilding(Buildings.SUPERMARKET) != cityV3.getSupermarket()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.SUPERMARKET.ordinal()] = (byte) (int) cityV3.getSupermarket();
         }
-        if (this.get(Buildings.BANK) != cityV3.getBank()) {
+        if (this.getBuilding(Buildings.BANK) != cityV3.getBank()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.BANK.ordinal()] = (byte) (int) cityV3.getBank();
         }
-        if (this.get(Buildings.MALL) != cityV3.getShopping_mall()) {
+        if (this.getBuilding(Buildings.MALL) != cityV3.getShopping_mall()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.MALL.ordinal()] = (byte) (int) cityV3.getShopping_mall();
         }
-        if (this.get(Buildings.STADIUM) != cityV3.getStadium()) {
+        if (this.getBuilding(Buildings.STADIUM) != cityV3.getStadium()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.STADIUM.ordinal()] = (byte) (int) cityV3.getStadium();
         }
-        if (this.get(Buildings.GAS_REFINERY) != cityV3.getOil_refinery()) {
+        if (this.getBuilding(Buildings.GAS_REFINERY) != cityV3.getOil_refinery()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.GAS_REFINERY.ordinal()] = (byte) (int) cityV3.getOil_refinery();
         }
-        if (this.get(Buildings.ALUMINUM_REFINERY) != cityV3.getAluminum_refinery()) {
+        if (this.getBuilding(Buildings.ALUMINUM_REFINERY) != cityV3.getAluminum_refinery()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.ALUMINUM_REFINERY.ordinal()] = (byte) (int) cityV3.getAluminum_refinery();
         }
-        if (this.get(Buildings.STEEL_MILL) != cityV3.getSteel_mill()) {
+        if (this.getBuilding(Buildings.STEEL_MILL) != cityV3.getSteel_mill()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.STEEL_MILL.ordinal()] = (byte) (int) cityV3.getSteel_mill();
         }
-        if (this.get(Buildings.MUNITIONS_FACTORY) != cityV3.getMunitions_factory()) {
+        if (this.getBuilding(Buildings.MUNITIONS_FACTORY) != cityV3.getMunitions_factory()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.MUNITIONS_FACTORY.ordinal()] = (byte) (int) cityV3.getMunitions_factory();
         }
-        if (this.get(Buildings.BARRACKS) != cityV3.getBarracks()) {
+        if (this.getBuilding(Buildings.BARRACKS) != cityV3.getBarracks()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.BARRACKS.ordinal()] = (byte) (int) cityV3.getBarracks();
         }
-        if (this.get(Buildings.FACTORY) != cityV3.getFactory()) {
+        if (this.getBuilding(Buildings.FACTORY) != cityV3.getFactory()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.FACTORY.ordinal()] = (byte) (int) cityV3.getFactory();
         }
-        if (this.get(Buildings.HANGAR) != cityV3.getHangar()) {
+        if (this.getBuilding(Buildings.HANGAR) != cityV3.getHangar()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.HANGAR.ordinal()] = (byte) (int) cityV3.getHangar();
         }
-        if (this.get(Buildings.DRYDOCK) != cityV3.getDrydock()) {
+        if (this.getBuilding(Buildings.DRYDOCK) != cityV3.getDrydock()) {
             if (newBuildings == null) newBuildings = createCopy();
             newBuildings[Buildings.DRYDOCK.ordinal()] = (byte) (int) cityV3.getDrydock();
         }
@@ -472,11 +468,11 @@ public class DBCity implements ICity {
 
     @Command(desc = "Get city mmr")
     public String getMMR() {
-        return get(Buildings.BARRACKS) + "" + get(Buildings.FACTORY) + "" + get(Buildings.HANGAR) + "" + get(Buildings.DRYDOCK);
+        return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + "" + getBuilding(Buildings.HANGAR) + "" + getBuilding(Buildings.DRYDOCK);
     }
 
     public int[] getMMRArray() {
-        return new int[]{get(Buildings.BARRACKS), get(Buildings.FACTORY), get(Buildings.HANGAR), get(Buildings.DRYDOCK)};
+        return new int[]{getBuilding(Buildings.BARRACKS), getBuilding(Buildings.FACTORY), getBuilding(Buildings.HANGAR), getBuilding(Buildings.DRYDOCK)};
     }
 
     @Command(desc = "Get city infrastructure")
@@ -556,7 +552,7 @@ public class DBCity implements ICity {
 
     @Override
     public int calcPollution(Predicate<Project> hasProject) {
-        return PW.City.getPollution(hasProject, this::get, nuke_turn);
+        return PW.City.getPollution(hasProject, this::getBuilding, nuke_turn);
     }
 
     @Command(desc = "Get city commerce")
@@ -566,7 +562,7 @@ public class DBCity implements ICity {
 
     @Override
     public int calcCommerce(Predicate<Project> hasProject) {
-        return PW.City.getCommerce(hasProject, this::get);
+        return PW.City.getCommerce(hasProject, this::getBuilding);
     }
 
     @Command(desc = "Get the required infrastructure level for the number of buildings")
@@ -577,7 +573,7 @@ public class DBCity implements ICity {
     public Map<ResourceType, Double> getBuildingCost() {
         double[] costArr = ResourceType.getBuffer();
         for (Building building : Buildings.values()) {
-            int amt = get(building);
+            int amt = getBuilding(building);
             if (amt == 0) continue;
             building.cost(costArr, amt);
         }
@@ -588,7 +584,7 @@ public class DBCity implements ICity {
     public double getBuildingMarketCost() {
         double cost = 0;
         for (Building building : Buildings.values()) {
-            int amt = get(building);
+            int amt = getBuilding(building);
             if (amt == 0) continue;
             cost += building.getNMarketCost(amt);
         }
@@ -602,8 +598,8 @@ public class DBCity implements ICity {
 
     @Override
     public double calcCrime(Predicate<Project> hasProject) {
-        int commerce = PW.City.getCommerce(hasProject, this::get);
-        return PW.City.getCrime(hasProject, this::get, infra_cents, commerce);
+        int commerce = PW.City.getCommerce(hasProject, this::getBuilding);
+        return PW.City.getCrime(hasProject, this::getBuilding, infra_cents, commerce);
     }
 
     @Command(desc = "Get the number of free infrastructure points in the city")
@@ -622,8 +618,8 @@ public class DBCity implements ICity {
 
     @Override
     public double calcDisease(Predicate<Project> hasProject) {
-        double pollution = PW.City.getPollution(hasProject, this::get, nuke_turn);
-        return PW.City.getDisease(hasProject, this::get, infra_cents, land_cents, pollution);
+        double pollution = PW.City.getPollution(hasProject, this::getBuilding, nuke_turn);
+        return PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
     }
 
     //        toJavaCity(hasProject).getCachedMetrics().population
@@ -634,10 +630,10 @@ public class DBCity implements ICity {
 
     @Override
     public int calcPopulation(Predicate<Project> hasProject) {
-        int pollution = PW.City.getPollution(hasProject, this::get, nuke_turn);
-        double disease = PW.City.getDisease(hasProject, this::get, infra_cents, land_cents, pollution);
-        int commerce = PW.City.getCommerce(hasProject, this::get);
-        double crime = PW.City.getCrime(hasProject, this::get, infra_cents, commerce);
+        int pollution = PW.City.getPollution(hasProject, this::getBuilding, nuke_turn);
+        double disease = PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
+        int commerce = PW.City.getCommerce(hasProject, this::getBuilding);
+        double crime = PW.City.getCrime(hasProject, this::getBuilding, infra_cents, commerce);
         int ageDays = getAgeDays();
         return PW.City.getPopulation(infra_cents, crime, disease, ageDays);
     }
@@ -645,10 +641,10 @@ public class DBCity implements ICity {
     @Command(desc = "Get the amount of infrastructure powered by buildings")
     public int getPoweredInfra() {
         int powered = 0;
-        powered += get(Buildings.WIND_POWER) * Buildings.WIND_POWER.getInfraMax();
-        powered += get(Buildings.COAL_POWER) * Buildings.COAL_POWER.getInfraMax();
-        powered += get(Buildings.OIL_POWER) * Buildings.OIL_POWER.getInfraMax();
-        powered += get(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.getInfraMax();
+        powered += getBuilding(Buildings.WIND_POWER) * Buildings.WIND_POWER.getInfraMax();
+        powered += getBuilding(Buildings.COAL_POWER) * Buildings.COAL_POWER.getInfraMax();
+        powered += getBuilding(Buildings.OIL_POWER) * Buildings.OIL_POWER.getInfraMax();
+        powered += getBuilding(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.getInfraMax();
 
         return powered;
     }

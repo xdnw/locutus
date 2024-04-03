@@ -1639,7 +1639,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, DBCity> cities = _getCitiesV3();
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
             DBCity city = entry.getValue();
-            total += city.get(building);
+            total += city.getBuilding(building);
         }
         return total / (double) cities.size();
     }
@@ -4926,7 +4926,7 @@ public class DBNation implements NationOrAlliance {
         if (buildings != null) {
             for (DBCity city : cities) {
                 for (Building building : buildings) {
-                    total += city.get(building);
+                    total += city.getBuilding(building);
                 }
             }
         } else {
@@ -4948,7 +4948,7 @@ public class DBNation implements NationOrAlliance {
         if (buildings != null) {
             for (DBCity city : cities) {
                 for (Building building : buildings) {
-                    total += city.get(building);
+                    total += city.getBuilding(building);
                 }
             }
         } else {

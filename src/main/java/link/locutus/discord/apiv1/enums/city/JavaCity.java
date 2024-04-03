@@ -740,12 +740,12 @@ public class JavaCity implements ICity {
         return this;
     }
 
-    public int getBuilding(int ordinal) {
+    public int getBuildingOrdinal(int ordinal) {
         return buildings[ordinal];
     }
 
     public int getBuilding(Building building) {
-        return getBuilding(building.ordinal());
+        return getBuildingOrdinal(building.ordinal());
     }
 
     public int getRequiredInfra() {
