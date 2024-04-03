@@ -155,8 +155,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncBans")
                 public static class bans extends CommandRef {
                     public static final bans cmd = new bans();
-                    public bans create() {
-                        return createArgs();
+                    public bans create(String discordBans) {
+                        return createArgs("discordBans", discordBans);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncCitiesTest")
@@ -445,8 +445,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="leftAA")
             public static class departures extends CommandRef {
                 public static final departures cmd = new departures();
-                public departures create(String nationOrAlliance, String time, String filter, String ignoreInactives, String ignoreVM, String ignoreMembers, String listIds) {
-                    return createArgs("nationOrAlliance", nationOrAlliance, "time", time, "filter", filter, "ignoreInactives", ignoreInactives, "ignoreVM", ignoreVM, "ignoreMembers", ignoreMembers, "listIds", listIds);
+                public departures create(String nationOrAlliance, String time, String filter, String ignoreInactives, String ignoreVM, String ignoreMembers, String listIds, String sheet) {
+                    return createArgs("nationOrAlliance", nationOrAlliance, "time", time, "filter", filter, "ignoreInactives", ignoreInactives, "ignoreVM", ignoreVM, "ignoreMembers", ignoreMembers, "listIds", listIds, "sheet", sheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="editAlliance")
@@ -529,11 +529,25 @@ public class CM {
                         return createArgs("alliance", alliance);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="listMerges")
+                public static class merges extends CommandRef {
+                    public static final merges cmd = new merges();
+                    public merges create(String sheet, String threshold, String dayWindow, String minMembers) {
+                        return createArgs("sheet", sheet, "threshold", threshold, "dayWindow", dayWindow, "minMembers", minMembers);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsByTurn")
                 public static class metricsByTurn extends CommandRef {
                     public static final metricsByTurn cmd = new metricsByTurn();
                     public metricsByTurn create(String metric, String coalition, String time, String attachJson, String attachCsv) {
                         return createArgs("metric", metric, "coalition", coalition, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="militaryRanking")
+                public static class militarization extends CommandRef {
+                    public static final militarization cmd = new militarization();
+                    public militarization create(String nations2, String top_n_alliances, String sheet, String removeUntaxable, String removeInactive, String includeApplicants, String snapshotDate) {
+                        return createArgs("nations2", nations2, "top_n_alliances", top_n_alliances, "sheet", sheet, "removeUntaxable", removeUntaxable, "removeInactive", removeInactive, "includeApplicants", includeApplicants, "snapshotDate", snapshotDate);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceRanking")
@@ -727,8 +741,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="unlockTransfers")
             public static class unlockTransfers extends CommandRef {
                 public static final unlockTransfers cmd = new unlockTransfers();
-                public unlockTransfers create(String nationOrAllianceOrGuild) {
-                    return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild);
+                public unlockTransfers create(String nationOrAllianceOrGuild, String unlockAll) {
+                    return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "unlockAll", unlockAll);
                 }
             }
         }
@@ -997,6 +1011,13 @@ public class CM {
                         return createArgs("listRoot", listRoot);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="embeddingSelect")
+                public static class select extends CommandRef {
+                    public static final select cmd = new select();
+                    public select create(String excludeTypes, String includeWikiCategories, String excludeWikiCategories, String excludeSources, String addSources) {
+                        return createArgs("excludeTypes", excludeTypes, "includeWikiCategories", includeWikiCategories, "excludeWikiCategories", excludeWikiCategories, "excludeSources", excludeSources, "addSources", addSources);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="view_document")
                 public static class view extends CommandRef {
                     public static final view cmd = new view();
@@ -1061,8 +1082,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="optimalBuild")
             public static class optimalBuild extends CommandRef {
                 public static final optimalBuild cmd = new optimalBuild();
-                public optimalBuild create(String build, String days, String buildMMR, String age, String infra, String baseReducedInfra, String land, String diseaseCap, String crimeCap, String minPopulation, String radiation, String taxRate, String useRawsForManu, String writePlaintext, String nationalProjects, String moneyPositive, String geographicContinent) {
-                    return createArgs("build", build, "days", days, "buildMMR", buildMMR, "age", age, "infra", infra, "baseReducedInfra", baseReducedInfra, "land", land, "diseaseCap", diseaseCap, "crimeCap", crimeCap, "minPopulation", minPopulation, "radiation", radiation, "taxRate", taxRate, "useRawsForManu", useRawsForManu, "writePlaintext", writePlaintext, "nationalProjects", nationalProjects, "moneyPositive", moneyPositive, "geographicContinent", geographicContinent);
+                public optimalBuild create(String build, String days, String buildMMR, String age, String infra, String baseReducedInfra, String land, String radiation, String diseaseCap, String crimeCap, String minPopulation, String useRawsForManu, String moneyPositive, String nationalProjects, String geographicContinent, String taxRate, String writePlaintext) {
+                    return createArgs("build", build, "days", days, "buildMMR", buildMMR, "age", age, "infra", infra, "baseReducedInfra", baseReducedInfra, "land", land, "radiation", radiation, "diseaseCap", diseaseCap, "crimeCap", crimeCap, "minPopulation", minPopulation, "useRawsForManu", useRawsForManu, "moneyPositive", moneyPositive, "nationalProjects", nationalProjects, "geographicContinent", geographicContinent, "taxRate", taxRate, "writePlaintext", writePlaintext);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="cityRevenue")
@@ -1121,8 +1142,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="calculateColorRevenue")
             public static class revenue extends CommandRef {
                 public static final revenue cmd = new revenue();
-                public revenue create(String forceAqua, String forceBlack, String forceBlue, String forceBrown, String forceGreen, String forceLime, String forceMaroon, String forceOlive, String forceOrange, String forcePink, String forcePurple, String forceRed, String forceWhite, String forceYellow, String forceGrayOrBeige) {
-                    return createArgs("forceAqua", forceAqua, "forceBlack", forceBlack, "forceBlue", forceBlue, "forceBrown", forceBrown, "forceGreen", forceGreen, "forceLime", forceLime, "forceMaroon", forceMaroon, "forceOlive", forceOlive, "forceOrange", forceOrange, "forcePink", forcePink, "forcePurple", forcePurple, "forceRed", forceRed, "forceWhite", forceWhite, "forceYellow", forceYellow, "forceGrayOrBeige", forceGrayOrBeige);
+                public revenue create(String set_aqua, String set_black, String set_blue, String set_brown, String set_green, String set_lime, String set_maroon, String set_olive, String set_orange, String set_pink, String set_purple, String set_red, String set_white, String set_yellow, String set_gray_or_beige) {
+                    return createArgs("set_aqua", set_aqua, "set_black", set_black, "set_blue", set_blue, "set_brown", set_brown, "set_green", set_green, "set_lime", set_lime, "set_maroon", set_maroon, "set_olive", set_olive, "set_orange", set_orange, "set_pink", set_pink, "set_purple", set_purple, "set_red", set_red, "set_white", set_white, "set_yellow", set_yellow, "set_gray_or_beige", set_gray_or_beige);
                 }
             }
         }
@@ -1146,8 +1167,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importConflictData")
             public static class clone extends CommandRef {
                 public static final clone cmd = new clone();
-                public clone create(String ctowned, String graphData, String allianceNames, String wiki) {
-                    return createArgs("ctowned", ctowned, "graphData", graphData, "allianceNames", allianceNames, "wiki", wiki);
+                public clone create(String ctowned, String graphData, String allianceNames, String wiki, String all) {
+                    return createArgs("ctowned", ctowned, "graphData", graphData, "allianceNames", allianceNames, "wiki", wiki, "all", all);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="addConflict")
@@ -1195,8 +1216,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="syncConflictData")
             public static class sync extends CommandRef {
                 public static final sync cmd = new sync();
-                public sync create(String conflicts, String includeGraphs) {
-                    return createArgs("conflicts", conflicts, "includeGraphs", includeGraphs);
+                public sync create(String conflicts, String includeGraphs, String reloadWars) {
+                    return createArgs("conflicts", conflicts, "includeGraphs", includeGraphs, "reloadWars", reloadWars);
                 }
             }
         }
@@ -1271,8 +1292,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="convertNegativeDeposits")
             public static class convertNegative extends CommandRef {
                 public static final convertNegative cmd = new convertNegative();
-                public convertNegative create(String nations, String negativeResources, String convertTo, String includeGrants, String depositType, String conversionFactor, String sheet, String note) {
-                    return createArgs("nations", nations, "negativeResources", negativeResources, "convertTo", convertTo, "includeGrants", includeGrants, "depositType", depositType, "conversionFactor", conversionFactor, "sheet", sheet, "note", note);
+                public convertNegative create(String nations, String negativeResources, String convertTo, String includeGrants, String depositType, String conversionFactor, String note, String sheet) {
+                    return createArgs("nations", nations, "negativeResources", negativeResources, "convertTo", convertTo, "includeGrants", includeGrants, "depositType", depositType, "conversionFactor", conversionFactor, "note", note, "sheet", sheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="viewFlow")
@@ -1544,6 +1565,13 @@ public class CM {
                 public static final joke cmd = new joke();
                 public joke create() {
                     return createArgs();
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="resetCityNames")
+            public static class reset_borgs_cities extends CommandRef {
+                public static final reset_borgs_cities cmd = new reset_borgs_cities();
+                public reset_borgs_cities create(String name) {
+                    return createArgs("name", name);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="say")
@@ -1887,8 +1915,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="mailCommandOutput")
             public static class command extends CommandRef {
                 public static final command cmd = new command();
-                public command create(String nations, String subject, String command, String body, String sheet) {
-                    return createArgs("nations", nations, "subject", subject, "command", command, "body", body, "sheet", sheet);
+                public command create(String nations, String subject, String command, String body, String sheet, String sendDM, String skipMail) {
+                    return createArgs("nations", nations, "subject", subject, "command", command, "body", body, "sheet", sheet, "sendDM", sendDM, "skipMail", skipMail);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="testRecruitMessage")
@@ -1968,8 +1996,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="leftAA")
             public static class departures extends CommandRef {
                 public static final departures cmd = new departures();
-                public departures create(String nationOrAlliance, String time, String filter, String ignoreInactives, String ignoreVM, String ignoreMembers, String listIds) {
-                    return createArgs("nationOrAlliance", nationOrAlliance, "time", time, "filter", filter, "ignoreInactives", ignoreInactives, "ignoreVM", ignoreVM, "ignoreMembers", ignoreMembers, "listIds", listIds);
+                public departures create(String nationOrAlliance, String time, String filter, String ignoreInactives, String ignoreVM, String ignoreMembers, String listIds, String sheet) {
+                    return createArgs("nationOrAlliance", nationOrAlliance, "time", time, "filter", filter, "ignoreInactives", ignoreInactives, "ignoreVM", ignoreVM, "ignoreMembers", ignoreMembers, "listIds", listIds, "sheet", sheet);
                 }
             }
             public static class list{
@@ -2283,15 +2311,15 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="offshore")
             public static class send extends CommandRef {
                 public static final send cmd = new send();
-                public send create(String to, String keepAmount, String account, String sendAmount) {
-                    return createArgs("to", to, "keepAmount", keepAmount, "account", account, "sendAmount", sendAmount);
+                public send create(String to, String account, String keepAmount, String sendAmount) {
+                    return createArgs("to", to, "account", account, "keepAmount", keepAmount, "sendAmount", sendAmount);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="unlockTransfers")
             public static class unlockTransfers extends CommandRef {
                 public static final unlockTransfers cmd = new unlockTransfers();
-                public unlockTransfers create(String nationOrAllianceOrGuild) {
-                    return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild);
+                public unlockTransfers create(String nationOrAllianceOrGuild, String unlockAll) {
+                    return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "unlockAll", unlockAll);
                 }
             }
         }
@@ -3952,8 +3980,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="IngameNationTransfersByReceiver")
             public static class IngameNationTransfersByReceiver extends CommandRef {
                 public static final IngameNationTransfersByReceiver cmd = new IngameNationTransfersByReceiver();
-                public IngameNationTransfersByReceiver create(String receivers, String timeframe, String sheet) {
-                    return createArgs("receivers", receivers, "timeframe", timeframe, "sheet", sheet);
+                public IngameNationTransfersByReceiver create(String receivers, String startTime, String endTime, String sheet) {
+                    return createArgs("receivers", receivers, "startTime", startTime, "endTime", endTime, "sheet", sheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="IngameNationTransfersBySender")
@@ -3987,8 +4015,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="getNationsInternalTransfers")
             public static class getNationsInternalTransfers extends CommandRef {
                 public static final getNationsInternalTransfers cmd = new getNationsInternalTransfers();
-                public getNationsInternalTransfers create(String nations, String timeframe, String sheet) {
-                    return createArgs("nations", nations, "timeframe", timeframe, "sheet", sheet);
+                public getNationsInternalTransfers create(String nations, String startTime, String endTime, String sheet) {
+                    return createArgs("nations", nations, "startTime", startTime, "endTime", endTime, "sheet", sheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="projectCostCsv")
@@ -4152,8 +4180,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="convertTKRSpySheet")
             public static class convertTKRSpySheet extends CommandRef {
                 public static final convertTKRSpySheet cmd = new convertTKRSpySheet();
-                public convertTKRSpySheet create(String input, String output, String groupByAttacker, String forceUpdate) {
-                    return createArgs("input", input, "output", output, "groupByAttacker", groupByAttacker, "forceUpdate", forceUpdate);
+                public convertTKRSpySheet create(String input, String output, String groupByAttacker, String force) {
+                    return createArgs("input", input, "output", output, "groupByAttacker", groupByAttacker, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="convertDtCSpySheet")
@@ -4187,8 +4215,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="warSheet")
             public static class warSheet extends CommandRef {
                 public static final warSheet cmd = new warSheet();
-                public warSheet create(String allies, String enemies, String cutoff, String includeConcludedWars, String sheetId) {
-                    return createArgs("allies", allies, "enemies", enemies, "cutoff", cutoff, "includeConcludedWars", includeConcludedWars, "sheetId", sheetId);
+                public warSheet create(String allies, String enemies, String cutoff, String includeConcludedWars, String sheet) {
+                    return createArgs("allies", allies, "enemies", enemies, "cutoff", cutoff, "includeConcludedWars", includeConcludedWars, "sheet", sheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="warchestSheet")
@@ -4278,8 +4306,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="convertTKRSpySheet")
                 public static class convertTKR extends CommandRef {
                     public static final convertTKR cmd = new convertTKR();
-                    public convertTKR create(String input, String output, String groupByAttacker, String forceUpdate) {
-                        return createArgs("input", input, "output", output, "groupByAttacker", groupByAttacker, "forceUpdate", forceUpdate);
+                    public convertTKR create(String input, String output, String groupByAttacker, String force) {
+                        return createArgs("input", input, "output", output, "groupByAttacker", groupByAttacker, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="convertDtCSpySheet")
@@ -4371,6 +4399,15 @@ public class CM {
                     return createArgs("resources", resources, "nationList", nationList, "ignoreMilitaryUpkeep", ignoreMilitaryUpkeep, "ignoreTradeBonus", ignoreTradeBonus, "ignoreNationBonus", ignoreNationBonus, "includeNegative", includeNegative, "listByNation", listByNation, "listAverage", listAverage, "uploadFile", uploadFile, "includeInactive", includeInactive, "snapshotDate", snapshotDate);
                 }
             }
+            public static class global_metrics{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="orbisStatByDay")
+                public static class by_time extends CommandRef {
+                    public static final by_time cmd = new by_time();
+                    public by_time create(String metrics, String start, String end, String attachJson, String attachCsv) {
+                        return createArgs("metrics", metrics, "start", start, "end", end, "attachJson", attachJson, "attachCsv", attachCsv);
+                    }
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="inflows")
             public static class inflows extends CommandRef {
                 public static final inflows cmd = new inflows();
@@ -4459,6 +4496,15 @@ public class CM {
             }
         }
         public static class stats_war{
+            public static class attack_breakdown{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="attackBreakdownSheet")
+                public static class sheet extends CommandRef {
+                    public static final sheet cmd = new sheet();
+                    public sheet create(String attackers, String defenders, String start, String end, String sheet, String checkActivity) {
+                        return createArgs("attackers", attackers, "defenders", defenders, "start", start, "end", end, "sheet", sheet, "checkActivity", checkActivity);
+                    }
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="counterStats")
             public static class counterStats extends CommandRef {
                 public static final counterStats cmd = new counterStats();
@@ -4483,8 +4529,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="warCostRanking")
             public static class warCostRanking extends CommandRef {
                 public static final warCostRanking cmd = new warCostRanking();
-                public warCostRanking create(String timeStart, String timeEnd, String coalition1, String coalition2, String excludeInfra, String excludeConsumption, String excludeLoot, String excludeBuildings, String excludeUnits, String total, String netProfit, String damage, String netTotal, String groupByAlliance, String scalePerCity, String unitKill, String unitLoss, String attackType, String allowedWarTypes, String allowedWarStatuses, String allowedAttacks, String onlyRankCoalition1, String resource, String uploadFile) {
-                    return createArgs("timeStart", timeStart, "timeEnd", timeEnd, "coalition1", coalition1, "coalition2", coalition2, "excludeInfra", excludeInfra, "excludeConsumption", excludeConsumption, "excludeLoot", excludeLoot, "excludeBuildings", excludeBuildings, "excludeUnits", excludeUnits, "total", total, "netProfit", netProfit, "damage", damage, "netTotal", netTotal, "groupByAlliance", groupByAlliance, "scalePerCity", scalePerCity, "unitKill", unitKill, "unitLoss", unitLoss, "attackType", attackType, "allowedWarTypes", allowedWarTypes, "allowedWarStatuses", allowedWarStatuses, "allowedAttacks", allowedAttacks, "onlyRankCoalition1", onlyRankCoalition1, "resource", resource, "uploadFile", uploadFile);
+                public warCostRanking create(String timeStart, String timeEnd, String coalition1, String coalition2, String onlyRankCoalition1, String type, String stat, String excludeInfra, String excludeConsumption, String excludeLoot, String excludeBuildings, String excludeUnits, String groupByAlliance, String scalePerWar, String scalePerCity, String allowedWarTypes, String allowedWarStatuses, String allowedAttacks, String onlyOffensiveWars, String onlyDefensiveWars, String uploadFile) {
+                    return createArgs("timeStart", timeStart, "timeEnd", timeEnd, "coalition1", coalition1, "coalition2", coalition2, "onlyRankCoalition1", onlyRankCoalition1, "type", type, "stat", stat, "excludeInfra", excludeInfra, "excludeConsumption", excludeConsumption, "excludeLoot", excludeLoot, "excludeBuildings", excludeBuildings, "excludeUnits", excludeUnits, "groupByAlliance", groupByAlliance, "scalePerWar", scalePerWar, "scalePerCity", scalePerCity, "allowedWarTypes", allowedWarTypes, "allowedWarStatuses", allowedWarStatuses, "allowedAttacks", allowedAttacks, "onlyOffensiveWars", onlyOffensiveWars, "onlyDefensiveWars", onlyDefensiveWars, "uploadFile", uploadFile);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="warRanking")
@@ -4764,33 +4810,33 @@ public class CM {
                 }
             }
             public static class internal{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="sendAA")
-                public static class from_offshore_account extends CommandRef {
-                    public static final from_offshore_account cmd = new from_offshore_account();
-                    public from_offshore_account create(String amount, String receiver, String receiverGuild, String receiverAlliance, String senderAlliance, String senderNation, String confirm) {
-                        return createArgs("amount", amount, "receiver", receiver, "receiverGuild", receiverGuild, "receiverAlliance", receiverAlliance, "senderAlliance", senderAlliance, "senderNation", senderNation, "confirm", confirm);
-                    }
-                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="send")
                 public static class from_nation_account extends CommandRef {
                     public static final from_nation_account cmd = new from_nation_account();
-                    public from_nation_account create(String amount, String receiver, String receiverGuild, String receiverAlliance, String senderAlliance, String confirm) {
-                        return createArgs("amount", amount, "receiver", receiver, "receiverGuild", receiverGuild, "receiverAlliance", receiverAlliance, "senderAlliance", senderAlliance, "confirm", confirm);
+                    public from_nation_account create(String amount, String receiver_account, String receiver_nation, String sender_alliance, String confirm) {
+                        return createArgs("amount", amount, "receiver_account", receiver_account, "receiver_nation", receiver_nation, "sender_alliance", sender_alliance, "confirm", confirm);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="sendAA")
+                public static class from_offshore_account extends CommandRef {
+                    public static final from_offshore_account cmd = new from_offshore_account();
+                    public from_offshore_account create(String amount, String receiver_account, String receiver_nation, String sender_alliance, String sender_nation, String confirm) {
+                        return createArgs("amount", amount, "receiver_account", receiver_account, "receiver_nation", receiver_nation, "sender_alliance", sender_alliance, "sender_nation", sender_nation, "confirm", confirm);
                     }
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="offshore")
             public static class offshore extends CommandRef {
                 public static final offshore cmd = new offshore();
-                public offshore create(String to, String keepAmount, String account, String sendAmount) {
-                    return createArgs("to", to, "keepAmount", keepAmount, "account", account, "sendAmount", sendAmount);
+                public offshore create(String to, String account, String keepAmount, String sendAmount) {
+                    return createArgs("to", to, "account", account, "keepAmount", keepAmount, "sendAmount", sendAmount);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="disburse")
             public static class raws extends CommandRef {
                 public static final raws cmd = new raws();
-                public raws create(String nationList, String daysDefault, String depositType, String noDailyCash, String noCash, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String decay, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
-                    return createArgs("nationList", nationList, "daysDefault", daysDefault, "depositType", depositType, "noDailyCash", noDailyCash, "noCash", noCash, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "decay", decay, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
+                public raws create(String nationList, String days, String no_daily_cash, String no_cash, String bank_note, String expire, String decay, String deduct_as_cash, String nation_account, String escrow_mode, String ingame_bank, String offshore_account, String tax_account, String use_receiver_tax_account, String bypass_checks, String force) {
+                    return createArgs("nationList", nationList, "days", days, "no_daily_cash", no_daily_cash, "no_cash", no_cash, "bank_note", bank_note, "expire", expire, "decay", decay, "deduct_as_cash", deduct_as_cash, "nation_account", nation_account, "escrow_mode", escrow_mode, "ingame_bank", ingame_bank, "offshore_account", offshore_account, "tax_account", tax_account, "use_receiver_tax_account", use_receiver_tax_account, "bypass_checks", bypass_checks, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transfer")
@@ -4803,8 +4849,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="withdraw")
             public static class self extends CommandRef {
                 public static final self cmd = new self();
-                public self create(String transfer, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String decay, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
-                    return createArgs("transfer", transfer, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "decay", decay, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
+                public self create(String amount, String only_send_missing, String bank_note, String expire, String decay, String deduct_as_cash, String ingame_bank, String offshore_account, String nation_account, String escrow_mode, String tax_account, String use_receiver_tax_account, String bypass_checks, String force) {
+                    return createArgs("amount", amount, "only_send_missing", only_send_missing, "bank_note", bank_note, "expire", expire, "decay", decay, "deduct_as_cash", deduct_as_cash, "ingame_bank", ingame_bank, "offshore_account", offshore_account, "nation_account", nation_account, "escrow_mode", escrow_mode, "tax_account", tax_account, "use_receiver_tax_account", use_receiver_tax_account, "bypass_checks", bypass_checks, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="warchest")
@@ -4828,6 +4874,13 @@ public class CM {
                 public static final cancel cmd = new cancel();
                 public cancel create(String senders) {
                     return createArgs("senders", senders);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="nap")
+            public static class gw_nap extends CommandRef {
+                public static final gw_nap cmd = new gw_nap();
+                public gw_nap create() {
+                    return createArgs();
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands.class,method="treaties")
@@ -4917,8 +4970,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="counter")
                 public static class nation extends CommandRef {
                     public static final nation cmd = new nation();
-                    public nation create(String target, String counterWith, String allowAttackersWithMaxOffensives, String filterWeak, String onlyActive, String requireDiscord, String ping, String allowSameAlliance) {
-                        return createArgs("target", target, "counterWith", counterWith, "allowAttackersWithMaxOffensives", allowAttackersWithMaxOffensives, "filterWeak", filterWeak, "onlyActive", onlyActive, "requireDiscord", requireDiscord, "ping", ping, "allowSameAlliance", allowSameAlliance);
+                    public nation create(String target, String counterWith, String allowAttackersWithMaxOffensives, String filterWeak, String onlyActive, String requireDiscord, String allowSameAlliance, String ping) {
+                        return createArgs("target", target, "counterWith", counterWith, "allowAttackersWithMaxOffensives", allowAttackersWithMaxOffensives, "filterWeak", filterWeak, "onlyActive", onlyActive, "requireDiscord", requireDiscord, "allowSameAlliance", allowSameAlliance, "ping", ping);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="counterSheet")
@@ -5105,8 +5158,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="warSheet")
                 public static class warSheet extends CommandRef {
                     public static final warSheet cmd = new warSheet();
-                    public warSheet create(String allies, String enemies, String cutoff, String includeConcludedWars, String sheetId) {
-                        return createArgs("allies", allies, "enemies", enemies, "cutoff", cutoff, "includeConcludedWars", includeConcludedWars, "sheetId", sheetId);
+                    public warSheet create(String allies, String enemies, String cutoff, String includeConcludedWars, String sheet) {
+                        return createArgs("allies", allies, "enemies", enemies, "cutoff", cutoff, "includeConcludedWars", includeConcludedWars, "sheet", sheet);
                     }
                 }
             }
