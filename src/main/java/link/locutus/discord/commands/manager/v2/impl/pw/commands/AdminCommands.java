@@ -286,14 +286,16 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncBans() throws SQLException {
+    public String syncBans(@Default("false") boolean discordBans) throws SQLException {
         Locutus.imp().getNationDB().updateBans(Event::post);
+        if (discordBans) {
+            int size = syncDiscordBans();
+            return "Done! Synced " + size + " bans";
+        }
         return "Done! (see console)";
     }
 
-    @Command
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncDiscordBans() {
+    private int syncDiscordBans() {
         List<Guild> checkGuilds = new ArrayList<>();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (db.isAlliance()) {
@@ -322,7 +324,7 @@ public class AdminCommands {
         }
 
         Locutus.imp().getDiscordDB().addBans(toAdd);
-        return "Done! Saved " + toAdd.size() + " bans.";
+        return toAdd.size();
     }
 
     @Command

@@ -202,7 +202,6 @@ public class CommandManager2 {
 
         getCommands().registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertRequiredValue", "min_value");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncWarrooms", "warrooms");
-        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncDiscordBans", "bans");
         getCommands().registerMethod(new AdminCommands(), List.of("fun"), "resetCityNames", "reset_borgs_cities");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "queue"), "conditionalMessageSettings", "custom_messages");
 
