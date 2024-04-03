@@ -334,10 +334,10 @@ public class OptimalBuild extends Command {
                         profit[i] *= rssFactor;
                     }
                 }
-                return ResourceType.convertedTotal(profit) / javaCity.getImpTotal();
+                return ResourceType.convertedTotal(profit) / javaCity.getNumBuildings();
             };
         } else {
-            valueFunc = javaCity -> javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getImpTotal();
+            valueFunc = javaCity -> javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getNumBuildings();
         }
 
         if (infraLow != null) {

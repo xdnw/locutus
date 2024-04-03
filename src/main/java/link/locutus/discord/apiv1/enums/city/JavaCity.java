@@ -14,8 +14,6 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.search.BFSUtil;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -23,7 +21,6 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import it.unimi.dsi.fastutil.PriorityQueue;
@@ -490,7 +487,7 @@ public class JavaCity implements ICity {
                                  Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
         Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
         Function<JavaCity, Double> valueFunction = javaCity -> {
-            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getImpTotal();
+            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getNumBuildings();
         };
         valueFunction = modifyValueFunc.apply(valueFunction);
 
@@ -509,13 +506,13 @@ public class JavaCity implements ICity {
         zeroed.zeroNonMilitary();
 
         int maxImp = (int) (this.getInfra() / 50);
-        if (maxImp == zeroed.getImpTotal()) return zeroed;
+        if (maxImp == zeroed.getNumBuildings()) return zeroed;
 
         double baseProfit = origin.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
         double zeroedProfit = zeroed.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
 
-        int baseImp = zeroed.getImpTotal();
-        int impOverZero = maxImp - zeroed.getImpTotal();
+        int baseImp = zeroed.getNumBuildings();
+        int impOverZero = maxImp - zeroed.getNumBuildings();
         double baseProfitNonTax = (baseProfit - zeroedProfit);
         double profitPerImp = baseProfitNonTax / impOverZero;
 
@@ -527,7 +524,7 @@ public class JavaCity implements ICity {
 
 //            int imp = javaCity.getImpTotal() - baseImp;
 //            double expectedProfit = profitPerImp * imp;
-            return (newProfit * days - cost) / javaCity.getImpTotal();
+            return (newProfit * days - cost) / javaCity.getNumBuildings();
         };
 
         valueFunction = modifyValueFunc.apply(valueFunction);
@@ -559,7 +556,7 @@ public class JavaCity implements ICity {
 
         valueCompletionFunction = factor -> (Function<Map.Entry<JavaCity, Integer>, Double>) entry -> {
             Double parentValue = valueFunction2.apply(entry);
-            int imps = entry.getKey().getImpTotal();
+            int imps = entry.getKey().getNumBuildings();
 
             if (factor <= 1) {
                 parentValue = (parentValue * imps) * factor + (parentValue * (1 - factor));
@@ -720,7 +717,7 @@ public class JavaCity implements ICity {
         }
     }
 
-    public int getImpTotal() {
+    public int getNumBuildings() {
         return numBuildings;
     }
 
@@ -752,7 +749,7 @@ public class JavaCity implements ICity {
     }
 
     public int getRequiredInfra() {
-        return getImpTotal() * 50;
+        return getNumBuildings() * 50;
     }
 
     public double getInfra() {

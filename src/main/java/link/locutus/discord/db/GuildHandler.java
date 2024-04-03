@@ -2312,7 +2312,7 @@ public class GuildHandler {
         if (channel != null) {
             if (existing.infra > 100 && Math.round(existing.infra) % 50 != 0 && newCity.infra > 1000) {
                 JavaCity cityBuild = nation.getCityMap(false).get(existing.cityId);
-                if (cityBuild != null && cityBuild.getImpTotal() > 30) {
+                if (cityBuild != null && cityBuild.getNumBuildings() > 30) {
                     String title = "Rebuilt infra: " + existing.infra + "->" + newCity.infra;
                     StringBuilder body = new StringBuilder();
                     body.append(MarkupUtil.markdownUrl("City Link", PW.City.getCityUrl(existing.cityId)));
@@ -2321,7 +2321,7 @@ public class GuildHandler {
                     if (user != null) {
                         body.append(" | ").append(user.getAsMention());
                     }
-                    body.append("\nImprovement total: ").append(cityBuild.getImpTotal());
+                    body.append("\nImprovement total: ").append(cityBuild.getNumBuildings());
 
                     DiscordUtil.createEmbedCommand(channel, title, body.toString());
                 }

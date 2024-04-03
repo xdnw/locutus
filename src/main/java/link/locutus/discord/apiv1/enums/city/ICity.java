@@ -37,13 +37,20 @@ public interface ICity {
 
     int getAgeDays();
 
+    public int getNumBuildings();
+
+    @Command(desc = "Get the required infrastructure level for the number of buildings")
+    default int getRequiredInfra() {
+        return getNumBuildings() * 50;
+    }
+
     @Command(desc = "The city build json")
     default String toJson() {
         JsonObject object = new JsonObject();
 
         Map<String, String> json = new HashMap<>();
         json.put("infra_needed", getRequiredInfra() + "");
-        json.put("imp_total", getImpTotal() + "");
+        json.put("imp_total", getNumBuildings() + "");
         if (getLand() > 0) {
             json.put("land", getLand() + "");
         }

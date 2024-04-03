@@ -273,7 +273,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             @Override
             public Boolean apply(DBNation receiver) {
                 for (CityBuild value : parsed.values()) {
-                    if (new JavaCity(value).getImpTotal() > 80) {
+                    if (new JavaCity(value).getNumBuildings() > 80) {
                         return false;
                     }
                 }
