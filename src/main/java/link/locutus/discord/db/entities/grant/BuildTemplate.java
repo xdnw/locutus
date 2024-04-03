@@ -14,9 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
-import org.jooq.meta.derby.sys.Sys;
 
 import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
@@ -221,34 +219,34 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }
             // ensure no buildings are negative
             for (Building building : Buildings.values()) {
-                if (jc.get(building) < 0) {
+                if (jc.getBuilding(building) < 0) {
                     throw new IllegalArgumentException("Build has negative " + building.name() + " buildings");
                 }
             }
             // no more than 2 power plants
-            if (jc.get(Buildings.NUCLEAR_POWER) > 2) {
+            if (jc.getBuilding(Buildings.NUCLEAR_POWER) > 2) {
                 throw new IllegalArgumentException("Build has more than 2 nuclear power plants");
             }
-            if (jc.get(Buildings.WIND_POWER) > 2) {
+            if (jc.getBuilding(Buildings.WIND_POWER) > 2) {
                 throw new IllegalArgumentException("Build has more than 2 wind power plants");
             }
-            if (jc.get(Buildings.COAL_MINE) > 8) {
+            if (jc.getBuilding(Buildings.COAL_MINE) > 8) {
                 throw new IllegalArgumentException("Build has more than 8 coal mines");
             }
-            if (jc.get(Buildings.OIL_POWER) > 8) {
+            if (jc.getBuilding(Buildings.OIL_POWER) > 8) {
                 throw new IllegalArgumentException("Build has more than 8 oil power");
             }
             // 5,5,5,3 max military buildings
-            if (jc.get(Buildings.BARRACKS) > 5) {
+            if (jc.getBuilding(Buildings.BARRACKS) > 5) {
                 throw new IllegalArgumentException("Build has more than 5 barracks");
             }
-            if (jc.get(Buildings.FACTORY) > 5) {
+            if (jc.getBuilding(Buildings.FACTORY) > 5) {
                 throw new IllegalArgumentException("Build has more than 5 factories");
             }
-            if (jc.get(Buildings.HANGAR) > 5) {
+            if (jc.getBuilding(Buildings.HANGAR) > 5) {
                 throw new IllegalArgumentException("Build has more than 5 hangars");
             }
-            if (jc.get(Buildings.DRYDOCK) > 3) {
+            if (jc.getBuilding(Buildings.DRYDOCK) > 3) {
                 throw new IllegalArgumentException("Build has more than 3 drydocks");
             }
         }

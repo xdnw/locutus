@@ -1071,7 +1071,7 @@ public class UnsortedCommands {
         if (metrics.powered != null && !metrics.powered) {
             msg.append("\n**UNPOWERED**");
         }
-        msg.append("\nAge: " + jCity.getAge());
+        msg.append("\nAge: " + jCity.getAgeDays());
         if (jCity.getInfra() != city.getInfraNeeded()) {
             msg.append("\nInfra (damaged): " + jCity.getInfra());
         }

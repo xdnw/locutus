@@ -280,7 +280,7 @@ public enum InterviewQuestion implements Question {
 
             double totalBarracks = 0;
             for (Map.Entry<Integer, JavaCity> entry : cityMap.entrySet()) {
-                totalBarracks += entry.getValue().get(Buildings.BARRACKS);
+                totalBarracks += entry.getValue().getBuilding(Buildings.BARRACKS);
             }
             double avgBarracks = totalBarracks / cityMap.size();
             return !(avgBarracks <= 4);

@@ -372,7 +372,7 @@ public class IACheckup {
 
                 double totalBarracks = 0;
                 for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                    totalBarracks += entry.getValue().get(Buildings.BARRACKS);
+                    totalBarracks += entry.getValue().getBuilding(Buildings.BARRACKS);
                 }
                 double avgBarracks = totalBarracks / cities.size();
                 if (avgBarracks > 4) {
@@ -729,7 +729,7 @@ public class IACheckup {
         Set<Integer> lessThan4 = new HashSet<>();
         double avgHangars = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-            int hangars = entry.getValue().get(Buildings.HANGAR);
+            int hangars = entry.getValue().getBuilding(Buildings.HANGAR);
             avgHangars += hangars;
 
         }
@@ -764,8 +764,8 @@ public class IACheckup {
         int pop = 0;
         int hangars = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-            hangars += entry.getValue().get(Buildings.HANGAR);
-            pop += entry.getValue().getPopulation(nation::hasProject);
+            hangars += entry.getValue().getBuilding(Buildings.HANGAR);
+            pop += entry.getValue().calcPopulation(nation::hasProject);
         }
 
         double maxPlanes = Math.min(pop * 0.1, hangars * Buildings.HANGAR.cap(nation::hasProject));
@@ -838,7 +838,7 @@ public class IACheckup {
             Set<ResourceBuilding> uncapped = new HashSet<>();
             for (Building building : Buildings.values()) {
                 if (!(building instanceof ResourceBuilding)) continue;
-                int amt = city.get(building);
+                int amt = city.getBuilding(building);
                 if (amt > 0 && amt < building.cap(nation::hasProject)) {
                     uncapped.add((ResourceBuilding) building);
                 }
@@ -1160,7 +1160,7 @@ public class IACheckup {
         } else {
             Set<Integer> hasFactories = new HashSet<>();
             for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                if (entry.getValue().get(Buildings.FACTORY) > 0) {
+                if (entry.getValue().getBuilding(Buildings.FACTORY) > 0) {
                     hasFactories.add(entry.getKey());
                 }
             }
@@ -1294,13 +1294,13 @@ public class IACheckup {
         int numHangars = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
-            numHangars += city.get(Buildings.HANGAR);
+            numHangars += city.getBuilding(Buildings.HANGAR);
             if (nation.getCities() >= 10 && nation.getAvg_infra() > 1000) {
-                if (city.get(Buildings.HANGAR) < 5 && city.get(Buildings.HANGAR) > 1) {
+                if (city.getBuilding(Buildings.HANGAR) < 5 && city.getBuilding(Buildings.HANGAR) > 1) {
                     citiesMissingHangars.add(entry.getKey());
                 }
             } else if (nation.getCities() < 10 && nation.getAvg_infra() <= 1000) {
-                if (city.get(Buildings.HANGAR) > 1) {
+                if (city.getBuilding(Buildings.HANGAR) > 1) {
                     citiesHavingHangars.add(entry.getKey());
                 }
             }
@@ -1320,7 +1320,7 @@ public class IACheckup {
         try {
             int pop = 0;
             for (JavaCity city : cities.values()) {
-                pop += city.getPopulation(nation::hasProject);
+                pop += city.calcPopulation(nation::hasProject);
             }
 
             String message = null;
@@ -1345,10 +1345,10 @@ public class IACheckup {
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             int amt = city.getRequiredInfra() > city.getInfra() ? 4 : 5;
-            if (city.get(Buildings.BARRACKS) < amt && (city.getRequiredInfra() <= city.getInfra() || city.getRequiredInfra() <= 1000) && (nation.getCities() < 10 || nation.getNumWars() > 0 || !db.getCoalitionRaw(Coalition.ENEMIES).isEmpty())) {
+            if (city.getBuilding(Buildings.BARRACKS) < amt && (city.getRequiredInfra() <= city.getInfra() || city.getRequiredInfra() <= 1000) && (nation.getCities() < 10 || nation.getNumWars() > 0 || !db.getCoalitionRaw(Coalition.ENEMIES).isEmpty())) {
                 citiesMissingBarracks.add(entry.getKey());
             }
-            numBarracks += city.get(Buildings.BARRACKS);
+            numBarracks += city.getBuilding(Buildings.BARRACKS);
         }
 
         if (!citiesMissingBarracks.isEmpty()) {
@@ -1361,7 +1361,7 @@ public class IACheckup {
         try {
             int pop = 0;
             for (JavaCity city : cities.values()) {
-                pop += city.getPopulation(nation::hasProject);
+                pop += city.calcPopulation(nation::hasProject);
             }
 
             String message = null;
@@ -1386,8 +1386,8 @@ public class IACheckup {
             JavaCity city = entry.getValue();
             int minPower = 2000;
             int excessPower = city.getPoweredInfra() - city.getRequiredInfra();
-            if (city.get(Buildings.OIL_POWER) != 0 || city.get(Buildings.OIL_POWER) != 0) minPower = 500;
-            if (city.get(Buildings.WIND_POWER) != 0) minPower = 250;
+            if (city.getBuilding(Buildings.OIL_POWER) != 0 || city.getBuilding(Buildings.OIL_POWER) != 0) minPower = 500;
+            if (city.getBuilding(Buildings.WIND_POWER) != 0) minPower = 250;
             if (excessPower > minPower) {
                 violationCityIds.add(entry.getKey());
             }
@@ -1405,13 +1405,13 @@ public class IACheckup {
         Set<Integer> violationCityIds = new HashSet<>();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
-            int amt = city.get(building);
+            int amt = city.getBuilding(building);
             if (amt > 1) {
                 JavaCity copy = new JavaCity(city);
                 copy.set(building, amt - 1);
 
-                if (city.getDisease(nation::hasProject) >= (copy.getDisease(nation::hasProject)) &&
-                        city.getCrime(nation::hasProject) >= (copy.getCrime(nation::hasProject))) {
+                if (city.calcDisease(nation::hasProject) >= (copy.calcDisease(nation::hasProject)) &&
+                        city.calcCrime(nation::hasProject) >= (copy.calcCrime(nation::hasProject))) {
 
                     violationCityIds.add(entry.getKey());
                 }
@@ -1473,16 +1473,16 @@ public class IACheckup {
                 while (infra > 0) {
                     if (infra > 550) {
                         infra -= 2000;
-                        if (city.get(Buildings.OIL_POWER) > 0) {
+                        if (city.getBuilding(Buildings.OIL_POWER) > 0) {
                             nonNuclear.add(entry.getKey());
                         }
-                        if (city.get(Buildings.COAL_POWER) > 0) {
+                        if (city.getBuilding(Buildings.COAL_POWER) > 0) {
                             nonNuclear.add(entry.getKey());
                         }
                     }
                     else if (infra > 300) {
                         infra -= 500;
-                        if (city.get(Buildings.WIND_POWER) > 0) {
+                        if (city.getBuilding(Buildings.WIND_POWER) > 0) {
                             nonNuclear.add(entry.getKey());
                         }
                     } else {

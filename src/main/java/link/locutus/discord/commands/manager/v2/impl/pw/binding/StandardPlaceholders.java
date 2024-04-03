@@ -64,7 +64,7 @@ public class StandardPlaceholders {
         for (Map.Entry<Integer, JavaCity> entry : cities) {
             citiesByDate.add(entry.getValue());
         }
-        citiesByDate.sort((o1, o2) -> Long.compare(o2.getAge(), o1.getAge()));
-        return citiesByDate.get(index).getAge() + "";
+        citiesByDate.sort((o1, o2) -> Long.compare(o2.getAgeDays(), o1.getAgeDays()));
+        return citiesByDate.get(index).getAgeDays() + "";
     }
 }

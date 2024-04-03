@@ -111,13 +111,13 @@ public class ArgParser {
                      citiesByDate.add(entry.getValue());
                  }
                  citiesByDate.sort((o1, o2) -> {
-                     return Long.compare(o2.getAge(), o1.getAge());
+                     return Long.compare(o2.getAgeDays(), o1.getAgeDays());
                  });
                  int index = citiesByDate.size() - 1;
                  if (args.size() == 1) {
                      index= Integer.parseInt(args.get(0)) - 1;
                  }
-                 return citiesByDate.get(index).getAge() + "";
+                 return citiesByDate.get(index).getAgeDays() + "";
              }
          }));
 

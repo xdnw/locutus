@@ -6,28 +6,19 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.LootEntry;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -140,10 +131,10 @@ public interface NationList extends NationFilter {
             Map<Integer, JavaCity> cities = nation.getCityMap(update, false);
             numCities += cities.size();
             for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
-                barracks += cityEntry.getValue().get(Buildings.BARRACKS);
-                factories += cityEntry.getValue().get(Buildings.FACTORY);
-                hangars += cityEntry.getValue().get(Buildings.HANGAR);
-                drydocks += cityEntry.getValue().get(Buildings.DRYDOCK);
+                barracks += cityEntry.getValue().getBuilding(Buildings.BARRACKS);
+                factories += cityEntry.getValue().getBuilding(Buildings.FACTORY);
+                hangars += cityEntry.getValue().getBuilding(Buildings.HANGAR);
+                drydocks += cityEntry.getValue().getBuilding(Buildings.DRYDOCK);
             }
         }
 

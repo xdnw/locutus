@@ -1,8 +1,8 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
 import link.locutus.discord.apiv1.enums.BuildingType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -56,10 +56,10 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double profitConverted(Continent continent, double rads, Predicate hasProjects, JavaCity city, int amt) {
+    public double profitConverted(Continent continent, double rads, Predicate hasProjects, ICity city, int amt) {
         double profit = super.profitConverted(continent, rads, hasProjects, city, amt);
 
-        int improvements = city.get(this);
+        int improvements = city.getBuilding(this);
 
 
         double production = output.getProduction(continent, rads, hasProjects, city.getLand(), improvements, -1);
@@ -86,11 +86,11 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, JavaCity city, double[] profitBuffer, int turns) {
+    public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, ICity city, double[] profitBuffer, int turns) {
         profitBuffer = super.profit(continent, rads, date, hasProjects, city, profitBuffer, turns);
 
         ResourceType type = getResourceProduced();
-        int improvements = city.get(this);
+        int improvements = city.getBuilding(this);
 
         double production = type.getProduction(continent, rads, hasProjects, city.getLand(), improvements, date);
         if (production != 0) {

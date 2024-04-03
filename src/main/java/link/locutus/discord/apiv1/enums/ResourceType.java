@@ -11,6 +11,7 @@ import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.config.Settings;
@@ -1018,7 +1019,7 @@ public enum ResourceType {
         return boostFactor;
     }
 
-    public double getInput(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements) {
+    public double getInput(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int improvements) {
         if (inputs == null) return 0;
 
         double base = getBaseProduction(continent, rads, hasProject, city.getLand(), -1);
@@ -1050,7 +1051,7 @@ public enum ResourceType {
         return cap;
     }
 
-    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements, long date) {
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int improvements, long date) {
         return getProduction(continent, rads, hasProject, city.getLand(), improvements, date);
     }
 

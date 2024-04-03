@@ -2,15 +2,13 @@ package link.locutus.discord.apiv1.enums.city.building.imp;
 
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 
-import java.util.Map;
 import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
 
 public abstract class ABuilding implements Building {
     private final int pollution;
@@ -81,13 +79,13 @@ public abstract class ABuilding implements Building {
     }
 
     @Override
-    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int amt) {
+    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int amt) {
         return -(getUpkeepConverted(hasProject) * amt);
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns) {
-        int amt = city.get(this);
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns) {
+        int amt = city.getBuilding(this);
         if (amt > 0) {
             for (ResourceType type : ResourceType.values) {
                 profitBuffer[type.ordinal()] -= upkeep(type, hasProject) * amt * turns / 12;

@@ -338,13 +338,13 @@ public class ROI extends Command {
             Map<ResourceBuilding, Boolean> manufacturing = new LinkedHashMap();
             for (Map.Entry<Integer, JavaCity> entry : nation.getCityMap(false).entrySet()) {
                 JavaCity city = entry.getValue();
-                if (city.get(Buildings.GAS_REFINERY) > 0 && !projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE))
+                if (city.getBuilding(Buildings.GAS_REFINERY) > 0 && !projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE))
                     manufacturing.put(Buildings.GAS_REFINERY, true);
-                if (city.get(Buildings.STEEL_MILL) > 0 && !projects.contains(Projects.IRON_WORKS))
+                if (city.getBuilding(Buildings.STEEL_MILL) > 0 && !projects.contains(Projects.IRON_WORKS))
                     manufacturing.put(Buildings.STEEL_MILL, true);
-                if (city.get(Buildings.ALUMINUM_REFINERY) > 0 && !projects.contains(Projects.BAUXITEWORKS))
+                if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > 0 && !projects.contains(Projects.BAUXITEWORKS))
                     manufacturing.put(Buildings.ALUMINUM_REFINERY, true);
-                if (city.get(Buildings.MUNITIONS_FACTORY) > 0 && !projects.contains(Projects.ARMS_STOCKPILE))
+                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > 0 && !projects.contains(Projects.ARMS_STOCKPILE))
                     manufacturing.put(Buildings.MUNITIONS_FACTORY, true);
             }
             if (!manufacturing.isEmpty()) {

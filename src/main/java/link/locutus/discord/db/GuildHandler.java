@@ -1855,7 +1855,7 @@ public class GuildHandler {
                                 Map<Integer, JavaCity> defCities = defender.getCityMap(false, false);
                                 if (attacker.getSoldiers() > defender.getSoldiers()) {
                                     for (JavaCity value : defCities.values()) {
-                                        if (value.get(Buildings.BARRACKS) != 5) {
+                                        if (value.getBuilding(Buildings.BARRACKS) != 5) {
                                             tips.add("Buy max barracks and soldiers (you may need to sell off some mines)");
                                             break;
                                         }
@@ -1864,7 +1864,7 @@ public class GuildHandler {
                                 if (attacker.getShips() > 0 && defender.getShips() == 0 && defender.getAvg_infra() >= 1450 && defender.getAircraft() > attacker.getAircraft()) {
                                     boolean hasDock = false;
                                     for (JavaCity value : defCities.values()) {
-                                        if (value.get(Buildings.DRYDOCK) != 0) {
+                                        if (value.getBuilding(Buildings.DRYDOCK) != 0) {
                                             hasDock = true;
                                             break;
                                         }

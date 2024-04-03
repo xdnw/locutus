@@ -24,7 +24,6 @@ import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import it.unimi.dsi.fastutil.PriorityQueue;
@@ -46,14 +45,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class JavaCity {
+public class JavaCity implements ICity {
     private final byte[] buildings;
     private int numBuildings = -1;
     private double infra;
     private double land_;
     private long dateCreated;
     private int nuke_turn;
-
     private Metrics metrics;
 
     public static Map.Entry<DBNation, JavaCity> getOrCreate(int cityId, boolean update) {
@@ -118,31 +116,15 @@ public class JavaCity {
     }
 
     public String getMMR() {
-        return get(Buildings.BARRACKS) + "" + get(Buildings.FACTORY) + "" + get(Buildings.HANGAR) + "" + get(Buildings.DRYDOCK);
+        return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + "" + getBuilding(Buildings.HANGAR) + "" + getBuilding(Buildings.DRYDOCK);
     }
 
     public int[] getMMRArray() {
-        return new int[]{get(Buildings.BARRACKS), get(Buildings.FACTORY), get(Buildings.HANGAR), get(Buildings.DRYDOCK)};
+        return new int[]{getBuilding(Buildings.BARRACKS), getBuilding(Buildings.FACTORY), getBuilding(Buildings.HANGAR), getBuilding(Buildings.DRYDOCK)};
     }
 
     public byte[] getBuildings() {
         return buildings;
-    }
-
-    public Map.Entry<Integer, Integer> getMissileDamage(Predicate<Project> hasProject) {
-        double density = getPopulation(hasProject) / getLand();
-        double infra = getInfra();
-        double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150));
-        double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150));
-        return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
-    }
-
-    public Map.Entry<Integer, Integer> getNukeDamage(Predicate<Project> hasProject) {
-        double density = getPopulation(hasProject) / getLand();
-        double infra = getInfra();
-        double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100));
-        double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150));
-        return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
     }
 
     public void setMMR(MMRInt mmr) {
@@ -189,6 +171,7 @@ public class JavaCity {
             int maxCommerce;
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
                 if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                    commerce += 2;
                     maxCommerce = 125;
                 } else {
                     maxCommerce = 115;
@@ -204,7 +187,7 @@ public class JavaCity {
 
             double basePopulation = city.getInfra() * 100;
 
-            int hospitals = city.get(Buildings.HOSPITAL);
+            int hospitals = city.getBuilding(Buildings.HOSPITAL);
             double hospitalModifier;
             if (hospitals > 0) {
                 double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
@@ -213,7 +196,7 @@ public class JavaCity {
                 hospitalModifier = 0;
             }
 
-            int police = city.get(Buildings.POLICE_STATION);
+            int police = city.getBuilding(Buildings.POLICE_STATION);
             double policeMod;
             if (police > 0) {
                 double policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5 : 2.5;
@@ -228,9 +211,9 @@ public class JavaCity {
             double diseaseDeaths = ((disease * 0.01) * basePopulation);
 
             crime = Math.max(0, ((MathMan.sqr(103 - commerce) + (city.getInfra() * 100))*(0.000009d) - policeMod));
-            double crimeDeaths = Math.max((crime * 0.1) * (100 * city.getInfra()) - 25, 0);
+            double crimeDeaths = Math.max((crime * 0.1) * (basePopulation) - 25, 0);
 
-            double ageBonus = (1 + Math.log(Math.max(1, city.getAge())) * 0.0666666666666666666666666666666);
+            double ageBonus = (1 + Math.log(Math.max(1, city.getAgeDays())) * 0.0666666666666666666666666666666);
             population = (int) Math.round(Math.max(10, ((basePopulation - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
     }
@@ -252,9 +235,6 @@ public class JavaCity {
 
     public JavaCity(String json) {
         this(CityBuild.of(json));
-        if (getLand() == null) {
-            setLand(getInfra());
-        }
         initImpTotal();
     }
 
@@ -361,7 +341,7 @@ public class JavaCity {
             for (int i = 0; i < total.length; i++) {
                 total[i] = Math.max(0, total[i]);
             }
-            if (getLand() != null && getLand() > from.getLand()) {
+            if (getLand() > from.getLand()) {
                 landPurchases.put(entry.getKey(), getLand());
             }
             if (getInfra() > from.getInfra()) {
@@ -406,28 +386,6 @@ public class JavaCity {
         response.append('\n').append("7. Repurchase military units.");
 
         return response.toString().trim();
-    }
-
-    public String toJson() {
-        JsonObject object = new JsonObject();
-
-        Map<String, String> json = new HashMap<>();
-        json.put("infra_needed", getRequiredInfra() + "");
-        json.put("imp_total", getImpTotal() + "");
-        if (land_ > 0) {
-            json.put("land", getLand() + "");
-        }
-        if (getAge() > 0) {
-            json.put("age", getAge() + "");
-        }
-        for (int ordinal = 0; ordinal < buildings.length; ordinal++) {
-            int amt = buildings[ordinal];
-            if (amt == 0) continue;
-
-            json.put(Buildings.get(ordinal).nameSnakeCase(), amt + "");
-        }
-
-        return new Gson().toJson(json);
     }
 
     public CityBuild toCityBuild() {
@@ -545,7 +503,7 @@ public class JavaCity {
 
     public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
         JavaCity origin = new JavaCity(this);
-        origin.setAge(this.getAge() + days / 2);
+        origin.setAge(this.getAgeDays() + days / 2);
 
         JavaCity zeroed = new JavaCity(origin);
         zeroed.zeroNonMilitary();
@@ -680,134 +638,27 @@ public class JavaCity {
         }
     }
 
+    @Override
     public int getPoweredInfra() {
         int powered = 0;
-        powered += get(Buildings.WIND_POWER) * Buildings.WIND_POWER.getInfraMax();
-        powered += get(Buildings.COAL_POWER) * Buildings.COAL_POWER.getInfraMax();
-        powered += get(Buildings.OIL_POWER) * Buildings.OIL_POWER.getInfraMax();
-        powered += get(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.getInfraMax();
+        powered += getBuilding(Buildings.WIND_POWER) * Buildings.WIND_POWER.getInfraMax();
+        powered += getBuilding(Buildings.COAL_POWER) * Buildings.COAL_POWER.getInfraMax();
+        powered += getBuilding(Buildings.OIL_POWER) * Buildings.OIL_POWER.getInfraMax();
+        powered += getBuilding(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.getInfraMax();
 
         return powered;
     }
 
     public double profitConverted2(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
-        double profit = 0;
-
-        final boolean powered = (metrics == null || metrics.powered != Boolean.FALSE) && (getPoweredInfra() >= infra);
-        int unpoweredInfra = (int) Math.ceil(infra);
-
-        if (powered) {
-            for (int ordinal = 0; ordinal < 4; ordinal++) {
-                int amt = buildings[ordinal];
-                if (amt == 0) continue;
-
-                Building building = Buildings.get(ordinal);
-
-                for (int i = 0; i < amt; i++) {
-                    if (unpoweredInfra > 0) {
-                        profit += ((APowerBuilding) building).consumptionConverted(unpoweredInfra);
-                        unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
-                    }
-                }
-                profit += building.profitConverted(continent, rads, hasProject, this, amt);
-            }
-            for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < buildings.length; ordinal++) {
-                int amt = buildings[ordinal];
-                if (amt == 0) continue;
-
-                Building building = Buildings.get(ordinal);
-                profit += building.profitConverted(continent, rads, hasProject, this, amt);
-            }
-        }
-
-        for (int ordinal = 4; ordinal < Buildings.GAS_REFINERY.ordinal(); ordinal++) {
-            int amt = buildings[ordinal];
-            if (amt == 0) continue;
-
-            Building building = Buildings.get(ordinal);
-            profit += building.profitConverted(continent, rads, hasProject, this, amt);
-        }
-
-        // if any commerce buildings
-
-        int commerce = powered ? getMetrics(hasProject).commerce : 0;
-
-        double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
-
-        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * getMetrics(hasProject).population * newPlayerBonus) * grossModifier;;
-
-
-        profit += income;
-
-        double basePopulation = getInfra() * 100;
-        double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
-
-        profit -= ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
-
-        return profit;
+        return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);
     }
 
     public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, int turns) {
         return profit(continent, rads, date, hasProject, profitBuffer, numCities, grossModifier, false, turns);
     }
     public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, boolean forceUnpowered, int turns) {
-        if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
-
-        boolean powered;
-        if (forceUnpowered) {
-            powered = false;
-        } else {
-            powered = true;
-            if (metrics != null && metrics.powered != null) powered = metrics.powered;
-            if (powered && getPoweredInfra() < infra) powered = false;
-        }
-
-        int unpoweredInfra = (int) Math.ceil(infra);
-        for (int ordinal = 0; ordinal < buildings.length; ordinal++) {
-            int amt = buildings[ordinal];
-            if (amt == 0) continue;
-
-            Building building = Buildings.get(ordinal);
-
-            if (!powered) {
-                if (building instanceof CommerceBuilding || building instanceof MilitaryBuilding || (building instanceof ResourceBuilding && ((AResourceBuilding) building).getResourceProduced().isManufactured())) {
-                    continue;
-                }
-            }
-            profitBuffer = building.profit(continent, rads, date, hasProject, this, profitBuffer, turns);
-            if (building instanceof APowerBuilding) {
-                for (int i = 0; i < amt; i++) {
-                    if (unpoweredInfra > 0) {
-                        profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer, turns);
-                        unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
-                    }
-                }
-            }
-        }
-        int commerce = getMetrics(hasProject).commerce;
-        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-                commerce = Math.min(125, metrics.commerce + 2);
-            } else {
-                commerce = Math.min(115, metrics.commerce);
-            }
-        } else {
-            commerce = Math.min(100, metrics.commerce);
-        }
-
-        double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
-
-        double income = (((commerce/50d) * 0.725d) + 0.725d) * metrics.population * newPlayerBonus * grossModifier;
-
-        profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
-
-        double basePopulation = getInfra() * 100;
-        double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
-        profitBuffer[ResourceType.FOOD.ordinal()] -= food * turns / 12d;
-
-        return profitBuffer;
+        return PW.City.profit(continent, rads, date, hasProject, profitBuffer, numCities, grossModifier, forceUnpowered, turns, this);
     }
-
 
     public double[] calculateCost(JavaCity from) {
         return calculateCost(from, new double[ResourceType.values.length]);
@@ -892,12 +743,12 @@ public class JavaCity {
         return this;
     }
 
-    public int get(int ordinal) {
+    public int getBuilding(int ordinal) {
         return buildings[ordinal];
     }
 
-    public int get(Building building) {
-        return get(building.ordinal());
+    public int getBuilding(Building building) {
+        return getBuilding(building.ordinal());
     }
 
     public int getRequiredInfra() {
@@ -908,7 +759,7 @@ public class JavaCity {
         return infra;
     }
 
-    public int getAge() {
+    public int getAgeDays() {
         if (dateCreated <= 0) return 1;
         if (dateCreated == Long.MAX_VALUE) return 1;
         return (int) Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dateCreated));
@@ -922,7 +773,7 @@ public class JavaCity {
         return (int) (getFreeInfra() / 50);
     }
 
-    public Double getLand() {
+    public double getLand() {
         return land_;
     }
     public JavaCity setInfra(double infra) {
@@ -940,7 +791,8 @@ public class JavaCity {
         return this;
     }
 
-    public Integer getPopulation(Predicate<Project> hasProject) {
+    @Override
+    public int calcPopulation(Predicate<Project> hasProject) {
         return getMetrics(hasProject).population;
     }
 
@@ -948,7 +800,8 @@ public class JavaCity {
         getMetrics(hasProject).population = population;
     }
 
-    public Double getDisease(Predicate<Project> hasProject) {
+    @Override
+    public double calcDisease(Predicate<Project> hasProject) {
         return getMetrics(hasProject).disease;
     }
 
@@ -956,7 +809,8 @@ public class JavaCity {
         getMetrics(hasProject).disease = disease;
     }
 
-    public Double getCrime(Predicate<Project> hasProject) {
+    @Override
+    public double calcCrime(Predicate<Project> hasProject) {
         return getMetrics(hasProject).crime;
     }
 
@@ -964,7 +818,8 @@ public class JavaCity {
         getMetrics(hasProject).crime = crime;
     }
 
-    public Integer getPollution(Predicate<Project> hasProject) {
+    @Override
+    public int calcPollution(Predicate<Project> hasProject) {
         return getMetrics(hasProject).pollution;
     }
 
@@ -972,7 +827,8 @@ public class JavaCity {
         getMetrics(hasProject).pollution = pollution;
     }
 
-    public Integer getCommerce(Predicate<Project> hasProject) {
+    @Override
+    public int calcCommerce(Predicate<Project> hasProject) {
         return getMetrics(hasProject).commerce;
     }
 
@@ -980,8 +836,9 @@ public class JavaCity {
         getMetrics(hasProject).commerce = commerce;
     }
 
-    public Boolean getPowered(Predicate<Project> hasProject) {
-        return getMetrics(hasProject).powered;
+    @Override
+    public Boolean getPowered() {
+        return metrics != null && metrics.powered;
     }
 
     public void setPowered(Predicate<Project> hasProject, Boolean powered) {

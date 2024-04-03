@@ -2144,7 +2144,7 @@ public class UtilityCommands {
         // buildings
         Map<Building, Integer> buildings = new LinkedHashMap<>();
         for (Building building : Buildings.values()) {
-            int amt = jc.get(building);
+            int amt = jc.getBuilding(building);
             if (amt > 0) {
                 buildings.put(building, amt);
             }

@@ -368,7 +368,7 @@ public class GrantCmd extends Command {
 
                 city.validate(me.getContinent(), me::hasProject);
 
-                long pair = MathMan.pairInt((int) city.getInfra(), city.getLand().intValue());
+                long pair = MathMan.pairInt((int) city.getInfra(), (int) city.getLand());
                 int citiesAmt;
 
                 Map<Integer, JavaCity> from;

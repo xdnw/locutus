@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.gpt.imps.ProviderType;
@@ -63,6 +64,11 @@ public class GPTBindings extends BindingHelper {
     @Binding(value = "A comma separated list of provider types")
     public Set<ProviderType> providerTypes(String input) {
         return emumSet(ProviderType.class, input);
+    }
+
+    @Binding(value = "A comma separated list of embedding types")
+    public Set<EmbeddingType> EmbeddingType(String input) {
+        return emumSet(EmbeddingType.class, input);
     }
 
     @Binding

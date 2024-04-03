@@ -1,25 +1,20 @@
 package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.City;
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
-import javassist.bytecode.ByteArray;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -32,7 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-public class DBCity {
+public class DBCity implements ICity {
     public int id;
     public int nation_id;
     public long created;
@@ -435,7 +430,7 @@ public class DBCity {
     }
 
     public DBCity(int id, JavaCity city) {
-        this(id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAge()), city);
+        this(id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAgeDays()), city);
     }
 
     public DBCity(int id, long date, JavaCity city) {
@@ -535,7 +530,8 @@ public class DBCity {
         return (int) Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - created));
     }
     @Command(desc = "Is city powered")
-    public boolean isPowered() {
+    @Override
+    public Boolean getPowered() {
         return powered;
     }
 
@@ -555,53 +551,22 @@ public class DBCity {
 
     @Command(desc = "Get city pollution")
     public int getPollution() {
-        Predicate<Project> hasProject = getProjectPredicate();
-        int pollution = 0;
-        if (nuke_turn > 0) {
-            double pollutionMax = 400d;
-            int turnsMax = 11 * 12;
-            long turns = TimeUtil.getTurn() - nuke_turn;
-            if (turns < turnsMax) {
-                double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
-                if (nukePollution > 0) {
-                    pollution += (int) nukePollution;
-                }
-            }
-        }
-        for (Building building : Buildings.POLLUTION_BUILDINGS) {
-            int amt = get(building);
-            if (amt == 0) continue;
-            int buildPoll = building.pollution(hasProject);
-            if (buildPoll != 0) {
-                pollution += amt * buildPoll;
-            }
-        }
-        return Math.max(0, pollution);
+        return calcPollution(getProjectPredicate());
+    }
+
+    @Override
+    public int calcPollution(Predicate<Project> hasProject) {
+        return PW.City.getPollution(hasProject, this::get, nuke_turn);
     }
 
     @Command(desc = "Get city commerce")
     public int getCommerce() {
-        Predicate<Project> hasProject = getProjectPredicate();
-        int commerce = 0;
-        for (Building building : Buildings.COMMERCE_BUILDINGS) {
-            int amt = get(building);
-            if (amt == 0) continue;
-            commerce += amt * ((CommerceBuilding) building).getCommerce();
-        }
-        int maxCommerce;
-        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-            if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
-                maxCommerce = 125;
-            } else {
-                maxCommerce = 115;
-            }
-        } else {
-            maxCommerce = 100;
-        }
-        if (commerce > maxCommerce) {
-            commerce = maxCommerce;
-        }
-        return commerce;
+        return calcCommerce(getProjectPredicate());
+    }
+
+    @Override
+    public int calcCommerce(Predicate<Project> hasProject) {
+        return PW.City.getCommerce(hasProject, this::get);
     }
 
     @Command(desc = "Get the required infrastructure level for the number of buildings")
@@ -632,17 +597,15 @@ public class DBCity {
 
     @Command(desc = "Get the crime in the city")
     public double getCrime() {
-        Predicate<Project> hasProject = getProjectPredicate();
-        int police = get(Buildings.POLICE_STATION);
-        double policeMod;
-        if (police > 0) {
-            double policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5 : 2.5;
-            policeMod = police * (policePct);
-        } else {
-            policeMod = 0;
-        }
-        return Math.max(0, ((MathMan.sqr(103 - getCommerce()) + (getInfra() * 100))*(0.000009d) - policeMod));
+        return calcCrime(getProjectPredicate());
     }
+
+    @Override
+    public double calcCrime(Predicate<Project> hasProject) {
+        int commerce = PW.City.getCommerce(hasProject, this::get);
+        return PW.City.getCrime(hasProject, this::get, infra_cents, commerce);
+    }
+
     @Command(desc = "Get the number of free infrastructure points in the city")
     public double getFreeInfra() {
         return getInfra() - getRequiredInfra();
@@ -652,29 +615,78 @@ public class DBCity {
         return (int) (getFreeInfra() / 50);
     }
 
-//        toJavaCity(hasProject).getDisease();
     @Command(desc = "Get the disease in the city")
     public double getDisease() {
-        Predicate<Project> hasProject = getProjectPredicate();
-        double pollution = getPollution();
-        int hospitals = get(Buildings.HOSPITAL);
-        double hospitalModifier;
-        if (hospitals > 0) {
-            double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
-            hospitalModifier = hospitals * hospitalPct;
-        } else {
-            hospitalModifier = 0;
-        }
-        double pollutionModifier = pollution * 0.05;
-        return Math.max(0, ((0.01 * MathMan.sqr((getInfra() * 100) / (getLand() + 0.001)) - 25) * 0.01d) + (getInfra() * 0.001) - hospitalModifier + pollutionModifier);
+        return calcDisease(getProjectPredicate());
     }
-//        toJavaCity(hasProject).toJson()
+
+    @Override
+    public double calcDisease(Predicate<Project> hasProject) {
+        double pollution = PW.City.getPollution(hasProject, this::get, nuke_turn);
+        return PW.City.getDisease(hasProject, this::get, infra_cents, land_cents, pollution);
+    }
+
+    //        toJavaCity(hasProject).getCachedMetrics().population
+    @Command(desc = "Get the population of the city")
+    public int getPopulation() {
+        return calcPopulation(getProjectPredicate());
+    }
+
+    @Override
+    public int calcPopulation(Predicate<Project> hasProject) {
+        int pollution = PW.City.getPollution(hasProject, this::get, nuke_turn);
+        double disease = PW.City.getDisease(hasProject, this::get, infra_cents, land_cents, pollution);
+        int commerce = PW.City.getCommerce(hasProject, this::get);
+        double crime = PW.City.getCrime(hasProject, this::get, infra_cents, commerce);
+        int ageDays = getAgeDays();
+        return PW.City.getPopulation(infra_cents, crime, disease, ageDays);
+    }
+
+    @Command(desc = "Get the amount of infrastructure powered by buildings")
+    public int getPoweredInfra() {
+        int powered = 0;
+        powered += get(Buildings.WIND_POWER) * Buildings.WIND_POWER.getInfraMax();
+        powered += get(Buildings.COAL_POWER) * Buildings.COAL_POWER.getInfraMax();
+        powered += get(Buildings.OIL_POWER) * Buildings.OIL_POWER.getInfraMax();
+        powered += get(Buildings.NUCLEAR_POWER) * Buildings.NUCLEAR_POWER.getInfraMax();
+
+        return powered;
+    }
+
+//        toJavaCity(hasProject).profit()
+    @Command(desc = "Get the profit of the city")
+    public Map<ResourceType, Double> getRevenue() {
+        double[] profitBuffer = ResourceType.getBuffer();
+
+        DBNation nation = getNation();
+
+        Continent continent = nation == null ? Continent.NORTH_AMERICA : nation.getContinent();
+        double rads = nation == null ? Locutus.imp().getTradeManager().getGlobalRadiation() : nation.getRads();
+        long date = System.currentTimeMillis();
+        Predicate<Project> hasProject = nation == null ? f -> false : nation::hasProject;
+        int numCities = nation == null ? 21 : nation.getCities();
+        double grossModifier = nation == null ? 1 : nation.getGrossModifier();
+        boolean forceUnpowered = false;
+        int turns = 12;
+        double[] profit = PW.City.profit(continent, rads, date, hasProject, profitBuffer, numCities, grossModifier, forceUnpowered, turns, this);
+        return ResourceType.resourcesToMap(profit);
+    }
+
+//        toJavaCity(hasProject).profitConvertedCached()
+    @Command(desc = "Get the monetary value of the cities income")
+    public double getRevenueValue() {
+        DBNation nation = getNation();
+        Continent continent = nation == null ? Continent.NORTH_AMERICA : nation.getContinent();
+        double rads = nation == null ? Locutus.imp().getTradeManager().getGlobalRadiation() : nation.getRads();
+        Predicate<Project> hasProject = nation == null ? f -> false : nation::hasProject;
+        int numCities = nation == null ? 21 : nation.getCities();
+        double grossModifier = nation == null ? 1 : nation.getGrossModifier();
+        return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);
+    }
+
 //        toJavaCity(hasProject).getMissileDamage()
 //        toJavaCity(hasProject).getNukeDamage()
 //        toJavaCity(hasProject).getMMR()
-//        toJavaCity(hasProject).profit()
-//        toJavaCity(hasProject).getCachedMetrics().population
-//        toJavaCity(hasProject).profitConvertedCached()
     // get infra cost
     // get land cost
     // get buildings cost

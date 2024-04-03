@@ -29,7 +29,7 @@ public class FunCommands {
     @Command(desc = "Steal one of borgs cities")
     public String stealBorgsCity(@Me DBNation me) throws IOException {
         if (me.getAgeDays() < 30) {
-            int age = me.getCityMap(false).values().stream().mapToInt(JavaCity::getAge).max().orElse(0);
+            int age = me.getCityMap(false).values().stream().mapToInt(JavaCity::getAgeDays).max().orElse(0);
             if (age < 30) {
                 return "You must have a nation at least 30 days old.";
             }

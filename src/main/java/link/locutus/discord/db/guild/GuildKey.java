@@ -37,6 +37,7 @@ import link.locutus.discord.gpt.imps.CopilotText2Text;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
@@ -2531,10 +2532,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String DEFAULT_OFFSHORE_ACCOUNT(@Me GuildDB db, @Me User user, NationOrAllianceOrGuild natOrAA) {
-            if (natOrAA.isNation()) {
-                throw new IllegalArgumentException("Cannot set a nation as the default offshore account: " + natOrAA.asNation().getMarkdownUrl());
-            }
+        public String DEFAULT_OFFSHORE_ACCOUNT(@Me GuildDB db, @Me User user, GuildOrAlliance natOrAA) {
             OffshoreInstance offshore = db.getOffshore();
             if (offshore == null) throw new IllegalArgumentException("No offshore is setup. See: " + CM.offshore.add.cmd.toSlashMention());
 
@@ -2556,7 +2554,7 @@ public class GuildKey {
             if (otherOffshore != offshore) {
                 throw new IllegalArgumentException("The offshore set (`AA:" + otherOffshore.getAllianceId() + "`) is not the same as the offshore for " + natOrAA.getQualifiedName() + " (`AA:" + otherOffshore.getAllianceId() + "`)");
             }
-            if (!offshore.getOffshoreAAs().contains(natOrAA.getIdLong())) {
+            if (!offshore.hasAccount(natOrAA.asAlliance())) {
                 throw new IllegalArgumentException("The offshore set (`AA:" + offshore.getAllianceId() + "`) does not have " + natOrAA.getQualifiedName() + " added to `" + Coalition.OFFSHORING.name() + "` coalition");
             }
             return DEFAULT_OFFSHORE_ACCOUNT.setAndValidate(db, user, natOrAA);

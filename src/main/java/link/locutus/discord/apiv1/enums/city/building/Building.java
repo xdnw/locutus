@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -109,9 +110,9 @@ public interface Building {
     @Command(desc = "Get the numeric id of this building")
     int ordinal();
 
-    double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int amt);
+    double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int amt);
 
-    double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns);
+    double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns);
 
     @Command(desc = "Get the continents this building can be built on")
     default Set<Continent> getContinents() {

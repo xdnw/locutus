@@ -2301,16 +2301,16 @@ public class DBNation implements NationOrAlliance {
 
             List<String> cityCompliance = new ArrayList<>();
 
-            if (!city.getPowered(this::hasProject)) {
+            if (!city.getPowered()) {
                 cityCompliance.add("Is not powered. Make sure you have enough power plants and fuel. You can buy fuel from the trade page.");
             }
-            if (city.get(Buildings.FARM) != 0) {
+            if (city.getBuilding(Buildings.FARM) != 0) {
                 cityCompliance.add("Has farms, which are not very profitable. It is better buying food from the trade page");
             }
-            if (city.get(Buildings.BARRACKS) != 5) {
+            if (city.getBuilding(Buildings.BARRACKS) != 5) {
                 cityCompliance.add("Doesn't have 5 barracks. Soldiers are a good cheap unit that are useful for raiding and protecting your nation.");
             }
-            if (city.get(Buildings.NUCLEAR_POWER) == 0) {
+            if (city.getBuilding(Buildings.NUCLEAR_POWER) == 0) {
                 cityCompliance.add("Nuclear power can be expensive, but is a worthwhile investment. It provides power for more levels of infrastructure and does not pollute. (Pollution reduces your population)");
             }
             if (city.getFreeSlots() > 0) {
@@ -2733,7 +2733,7 @@ public class DBNation implements NationOrAlliance {
     public int getPopulation() {
         int total = 0;
         for (JavaCity city : getCityMap(false).values()) {
-            total += city.getPopulation(this::hasProject);
+            total += city.calcPopulation(this::hasProject);
         }
         return total;
     }
@@ -2745,15 +2745,15 @@ public class DBNation implements NationOrAlliance {
         Map<Project, Boolean> manufacturing = new LinkedHashMap();
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             JavaCity city = entry.getValue();
-            if (city.get(Buildings.GAS_REFINERY) > 0)
+            if (city.getBuilding(Buildings.GAS_REFINERY) > 0)
                 manufacturing.put(Projects.EMERGENCY_GASOLINE_RESERVE, hasProject(Projects.EMERGENCY_GASOLINE_RESERVE));
-            if (city.get(Buildings.STEEL_MILL) > 0)
+            if (city.getBuilding(Buildings.STEEL_MILL) > 0)
                 manufacturing.put(Projects.IRON_WORKS, hasProject(Projects.IRON_WORKS));
-            if (city.get(Buildings.ALUMINUM_REFINERY) > 0)
+            if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > 0)
                 manufacturing.put(Projects.BAUXITEWORKS, hasProject(Projects.BAUXITEWORKS));
-            if (city.get(Buildings.MUNITIONS_FACTORY) > 0)
+            if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > 0)
                 manufacturing.put(Projects.ARMS_STOCKPILE, hasProject(Projects.ARMS_STOCKPILE));
-            if (city.get(Buildings.FARM) > 0)
+            if (city.getBuilding(Buildings.FARM) > 0)
                 manufacturing.put(Projects.MASS_IRRIGATION, hasProject(Projects.MASS_IRRIGATION));
         }
         return manufacturing;
@@ -3296,7 +3296,7 @@ public class DBNation implements NationOrAlliance {
     public int getDaysSinceLastCity() {
         int min = getAgeDays();
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
-            min = Math.min(min, entry.getValue().getAge());
+            min = Math.min(min, entry.getValue().getAgeDays());
         }
         return min;
     }
@@ -3869,11 +3869,6 @@ public class DBNation implements NationOrAlliance {
             if (value != null) max = Math.max(max, value);
         }
         return max;
-    }
-
-    @Command(desc = "Get the average city disease")
-    public double getAvgDisease() {
-        return getCityAvg(DBCity::getDisease);
     }
 
     public Map.Entry<Long, String> getUnblockadeRequest() {
@@ -5001,10 +4996,10 @@ public class DBNation implements NationOrAlliance {
         double drydocks = 0;
         Map<Integer, JavaCity> cityMap = getCityMap(false);
         for (Map.Entry<Integer, JavaCity> entry : cityMap.entrySet()) {
-            barracks += entry.getValue().get(Buildings.BARRACKS);
-            factories += entry.getValue().get(Buildings.FACTORY);
-            hangars += entry.getValue().get(Buildings.HANGAR);
-            drydocks += entry.getValue().get(Buildings.DRYDOCK);
+            barracks += entry.getValue().getBuilding(Buildings.BARRACKS);
+            factories += entry.getValue().getBuilding(Buildings.FACTORY);
+            hangars += entry.getValue().getBuilding(Buildings.HANGAR);
+            drydocks += entry.getValue().getBuilding(Buildings.DRYDOCK);
         }
         barracks /= cityMap.size();
         factories /= cityMap.size();

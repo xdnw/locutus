@@ -103,7 +103,7 @@ public class Grant {
         for (Map.Entry<Integer, JavaCity> entry : nation.getCityMap(false, false).entrySet()) {
             JavaCity city = entry.getValue();
 
-            if (now - TimeUnit.DAYS.toMillis(city.getAge()) < date) {
+            if (now - TimeUnit.DAYS.toMillis(city.getAgeDays()) < date) {
                 cities.add(entry.getKey());
             }
         }

@@ -2601,10 +2601,10 @@ public class WarCommands {
                 Map<Integer, JavaCity> cities = nation.getCityMap(false, false);
                 int i = 0;
                 for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
-                    int cityBarracks = cityEntry.getValue().get(Buildings.BARRACKS);
-                    int cityFactories = cityEntry.getValue().get(Buildings.FACTORY);
-                    int cityHangars = cityEntry.getValue().get(Buildings.HANGAR);
-                    int cityDrydocks = cityEntry.getValue().get(Buildings.DRYDOCK);
+                    int cityBarracks = cityEntry.getValue().getBuilding(Buildings.BARRACKS);
+                    int cityFactories = cityEntry.getValue().getBuilding(Buildings.FACTORY);
+                    int cityHangars = cityEntry.getValue().getBuilding(Buildings.HANGAR);
+                    int cityDrydocks = cityEntry.getValue().getBuilding(Buildings.DRYDOCK);
                     barracks += cityBarracks;
                     factories += cityFactories;
                     hangars += cityHangars;

@@ -1,36 +1,47 @@
 package link.locutus.discord.util;
 
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonParseException;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv3.csv.DataDumpParser;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.stock.Exchange;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.offshore.Auth;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
+import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
+import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.stock.Exchange;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.offshore.Auth;
 import net.dv8tion.jda.api.entities.Guild;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -41,7 +52,20 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -138,6 +162,190 @@ public class PW {
             }
         }
 
+        public static int getPollution(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, int nuke_turn) {
+            int pollution = 0;
+            if (nuke_turn > 0) {
+                double pollutionMax = 400d;
+                int turnsMax = 11 * 12;
+                long turns = TimeUtil.getTurn() - nuke_turn;
+                if (turns < turnsMax) {
+                    double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+                    if (nukePollution > 0) {
+                        pollution += (int) nukePollution;
+                    }
+                }
+            }
+            for (Building building : Buildings.POLLUTION_BUILDINGS) {
+                int amt = getBuildings.apply(building);
+                if (amt == 0) continue;
+                int buildPoll = building.pollution(hasProject);
+                if (buildPoll != 0) {
+                    pollution += amt * buildPoll;
+                }
+            }
+            return Math.max(0, pollution);
+        }
+
+        public static int getCommerce(Predicate<Project> hasProject, Function<Building, Integer> getBuildings) {
+            int commerce = 0;
+            for (Building building : Buildings.COMMERCE_BUILDINGS) {
+                int amt = getBuildings.apply(building);
+                if (amt == 0) continue;
+                commerce += amt * ((CommerceBuilding) building).getCommerce();
+            }
+            int maxCommerce;
+            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                    maxCommerce = 125;
+                } else {
+                    maxCommerce = 115;
+                }
+            } else {
+                maxCommerce = 100;
+            }
+            if (commerce > maxCommerce) {
+                commerce = maxCommerce;
+            }
+            return commerce;
+        }
+
+        public static double getCrime(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, long infra_cents, int commerce) {
+            int police = getBuildings.apply(Buildings.POLICE_STATION);
+            double policeMod;
+            if (police > 0) {
+                double policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5 : 2.5;
+                policeMod = police * (policePct);
+            } else {
+                policeMod = 0;
+            }
+            return Math.max(0, ((MathMan.sqr(103 - commerce) + (infra_cents))*(0.000009d) - policeMod));
+        }
+
+        public static double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier, ICity city) {
+            double profit = 0;
+
+            final boolean powered = (city.getPowered() != Boolean.FALSE) && (city.getPoweredInfra() >= city.getInfra());
+            int unpoweredInfra = (int) Math.ceil(city.getInfra());
+
+            if (powered) {
+                for (int ordinal = 0; ordinal < 4; ordinal++) {
+                    int amt = city.getBuildingOrdinal(ordinal);
+                    if (amt == 0) continue;
+
+                    Building building = Buildings.get(ordinal);
+
+                    for (int i = 0; i < amt; i++) {
+                        if (unpoweredInfra > 0) {
+                            profit += ((APowerBuilding) building).consumptionConverted(unpoweredInfra);
+                            unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
+                        }
+                    }
+                    profit += building.profitConverted(continent, rads, hasProject, city, amt);
+                }
+                for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < Buildings.size(); ordinal++) {
+                    int amt = city.getBuildingOrdinal(ordinal);
+                    if (amt == 0) continue;
+
+                    Building building = Buildings.get(ordinal);
+                    profit += building.profitConverted(continent, rads, hasProject, city, amt);
+                }
+            }
+
+            for (int ordinal = 4; ordinal < Buildings.GAS_REFINERY.ordinal(); ordinal++) {
+                int amt = city.getBuildingOrdinal(ordinal);
+                if (amt == 0) continue;
+
+                Building building = Buildings.get(ordinal);
+                profit += building.profitConverted(continent, rads, hasProject, city, amt);
+            }
+
+            int commerce = powered ? city.calcCommerce(hasProject) : 0;
+
+            double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
+
+            double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * city.calcPopulation(hasProject) * newPlayerBonus) * grossModifier;;
+
+
+            profit += income;
+
+            double basePopulation = city.getInfra() * 100;
+            double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(city.getAgeDays()) / 15d) - basePopulation) / 850;
+
+            profit -= ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
+
+            return profit;
+        }
+
+        public static double[] profit(Continent continent,
+                               double rads,
+                               long date,
+                               Predicate<Project> hasProject,
+                               double[] profitBuffer,
+                               int numCities,
+                               double grossModifier,
+                               boolean forceUnpowered,
+                               int turns,
+                               ICity city
+        ) {
+            if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
+
+            boolean powered;
+            if (forceUnpowered) {
+                powered = false;
+            } else {
+                powered = true;
+                Boolean setPowered = city.getPowered();
+                if (setPowered != null) powered = setPowered;
+                if (powered && city.getPoweredInfra() < city.getInfra()) powered = false;
+            }
+
+            int unpoweredInfra = (int) Math.ceil(city.getInfra());
+            for (Building building : Buildings.values()) {
+                int amt = city.getBuilding(building);
+                if (amt == 0) continue;
+
+                if (!powered) {
+                    if (building instanceof CommerceBuilding || building instanceof MilitaryBuilding || (building instanceof ResourceBuilding && ((AResourceBuilding) building).getResourceProduced().isManufactured())) {
+                        continue;
+                    }
+                }
+                profitBuffer = building.profit(continent, rads, date, hasProject, city, profitBuffer, turns);
+                if (building instanceof APowerBuilding) {
+                    for (int i = 0; i < amt; i++) {
+                        if (unpoweredInfra > 0) {
+                            profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer, turns);
+                            unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
+                        }
+                    }
+                }
+            }
+            int commerce = city.calcCommerce(hasProject);
+            double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
+
+            double income = (((commerce/50d) * 0.725d) + 0.725d) * city.calcPopulation(hasProject) * newPlayerBonus * grossModifier;
+
+            profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
+
+            double basePopulation = city.getInfra() * 100;
+            double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(city.getAgeDays()) / 15d) - basePopulation) / 850;
+            profitBuffer[ResourceType.FOOD.ordinal()] -= food * turns / 12d;
+
+            return profitBuffer;
+        }
+
+        public static double getDisease(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, long infra_cents, long land_cents, double pollution) {
+            int hospitals = getBuildings.apply(Buildings.HOSPITAL);
+            double hospitalModifier;
+            if (hospitals > 0) {
+                double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
+                hospitalModifier = hospitals * hospitalPct;
+            } else {
+                hospitalModifier = 0;
+            }
+            double pollutionModifier = pollution * 0.05;
+            return Math.max(0, ((0.01 * MathMan.sqr((infra_cents) / (land_cents * 0.01 + 0.001)) - 25) * 0.01d) + (infra_cents * 0.01 * 0.001) - hospitalModifier + pollutionModifier);
+        }
+
         public static double nextCityCost(DBNation nation, int amount) {
             int current = nation.getCities();
             return cityCost(nation, current, current + amount);
@@ -150,6 +358,14 @@ public class PW {
                     nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
                     nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
                     nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        }
+
+        public static int getPopulation(long infra_cents, double crime, double disease, long ageDays) {
+            double ageBonus = (1 + Math.log(Math.max(1, ageDays)) * 0.0666666666666666666666666666666);
+            double diseaseDeaths = ((disease * 0.01) * infra_cents);
+            double crimeDeaths = Math.max((crime * 0.1) * (infra_cents) - 25, 0);
+
+            return (int) Math.round(Math.max(10, ((infra_cents - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
 
         public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {

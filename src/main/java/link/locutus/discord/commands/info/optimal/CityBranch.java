@@ -96,7 +96,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
         boolean buildMoreCommerce = true;
         {
             Building minBuildingType = Buildings.get(minBuilding);
-            int amt = origin.get(minBuilding);
+            int amt = origin.getBuilding(minBuilding);
             if (amt != 0) {
                 if (minBuildingType instanceof ResourceBuilding rssBuild) {
                     if (amt < minBuildingType.cap(hasProject)) {
@@ -125,7 +125,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
         for (int i = minBuilding; i < maxBuilding; i++) {
             Building building = Buildings.get(i);
             if (!building.canBuild(continent)) continue;
-            int amt = origin.get(i);
+            int amt = origin.getBuilding(i);
             if (amt >= building.cap(hasProject)) continue;
 
             if (building instanceof ResourceBuilding rssBuild) {
@@ -139,23 +139,23 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
                 }
             } else if (building instanceof CommerceBuilding) {
 
-                if (origin.getCommerce(hasProject) >= maxCommerce) continue;
+                if (origin.calcCommerce(hasProject) >= maxCommerce) continue;
                 {
                     cities.enqueue(create(originPair, building, i));
                 }
             } else if (building instanceof ServiceBuilding) {
                 if (building == Buildings.HOSPITAL) {
-                    Double disease = origin.getDisease(hasProject);
+                    Double disease = origin.calcDisease(hasProject);
                     if (disease > 0) {
                         cities.enqueue(create(originPair, building, i));
                     }
                 } else if (building == Buildings.RECYCLING_CENTER) {
-                    Integer pollution = origin.getPollution(hasProject);
+                    Integer pollution = origin.calcPollution(hasProject);
                     if (pollution > 0) {
                         cities.enqueue(create(originPair, building, i));
                     }
                 } else if (building == Buildings.POLICE_STATION) {
-                    Double crime = origin.getCrime(hasProject);
+                    Double crime = origin.calcCrime(hasProject);
                     if (crime > 0) {
                         cities.enqueue(create(originPair, building, i));
                     }

@@ -349,7 +349,7 @@ public class OptimalBuild extends Command {
                     double currentInfra = city.getInfra();
                     city.setInfra(Math.min(currentInfra, finalInfraLow));
                     city.getMetrics(hasProject).recalculate(city, hasProject);
-                    if (popLowFinal != null && city.getPopulation(hasProject) < popLowFinal)
+                    if (popLowFinal != null && city.calcPopulation(hasProject) < popLowFinal)
                         return Double.NEGATIVE_INFINITY;
                     Double value = parent.apply(city);
                     city.setInfra(currentInfra);
@@ -364,7 +364,7 @@ public class OptimalBuild extends Command {
 
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
-                if (city.getPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
+                if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
                 return parent.apply(city);
             };
         }
@@ -374,7 +374,7 @@ public class OptimalBuild extends Command {
 
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
-                if (city.getPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
+                if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
                 return parent.apply(city);
             };
         }
@@ -382,12 +382,12 @@ public class OptimalBuild extends Command {
         if (!manu) {
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
-                if (city.get(Buildings.MUNITIONS_FACTORY) > city.get(Buildings.LEAD_MINE))
+                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
                     return Double.NEGATIVE_INFINITY;
-                if (city.get(Buildings.GAS_REFINERY) > city.get(Buildings.OIL_WELL)) return Double.NEGATIVE_INFINITY;
-                if (city.get(Buildings.ALUMINUM_REFINERY) > city.get(Buildings.BAUXITE_MINE))
+                if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL)) return Double.NEGATIVE_INFINITY;
+                if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE))
                     return Double.NEGATIVE_INFINITY;
-                if (city.get(Buildings.STEEL_MILL) > city.get(Buildings.COAL_MINE) || city.get(Buildings.STEEL_MILL) > city.get(Buildings.IRON_MINE))
+                if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE) || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE))
                     return Double.NEGATIVE_INFINITY;
                 return parent.apply(city);
             };
@@ -407,7 +407,7 @@ public class OptimalBuild extends Command {
 
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
-                Double disease = city.getDisease(hasProject);
+                Double disease = city.calcDisease(hasProject);
                 if (disease > finalDiseaseLimit) {
 
                     int remainingSlots = city.getFreeSlots();
@@ -415,10 +415,10 @@ public class OptimalBuild extends Command {
 
                     int latestBuilding = 0;
                     for (int j = Buildings.SUBWAY.ordinal(); j <= Buildings.RECYCLING_CENTER.ordinal(); j++) {
-                        if (city.get(j) > 0) latestBuilding = j;
+                        if (city.getBuilding(j) > 0) latestBuilding = j;
                     }
 
-                    double pollutionDisease = city.getPollution(hasProject) * 0.05;
+                    double pollutionDisease = city.calcPollution(hasProject) * 0.05;
                     double diseaseInfra = disease - pollutionDisease;
 
                     if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
@@ -465,7 +465,7 @@ public class OptimalBuild extends Command {
 
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
-                double crime = city.getCrime(hasProject);
+                double crime = city.calcCrime(hasProject);
 
                 if (crime > finalCrimeLimit) {
                     int remainingSlots = city.getFreeSlots();
@@ -499,7 +499,7 @@ public class OptimalBuild extends Command {
                     for (MilitaryUnit unit : MilitaryUnit.values) {
                         MilitaryBuilding building = unit.getBuilding();
                         if (building == null) continue;
-                        int numBuilt = city.get(building);
+                        int numBuilt = city.getBuilding(building);
                         if (numBuilt == 0) continue;
                         int amt = building.getUnitCap() * numBuilt;
 
@@ -555,10 +555,10 @@ public class OptimalBuild extends Command {
         String emoji = "Grant";
         String command = Settings.commandPrefix(true) + "grant {usermention} " + json;
 
-        result.append(" Disease: ").append(optimized.getDisease(hasProject)).append("\n");
-        result.append(" Crime: ").append(optimized.getCrime(hasProject)).append("\n");
-        result.append(" Commerce: ").append(optimized.getCommerce(hasProject)).append("\n");
-        result.append(" Population: ").append(optimized.getPopulation(hasProject)).append("\n");
+        result.append(" Disease: ").append(optimized.calcDisease(hasProject)).append("\n");
+        result.append(" Crime: ").append(optimized.calcCrime(hasProject)).append("\n");
+        result.append(" Commerce: ").append(optimized.calcCommerce(hasProject)).append("\n");
+        result.append(" Population: ").append(optimized.calcPopulation(hasProject)).append("\n");
 
         result.append(" Click ").append(emoji).append(" to request a grant");
 

@@ -211,9 +211,9 @@ public enum MilitaryUnit {
                 double pop = 0;
                 Collection<JavaCity> cities = citiesSupplier.get();
                 for (JavaCity city : cities) {
-                    amt += city.get(building);
+                    amt += city.getBuilding(building);
                     if (building.getCitizensPerUnit() > 0) {
-                        pop += city.getPopulation(hasProject);
+                        pop += city.calcPopulation(hasProject);
                     }
                 }
                 int cap = building.cap(hasProject) * amt;
