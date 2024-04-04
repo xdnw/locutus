@@ -38,7 +38,7 @@ public class WikiEscrowPage extends BotWikiGen {
                 "- " + StringMan.join(EscrowMode.values(), "\n- "),
                 "## Commands",
                 "Use the `escrowMode` argument for the transfer commands, e.g.",
-                CM.transfer.self.cmd.create("food=10", null, null, null, null, null, null, null, null, null, null, null, EscrowMode.WHEN_BLOCKADED.name(), null, null).toString(),
+                CM.transfer.self.cmd.create("food=10", null, null, null, null, null, null, null, null, EscrowMode.WHEN_BLOCKADED.name(), null, null, null, null).toString(),
                 "### Slash commands:",
                 commandMarkdownSpoiler(CM.transfer.bulk.cmd),
                 commandMarkdownSpoiler(CM.transfer.resources.cmd),

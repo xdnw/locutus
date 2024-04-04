@@ -770,7 +770,7 @@ public class NationUpdateProcessor {
             }
         }
 
-        CM.alliance.departures cmd = CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "7d", "*,#alliance_id!=" + alliance.getId(), "true", "true", null, null);
+        CM.alliance.departures cmd = CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "7d", "*,#alliance_id!=" + alliance.getId(), "true", "true", null, null, null);
 
         if (memberRemoves >= 5) {
             Map<DBAlliance, Integer> ranks = Locutus.imp().getNationDB().getAllianceRanks(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.MEMBER.id, true);

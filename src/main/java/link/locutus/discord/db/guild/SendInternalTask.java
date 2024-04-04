@@ -352,7 +352,7 @@ public class SendInternalTask {
             if (Math.round((diff[i] - amount[i]) * 100) > 1) {
                 String name = account.isGuild() ? account.asGuild().getGuild().toString() : account.isAlliance() ? account.asAlliance().getMarkdownUrl() : account.asNation().getMarkdownUrl();
                 String[] message = {"Internal error: " + ResourceType.resourcesToString(diff) + " != " + ResourceType.resourcesToString(amount),
-                        "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.create(account.getQualifiedId()) + " in " + senderOffshore.getGuildDB().getIdLong()};
+                        "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.create(account.getQualifiedId(), null) + " in " + senderOffshore.getGuildDB().getIdLong()};
                 return new TransferResult(OffshoreInstance.TransferStatus.OTHER, account, amount, "#deposit").addMessage(message);
             }
         }
@@ -517,13 +517,13 @@ public class SendInternalTask {
 
     private void checkOffshoreDisabled(OffshoreInstance offshore, GuildDB server, DBAlliance alliance, DBNation nation) {
         if (offshore.isDisabled(server.getIdLong())) {
-            throw new IllegalArgumentException("Error sending to " + server.getGuild() + ". Please use: " + CM.offshore.unlockTransfers.cmd.create(server.getIdLong() + "") + " in " + offshore.getGuild());
+            throw new IllegalArgumentException("Error sending to " + server.getGuild() + ". Please use: " + CM.offshore.unlockTransfers.cmd.create(server.getIdLong() + "", null) + " in " + offshore.getGuild());
         }
         if (alliance != null && offshore.isDisabled(alliance.getId())) {
-            throw new IllegalArgumentException("Error with account " + alliance.getMarkdownUrl() + ". Please use: " + CM.offshore.unlockTransfers.cmd.create(alliance.getQualifiedId()) + " in " + offshore.getGuild());
+            throw new IllegalArgumentException("Error with account " + alliance.getMarkdownUrl() + ". Please use: " + CM.offshore.unlockTransfers.cmd.create(alliance.getQualifiedId(), null) + " in " + offshore.getGuild());
         }
         if (nation != null && offshore.disabledNations.containsKey(nation.getId())) {
-            throw new IllegalArgumentException("Error with account " + nation.getMarkdownUrl() + ". Please use: " + CM.offshore.unlockTransfers.cmd.create(nation.getId() + "") + " in " + offshore.getGuild());
+            throw new IllegalArgumentException("Error with account " + nation.getMarkdownUrl() + ". Please use: " + CM.offshore.unlockTransfers.cmd.create(nation.getId() + "", null) + " in " + offshore.getGuild());
         }
     }
 

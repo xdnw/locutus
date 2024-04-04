@@ -3121,7 +3121,7 @@ public class BankCommands {
         if (alliance.isAlliance()) {
             if (coalition.contains((long) alliance.getAlliance_id())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getAlliance_id() + "`";
             GuildDB otherDb = alliance.asAlliance().getGuildDB();
-            if (otherDb != null && coalition.contains(otherDb.getIdLong()))return "Please use `!removecoalition FROZEN_FUNDS " + otherDb.getIdLong() + "`";
+            if (otherDb != null && coalition.contains(otherDb.getIdLong())) return "Please use `!removecoalition FROZEN_FUNDS " + otherDb.getIdLong() + "`";
         } else if (alliance.isGuild()) {
             if (coalition.contains((long) alliance.getIdLong())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getIdLong() + "`";
             for (int aaId : alliance.asGuild().getAllianceIds(true)) {
@@ -3130,16 +3130,25 @@ public class BankCommands {
         } else if (alliance.isNation()){
             Long removed = offshore.disabledNations.remove(alliance.getId());
             if (removed == null) {
-                return "No transfers are locked for " + alliance.getQualifiedId();
+                return "No transfers are locked for " + alliance.getQualifiedId() + ". Valid options: " + offshore.disabledNations.keySet().stream().map(f -> PW.getMarkdownUrl(f, false));
             }
             return "Enabled transfers for " + alliance.getQualifiedId();
         }
-        if (alliance.isGuild()) {
-            offshore.disabledGuilds.remove(alliance.asGuild().getIdLong());
-        } else if (alliance.isAlliance()) {
-            GuildDB guild = alliance.asAlliance().getGuildDB();
-            if (guild == null) return "No guild found for AA:" + alliance;
-            offshore.disabledGuilds.remove(guild.getIdLong());
+        if (alliance.isGuild() || alliance.isAlliance()) {
+            GuildDB aaDb = alliance.isGuild() ? alliance.asGuild() : alliance.asAlliance().getGuildDB();
+            if (aaDb == null) {
+                return "No guild found for " + alliance.getMarkdownUrl();
+            }
+            if (offshore.disabledGuilds.remove(aaDb.getIdLong()) == null) {
+                String msg = "No transfers are locked for " + alliance.getQualifiedId() + ".";
+                if (!offshore.disabledGuilds.isEmpty()) {
+                    msg += " Valid options:\n- " + offshore.disabledGuilds.keySet().stream().map(f -> {
+                        Guild guild = Locutus.imp().getDiscordApi().getGuildById(f);
+                        return guild == null ? f + "" : guild.toString();
+                    }).collect(Collectors.joining("\n- "));
+                }
+                return msg;
+            }
         } else {
             return alliance + " must be a guild or alliance";
         }
@@ -3669,7 +3678,7 @@ public class BankCommands {
                 if (me != null && me.getId() == nationOrAllianceOrGuild.getId()) {
                     buttons.put("withdraw",
                             Map.entry(
-                                    CM.transfer.self.cmd.create("", DepositType.DEPOSIT.name(), null, null, null, null, null, null, null, null, null, null, null, null, null),
+                                    CM.transfer.self.cmd.create("", null, DepositType.DEPOSIT.name(), null, null, null, null, null, null, null, null, null, null, null),
                                     true));
                 }
                 buttons.put("withdraw elsewhere",

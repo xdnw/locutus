@@ -1561,7 +1561,7 @@ public class UtilityCommands {
                 CM.project.slots projects = CM.project.slots.cmd.create(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, projects, "Projects");
                 //Departures
-                CM.nation.departures departures = CM.nation.departures.cmd.create(nation.getUrl(), "9999d", null, null, null, null, null);
+                CM.nation.departures departures = CM.nation.departures.cmd.create(nation.getUrl(), "9999d", null, null, null, null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, departures, "Departures");
                 //Multis
                 CM.nation.list.multi multis = CM.nation.list.multi.cmd.create(nation.getUrl());
@@ -1644,7 +1644,7 @@ public class UtilityCommands {
                 msg = msg.modal(CommandBehavior.EPHEMERAL, generateCoalition, "Add Sphere Coalition");
                 //- /alliance departures
                 CM.alliance.departures departures =
-                        CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null);
+                        CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, departures, "Departures");
                 //- loot
                 CM.nation.loot loot =
