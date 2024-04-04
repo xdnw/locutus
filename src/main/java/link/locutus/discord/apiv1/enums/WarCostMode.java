@@ -3,7 +3,7 @@ package link.locutus.discord.apiv1.enums;
 public enum WarCostMode {
     DEALT(true, false, true, false),
     NET_DEALT(true, true, true, false),
-    PROFIT(true, true, false, true),
+    PROFIT(false, true, false, false),
     LOSSES(false, true, false, true),
     NET_LOSSES(true, true, false, true),
     ;

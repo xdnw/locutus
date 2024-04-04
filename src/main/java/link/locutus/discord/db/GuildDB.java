@@ -2103,7 +2103,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         Map<String, Boolean> allowedMMr = new LinkedHashMap<>();
         String myMMR = null;
         for (Map.Entry<NationFilter, MMRMatcher> entry : requiredMmrMap.entrySet()) {
-            NationFilter nationMatcher = entry.getKey();
+            NationFilter nationMatcher = entry.getKey().recalculate(60_000);
             if (nationMatcher.test(nation)) {
                 if (myMMR == null) {
                     myMMR = nation.getMMRBuildingStr();

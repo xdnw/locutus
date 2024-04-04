@@ -18,16 +18,46 @@ import java.util.stream.Collectors;
 
 public class NationFilterString implements NationFilter {
     private final String filter;
-    private final Predicate<DBNation> predicate;
+    private final long guildId;
+    private final long userId;
+    private final int nationId;
+    private Predicate<DBNation> predicate;
     private Predicate<DBNation> cached;
     private long cacheDate;
+    private long recalcDate;
 
     public NationFilterString(String filter, Guild guild, User user, DBNation nation) {
+        this.guildId = guild == null ? 0 : guild.getIdLong();
+        this.userId = user == null ? 0 : user.getIdLong();
+        this.nationId = nation == null ? 0 : nation.getNation_id();
+        this.filter = filter;
+        this.predicate = recalculate(guild, user, nation);
+        this.recalcDate = System.currentTimeMillis();
+    }
+
+    @Override
+    public NationFilter recalculate(long time) {
+        long now = System.currentTimeMillis();
+        if (now - recalcDate < time) {
+            return this;
+        }
+        recalcDate = now;
+        return recalculate();
+    }
+
+    @Override
+    public NationFilterString recalculate() {
+        Guild guild = guildId == 0 ? null : Locutus.imp().getDiscordApi().getGuildById(guildId);
+        User user = userId == 0 ? null : DiscordUtil.getUser(userId);
+        DBNation nation = nationId == 0 ? null : DBNation.getById(nationId);
+        this.predicate = recalculate(guild, user, nation);
+        return this;
+    }
+
+    private Predicate<DBNation> recalculate(Guild guild, User user, DBNation nation) {
         NationPlaceholders placeholders = Locutus.cmd().getV2().getNationPlaceholders();
         LocalValueStore store = placeholders.createLocals(guild, user, nation);
-        this.predicate = placeholders.parseFilter(store, filter);
-
-        this.filter = filter;
+        return placeholders.parseFilter(store, filter);
     }
 
     @Override

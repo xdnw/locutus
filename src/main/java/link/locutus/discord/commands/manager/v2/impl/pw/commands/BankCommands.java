@@ -3217,6 +3217,8 @@ public class BankCommands {
 
         if (requiredBrackets == null) requiredBrackets = Collections.emptyMap();
         if (requiredInternalRates == null) requiredInternalRates = Collections.emptyMap();
+        requiredBrackets.keySet().forEach(NationFilter::recalculate);
+        requiredInternalRates.keySet().forEach(NationFilter::recalculate);
 
         sheet.setHeader(header);
 

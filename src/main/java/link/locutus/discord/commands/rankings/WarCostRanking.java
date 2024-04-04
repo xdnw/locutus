@@ -178,7 +178,7 @@ public class WarCostRanking extends Command {
             }
         }
 
-        if (args.size() == 0 || args.size() > 3) return usage(args.size(), 1, 2, channel);
+        if (args.size() != 2 && args.size() > 3) return usage(args.size(), 1, 2, channel);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
         System.out.println("Nations " + nations.size());

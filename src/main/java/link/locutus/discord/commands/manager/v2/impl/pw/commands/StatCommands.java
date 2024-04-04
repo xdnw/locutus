@@ -219,12 +219,12 @@ public class StatCommands {
                 .allowWarStatuses(allowedWarStatuses)
                 .allowedWarTypes(allowedWarTypes)
                 .allowedAttackTypes(allowedAttacks);
-//        if (onlyOffensiveWars) {
-//            parser.getWars().entrySet().removeIf(f -> !parser.getIsPrimary().apply(f.getValue()));
-//        }
-//        if (onlyDefensiveWars) {
-//            parser.getWars().entrySet().removeIf(f -> !parser.getIsPrimary().apply(f.getValue()));
-//        }
+        if (onlyOffensiveWars) {
+            parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
+        }
+        if (onlyDefensiveWars) {
+            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
+        }
         if (type == WarCostMode.PROFIT && stat.unit() != null) {
             throw new IllegalArgumentException("Cannot rank by `type: profit` with a unit stat");
         }

@@ -947,7 +947,7 @@ public class WarUpdateProcessor {
             CounterStat stat = card.getCounterStat();
 
             DBAlliance defAA = defender.getAlliance();
-            DBAlliance attAA = attacker.getAlliance();
+            DBAlliance attAA = attacker == null ? null : attacker.getAlliance();
             if (defAA == null || attAA == null) return;
 
             ByteBuffer defWarringBuf = defAA.getMeta(AllianceMeta.IS_WARRING);

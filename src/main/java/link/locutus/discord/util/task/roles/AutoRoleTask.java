@@ -109,6 +109,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         for (Set<Role> value : cityRoleMap.values()) cityRoles.addAll(value);
 
         this.conditionalRoles = GuildKey.CONDITIONAL_ROLES.getOrNull(db);
+        if (this.conditionalRoles != null) this.conditionalRoles.keySet().forEach(NationFilter::recalculate);
 
         fetchTaxRoles(true);
 

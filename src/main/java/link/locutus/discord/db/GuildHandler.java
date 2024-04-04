@@ -169,6 +169,8 @@ public class GuildHandler {
     public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilter, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
         Set<Integer> aaIds = db.getAllianceIds();
         nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
+        if (nations.isEmpty()) return Collections.emptyMap();
+        requiredTaxBracket.keySet().forEach(NationFilter::recalculate);
 
         AllianceList allianceList = db.getAllianceList();
 
@@ -216,6 +218,8 @@ public class GuildHandler {
     public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Map<NationFilter, TaxRate> requiredTaxRates, Consumer<String> responses) throws Exception {
         Set<Integer> aaIds = db.getAllianceIds();
         nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
+        if (nations.isEmpty()) return Collections.emptyMap();
+        requiredTaxRates.keySet().forEach(NationFilter::recalculate);
 
         Map<DBNation, Map.Entry<TaxRate, String>> nationsMovedRate = new HashMap<>();
 
