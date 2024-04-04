@@ -20,6 +20,6 @@ public interface NationFilter extends Predicate<DBNation> {
     }
 
     default NationFilter recalculate(long time) {
-
+        return this;
     }
 }
