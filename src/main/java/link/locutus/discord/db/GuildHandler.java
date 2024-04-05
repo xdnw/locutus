@@ -878,7 +878,7 @@ public class GuildHandler {
 ////                            .setCost(new Function<DBNation, double[]>() {
 ////                                @Override
 ////                                public double[] apply(DBNation nation) {
-////                                    double cityCost = PnwUtil.nextCityCost(nation, amt);
+////                                    double cityCost = PW.nextCityCost(nation, amt);
 ////                                    double factor = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY ? 0.95 : 1;
 ////                                    return ResourceType.MONEY.toArray(cityCost * factor);
 ////                                }
@@ -901,7 +901,7 @@ public class GuildHandler {
 //                        .setCost(new Function<DBNation, double[]>() {
 //                            @Override
 //                            public double[] apply(DBNation nation) {
-//                                double cityCost = PnwUtil.nextCityCost(nation, 1);
+//                                double cityCost = PW.nextCityCost(nation, 1);
 //                                double factor = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY ? 0.95 : 1;
 //                                return ResourceType.MONEY.toArray(cityCost * factor);
 //                            }
@@ -936,7 +936,7 @@ public class GuildHandler {
 //                for (Project project : allProjects) {
 //                    Grant grant = new Grant(nation, DepositType.PROJECT)
 //                            .setAmount(project.name())
-//                            .setCost(f -> PnwUtil.resourcesToArray(PnwUtil.multiply(project.cost(), f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? 0.95 : 1)));
+//                            .setCost(f -> PW.resourcesToArray(PW.multiply(project.cost(), f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? 0.95 : 1)));
 //
 //                    grant.addRequirement(new Grant.Requirement("Not eligable for project", overrideSafe, f -> allowedProjects.contains(project)));
 //                    grant.addRequirement(new Grant.Requirement("Already have project", overrideUnsafe, f -> {
@@ -1054,7 +1054,7 @@ public class GuildHandler {
 //                                        JavaCity city = entry.getValue();
 //                                        currentInfra = Math.max(currentInfra, Math.max(city.getRequiredInfra(), city.getInfra()));
 //                                        if (currentInfra < infraLevel) {
-//                                            cost += PnwUtil.calculateInfra(currentInfra, infraLevel);
+//                                            cost += PW.calculateInfra(currentInfra, infraLevel);
 //                                        }
 //                                    }
 //
@@ -1099,7 +1099,7 @@ public class GuildHandler {
 //                                List<Transaction2> transactions = nation.getTransactions(-1L);
 //                                double maxGranted = Grant.getCityInfraGranted(nation, id, transactions);
 //
-//                                double cost = PnwUtil.calculateInfra(maxGranted, infraLevel);
+//                                double cost = PW.calculateInfra(maxGranted, infraLevel);
 //                                boolean urban = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
 //                                boolean cce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
 //                                boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
@@ -1138,7 +1138,7 @@ public class GuildHandler {
 //                                JavaCity city = entry.getValue();
 //                                int cityId = entry.getKey();
 //                                double currentLand = Math.max(city.getLand(), byCity.getOrDefault(cityId, 0d));
-//                                PnwUtil.calculateLand(currentLand, amt);
+//                                PW.calculateLand(currentLand, amt);
 //                            }
 //
 //                            return ResourceType.MONEY.toArray(total);
@@ -1223,7 +1223,7 @@ public class GuildHandler {
 //                boolean hasEnemy = false;
 //                Set<Integer> enemies = getDb().getCoalition(Coalition.ENEMIES);
 //
-//                boolean correctMMR = PnwUtil.matchesMMR(nation.getMMRBuildingStr(), "555X");
+//                boolean correctMMR = PW.matchesMMR(nation.getMMRBuildingStr(), "555X");
 //
 //                // is assigned counter
 //                // OR
@@ -1268,7 +1268,7 @@ public class GuildHandler {
 //    public double[] getDeposits(Alliance alliance, boolean update) {
 //
 //        Map<ResourceType, Double> aaDeposits = offshore.getDeposits(alliance.getAlliance_id(), update);
-//        return PnwUtil.resourcesToArray(aaDeposits);
+//        return PW.resourcesToArray(aaDeposits);
 //    }
 //
 //    public double[] getDepositsFromAccount(String account, boolean update) {
@@ -1307,7 +1307,7 @@ public class GuildHandler {
 //                    deposit.resources[i] *= pctRss;
 //                }
 //
-//                tax = PnwUtil.addResourcesToA(tax, PnwUtil.resourcesToMap(deposit.resources));
+//                tax = PW.addResourcesToA(tax, PW.resourcesToMap(deposit.resources));
 //            }
 //        }
 //

@@ -1395,8 +1395,8 @@ public class GrantCommands {
 //                        double[] allowed = getAllowedWarchest(db, nation, cutoff, econStaff);
 //
 //                        grant.addRequirement(new Grant.Requirement("Amount sent over past 120 days exceeds WARCHEST_PER_CITY\n" +
-//                                "Tried to send: " + PnwUtil.resourcesToString(grant.cost()) + "\n" +
-//                                "Allowance: " + PnwUtil.resourcesToString(allowed), econGov, f -> {
+//                                "Tried to send: " + PW.resourcesToString(grant.cost()) + "\n" +
+//                                "Allowance: " + PW.resourcesToString(allowed), econGov, f -> {
 //                            double[] cost = grant.cost();
 //                            for (int i = 0; i < allowed.length; i++) {
 //                                if (cost[i] > allowed[i] + 0.01) return false;
@@ -1469,7 +1469,7 @@ public class GrantCommands {
 //                        boolean hasEnemy = false;
 //                        Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 //
-//                        boolean correctMMR = PnwUtil.matchesMMR(nation.getMMRBuildingStr(), "555X");
+//                        boolean correctMMR = PW.matchesMMR(nation.getMMRBuildingStr(), "555X");
 //
 //                        // is assigned counter
 //                        // OR
@@ -1689,7 +1689,7 @@ public class GrantCommands {
 //    }
 //
 //    public double[] getAllowedWarchest(@Me GuildDB db, DBNation nation, long cutoff, boolean addWarchestBase) {
-//        double[] warchestMax = PnwUtil.resourcesToArray(db.getPerCityWarchest(nation));
+//        double[] warchestMax = PW.resourcesToArray(db.getPerCityWarchest(nation));
 //        List<DBWar> wars = nation.getWars();
 //
 //        Set<Long> banks = db.getTrackedBanks();
@@ -1700,12 +1700,12 @@ public class GrantCommands {
 //        for (Map.Entry<Integer, Transaction2> entry : transactions) {
 //            Transaction2 tx = entry.getValue();
 //            if (tx.note == null || tx.tx_datetime < cutoff) continue;
-//            Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
+//            Map<String, String> notes = PW.parseTransferHashNotes(tx.note);
 //            if (!notes.containsKey("#warchest")) continue;
 //            int sign = entry.getKey();
 //            if (sign > 0 && tx.tx_id > 0 && !notes.containsKey("#ignore")) continue;
 //
-//            transfers = PnwUtil.add(transfers, PnwUtil.multiply(tx.resources, sign));
+//            transfers = PW.add(transfers, PW.multiply(tx.resources, sign));
 //        }
 //
 //        double[] warExpenses = ResourceType.getBuffer();
@@ -1751,7 +1751,7 @@ public class GrantCommands {
 //                    }
 //                }
 //
-//                double[] cost = PnwUtil.resourcesToArray(war.toCost().getTotal(war.isAttacker(nation), true, false, true, true));
+//                double[] cost = PW.resourcesToArray(war.toCost().getTotal(war.isAttacker(nation), true, false, true, true));
 //                for (int j = 0; j < cost.length; j++) {
 //                    double amt = cost[j];
 //                    if (amt > 0) warExpenses[j] += amt;
@@ -1848,7 +1848,7 @@ public class GrantCommands {
 //
 //            double[] funds = unit.getCost(unitsToSend);
 //            if (sendAttackConsumption > 0) {
-//                funds = ResourceType.add(funds, PnwUtil.multiply(unit.getConsumption().clone(), sendAttackConsumption));
+//                funds = ResourceType.add(funds, PW.multiply(unit.getConsumption().clone(), sendAttackConsumption));
 //            }
 //
 //            if (ResourceType.isEmpty(funds)) {
@@ -1902,7 +1902,7 @@ public class GrantCommands {
 //                for (MilitaryUnit unit : MilitaryUnit.values) {
 //                    double numAttacks = sendConsumptionForAttacks.get(unit);
 //                    if (numAttacks > 0) {
-//                        funds = ResourceType.add(funds, PnwUtil.multiply(unit.getConsumption().clone(), numAttacks));
+//                        funds = ResourceType.add(funds, PW.multiply(unit.getConsumption().clone(), numAttacks));
 //                    }
 //                }
 //            }
@@ -1966,34 +1966,34 @@ public class GrantCommands {
 //            double[] funds = ResourceType.getBuffer();
 //
 //            if (!up && forceUrbanPlanning && cityTo > Projects.URBAN_PLANNING.requiredCities()) {
-//                double cost1 = PnwUtil.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
+//                double cost1 = PW.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
 //                double[] projectCost = Projects.URBAN_PLANNING.cost(true);
-//                double cost2 = PnwUtil.cityCost(nation.getCities(), cityTo, manifest, true, aup, mp) + PnwUtil.convertedTotal(projectCost);
+//                double cost2 = PW.cityCost(nation.getCities(), cityTo, manifest, true, aup, mp) + PW.convertedTotal(projectCost);
 //                if (cost2 <= cost1) {
 //                    up = true;
-//                    if (includeProjectPurchases) funds = PnwUtil.add(funds, projectCost);
+//                    if (includeProjectPurchases) funds = PW.add(funds, projectCost);
 //                }
 //            }
 //            if (!aup && forceAdvancedUrbanPlanning && cityTo > Projects.ADVANCED_URBAN_PLANNING.requiredCities()) {
-//                double cost1 = PnwUtil.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
+//                double cost1 = PW.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
 //                double[] projectCost = Projects.ADVANCED_URBAN_PLANNING.cost(true);
-//                double cost2 = PnwUtil.cityCost(nation.getCities(), cityTo, manifest, up, true, mp) + PnwUtil.convertedTotal(projectCost);
+//                double cost2 = PW.cityCost(nation.getCities(), cityTo, manifest, up, true, mp) + PW.convertedTotal(projectCost);
 //                if (cost2 <= cost1) {
 //                    aup = true;
-//                    if (includeProjectPurchases) funds = PnwUtil.add(funds, projectCost);
+//                    if (includeProjectPurchases) funds = PW.add(funds, projectCost);
 //                }
 //            }
 //            if (!mp && forceUrbanPlanning && cityTo > Projects.METROPOLITAN_PLANNING.requiredCities()) {
-//                double cost1 = PnwUtil.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
+//                double cost1 = PW.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
 //                double[] projectCost = Projects.METROPOLITAN_PLANNING.cost(true);
-//                double cost2 = PnwUtil.cityCost(nation.getCities(), cityTo, manifest, up, aup, true) + PnwUtil.convertedTotal(projectCost);
+//                double cost2 = PW.cityCost(nation.getCities(), cityTo, manifest, up, aup, true) + PW.convertedTotal(projectCost);
 //                if (cost2 <= cost1) {
 //                    mp = true;
-//                    if (includeProjectPurchases) funds = PnwUtil.add(funds, projectCost);
+//                    if (includeProjectPurchases) funds = PW.add(funds, projectCost);
 //                }
 //            }
 //
-//            funds[0] += PnwUtil.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
+//            funds[0] += PW.cityCost(nation.getCities(), cityTo, manifest, up, aup, mp);
 //
 //            if (includeCityBuildJsonCost != null) {
 //                if (includeCityBuildJsonCost.getLand() != null) {
@@ -2011,10 +2011,10 @@ public class GrantCommands {
 //                }
 //            }
 //            if (includeInfraGrant != null && includeInfraGrant > 10) {
-//                funds[0] += PnwUtil.calculateInfra(10, includeInfraGrant) * numCities;
+//                funds[0] += PW.calculateInfra(10, includeInfraGrant) * numCities;
 //            }
 //            if (includeLandGrant != null && includeLandGrant > 250) {
-//                funds[0] += PnwUtil.calculateLand(250, includeLandGrant) * numCities;
+//                funds[0] += PW.calculateLand(250, includeLandGrant) * numCities;
 //            }
 //
 //            if (includeNewUnitCost != null) {
@@ -2027,7 +2027,7 @@ public class GrantCommands {
 //                }
 //            }
 //            if (includeNewCityWarchest) {
-//                funds = ResourceType.add(funds, PnwUtil.multiply(PnwUtil.resourcesToArray(db.getPerCityWarchest(nation)), numCities));
+//                funds = ResourceType.add(funds, PW.multiply(PW.resourcesToArray(db.getPerCityWarchest(nation)), numCities));
 //            }
 //            amountsToSendMap.put(nation, funds);
 //        }
@@ -2110,7 +2110,7 @@ public class GrantCommands {
 //                double total = 0;
 //                for (Map.Entry<Integer, Double> entry : currentInfraLevels.entrySet()) {
 //                    if (entry.getValue() < buyUpToInfra) {
-//                        total += PnwUtil.calculateInfra(entry.getValue(), buyUpToInfra, aec, cce, gsa, urb);
+//                        total += PW.calculateInfra(entry.getValue(), buyUpToInfra, aec, cce, gsa, urb);
 //                    }
 //                }
 //                return ResourceType.MONEY.toArray(total);
@@ -2380,7 +2380,7 @@ public class GrantCommands {
 //                body.append("Receiver: " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
 //                body.append("Note: " + grant.getNote()).append("\n");
 //                body.append("Amt: " + grant.getAmount()).append("\n");
-//                body.append("Cost: `" + PnwUtil.resourcesToString(grant.cost())).append("\n\n");
+//                body.append("Cost: `" + PW.resourcesToString(grant.cost())).append("\n\n");
 //
 //                if (!override.isEmpty()) {
 //                    body.append("**" + override.size() + " failed checks (you have admin override)**\n - ");

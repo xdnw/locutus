@@ -71,7 +71,7 @@ public class AllianceLootRanking extends Command {
         List<Map.Entry<Integer, Map<ResourceType, Double>>> sorted = new ArrayList<>(byAlliance.entrySet())
                 .stream()
                 .sorted(Comparator.comparingDouble(
-//                        o -> -PnwUtil.convertedTotal(o.getValue())))
+//                        o -> -PW.convertedTotal(o.getValue())))
                         o -> -o.getValue().getOrDefault(ResourceType.MONEY, 0d)))
                 .toList();
 

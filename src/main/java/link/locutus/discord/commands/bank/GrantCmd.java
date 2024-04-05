@@ -640,7 +640,7 @@ public class GrantCmd extends Command {
 //                oldProfit = entry.getValue().profit(me, pnwNation, oldProfit);
 //            }
 //
-//            double profit = PnwUtil.convertedTotal(newProfit) * pnwNation.getCities() - PnwUtil.convertedTotal(oldProfit);
+//            double profit = PW.convertedTotal(newProfit) * pnwNation.getCities() - PW.convertedTotal(oldProfit);
 //            response.append("\nProfit/day: $").append(MathMan.format(profit));
 //            double roi =( ((profit * 120 - totalCost) / totalCost) * 7 * 100 / 120);
 //            response.append("\nROI/120d: ").append(MathMan.format(roi)).append("%");
@@ -718,7 +718,7 @@ public class GrantCmd extends Command {
 //                oldProfit = entry.getValue().profit(me, pnwNation, oldProfit);
 //            }
 //
-//            double profit = PnwUtil.convertedTotal(newProfit) - PnwUtil.convertedTotal(oldProfit);
+//            double profit = PW.convertedTotal(newProfit) - PW.convertedTotal(oldProfit);
 //            response.append("\nProfit/day: $").append(MathMan.format(profit));
 //            double roi =( ((profit * 120 - totalCost) / totalCost) * 7 * 100 / 120);
 //            response.append("\nROI/120d: ").append(MathMan.format(roi)).append("%");

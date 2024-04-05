@@ -729,7 +729,7 @@ public class DataUtil {
 //                        boolean atWar = nationsAtWar.contains(nation.getId());
 //                        double rads = radsByContinent.get(nation.getContinent()) + globalRads;
 //
-//                        double[] revenue = PnwUtil.getRevenue(null, 1, gameTime, nation, nationCities.values(), true, true, true, false, false, rads, atWar, 0d);
+//                        double[] revenue = PW.getRevenue(null, 1, gameTime, nation, nationCities.values(), true, true, true, false, false, rads, atWar, 0d);
 //                        if (nation.isTaxable()) {
 //                            tracker.getOrCreate(nation.getId()).addUnknownRevenue(tracker, nation.getId(), -1, turnTimestamp, revenue);
 ////                            tracker.add(nation.getId(), turnTimestamp, EMPTY, revenue);
@@ -796,7 +796,7 @@ public class DataUtil {
 //
 //                            // cities
 //                            if (currentCities.size() > previousCities.size()) {
-//                                double cost = PnwUtil.cityCost(currentNation, previousCities.size(), currentCities.size());
+//                                double cost = PW.cityCost(currentNation, previousCities.size(), currentCities.size());
 //                                tracker.add(nationId, currentTimestamp, cost);
 //                            }
 //                        }

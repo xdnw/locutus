@@ -264,7 +264,7 @@ public class OffshoreInstance {
 //            }
 //            resources[transfer.getRss().ordinal()] += sign * transfer.getAmount();
 //        }
-//        return PnwUtil.resourcesToMap(resources);
+//        return PW.resourcesToMap(resources);
 //    }
 
     public synchronized List<Transaction2> getTransactionsGuild(long guildId, boolean force) {
@@ -983,7 +983,7 @@ public class OffshoreInstance {
                     }
                     senderDB.setEscrowed(receiver.asNation(), balance, escrowDate);
                 }
-//                result = Map.entry(TransferStatus.SUCCESS, "Escrowed `" + PnwUtil.resourcesToString(amount) + "` for " + receiver.getName() + ". use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
+//                result = Map.entry(TransferStatus.SUCCESS, "Escrowed `" + PW.resourcesToString(amount) + "` for " + receiver.getName() + ". use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
                 result = new TransferResult(TransferStatus.SUCCESS, receiver, amount, ingameNote)
                         .addMessage("Escrowed `" + ResourceType.resourcesToString(amount) + "` for " + receiver.getMarkdownUrl(),
                         "Use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
@@ -1772,7 +1772,7 @@ public class OffshoreInstance {
      *                 if (nation == null) {
      *                     msg += "\nEnsure " + GuildKey.API_KEY + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
      *                 } else {
-     *                     msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
+     *                     msg += "\nEnsure " + PW.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
      *                 }
      *             }
      *             if (whitelistedError) {

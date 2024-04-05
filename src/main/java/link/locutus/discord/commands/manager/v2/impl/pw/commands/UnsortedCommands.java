@@ -430,7 +430,7 @@ public class UnsortedCommands {
             message.append(ResourceType.resourcesToString(totals));
 
 //            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
-//            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
+//            Message msg = PW.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             out.append(title + ": " + message).append("\n");
         }
     }

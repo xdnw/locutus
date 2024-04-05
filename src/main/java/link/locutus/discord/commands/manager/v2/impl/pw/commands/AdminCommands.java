@@ -803,7 +803,7 @@ public class AdminCommands {
 //            if (other == null || other.getOffshoreDB() != rootDb) continue;
 //
 //            double[] deposits = offshore.getDeposits(other, false);
-//            double total = PnwUtil.convertedTotal(deposits);
+//            double total = PW.convertedTotal(deposits);
 //
 //            List<Transaction2> tx = offshore.getTransactionsAA(allianceId, false);
 //            tx.removeIf(f -> f.tx_datetime < cutoff);

@@ -164,10 +164,10 @@ public class WarCard {
 //        double defInfraLoss = 0;
 //
 //        for (AbstractCursor attack : attacks) {
-//            attUnitLoss = PnwUtil.add(attack.getUnitLosses(true), attUnitLoss);
-//            defUnitLoss = PnwUtil.add(attack.getUnitLosses(false), defUnitLoss);
-//            PnwUtil.addResourcesToA(attRssLoss, attack.getLosses(true));
-//            PnwUtil.addResourcesToA(defRssLoss, attack.getLosses(false));
+//            attUnitLoss = PW.add(attack.getUnitLosses(true), attUnitLoss);
+//            defUnitLoss = PW.add(attack.getUnitLosses(false), defUnitLoss);
+//            PW.addResourcesToA(attRssLoss, attack.getLosses(true));
+//            PW.addResourcesToA(defRssLoss, attack.getLosses(false));
 //            if (attack.infra_destroyed != null) {
 //                if (attack.victor == attack.defender_nation_id) {
 ////                    attLossConverted += attack.infra_destroyed_value;
@@ -178,8 +178,8 @@ public class WarCard {
 //                }
 //            }
 //        }
-//        attLossConverted += PnwUtil.convertedTotal(attRssLoss);
-//        defLossConverted += PnwUtil.convertedTotal(defRssLoss);
+//        attLossConverted += PW.convertedTotal(attRssLoss);
+//        defLossConverted += PW.convertedTotal(defRssLoss);
 //
 //        DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
 //        DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);

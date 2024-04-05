@@ -94,7 +94,7 @@ public class BountyCommands {
 //        CustomBounty bounty = new CustomBounty();
 //        bounty.placedBy = me.getNation_id();
 //        bounty.date = System.currentTimeMillis();
-//        bounty.resources = PnwUtil.resourcesToArray(resources);
+//        bounty.resources = PW.resourcesToArray(resources);
 //
 //        bounty.nations = targets.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
 //        bounty.alliances = targets.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());

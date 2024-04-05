@@ -3664,7 +3664,7 @@ public class BankCommands {
             if (Boolean.TRUE.equals(db.getOrNull(GuildKey.RESOURCE_CONVERSION)) && !condensedFormat) {
                 footers.add("You can sell resources to the alliance by depositing with the note `#cash`");
             }
-//            if (PnwUtil.convertedTotal(balance) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
+//            if (PW.convertedTotal(balance) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
 //                if (Roles.ECON_WITHDRAW_SELF.has(author, db.getGuild())) {
 //                    footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
 //                }

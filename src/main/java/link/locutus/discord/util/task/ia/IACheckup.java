@@ -1203,7 +1203,7 @@ public class IACheckup {
 //    private Map.Entry<Object, String> checkBarracks(Map.Entry<Integer, JavaCity> entry) {
 //        JavaCity city = entry.getValue();
 //        if (city.get(Buildings.BARRACKS) != 5) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " does not have max barracks, reducing your potential raid loot.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " does not have max barracks, reducing your potential raid loot.";
 //        }
 //        return null;
 //    }
@@ -1212,9 +1212,9 @@ public class IACheckup {
 //        JavaCity city = entry.getValue();
 //        int amt = city.get(Buildings.FACTORY);
 //        if (amt > 2) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has " + amt + " factories. Tanks are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has " + amt + " factories. Tanks are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio.";
 ////        } else if (amt < target) {
-////            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has " + amt + " factories. " + target + " factories with max tanks may be useful to help win ground control if you get countered.";
+////            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has " + amt + " factories. " + target + " factories with max tanks may be useful to help win ground control if you get countered.";
 //        }
 //        return null;
 //    }
@@ -1222,7 +1222,7 @@ public class IACheckup {
 //    private Map.Entry<Object, String> checkShipyard(Map.Entry<Integer, JavaCity> entry) {
 //        JavaCity city = entry.getValue();
 //        if (city.get(Buildings.DRYDOCK) > 2) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has more than 1 drydock. Ships are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio. For maximum profit you should only need 1 drydock and 1 boat for raiding purposes.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has more than 1 drydock. Ships are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio. For maximum profit you should only need 1 drydock and 1 boat for raiding purposes.";
 //        }
 //        return null;
 //    }
@@ -1230,7 +1230,7 @@ public class IACheckup {
 //    private Map.Entry<Object, String> checkFarms(Map.Entry<Integer, JavaCity> entry) {
 //        JavaCity city = entry.getValue();
 //        if (city.get(Buildings.FARM) > 0 && city.getInfra() <= 3000) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has a farm, which is unprofitable. It is much more cost effective to buy food on the market and instead switch to profitable manufacturing buildings";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has a farm, which is unprofitable. It is much more cost effective to buy food on the market and instead switch to profitable manufacturing buildings";
 //        }
 //        return null;
 //    }
@@ -1238,10 +1238,10 @@ public class IACheckup {
 //    public Map.Entry<Object, String> checkInfra(DBNation nation, Map.Entry<Integer, JavaCity> entry) {
 //        JavaCity city = entry.getValue();
 //        if (nation.getCities() < 10 && city.getInfra() > 1000) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has more than 1000 infra making you a good target and raises your score/city and thus score/soldier ratio, reducing raid loot.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has more than 1000 infra making you a good target and raises your score/city and thus score/soldier ratio, reducing raid loot.";
 //        }
 //        if (nation.getCities() > 12 && city.getInfra() < 1500 && nation.getOff() < 3 && nation.getDef() != 0) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has less than 1500 infra, reducing your econ profit.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has less than 1500 infra, reducing your econ profit.";
 //        }
 //        return null;
 //    }
@@ -1504,7 +1504,7 @@ public class IACheckup {
 //        JavaCity city = entry.getValue();
 //        double pollution = city.getPollution();
 //        if (pollution > 45 && city.get(Buildings.SUBWAY) == 0 && city.get(Buildings.RECYCLING_CENTER) == 0) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has high pollution, and no subway or recycling center.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has high pollution, and no subway or recycling center.";
 //        }
 //        return null;
 //    }
@@ -1513,7 +1513,7 @@ public class IACheckup {
 //        JavaCity city = entry.getValue();
 //        double crime = city.getCrime();
 //        if (crime > 2.5 && city.get(Buildings.POLICE_STATION) == 0) {
-//            message = "<" + PnwUtil.getCityUrl(entry.getKey()) + ">" + " has a high crime rate, and no police station.";
+//            message = "<" + PW.getCityUrl(entry.getKey()) + ">" + " has a high crime rate, and no police station.";
 //        }
 //        return null;
 //    }

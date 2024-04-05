@@ -842,7 +842,7 @@ public class WarCommands {
         BiFunction<Double, Double, Integer> attScores = PW.getIsNationsInScoreRange(nationsToBlitzWith);
 
 //        double minScore = me.getScore() * 0.75;
-//        double maxScore = me.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
+//        double maxScore = me.getScore() * PW.WAR_RANGE_MAX_MODIFIER;
         List<DBNation> nations = new ArrayList<>(targets);
         nations.removeIf(f -> f.getVm_turns() != 0);
         nations.removeIf(f -> f.getDef() >= 3);

@@ -130,7 +130,7 @@ public abstract class AbstractCursor implements IAttack {
 //    public Map<ResourceType, Double> getLosses2(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
 //        double[] buffer = ResourceType.getBuffer();
 //        addLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings);
-//        return PnwUtil.resourcesToMap(buffer);
+//        return PW.resourcesToMap(buffer);
 //    }
 
     @Override
