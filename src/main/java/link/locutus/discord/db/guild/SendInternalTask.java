@@ -533,9 +533,9 @@ public class SendInternalTask {
         if (ResourceType.convertedTotal(deposits) <= 0) throw new IllegalArgumentException("Sender " + senderTypeStr + " (" + senderName + ") does not have any deposits");
 
         for (int i = 0; i < deposits.length; i++) {
-            if (Math.round(amount[i] * 100) < Math.round(normalized[i] * 100)) {
+            if (Math.round(amount[i] * 100) > Math.round(normalized[i] * 100)) {
                 String msg = "Sender " + senderTypeStr + " (" + senderName + ") can only send " + MathMan.format(normalized[i]) + "x" + ResourceType.values[i] + "(not " + MathMan.format(amount[i]) + ")";
-                if (Math.round(amount[i] * 100) < Math.round(deposits[i] * 100)) {
+                if (Math.round(amount[i] * 100) > Math.round(deposits[i] * 100)) {
                     throw new IllegalArgumentException(msg);
                 } else {
                     throw new IllegalArgumentException(msg + "\nNote: Transfer limit is reduced by negative resources in deposits");
