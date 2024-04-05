@@ -831,7 +831,7 @@ public class JavaCity implements ICity {
 
     @Override
     public Boolean getPowered() {
-        return metrics != null && metrics.powered;
+        return metrics != null ? metrics.powered : null;
     }
 
     public void setPowered(Predicate<Project> hasProject, Boolean powered) {
