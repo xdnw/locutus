@@ -1384,7 +1384,7 @@ public class UnsortedCommands {
             sheet.updateClearCurrentTab();
             sheet.updateWrite();
 
-            sheet.attach(io.create(), "revenue");
+            sheet.attach(msg, "departures");
         } else {
             long now = System.currentTimeMillis();
             StringBuilder response = new StringBuilder("Time\tNation\tFrom AA\tRank\tTo AA\tRank\n");

@@ -149,13 +149,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         int treaties = loadTreaties();
         LOGGER.info("Loaded " + treaties + " treaties");
 
-//        try {
-//            if (tableExists("KICKS")) {
-//                importKicks();
-//            }
-//        } catch (SQLException e) {
-//            throw new RuntimeException(e);
-//        }
+        try {
+            if (tableExists("KICKS")) {
+                importKicks();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
 //        importLegacyNationLoot(true);
 
         markDirtyIncorrectNations(true, true);
@@ -2225,10 +2225,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
 
 
-        String kicks = "CREATE TABLE IF NOT EXISTS `KICKS2` (`nation` INT NOT NULL, `from_aa` INT NOT NULL, `from_rank` INT NOT NULL, `to_aa` INT NOT NULL, `to_rank` INT NOT NULL, `date` BIGINT NOT NULL)";
-        executeStmt(kicks);
-        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_nation ON KICKS2 (nation);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
+        createKicksTable();
 
 
         String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";
@@ -2298,7 +2295,16 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         createDeletionsTables();
     }
 
+    private void createKicksTable() {
+        String kicks = "CREATE TABLE IF NOT EXISTS `KICKS2` (`nation` INT NOT NULL, `from_aa` INT NOT NULL, `from_rank` INT NOT NULL, `to_aa` INT NOT NULL, `to_rank` INT NOT NULL, `date` BIGINT NOT NULL)";
+        executeStmt(kicks);
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_nation ON KICKS2 (nation);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
+    }
+
     public void importKicks() {
+        executeStmt("DROP TABLE IF EXISTS KICKS2");
+        createKicksTable();
         // check if kicks table exists
         // get data from datacsv
         Map<Long, Map<Integer, Integer>> allianceByDay = new Long2ObjectOpenHashMap<>();
@@ -2343,6 +2349,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 }
 
                 changes.add(new AllianceChange(nationId, allianceId, previous.getLeft(), rank, previous.getMiddle(), date));
+
+                futurePosition.put(nationId, Triple.of(allianceId, rank, date));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -2357,9 +2365,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             stmt.setInt(5, change.getToRank().ordinal());
             stmt.setLong(6, change.getDate());
         });
-
-//        executeStmt("DROP TABLE KICKS");
-
+        executeStmt("DROP TABLE KICKS");
     }
 
     public void importMultiBans() {
