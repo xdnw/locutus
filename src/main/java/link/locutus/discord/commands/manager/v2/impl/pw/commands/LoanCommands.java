@@ -12,7 +12,7 @@ public class LoanCommands {
 //        DiscordUtil.createEmbedCommand(channel, title, body.toString());
 //        long due = System.currentTimeMillis() + time;
 //
-//        DBLoan loan = new DBLoan(-1, guild.getIdLong(), message.getIdLong(), nation.getNation_id(), PnwUtil.resourcesToArray(resources), due, DBLoan.Status.OPEN);
+//        DBLoan loan = new DBLoan(-1, guild.getIdLong(), message.getIdLong(), nation.getNation_id(), PW.resourcesToArray(resources), due, DBLoan.Status.OPEN);
 //        db.addLoan(loan);
 //
 //        loan = db.getLoanByMessageId(message.getIdLong());

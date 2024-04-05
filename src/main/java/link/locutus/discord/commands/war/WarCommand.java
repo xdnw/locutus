@@ -175,8 +175,8 @@ public class WarCommand extends Command {
 //                    allyNations.removeIf(f -> f.getAircraftPct() < 0.8 || f.active_m() > 2880 || f.getVm_turns() > 0 || f.getCities() < 10);
 //                    enemyNations.removeIf(f -> f.getAircraftPct() < 0.8 || f.active_m() > 2880 || f.getVm_turns() > 0 || f.getCities() < 10);
 //
-//                    allyGraph = PnwUtil.getXInRange(allyNations, n -> Math.pow(n.getStrength(), 3));
-//                    enemyGraph = PnwUtil.getXInRange(enemyNations, n -> Math.pow(n.getStrength(), 3));
+//                    allyGraph = PW.getXInRange(allyNations, n -> Math.pow(n.getStrength(), 3));
+//                    enemyGraph = PW.getXInRange(enemyNations, n -> Math.pow(n.getStrength(), 3));
                 }
 
                 try {

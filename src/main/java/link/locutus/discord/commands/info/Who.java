@@ -132,8 +132,8 @@ public class Who extends Command {
 //                }
 //            }
 //            if (allianceId != -2) {
-//                String name = PnwUtil.getName(allianceId, true);
-//                String url = PnwUtil.getUrl(allianceId, true);
+//                String name = PW.getName(allianceId, true);
+//                String url = PW.getUrl(allianceId, true);
 //                title = "AA: " + name;
 //                arg0 = MarkupUtil.markdownUrl(name, url);
 //            } else {

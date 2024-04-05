@@ -100,7 +100,7 @@ public class FindTrader extends Command {
             int nationId = entry.getKey();
             double amount = entry.getValue();
             double myPpu = ppu.get(nationId)[type.ordinal()];
-//                nationName.add(MarkupUtil.markdownUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
+//                nationName.add(MarkupUtil.markdownUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));
             nationName.add(PW.getName(nationId, groupByAlliance));
             amtList.add(MathMan.format(amount));
             ppuList.add("$" + MathMan.format(myPpu));

@@ -284,8 +284,8 @@ public class BlitzSheet extends Command {
 //                    boolean strong = defender.getAircraft() > attacker.getAircraft() * 0.66;
 //                    if (strong) {
 //                        if (defender.getAircraft() > attacker.getAircraft()) {
-//                            double defGround = defender.getSoldiers() * PnwUtil.WAR_RANGE_MAX_MODIFIER + defender.getTanks() * 40;
-//                            double attGround = attacker.getSoldiers() * PnwUtil.WAR_RANGE_MAX_MODIFIER + attacker.getTanks() * 40;
+//                            double defGround = defender.getSoldiers() * PW.WAR_RANGE_MAX_MODIFIER + defender.getTanks() * 40;
+//                            double attGround = attacker.getSoldiers() * PW.WAR_RANGE_MAX_MODIFIER + attacker.getTanks() * 40;
 //                            if (defGround > attGround * 0.33) {
 //                                continue;
 //                            }
@@ -327,8 +327,8 @@ public class BlitzSheet extends Command {
 //            Map.Entry<Long, Map<ResourceType, Long>> loot = nationLoot == null ? null : nationLoot.get(defender.getNation_id());
 //            double convertedTotal = defender.estimateRssLootValue(knownResources, loot, buffer, false);
 //
-//            header.set(8, PnwUtil.convertedTotal(knownResources) + "");
-//            header.set(9, PnwUtil.resourcesToString(knownResources));
+//            header.set(8, PW.convertedTotal(knownResources) + "");
+//            header.set(9, PW.resourcesToString(knownResources));
 //            header.set(10, defender.getScore() + "");
 //            header.set(11, defender.getBeigeTurns() + "");
 //            header.set(12, TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));

@@ -2601,7 +2601,7 @@ public class StatCommands {
             }
         });;
 
-//        System.out.println("Alliance " + conflictManager.getAllianceName(aaId) + "\t" + aaId + "\t" + PnwUtil.getMarkdownUrl(aaId, true) + "\t" + new Date(TimeUtil.getTimeFromDay(day)) + "\t" + prevMembers + "\t" + members + "\t" + diff + "\t" + MathMan.format(100d * diff / prevMembers) + "%");
+//        System.out.println("Alliance " + conflictManager.getAllianceName(aaId) + "\t" + aaId + "\t" + PW.getMarkdownUrl(aaId, true) + "\t" + new Date(TimeUtil.getTimeFromDay(day)) + "\t" + prevMembers + "\t" + members + "\t" + diff + "\t" + MathMan.format(100d * diff / prevMembers) + "%");
         List<String> header = new ArrayList<>(Arrays.asList(
                 "alliance",
                 "date",

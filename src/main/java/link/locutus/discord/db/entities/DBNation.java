@@ -332,7 +332,7 @@ public class DBNation implements NationOrAlliance {
     }
 
 //    public double getInfraCost(double from, double to) {
-//        double cost = PnwUtil.calculateInfra(from, to);
+//        double cost = PW.calculateInfra(from, to);
 //    }
 
     @Command(desc = "Daily revenue value of nation")
@@ -2534,7 +2534,7 @@ public class DBNation implements NationOrAlliance {
         if (tracked == null) {
             tracked = db.getTrackedBanks();
 //        } else {
-//            tracked = PnwUtil.expandCoalition(tracked);
+//            tracked = PW.expandCoalition(tracked);
         }
 
         List<Transaction2> transactions = new ArrayList<>();
@@ -3612,7 +3612,7 @@ public class DBNation implements NationOrAlliance {
 //            for (Transaction2 transfer : transfers) {
 //                if (transfer.getDate() > now) continue;
 //                int sign = transfer.getReceiver() == nation_id ? 1 : -1;
-//                bank = PnwUtil.add(bank, PnwUtil.resourcesToMap(transfer.resources));
+//                bank = PW.add(bank, PW.resourcesToMap(transfer.resources));
 //            }
 //
 //            for (DBTrade offer : trades) {
@@ -3637,9 +3637,9 @@ public class DBNation implements NationOrAlliance {
 //                boolean attacker = attack.attacker_nation_id == nation_id;
 //
 //                Map<ResourceType, Double> attConsume = attack.getLosses(attacker, false, false, true, true);
-//                consumption = PnwUtil.add(consumption, attConsume);
+//                consumption = PW.add(consumption, attConsume);
 //
-//                unitLosses = PnwUtil.add(unitLosses, attack.getUnitLosses(attacker));
+//                unitLosses = PW.add(unitLosses, attack.getUnitLosses(attacker));
 //
 //                Map<ResourceType, Double> loot = attack.getLoot();
 //                if (loot != null && !loot.isEmpty() && (nation_id == (attack.getLooter()) || nation_id == (attack.getLooted()))) {
@@ -3659,10 +3659,10 @@ public class DBNation implements NationOrAlliance {
 //            Map<MilitaryUnit, Integer> bought = new HashMap<>();
 //
 //            Map<ResourceType, Double> totals = new HashMap<>();
-//            totals = PnwUtil.add(totals, bank);
-//            totals = PnwUtil.add(totals, trade);
-//            totals = PnwUtil.subResourcesToA(totals, consumption);
-//            totals = PnwUtil.add(totals, offset);
+//            totals = PW.add(totals, bank);
+//            totals = PW.add(totals, trade);
+//            totals = PW.subResourcesToA(totals, consumption);
+//            totals = PW.add(totals, offset);
 //            for (Map.Entry<MilitaryUnit, Integer> entry : bought.entrySet()) {
 //                MilitaryUnit unit = entry.getKey();
 //                for (ResourceType resource : unit.getResources()) {
@@ -3676,7 +3676,7 @@ public class DBNation implements NationOrAlliance {
 //                knownResources[entry.getKey().ordinal()] = Math.max(0, entry.getValue());
 //            }
 //
-//            return PnwUtil.convertedTotal(totals);
+//            return PW.convertedTotal(totals);
 //        }
 //        Map<Integer, JavaCity> cityMap = getCityMap(false, false);
 //
@@ -3724,7 +3724,7 @@ public class DBNation implements NationOrAlliance {
 //        knownResources[0] = 0;
 //        knownResources[1] = 0;
 //
-//        return PnwUtil.convertedTotal(knownResources);
+//        return PW.convertedTotal(knownResources);
     }
 
     @Command(desc = "If this nation has a previous ban attached to their nation or discord id")

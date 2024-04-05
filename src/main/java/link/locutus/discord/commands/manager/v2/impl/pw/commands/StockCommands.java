@@ -702,13 +702,13 @@ public class StockCommands {
 //                }
 //            }
 //
-//            String title = "Withdraw ~$" + MathMan.format(PnwUtil.convertedTotal(transfer));
+//            String title = "Withdraw ~$" + MathMan.format(PW.convertedTotal(transfer));
 //
 //            StringBuilder body = new StringBuilder();
 //            body.append(sender.getUserDiscriminator()).append("\n");
 //            body.append("From: " + sender.getNationUrlMarkup(true) + " | " + sender.getAllianceUrlMarkup(true)).append("\n");
 //            body.append("To: " + receiver).append("\n");
-//            body.append("Amount: `" + PnwUtil.resourcesToString(transfer) + "`").append("\n");
+//            body.append("Amount: `" + PW.resourcesToString(transfer) + "`").append("\n");
 //
 //            String emoji = "Confirm";
 //

@@ -63,7 +63,7 @@ public class WarCitySheet extends Command {
             int[] num = new int[100];
             for (DBNation nation : nations) num[nation.getCities()]++;
 
-//            BiFunction<Integer, Integer, Integer> scores = PnwUtil.getIsNationsInCityRange(nations);
+//            BiFunction<Integer, Integer, Integer> scores = PW.getIsNationsInCityRange(nations);
 
             for (int i = 0; i < 50; i++) {
                 List<String> row = rows[i];

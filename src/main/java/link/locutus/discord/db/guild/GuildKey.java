@@ -2419,7 +2419,7 @@ public class GuildKey {
         public Map<Long, Double> parse(GuildDB db, String input) {
             // split newline
             Map<Long, Double> result = new LinkedHashMap<>();
-            // Discord JDA role id -> PnwUtil resources to array (parse resources)
+            // Discord JDA role id -> PW resources to array (parse resources)
 
             String[] split = input.split("[\n;\\n]");
             Guild guild = db.getGuild();

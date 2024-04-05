@@ -137,10 +137,10 @@ public class DepositsSheet extends Command {
 //            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
 //            header.set(1, nation.getCities());
 //            header.set(2, nation.getAgeDays());
-//            header.set(3, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
-//            header.set(4, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
-//            header.set(5, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
-//            header.set(6, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
+//            header.set(3, String.format("%.2f", PW.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
+//            header.set(4, String.format("%.2f", PW.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
+//            header.set(5, String.format("%.2f", PW.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
+//            header.set(6, String.format("%.2f", PW.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
 //            double[] total = ResourceType.getBuffer();
 //            for (Map.Entry<DepositType, double[]> entry : deposits.entrySet()) {
 //                switch (entry.getKey()) {
@@ -160,7 +160,7 @@ public class DepositsSheet extends Command {
 //                double[] value = entry.getValue();
 //                total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
 //            }
-//            header.set(7, String.format("%.2f", PnwUtil.convertedTotal(total)));
+//            header.set(7, String.format("%.2f", PW.convertedTotal(total)));
 //            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE);
 //            long lastDeposit = 0;
 //            for (Transaction2 transaction : transactions) {
@@ -179,8 +179,8 @@ public class DepositsSheet extends Command {
 //                if (type == ResourceType.CREDITS) continue;
 //                header.set((i++), total[type.ordinal()]);
 //            }
-//            double[] normalized = PnwUtil.normalize(total);
-//            if (PnwUtil.convertedTotal(normalized) > 0) {
+//            double[] normalized = PW.normalize(total);
+//            if (PW.convertedTotal(normalized) > 0) {
 //                aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, normalized);
 //            }
 //            aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, total);
@@ -191,7 +191,7 @@ public class DepositsSheet extends Command {
 //        sheet.write();
 //
 //        StringBuilder footer = new StringBuilder();
-//        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
+//        footer.append(PW.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
 //
 //        String type = "";
 //        OffshoreInstance offshore = db.getOffshore();
@@ -201,17 +201,17 @@ public class DepositsSheet extends Command {
 //            aaDeposits = offshore.getDeposits(db);
 //        } else if (db.isValidAlliance()){
 //            type = "bank stockpile";
-//            aaDeposits = PnwUtil.resourcesToArray(db.getAllianceList().getStockpile());
+//            aaDeposits = PW.resourcesToArray(db.getAllianceList().getStockpile());
 //        } else aaDeposits = null;
 //        if (aaDeposits != null) {
-//            if (PnwUtil.convertedTotal(aaDeposits) > 0) {
+//            if (PW.convertedTotal(aaDeposits) > 0) {
 //                for (int i = 0; i < aaDeposits.length; i++) {
 //                    aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
 //                    aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
 //
 //                }
-//                footer.append("\n**Total " + type + "- nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-//                footer.append("\n**Total " + type + "- nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+//                footer.append("\n**Total " + type + "- nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PW.convertedTotal(aaTotalPositive)) + "\n`" + PW.resourcesToString(aaTotalPositive) + "`");
+//                footer.append("\n**Total " + type + "- nation deposits**:  Worth: $" + MathMan.format(PW.convertedTotal(aaTotalNet)) + "\n`" + PW.resourcesToString(aaTotalNet) + "`");
 //            } else {
 //                footer.append("\n**No funds are currently " + type + "**");
 //            }

@@ -228,7 +228,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
     public Map<ResourceType, Double> getNetCost(boolean isPrimary) {
         Map<ResourceType, Double> map1 = getTotal(isPrimary);
         Map<ResourceType, Double> map2 = getTotal(!isPrimary);
-//        PnwUtil.subResourcesToA(map1, getLoot(isPrimary));
+//        PW.subResourcesToA(map1, getLoot(isPrimary));
         return getNetCost(map1, map2);
     }
 

@@ -124,13 +124,13 @@ public class Deposits extends Command {
 //                return "Invalid alliance: `" + args.get(1) + "`";
 //            }
 //            for (Integer alliance : alliances) tracked.add(alliance.longValue());
-//            tracked = PnwUtil.expandCoalition(tracked);
+//            tracked = PW.expandCoalition(tracked);
 //        }
 //
 //        for (String arg : split) {
 //            DBNation nation = DiscordUtil.parseNation(arg);
 //            if (arg.matches(".*tax_id[=:].*")) {
-//                int taxId = PnwUtil.parseTaxId(arg);
+//                int taxId = PW.parseTaxId(arg);
 //
 //                Map<DepositType, double[]> deposits = guildDb.getTaxBracketDeposits(taxId, cutOff, includeExpired, includeIgnored);
 //                accountDeposits.put("tax_id=" + taxId, deposits);
@@ -161,12 +161,12 @@ public class Deposits extends Command {
 //                        return "You do not have permission to check another guild's deposits";
 //                    }
 //                    OffshoreInstance offshore = guildDb.getOffshore();
-//                    double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(id, true));
+//                    double[] deposits = PW.resourcesToArray(offshore.getDeposits(id, true));
 //                    String name = id + "";
 //                    accountDeposits.put(name + "(removed guild)", Collections.singletonMap(DepositType.DEPOSIT, deposits));
 //                }
-//            } else if (nation == null && PnwUtil.parseAllianceId(arg) != null) {
-//                Integer allianceId = PnwUtil.parseAllianceId(arg);
+//            } else if (nation == null && PW.parseAllianceId(arg) != null) {
+//                Integer allianceId = PW.parseAllianceId(arg);
 //                DBAlliance alliance = allianceId == null ? null : DBAlliance.get(allianceId);
 //                if (alliance == null) return "Invalid alliance: `" + arg + "`";
 //                GuildDB otherDb = Locutus.imp().getGuildDBByAA(allianceId);
@@ -189,8 +189,8 @@ public class Deposits extends Command {
 //                if (!Roles.ECON_STAFF.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_STAFF.has(author, otherDb.getGuild()))
 //                    return "You do not have permisssion to check another alliance's deposits";
 //
-//                String name = PnwUtil.getName(allianceId, true);
-//                double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(allianceId, true));
+//                String name = PW.getName(allianceId, true);
+//                double[] deposits = PW.resourcesToArray(offshore.getDeposits(allianceId, true));
 //                accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSIT, deposits));
 //            } else {
 //                if (nation == null && arg.contains("/nation/") && DiscordUtil.parseNationId(arg) != null) {
@@ -258,24 +258,24 @@ public class Deposits extends Command {
 //
 //        if (flags.contains('t') || db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE) {
 //            if (categorized.containsKey(DepositType.DEPOSIT)) {
-//                response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))) + ")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
+//                response.append("#DEPOSIT: (worth $" + MathMan.format(PW.convertedTotal(categorized.get(DepositType.DEPOSIT))) + ")");
+//                response.append("\n```").append(PW.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
 //            }
 //            if (categorized.containsKey(DepositType.TAX)) {
-//                response.append("#TAX (worth $").append(MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX)))).append(")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
+//                response.append("#TAX (worth $").append(MathMan.format(PW.convertedTotal(categorized.get(DepositType.TAX)))).append(")");
+//                response.append("\n```").append(PW.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
 //            }
 //            if (categorized.containsKey(DepositType.LOAN)) {
-//                response.append("#LOAN/#GRANT (worth $").append(MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN)))).append(")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
+//                response.append("#LOAN/#GRANT (worth $").append(MathMan.format(PW.convertedTotal(categorized.get(DepositType.LOAN)))).append(")");
+//                response.append("\n```").append(PW.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
 //            }
 //            if (categorized.containsKey(DepositType.GRANT)) {
-//                response.append("#EXPIRE (worth $").append(MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT)))).append(")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
+//                response.append("#EXPIRE (worth $").append(MathMan.format(PW.convertedTotal(categorized.get(DepositType.GRANT)))).append(")");
+//                response.append("\n```").append(PW.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
 //            }
 //            if (categorized.size() > 1) {
-//                response.append("Total: (worth: $").append(MathMan.format(PnwUtil.convertedTotal(total))).append(")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
+//                response.append("Total: (worth: $").append(MathMan.format(PW.convertedTotal(total))).append(")");
+//                response.append("\n```").append(PW.resourcesToString(total)).append("``` ");
 //            }
 //        } else {
 //            String totalTitle = "Total (`#expire`|`#loan`|`#tax`|`#deposit`: worth $";
@@ -283,26 +283,26 @@ public class Deposits extends Command {
 //            String safekeepTitle = "Safekeep (`#tax`|`#deposit`: worth $";
 //            boolean hasPriorCategory = false;
 //            if (categorized.containsKey(DepositType.GRANT)) {
-//                response.append(totalTitle).append(MathMan.format(PnwUtil.convertedTotal(total))).append(")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
+//                response.append(totalTitle).append(MathMan.format(PW.convertedTotal(total))).append(")");
+//                response.append("\n```").append(PW.resourcesToString(total)).append("``` ");
 //                footers.add("Unlike loans, debt from grants will expire if you stay (see the transaction for the timeframe)");
 //                hasPriorCategory = true;
 //            }
 //            if (categorized.containsKey(DepositType.LOAN)) {
-//                response.append(hasPriorCategory ? noGrantTitle : totalTitle).append(MathMan.format(PnwUtil.convertedTotal(totalNoGrants))).append(")");
-//                response.append("\n```").append(PnwUtil.resourcesToString(totalNoGrants)).append("``` ");
+//                response.append(hasPriorCategory ? noGrantTitle : totalTitle).append(MathMan.format(PW.convertedTotal(totalNoGrants))).append(")");
+//                response.append("\n```").append(PW.resourcesToString(totalNoGrants)).append("``` ");
 //                hasPriorCategory = true;
 //            }
 //
-//            response.append(hasPriorCategory ? safekeepTitle : totalTitle).append(MathMan.format(PnwUtil.convertedTotal(taxAndDeposits))).append(")");
-//            response.append("\n```").append(PnwUtil.resourcesToString(taxAndDeposits)).append("``` ");
+//            response.append(hasPriorCategory ? safekeepTitle : totalTitle).append(MathMan.format(PW.convertedTotal(taxAndDeposits))).append(")");
+//            response.append("\n```").append(PW.resourcesToString(taxAndDeposits)).append("``` ");
 //        }
 //        if (requiredUser != null && me != null && requiredUser.getNation_id() == me.getNation_id()) {
 //            footers.add("Funds default to #deposit if no other note is used.");
 //            if (Boolean.TRUE.equals(guildDb.getOrNull(GuildKey.RESOURCE_CONVERSION))) {
 //                footers.add("You can sell resources to the alliance by depositing with the note #cash.");
 //            }
-//            if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
+//            if (PW.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
 //                Role role = Roles.ECON_WITHDRAW_SELF.toRole(guild);
 //                if (guild.getMember(author).getRoles().contains(role)) {
 //                    footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
@@ -331,7 +331,7 @@ public class Deposits extends Command {
 //                        if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
 //                            Map<ResourceType, Double> excess = finalNation.checkExcessResources(guildDb, stockpile);
 //                            if (!excess.isEmpty()) {
-//                                tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
+//                                tips2.add("Excess can be deposited: " + PW.resourcesToString(excess));
 //                                if (Boolean.TRUE.equals(guildDb.getOrNull(GuildKey.DEPOSIT_INTEREST))) {
 //                                    List<Transaction2> transactions = finalNation.getTransactions(-1);
 //                                    long last = 0;
@@ -343,7 +343,7 @@ public class Deposits extends Command {
 //                            }
 //                            Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
 //                            if (!needed.isEmpty()) {
-//                                tips2.add("Missing resources for the next 3 days: " + PnwUtil.resourcesToString(needed));
+//                                tips2.add("Missing resources for the next 3 days: " + PW.resourcesToString(needed));
 //                            }
 //                        }
 //                    }
@@ -353,7 +353,7 @@ public class Deposits extends Command {
 //                        if (alliance != null && !alliance.isEmpty() && alliance.contains(me.getAlliance_id())) {
 //                            try {
 //                                Map<ResourceType, Double> stockpile = me.getAlliance().getStockpile();
-//                                if (PnwUtil.convertedTotal(stockpile) > 5000000) {
+//                                if (PW.convertedTotal(stockpile) > 5000000) {
 //                                    tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
 //                                }
 //                            } catch (Throwable ignore) {}
