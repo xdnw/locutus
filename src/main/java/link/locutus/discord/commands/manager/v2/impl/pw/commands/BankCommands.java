@@ -3515,7 +3515,6 @@ public class BankCommands {
             }
         }
 
-
         double[] amountArr = ResourceType.resourcesToArray(amount);
         GuildDB receiverDB = receiver_account.isGuild() ? receiver_account.asGuild() : null;
         DBAlliance receiverAlliance = receiver_account.isAlliance() ? receiver_account.asAlliance() : null;

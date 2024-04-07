@@ -1,5 +1,6 @@
 package link.locutus.discord.db.guild;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -8,7 +9,9 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
@@ -31,6 +34,10 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class SendInternalTask {
+    private final static Map<Long, Double> CURR_TURN_VALUE_BY_USER = new Long2ObjectOpenHashMap<>();
+    private final static Map<Long, Double> LAST_TURN_BY_USER = new Long2ObjectOpenHashMap<>();
+    private static long CURR_TURN = 0;
+
     private final User banker;
     private final double[] amount;
     private final DBNation receiverNation;
@@ -49,6 +56,7 @@ public class SendInternalTask {
         checkNotNull(bankerNation, "No banker specified. Register with " + CM.register.cmd.toSlashMention());
         checkArgsNotNull(senderDB, senderAlliance, senderNation, receiverDB, receiverAlliance, receiverNation);
         checkNonNegative(amount);
+        checkNotGreater(amount, 2_000_000_000);
 
         senderAlliance = checkSenderAlliance(senderDB, senderAlliance, senderNation);
         receiverAlliance = checkReceiverAlliance(receiverDB, receiverAlliance, receiverNation);
@@ -81,6 +89,8 @@ public class SendInternalTask {
         this.receiverAlliance = receiverAlliance;
         this.receiverNation = receiverNation;
         this.amount = amount;
+
+        checkTransferLimits(banker.getIdLong(), amount, 6_000_000_000L);
     }
 
     ////////////////////////////////////////////////
@@ -137,7 +147,14 @@ public class SendInternalTask {
             // add to offshore account
             if (accountBalance != null) {
                 if (senderOffshore.getAllianceId() != receiverOffshore.getAllianceId()) {
-                    results.add(senderOffshore.transferUnsafe(null, receiverOffshore.getAlliance(), ResourceType.resourcesToMap(amount), "#ignore").addMessage("Transferred to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game"));
+                    TransferResult transfer = senderOffshore.transferUnsafe(null, receiverOffshore.getAlliance(), ResourceType.resourcesToMap(amount), "#ignore");
+                    results.add(transfer);
+                    if (!transfer.getStatus().isSuccess()) {
+                        transfer.addMessage("Failed to transfer to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game. See " + CM.offshore.unlockTransfers.cmd.create(senderDB.getIdLong() + "", null) + " in " + senderOffshore.getGuild());
+                        return results;
+                    } else {
+                        transfer.addMessage("Transferred to " + receiverOffshore.getAlliance().getMarkdownUrl() + " in-game");
+                    }
                 }
                 if (receiverAlliance == null) {
                     receiverOffshore.getGuildDB().addTransfer(now, receiverDB.getIdLong(), receiverDB.getReceiverType(), 0, 0, bankerNation.getId(), "#deposit", amount);
@@ -146,7 +163,6 @@ public class SendInternalTask {
                     receiverOffshore.getGuildDB().addBalance(now, receiverAlliance, bankerNation.getId(), "#deposit", amount);
                     results.add(new TransferResult(OffshoreInstance.TransferStatus.SUCCESS, receiverAlliance, amount, "#deposit").addMessage("Added to alliance account " + receiverAlliance.getMarkdownUrl()));
                 }
-
             }
             // add to nation account
             if (receiverNation != null && (senderDB != receiverDB || !Objects.equals(receiverNation, senderNation))) {
@@ -352,7 +368,7 @@ public class SendInternalTask {
             if (Math.round((diff[i] - amount[i]) * 100) > 1) {
                 String name = account.isGuild() ? account.asGuild().getGuild().toString() : account.isAlliance() ? account.asAlliance().getMarkdownUrl() : account.asNation().getMarkdownUrl();
                 String[] message = {"Internal error: " + ResourceType.resourcesToString(diff) + " != " + ResourceType.resourcesToString(amount),
-                        "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.create(account.getQualifiedId(), null) + " in " + senderOffshore.getGuildDB().getIdLong()};
+                        "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.create(account.getQualifiedId(), null) + " in " + senderOffshore.getGuildDB()};
                 return new TransferResult(OffshoreInstance.TransferStatus.OTHER, account, amount, "#deposit").addMessage(message);
             }
         }
@@ -478,6 +494,52 @@ public class SendInternalTask {
     private void checkChange(GuildDB senderDB, DBAlliance senderAlliance, DBNation senderNation, GuildDB receiverDB, DBAlliance receiverAlliance, DBNation receiverNation) {
         if (Objects.equals(senderDB, receiverDB) && Objects.equals(senderAlliance,receiverAlliance) && Objects.equals(senderNation, receiverNation)) {
             throw new IllegalArgumentException("Sender and receiver cannot be the same");
+        }
+    }
+
+    private void checkNotGreater(double[] amount, long maxValue) {
+        double value = ResourceType.convertedTotal(amount);
+        if (value > maxValue + 1) {
+            throw new IllegalArgumentException("Cannot send more than $" + MathMan.format(maxValue) + " worth in a single transfer. (`" + ResourceType.resourcesToString(amount) + "` is worth ~$" + MathMan.format(value) + ")");
+        }
+    }
+
+    private void updateCurrValues(long turn) {
+        if (CURR_TURN != turn) {
+            synchronized (CURR_TURN_VALUE_BY_USER) {
+                LAST_TURN_BY_USER.clear();
+                LAST_TURN_BY_USER.putAll(CURR_TURN_VALUE_BY_USER);
+                CURR_TURN_VALUE_BY_USER.clear();
+                CURR_TURN = turn;
+            }
+        }
+    }
+
+    private void checkTransferLimits(long userId, double[] amount, long maxValue) {
+        long turn = TimeUtil.getTurn();
+        updateCurrValues(turn);
+
+        double newValue = ResourceType.convertedTotal(amount);
+        double currValue = CURR_TURN_VALUE_BY_USER.getOrDefault(userId, 0D);
+        double lastValue = LAST_TURN_BY_USER.getOrDefault(userId, 0D);
+        double remaining = Math.max(0, maxValue - currValue - lastValue);
+        int turnsReset = 0;
+        if (newValue + currValue > maxValue + 1) {
+            turnsReset = 2;
+        }
+        if (newValue + currValue + lastValue > maxValue + 1) {
+            turnsReset = 1;
+        }
+        if (turnsReset != 0) {
+            StringBuilder msg = new StringBuilder();
+            if (remaining > 0) {
+                msg.append("You have exceeded the transfer limit for this turn.");
+            } else {
+                msg.append("You can only send up to $" + MathMan.format(maxValue) + " worth before reaching the transfer limit for this turn.");
+            }
+            msg.append("Please wait " + turnsReset + " turn" + (turnsReset > 1 ? "s" : "") + " before you can send ~$" + MathMan.format(remaining) + " worth again.");
+            AlertUtil.error("Transfer cap exceeded", msg + "\n" + bankerNation.getMarkdownUrl() + " | " + banker.getAsMention(), true);
+            throw new IllegalArgumentException(msg.toString());
         }
     }
 
