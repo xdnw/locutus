@@ -10,6 +10,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -3461,9 +3462,9 @@ public class BankCommands {
                        "Defaults to your alliance (if valid)", group = 2)
                        @Default DBAlliance sender_alliance,
 
-                       @Switch("f") boolean confirm) throws IOException {
+                       @Switch("f") boolean force) throws IOException {
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
-        return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, confirm);
+        return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
     }
 
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)", groups = {
@@ -3493,7 +3494,7 @@ public class BankCommands {
                          @Arg(value = "The nation to send from\n" +
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
-                         @Switch("f") boolean confirm) throws IOException {
+                         @Switch("f") boolean force) throws IOException {
         if (me.getId() != Settings.INSTANCE.NATION_ID) return "WIP";
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
@@ -3517,7 +3518,7 @@ public class BankCommands {
         double[] amountArr = ResourceType.resourcesToArray(amount);
         GuildDB receiverDB = receiver_account.isGuild() ? receiver_account.asGuild() : null;
         DBAlliance receiverAlliance = receiver_account.isAlliance() ? receiver_account.asAlliance() : null;
-        List<TransferResult> results = senderDB.sendInternal(user, me, senderDB, sender_alliance, sender_nation, receiverDB, receiverAlliance, receiver_nation, amountArr, confirm);
+        List<TransferResult> results = senderDB.sendInternal(user, me, senderDB, sender_alliance, sender_nation, receiverDB, receiverAlliance, receiver_nation, amountArr, force);
         if (results.size() == 1) {
             TransferResult result = results.get(0);
             if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {
@@ -3544,6 +3545,7 @@ public class BankCommands {
             "Balance info includes deposits, loans, grants, taxes and escrow")
     @RolePermission(Roles.MEMBER)
     public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler,
+                           @AllowDeleted
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                            @Arg("The alliances to check transfers from\nOtherwise the guild configured ones will be used")
                            @Switch("a") Set<DBAlliance> offshores,
