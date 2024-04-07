@@ -849,27 +849,31 @@ public class DiscordUtil {
                 }
 
             }
-        } else {
-            if (MathMan.isInteger(arg)) {
-                long id = Long.parseLong(arg);
-                DBNation nation;
-                if (id > Integer.MAX_VALUE) {
-                    nation = getNation(id);
-                } else {
-                    nation = DBNation.getById((int) id);
-                }
-                if (nation != null) {
-                    return (int) id;
-                }
+        }
+        if (MathMan.isInteger(arg)) {
+            long id = Long.parseLong(arg);
+            DBNation nation;
+            if (id > Integer.MAX_VALUE) {
+                nation = getNation(id);
+            } else {
+                nation = DBNation.getById((int) id);
             }
-            DBNation nation = Locutus.imp().getNationDB().getNation(arg);
             if (nation != null) {
-                return nation.getNation_id();
+                return (int) id;
             }
-            PNWUser user = Locutus.imp().getDiscordDB().getUser(null, arg, arg);
-            if (user != null) {
-                return user.getNationId();
-            }
+        }
+        DBNation nation = Locutus.imp().getNationDB().getNation(arg);
+        if (nation != null) {
+            return nation.getNation_id();
+        }
+        PNWUser user = Locutus.imp().getDiscordDB().getUser(null, arg, arg);
+        if (user != null) {
+            return user.getNationId();
+        }
+        User discordUser = DiscordUtil.getUser(arg);
+        if (discordUser != null) {
+            nation = DiscordUtil.getNation(discordUser);
+            if (nation != null) return nation.getId();
         }
         if (!MathMan.isInteger(arg)) {
             if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
