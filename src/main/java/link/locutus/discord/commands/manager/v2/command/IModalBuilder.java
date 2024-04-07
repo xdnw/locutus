@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.command;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.util.RateLimitUtil;
@@ -15,12 +16,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -68,13 +71,20 @@ public interface IModalBuilder {
         }
 
         Map<String, ParameterData> paramMap = command.getUserParameterMap();
+        Map<String, String> aliases = command.getArgumentAliases(true);
+        promptForArguments = promptForArguments.stream().map(s -> paramMap.containsKey(s) ? s : aliases.getOrDefault(s, s)).toList();
+        // validate arguments, remap the key to the getAlias, keep value the same
+        // remap the promptForArguments using aliases as well
+        // do not remap if  it exists in paramMap already
+        defaultValues = defaultValues.entrySet().stream().collect(HashMap::new, (m, e) -> {
+            String key = paramMap.containsKey(e.getKey()) ? e.getKey() : aliases.getOrDefault(e.getKey(), e.getKey());
+            m.put(key, e.getValue());
+        }, HashMap::putAll);
 
-        // validate arguments
-        for (Map.Entry<String, String> entry : defaultValues.entrySet()) {
-            String key = entry.getKey();
+        for (String key : defaultValues.keySet()) {
             if (!paramMap.containsKey(key)) {
                 throw new IllegalArgumentException("Argument `" + key + "` is not a valid argument for command " + command.getFullPath(" ") + "\n" +
-                        "Options: " + paramMap.keySet().toString());
+                        "Options: " + paramMap.keySet());
             }
         }
 
