@@ -127,7 +127,8 @@ public class SpyCommand extends Command {
                 }
             }
 
-            if (nation.getNukes() == 1) {
+            int nukePerDay = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            if (nation.getNukes() <= nukePerDay) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) {
                     response.append("\n`note: bought nuke today`");

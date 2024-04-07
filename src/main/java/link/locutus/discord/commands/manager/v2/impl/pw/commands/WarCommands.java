@@ -1751,13 +1751,14 @@ public class WarCommands {
             if (nation.getAircraft() == 0) opTypesList.remove(SpyCount.Operation.AIRCRAFT);
             if (nation.getShips() == 0) opTypesList.remove(SpyCount.Operation.SHIPS);
 
-            int maxMissile = nation.hasProject(Projects.SPACE_PROGRAM) ? 3 : 2;
-            if (opTypesList.contains(SpyCount.Operation.MISSILE) && nation.getMissiles() == maxMissile) {
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            if (opTypesList.contains(SpyCount.Operation.MISSILE) && nation.getMissiles() > 0 && nation.getMissiles() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.MISSILE);
             }
 
-            if (opTypesList.contains(SpyCount.Operation.NUKE) && nation.getNukes() == 1) {
+            int maxNukes = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            if (opTypesList.contains(SpyCount.Operation.NUKE) && nation.getNukes() > 0 && nation.getNukes() <= maxNukes) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.NUKE);
             }
@@ -4018,14 +4019,15 @@ public class WarCommands {
             long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
             int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
-            if (nation.getMissiles() == maxMissile) {
+            if (nation.getMissiles() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) {
                     response.append("\n`note: bought missile today`");
                 }
             }
 
-            if (nation.getNukes() == 1) {
+            int maxNuke = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            if (nation.getNukes() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) {
                     response.append("\n`note: bought nuke today`");

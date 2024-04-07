@@ -203,7 +203,8 @@ public class SpySheet extends Command {
                             }
                         }
                         if (operation == SpyCount.Operation.NUKE) {
-                            if (defender.getNukes() == 1) {
+                            int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject);
+                            if (defender.getNukes() <= perDay) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
                                 if (minute > 30) {
