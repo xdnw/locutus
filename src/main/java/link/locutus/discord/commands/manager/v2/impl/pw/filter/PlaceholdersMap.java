@@ -343,6 +343,11 @@ public class PlaceholdersMap {
             } else if (db != null){
                 Role role = db.getGuild().getRoleById(id);
                 return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+            } else {
+                DBNation nation = DiscordUtil.getNation(id);
+                if (nation != null) {
+                    return Set.of(nation);
+                }
             }
         }
         Integer aaId = PW.parseAllianceId(input);
