@@ -260,7 +260,7 @@ public class ReportManager {
             for (Map.Entry<Integer, List<Map.Entry<Long, Long>>> entry : allianceDurationMap.entrySet()) {
                 int allianceId = entry.getKey();
                 List<Map.Entry<Long, Long>> otherDurations = otherAllianceDurationMap.get(allianceId);
-                if (otherDurations.isEmpty()) continue;
+                if (otherDurations == null || otherDurations.isEmpty()) continue;
 
                 List<Map.Entry<Long, Long>> durations = entry.getValue();
 
