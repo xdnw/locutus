@@ -15,6 +15,7 @@ import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -66,14 +67,26 @@ public class SheetBindings extends BindingHelper {
 
     @Binding(value = "A sheet template name that has been created in this guild\n" +
             "Sheet templates are column formats for a sheet\n" +
-            "Templates, each with a selection can be used to generate multi-tabbed spreadsheets")
-    public static SheetTemplate template(@Me GuildDB db, CustomSheetManager manager, String name) {
+            "Templates, each with a selection can be used to generate multi-tabbed spreadsheets\n" +
+            "If the command supports it, you can specify a new template inline")
+    public static SheetTemplate template(@Me GuildDB db, ParameterData data, CustomSheetManager manager, String name) {
+        if (name.contains("{")) {
+            if (data == null || data.getAnnotation(CreateSheet.class) == null) {
+                templateError(name, "This function only permits existing templates.\n", manager);
+            }
+            List<String> columns = StringMan.split(name, " ");
+            return new SheetTemplate<>(name, null, columns);
+        }
         SheetTemplate template = manager.getSheetTemplate(name);
         if (template == null) {
-            Set<String> options = manager.getSheetTemplateNames(true);
-            throw new IllegalArgumentException("No template found with name `" + name + "`. Options: " + StringMan.getString(options));
+            templateError(name, "Specify placeholders " + MarkupUtil.markdownUrl("types", "https://github.com/xdnw/locutus/wiki/custom_spreadsheets#selection-types") + " for a placeholders", manager);
         }
         return template;
+    }
+
+    private static void templateError(String name, String msg, CustomSheetManager manager) {
+        Set<String> options = manager.getSheetTemplateNames(true);
+        throw new IllegalArgumentException(msg + "No template found with name `" + name + "`. Options: " + StringMan.getString(options) + ". Or create a sheet template with `/sheet_template add <type>`");
     }
 
     @Binding(value = "A selection alias name that has been created in this guild\n" +

@@ -266,14 +266,11 @@ public class CustomSheetCommands {
             "Sheets must be generated/updated with the update command")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, SelectionAlias select, SheetTemplate columns, @Switch("f") boolean force) {
+        columns = columns.resolve(select.getType());
         tabName = tabName.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!tabName.matches("[a-z0-9_]+")) {
             throw new IllegalArgumentException("Tab name must be alphanumericunderscore, not `" + tabName + "`");
-        }
-        // ensure alias and template type match
-        if (!select.getType().equals(columns.getType())) {
-            throw new IllegalArgumentException("Alias type `" + select.getType().getSimpleName() + "` does not match template type `" + columns.getType().getSimpleName() + "`");
         }
         // tabs
         Map.Entry<SelectionAlias, SheetTemplate> existingTab = sheet.getTab(tabName);
@@ -376,7 +373,7 @@ public class CustomSheetCommands {
                 String name = sheet.getTitle();
                 CustomSheet existing = manager.getCustomSheet(name);
                 if (existing != null) {
-                    return "Sheet with name `" + name + "` already exists: <" + existing.getUrl() + ">. Please change the title of your spreadsheet to something unique or delete the existing sheet using TODO CM REF";
+                    return "Sheet with name `" + name + "` already exists: <" + existing.getUrl() + ">. Please change the title of your spreadsheet to something unique or delete the existing sheet using ";
                 }
                 manager.addCustomSheet(name, sheet.getSpreadsheetId());
             } else {

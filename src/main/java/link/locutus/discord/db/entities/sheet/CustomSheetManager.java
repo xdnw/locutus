@@ -84,6 +84,10 @@ public class CustomSheetManager {
     }
 
     public SheetTemplate getSheetTemplate(String name) {
+        if (name.contains("{")) {
+            List<String> columns = StringMan.split(name, " ");
+            return new SheetTemplate(name, null, columns);
+        }
         if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
         AtomicReference<SheetTemplate> sheet = new AtomicReference<>();
         String finalName = name;
@@ -348,6 +352,7 @@ public class CustomSheetManager {
                 String template = rs.getString("template");
                 SelectionAlias selectionAlias = getSelectionAlias(selector);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
+                if (sheetTemplate != null && selectionAlias != null) sheetTemplate.resolve(selectionAlias.getType());
                 tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));
             }
         });

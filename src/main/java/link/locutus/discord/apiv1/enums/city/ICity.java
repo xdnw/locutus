@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 
 import java.util.AbstractMap;
@@ -69,16 +70,24 @@ public interface ICity {
     default Map.Entry<Integer, Integer> getMissileDamage(Predicate<Project> hasProject) {
         double density = calcPopulation(hasProject) / getLand();
         double infra = getInfra();
-        double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150));
-        double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150));
+        double factor = 1;
+        if (hasProject.test(Projects.GUIDING_SATELLITE)) {
+            factor = 1.2;
+        }
+        double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150)) * factor;
+        double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150)) * factor;
         return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
     }
 
     default Map.Entry<Integer, Integer> getNukeDamage(Predicate<Project> hasProject) {
         double density = calcPopulation(hasProject) / getLand();
         double infra = getInfra();
-        double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100));
-        double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150));
+        double factor = 1;
+        if (hasProject.test(Projects.GUIDING_SATELLITE)) {
+            factor = 1.2;
+        }
+        double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100)) * factor;
+        double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150)) * factor;
         return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
     }
 

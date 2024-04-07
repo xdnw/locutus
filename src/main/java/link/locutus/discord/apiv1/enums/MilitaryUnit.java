@@ -153,6 +153,7 @@ public enum MilitaryUnit {
                 }
                 case NUKE -> {
                     if (hasProject.test(Projects.NUCLEAR_RESEARCH_FACILITY)) cap++;
+                    if (hasProject.test(Projects.NUCLEAR_LAUNCH_FACILITY)) cap++;
                 }
                 case SPIES -> {
                     cap = 2;

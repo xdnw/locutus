@@ -375,6 +375,42 @@ public class Projects {
             .requiredProjects(() -> new Project[]{INTELLIGENCE_AGENCY, ADVANCED_URBAN_PLANNING})
             .build();
 
+    // Guiding Satellite
+    // Money 200,000,000
+    //Munitions 40,000
+    //Uranium 40,000
+    //Gasoline 40,000
+    //Aluminum 40,000
+    //Steel 20,000
+    // Guiding Satellite increases infrastructure damage dealt by Missles and Nuclear Weapons by 20%
+    // as well as destroy an additional improvement.
+    // Requires the Nuclear Research Facility, Missile Launch Pad, and Space Program National Projects to build.
+    public static final Project GUIDING_SATELLITE = new Builder("guiding_satellite", 37)
+            .cost(MONEY, 200_000_000)
+            .cost(MUNITIONS, 40_000)
+            .cost(URANIUM, 40_000)
+            .cost(GASOLINE, 40_000)
+            .cost(ALUMINUM, 40_000)
+            .cost(STEEL, 20_000)
+            .requiredProjects(() -> new Project[]{NUCLEAR_RESEARCH_FACILITY, MISSILE_LAUNCH_PAD, SPACE_PROGRAM})
+            .build();
+
+    // Nuclear Launch Facility is a national project that allows you to build an additional Nuclear Weapon each day.
+    // Requires the Nuclear Research Facility, Missile Launch Pad, and Space Program National Projects to build.
+    // Money
+    //Money
+    // 750,000,000
+    //Uranium 50,000
+    //Gasoline 50,000
+    //Aluminum 50,000
+    public static final Project NUCLEAR_LAUNCH_FACILITY = new Builder("nuclear_launch_facility", 38)
+            .cost(MONEY, 750_000_000)
+            .cost(URANIUM, 50_000)
+            .cost(GASOLINE, 50_000)
+            .cost(ALUMINUM, 50_000)
+            .requiredProjects(() -> new Project[]{NUCLEAR_RESEARCH_FACILITY, MISSILE_LAUNCH_PAD, SPACE_PROGRAM})
+            .build();
+
     public static int getScore() {
         return 20;
     }

@@ -47,6 +47,15 @@ public class SheetTemplate<T> {
         this.columns = columns;
     }
 
+    public SheetTemplate<T> resolve(Class<T> type) {
+        if (this.type == null) {
+            this.type = type;
+        } else if (this.type != type) {
+            throw new IllegalArgumentException("Selection type does not match column template type: " + PlaceholdersMap.getClassName(this.type) + " != " + PlaceholdersMap.getClassName(type));
+        }
+        return this;
+    }
+
     @Override
     public String toString() {
         StringBuilder response = new StringBuilder();

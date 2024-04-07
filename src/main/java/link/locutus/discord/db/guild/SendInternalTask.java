@@ -507,10 +507,12 @@ public class SendInternalTask {
     private void updateCurrValues(long turn) {
         if (CURR_TURN != turn) {
             synchronized (CURR_TURN_VALUE_BY_USER) {
+                if (CURR_TURN != turn) {
                 LAST_TURN_BY_USER.clear();
                 LAST_TURN_BY_USER.putAll(CURR_TURN_VALUE_BY_USER);
                 CURR_TURN_VALUE_BY_USER.clear();
                 CURR_TURN = turn;
+                }
             }
         }
     }
@@ -532,12 +534,13 @@ public class SendInternalTask {
         }
         if (turnsReset != 0) {
             StringBuilder msg = new StringBuilder();
-            if (remaining > 0) {
+            if (remaining == 0) {
                 msg.append("You have exceeded the transfer limit for this turn.");
             } else {
-                msg.append("You can only send up to $" + MathMan.format(maxValue) + " worth before reaching the transfer limit for this turn.");
+                msg.append("You can only send up to $" + MathMan.format(remaining) + " worth before reaching the transfer limit for this turn ($" + MathMan.format(maxValue) + ").");
             }
-            msg.append("Please wait " + turnsReset + " turn" + (turnsReset > 1 ? "s" : "") + " before you can send ~$" + MathMan.format(remaining) + " worth again.");
+            msg.append("Please wait " + turnsReset + " turn" + (turnsReset > 1 ? "s" : "") + " before you can send ~$" + MathMan.format(newValue) + " worth again.");
+            msg.append("See: " + CM.trade.value.cmd.toSlashMention());
             AlertUtil.error("Transfer cap exceeded", msg + "\n" + bankerNation.getMarkdownUrl() + " | " + banker.getAsMention(), true);
             throw new IllegalArgumentException(msg.toString());
         }
