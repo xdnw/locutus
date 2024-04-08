@@ -2004,7 +2004,7 @@ public class GuildHandler {
 
         if (nation.getCities() <= Projects.ACTIVITY_CENTER.maxCities()) allowed.put(Projects.ACTIVITY_CENTER, Collections.EMPTY_SET);
 
-        if (nation.getCities() >= Projects.ACTIVITY_CENTER.maxCities() || nation.hasProject(Projects.ACTIVITY_CENTER)) {
+        if (nation.getCities() > Projects.ACTIVITY_CENTER.maxCities() || nation.hasProject(Projects.ACTIVITY_CENTER)) {
             allowed.put(Projects.URANIUM_ENRICHMENT_PROGRAM, new Grant.Requirement("must be on a continent with uranium", overrideSafe, f -> Buildings.URANIUM_MINE.canBuild(f.getContinent())).toSet());
             allowed.put(Projects.ARMS_STOCKPILE, Collections.EMPTY_SET);
             allowed.put(Projects.BAUXITEWORKS, Collections.EMPTY_SET);

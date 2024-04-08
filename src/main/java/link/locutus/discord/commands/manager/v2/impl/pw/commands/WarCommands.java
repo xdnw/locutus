@@ -1584,7 +1584,7 @@ public class WarCommands {
                 return "Enemy has no spies";
             }
 
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, opTypes);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, nation.hasProject(Projects.SPY_SATELLITE), opTypes);
             if (best != null) {
                 netDamage.add(new AbstractMap.SimpleEntry<>(nation, best));
             }
@@ -1621,7 +1621,7 @@ public class WarCommands {
             if (minSuccess != null && odds <= minSuccess) continue;
             if (++nationCount >= 10) break;
 
-            double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);
+            double kills = SpyCount.getKills(spiesUsed, enemy, op, nation.hasProject(Projects.SPY_SATELLITE));
 
             String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
             String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
@@ -1635,6 +1635,7 @@ public class WarCommands {
                     .append(nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE) + " spies (")
                     .append(MathMan.format(odds) + "% for $")
                     .append(MathMan.format(damage) + "net damage)")
+                    .append(" killing " + MathMan.format(kills) + " " + op.unit.getName())
                     .append("\n")
             ;
         }
@@ -1764,7 +1765,7 @@ public class WarCommands {
             }
             SpyCount.Operation[] opTypes = opTypesList.toArray(new SpyCount.Operation[0]);
 
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, nation, opTypes);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, nation, me.hasProject(Projects.SPY_SATELLITE), opTypes);
             if (best != null) {
                 double netDamageCost = best.getValue().getValue();
                 if (nation.hasProject(Projects.INTELLIGENCE_AGENCY)) {
@@ -1806,7 +1807,7 @@ public class WarCommands {
                 spiesUsed = SpyCount.getRecommendedSpies(spiesUsed, enemySpies, safety, op, nation);
             }
 
-            double kills = SpyCount.getKills(spiesUsed, nation, op, safety);
+            double kills = SpyCount.getKills(spiesUsed, nation, op, me.hasProject(Projects.SPY_SATELLITE));
 
             Integer enemySpies = nation.getSpies();
             double odds = SpyCount.getOdds(spiesUsed, enemySpies, safety, op, nation);
@@ -3999,7 +4000,7 @@ public class WarCommands {
         int maxSafety = requiredSafety == null ? 3 : requiredSafety.id;
 
         for (SpyCount.Operation op : SpyCount.Operation.values()) {
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(60, nation, minSafety, maxSafety, op);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(60, nation, minSafety, maxSafety, me.hasProject(Projects.SPY_SATELLITE), op);
             if (best == null) continue;
 
             Map.Entry<Integer, Double> bestVal = best.getValue();

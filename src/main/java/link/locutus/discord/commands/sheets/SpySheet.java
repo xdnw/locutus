@@ -184,7 +184,7 @@ public class SpySheet extends Command {
                             }
                         }
                         SpyCount.Operation[] opTypes = new SpyCount.Operation[]{operation};
-                        Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, defender, opTypes);
+                        Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, defender, attacker.hasProject(Projects.SPY_SATELLITE), opTypes);
 
                         if (best == null) continue;
 
@@ -296,9 +296,9 @@ public class SpySheet extends Command {
                 int units = op.defender.getUnits(op.operation.unit);
                 for (Spyop other : defOps) {
                     if (other.operation != op.operation) continue;
-                    units -= Math.ceil(SpyCount.getKills(other.spies, other.defender, other.operation, other.safety));
+                    units -= Math.ceil(SpyCount.getKills(other.spies, other.defender, other.operation, other.attacker.hasProject(Projects.SPY_SATELLITE)));
                 }
-                int kills = (int) Math.ceil(SpyCount.getKills(op.spies, op.defender, op.operation, op.safety));
+                int kills = (int) Math.ceil(SpyCount.getKills(op.spies, op.defender, op.operation, op.attacker.hasProject(Projects.SPY_SATELLITE)));
                 if (units < kills || kills == 0) continue;
 
             }

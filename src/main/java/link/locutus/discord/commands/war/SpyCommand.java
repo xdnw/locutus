@@ -99,7 +99,7 @@ public class SpyCommand extends Command {
         int maxSafety = requiredSafety == null ? 3 : requiredSafety;
 
         for (SpyCount.Operation op : SpyCount.Operation.values()) {
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(true, op != SpyCount.Operation.SOLDIER, 60, nation, minSafety, maxSafety, op);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(true, op != SpyCount.Operation.SOLDIER, 60, nation, minSafety, maxSafety, me.hasProject(Projects.SPY_SATELLITE), op);
             if (best == null) continue;
 
             Map.Entry<Integer, Double> bestVal = best.getValue();

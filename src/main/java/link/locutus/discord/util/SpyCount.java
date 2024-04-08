@@ -141,22 +141,24 @@ public class SpyCount {
         return new AbstractMap.SimpleEntry<>((int) min, (int) max);
     }
 
-    public static Map.Entry<Integer, Integer> getUnitKillRange(int attSpies, int defSpies, MilitaryUnit unit, int defUnits, boolean spySat) {
+    public static Map.Entry<Integer, Integer> getUnitKillRange(int attSpies, int defSpies, MilitaryUnit unit, int defUnits, boolean spySat, boolean defSN) {
         double min;
         double max;
+        double factor = defSN ? 0.75 : 1;
+        if (spySat) factor *= 1.5;
         if (unit == MilitaryUnit.SPIES) {
             double average =  ((double) attSpies - (defSpies * 0.4)) * 0.335;
             double cap = (defSpies * 0.25) + 4;
-            min = Math.min(cap, average * 0.85);
-            max = Math.min(cap, average * 1.05);
+            min = Math.min(cap, average * 0.85) * factor;
+            max = Math.min(cap, average * 1.05) * factor;
         } else {
             switch (unit) {
                 case SOLDIER:
                 case TANK:
                 case AIRCRAFT:
                 case SHIP:
-                    min = (double) defUnits * 0.01;
-                    max = (double) defUnits * 0.05;
+                    min = (double) defUnits * 0.01 * factor;
+                    max = (double) defUnits * 0.05 * factor;
                     break;
                 case MISSILE:
                 case NUKE:
@@ -166,10 +168,6 @@ public class SpyCount {
                 default:
                     throw new IllegalArgumentException("Unknown unit type: " + unit);
             }
-        }
-        if (spySat) {
-            min *= 1.5;
-            max *= 1.5;
         }
         return new AbstractMap.SimpleEntry<>((int) Math.round(min), (int) Math.round(max));
     }
@@ -534,13 +532,15 @@ public class SpyCount {
     public static double getOdds(int attacking, int defending, int safety, Operation operation, DBNation nation) {
         boolean arcane = nation.getWarPolicy() == WarPolicy.ARCANE;
         boolean tactician = nation.getWarPolicy() == WarPolicy.TACTICIAN;
-        return getOdds(attacking, defending, safety, operation, arcane, tactician);
+        boolean defenderHasSN = nation.hasProject(Projects.SURVEILLANCE_NETWORK);
+        return getOdds(attacking, defending, safety, operation, arcane, tactician, defenderHasSN);
     }
 
-    public static double getOdds(int attacking, int defending, int safety, Operation operation, boolean arcane, boolean tactician) {
+    public static double getOdds(int attacking, int defending, int safety, Operation operation, boolean arcane, boolean tactician, boolean defenderHasSN) {
         double chi = 1;
         if (arcane) chi -= 0.15;
         if (tactician) chi += 0.15;
+        if (defenderHasSN) chi -= 0.1;
 
         return Math.min(100, Math.max(0, chi * (safety * 25 + (attacking * 100d / ((defending * 3) + 1))) / operation.odds));
     }
@@ -548,9 +548,11 @@ public class SpyCount {
     public static double getRequiredSpies(int defending, int safety, Operation operation, DBNation nation) {
         boolean arcane = nation.getWarPolicy() == WarPolicy.ARCANE;
         boolean tactician = nation.getWarPolicy() == WarPolicy.TACTICIAN;
+        boolean defHasSN = nation.hasProject(Projects.SURVEILLANCE_NETWORK);
         double chi = 1;
         if (arcane) chi -= 0.15;
         if (tactician) chi += 0.15;
+        if (defHasSN) chi -= 0.1;
         return (((defending * 3) + 1) * (operation.odds * (100 / chi) - safety * 25)) / (100d);
     }
 
@@ -576,27 +578,27 @@ public class SpyCount {
      * @param defender
      * @return (Operation, (Safety, Net Damage))
      */
-    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(int attacking, DBNation defender) {
-        return getBestOp(attacking, defender, Operation.values());
+    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(int attacking, DBNation defender, boolean attackerHasSpySat) {
+        return getBestOp(attacking, defender, attackerHasSpySat, Operation.values());
     }
 
-    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(int attacking, DBNation defender, Operation... opTypes) {
-        return getBestOp(attacking, defender, 1, 3, opTypes);
+    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(int attacking, DBNation defender, boolean attackerHasSpySat, Operation... opTypes) {
+        return getBestOp(attacking, defender, 1, 3, attackerHasSpySat, opTypes);
     }
 
-    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(boolean useNet, int attacking, DBNation defender, Operation... opTypes) {
-        return getBestOp(useNet, attacking, defender, 1, 3, opTypes);
+    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(boolean useNet, int attacking, DBNation defender, boolean attackerHasSpySat, Operation... opTypes) {
+        return getBestOp(useNet, attacking, defender, 1, 3, attackerHasSpySat, opTypes);
     }
 
-    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(int attacking, DBNation defender, int minSafety, int maxSafety, Operation... opTypes) {
-        return getBestOp(true, attacking, defender, minSafety, maxSafety, opTypes);
+    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(int attacking, DBNation defender, int minSafety, int maxSafety, boolean attackerHasSpySat, Operation... opTypes) {
+        return getBestOp(true, attacking, defender, minSafety, maxSafety, attackerHasSpySat, opTypes);
     }
 
-    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(boolean useNet, int attacking, DBNation defender, int minSafety, int maxSafety, Operation... opTypes) {
-        return getBestOp(useNet, true, attacking, defender, minSafety, maxSafety, opTypes);
+    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(boolean useNet, int attacking, DBNation defender, int minSafety, int maxSafety, boolean attackerHasSpySat, Operation... opTypes) {
+        return getBestOp(useNet, true, attacking, defender, minSafety, maxSafety, attackerHasSpySat, opTypes);
     }
 
-    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(boolean useNet, boolean checkUnits, int attacking, DBNation defender, int minSafety, int maxSafety, Operation... opTypes) {
+    public static Map.Entry<Operation, Map.Entry<Integer, Double>> getBestOp(boolean useNet, boolean checkUnits, int attacking, DBNation defender, int minSafety, int maxSafety, boolean attackerHasSpySat, Operation... opTypes) {
         Operation maxOp = null;
         int bestSafety = 1;
         double max = Double.NEGATIVE_INFINITY;
@@ -617,8 +619,8 @@ public class SpyCount {
                 }
 
                 double netDamage;
-                if (useNet) netDamage = getNetDamage(spiesUsed, defender, operation, safety, operation != Operation.SPIES);
-                else netDamage = getDamage(spiesUsed, defender, operation, safety, operation != Operation.SPIES);
+                if (useNet) netDamage = getNetDamage(spiesUsed, defender, operation, safety, operation != Operation.SPIES, attackerHasSpySat);
+                else netDamage = getDamage(spiesUsed, defender, operation, safety, attackerHasSpySat);
 
                 if (netDamage > max) {
                     max = netDamage;
@@ -631,13 +633,13 @@ public class SpyCount {
         return new AbstractMap.SimpleEntry<>(maxOp, new AbstractMap.SimpleEntry<>(bestSafety, max));
     }
 
-    public static double getNetDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost) {
+    public static double getNetDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost, boolean attackerHasSpySat) {
         double net = getNetSpyKills(attacking, defender.getSpies(), operation, safety, defender);
         double netDamage = net * MilitaryUnit.SPIES.getConvertedCost();
 
         double odds = getOdds(attacking, defender.getSpies(), safety, operation, defender);
         if (operation != Operation.SPIES) {
-            double kills = getKills(attacking, defender, operation, safety) * (odds / 100d);
+            double kills = getKills(attacking, defender, operation, attackerHasSpySat) * (odds / 100d);
             netDamage += kills * operation.unit.getConvertedCost();
         }
         if (countOpCost) {
@@ -646,21 +648,23 @@ public class SpyCount {
         return netDamage;
     }
 
-    public static double getDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost) {
+    public static double getDamage(int attacking, DBNation defender, Operation operation, int safety, boolean attackerHasSpySat) {
         double odds = getOdds(attacking, defender.getSpies(), safety, operation, defender);
         double losses = getFailedSpyLosses(attacking, defender.getSpies(), operation, safety);
-        double kills = operation == Operation.SPIES ? getSpyKills(attacking, defender.getSpies()) : 0;
+        double kills = operation == Operation.SPIES ? getSpyKills(attacking, defender.getSpies(), defender.hasProject(Projects.SURVEILLANCE_NETWORK)) : 0;
 
         double netDamage = kills * MilitaryUnit.SPIES.getConvertedCost();
 
         if (operation != Operation.SPIES) {
-            kills = getKills(attacking, defender, operation, safety) * (odds / 100d);
+            kills = getKills(attacking, defender, operation, attackerHasSpySat) * (odds / 100d);
             netDamage = kills * operation.unit.getConvertedCost();
         }
         return netDamage;
     }
 
-    public static double getKills(int attacking, DBNation defender, Operation operation, int safety) {
+    public static double getKills(int attacking, DBNation defender, Operation operation, boolean attackerHasSS) {
+        double factor = defender.hasProject(Projects.SURVEILLANCE_NETWORK) ? 0.75 : 1;
+        if (attackerHasSS) factor *= 1.5;
         switch (operation) {
             default:
             case INTEL:
@@ -670,28 +674,30 @@ public class SpyCount {
             case MISSILE:
                 return Math.min(1, defender.getMissiles());
             case SHIPS:
-                return defender.getShips() * 0.03d;
+                return defender.getShips() * 0.03d * factor;
             case AIRCRAFT:
-                return defender.getAircraft() * 0.03d;
+                return defender.getAircraft() * 0.03d * factor;
             case TANKS:
-                return defender.getTanks() * 0.03d;
+                return defender.getTanks() * 0.03d * factor;
             case SPIES:
-                return getSpyKills(attacking, defender.getSpies());
+                return getSpyKills(attacking, defender.getSpies(), defender.hasProject(Projects.SURVEILLANCE_NETWORK));
             case SOLDIER:
-                return defender.getSoldiers() * 0.03d;
+                return defender.getSoldiers() * 0.03d * factor;
         }
     }
 
-    public static double getSpyKills(int attacking, int defending) {
+    public static double getSpyKills(int attacking, int defending, boolean defenderHasSN) {
         double killedCap = defending * 0.25 + 4 ;
         double killed = Math.min(defending, Math.min(killedCap, (attacking - (defending * 0.4)) * 0.5 * 0.95));
+        if (defenderHasSN) killed *= 0.75;
         return killed;
     }
 
     public static double getNetSpyKills(int attacking, int defending, Operation operation, int safety, DBNation nation) {
         double odds = getOdds(attacking, defending, safety, operation, nation);
         double losses = getFailedSpyLosses(attacking, defending, operation, safety);
-        double kills = operation == Operation.SPIES ? getSpyKills(attacking, defending) : 0;
+        boolean defenderHasSN = nation.hasProject(Projects.SURVEILLANCE_NETWORK);
+        double kills = operation == Operation.SPIES ? getSpyKills(attacking, defending, defenderHasSN) : 0;
 
         double chi = 1;
         if (nation.hasProject(Projects.SPY_SATELLITE)) {

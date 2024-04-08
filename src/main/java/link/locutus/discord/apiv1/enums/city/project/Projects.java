@@ -175,7 +175,7 @@ public class Projects {
             .cost(IRON, 10_000)
             .cost(LEAD, 10_000)
             .cost(COAL, 10_000)
-            .requiredProjects(() -> new Project[]{SPACE_PROGRAM})
+            .requiredProjects(() -> new Project[]{SPACE_PROGRAM,INTELLIGENCE_AGENCY})
             .build();
 
     public static final Project URANIUM_ENRICHMENT_PROGRAM = new Builder("uranium_enrichment_program", 13)
@@ -277,7 +277,7 @@ public class Projects {
             .image("resource_production_center.jpg")
             .cost(FOOD, 1000)
             .cost(MONEY, 500000)
-            .maxCities(15)
+            .maxCities(20)
             .build();
 
     public static final Project GOVERNMENT_SUPPORT_AGENCY = new Builder("government_support_agency", 27)

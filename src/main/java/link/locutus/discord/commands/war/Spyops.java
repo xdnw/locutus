@@ -252,7 +252,7 @@ public class Spyops extends Command {
             opTypes = opTypesList.toArray(new SpyCount.Operation[0]);
 
 
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, nation, opTypes);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, nation, me.hasProject(Projects.SPY_SATELLITE), opTypes);
             if (best != null) {
                 double netDamageCost = best.getValue().getValue();
 
@@ -291,7 +291,7 @@ public class Spyops extends Command {
                 spiesUsed = SpyCount.getRecommendedSpies(spiesUsed, enemySpies, safety, op, nation);
             }
 
-            double kills = SpyCount.getKills(spiesUsed, nation, op, safety);
+            double kills = SpyCount.getKills(spiesUsed, nation, op, attacker.hasProject(Projects.SPY_SATELLITE));
 
             Integer enemySpies = nation.getSpies();
             double odds = SpyCount.getOdds(spiesUsed, enemySpies, safety, op, nation);

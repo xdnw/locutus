@@ -40,7 +40,7 @@ public enum  NationColor implements NationList {
     @Command(desc = "Get the bonus turn income for nations on this color.")
     public int getTurnBonus() {
         if (this == GRAY) return 0;
-        if (this == BEIGE) return 50_000;
+        if (this == BEIGE) return 85_000;
         return turnBonus;
     }
 

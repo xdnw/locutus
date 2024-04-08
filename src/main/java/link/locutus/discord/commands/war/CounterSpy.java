@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -139,7 +140,7 @@ public class CounterSpy extends Command {
                 if (operation != SpyCount.Operation.INTEL) {
                     opTypes = new SpyCount.Operation[] {operation};
                 }
-                Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, opTypes);
+                Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, counterWith.hasProject(Projects.SPY_SATELLITE), opTypes);
                 if (best != null) {
                     netDamage.add(new AbstractMap.SimpleEntry<>(counterWith, best));
                 }
@@ -176,7 +177,7 @@ public class CounterSpy extends Command {
                 if (odds <= minSuccess) continue;
                 if (++nationCount >= 10) break;
 
-                double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);
+                double kills = SpyCount.getKills(spiesUsed, enemy, op, nation.hasProject(Projects.SPY_SATELLITE));
 
                 String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
                 String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
@@ -190,6 +191,7 @@ public class CounterSpy extends Command {
                         .append(nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE) + " spies (")
                         .append(MathMan.format(odds) + "% for $")
                         .append(MathMan.format(damage) + "net damage)")
+                        .append(" killing " + MathMan.format(kills) + " " + operation.unit.getName())
                         .append("\n")
                 ;
             }

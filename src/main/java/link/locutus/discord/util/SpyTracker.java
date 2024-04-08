@@ -399,8 +399,8 @@ public class SpyTracker {
 
             if (unit.getBuilding() != null) {
                 int defUnits = alert.original;
-                Map.Entry<Integer, Integer> killRangeNoSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, false);
-                Map.Entry<Integer, Integer> killRangeSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, true);
+                Map.Entry<Integer, Integer> killRangeNoSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, false, defender.hasProject(Projects.SURVEILLANCE_NETWORK));
+                Map.Entry<Integer, Integer> killRangeSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, true, defender.hasProject(Projects.SURVEILLANCE_NETWORK));
 
                 body.append("\n\n**" + unit + " kill range:** ");
                 body.append(killRangeNoSat.getKey() + "- " + killRangeNoSat.getValue() + "(no SAT) | " + killRangeSat.getKey() + "- " + killRangeSat.getValue() + "(SAT)");
