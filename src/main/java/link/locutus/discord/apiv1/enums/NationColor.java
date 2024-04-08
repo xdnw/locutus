@@ -33,6 +33,8 @@ public enum  NationColor implements NationList {
 
     ;
 
+    public static int COLOR_REVENUE_CAP = 125_000;
+
     public static final NationColor[] values = values();
     private int turnBonus;
     private String votedName;
@@ -64,14 +66,14 @@ public enum  NationColor implements NationList {
 
     public int getTurnBonus(Set<DBNation> nationsOnColor, boolean cap) {
         if (this == GRAY) return 0;
-        if (this == BEIGE) return 50_000;
+        if (this == BEIGE) return getTurnBonus();
         double totalRev = 0;
         for (DBNation nation : nationsOnColor) {
             totalRev += ResourceType.convertedTotal(nation.getRevenue()) / 12d;
         }
         double colorRev = Math.round((totalRev / Math.pow(nationsOnColor.size(), 2)));
         if (cap) {
-            colorRev = Math.max(0, Math.min(75_000, colorRev));
+            colorRev = Math.max(0, Math.min(COLOR_REVENUE_CAP, colorRev));
         }
         return (int) Math.round(colorRev);
     }

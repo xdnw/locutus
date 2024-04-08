@@ -92,6 +92,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.apiv1.enums.NationColor.COLOR_REVENUE_CAP;
 import static link.locutus.discord.util.math.ArrayUtil.memorize;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
@@ -178,7 +179,7 @@ public class UtilityCommands {
                 Supplier<Double> newRevenueTotal = memorize(() -> ResourceType.convertedTotal(new SimpleNationList(nations).getRevenue()));
 
                 double scalingFactor = -1;
-                if (oldColorRev > 0 && oldColorRev < 75_000) {
+                if (oldColorRev > 0 && oldColorRev < COLOR_REVENUE_CAP) {
                     double oldRevTotalEstimate = oldRevenueTotal.get();
                     double oldRevTotalExact = ((double) oldColorRev) * oldNations.size() * oldNations.size();
 
@@ -231,7 +232,7 @@ public class UtilityCommands {
                 }
                 newTurnIncome = (int) Math.round(revenueTotal / (numNations * numNations));
             }
-            newTurnIncome = Math.max(0, Math.min(75_000, newTurnIncome));
+            newTurnIncome = Math.max(0, Math.min(COLOR_REVENUE_CAP, newTurnIncome));
             lines.append(" | bonus: " + newTurnIncome);
             if (oldTurnIncome != newTurnIncome) {
                 String signSym = (newTurnIncome > oldTurnIncome) ? "+" : "-";
