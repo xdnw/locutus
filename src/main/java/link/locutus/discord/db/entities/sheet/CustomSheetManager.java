@@ -278,14 +278,6 @@ public class CustomSheetManager {
         });
     }
 
-    public void renameCustomSheetTab(String sheet, String name, String newName) {
-        db.update("UPDATE CUSTOM_SHEET_TABS SET name = ? WHERE sheet = ? AND tab = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, newName);
-            stmt.setString(2, sheet);
-            stmt.setString(3, name);
-        });
-    }
-
     /**
      * @return Map of name -> url
      */
@@ -328,19 +320,14 @@ public class CustomSheetManager {
         if (name == null) {
             return null;
         }
-        return selectCustomSheets(name, url, "WHERE `name` = ?", stmt -> {
-            stmt.setString(1, name);
+        return selectCustomSheets(name, url, "WHERE `sheet` = ?", stmt -> {
+            stmt.setString(1, url);
         });
     }
 
     public CustomSheet getCustomSheet(String name) {
         String url = getCustomSheetUrl(name);
-        if (url == null) {
-            return null;
-        }
-        return selectCustomSheets(name, url, "WHERE `name` = ?", stmt -> {
-            stmt.setString(1, name);
-        });
+        return url == null ? null : getCustomSheetById(url);
     }
 
     private CustomSheet selectCustomSheets(String name, String url, String query, ThrowingConsumer<PreparedStatement> condition) {

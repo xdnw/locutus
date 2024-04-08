@@ -56,10 +56,10 @@ public class GuildShardManager {
     }
 
 
-    public List<User> getUsersByName(String username, boolean descriminator) {
+    public List<User> getUsersByName(String username, boolean ignoreCase) {
         List<User> users = new ArrayList<>();
         for (JDA jda : instances) {
-            List<User> toAdd = jda.getUsersByName(username, descriminator);
+            List<User> toAdd = jda.getUsersByName(username, ignoreCase);
             if (toAdd != null && !toAdd.isEmpty()) {
                 users.addAll(toAdd);
             }

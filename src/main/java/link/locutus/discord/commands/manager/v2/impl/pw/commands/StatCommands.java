@@ -549,7 +549,7 @@ public class StatCommands {
             }
             table.add(row);
         }
-        IMessageBuilder msg = io.create().writeTable("Continents", table, true, "");
+        IMessageBuilder msg = io.create().writeTable("Continents", table, false, "");
 
         List<List<String>> radsTable = new ArrayList<>();
         radsTable.add(Arrays.asList("continent", "rads"));
@@ -557,7 +557,7 @@ public class StatCommands {
             radsTable.add(Arrays.asList(continent.name().toLowerCase(Locale.ROOT), MathMan.format(continent.getRadIndex())));
         }
         String footer = "See also: " + CM.stats_other.radiationByTurn.cmd.toSlashMention();
-        msg.writeTable("Radiation", radsTable, true, footer).send();
+        msg.writeTable("Radiation", radsTable, false, footer).send();
         return null;
     }
 

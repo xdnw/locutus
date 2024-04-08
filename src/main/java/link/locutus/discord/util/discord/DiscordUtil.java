@@ -870,7 +870,8 @@ public class DiscordUtil {
         if (user != null) {
             return user.getNationId();
         }
-        User discordUser = DiscordUtil.getUser(arg);
+        List<User> discordUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
+        User discordUser = !discordUsers.isEmpty() ? discordUsers.get(0) : null;
         if (discordUser != null) {
             nation = DiscordUtil.getNation(discordUser);
             if (nation != null) return nation.getId();
