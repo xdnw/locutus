@@ -110,7 +110,7 @@ public enum ResourceType {
     static {
         String regex = "\\$([0-9|,.]+), ([0-9|,.]+) coal, ([0-9|,.]+) oil, " +
                 "([0-9|,.]+) uranium, ([0-9|,.]+) lead, ([0-9|,.]+) iron, ([0-9|,.]+) bauxite, ([0-9|,.]+) " +
-                "gasoline, ([0-9|,.]+) munitions, ([0-9|,.]+) steel, ([0-9|,.]+) aluminum, and " +
+                "gasoline, ([0-9|,.]+) munitions, ([0-9|,.]+) steel, ([0-9|,.]+) aluminum[,]{0,1} and " +
                 "([0-9|,.]+) food";
         RSS_PATTERN = Pattern.compile(regex);
     }
@@ -507,7 +507,8 @@ public enum ResourceType {
         }
 
         String name = input.split("You successfully gathered intelligence about ")[1].split("\\. Your spies discovered that")[0];
-        DBNation nation = Locutus.imp().getNationDB().getNation(name);
+        Locutus lc = Locutus.imp();
+        DBNation nation = lc == null ? null : lc.getNationDB().getNation(name);
 
         return new AbstractMap.SimpleEntry<>(nation, resourceOutput);
     }
