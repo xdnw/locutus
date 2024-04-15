@@ -518,7 +518,7 @@ public class Settings extends Config {
         "80 = default unsecure http",
         "443 = default secure https"})
         public int PORT = 443;
-        @Comment("Port used for secure HTTPS. Set to 0 to disable")
+        @Comment("If the port hosted on is SSL (recommended), else unsecure HTTP is used (not recommended)")
         public boolean ENABLE_SSL = true;
         @Comment("If set to true, web content is not compressed/minified")
         public boolean MINIFY = true;

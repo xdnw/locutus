@@ -265,7 +265,7 @@ public class CustomSheetCommands {
             "You must create a selection alias and sheet template first\n" +
             "Sheets must be generated/updated with the update command")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, SelectionAlias select, SheetTemplate columns, @Switch("f") boolean force) {
+    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, @CreateSheet SelectionAlias select, @CreateSheet SheetTemplate columns, @Switch("f") boolean force) {
         columns = columns.resolve(select.getType());
         tabName = tabName.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
@@ -397,7 +397,7 @@ public class CustomSheetCommands {
             SheetTemplate template = null;
 
             try {
-                selection = SheetBindings.selectionAlias(db, manager, tabName);
+                selection = SheetBindings.selectionAlias(true, manager, store, tabName);
             } catch (IllegalArgumentException e) {
                 int index = tabName.indexOf(":");
                 if (index == -1) {

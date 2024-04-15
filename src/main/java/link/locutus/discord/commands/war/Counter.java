@@ -55,7 +55,9 @@ public class Counter extends Command {
                 "Add `-a` to only list active nations (past hour)\n" +
                 "Add `-d` to require discord\n" +
                 "Add `-p` to mention added nations\n" +
-                "Add `-s` to allow same alliance countering";
+                "Add `-s` to allow same alliance countering\n" +
+                "Add `-i` to include inactive nations\n" +
+                "Add `-m` to include applicants";
     }
 
     @Override
@@ -122,7 +124,9 @@ public class Counter extends Command {
         boolean requireDiscord = flags.contains('d');
         boolean ping = flags.contains('p');
         boolean allowSameAA = flags.contains('s');
+        boolean includeInactive = flags.contains('i');
+        boolean includeApplicants = flags.contains('m');
 
-        return WarCommands.counter(me, db, counter, counterWith, allowMaxOff, filterWeak, onlyActive, requireDiscord, ping, allowSameAA);
+        return WarCommands.counter(me, db, counter, counterWith, allowMaxOff, filterWeak, onlyActive, requireDiscord, allowSameAA, includeInactive, includeApplicants, ping);
     }
 }

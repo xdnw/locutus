@@ -232,6 +232,12 @@ public class PlaceholdersMap {
         return (Placeholders<T>) this.placeholders.get(type);
     }
 
+    public <T> Class<T> parseType(String name) {
+        name = getClassName(name);
+        String finalName = name;
+        return (Class<T>) this.placeholders.keySet().stream().filter(f -> getClassName(f).equalsIgnoreCase(finalName)).findFirst().orElse(null);
+    }
+
     public static <T> Set<T> getSelection(Placeholders<T> instance, ValueStore store, String input) {
         return getSelection(instance, store, input, true);
     }

@@ -3,10 +3,12 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
@@ -29,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SheetBindings extends BindingHelper {
 
@@ -89,15 +92,32 @@ public class SheetBindings extends BindingHelper {
         throw new IllegalArgumentException(msg + "No template found with name `" + name + "`. Options: " + StringMan.getString(options) + ". Or create a sheet template with `/sheet_template add <type>`");
     }
 
-    @Binding(value = "A selection alias name that has been created in this guild\n" +
-            "A selection alias is used to reference a list of nations or other entities that can be used in commands and sheets")
-    public static SelectionAlias selectionAlias(@Me GuildDB db, CustomSheetManager manager, String name) {
-        SelectionAlias<Object> alias = manager.getSelectionAlias(name);
-        if (alias == null) {
-            Set<String> options = manager.getSelectionAliasNames();
-            throw new IllegalArgumentException("No selection alias found with name `" + name + "`. Options: " + StringMan.getString(options));
+    public static SelectionAlias selectionAlias(boolean allowInline, CustomSheetManager manager, ValueStore store, String name) {
+        SelectionAlias<Object> alias = manager.getSelectionAlias(name, false);
+        if (alias != null) return alias;
+        if (allowInline) {
+            PlaceholdersMap phM = Locutus.cmd().getV2().getPlaceholders();
+            Set<Class<?>> types = phM.getTypes();
+            for (Class type : types) {
+                String typeName = PlaceholdersMap.getClassName(type);
+                String prefix = typeName.toLowerCase(Locale.ROOT) + ":";
+                if (!name.startsWith(prefix)) continue;
+                String filter = name.substring(prefix.length());
+                Placeholders parser = phM.get(type);
+                parser.parseSet(store, filter);
+                return new SelectionAlias<>("", type, filter);
+            }
         }
-        return alias;
+        Set<String> options = manager.getSelectionAliasNames();
+        throw new IllegalArgumentException("No selection alias found with name `" + name + "`. Options: " + StringMan.getString(options) + ". Or create one with `/selection_alias add <type> <name> <selection>`");
+    }
+
+    @Binding(value = "A selection alias name that has been created in this guild\n" +
+            "Used to reference a list of nations or other entities that can be used in commands and sheets\n" +
+            "If the command supports it, you can specify a new selection alias inline e.g. `nation:*,#cities>10`")
+    public static SelectionAlias selectionAlias(ParameterData data, CustomSheetManager manager, ValueStore store, String name) {
+        boolean allowInline = data != null && data.getAnnotation(CreateSheet.class) != null;
+        return selectionAlias(allowInline, manager, store, name);
     }
 
     @Binding("A comma separated list of spreadsheets")
