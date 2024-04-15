@@ -343,10 +343,10 @@ public class NationUpdateProcessor {
         if (!adminInfo.isEmpty()) {
             MessageChannel channel = Locutus.imp().getRootDb().getResourceChannel(0);
             if (channel != null) {
-                String newBody = body + "<@217897994375266304>\n" +
+                String newBody = body + "\n" +
                         "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +
                         "See `!coalitions FROZEN_FUNDS`";
-                new DiscordChannelIO(channel).create().embed(title, newBody).send();
+                new DiscordChannelIO(channel).create().embed(title, newBody).append("<@217897994375266304> <@664156861033086987>").send();
             }
         }
 

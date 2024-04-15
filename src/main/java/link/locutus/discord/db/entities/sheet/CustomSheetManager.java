@@ -196,23 +196,34 @@ public class CustomSheetManager {
         return names;
     }
 
-    public <T> SelectionAlias<T> getSelectionAlias(String name) {
-        Predicate<Class> typePrefix = f -> true;
+    public <T> SelectionAlias<T> getSelectionAlias(String name, boolean allowInline) {
+        Class requiredTypeOrNull = null;
         if (name.contains(":")) {
             String[] split = name.split(":", 2);
-            name = split[1];
             String prefix = split[0];
-            typePrefix = f -> PlaceholdersMap.getClassName(f).equalsIgnoreCase(prefix);
-        }
-        for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
-            if (!typePrefix.test(entry.getKey())) {
-                continue;
+            requiredTypeOrNull = Locutus.cmd().getV2().getPlaceholders().parseType(prefix);
+            if (requiredTypeOrNull != null) {
+                name = split[1];
             }
-            Map<String, SelectionAlias> selections = entry.getValue();
-            Class type = entry.getKey();
-            SelectionAlias selection = selections.get(name);
+        }
+        Map<Class, Map<String, SelectionAlias>> aliases = getSelectionAliases();
+        if (requiredTypeOrNull != null) {
+            SelectionAlias selection = getSelectionAlias(name, requiredTypeOrNull);
             if (selection != null) {
                 return selection;
+            }
+            // parse inline
+            if (allowInline) {
+                return new SelectionAlias<>("", requiredTypeOrNull, name);
+            }
+        } else {
+            for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
+                Map<String, SelectionAlias> selections = entry.getValue();
+                Class type = entry.getKey();
+                SelectionAlias selection = selections.get(name);
+                if (selection != null) {
+                    return selection;
+                }
             }
         }
         return null;
@@ -337,7 +348,7 @@ public class CustomSheetManager {
                 String tabName = rs.getString("tab");
                 String selector = rs.getString("selector");
                 String template = rs.getString("template");
-                SelectionAlias selectionAlias = getSelectionAlias(selector);
+                SelectionAlias selectionAlias = getSelectionAlias(selector, true);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
                 if (sheetTemplate != null && selectionAlias != null) sheetTemplate.resolve(selectionAlias.getType());
                 tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));

@@ -110,7 +110,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (name.length() > 20) {
             throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
         }
-        SelectionAlias<T> existing = db.getSheetManager().getSelectionAlias(name);
+        SelectionAlias<T> existing = db.getSheetManager().getSelectionAlias(name, false);
         if (existing != null) {
             throw new IllegalArgumentException("Selection already exists: " + existing.toString());
         }
