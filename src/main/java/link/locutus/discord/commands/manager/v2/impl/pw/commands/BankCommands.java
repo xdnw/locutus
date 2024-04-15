@@ -2000,7 +2000,7 @@ public class BankCommands {
 
         if (!force) {
             String name = nations.getFilter();
-            String title = "Reset deposits for " + name;
+            String title = "Reset deposits for " + (name.length() > 100 ? nations.getNations().size() + " nations" : name);
             StringBuilder body = new StringBuilder();
             if (!ResourceType.isZero(totalDeposits)) {
                 body.append("Net Adding `" + name + " " + ResourceType.resourcesToString(totalDeposits) + " #deposit`\n");
