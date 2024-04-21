@@ -1062,7 +1062,7 @@ public class TradeCommands {
     @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds")
     @RolePermission(Roles.ECON)
     @IsAlliance
-    public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public static String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
         if (offshoreDb == null || offshoreDb.getKey() != db) throw new IllegalArgumentException("This command must be run in the offshore server");
         if (sheet == null) {

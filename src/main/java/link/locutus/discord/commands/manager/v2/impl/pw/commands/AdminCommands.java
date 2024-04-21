@@ -825,7 +825,7 @@ public class AdminCommands {
     public String maskSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me JSONObject command,
                             SpreadSheet sheet,
                             @Arg("Remove these roles from users not assigned the role in the sheet")
-                                @Switch("u") Set<Role> removeRoles,
+                            @Switch("u") Set<Role> removeRoles,
                             @Arg("Remove all roles mentioned in the sheet")
                             @Switch("ra") boolean removeAll,
                             @Arg("List nations that are not assigned a role in the sheet")
