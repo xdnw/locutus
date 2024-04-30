@@ -2514,6 +2514,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         checkNotNull(key);
         checkNotNull(value);
         value = key.validate(this, value);
+        setInfoRaw(key, value);
+    }
+
+    public <T> void setInfoRaw(GuildSetting<T> key, T value) {
         String toSave = key.toString(value);
         synchronized (infoParsed) {
             setInfo(key.name(), toSave);
