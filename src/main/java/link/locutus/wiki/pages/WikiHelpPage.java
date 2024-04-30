@@ -9,6 +9,8 @@ import link.locutus.discord.util.MarkupUtil;
 import java.util.ArrayList;
 import java.util.List;
 
+import static link.locutus.discord.util.MarkupUtil.spoiler;
+
 public class WikiHelpPage extends BotWikiGen {
     private final List<BotWikiGen> pages;
     private final String urlPrefix;
@@ -40,38 +42,37 @@ public class WikiHelpPage extends BotWikiGen {
         }
 
         return build(
-                "# Command Syntax",
-                """
+                "# Command Help",
+                spoiler("Command Syntax", """
                 - `<arg>` - A required parameter
                 - `[arg]` - An optional parameter
                 - `<arg1|arg2>` - Multiple parameters options
                 - `<arg=value>` - Default or suggested value
-                - `[-f flag]` - A optional command argument flag""",
-                "# Using the help commands",
-                CM.help.command.cmd.getCallable(true).simpleDesc(),
-                CM.help.command.cmd.toSlashCommand(true),
-                "\n\n---\n\n",
-                CM.help.find_command.cmd.getCallable(true).simpleDesc(),
-                CM.help.find_command.cmd.toSlashCommand(true),
-                "\n\n---\n\n",
-                CM.help.find_nation_placeholder.cmd.getCallable(true).simpleDesc(),
-                CM.help.find_nation_placeholder.cmd.toSlashCommand(true),
-                "\n\n---\n\n",
-                CM.help.nation_placeholder.cmd.getCallable(true).simpleDesc(),
-                CM.help.nation_placeholder.cmd.toSlashCommand(true),
-                "## For server owners",
-                "List available settings",
-                CM.settings.info.cmd.toSlashCommand(true),
-                "\n\n---\n\n",
-                CM.help.find_setting.cmd.getCallable(true).simpleDesc(),
-                CM.help.find_setting.cmd.toSlashCommand(true),
-                "\n\n---\n\n",
-                "List ALL settings",
-                CM.settings.info.cmd.create(null, null, Boolean.TRUE + "").toSlashCommand(true),
-                "\n\n---\n\n",
-                "View a setting",
-                "For example, the `" + GuildKey.ALLIANCE_ID.name() + "` settings",
-                CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true),
+                - `[-f flag]` - A optional command argument flag"""),
+                spoiler("Using the help commands",
+                CM.help.command.cmd.getCallable(true).simpleDesc() + "\n\n" +
+                CM.help.command.cmd.toSlashCommand(true) +
+                "\n\n---\n\n" +
+                CM.help.find_command.cmd.getCallable(true).simpleDesc() + "\n\n" +
+                CM.help.find_command.cmd.toSlashCommand(true) +
+                "\n\n---\n\n" +
+                CM.help.find_nation_placeholder.cmd.getCallable(true).simpleDesc() + "\n\n" +
+                CM.help.find_nation_placeholder.cmd.toSlashCommand(true) +
+                "\n\n---\n\n" +
+                CM.help.nation_placeholder.cmd.getCallable(true).simpleDesc() + "\n\n" +
+                CM.help.nation_placeholder.cmd.toSlashCommand(true)),
+                spoiler("List available settings",
+                CM.settings.info.cmd.toSlashCommand(true) +
+                "\n\n---\n\n" +
+                CM.help.find_setting.cmd.getCallable(true).simpleDesc() + "\n\n" +
+                CM.help.find_setting.cmd.toSlashCommand(true) +
+                "\n\n---\n\n"),
+                spoiler("List ALL settings",
+                CM.settings.info.cmd.create(null, null, Boolean.TRUE + "").toSlashCommand(true) +
+                "\n\n---\n\n"),
+                spoiler("View a setting",
+                "For example, the `" + GuildKey.ALLIANCE_ID.name() + "` settings" + "\n\n" +
+                CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true)),
                 "# Overview of this Wiki",
                 pageList.toString(),
                 "# Placeholders & Filters",
