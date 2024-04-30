@@ -1110,7 +1110,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                         if (newKeys.isEmpty()) {
                             db.deleteInfo(GuildKey.API_KEY);
                         } else {
-                            GuildKey.API_KEY.set(db, newKeys);
+                            db.setInfoRaw(GuildKey.API_KEY, newKeys);
                         }
                     } catch (Throwable e) {
                         throw e;

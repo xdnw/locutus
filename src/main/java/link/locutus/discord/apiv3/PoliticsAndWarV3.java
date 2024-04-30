@@ -211,7 +211,7 @@ public class PoliticsAndWarV3 {
                         }
                     }
                     String message = errorMessages.isEmpty() ? errors.toString() : StringMan.join(errorMessages, "\n");
-                    message = message.replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-F]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX");
+                    message = StringMan.stripApiKey(message);
                     rethrow(new IllegalArgumentException(message.replace(pair.getKey(), "XXX")), pair, true);
                 }
 
