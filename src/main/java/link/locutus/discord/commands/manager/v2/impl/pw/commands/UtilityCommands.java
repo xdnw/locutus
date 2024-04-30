@@ -1506,90 +1506,102 @@ public class UtilityCommands {
         return "Result: " + best.toString() + " MAP: " + best.map + " resistance:" + best.resistance;
     }
 
-//    @Command(desc = "Set a nation's tax bracket from a sheet\n" +
-//            "Expects two columns, `nation` (or `leader` or `user`) and `bracket` or `internal` (for internal taxrates)")
-//    @RolePermission(Roles.ECON)
-//    @IsAlliance
-//    public String setBracketBulk(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("f") boolean force) {
-//        List<Object> nations = sheet.findColumn("nation");
-//        List<Object> leaders = sheet.findColumn("leader");
-//        List<Object> brackets = sheet.findColumn("bracket");
-//        List<Object> internals = sheet.findColumn("internal");
-//        if (nations == null && leaders == null) {
-//            throw new IllegalArgumentException("Expecting column `nation` or `leader` or `user` or `member`");
-//        }
-//
-//        Map<String, TaxBracket> bracketsByStr = new LinkedHashMap<>();
-//
-//        Map<DBNation, TaxBracket> setBracket = new LinkedHashMap<>();
-//        Map<DBNation, TaxRate> setInternal = new LinkedHashMap<>();
-//
-//        int max = Math.max(Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()), brackets == null ? 0 : brackets.size()), internals == null ? 0 : internals.size());
-//
-//        List<String> errors = new ArrayList<>();
-//        for (int i = 0; i < max; i++) {
-//            Object nationObj = nations == null || nations.size() < i ? null : nations.get(i);
-//            String nationStr = nationObj == null ? null : nationObj.toString();
-//
-//            Object leaderObj = leaders == null || leaders.size() < i ? null : leaders.get(i);
-//            String leaderStr = leaderObj == null ? null : leaderObj.toString();
-//
-//            String input = nationStr == null ? leaderStr : nationStr;
-//            if (input == null || input.isEmpty()) continue;
-//
-//            DBNation nation;
-//
-//            if (nationStr != null) {
-//                try {
-//                    nation = PWBindings.nation(null, nationStr);
-//                } catch (IllegalArgumentException e) {
-//                    errors.add("[Row:" + (i + 2) + "] Nation not found: `" + nationStr + "`");
-//                    continue;
-//                }
-//            } else {
-//                nation = Locutus.imp().getNationDB().getNationByLeader(leaderStr);
-//                if (nation == null) {
-//                    errors.add("[Row:" + (i + 2) + "] Nation Leader not found: `" + leaderStr + "`");
-//                    continue;
-//                }
-//            }
-//            // todo if nation not in guilds alliance
-//
-//            Object bracketObj = brackets == null || brackets.size() < i ? null : brackets.get(i);
-//            String bracketStr = bracketObj == null ? null : bracketObj.toString();
-//
-//            Object internalObj = internals == null || internals.size() < i ? null : internals.get(i);
-//            String internalStr = internalObj == null ? null : internalObj.toString();
-//
-//            if (bracketStr != null && !bracketStr.isEmpty()) {
-//                TaxBracket bracket = bracketsByStr.computeIfAbsent(bracketStr, s -> PWBindings.bracket(db, s));
-//
-//                // TODO if bracket is not same alliance as nation
-//
-//                setBracket.put(nation, bracket);
-//            }
-//
-//            if (internalStr != null && !internalStr.isEmpty()) {
-//                TaxRate internal = new TaxRate(internalStr);
-//                setInternal.put(nation, internal);
-//            }
-//        }
-//
-//        if (setBracket.isEmpty() && setInternal.isEmpty()) {
-//            return "No brackets or internals found. Please set a value for one or more of the cells in the columns `bracket` or `internal`";
-//        }
-//
-//        if (!force) {
-//            // confirmation
-//
-//            // include errors
-//            // attach changes
-//            // body contains summary (by bracket)
-//        }
-//
-//        // set bracket
-//
-//    }
+    @Command(desc = "Set a nation's tax bracket from a sheet\n" +
+            "Expects two columns, `nation` (or `leader` or `user`) and `bracket` or `internal` (for internal taxrates)")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String setBracketBulk(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("f") boolean force) {
+        List<Object> nations = sheet.findColumn("nation");
+        List<Object> leaders = sheet.findColumn("leader");
+        List<Object> brackets = sheet.findColumn("bracket");
+        List<Object> internals = sheet.findColumn("internal");
+        if (nations == null && leaders == null) {
+            throw new IllegalArgumentException("Expecting column `nation` or `leader` or `user` or `member`");
+        }
+
+        Map<String, TaxBracket> bracketsByStr = new LinkedHashMap<>();
+
+        Map<DBNation, TaxBracket> setBracket = new LinkedHashMap<>();
+        Map<DBNation, TaxRate> setInternal = new LinkedHashMap<>();
+
+        int max = Math.max(Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()), brackets == null ? 0 : brackets.size()), internals == null ? 0 : internals.size());
+
+        List<String> errors = new ArrayList<>();
+        for (int i = 0; i < max; i++) {
+            Object nationObj = nations == null || nations.size() < i ? null : nations.get(i);
+            String nationStr = nationObj == null ? null : nationObj.toString();
+
+            Object leaderObj = leaders == null || leaders.size() < i ? null : leaders.get(i);
+            String leaderStr = leaderObj == null ? null : leaderObj.toString();
+
+            String input = nationStr == null ? leaderStr : nationStr;
+            if (input == null || input.isEmpty()) continue;
+
+            DBNation nation;
+
+            if (nationStr != null) {
+                try {
+                    nation = PWBindings.nation(null, nationStr);
+                } catch (IllegalArgumentException e) {
+                    errors.add("[Row:" + (i + 2) + "] Nation not found: `" + nationStr + "`");
+                    continue;
+                }
+            } else {
+                nation = Locutus.imp().getNationDB().getNationByLeader(leaderStr);
+                if (nation == null) {
+                    errors.add("[Row:" + (i + 2) + "] Nation Leader not found: `" + leaderStr + "`");
+                    continue;
+                }
+            }
+            // todo if nation not in guilds alliance
+
+            Object bracketObj = brackets == null || brackets.size() < i ? null : brackets.get(i);
+            String bracketStr = bracketObj == null ? null : bracketObj.toString();
+
+            Object internalObj = internals == null || internals.size() < i ? null : internals.get(i);
+            String internalStr = internalObj == null ? null : internalObj.toString();
+
+            if (bracketStr != null && !bracketStr.isEmpty()) {
+                TaxBracket bracket = bracketsByStr.computeIfAbsent(bracketStr, s -> PWBindings.bracket(db, s));
+
+                // TODO if bracket is not same alliance as nation
+
+                setBracket.put(nation, bracket);
+            }
+
+            if (internalStr != null && !internalStr.isEmpty()) {
+                TaxRate internal = new TaxRate(internalStr);
+                setInternal.put(nation, internal);
+            }
+        }
+
+        if (setBracket.isEmpty() && setInternal.isEmpty()) {
+            return "No brackets or internals found. Please set a value for one or more of the cells in the columns `bracket` or `internal`";
+        }
+
+        if (!force) {
+            List<String> titleComponents = new ArrayList<>(Arrays.asList("Set"));
+            if (!setBracket.isEmpty()) {
+                titleComponents.add("bracket for " + setBracket.size());
+            }
+            if (!setInternal.isEmpty()) {
+                if (!setBracket.isEmpty()) titleComponents.add("and");
+                titleComponents.add("internal for " + setInternal.size());
+            }
+            String title = StringMan.join(titleComponents, " ") + " nations";
+            // confirmation
+            StringBuilder body = new StringBuilder();
+
+            IMessageBuilder msg = io.create();
+
+            // include errors
+            // attach changes
+            // body contains summary (by bracket)
+        }
+
+        // set bracket
+
+    }
 
     @Command(desc = "Get info about your own nation")
     public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, @Switch("s") @Timestamp Long snapshotDate) throws IOException {
