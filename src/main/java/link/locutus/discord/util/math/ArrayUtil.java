@@ -1437,7 +1437,8 @@ public class ArrayUtil {
     }
 
     public static class ParseResult<T> {
-        public final List<Predicate<T>> predicates;
+        private final List<Predicate<T>> predicates;
+        public final List<Predicate<T>> selectorPredicates;
         public final Map<T, Predicate<T>> conditionalNumbers;
         public final Set<T> resolvedNumbers;
         public final AtomicBoolean hadNonFilter;
@@ -1446,9 +1447,16 @@ public class ArrayUtil {
         public ParseResult(String input, List<Predicate<T>> predicates, AtomicBoolean hadNonFilter) {
             this.input = input;
             this.predicates = new ArrayList<>(predicates);
+            this.selectorPredicates = new ArrayList<>();
             this.resolvedNumbers = new LinkedHashSet<>();
             this.conditionalNumbers = new LinkedHashMap<>();
             this.hadNonFilter = hadNonFilter;
+        }
+
+        public ParseResult<T> addSelector(Predicate<T> numbers) {
+            hadNonFilter.set(true);
+            this.selectorPredicates.add(numbers);
+            return this;
         }
 
         public ParseResult<T> add(Collection<T> numbers) {
@@ -1459,10 +1467,11 @@ public class ArrayUtil {
 
         @Override
         public String toString() {
-            return "Input: `" + input + "` | predicates: " + predicates.size() + " | " + resolvedNumbers.size() + " resolved | " + conditionalNumbers.size() + " conditional | " + hadNonFilter.get();
+            return "Input: `" + input + "` | predicates: " + predicates.size() + " | " + selectorPredicates.size() + " selectors" + " | " + resolvedNumbers.size() + " resolved | " + conditionalNumbers.size() + " conditional | " + hadNonFilter.get();
         }
 
         public void addResult(ParseResult<T> other) {
+            this.selectorPredicates.addAll(other.selectorPredicates);
             this.resolvedNumbers.addAll(other.resolvedNumbers);
             for (Map.Entry<T, Predicate<T>> entry : other.conditionalNumbers.entrySet()) {
                 T number = entry.getKey();
@@ -1481,6 +1490,7 @@ public class ArrayUtil {
         }
 
         public void combinePredicatesAndNumbers() {
+            getPredicates();
             // Removes all conditionals that are already resolved
             conditionalNumbers.keySet().removeAll(resolvedNumbers);
             // If there are predicates:
@@ -1522,6 +1532,14 @@ public class ArrayUtil {
             }
             conditionalNumbers.clear();
             return resolvedNumbers;
+        }
+
+        public List<Predicate<T>> getPredicates() {
+            if (!selectorPredicates.isEmpty()) {
+                predicates.add(or(selectorPredicates));
+                selectorPredicates.clear();
+            }
+            return predicates;
         }
     }
 
@@ -1569,6 +1587,9 @@ public class ArrayUtil {
     }
 
     public static <T> Predicate<T> or(List<Predicate<T>> predicates) {
+        if (predicates.size() == 1) {
+            return predicates.get(0);
+        }
         if (predicates.size() == 2) {
             return or(predicates.get(0), predicates.get(1));
         }
@@ -1664,7 +1685,7 @@ public class ArrayUtil {
                         if (parseSet2 != null) {
                             result.add(parseSet2.apply(elem));
                         } else {
-                            result.predicates.add(parseElemPredicate.apply(elem));
+                            result.selectorPredicates.add(parseElemPredicate.apply(elem));
                         }
                         orResults.add(result);
                     }
@@ -1718,7 +1739,6 @@ public class ArrayUtil {
             }
         }
 
-        List<Predicate<T>> predicates = andResults.stream().flatMap(result -> result.predicates.stream()).toList();
         if (hadNonFilter) {
             ParseResult<T> result = new ParseResult<T>(input, new ArrayList<>(), new AtomicBoolean(true));
             for (ParseResult<T> andResult : andResults) {
@@ -1726,6 +1746,12 @@ public class ArrayUtil {
             }
             result.combinePredicatesAndNumbers();
             return result;
+        }
+        List<Predicate<T>> predicates = andResults.stream().flatMap(result -> result.predicates.stream()).toList();
+        List<Predicate<T>> selectors = andResults.stream().flatMap(result -> result.selectorPredicates.stream()).toList();
+        if (!selectors.isEmpty()) {
+            predicates = new ArrayList<>(predicates);
+            predicates.add(or(selectors));
         }
         ParseResult<T> result = new ParseResult<T>(input, List.of(and(predicates)), new AtomicBoolean());
         return result;
@@ -1742,7 +1768,7 @@ public class ArrayUtil {
             Set<T> allowed = result.resolve();
             return allowed::contains;
         }
-        return and(result.predicates);
+        return and(result.getPredicates());
     }
 
     private static <T> ParseResult<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
