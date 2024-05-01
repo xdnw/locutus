@@ -4170,7 +4170,7 @@ public class DBNation implements NationOrAlliance {
                 receiverId = deposit.getReceiver_id();
             } catch (Throwable e) {
                 e.printStackTrace();
-                response.append("\n- Error Depositing: " + e.getMessage());
+                response.append("\n- Error Depositing: " + StringMan.stripApiKey(e.getMessage()));
                 return Map.entry(ResourceType.getBuffer(), response.toString());
             }
 
@@ -4368,7 +4368,7 @@ public class DBNation implements NationOrAlliance {
                     response.setMessage("Accepted " + tradeToString.apply(trade));
 
                 } catch (Throwable e) {
-                    errors.put(trade, Map.entry(e.getMessage(), Auth.TradeResultType.UNKNOWN_ERROR));
+                    errors.put(trade, Map.entry(StringMan.stripApiKey(e.getMessage()), Auth.TradeResultType.UNKNOWN_ERROR));
                 }
             }
         }
@@ -6275,7 +6275,7 @@ public class DBNation implements NationOrAlliance {
             type = CommandResult.SUCCESS;
             result = output.getOutput();
         } catch (Throwable e) {
-            result = e.getMessage();
+            result = StringMan.stripApiKey(e.getMessage());
             type = CommandResult.ERROR;
         }
         return new AbstractMap.SimpleEntry<>(type, result);

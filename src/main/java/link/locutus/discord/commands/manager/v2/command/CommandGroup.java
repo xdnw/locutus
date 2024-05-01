@@ -448,6 +448,7 @@ public class CommandGroup implements ICommandGroup {
                 for (Method method : entry.getValue()) {
                     sb.append(" - ").append(method.getName()).append("\n");
                 }
+                sb.append("\nSee example in CommandManager2#registerDefaults");
             }
             if (throwError) {
                 throw new IllegalStateException(sb.toString());

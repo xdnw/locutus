@@ -17,6 +17,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import org.apache.commons.lang3.StringUtils;
@@ -108,7 +109,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
             } catch (Throwable e) {
                 e.printStackTrace();
                 String message = e.getMessage();
-                message = message.toLowerCase().replace(apiKey.toLowerCase(), "<key>");
+                message = StringMan.stripApiKey(message.toLowerCase().replace(apiKey.toLowerCase(), "<key>"));
                 throw new IOException(message);
             }
         });

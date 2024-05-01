@@ -481,12 +481,12 @@ public class GuildKey {
                             if (nation != null && !aaIds.contains(nation.getAlliance_id())) {
                                 continue;
                             }
-                            throw new IllegalArgumentException("API key is not from a nation in the alliance (nation: " + nation + "): " + e.getMessage());
+                            throw new IllegalArgumentException("API key is not from a nation in the alliance (nation: " + nation + "): " + StringMan.stripApiKey(e.getMessage()));
                         }
                     } catch (Throwable ignore) {
                         ignore.printStackTrace();
                     }
-                    throw new IllegalArgumentException("Key was rejected: " + e.getMessage());
+                    throw new IllegalArgumentException("Key was rejected: " + StringMan.stripApiKey(e.getMessage()));
                 }
             }
             return keys;
@@ -559,7 +559,7 @@ public class GuildKey {
                 try {
                     api.getApiKeyStats();
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException(e.getMessage() + " (for nation: " + nationId + ")");
+                    throw new IllegalArgumentException(StringMan.stripApiKey(e.getMessage()) + " (for nation: " + nationId + ")");
                 }
             }
             PnwPusherShardManager pusher = Locutus.imp().getPusher();

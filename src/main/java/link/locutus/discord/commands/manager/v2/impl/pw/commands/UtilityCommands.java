@@ -35,10 +35,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -74,18 +71,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
@@ -1523,6 +1510,7 @@ public class UtilityCommands {
 
         Map<DBNation, TaxBracket> setBracket = new LinkedHashMap<>();
         Map<DBNation, TaxRate> setInternal = new LinkedHashMap<>();
+        Map<Integer, TaxRate> internalRates = db.getInternalTaxRates();
 
         int max = Math.max(Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()), brackets == null ? 0 : brackets.size()), internals == null ? 0 : internals.size());
 
@@ -1538,7 +1526,6 @@ public class UtilityCommands {
             if (input == null || input.isEmpty()) continue;
 
             DBNation nation;
-
             if (nationStr != null) {
                 try {
                     nation = PWBindings.nation(null, nationStr);
@@ -1553,7 +1540,10 @@ public class UtilityCommands {
                     continue;
                 }
             }
-            // todo if nation not in guilds alliance
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                errors.add("[Row:" + (i + 2) + "] Nation not in alliance: `" + nation.getNation() + "`");
+                continue;
+            }
 
             Object bracketObj = brackets == null || brackets.size() < i ? null : brackets.get(i);
             String bracketStr = bracketObj == null ? null : bracketObj.toString();
@@ -1563,21 +1553,39 @@ public class UtilityCommands {
 
             if (bracketStr != null && !bracketStr.isEmpty()) {
                 TaxBracket bracket = bracketsByStr.computeIfAbsent(bracketStr, s -> PWBindings.bracket(db, s));
-
-                // TODO if bracket is not same alliance as nation
-
+                if (bracket.getId() == nation.getTax_id()) {
+                    continue;
+                }
                 setBracket.put(nation, bracket);
             }
-
             if (internalStr != null && !internalStr.isEmpty()) {
                 TaxRate internal = new TaxRate(internalStr);
+                TaxRate existing = internalRates.get(nation.getId());
+                if (existing != null && existing.equals(internal)) {
+                    continue;
+                }
                 setInternal.put(nation, internal);
             }
         }
 
         if (setBracket.isEmpty() && setInternal.isEmpty()) {
-            return "No brackets or internals found. Please set a value for one or more of the cells in the columns `bracket` or `internal`";
+            return "No tax bracket or internal changes found. Please set a value for one or more of the cells in the columns `bracket` or `internal`";
         }
+
+        List<String> changes = new ArrayList<>();
+        for (Map.Entry<DBNation, TaxBracket> entry : setBracket.entrySet()) {
+            DBNation nation = entry.getKey();
+            TaxBracket bracket = entry.getValue();
+            changes.add("Set " + nation.getName() + " from tx_id=" + nation.getTax_id() + " to tx_id=" + bracket);
+        }
+        for (Map.Entry<DBNation, TaxRate> entry : setInternal.entrySet()) {
+            DBNation nation = entry.getKey();
+            TaxRate internal = entry.getValue();
+            TaxRate from = internalRates.get(nation.getId());
+            String fromStr = from == null ? "" : "from " + from + " ";
+            changes.add("Set " + nation.getName() + " internal tax rate " + fromStr + "to " + internal);
+        }
+
 
         if (!force) {
             List<String> titleComponents = new ArrayList<>(Arrays.asList("Set"));
@@ -1589,18 +1597,65 @@ public class UtilityCommands {
                 titleComponents.add("internal for " + setInternal.size());
             }
             String title = StringMan.join(titleComponents, " ") + " nations";
-            // confirmation
+            IMessageBuilder msg = io.create();
             StringBuilder body = new StringBuilder();
 
-            IMessageBuilder msg = io.create();
-
             // include errors
-            // attach changes
-            // body contains summary (by bracket)
+            if (!errors.isEmpty()) {
+                body.append("**__" + errors.size() + " errors (see attached)__**\n");
+                if (errors.size() < 4) {
+                    // attach inline, dot points, markdown
+                    body.append("- " + StringMan.join(errors, "\n- ") + "\n");
+                } else {
+                    msg.file("errors.txt", StringMan.join(errors, "\n"));
+                }
+                body.append("\n");
+            }
+            Set<Integer> fromBracketIds = setBracket.keySet().stream().map(DBNation::getTax_id).collect(Collectors.toSet());
+            Set<Integer> toBracketIds = setBracket.values().stream().map(TaxBracket::getId).collect(Collectors.toSet());
+            Set<TaxRate> fromInternalRates = setInternal.keySet().stream().map(n -> internalRates.get(n.getId())).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<TaxRate> toInternalRates = new HashSet<>(setInternal.values());
+            if (!setBracket.isEmpty()) {
+                body.append("Change " + setBracket.size() + " nations from " + fromBracketIds.size() + " unique tax bracket(s) to " + toBracketIds.size() + " bracket(s)\n");
+            }
+            if (!setInternal.isEmpty()) {
+                body.append("Change " + setInternal.size() + " nations from " + fromInternalRates.size() + " unique internal tax rate(s) to " + toInternalRates.size() + " rate(s)\n");
+            }
+            body.append("\n\nSee `changes.txt` for list of changes");
+            msg.file("changes.txt", StringMan.join(changes, "\n"));
+
+            msg.confirmation(title, body.toString(), command).send();
+            return null;
         }
 
-        // set bracket
+        CompletableFuture<IMessageBuilder> msg = io.send((StringMan.join(errors, "\n") + "\n\nPlease wait...").trim());
+        List<String> results = new ArrayList<>();
 
+        AllianceList aaList = db.getAllianceList().subList(setBracket.keySet());
+        for (Map.Entry<DBNation, TaxBracket> entry : setBracket.entrySet()) {
+            DBNation nation = entry.getKey();
+            TaxBracket bracket = entry.getValue();
+
+            String resultStr;
+            try {
+                boolean result = aaList.setTaxBracket(bracket, nation);
+                if (result) {
+                    nation.setTax_id(bracket.getId());
+                }
+                resultStr = result + "";
+            } catch (Exception e) {
+                resultStr = StringMan.stripApiKey(e.getMessage());
+            }
+            results.add("Set " + nation.getMarkdownUrl() + " to tax_id=" + bracket.getId() + ": " + resultStr);
+        }
+
+        for (Map.Entry<DBNation, TaxRate> entry : setInternal.entrySet()) {
+            DBNation nation = entry.getKey();
+            TaxRate internal = entry.getValue();
+            db.setInternalTaxRate(nation, internal);
+            results.add("Set " + nation.getMarkdownUrl() + " internal tax rate to " + internal);
+        }
+        return StringMan.join(results, "\n");
     }
 
     @Command(desc = "Get info about your own nation")

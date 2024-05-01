@@ -201,7 +201,7 @@ public class SendInternalTask {
             return results;
         } catch (Throwable e) {
             e.printStackTrace();
-            results.add(new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiverDB, amount, "#deposit").addMessage("Internal error: " + e.getMessage()));
+            results.add(new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiverDB, amount, "#deposit").addMessage("Internal error: " + StringMan.stripApiKey(e.getMessage())));
             return results;
         }
     }

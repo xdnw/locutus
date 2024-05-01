@@ -174,6 +174,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");
         getCommands().registerMethod(new StatCommands(), List.of("stats_other", "global_metrics"), "orbisStatByDay", "by_time");
 
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militaryRanking", "militarization");

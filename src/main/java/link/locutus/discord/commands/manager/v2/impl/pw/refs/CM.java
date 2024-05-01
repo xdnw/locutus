@@ -4612,6 +4612,13 @@ public class CM {
                     return createArgs("nations", nations, "ping", ping);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="setBracketBulk")
+            public static class set_from_sheet extends CommandRef {
+                public static final set_from_sheet cmd = new set_from_sheet();
+                public set_from_sheet create(String sheet, String force) {
+                    return createArgs("sheet", sheet, "force", force);
+                }
+            }
         }
         public static class test{
             @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="dummy")
@@ -4813,15 +4820,15 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="send")
                 public static class from_nation_account extends CommandRef {
                     public static final from_nation_account cmd = new from_nation_account();
-                    public from_nation_account create(String amount, String receiver_account, String receiver_nation, String sender_alliance, String confirm) {
-                        return createArgs("amount", amount, "receiver_account", receiver_account, "receiver_nation", receiver_nation, "sender_alliance", sender_alliance, "confirm", confirm);
+                    public from_nation_account create(String amount, String receiver_account, String receiver_nation, String sender_alliance, String force) {
+                        return createArgs("amount", amount, "receiver_account", receiver_account, "receiver_nation", receiver_nation, "sender_alliance", sender_alliance, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="sendAA")
                 public static class from_offshore_account extends CommandRef {
                     public static final from_offshore_account cmd = new from_offshore_account();
-                    public from_offshore_account create(String amount, String receiver_account, String receiver_nation, String sender_alliance, String sender_nation, String confirm) {
-                        return createArgs("amount", amount, "receiver_account", receiver_account, "receiver_nation", receiver_nation, "sender_alliance", sender_alliance, "sender_nation", sender_nation, "confirm", confirm);
+                    public from_offshore_account create(String amount, String receiver_account, String receiver_nation, String sender_alliance, String sender_nation, String force) {
+                        return createArgs("amount", amount, "receiver_account", receiver_account, "receiver_nation", receiver_nation, "sender_alliance", sender_alliance, "sender_nation", sender_nation, "force", force);
                     }
                 }
             }
@@ -4970,8 +4977,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="counter")
                 public static class nation extends CommandRef {
                     public static final nation cmd = new nation();
-                    public nation create(String target, String counterWith, String allowAttackersWithMaxOffensives, String filterWeak, String onlyActive, String requireDiscord, String allowSameAlliance, String ping) {
-                        return createArgs("target", target, "counterWith", counterWith, "allowAttackersWithMaxOffensives", allowAttackersWithMaxOffensives, "filterWeak", filterWeak, "onlyActive", onlyActive, "requireDiscord", requireDiscord, "allowSameAlliance", allowSameAlliance, "ping", ping);
+                    public nation create(String target, String counterWith, String allowMaxOffensives, String filterWeak, String onlyOnline, String requireDiscord, String allowSameAlliance, String includeInactive, String includeNonMembers, String ping) {
+                        return createArgs("target", target, "counterWith", counterWith, "allowMaxOffensives", allowMaxOffensives, "filterWeak", filterWeak, "onlyOnline", onlyOnline, "requireDiscord", requireDiscord, "allowSameAlliance", allowSameAlliance, "includeInactive", includeInactive, "includeNonMembers", includeNonMembers, "ping", ping);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="counterSheet")
@@ -4991,8 +4998,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="counterWar")
                 public static class url extends CommandRef {
                     public static final url cmd = new url();
-                    public url create(String war, String counterWith, String allowAttackersWithMaxOffensives, String filterWeak, String onlyActive, String requireDiscord, String ping, String allowSameAlliance) {
-                        return createArgs("war", war, "counterWith", counterWith, "allowAttackersWithMaxOffensives", allowAttackersWithMaxOffensives, "filterWeak", filterWeak, "onlyActive", onlyActive, "requireDiscord", requireDiscord, "ping", ping, "allowSameAlliance", allowSameAlliance);
+                    public url create(String war, String counterWith, String allowAttackersWithMaxOffensives, String filterWeak, String onlyActive, String requireDiscord, String allowSameAlliance, String includeInactive, String includeNonMembers, String ping) {
+                        return createArgs("war", war, "counterWith", counterWith, "allowAttackersWithMaxOffensives", allowAttackersWithMaxOffensives, "filterWeak", filterWeak, "onlyActive", onlyActive, "requireDiscord", requireDiscord, "allowSameAlliance", allowSameAlliance, "includeInactive", includeInactive, "includeNonMembers", includeNonMembers, "ping", ping);
                     }
                 }
             }

@@ -202,7 +202,7 @@ public abstract class GuildSetting<T> {
         try {
             return (T) parser.apply(locals, input);
         } catch (Throwable e) {
-            System.out.println(db.getGuild().toString() + ": Failed to parse " + input + " for " + name() + " with " + parser.getKey().toSimpleString() + " | " + e.getMessage());
+            System.out.println(db.getGuild().toString() + ": Failed to parse " + input + " for " + name() + " with " + parser.getKey().toSimpleString() + " | " + StringMan.stripApiKey(e.getMessage()));
             return null;
         }
     }
@@ -288,7 +288,7 @@ public abstract class GuildSetting<T> {
                 }
             } catch (IllegalArgumentException e) {
                 if (throwException) {
-                    errors.add(e.getMessage());
+                    errors.add(StringMan.stripApiKey(e.getMessage()));
                 } else {
                     return false;
                 }

@@ -90,13 +90,12 @@ public class AllianceList {
         return brackets;
     }
 
-    public String setTaxBracket(TaxBracket required, DBNation nation) {
+    public boolean setTaxBracket(TaxBracket required, DBNation nation) {
         int aaId = required.getAlliance_id();
         if (aaId != nation.getAlliance_id()) {
             throw new IllegalArgumentException(nation.getNation() + " is not in the alliance: " + aaId + " for bracket: #" + required.taxId);
         }
-        required.getAlliance().setTaxBracket(required, nation);
-        return null;
+        return required.getAlliance().setTaxBracket(required, nation);
     }
 
     public Set<DBAlliance> getAlliances() {

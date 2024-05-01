@@ -201,7 +201,7 @@ public class GuildHandler {
                 }
             }
             if (required != null && (current == null || current.taxId != required.taxId)) {
-                String response = allianceList.setTaxBracket(required, nation);
+                boolean response = allianceList.setTaxBracket(required, nation);
                 responses.accept(nation.getNation() + ": " + response);
                 nationsMovedBracket.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
                 Locutus.imp().getNationDB().markNationDirty(nation.getId());
@@ -2502,7 +2502,7 @@ public class GuildHandler {
                         try {
                             if (!guildsFailedMailSend.contains(db.getIdLong())) {
                                 guildsFailedMailSend.add(db.getIdLong());
-                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + e.getMessage()), true, 5 * 60);
+                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage())), true, 5 * 60);
                             }
                         } catch (Throwable e2) {
                             db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);

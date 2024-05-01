@@ -274,7 +274,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             e.printStackTrace();
         } catch (Throwable e) {
             e.printStackTrace();
-            throw new RuntimeException(e.getMessage().toLowerCase().replace(key.toLowerCase(), "<redacted>"));
+            throw new RuntimeException(StringMan.stripApiKey(e.getMessage()).toLowerCase().replace(key.toLowerCase(), "<redacted>"));
         }
         if (allowFetch) {
             ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();

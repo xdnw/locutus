@@ -1247,7 +1247,7 @@ public final class Locutus extends ListenerAdapter {
                     }
                 }
             } catch (IllegalArgumentException e) {
-                io.send(e.getMessage());
+                io.send(StringMan.stripApiKey(e.getMessage()));
                 return;
             }
         } catch (Throwable e) {

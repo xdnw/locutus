@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -142,7 +143,7 @@ public class CustomSheet {
                             Function<Object, String> function = ph.getFormatFunction(store, column, true);
                             functions.add(function);
                         } catch (IllegalArgumentException e) {
-                            errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`] " + e.getMessage());
+                            errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`] " + StringMan.stripApiKey(e.getMessage()));
                             functions.add(null);
                         }
                     }
@@ -159,7 +160,7 @@ public class CustomSheet {
                             } catch (Exception e) {
                                 String column = columns.get(i);
                                 String elemStr = ph.getName(o);
-                                errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + e.getMessage());
+                                errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(e.getMessage()));
                             }
                         }
                         sheet.addRow(tabName, header);
@@ -173,7 +174,7 @@ public class CustomSheet {
                     tabsUpdated.add(tabName.toLowerCase(Locale.ROOT));
                 } catch (Exception e) {
                     e.printStackTrace();
-                    errors.add("[Tab: `" + tabName + "`] " + e.getMessage());
+                    errors.add("[Tab: `" + tabName + "`] " + StringMan.stripApiKey(e.getMessage()));
                 }
             });
             writeTasks.add(future);
@@ -182,7 +183,7 @@ public class CustomSheet {
             try {
                 writeTask.get();
             } catch (Exception e) {
-                errors.add(e.getMessage());
+                errors.add(StringMan.stripApiKey(e.getMessage()));
             }
         }
         for (Map.Entry<String, Boolean> entry : tabsCreated.entrySet()) {

@@ -2032,7 +2032,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                             warCatErrorMsg = null;
                         } catch (Throwable e) {
                             warCatError = e;
-                            warCatErrorMsg = e.getMessage();
+                            warCatErrorMsg = StringMan.stripApiKey(e.getMessage());
                             if (e instanceof  InsufficientPermissionException pe) {
                                 warCatErrorMsg += " in <#" + pe.getChannelId() + ">";
                             }
