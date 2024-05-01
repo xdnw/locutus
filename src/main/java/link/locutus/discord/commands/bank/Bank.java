@@ -78,7 +78,7 @@ public class Bank extends Command {
                 return "Invalid alliance: `" + args.get(0) + "`";
             }
             if (!db.isAllianceId(alliance)) {
-                return "That alliance is not in your alliance:";
+                return "That alliance is not registered to this guild, see " + CM.settings_default.registerAlliance.cmd.toSlashMention();
             }
             if (!Roles.ECON_STAFF.has(author, guild)) {
                 return "You do not have permission to view alliance bank contents.";

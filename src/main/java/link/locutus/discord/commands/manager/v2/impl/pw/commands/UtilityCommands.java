@@ -1494,7 +1494,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Set a nation's tax bracket from a sheet\n" +
-            "Expects two columns, `nation` (or `leader` or `user`) and `bracket` or `internal` (for internal taxrates)")
+            "Expects columns, `nation` (or `leader` or `user`) and `bracket` or `internal` (for internal taxrates)")
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String setBracketBulk(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("f") boolean force) {

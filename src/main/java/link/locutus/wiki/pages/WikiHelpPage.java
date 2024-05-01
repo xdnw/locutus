@@ -43,14 +43,14 @@ public class WikiHelpPage extends BotWikiGen {
 
         return build(
                 "# Command Help",
-                spoiler("Command Syntax", """
+                spoiler("Command Syntax", MarkupUtil.markdownToHTML("""
                 - `<arg>` - A required parameter
                 - `[arg]` - An optional parameter
                 - `<arg1|arg2>` - Multiple parameters options
                 - `<arg=value>` - Default or suggested value
-                - `[-f flag]` - A optional command argument flag"""),
+                - `[-f flag]` - A optional command argument flag""")),
                 spoiler("Using the help commands",
-                CM.help.command.cmd.getCallable(true).simpleDesc() + "\n\n" +
+                        MarkupUtil.markdownToHTML(CM.help.command.cmd.getCallable(true).simpleDesc() + "\n\n" +
                 CM.help.command.cmd.toSlashCommand(true) +
                 "\n\n---\n\n" +
                 CM.help.find_command.cmd.getCallable(true).simpleDesc() + "\n\n" +
@@ -60,19 +60,17 @@ public class WikiHelpPage extends BotWikiGen {
                 CM.help.find_nation_placeholder.cmd.toSlashCommand(true) +
                 "\n\n---\n\n" +
                 CM.help.nation_placeholder.cmd.getCallable(true).simpleDesc() + "\n\n" +
-                CM.help.nation_placeholder.cmd.toSlashCommand(true)),
+                CM.help.nation_placeholder.cmd.toSlashCommand(true))),
                 spoiler("List available settings",
-                CM.settings.info.cmd.toSlashCommand(true) +
+                        MarkupUtil.markdownToHTML(CM.settings.info.cmd.toSlashCommand(true) +
                 "\n\n---\n\n" +
                 CM.help.find_setting.cmd.getCallable(true).simpleDesc() + "\n\n" +
-                CM.help.find_setting.cmd.toSlashCommand(true) +
-                "\n\n---\n\n"),
+                CM.help.find_setting.cmd.toSlashCommand(true))),
                 spoiler("List ALL settings",
-                CM.settings.info.cmd.create(null, null, Boolean.TRUE + "").toSlashCommand(true) +
-                "\n\n---\n\n"),
+                MarkupUtil.markdownToHTML(CM.settings.info.cmd.create(null, null, Boolean.TRUE + "").toSlashCommand(true))),
                 spoiler("View a setting",
-                "For example, the `" + GuildKey.ALLIANCE_ID.name() + "` settings" + "\n\n" +
-                CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true)),
+                        MarkupUtil.markdownToHTML("For example, the `" + GuildKey.ALLIANCE_ID.name() + "` setting" + "\n\n" +
+                CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true))),
                 "# Overview of this Wiki",
                 pageList.toString(),
                 "# Placeholders & Filters",

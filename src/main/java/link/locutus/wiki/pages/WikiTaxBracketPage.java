@@ -77,6 +77,8 @@ public class WikiTaxBracketPage extends BotWikiGen {
             commandMarkdownSpoiler(CM.settings_tax.REQUIRED_INTERNAL_TAXRATE.cmd),
             commandMarkdownSpoiler(CM.tax.listBracketAuto.cmd),
             commandMarkdownSpoiler(CM.nation.set.taxinternalAuto.cmd),
+            "# Set tax bracket or internal rate from a sheet",
+            commandMarkdownSpoiler(CM.tax.set_from_sheet.cmd),
             "# Letting members change their tax bracket",
             commandMarkdownSpoiler(CM.settings_tax.MEMBER_CAN_SET_BRACKET.cmd)
         );

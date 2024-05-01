@@ -20,12 +20,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class CommandWikiPages {
 
@@ -150,8 +145,11 @@ Message: `$who Rose -l`
         String typeUrlBase = "arguments";
 
         List<String> permValues = new ArrayList<>();
+        Method[] methods = permAnnotation.annotationType().getDeclaredMethods();
+        // sort the methods array
+        Arrays.sort(methods, (o1, o2) -> o1.getName().compareTo(o2.getName()));
 
-        for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
+        for (Method permMeth : methods) {
             Object def = permMeth.getDefaultValue();
             Class<?> retType = permMeth.getReturnType();
 
