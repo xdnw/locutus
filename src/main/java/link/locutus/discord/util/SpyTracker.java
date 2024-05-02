@@ -311,6 +311,8 @@ public class SpyTracker {
             for (SpyActivity defensive : defensives) {
                 DBNation defender = DBNation.getById(defensive.nationId);
                 if (defender == null) continue;
+                DBAlliance defAA = defender.getAlliance();
+                Set<Integer> treaties = defAA == null ? Collections.emptySet() : defAA.getDefenseTreaties().keySet();
 
                 System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
 
@@ -322,11 +324,12 @@ public class SpyTracker {
                         if (!SpyCount.isInScoreRange(offensive.score, defensive.score)) continue;
                         if (offensive.nationId == defensive.nationId) continue;
 
+                        DBNation attacker = DBNation.getById(offensive.nationId);
+                        if (attacker != null && (attacker.getAlliance_id() == defender.getAlliance_id() || treaties.contains(attacker.getAlliance_id()))) continue;
+
                         if (offensive.change == defensive.change) {
                             alert.exact.add(offensive);
                         } else {
-                            DBNation attacker = DBNation.getById(offensive.nationId);
-                            if (attacker != null && attacker.getAlliance_id() == defender.getAlliance_id()) continue;
                             alert.close.add(offensive);
                         }
                     }
