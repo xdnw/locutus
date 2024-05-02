@@ -312,7 +312,7 @@ public class SpyTracker {
                 DBNation defender = DBNation.getById(defensive.nationId);
                 if (defender == null) continue;
                 DBAlliance defAA = defender.getAlliance();
-                Set<Integer> treaties = defAA == null ? Collections.emptySet() : defAA.getDefenseTreaties().keySet();
+                Set<Integer> treaties = defAA == null ? Collections.emptySet() : defAA.getTreaties().keySet();
 
                 System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
 
