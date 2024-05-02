@@ -1,11 +1,17 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PW;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     public final int taxId;
@@ -30,11 +36,6 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         this.dateFetched = System.currentTimeMillis();
     }
 
-    @Override
-    public int getId() {
-        return taxId;
-    }
-
     public void setName(String name) {
         this.name = name;
     }
@@ -57,6 +58,12 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         this.dateFetched = System.currentTimeMillis();
     }
 
+    @Command(desc = "Id of the tax bracket")
+    @Override
+    public int getId() {
+        return taxId;
+    }
+
     @Override
     public String getTypePrefix() {
         return "tax_id";
@@ -77,6 +84,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return false;
     }
 
+    @Command(desc = "The alliance id this bracket belongs to, else 0")
     public int getAlliance_id() {
         if (this.allianceId < 0) {
             Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == taxId);
@@ -99,6 +107,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return Locutus.imp().getNationDB().getNationsByBracket(taxId);
     }
 
+    @Command(desc = "Url of this tax bracket in-game")
     public String getUrl() {
         return PW.getTaxUrl(taxId);
     }
@@ -108,10 +117,12 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedId() + "- " : "") + ((name != null && !name.isEmpty()) ? (name + "- ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
     }
 
+    @Command(desc = "Tax rate object")
     public TaxRate getTaxRate() {
         return new TaxRate(moneyRate, rssRate);
     }
 
+    @Command(desc = "The name of this tax bracket")
     public String getName() {
         return name;
     }
@@ -120,7 +131,25 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return fetchIfUnknown ? getAlliance_id() : allianceId;
     }
 
+    @Command(desc = "The alliance object for this bracket")
     public DBAlliance getAlliance() {
         return DBAlliance.getOrCreate(allianceId);
+    }
+
+    @Command(desc = "The list of nations currently in this bracket")
+    public NationList getNationList(@Default NationFilter filter) {
+        Set<DBNation> nations = getNations();
+        if (filter != null) nations = nations.stream().filter(filter).collect(Collectors.toSet());
+        return new SimpleNationList(nations);
+    }
+
+    @Command(desc = "Money tax rate")
+    public int getMoneyRate() {
+        return moneyRate;
+    }
+
+    @Command(desc = "Resource tax rate")
+    public int getRssRate() {
+        return rssRate;
     }
 }
