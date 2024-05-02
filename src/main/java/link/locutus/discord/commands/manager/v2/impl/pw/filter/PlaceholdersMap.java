@@ -1760,7 +1760,7 @@ public class PlaceholdersMap {
                     if (selection != null) return selection;
                     GuildDB db = (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false);
                     if (input.equalsIgnoreCase("*")) {
-                        if (db == null) {
+                        if (db != null) {
                             AllianceList aaList = db.getAllianceList();
                             if (aaList != null) {
                                 return new HashSet<TaxBracket>(aaList.getTaxBrackets(true).values());
