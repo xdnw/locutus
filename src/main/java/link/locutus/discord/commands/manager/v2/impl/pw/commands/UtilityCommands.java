@@ -2133,8 +2133,6 @@ public class UtilityCommands {
         Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Map<Integer, List<AllianceChange>> removesByAlliance = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds, cutoff);
 
-        System.out.println("Alliances " + alliances.size() + " | " + removesByAlliance.size());
-
         for (DBAlliance alliance : alliances) {
             Map<Integer, Long> noneToApp = new Int2LongOpenHashMap();
             Map<Integer, Long> appToMember = new Int2LongOpenHashMap();
