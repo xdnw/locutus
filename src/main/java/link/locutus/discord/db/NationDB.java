@@ -4307,14 +4307,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             Set<Integer> fastMap = new IntOpenHashSet(alliances);
             List<Integer> alliancesSorted = new ArrayList<>(alliances);
             alliancesSorted.sort(Comparator.naturalOrder());
-            String query = "SELECT * FROM KICKS2 WHERE (from_aa IN (?) OR to_aa IN (?))" + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC";
-            String alliancesSortedStr = alliancesSorted.stream().map(String::valueOf).collect(Collectors.joining(","));
+            String query = "SELECT * FROM KICKS2 WHERE (from_aa IN " + StringMan.getString(alliancesSorted) + " OR to_aa IN " + StringMan.getString(alliancesSorted) + ")" + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC";
 
             try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
-                stmt.setString(1, alliancesSortedStr);
-                stmt.setString(2, alliancesSortedStr);
                 if (cutoff > 0) {
-                    stmt.setLong(3, cutoff);
+                    stmt.setLong(1, cutoff);
                 }
                 ResultSet rs = stmt.executeQuery();
                 while (rs.next()) {
