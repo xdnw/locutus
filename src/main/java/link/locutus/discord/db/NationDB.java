@@ -152,6 +152,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         try {
             if (tableExists("KICKS")) {
                 importKicks();
+            } else {
+                executeStmt("DELETE FROM KICKS2 where from_aa = to_aa AND from_rank = to_rank");
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -2348,8 +2350,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     }
                 }
 
-                changes.add(new AllianceChange(nationId, allianceId, previous.getLeft(), rank, previous.getMiddle(), date));
-
+                if (allianceId != previous.getLeft() || rank != previous.getMiddle()) {
+                    changes.add(new AllianceChange(nationId, allianceId, previous.getLeft(), rank, previous.getMiddle(), date));
+                }
                 futurePosition.put(nationId, Triple.of(allianceId, rank, date));
             }
         } catch (SQLException e) {
@@ -4318,10 +4321,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
                     AllianceChange change = new AllianceChange(rs);
                     if (fastMap.contains(change.getFromId())) {
-                        resultsByAA.computeIfAbsent(change.getFromId(), k -> new ArrayList<>()).add(change);
+                        resultsByAA.computeIfAbsent(change.getFromId(), k -> new ObjectArrayList<>()).add(change);
                     }
                     if (fastMap.contains(change.getToId())) {
-                        resultsByAA.computeIfAbsent(change.getToId(), k -> new ArrayList<>()).add(change);
+                        resultsByAA.computeIfAbsent(change.getToId(), k -> new ObjectArrayList<>()).add(change);
                     }
                 }
                 return resultsByAA;
@@ -4338,7 +4341,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public List<AllianceChange> getRemovesByAlliance(int allianceId, long cutoff) {
         List<AllianceChange> list = new ObjectArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE (from_aa = ? OR to_aa = ?) " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE (from_aa = ? OR to_aa = ?) " + (cutoff > 0 ? "AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, allianceId);
             if (cutoff > 0) {
                 stmt.setLong(2, cutoff);

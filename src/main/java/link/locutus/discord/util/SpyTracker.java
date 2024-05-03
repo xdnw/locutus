@@ -19,8 +19,10 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
@@ -452,8 +454,9 @@ public class SpyTracker {
                 body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.ESPIONAGE_ALERT_CHANNEL.name() + "`");
             }
             if (channel == null) continue;
-
             body.append("\n---");
+            Role role = Roles.ESPIONAGE_ALERTS.toRole(db);
+            if (role != null) body.append(role.getAsMention());
             new DiscordChannelIO(channel).send(body.toString());
         }
     }

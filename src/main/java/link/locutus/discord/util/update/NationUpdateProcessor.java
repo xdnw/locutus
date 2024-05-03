@@ -651,8 +651,9 @@ public class NationUpdateProcessor {
                 if (position.hasPermission(AlliancePermission.PROMOTE_SELF_TO_LEADER)) rank = Rank.HEIR;
             }
         }
-
-        Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), current.getAlliance_id(), rank, current.getPositionEnum(), event.getTimeCreated());
+        if (previous.getAlliance_id() != current.getAlliance_id() || rank != current.getPositionEnum()) {
+            Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), current.getAlliance_id(), rank, current.getPositionEnum(), event.getTimeCreated());
+        }
     }
 
     @Subscribe
@@ -704,7 +705,7 @@ public class NationUpdateProcessor {
         DBNation current = event.getCurrent();
         DBNation previous = event.getPrevious();
 
-        if (current.getAlliance_id() == previous.getAlliance_id()) {
+        if (current.getAlliance_id() == previous.getAlliance_id() && previous.getPositionEnum() != current.getPositionEnum()) {
             Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), current.getAlliance_id(), previous.getPositionEnum(), current.getPositionEnum(), event.getTimeCreated());
         }
     }
