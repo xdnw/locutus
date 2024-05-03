@@ -153,7 +153,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             if (tableExists("KICKS")) {
                 importKicks();
             } else {
-                executeStmt("DELETE FROM KICKS2 where from_aa = to_aa AND from_rank = to_rank");
+//                executeStmt("DELETE FROM KICKS2 where from_aa = to_aa AND from_rank = to_rank");
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);

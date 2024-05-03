@@ -1498,6 +1498,7 @@ public class UtilityCommands {
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String setBracketBulk(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("f") boolean force) {
+        sheet.loadValues(null, true);
         List<Object> nations = sheet.findColumn("nation");
         List<Object> leaders = sheet.findColumn("leader");
         List<Object> brackets = sheet.findColumn("bracket");
