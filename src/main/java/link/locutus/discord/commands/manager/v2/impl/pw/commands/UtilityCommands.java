@@ -2153,6 +2153,8 @@ public class UtilityCommands {
                     }
                 } else if (change.getToId() != alliance.getId()) {
                     removed.put(nationId, Math.max(removed.getOrDefault(nationId, 0L), change.getDate()));
+                } else if (change.getToRank() != Rank.APPLICANT) {
+                    appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
                 }
             }
             noneToApp.entrySet().removeIf(f -> removed.getOrDefault(f.getKey(), 0L) > f.getValue());
