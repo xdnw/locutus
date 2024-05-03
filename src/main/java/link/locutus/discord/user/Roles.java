@@ -144,6 +144,8 @@ public enum Roles {
 
     AI_COMMAND_ACCESS(40, "Access to AI commands on the discord server"),
 
+    ESPIONAGE_ALERTS(41, "Role to receive pings when an alliance member gets spied", GuildKey.DEFENSE_WAR_CHANNEL),
+
 
     ;
 

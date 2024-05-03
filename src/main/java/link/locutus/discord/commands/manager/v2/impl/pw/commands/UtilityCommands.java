@@ -2132,14 +2132,6 @@ public class UtilityCommands {
 
         Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Map<Integer, List<AllianceChange>> removesByAlliance = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds, cutoff);
-//        Map<Integer, Set<AllianceChange>> removesByNation = removesByAlliance.entrySet().stream().flatMap(f -> f.getValue().stream()).collect(Collectors.groupingBy(AllianceChange::getNationId, Collectors.toSet()));
-
-//        Map<Integer, Set<Integer>> joinsByAA = new Int2ObjectOpenHashMap<>();
-//        Map<Integer, Set<Integer>> leavesByAA = new Int2ObjectOpenHashMap<>();
-//        for (Map.Entry<Integer, List<AllianceChange>> entry : removesByAlliance.entrySet()) {
-//
-//        }
-
 
         for (DBAlliance alliance : alliances) {
             Map<Integer, Long> noneToApp = new Int2LongOpenHashMap();
@@ -2150,20 +2142,15 @@ public class UtilityCommands {
 
             for (AllianceChange change : rankChanges) {
                 int nationId = change.getNationId();
-                if (change.getFromId() == alliance.getId() && change.getFromRank().id > Rank.APPLICANT.id) {
+                if (change.getFromId() != alliance.getId()) {
+                    if (change.getToId() == alliance.getId()) {
+                        noneToApp.put(nationId, Math.max(noneToApp.getOrDefault(nationId, 0L), change.getDate()));
+                        if (change.getToRank() != Rank.APPLICANT) {
+                            appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
+                        }
+                    }
+                } else if (change.getToId() != alliance.getId()) {
                     removed.put(nationId, Math.max(removed.getOrDefault(nationId, 0L), change.getDate()));
-                }
-                if (change.getToId() != alliance.getId()) continue;
-                if (change.getFromId() == alliance.getId()) {
-                    if (change.getFromRank().id > Rank.APPLICANT.id) continue;
-                    if (change.getToRank().id > Rank.APPLICANT.id) {
-                        appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
-                    }
-                } else {
-                    if (change.getToRank().id > Rank.APPLICANT.id) {
-                        appToMember.put(nationId, Math.max(appToMember.getOrDefault(nationId, 0L), change.getDate()));
-                    }
-                    noneToApp.put(nationId, Math.max(noneToApp.getOrDefault(nationId, 0L), change.getDate()));
                 }
             }
             noneToApp.entrySet().removeIf(f -> removed.getOrDefault(f.getKey(), 0L) > f.getValue());
