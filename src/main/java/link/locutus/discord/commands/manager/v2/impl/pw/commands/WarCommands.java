@@ -4287,6 +4287,21 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
+    @Command(desc = "Delete planning war rooms with no participants")
+    public String deletePlanningChannel(@Me WarCategory warCat) {
+        for (Map.Entry<Integer, WarCategory.WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
+            WarCategory.WarRoom room = entry.getValue();
+            if (room.channel == null) continue;
+            if (!room.getParticipants().isEmpty()) continue;
+            if (!room.isPlanning()) continue;
+            room.addInitialParticipants(false);
+            if (!room.getParticipants().isEmpty()) continue;
+            room.delete("Manually deleted");
+        }
+        return "Done. Please wait for rooms to finish deleting";
+    }
+
+    @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Create a war room\n" +
             "Add `-p` to ping users that are added\n" +
             "Add `-a` to skip adding users\n" +
