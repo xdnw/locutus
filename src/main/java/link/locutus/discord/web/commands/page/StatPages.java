@@ -1,10 +1,6 @@
 package link.locutus.discord.web.commands.page;
 
-import com.google.gson.JsonArray;
-import gg.jte.generated.precompiled.conflict.JteconflictGenerated;
-import gg.jte.generated.precompiled.conflict.JteconflictsGenerated;
 import gg.jte.generated.precompiled.data.JtebarchartsingleGenerated;
-import gg.jte.generated.precompiled.data.Jtetable_dataGenerated;
 import gg.jte.generated.precompiled.data.JtetimechartdatasrcpageGenerated;
 import gg.jte.generated.precompiled.guild.milcom.JteglobalmilitarizationGenerated;
 import gg.jte.generated.precompiled.guild.milcom.JteglobaltierstatsGenerated;
@@ -18,16 +14,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
-import link.locutus.discord.db.Conflict;
-import link.locutus.discord.db.ConflictManager;
-import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
-import link.locutus.discord.web.builder.TableBuilder;
-import link.locutus.discord.web.jooby.JteUtil;
 
 import java.util.ArrayList;
 import java.util.List;

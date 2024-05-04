@@ -9,7 +9,7 @@ import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;

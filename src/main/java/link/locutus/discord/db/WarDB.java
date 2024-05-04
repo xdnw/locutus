@@ -21,6 +21,7 @@ import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.handlers.ActiveWarHandler;

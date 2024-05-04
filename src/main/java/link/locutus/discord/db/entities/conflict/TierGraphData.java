@@ -3,7 +3,7 @@ package link.locutus.discord.db.entities.conflict;
 import it.unimi.dsi.fastutil.bytes.Byte2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.db.conflict.ConflictManager;
 
 import java.util.EnumMap;
 import java.util.List;

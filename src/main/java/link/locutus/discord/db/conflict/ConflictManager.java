@@ -1,7 +1,6 @@
-package link.locutus.discord.db;
+package link.locutus.discord.db.conflict;
 
 import com.google.common.eventbus.Subscribe;
-import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
@@ -13,7 +12,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
@@ -25,7 +24,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
@@ -46,7 +44,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -224,7 +221,7 @@ public class ConflictManager {
         this.db = db;
     }
 
-    protected void loadConflicts() {
+    public void loadConflicts() {
         System.out.println("Load conflicts");
         long start = System.currentTimeMillis();
 

@@ -1,7 +1,7 @@
 package link.locutus.wiki.game;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.db.ConflictManager;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.ForumDB;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.util.MathMan;

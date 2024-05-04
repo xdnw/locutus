@@ -32,6 +32,7 @@ public class WikiConflictsPage extends BotWikiGen {
                 "Note: Conflicts created within the bot are NOT automatically pushed to the site, see below for instructions",
                 "## Importing conflicts",
                 "TODO: Instructions for wiki/ctowned importing",
+                "TODO instructions for cloning a single wiki page",
                 commandMarkdownSpoiler(CM.conflict.clone.cmd),
                 "## Manually Creating/Deleting a conflict",
                 "TODO: Instructions for manually creating/deleting a conflict",

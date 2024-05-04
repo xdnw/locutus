@@ -3,7 +3,7 @@ package link.locutus.wiki.game;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import link.locutus.discord.db.Conflict;
+import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.util.StringMan;
