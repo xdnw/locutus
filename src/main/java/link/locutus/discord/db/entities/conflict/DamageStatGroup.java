@@ -147,14 +147,14 @@ public class DamageStatGroup {
                 case NUKE:
                     continue;
             }
-            map.put(header(type.name().toLowerCase() + "_attacks", "Number of attacks categorized as: " + type.name().toLowerCase(), true), p -> (int) p.attackSubTypes[type.ordinal()]);
+            map.put(header(type.name().toLowerCase() + "_attacks", type.message, true), p -> (int) p.attackSubTypes[type.ordinal()]);
         }
         for (SuccessType type : SuccessType.values) {
             map.put(header(type.name().toLowerCase() + "_attacks", "Number of attacks where success is " + type.name().toLowerCase(), true), p -> (int) p.successTypes[type.ordinal()]);
         }
         for (WarType type : WarType.values) {
             if (type == WarType.NUCLEAR) continue;
-            map.put(ranking(type.name().toLowerCase() + "_wars", "Number of wars declared as " + type.name().toLowerCase(), true), p -> (int) p.warTypes[type.ordinal()]);
+            map.put(ranking(type.name().toLowerCase() + "_wars", "Number of wars declared as " + type.toString().toLowerCase(), true), p -> (int) p.warTypes[type.ordinal()]);
         }
 
         return map;
