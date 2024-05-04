@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.db.CoalitionSide;
+import link.locutus.discord.util.*;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -19,10 +22,6 @@ import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -65,6 +64,54 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ConflictCommands {
+    @Command
+    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants) {
+        StringBuilder response = new StringBuilder();
+
+        response.append("**__" + conflict.getName() + " - `#" + conflict.getId() + "` - " + conflict.getCategory().name() + "__**\n");
+        response.append("wiki: `" + conflict.getWiki() + "`\n");
+        response.append("Start: " + DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getStartTurn()), null) + "\n");
+        response.append("End: " + (conflict.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getEndTurn()), null)) + "\n");
+        response.append("Casus Belli: `" + conflict.getCasusBelli() + "`\n");
+        response.append("Status: `" + conflict.getStatusDesc() + "`\n");
+
+        CoalitionSide col1 = conflict.getSide(true);
+        CoalitionSide col2 = conflict.getSide(false);
+        List<CoalitionSide> sides = Arrays.asList(col1, col2);
+        if (showParticipants) {
+            for (CoalitionSide side : sides) {
+                response.append("\n**" + col1.getName() + "**\n");
+                for (int aaId : side.getAllianceIdsSorted()) {
+                    long start = conflict.getStartTurn(aaId);
+                    long end = conflict.getEndTurn(aaId);
+                    String aaName = manager.getAllianceName(aaId);
+                    response.append("- " + MarkupUtil.markdownUrl(aaName, PW.getAllianceUrl(aaId)) + " | ");
+                    if (start == conflict.getStartTurn()) {
+                        response.append("Initial");
+                    } else {
+                        response.append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(start), null));
+                    }
+                    response.append(" -> ");
+                    if (end >= conflict.getEndTurn()) {
+                        response.append("Present");
+                    } else {
+                        response.append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(end), null));
+                    }
+                    response.append("\n");
+                }
+
+            }
+
+        } else {
+            for (CoalitionSide side : sides) {
+                response.append(side.getName() + ": `" + StringMan.join(side.getAllianceIdsSorted(), ",") + "`\n");
+            }
+            response.append("Use `showParticipants: True` to list participants");
+        }
+
+        return response.toString();
+    }
+
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs, @Switch("w") boolean reloadWars) {

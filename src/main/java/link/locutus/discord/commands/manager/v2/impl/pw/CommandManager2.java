@@ -188,6 +188,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new WarCommands(), List.of("war", "room"), "deleteForEnemies", "delete_for_enemies");
         getCommands().registerMethod(new UtilityCommands(), List.of("land"), "landROI", "roi");
         getCommands().registerMethod(new UtilityCommands(), List.of("infra"), "infraROI", "roi");
+
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "syncConflictData", "sync");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
@@ -198,6 +199,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importConflictData", "clone");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "info", "info");
 
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("admin", "sync"), "saveMetrics", "saveMetrics");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_tier"), "metricByGroup", "metric_by_group");

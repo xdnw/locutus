@@ -1,45 +1,7 @@
 package link.locutus.wiki;
 
 import com.google.gson.JsonObject;
-import link.locutus.wiki.pages.WikiAiTools;
-import link.locutus.wiki.pages.WikiArgumentsPage;
-import link.locutus.wiki.pages.WikiBankPage;
-import link.locutus.wiki.pages.WikiBeigeCyclingPage;
-import link.locutus.wiki.pages.WikiBlitzPage;
-import link.locutus.wiki.pages.WikiBlockadePage;
-import link.locutus.wiki.pages.WikiCoalitionsPage;
-import link.locutus.wiki.pages.WikiCustomEmbeds;
-import link.locutus.wiki.pages.WikiCustomSheetsPage;
-import link.locutus.wiki.pages.WikiDelegateServers;
-import link.locutus.wiki.pages.WikiDepositsPage;
-import link.locutus.wiki.pages.WikiEscrowPage;
-import link.locutus.wiki.pages.WikiFindingTargetsPage;
-import link.locutus.wiki.pages.WikiGrantTemplate;
-import link.locutus.wiki.pages.WikiInterviewPage;
-import link.locutus.wiki.pages.WikiPlaceholderPage;
-import link.locutus.wiki.pages.WikiSetupPage;
-import link.locutus.wiki.pages.WikiStatisticsPage;
-import link.locutus.wiki.pages.WikiTaxBracketPage;
-import link.locutus.wiki.pages.WikiTradePage;
-import link.locutus.wiki.pages.WikiWarAlertsPage;
-import link.locutus.wiki.pages.WikiWarRoomPage;
-import link.locutus.wiki.pages.WikiAntiLeakPage;
-import link.locutus.wiki.pages.WikiAuditingPage;
-import link.locutus.wiki.pages.WikiAutoMaskingPage;
-import link.locutus.wiki.pages.WikiBankFlows;
-import link.locutus.wiki.pages.WikiCommandsPage;
-import link.locutus.wiki.pages.WikiCounteringPage;
-import link.locutus.wiki.pages.WikiDNRPage;
-import link.locutus.wiki.pages.WikiEmbassyPage;
-import link.locutus.wiki.pages.WikiHelpPage;
-import link.locutus.wiki.pages.WikiHostingLocutus;
-import link.locutus.wiki.pages.WikiLoanPage;
-import link.locutus.wiki.pages.WikiPermsPage;
-import link.locutus.wiki.pages.WikiRecruitmentPage;
-import link.locutus.wiki.pages.WikiReportPage;
-import link.locutus.wiki.pages.WikiSelfRoles;
-import link.locutus.wiki.pages.WikiSendTargetsPage;
-import link.locutus.wiki.pages.WikiSpyWarPage;
+import link.locutus.wiki.pages.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
@@ -181,6 +143,9 @@ public class WikiGenHandler {
         for (BotWikiGen page : allPages) {
             writePage(page);
         }
+
+        // Unlisted
+        writePage(new WikiConflictsPage(manager));
     }
 
     private void writePage(BotWikiGen page) throws IOException {
