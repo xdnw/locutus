@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities.conflict;
 
-import com.google.gson.JsonArray;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -8,12 +7,10 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.util.PW;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -69,24 +66,24 @@ public class DamageStatGroup {
     }
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createHeader() {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> map = new Object2ObjectLinkedOpenHashMap<>();
-        map.put(ranking("loss_value", "Total market value of damage", false), p -> (long) ResourceType.convertedTotal(p.totalCost));
+        map.put(ranking("loss_value", ColumnType.STANDARD, "Total market value of damage", false), p -> (long) ResourceType.convertedTotal(p.totalCost));
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            map.put(header("loss_" + type.name().toLowerCase(), "Total " + type.name().toLowerCase(Locale.ROOT) + " damage", false), p -> (long) p.totalCost[type.ordinal()]);
+            map.put(header("loss_" + type.name().toLowerCase(), ColumnType.RESOURCE, "Total " + type.name().toLowerCase(Locale.ROOT) + " damage", false), p -> (long) p.totalCost[type.ordinal()]);
         }
-        map.put(ranking("consume_gas", "Total gasoline consumed", false), p -> (long) p.consumption[ResourceType.GASOLINE.ordinal()]);
-        map.put(ranking("consume_mun", "Total munitions consumed", false), p -> (long) p.consumption[ResourceType.MUNITIONS.ordinal()]);
-        map.put(ranking("consume_value", "Total market value of consumed resources", false), p -> (long) ResourceType.convertedTotal(p.consumption));
-        map.put(ranking("loot_value", "Total market value of looted resources", false), p -> (long) ResourceType.convertedTotal(p.loot));
+        map.put(ranking("consume_gas", ColumnType.CONSUMPTION, "Total gasoline consumed", false), p -> (long) p.consumption[ResourceType.GASOLINE.ordinal()]);
+        map.put(ranking("consume_mun", ColumnType.CONSUMPTION, "Total munitions consumed", false), p -> (long) p.consumption[ResourceType.MUNITIONS.ordinal()]);
+        map.put(ranking("consume_value", ColumnType.CONSUMPTION,"Total market value of consumed resources", false), p -> (long) ResourceType.convertedTotal(p.consumption));
+        map.put(ranking("loot_value", ColumnType.STANDARD, "Total market value of looted resources", false), p -> (long) ResourceType.convertedTotal(p.loot));
         for (MilitaryUnit unit : MilitaryUnit.values) {
             if (unit == MilitaryUnit.SPIES || unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) continue;
             String name = unit.name().toLowerCase() + "_loss";
             String desc = "Total number of destroyed " + unit.name().toLowerCase();
-            ConflictColumn col = unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE ? header(name, desc, false) : ranking(name, desc, false);
+            ConflictColumn col = unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE ? header(name, ColumnType.UNIT, desc, false) : ranking(name, ColumnType.UNIT, desc, false);
             map.put(col, p -> p.units[unit.ordinal()]);
-            map.put(ranking(unit.name().toLowerCase() + "_loss_value", "Total market value of destroyed " + unit.name().toLowerCase(Locale.ROOT), false), p -> (long) (unit.getConvertedCost() * p.units[unit.ordinal()]));
+            map.put(ranking(unit.name().toLowerCase() + "_loss_value", ColumnType.UNIT, "Total market value of destroyed " + unit.name().toLowerCase(Locale.ROOT), false), p -> (long) (unit.getConvertedCost() * p.units[unit.ordinal()]));
         }
-        map.put(ranking("unit_loss_value", "Market value of destroyed units", false), p -> {
+        map.put(ranking("unit_loss_value", ColumnType.UNIT, "Market value of destroyed units", false), p -> {
             double total = 0;
             for (int i = 0; i < p.units.length; i++) {
                 int amt = p.units[i];
@@ -96,14 +93,14 @@ public class DamageStatGroup {
             }
             return Math.round(total);
         });
-        map.put(ranking("building_loss", "Number of buildings destroyed", false), p -> {
+        map.put(ranking("building_loss", ColumnType.BUILDING, "Number of buildings destroyed", false), p -> {
             int total = 0;
             for (char c : p.buildings) {
                 total += c;
             }
             return total;
         });
-        map.put(ranking("building_loss_value", "Value of buildings destroyed", false), p -> {
+        map.put(ranking("building_loss_value", ColumnType.BUILDING, "Value of buildings destroyed", false), p -> {
             double total = 0;
             for (int i = 0; i < p.buildings.length; i++) {
                 int amt = p.buildings[i];
@@ -113,17 +110,17 @@ public class DamageStatGroup {
             }
             return Math.round(total);
         });
-        map.put(ranking("infra_loss", "Value of destroyed infrastructure (not including project or policy discounts)", false), p -> (long) (p.infraCents * 0.01));
+        map.put(ranking("infra_loss", ColumnType.STANDARD, "Value of destroyed infrastructure (not including project or policy discounts)", false), p -> (long) (p.infraCents * 0.01));
 
         // Counts //
 
-        map.put(ranking("wars", "Number of wars", true), p -> (int) p.totalWars);
-        map.put(header("wars_active", "Number of active wars", true), p -> (int) p.activeWars);
-        map.put(ranking("attacks", "Number of attacks", true), p -> (int) p.attacks);
-        map.put(ranking("wars_won", "Number of wars won", true), p -> (int) p.warsWon);
-        map.put(ranking("wars_lost", "Number of wars lost", true), p -> (int) p.warsLost);
-        map.put(ranking("wars_expired", "Number of wars expired", true), p -> (int) p.warsExpired);
-        map.put(ranking("wars_peaced", "Number of wars peaced", true), p -> (int) p.warsPeaced);
+        map.put(ranking("wars", ColumnType.WARS, "Number of wars", true), p -> (int) p.totalWars);
+        map.put(header("wars_active", ColumnType.WARS, "Number of active wars", true), p -> (int) p.activeWars);
+        map.put(ranking("attacks", ColumnType.ATTACKS, "Number of attacks", true), p -> (int) p.attacks);
+        map.put(ranking("wars_won", ColumnType.WARS,"Number of wars won", true), p -> (int) p.warsWon);
+        map.put(ranking("wars_lost", ColumnType.WARS,"Number of wars lost", true), p -> (int) p.warsLost);
+        map.put(ranking("wars_expired", ColumnType.WARS,"Number of wars expired", true), p -> (int) p.warsExpired);
+        map.put(ranking("wars_peaced", ColumnType.WARS,"Number of wars peaced", true), p -> (int) p.warsPeaced);
         for (AttackType type : AttackType.values) {
             ConflictColumn col;
             String name = type.name().toLowerCase() + "_attacks";
@@ -131,11 +128,11 @@ public class DamageStatGroup {
                 continue;
             }
             if (type == AttackType.MISSILE || type == AttackType.NUKE) {
-                col = ranking(name, "Number of " + type.name().toLowerCase() + " launched", true);
+                col = ranking(name, ColumnType.ATTACKS, "Number of " + type.name().toLowerCase() + " launched", true);
             } else if (type == AttackType.A_LOOT){
-                col = header(name, "Number of attacks looting an alliance bank", true);
+                col = header(name, ColumnType.ATTACKS, "Number of attacks looting an alliance bank", true);
             } else {
-                col = ranking(name, "Number of " + type.name().toLowerCase() + " attacks", true);
+                col = ranking(name, ColumnType.ATTACKS, "Number of " + type.name().toLowerCase() + " attacks", true);
             }
             map.put(col, p -> (int) p.attackTypes[type.ordinal()]);
         }
@@ -147,14 +144,14 @@ public class DamageStatGroup {
                 case NUKE:
                     continue;
             }
-            map.put(header(type.name().toLowerCase() + "_attacks", type.message, true), p -> (int) p.attackSubTypes[type.ordinal()]);
+            map.put(header(type.name().toLowerCase() + "_attacks", ColumnType.ANALYSIS, type.message, true), p -> (int) p.attackSubTypes[type.ordinal()]);
         }
         for (SuccessType type : SuccessType.values) {
-            map.put(header(type.name().toLowerCase() + "_attacks", "Number of attacks where success is " + type.name().toLowerCase(), true), p -> (int) p.successTypes[type.ordinal()]);
+            map.put(header(type.name().toLowerCase() + "_attacks", ColumnType.WARS, "Number of attacks where success is " + type.name().toLowerCase(), true), p -> (int) p.successTypes[type.ordinal()]);
         }
         for (WarType type : WarType.values) {
             if (type == WarType.NUCLEAR) continue;
-            map.put(ranking(type.name().toLowerCase() + "_wars", "Number of wars declared as " + type.toString().toLowerCase(), true), p -> (int) p.warTypes[type.ordinal()]);
+            map.put(ranking(type.name().toLowerCase() + "_wars", ColumnType.WARS, "Number of wars declared as " + type.toString().toLowerCase(), true), p -> (int) p.warTypes[type.ordinal()]);
         }
 
         return map;
