@@ -2612,7 +2612,7 @@ public class CM {
         }
         public static class selection_alias{
             public static class add{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders.class,method="addSelectionAlias")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="ALLIANCES")
                 public static class alliance extends CommandRef {
                     public static final alliance cmd = new alliance();
                     public alliance create(String name, String alliances) {
@@ -2696,7 +2696,7 @@ public class CM {
                         return createArgs("name", name, "military_units", military_units);
                     }
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders.class,method="addSelectionAlias")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="NATIONS")
                 public static class nation extends CommandRef {
                     public static final nation cmd = new nation();
                     public nation create(String name, String nations) {
@@ -3771,7 +3771,7 @@ public class CM {
         }
         public static class sheet_template{
             public static class add{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders.class,method="addColumns")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="ALLIANCES")
                 public static class alliance extends CommandRef {
                     public static final alliance cmd = new alliance();
                     public alliance create(String sheet, String column1, String column2, String column3, String column4, String column5, String column6, String column7, String column8, String column9, String column10, String column11, String column12, String column13, String column14, String column15, String column16, String column17, String column18, String column19, String column20, String column21, String column22, String column23, String column24) {
@@ -3855,7 +3855,7 @@ public class CM {
                         return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
                     }
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders.class,method="addColumns")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="NATIONS")
                 public static class nation extends CommandRef {
                     public static final nation cmd = new nation();
                     public nation create(String sheet, String column1, String column2, String column3, String column4, String column5, String column6, String column7, String column8, String column9, String column10, String column11, String column12, String column13, String column14, String column15, String column16, String column17, String column18, String column19, String column20, String column21, String column22, String column23, String column24) {

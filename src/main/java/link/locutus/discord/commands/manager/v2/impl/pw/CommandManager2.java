@@ -191,15 +191,24 @@ public class CommandManager2 {
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "syncConflictData", "sync");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "info", "info");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictEnd", "end");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictName", "rename");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "setConflictStart", "start");
+
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictEnd", "end");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictStart", "start");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictName", "rename");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
+
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importConflictData", "multiple_sources");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importCtowned", "ctowned");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importWikiPage", "wiki_page");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importWikiAll", "wiki_all");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "recalculateGraphData", "recalculate_graphs");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importAllianceNames", "alliance_names");
+
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "importConflictData", "clone");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "info", "info");
+
 
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("admin", "sync"), "saveMetrics", "saveMetrics");
         getCommands().registerMethod(new AllianceMetricCommands(), List.of("stats_tier"), "metricByGroup", "metric_by_group");

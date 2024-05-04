@@ -534,14 +534,18 @@ public class Conflict {
     }
 
     public Conflict setStart(long time) {
-        this.turnStart = TimeUtil.getTurn(time);
+        long newTurn = TimeUtil.getTurn(time);
+        if (newTurn == turnStart) return this;
+        this.turnStart = newTurn;
         getManager().updateConflict(this, turnStart, turnEnd);
         dirtyJson = true;
         return this;
     }
 
     public Conflict setEnd(long time) {
-        this.turnEnd = TimeUtil.getTurn(time) + 1;
+        long newTurn = time == Long.MAX_VALUE ? time : TimeUtil.getTurn(time) + 1;
+        if (newTurn == turnEnd) return this;
+        this.turnEnd = newTurn;
         getManager().updateConflict(this, turnStart, turnEnd);
         dirtyJson = true;
         return this;

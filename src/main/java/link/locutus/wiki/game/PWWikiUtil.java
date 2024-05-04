@@ -559,87 +559,90 @@ public class PWWikiUtil {
 //        }
     }
 
+    public static Conflict loadWikiConflict(String name, String urlStub, Map<String, String> errorsByPage, boolean allowCache) throws IOException {
+        String nameNormal = StringMan.normalize(name);
+
+        PWWikiPage page = new PWWikiPage(nameNormal, urlStub, allowCache);
+        Map<String, List<String>> table = page.getTableData();
+        if (table == null) {
+            errorsByPage.put(name, "No table found");
+            return null;
+        }
+        Map.Entry<Long, Long> date = page.getDates();
+        if (date == null) {
+            List<String> dateList = table.get("date");
+            if (dateList == null) {
+                errorsByPage.put(name, "No date found");
+            } else if (dateList.isEmpty()) {
+                errorsByPage.put(name, "Empty date found");
+            } else if (!dateList.get(0).contains("-")) {
+                errorsByPage.put(name, "No end date specified (in the format `start date - end date`)");
+            } else {
+                errorsByPage.put(name, "Unparseable date range: `" + dateList.get(0) + "`");
+            }
+            return null;
+        }
+        Set<String> unknownAlliances = new LinkedHashSet<>();
+        Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances, date.getKey());
+        if (combatants == null) {
+            errorsByPage.put(name, "No combatants found");
+            return null;
+        }
+//            if (!unknownAlliances.isEmpty()) {
+//                errorsByPage.put(name, "Unknown alliances: " + unknownAlliances);
+//                continue;
+//            }
+        if (combatants.getKey().isEmpty()) {
+            errorsByPage.put(name, "No coalition 1 combatants found");
+            return null;
+        }
+        if (combatants.getValue().isEmpty()) {
+            errorsByPage.put(name, "No coalition 2 combatants found");
+            return null;
+        }
+        Set<String> pageCategories = page.getCategories();
+        boolean isGreatWar = pageCategories.contains("Great Wars");
+        boolean isMicroWar = pageCategories.contains("Micro Wars");
+        boolean isHistory = pageCategories.stream().anyMatch(category -> category.startsWith("Wars of "));
+        ConflictCategory category;
+        if (isGreatWar) {
+            category = ConflictCategory.GREAT;
+        } else if (isMicroWar) {
+            category = ConflictCategory.MICRO;
+        } else if (isHistory) {
+            category = ConflictCategory.NON_MICRO;
+        } else {
+            category = ConflictCategory.UNVERIFIED;
+        }
+        String cb = page.getCasusBelli();
+        String status = page.getStatus();
+        long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
+        long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
+        Conflict conflict = new Conflict(0, 0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, cb, status, startTurn, endTurn);
+        combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
+        combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
+        for (Map.Entry<String, DBTopic> topicEntry : page.getForumLinks().entrySet()) {
+            conflict.addAnnouncement(topicEntry.getKey(), topicEntry.getValue(), false);
+        }
+        return conflict;
+    }
+
     /**
      * Note:
      * Conflicts lacking alliance name information will be skipped
      * Some alliance pages have dates in formats that cannot be parsed
      * @return
      */
-    public static List<Conflict> loadWikiConflicts(Map<String, String> errorsByPage) throws IOException {
+    public static List<Conflict> loadWikiConflicts(Map<String, String> errorsByPage, boolean allowCache) throws IOException {
         List<Conflict> conflicts = new ArrayList<>();
-
         String wikiCategory = "Alliance_Wars";
         Map<String, String> pages = getPages(wikiCategory);
         System.out.println("Got pages");
         for (Map.Entry<String, String> entry : pages.entrySet()) {
             String name = entry.getKey();
-            String nameNormal = StringMan.normalize(name);
-            String slug = slugify(name, false);
             String urlStub = entry.getValue();
-
-            PWWikiPage page = new PWWikiPage(nameNormal, urlStub, true);
-            Map<String, List<String>> table = page.getTableData();
-            if (table == null) {
-                errorsByPage.put(name, "No table found");
-                continue;
-            }
-            Map.Entry<Long, Long> date = page.getDates();
-            if (date == null) {
-                List<String> dateList = table.get("date");
-                if (dateList == null) {
-                    errorsByPage.put(name, "No date found");
-                } else if (dateList.isEmpty()) {
-                    errorsByPage.put(name, "Empty date found");
-                } else if (!dateList.get(0).contains("-")){
-                    errorsByPage.put(name, "No end date specified (in the format `start date - end date`)");
-                } else {
-                    errorsByPage.put(name, "Unparseable date range: `" + dateList.get(0) + "`");
-                }
-                continue;
-            }
-            Set<String> unknownAlliances = new LinkedHashSet<>();
-            Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances, date.getKey());
-            if (combatants == null) {
-                errorsByPage.put(name, "No combatants found");
-                continue;
-            }
-//            if (!unknownAlliances.isEmpty()) {
-//                errorsByPage.put(name, "Unknown alliances: " + unknownAlliances);
-//                continue;
-//            }
-            if (combatants.getKey().isEmpty()) {
-                errorsByPage.put(name, "No coalition 1 combatants found");
-                continue;
-            }
-            if (combatants.getValue().isEmpty()) {
-                errorsByPage.put(name, "No coalition 2 combatants found");
-                continue;
-            }
-            Set<String> pageCategories = page.getCategories();
-            boolean isGreatWar = pageCategories.contains("Great Wars");
-            boolean isMicroWar = pageCategories.contains("Micro Wars");
-            boolean isHistory = pageCategories.stream().anyMatch(category -> category.startsWith("Wars of "));
-            ConflictCategory category;
-            if (isGreatWar) {
-                category = ConflictCategory.GREAT;
-            } else if (isMicroWar) {
-                category = ConflictCategory.MICRO;
-            } else if (isHistory) {
-                category = ConflictCategory.NON_MICRO;
-            } else {
-                category = ConflictCategory.UNVERIFIED;
-            }
-            String cb = page.getCasusBelli();
-            String status = page.getStatus();
-            long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
-            long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
-            Conflict conflict = new Conflict(0, 0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, cb, status, startTurn, endTurn);
-            combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
-            combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
+            Conflict conflict = loadWikiConflict(name, urlStub, errorsByPage, allowCache);
             conflicts.add(conflict);
-            for (Map.Entry<String, DBTopic> topicEntry : page.getForumLinks().entrySet()) {
-                conflict.addAnnouncement(topicEntry.getKey(), topicEntry.getValue(), false);
-            }
         }
         return conflicts;
     }

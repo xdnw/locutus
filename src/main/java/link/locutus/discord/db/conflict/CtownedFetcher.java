@@ -31,12 +31,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class CtownedFetcher {
-    private static String getCtoConflict(String url, String text) throws IOException {
+    private final ConflictManager manager;
+
+    public CtownedFetcher(ConflictManager manager) {
+        this.manager = manager;
+    }
+    private String getCtoConflict(String url, String text, boolean useCache) throws IOException {
         String cacheFileStr = "files/" + Normalizer.normalize(text, Normalizer.Form.NFKD) + ".html";
-        System.out.println("Path " + cacheFileStr);
         Path path = Paths.get(cacheFileStr);
-        if (new File(cacheFileStr).exists()) {
-            return Files.readString(path, StandardCharsets.ISO_8859_1);
+        if (useCache) {
+            if (new File(cacheFileStr).exists()) {
+                return Files.readString(path, StandardCharsets.ISO_8859_1);
+            }
         }
         String urlFull = "https://ctowned.net" + url;
         String html = Jsoup.connect(urlFull).timeout(60000).sslSocketFactory(socketFactory()).ignoreContentType(true).get().html();
@@ -44,7 +50,7 @@ public class CtownedFetcher {
         return html;
     }
 
-    static private SSLSocketFactory socketFactory() {
+    private SSLSocketFactory socketFactory() {
         TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
             public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                 return new X509Certificate[0];
@@ -67,8 +73,11 @@ public class CtownedFetcher {
         }
     }
 
-    private static void loadCtownedConflict(String cellUrl) {
-        String conflictHtml = getCtoConflict(cellUrl, conflictName);
+    private void loadCtownedConflict(boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Date startDate, Date endDate) throws IOException {
+        String conflictHtml = getCtoConflict(cellUrl, conflictName, useCache);
+
+        long startMs = startDate.getTime();
+        long endMs = endDate == null ? Long.MAX_VALUE : endDate.getTime() + TimeUnit.DAYS.toMillis(1);
 
         Document conflictDom = Jsoup.parse(conflictHtml);
         Elements elements = conflictDom.select("span[data-toggle=tooltip]");
@@ -121,7 +130,7 @@ public class CtownedFetcher {
         boolean isOverLap = col1Ids.stream().anyMatch(col2Ids::contains);
         if (isOverLap) {
             System.out.println("Overlap between coalitions " + coalition1Names.stream().filter(coalition2Names::contains).collect(Collectors.toList()));
-            continue;
+            return;
         }
         if (col1Ids.isEmpty()) {
             throw new IllegalArgumentException("Coalition 1 is empty");
@@ -156,8 +165,8 @@ public class CtownedFetcher {
         }
     }
 
-    private static void loadCtownedConflicts(ConflictManager manager, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
-        Document document = Jsoup.parse(getCtoConflict(urlStub, fileName));
+    public void loadCtownedConflicts(boolean useCache, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        Document document = Jsoup.parse(getCtoConflict(urlStub, fileName, useCache));
         // get table id=conflicts-table
         Element table = document.getElementById("conflicts-table");
         // Skip the first row (header)
@@ -178,10 +187,7 @@ public class CtownedFetcher {
             String endDateStr = row.select("td").get(7).text();
             Date startDate = TimeUtil.YYYY_MM_DD_FORMAT.parse(startDateStr);
             Date endDate = endDateStr.contains("Ongoing") ? null : TimeUtil.YYYY_MM_DD_FORMAT.parse(endDateStr);
-            long startMs = startDate.getTime();
-            long endMs = endDate == null ? Long.MAX_VALUE : endDate.getTime() + TimeUnit.DAYS.toMillis(1);
-
-
+            loadCtownedConflict(useCache, cellUrl, category, conflictName, startDate, endDate);
         }
     }
 }

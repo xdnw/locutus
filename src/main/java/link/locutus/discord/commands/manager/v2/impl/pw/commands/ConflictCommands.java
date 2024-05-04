@@ -1,17 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.conflict.CoalitionSide;
+import link.locutus.discord.db.conflict.CtownedFetcher;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.conflict.Conflict;
@@ -38,6 +36,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,23 +47,12 @@ import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.text.Normalizer;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ConflictCommands {
-    @Command
+    @Command(desc = "View a conflict's configured information")
     public String info(ConflictManager manager, Conflict conflict, boolean showParticipants) {
         StringBuilder response = new StringBuilder();
 
@@ -109,10 +97,10 @@ public class ConflictCommands {
             response.append("Use `showParticipants: True` to list participants");
         }
 
-        return response.toString();
+        return response.toString() + "\n\n<http://wars.locutus.link/conflict?id=" + conflict.getId() + ">";
     }
 
-    @Command
+    @Command(desc = "Pushes conflict data to the AWS bucket for the website")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs, @Switch("w") boolean reloadWars) {
         WebRoot webRoot = WebRoot.getInstance();
@@ -146,7 +134,8 @@ public class ConflictCommands {
         return "Done! See: <" + aws.getLink(key) + ">";
     }
 
-    @Command
+    @Command(desc = "Delete a conflict from the database\n" +
+            "Does not push changes to the website")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteConflict(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, Conflict conflict, @Switch("f") boolean confirm) {
         if (!confirm) {
@@ -161,10 +150,11 @@ public class ConflictCommands {
             return null;
         }
         manager.deleteConflict(conflict);
-        return "Deleted conflict: #" + conflict.getId() + " - `" + conflict.getName() + "`";
+        return "Deleted conflict: #" + conflict.getId() + " - `" + conflict.getName() + "`" +
+                "\nNote: this does not push the data to the site";
     }
 
-    @Command
+    @Command(desc = "Get a list of the conflicts in the database")
     public String listConflicts(@Me IMessageIO io, @Me JSONObject command, ConflictManager manager, @Switch("i") boolean includeInactive) {
         Map<Integer, Conflict> conflicts = ArrayUtil.sortMap(manager.getConflictMap(), (o1, o2) -> {
             if (o1.getEndTurn() == Long.MAX_VALUE || o2.getEndTurn() == Long.MAX_VALUE) {
@@ -206,9 +196,15 @@ public class ConflictCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Set the end date for a conflict\n" +
+            "Use a value of `0` to specify no end date\n" +
+            "This does not push the data to the site")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String setConflictEnd(ConflictManager manager, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
+    public String setConflictEnd(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Arg("Only set the end date for a single alliance") @Switch("a") DBAlliance alliance) {
+        String timeStr = command.getString("time");
+        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) <= 0) {
+            time = Long.MAX_VALUE;
+        }
         if (alliance != null) {
             Boolean side = conflict.isSide(alliance.getId());
             if (side == null) {
@@ -218,10 +214,36 @@ public class ConflictCommands {
             return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setEnd(time);
-        return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time);
+        return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time) +
+                "\nNote: this does not push the data to the site";
     }
 
-    @Command
+    @Command(desc = "Set the start date for a conflict\n" +
+            "Use a value of `0` to specify no start date (if prividing an alliance)\n" +
+            "This does not push the data to the site")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String setConflictStart(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
+        String timeStr = command.getString("time");
+        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) <= 0) {
+            if (alliance == null) {
+                throw new IllegalArgumentException("Cannot set start date to 0 without specifying an alliance");
+            }
+            time = TimeUtil.getTimeFromTurn(conflict.getStartTurn());
+        }
+        if (alliance != null) {
+            Boolean side = conflict.isSide(alliance.getId());
+            if (side == null) {
+                throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
+            }
+            conflict.addParticipant(alliance.getAlliance_id(), side, time, null);
+            return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
+        }
+        conflict.setStart(time);
+        return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) +
+                "\nNote: this does not push the data to the site";
+    }
+
+    @Command(desc = "Set the name of a conflict")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setConflictName(ConflictManager manager, Conflict conflict, String name, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
         if (isCoalition1 && isCoalition2) {
@@ -245,22 +267,8 @@ public class ConflictCommands {
             sideName = "conflict";
             conflict.setName(name);
         }
-        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "`";
-    }
-
-    @Command
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String setConflictStart(ConflictManager manager, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
-        if (alliance != null) {
-            Boolean side = conflict.isSide(alliance.getId());
-            if (side == null) {
-                throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
-            }
-            conflict.addParticipant(alliance.getAlliance_id(), side, time, null);
-            return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
-        }
-        conflict.setStart(time);
-        return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time);
+        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "`" +
+                "\nNote: this does not push the data to the site";
     }
 
     private int getFighting(DBAlliance alliance, Set<DBAlliance> enemyCoalition) {
@@ -276,7 +284,7 @@ public class ConflictCommands {
         }).count();
     }
 
-    @Command
+    @Command(desc = "Manually create an ongoing conflict between two coalitions")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String addConflict(ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d")@Timestamp Long start) {
         if (conflictName != null) {
@@ -337,10 +345,13 @@ public class ConflictCommands {
         for (DBAlliance alliance : coalition2) conflict.addParticipant(alliance.getId(), false, null, null);
         response.append("- Coalition1: `").append(coalition1.stream().map(f -> f.getName()).collect(Collectors.joining(","))).append("`\n");
         response.append("- Coalition2: `").append(coalition2.stream().map(f -> f.getName()).collect(Collectors.joining(",")));
-        return response.toString();
+        return response.toString() +
+                "\nTo set the end date, use:" + CM.conflict.end.cmd.toSlashMention() +
+                "\nNote: this does not push the data to the site";
     }
 
-    @Command
+    @Command(desc = "Remove a set of alliances from a conflict\n" +
+            "This does not push the data to the site")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String removeCoalition(Conflict conflict, Set<DBAlliance> alliances) {
         Set<DBAlliance> notRemoved = new LinkedHashSet<>();
@@ -366,10 +377,11 @@ public class ConflictCommands {
         if (!errors.isEmpty()) {
             msg += "\n- " + StringMan.join(errors, "\n- ");
         }
-        return msg;
+        return msg + "\nNote: this does not push the data to the site";
     }
 
-    @Command
+    @Command(desc = "Add a set of alliances to a conflict\n" +
+            "This does not push the data to the site")
     public String addCoalition(@Me User user, Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
         boolean hasAdmin = Roles.ADMIN.hasOnRoot(user);
         if (isCoalition1 && isCoalition2) {
@@ -441,118 +453,150 @@ public class ConflictCommands {
         for (DBAlliance aa : addCol2) {
             conflict.addParticipant(aa.getId(), false, null, null);
         }
-        return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2";
+        return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2\n" +
+                "Note: this does not push the data to the site";
     }
 
-    @Command
+    @Command(desc = "Import ctowned conflicts into the database\n" +
+            "This does not push the data to the site")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importCtowned(ConflictManager manager,
+                                @Default("true") @Arg("If the cached version of the site is used")
+                                boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
+        CtownedFetcher fetcher = new CtownedFetcher(manager);
+        fetcher.loadCtownedConflicts(useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+        fetcher.loadCtownedConflicts(useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+        return "Done!\nNote: this does not push the data to the site";
+    }
+
+    @Command(desc = "Import alliance names (to match with the ids of deleted alliances)\n" +
+            "This does not push the data to the site")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importAllianceNames(ConflictManager manager) throws IOException, ParseException {
+        manager.saveDataCsvAllianceNames();
+        for (Map.Entry<String, Integer> entry : PWWikiUtil.getWikiAllianceIds().entrySet()) {
+            if (manager.getAllianceName(entry.getValue()) != null) continue;
+            if (manager.getAllianceId(entry.getKey(), Long.MAX_VALUE) != null) continue;
+            manager.addLegacyName(entry.getValue(), entry.getKey(), 0);
+        }
+        return "Done!\nNote: this does not push the data to the site";
+    }
+
+    @Command(desc = "Import a wiki page as a conflict\n" +
+            "This does not push the data to the site")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importWikiPage(ConflictManager manager, String name, @Default String url, @Default("true") boolean useCache) throws IOException {
+        if (name.contains("http")) return "Please specify the name of the wiki page, not the URL for `name`";
+        if (url == null) {
+            url = Normalizer.normalize(name.replace(" ", "_"), Normalizer.Form.NFKC);
+            url = URLEncoder.encode(url, StandardCharsets.UTF_8);
+        } else {
+            if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
+            url = url.substring(url.lastIndexOf("/") + 1);
+        }
+        Map<String, String> errors = new HashMap<>();
+        Conflict conflict = PWWikiUtil.loadWikiConflict(name, url, errors, useCache);
+        StringBuilder response = new StringBuilder();
+        if (conflict == null) {
+            response.append("Failed to load conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
+        } else {
+            if (conflict.getStartTurn() < TimeUtil.getTurn(1577836800000L)) {
+                response.append("Conflict `" + name + "` before the war cutoff date of " + DiscordUtil.timestamp(1577836800000L, null) + "\n");
+            } else {
+                loadWikiConflicts(manager, List.of(conflict));
+                response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
+                response.append("See: " + CM.conflict.info.cmd.toSlashMention() + "\n\n");
+            }
+        }
+        if (!errors.isEmpty()) {
+            response.append("Errors: " + StringMan.join(errors.values(), "\n"));
+        }
+        return response.toString() + "\n\nNote: this does not push the data to the site";
+    }
+
+    private String loadWikiConflicts(ConflictManager manager, List<Conflict> conflicts) {
+        Map<String, Set<Conflict>> conflictsByWiki = manager.getConflictMap().values().stream().collect(Collectors.groupingBy(Conflict::getWiki, Collectors.toSet()));
+        // Cutoff date
+        conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
+        // print all ongoing conflicts
+        for (Conflict conflict : conflicts) {
+            Conflict original = conflict;
+            Set<Conflict> existingSet = conflictsByWiki.get(conflict.getWiki());
+            if (existingSet == null) {
+                conflict = manager.addConflict(conflict.getName(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
+                existingSet = Set.of(conflict);
+            }
+            for (Conflict existing : existingSet) {
+                if (existing.getStatusDesc().isEmpty()) {
+                    existing.setStatus(conflict.getStatusDesc());
+                }
+                if (existing.getCasusBelli().isEmpty()) {
+                    existing.setCasusBelli(conflict.getCasusBelli());
+                }
+                if (existingSet.size() == 1 && !conflict.getName().equalsIgnoreCase(existing.getName())) {
+                    existing.setName(conflict.getName());
+                }
+                if (existing.getAnnouncement().isEmpty() && !original.getAnnouncement().isEmpty()) {
+                    for (Map.Entry<String, DBTopic> entry : original.getAnnouncement().entrySet()) {
+                        existing.addAnnouncement(entry.getKey(), entry.getValue(), true);
+                    }
+                }
+                if (existing.getCategory() != conflict.getCategory()) {
+                    existing.setCategory(conflict.getCategory());
+                }
+                if (existing.getAllianceIds().isEmpty()) {
+                    for (int aaId : original.getCoalition1()) existing.addParticipant(aaId, true, null, null);
+                    for (int aaId : original.getCoalition2()) existing.addParticipant(aaId, false, null, null);
+                }
+            }
+        }
+        return "Done!\nNote: this does not push the data to the site";
+    }
+
+    @Command(desc = "Import all wiki pages as conflicts\n" +
+            "This does not push the data to the site")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importWikiAll(ConflictManager manager, @Default("true") boolean useCache) throws IOException {
+        Map<String, String> errors = new LinkedHashMap<>();
+        List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
+
+        return loadWikiConflicts(manager, conflicts);
+    }
+
+
+    @Command(desc = "Recalculate the graph data for a set of conflicts\n" +
+            "This does not push the data to the site")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String recalculateGraphData(ConflictManager manager, Set<Conflict> conflicts) {
+        manager.loadConflictWars(conflicts, true);
+        return "Done!\nNote: this does not push the data to the site";
+    }
+
+    @Command(desc = "Bulk import conflict data from multiple sources\n" +
+            "Including ctowned, wiki, graph data, alliance names or ALL\n" +
+            "This does not push the data to the site")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki, @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
         boolean loadGraphData = false;
         if (all) {
             Locutus.imp().getWarDb().loadWarCityCountsLegacy();
-            System.out.println("Loaded city wars");
             allianceNames = true;
             ctowned = true;
             wiki = true;
             loadGraphData = true;
         }
         if (allianceNames) {
-            manager.saveDataCsvAllianceNames();
-            for (Map.Entry<String, Integer> entry : PWWikiUtil.getWikiAllianceIds().entrySet()) {
-                if (manager.getAllianceName(entry.getValue()) != null) continue;
-                if (manager.getAllianceId(entry.getKey(), Long.MAX_VALUE) != null) continue;
-                manager.addLegacyName(entry.getValue(), entry.getKey(), 0);
-            }
-
+            importAllianceNames(manager);
         }
         if (ctowned) {
-            loadCtownedConflicts(manager, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-            loadCtownedConflicts(manager, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+            importCtowned(manager, true);
         }
         if (wiki) {
-            Map<String, Set<Conflict>> conflictsByWiki = manager.getConflictMap().values().stream().collect(Collectors.groupingBy(Conflict::getWiki, Collectors.toSet()));
-
-            Map<String, String> errors = new LinkedHashMap<>();
-            List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors);
-            conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
-            // print all ongoing conflicts
-            for (Map.Entry<String, String> entry : errors.entrySet()) {
-                System.out.println(entry.getValue());
-            }
-            System.out.println("Num conflicts: " + conflicts.size());
-            for (Conflict conflict : conflicts) {
-                Conflict original = conflict;
-                Set<Conflict> existingSet = conflictsByWiki.get(conflict.getWiki());
-                if (existingSet == null) {
-                    System.out.println("Add conflict " + conflict.getName() + " -> " + conflict.getWiki());
-                    conflict = manager.addConflict(conflict.getName(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
-                    existingSet = Set.of(conflict);
-                }
-                for (Conflict existing : existingSet) {
-                    if (existing.getStatusDesc().isEmpty()) {
-                        existing.setStatus(conflict.getStatusDesc());
-                    }
-                    if (existing.getCasusBelli().isEmpty()) {
-                        existing.setCasusBelli(conflict.getCasusBelli());
-                    }
-                    if (existingSet.size() == 1 && !conflict.getName().equalsIgnoreCase(existing.getName())) {
-                        existing.setName(conflict.getName());
-                    }
-                    if (existing.getAnnouncement().isEmpty() && !original.getAnnouncement().isEmpty()) {
-                        for (Map.Entry<String, DBTopic> entry : original.getAnnouncement().entrySet()) {
-                            existing.addAnnouncement(entry.getKey(), entry.getValue(), true);
-                        }
-                    }
-                    if (existing.getCategory() != conflict.getCategory()) {
-                        existing.setCategory(conflict.getCategory());
-                    }
-                    if (existing.getAllianceIds().isEmpty()) {
-                        for (int aaId : original.getCoalition1()) existing.addParticipant(aaId, true, null, null);
-                        for (int aaId : original.getCoalition2()) existing.addParticipant(aaId, false, null, null);
-                    }
-                }
-
-            }
-            // announcements
-            // participants
-
-
-//            if (conflicts.isEmpty()) return "No conflicts found on wiki";
-//            for (Conflict value : manager.getConflictMap().values()) {
-//                // find matching conflict by start/end date
-//                Conflict closest = null;
-//                long distance = Long.MAX_VALUE;
-//                int maxOverlap1 = 0;
-//                int maxOverlap2 = 0;
-//                for (Conflict conflict : conflicts) {
-//                    int col1Overlap = (int) value.getCoalition1().stream().filter(conflict.getCoalition1()::contains).count();
-//                    int col2Overlap = (int) value.getCoalition2().stream().filter(conflict.getCoalition2()::contains).count();
-//                    int col1OverlapSwap = (int) value.getCoalition1().stream().filter(conflict.getCoalition2()::contains).count();
-//                    int col2OverlapSwap = (int) value.getCoalition2().stream().filter(conflict.getCoalition1()::contains).count();
-//                    if (col1Overlap + col2Overlap < col1OverlapSwap + col2OverlapSwap) {
-//                        col1Overlap = col1OverlapSwap;
-//                        col2Overlap = col2OverlapSwap;
-//                    }
-//                    long d = Math.abs(conflict.getStartTurn() - value.getStartTurn()) + Math.abs(conflict.getEndTurn() - value.getEndTurn()) - (((col1Overlap + col2Overlap) * 30L) / (value.getAllianceIds().size()));
-//                    if (d < distance) {
-//                        distance = d;
-//                        closest = conflict;
-//                        maxOverlap1 = col1Overlap;
-//                        maxOverlap2 = col2Overlap;
-//                    }
-//                }
-//                System.out.println("#" + value.getId() + " Closest (" + maxOverlap1 + "/" + maxOverlap2 + ")" + value.getName() + " -> https://politicsandwar.fandom.com/wiki/" + closest.getWiki());
-//                System.out.println("- Start: " + TimeUtil.turnsToTime(TimeUtil.getTurn() - value.getStartTurn()) + " | " + TimeUtil.turnsToTime(TimeUtil.getTurn() - closest.getStartTurn()));
-//                System.out.println("- End: " + (value.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : TimeUtil.turnsToTime(TimeUtil.getTurn() - value.getEndTurn())) + " | " + (closest.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : TimeUtil.turnsToTime(TimeUtil.getTurn() - closest.getEndTurn())));
-//                System.out.println("- Col1-DB: " + value.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-//                System.out.println("- Col1-Wiki: " + closest.getCoalition1Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-//                System.out.println("- Col2-DB: " + value.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-//                System.out.println("- Col2-Wiki: " + closest.getCoalition2Obj().stream().map(DBAlliance::getName).collect(Collectors.joining(",")));
-//            }
+            importWikiAll(manager, true);
         }
         if (loadGraphData && graphData == null) {
             graphData = new LinkedHashSet<>(manager.getConflictMap().values());
-            manager.loadConflictWars(graphData, true);
+            recalculateGraphData(manager, graphData);
         }
         if (graphData != null) {
             for (Conflict conflict : graphData) {
@@ -560,22 +604,6 @@ public class ConflictCommands {
                 conflict.updateGraphsLegacy(manager);
             }
         }
-        return "Done!";
+        return "Done!\nNote: this does not push the data to the site";
     }
-//
-//    private static int getAllianceId(String name) {
-//        DBAlliance aa = Locutus.imp().getNationDB().getAllianceByName(name);
-//        if (aa != null) return aa.getId();
-//        Integer idCache = Locutus.imp().getWarDb().getConflicts().getLegacyId(name);
-//        if (idCache != null) return idCache;
-//        if (MathMan.isInteger(name)) {
-//            return Integer.parseInt(name);
-//        }
-//        System.out.println("Unknown alliance `" + name + "`");
-//        return 0;
-//    }
-
-
-
-
 }
