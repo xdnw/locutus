@@ -193,12 +193,11 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "info", "info");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictEnd", "end");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictStart", "start");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictName", "rename");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
-
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importConflictData", "multiple_sources");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importCtowned", "ctowned");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "import"), "importWikiPage", "wiki_page");

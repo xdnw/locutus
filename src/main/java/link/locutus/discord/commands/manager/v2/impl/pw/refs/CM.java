@@ -1164,13 +1164,6 @@ public class CM {
                     }
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importConflictData")
-            public static class clone extends CommandRef {
-                public static final clone cmd = new clone();
-                public clone create(String ctowned, String graphData, String allianceNames, String wiki, String all) {
-                    return createArgs("ctowned", ctowned, "graphData", graphData, "allianceNames", allianceNames, "wiki", wiki, "all", all);
-                }
-            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="addConflict")
             public static class create extends CommandRef {
                 public static final create cmd = new create();
@@ -1185,11 +1178,71 @@ public class CM {
                     return createArgs("conflict", conflict, "confirm", confirm);
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictEnd")
-            public static class end extends CommandRef {
-                public static final end cmd = new end();
-                public end create(String conflict, String time, String alliance) {
-                    return createArgs("conflict", conflict, "time", time, "alliance", alliance);
+            public static class edit{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictEnd")
+                public static class end extends CommandRef {
+                    public static final end cmd = new end();
+                    public end create(String conflict, String time, String alliance) {
+                        return createArgs("conflict", conflict, "time", time, "alliance", alliance);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictName")
+                public static class rename extends CommandRef {
+                    public static final rename cmd = new rename();
+                    public rename create(String conflict, String name, String isCoalition1, String isCoalition2) {
+                        return createArgs("conflict", conflict, "name", name, "isCoalition1", isCoalition1, "isCoalition2", isCoalition2);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictStart")
+                public static class start extends CommandRef {
+                    public static final start cmd = new start();
+                    public start create(String conflict, String time, String alliance) {
+                        return createArgs("conflict", conflict, "time", time, "alliance", alliance);
+                    }
+                }
+            }
+            public static class import{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importAllianceNames")
+                public static class alliance_names extends CommandRef {
+                    public static final alliance_names cmd = new alliance_names();
+                    public alliance_names create() {
+                        return createArgs();
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importCtowned")
+                public static class ctowned extends CommandRef {
+                    public static final ctowned cmd = new ctowned();
+                    public ctowned create(String useCache) {
+                        return createArgs("useCache", useCache);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importConflictData")
+                public static class multiple_sources extends CommandRef {
+                    public static final multiple_sources cmd = new multiple_sources();
+                    public multiple_sources create(String ctowned, String graphData, String allianceNames, String wiki, String all) {
+                        return createArgs("ctowned", ctowned, "graphData", graphData, "allianceNames", allianceNames, "wiki", wiki, "all", all);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="recalculateGraphData")
+                public static class recalculate_graphs extends CommandRef {
+                    public static final recalculate_graphs cmd = new recalculate_graphs();
+                    public recalculate_graphs create(String conflicts) {
+                        return createArgs("conflicts", conflicts);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importWikiAll")
+                public static class wiki_all extends CommandRef {
+                    public static final wiki_all cmd = new wiki_all();
+                    public wiki_all create(String useCache) {
+                        return createArgs("useCache", useCache);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importWikiPage")
+                public static class wiki_page extends CommandRef {
+                    public static final wiki_page cmd = new wiki_page();
+                    public wiki_page create(String name, String url, String useCache) {
+                        return createArgs("name", name, "url", url, "useCache", useCache);
+                    }
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="info")
@@ -1204,20 +1257,6 @@ public class CM {
                 public static final list cmd = new list();
                 public list create(String includeInactive) {
                     return createArgs("includeInactive", includeInactive);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictName")
-            public static class rename extends CommandRef {
-                public static final rename cmd = new rename();
-                public rename create(String conflict, String name, String isCoalition1, String isCoalition2) {
-                    return createArgs("conflict", conflict, "name", name, "isCoalition1", isCoalition1, "isCoalition2", isCoalition2);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictStart")
-            public static class start extends CommandRef {
-                public static final start cmd = new start();
-                public start create(String conflict, String time, String alliance) {
-                    return createArgs("conflict", conflict, "time", time, "alliance", alliance);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="syncConflictData")

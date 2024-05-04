@@ -346,7 +346,8 @@ public class ConflictCommands {
         response.append("- Coalition1: `").append(coalition1.stream().map(f -> f.getName()).collect(Collectors.joining(","))).append("`\n");
         response.append("- Coalition2: `").append(coalition2.stream().map(f -> f.getName()).collect(Collectors.joining(",")));
         return response.toString() +
-                "\nTo set the end date, use:" + CM.conflict.end.cmd.toSlashMention() +
+                "\nTo set the end date, use:" +
+//                CM.conflict.end.cmd.toSlashMention() +
                 "\nNote: this does not push the data to the site";
     }
 
@@ -505,7 +506,9 @@ public class ConflictCommands {
             } else {
                 loadWikiConflicts(manager, List.of(conflict));
                 response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
-                response.append("See: " + CM.conflict.info.cmd.toSlashMention() + "\n\n");
+                response.append("See: " +
+//                        CM.conflict.info.cmd.toSlashMention() +
+                        "\n\n");
             }
         }
         if (!errors.isEmpty()) {
