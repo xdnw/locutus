@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -4289,6 +4290,7 @@ public class WarCommands {
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Delete planning war rooms with no participants")
     public String deletePlanningChannel(@Me WarCategory warCat) {
+        int count = 0;
         for (Map.Entry<Integer, WarCategory.WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
             WarCategory.WarRoom room = entry.getValue();
             if (room.channel == null) continue;
@@ -4297,8 +4299,27 @@ public class WarCommands {
             room.addInitialParticipants(false);
             if (!room.getParticipants().isEmpty()) continue;
             room.delete("Manually deleted");
+            count++;
         }
-        return "Done. Please wait for rooms to finish deleting";
+        if (count == 0) return "No channels found to delete";
+        return "Done. Deleting " + count + " war rooms. Please wait for rooms to finish deleting";
+    }
+
+    @RolePermission(value = Roles.MILCOM)
+    @Command(desc = "Delete war rooms against the enemies specified")
+    public String deleteForEnemies(@Me WarCategory warCat, Set<DBNation> enemy_rooms) {
+        int count = 0;
+        for (Map.Entry<Integer, WarCategory.WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
+            WarCategory.WarRoom room = entry.getValue();
+            if (!enemy_rooms.contains(room.target)) continue;
+            room.delete("Manually deleted");
+            count++;
+        }
+        if (count == 0) return "No channels found to delete";
+        return "Done. Deleting " + count + " war rooms. Please wait for rooms to finish deleting.\n\n" +
+                "Note: Rooms will auto create with enemies with active wars, set a filter to specify which enemies rooms are auto created for:\n" +
+                "- " + CM.settings_war_alerts.WAR_ROOM_FILTER.cmd.toSlashMention() + "\n" +
+                "- " + CM.admin.sync.warrooms.cmd.toSlashMention();
     }
 
     @RolePermission(value = Roles.MILCOM)
