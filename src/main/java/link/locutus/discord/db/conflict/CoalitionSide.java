@@ -14,9 +14,11 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
@@ -24,6 +26,7 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.db.entities.conflict.DayTierGraphData;
 import link.locutus.discord.db.entities.conflict.TurnTierGraphData;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.jooby.JteUtil;
 
@@ -43,10 +46,6 @@ public class CoalitionSide {
     private final boolean isPrimary;
     private CoalitionSide otherSide;
     private final Set<Integer> coalition = new IntOpenHashSet();
-//    private final OffDefStatGroup offensiveStats = new OffDefStatGroup();
-//    private final OffDefStatGroup defensiveStats = new OffDefStatGroup();
-//    private final Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>> statsByAlliance = new Int2ObjectOpenHashMap<>();
-//    private final Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>> statsByNation = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Integer> allianceIdByNation = new Int2ObjectOpenHashMap<>();
     private final DamageStatGroup inflictedAndOffensiveStats = new DamageStatGroup();
     private final DamageStatGroup lossesAndDefensiveStats = new DamageStatGroup();
@@ -54,7 +53,6 @@ public class CoalitionSide {
     private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByNation = new Int2ObjectOpenHashMap<>();
     private final Map<Long, TurnTierGraphData> graphDataByTurn = new Long2ObjectArrayMap<>();
     private final Map<Long, DayTierGraphData> graphDataByDay = new Long2ObjectArrayMap<>();
-//    private final Map<Long, Map<Integer, Map<Integer, Map.Entry<OffDefStatGroup, OffDefStatGroup>>>> statsByDayByAllianceByCity = new Long2ObjectArrayMap<>();
     private final Map<Long, Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
 
     public void clearWarData() {
@@ -68,6 +66,16 @@ public class CoalitionSide {
 
     public Set<Integer> getNationIds() {
         return damageByNation.keySet();
+    }
+
+    public void updateTurnChange(ConflictManager manager, long turn, boolean save) {
+        Set<DBNation> nations = new AllianceList(coalition).getNations(true, 0, true);
+
+        long day = TimeUtil.getDay(turn);
+        if (day != TimeUtil.getDay(turn - 1)) {
+            updateDayTierGraph(manager, day, nations, true, save);
+        }
+        updateTurnTierGraph(manager, day, nations, true, save);
     }
 
     public void addGraphData(ConflictMetric metric, int allianceId, long turnOrDay, int city, int value) {
@@ -122,6 +130,21 @@ public class CoalitionSide {
         dayGraph.update(nations);
         if (save) {
             dayGraph.save(manager, getParent().getId(), isPrimary, day);
+        }
+    }
+
+    public void updateTurnTierGraph(ConflictManager manager, long turn, Set<DBNation> nations, boolean force, boolean save) {
+        if (!force) {
+            if (graphDataByTurn.containsKey(turn)) return;
+        } else {
+            if (save && graphDataByTurn.containsKey(turn)) {
+                manager.clearGraphData(List.of(ConflictMetric.SOLDIER, ConflictMetric.TANK, ConflictMetric.AIRCRAFT, ConflictMetric.SHIP, ConflictMetric.SPIES), getParent().getId(), isPrimary, turn);
+            }
+        }
+        TurnTierGraphData turnGraph = graphDataByTurn.computeIfAbsent(turn, k -> new TurnTierGraphData());
+        turnGraph.update(nations);
+        if (save) {
+            turnGraph.save(manager, getParent().getId(), isPrimary, turn);
         }
     }
 

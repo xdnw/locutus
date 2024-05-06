@@ -2019,7 +2019,7 @@ public class UnsortedCommands {
         }
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
-        IMessageBuilder msg = sheet.attach(io.create(), "revenue");
+        IMessageBuilder msg = sheet.attach(io.create(), "audit");
 
         // sum nationBySeverity
         int auditsTotal = nations.size() * audits.length;
