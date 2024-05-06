@@ -556,11 +556,15 @@ public class Conflict {
     }
 
     public Conflict addParticipant(int allianceId, boolean side, boolean save, Long start, Long end) {
-        if (start != null && start > 0) {
+        if (start != null && start > 0 && start != Long.MAX_VALUE) {
             startTime.put(allianceId, start);
+        } else {
+            startTime.remove(allianceId);
         }
         if (end != null && end != Long.MAX_VALUE) {
             endTime.put(allianceId, end);
+        } else {
+            endTime.remove(allianceId);
         }
         if (side) coalition1.add(allianceId);
         else coalition2.add(allianceId);

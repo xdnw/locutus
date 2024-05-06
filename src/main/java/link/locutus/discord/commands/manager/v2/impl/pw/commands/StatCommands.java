@@ -545,7 +545,7 @@ public class StatCommands {
             for (ResourceType type : ResourceType.values) {
                 if (!type.isRaw()) continue;
                 boolean available = continent.hasResource(type);
-                row.add(available ? "" : "X");
+                row.add(available ? "X" : "");
             }
             table.add(row);
         }

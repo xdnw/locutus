@@ -1179,6 +1179,20 @@ public class CM {
                 }
             }
             public static class edit{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setCB")
+                public static class casus_belli extends CommandRef {
+                    public static final casus_belli cmd = new casus_belli();
+                    public casus_belli create(String conflict, String casus_belli) {
+                        return createArgs("conflict", conflict, "casus_belli", casus_belli);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setCategory")
+                public static class category extends CommandRef {
+                    public static final category cmd = new category();
+                    public category create(String conflict, String category) {
+                        return createArgs("conflict", conflict, "category", category);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setConflictEnd")
                 public static class end extends CommandRef {
                     public static final end cmd = new end();
@@ -1200,8 +1214,36 @@ public class CM {
                         return createArgs("conflict", conflict, "time", time, "alliance", alliance);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setStatus")
+                public static class status extends CommandRef {
+                    public static final status cmd = new status();
+                    public status create(String conflict, String status) {
+                        return createArgs("conflict", conflict, "status", status);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setWiki")
+                public static class wiki extends CommandRef {
+                    public static final wiki cmd = new wiki();
+                    public wiki create(String conflict, String url) {
+                        return createArgs("conflict", conflict, "url", url);
+                    }
+                }
             }
-            public static class import{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="info")
+            public static class info extends CommandRef {
+                public static final info cmd = new info();
+                public info create(String conflict, String showParticipants) {
+                    return createArgs("conflict", conflict, "showParticipants", showParticipants);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="listConflicts")
+            public static class list extends CommandRef {
+                public static final list cmd = new list();
+                public list create(String includeInactive) {
+                    return createArgs("includeInactive", includeInactive);
+                }
+            }
+            public static class sync{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importAllianceNames")
                 public static class alliance_names extends CommandRef {
                     public static final alliance_names cmd = new alliance_names();
@@ -1230,6 +1272,13 @@ public class CM {
                         return createArgs("conflicts", conflicts);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="syncConflictData")
+                public static class website extends CommandRef {
+                    public static final website cmd = new website();
+                    public website create(String conflicts, String includeGraphs, String reloadWars) {
+                        return createArgs("conflicts", conflicts, "includeGraphs", includeGraphs, "reloadWars", reloadWars);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importWikiAll")
                 public static class wiki_all extends CommandRef {
                     public static final wiki_all cmd = new wiki_all();
@@ -1243,27 +1292,6 @@ public class CM {
                     public wiki_page create(String name, String url, String useCache) {
                         return createArgs("name", name, "url", url, "useCache", useCache);
                     }
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="info")
-            public static class info extends CommandRef {
-                public static final info cmd = new info();
-                public info create(String conflict, String showParticipants) {
-                    return createArgs("conflict", conflict, "showParticipants", showParticipants);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="listConflicts")
-            public static class list extends CommandRef {
-                public static final list cmd = new list();
-                public list create(String includeInactive) {
-                    return createArgs("includeInactive", includeInactive);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="syncConflictData")
-            public static class sync extends CommandRef {
-                public static final sync cmd = new sync();
-                public sync create(String conflicts, String includeGraphs, String reloadWars) {
-                    return createArgs("conflicts", conflicts, "includeGraphs", includeGraphs, "reloadWars", reloadWars);
                 }
             }
         }

@@ -4,8 +4,10 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.conflict.CoalitionSide;
 import link.locutus.discord.db.conflict.CtownedFetcher;
+import link.locutus.discord.gpt.pw.WikiPagePW;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.wiki.game.PWWikiPage;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -98,6 +100,39 @@ public class ConflictCommands {
         }
 
         return response.toString() + "\n\n<http://wars.locutus.link/conflict?id=" + conflict.getId() + ">";
+    }
+
+    @Command(desc = "Sets the wiki page for a conflict")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String setWiki(ConflictManager manager, Conflict conflict, String url) throws IOException {
+        if (url.startsWith("http")) {
+            if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
+            url = url.substring(url.lastIndexOf("/") + 1);
+        }
+        conflict.setWiki(url);
+        return "Set wiki to: `" + url + "`. Attempting to load additional wiki information...\n\n" +
+                importWikiPage(manager, conflict.getName(), url, false);
+    }
+
+    @Command(desc = "Sets the wiki page for a conflict")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String setStatus(ConflictManager manager, Conflict conflict, String status) throws IOException {
+        conflict.setStatus(status);
+        return "Done! Set the status of `" + conflict.getName() + "` to `" + status + "`";
+    }
+
+    @Command(desc = "Sets the wiki page for a conflict")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String setCB(ConflictManager manager, Conflict conflict, String casus_belli) throws IOException {
+        conflict.setCasusBelli(casus_belli);
+        return "Done! Set the casus belli of `" + conflict.getName() + "` to `" + casus_belli + "`";
+    }
+
+    @Command(desc = "Sets the wiki page for a conflict")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String setCategory(ConflictManager manager, Conflict conflict, ConflictCategory category) throws IOException {
+        conflict.setCategory(category);
+        return "Done! Set the category of `" + conflict.getName() + "` to `" + category + "`";
     }
 
     @Command(desc = "Pushes conflict data to the AWS bucket for the website")
@@ -197,12 +232,12 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Set the end date for a conflict\n" +
-            "Use a value of `0` to specify no end date\n" +
+            "Use a value of `-1` to specify no end date\n" +
             "This does not push the data to the site")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setConflictEnd(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Arg("Only set the end date for a single alliance") @Switch("a") DBAlliance alliance) {
         String timeStr = command.getString("time");
-        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) <= 0) {
+        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) < 0) {
             time = Long.MAX_VALUE;
         }
         if (alliance != null) {
@@ -219,16 +254,16 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Set the start date for a conflict\n" +
-            "Use a value of `0` to specify no start date (if prividing an alliance)\n" +
+            "Use a value of `-1` to specify no start date (if prividing an alliance)\n" +
             "This does not push the data to the site")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setConflictStart(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
         String timeStr = command.getString("time");
-        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) <= 0) {
+        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) < 0) {
             if (alliance == null) {
-                throw new IllegalArgumentException("Cannot set start date to 0 without specifying an alliance");
+                throw new IllegalArgumentException("Cannot set start date to NULL without specifying an alliance");
             }
-            time = TimeUtil.getTimeFromTurn(conflict.getStartTurn());
+            time = Long.MAX_VALUE;
         }
         if (alliance != null) {
             Boolean side = conflict.isSide(alliance.getId());
@@ -347,7 +382,7 @@ public class ConflictCommands {
         response.append("- Coalition2: `").append(coalition2.stream().map(f -> f.getName()).collect(Collectors.joining(",")));
         return response.toString() +
                 "\nTo set the end date, use:" +
-//                CM.conflict.end.cmd.toSlashMention() +
+                CM.conflict.edit.end.cmd.toSlashMention() +
                 "\nNote: this does not push the data to the site";
     }
 
@@ -507,7 +542,7 @@ public class ConflictCommands {
                 loadWikiConflicts(manager, List.of(conflict));
                 response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
                 response.append("See: " +
-//                        CM.conflict.info.cmd.toSlashMention() +
+                        CM.conflict.info.cmd.toSlashMention() +
                         "\n\n");
             }
         }

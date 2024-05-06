@@ -64,6 +64,11 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return taxId;
     }
 
+    @Command(desc = "Count the number of nations in this tax bracket")
+    public int countNations(@Default NationFilter filter) {
+        return getNationList(filter).getNations().size();
+    }
+
     @Override
     public String getTypePrefix() {
         return "tax_id";
