@@ -18,7 +18,9 @@ import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
+import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.war.AttackEvent;
+import link.locutus.discord.event.war.WarCreateEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -152,21 +154,6 @@ public class ConflictManager {
                     }
                 }
             }
-//            if (conflictIds2 != null) {
-//                if (conflictIds1 != null) {
-//
-//                }
-////                else {
-////                    for (int conflictId : conflictIds2) {
-////                        applyConflictConsumer(allowed, conflictId, conflictConsumer);
-////                    }
-////                }
-//            }
-//            else if (conflictIds1 != null) {
-//                for (int conflictId : conflictIds1) {
-//                    applyConflictConsumer(allowed, conflictId, conflictConsumer);
-//                }
-//            }
             return true;
         }
     }
@@ -197,6 +184,15 @@ public class ConflictManager {
         long turn = TimeUtil.getTurn(war.getDate());
         if (turn > lastTurn) initTurn();
         applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn));
+    }
+
+    @Subscribe
+    public void onTurnChange(TurnChangeEvent event) {
+        long turn = event.getCurrent();
+        for (Conflict conflict : getActiveConflicts()) {
+            conflict.getSide(true).updateTurnChange(this, turn, true);
+            conflict.getSide(false).updateTurnChange(this, turn, false);
+        }
     }
 
     private void recreateConflictsByAlliance() {
@@ -1187,4 +1183,8 @@ public class ConflictManager {
     }
 
     // updating
+
+    public void update(AbstractCursor attack) {
+
+    }
 }
