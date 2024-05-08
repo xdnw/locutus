@@ -138,8 +138,7 @@ public class ConflictCommands {
     @Command(desc = "Pushes conflict data to the AWS bucket for the website")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs, @Switch("w") boolean reloadWars) {
-        WebRoot webRoot = WebRoot.getInstance();
-        AwsManager aws = webRoot.getAws();
+        AwsManager aws = manager.getAws();
         if (aws == null) {
             throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
         }
@@ -149,17 +148,7 @@ public class ConflictCommands {
         if (conflicts != null) {
             List<String> urls = new ArrayList<>();
             for (Conflict conflict : conflicts) {
-                String key = "conflicts/" + conflict.getId() + ".gzip";
-                byte[] value = conflict.getPsonGzip(manager);
-                aws.putObject(key, value);
-                urls.add(aws.getLink(key));
-
-                if (includeGraphs) {
-                    String graphKey = "conflicts/graphs/" + conflict.getId() + ".gzip";
-                    byte[] graphValue = conflict.getGraphPsonGzip(manager);
-                    aws.putObject(graphKey, graphValue);
-                    urls.add(aws.getLink(graphKey));
-                }
+                urls.addAll(conflict.push(manager, null, includeGraphs));
             }
             return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
         }

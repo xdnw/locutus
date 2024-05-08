@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBTopic;
@@ -26,6 +27,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
@@ -53,6 +55,8 @@ import java.util.stream.Collectors;
 
 public class ConflictManager {
     private final WarDB db;
+    private final AwsManager aws;
+
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
     private Conflict[] conflictArr;
     private final Map<Integer, String> legacyNames2 = new Int2ObjectOpenHashMap<>();
@@ -61,6 +65,22 @@ public class ConflictManager {
     private long lastTurn = 0;
     private final Map<Integer, Set<Integer>> activeConflictOrdByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Long, Map<Integer, int[]>> mapTurnAllianceConflictOrd = new Long2ObjectOpenHashMap<>();
+
+    public ConflictManager(WarDB db) {
+        this.db = db;
+        this.aws = setupAws();
+    }
+
+    private AwsManager setupAws() {
+        String key = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
+        String secret = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
+        String region = Settings.INSTANCE.WEB.S3.REGION;
+        String bucket = Settings.INSTANCE.WEB.S3.BUCKET;
+        if (!key.isEmpty() && !secret.isEmpty() && !region.isEmpty() && !bucket.isEmpty()) {
+            return new AwsManager(key, secret, bucket, region);
+        }
+        return null;
+    }
 
     private synchronized void initTurn() {
         long currTurn = TimeUtil.getTurn();
@@ -211,10 +231,6 @@ public class ConflictManager {
                 activeConflictOrdByAllianceId.computeIfAbsent(aaId, k -> new IntArraySet()).add(conflict.getOrdinal());
             }
         }
-    }
-
-    public ConflictManager(WarDB db) {
-        this.db = db;
     }
 
     public void loadConflicts() {
@@ -1186,5 +1202,9 @@ public class ConflictManager {
 
     public void update(AbstractCursor attack) {
 
+    }
+
+    public AwsManager getAws() {
+        return aws;
     }
 }

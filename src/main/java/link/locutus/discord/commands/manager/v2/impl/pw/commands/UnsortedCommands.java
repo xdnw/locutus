@@ -1837,12 +1837,21 @@ public class UnsortedCommands {
 
     ) throws Exception {
         List<String> cmd = new ArrayList<>();
+        if (days != null) cmd.add(days + "");
         Set<Character> flags = new HashSet<>();
-        if (days != null) cmd.add(days + " ");
         if (build.getCity_id() != null) {
             JavaCity jc = new JavaCity(build);
             jc.zeroNonMilitary();
             build = jc.toCityBuild();
+            if (geographicContinent == null) {
+                DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(build.getCity_id());
+                if (city != null) {
+                    DBNation nation = city.getNation();
+                    if (nation != null) {
+                        cmd.add("continent=" + nation.getContinent().name());
+                    }
+                }
+            }
         }
 
         cmd.add(build.toString());
@@ -1857,7 +1866,7 @@ public class UnsortedCommands {
         if (crimeCap != null) cmd.add("crime<" + crimeCap);
         if (minPopulation != null) cmd.add("population>" + minPopulation);
         if (radiation != null) cmd.add("radiation=" + radiation);
-        if (taxRate != null) cmd.add("" + taxRate.toString());
+        if (taxRate != null) cmd.add(taxRate.toString());
         if (useRawsForManu) cmd.add("manu=" + useRawsForManu);
         if (writePlaintext) flags.add('p');
         if (nationalProjects != null) {

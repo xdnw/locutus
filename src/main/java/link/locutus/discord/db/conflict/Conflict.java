@@ -25,6 +25,7 @@ import link.locutus.discord.db.entities.conflict.ConflictColumn;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
@@ -678,5 +679,34 @@ public class Conflict {
         synchronized (announcements) {
             return new Object2ObjectOpenHashMap<>(announcements);
         }
+    }
+
+    /**
+     * Pushes the conflict to the AWS S3 bucket
+     * @param manager
+     * @param webIdOrNull
+     * @param includeGraphs
+     * @return List of URLs
+     */
+    public List<String> push(ConflictManager manager, String webIdOrNull, boolean includeGraphs) {
+        AwsManager aws = manager.getAws();
+        if (webIdOrNull == null) {
+            if (getId() == -1) throw new IllegalArgumentException("Conflict has no id");
+            webIdOrNull = Integer.toString(getId());
+        }
+        String key = "conflicts/" + webIdOrNull + ".gzip";
+        byte[] value = getPsonGzip(manager);
+        aws.putObject(key, value);
+
+        List<String> urls = new ArrayList<>();
+        urls.add(aws.getLink(key));
+
+        if (includeGraphs) {
+            String graphKey = "conflicts/graphs/" + webIdOrNull + ".gzip";
+            byte[] graphValue = getGraphPsonGzip(manager);
+            aws.putObject(graphKey, graphValue);
+            urls.add(aws.getLink(graphKey));
+        }
+        return urls;
     }
 }
