@@ -177,6 +177,9 @@ public class CommandManager2 {
         getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");
         getCommands().registerMethod(new StatCommands(), List.of("stats_other", "global_metrics"), "orbisStatByDay", "by_time");
 
+        getCommands().registerMethod(new StatCommands(), List.of("channel", "sort"), "sortChannelsSheet", "sheet");
+        getCommands().registerMethod(new StatCommands(), List.of("channel", "sort"), "sortChannelsName", "category_filter");
+
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militaryRanking", "militarization");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "listMerges", "merges");
         getCommands().registerMethod(new StatCommands(), List.of("stats_war", "attack_breakdown"), "attackBreakdownSheet", "sheet");
