@@ -293,9 +293,9 @@ public class GrantCmd extends Command {
                 .append("Infra: " + me.getAvg_infra()).append('\n')
         ;
 
-        msg.append("\n**INSTRUCTIONS:** ").append(grant.getInstructions());
 
-        channel.create().confirmation(grant.title(), msg.toString(), command).cancelButton().send();
+        channel.create().embed("Instruct: " + grant.title(), "**INSTRUCTIONS:** " + grant.getInstructions()).send();
+        channel.create().confirmation("Confirm: " + grant.title(), msg.toString(), command).cancelButton().send();
 
         return null;
     }

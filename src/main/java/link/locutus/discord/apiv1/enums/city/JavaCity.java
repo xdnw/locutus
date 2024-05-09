@@ -363,8 +363,8 @@ public class JavaCity implements ICity {
             }
         }
         response.append('\n').append(++i+". Go to <" + Settings.INSTANCE.PNW_URL() + "/city/improvements/bulk-import/>");
-        response.append('\n').append(++i+". Copy the following build:");
-        response.append("```").append(toCityBuild().toString()).append("```");
+        response.append('\n').append(++i+". Copy the following build:\n");
+        response.append("```json\n").append(toCityBuild().toString()).append("\n```");
         response.append('\n').append(++i+". Check the checkbox and click the submit import button");
         response.append('\n').append(++i+". If you are missing any resources or money, obtain them and try again");
 
