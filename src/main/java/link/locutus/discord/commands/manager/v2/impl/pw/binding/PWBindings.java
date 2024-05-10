@@ -466,6 +466,7 @@ public class PWBindings extends BindingHelper {
             DBNation nation2 = DBNation.getById(nationId);
             if (nation2 != null) nation = nation2;
             build = cityEntry.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
+            build.setCity_id(cityEntry.getId());
         }
         if (json != null && !json.isBlank()) {
             for (Building building : Buildings.values()) {
