@@ -35,6 +35,7 @@ public class WikiConflictsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.conflict.sync.ctowned.cmd),
                 commandMarkdownSpoiler(CM.conflict.sync.multiple_sources.cmd),
                 commandMarkdownSpoiler(CM.conflict.sync.alliance_names.cmd),
+                commandMarkdownSpoiler(CM.conflict.sync.recalculate_tables.cmd),
                 commandMarkdownSpoiler(CM.conflict.sync.recalculate_graphs.cmd),
                 "## Manually Creating/Deleting a conflict",
                 commandMarkdownSpoiler(CM.conflict.create.cmd),
@@ -61,10 +62,11 @@ public class WikiConflictsPage extends BotWikiGen {
                 "Note: To recalculate conflict stats before updating the site, set `reloadWars: True`",
                 "If `includeGraphs` is false, the graph pages will not be updated",
                 "### Updating ALL conflicts",
-                CM.conflict.sync.website.cmd.create("*", "true", null).toString(),
+                CM.conflict.sync.website.cmd.create("*", "true", null, null).toString(),
                 "### Updating a specific conflict",
                 "The conflict ID is in the conflict URL",
-                CM.conflict.sync.website.cmd.create("1234", "true", null).toString()
+                "Set `reinitialize_wars` or `reinitialize_graphs` to fully recalculate table and graph data before uploading",
+                CM.conflict.sync.website.cmd.create("1234", "true", null, null).toString()
         );
     }
 }

@@ -144,18 +144,23 @@ public class ConflictCommands {
     @Command(desc = "Pushes conflict data to the AWS bucket for the website")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs, @Switch("w") boolean reloadWars) {
+    public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("u") boolean upload_graph, @Switch("w") boolean reinitialize_wars, @Switch("g") boolean reinitialize_graphs) throws IOException, ParseException {
         AwsManager aws = manager.getAws();
         if (aws == null) {
             throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
         }
-        if (reloadWars) {
+        if (reinitialize_wars) {
             manager.loadConflictWars(conflicts, true);
+        }
+        if (reinitialize_graphs) {
+            for (Conflict conflict : conflicts) {
+                conflict.updateGraphsLegacy(manager);
+            }
         }
         if (conflicts != null) {
             List<String> urls = new ArrayList<>();
             for (Conflict conflict : conflicts) {
-                urls.addAll(conflict.push(manager, null, includeGraphs));
+                urls.addAll(conflict.push(manager, null, upload_graph));
             }
             return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
         } else {
@@ -323,7 +328,7 @@ public class ConflictCommands {
     @Command(desc = "Manually create an ongoing conflict between two coalitions")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String addConflict(ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d")@Timestamp Long start) {
+    public String addConflict(ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d") @Timestamp Long start) {
         if (conflictName != null) {
             if (MathMan.isInteger(conflictName)) {
                 throw new IllegalArgumentException("Conflict name cannot be a number (`" + conflictName + "`)");
@@ -385,7 +390,8 @@ public class ConflictCommands {
         return response.toString() +
                 "\nTo set the end date, use:" +
                 CM.conflict.edit.end.cmd.toSlashMention() +
-                "\nNote: this does not push the data to the site";
+                "\nThen to initialize the stats and push to the site:\n" +
+                CM.conflict.sync.website.cmd.create(conflict.getId() + "", "true", "true", "true");
     }
 
     @Command(desc = "Remove a set of alliances from a conflict\n" +
@@ -611,12 +617,23 @@ public class ConflictCommands {
     }
 
 
+    @Command(desc = "Recalculate the table data for a set of conflicts\n" +
+            "This does not push the data to the site")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    public String recalculateTables(ConflictManager manager, Set<Conflict> conflicts) {
+        manager.loadConflictWars(conflicts, true);
+        return "Done!\nNote: this does not push the data to the site";
+    }
+
     @Command(desc = "Recalculate the graph data for a set of conflicts\n" +
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String recalculateGraphData(ConflictManager manager, Set<Conflict> conflicts) {
-        manager.loadConflictWars(conflicts, true);
+    public String recalculateGraphs(ConflictManager manager, Set<Conflict> conflicts) throws IOException, ParseException {
+        for (Conflict conflict : conflicts) {
+            conflict.updateGraphsLegacy(manager);
+        }
         return "Done!\nNote: this does not push the data to the site";
     }
 
@@ -645,13 +662,10 @@ public class ConflictCommands {
         }
         if (loadGraphData && graphData == null) {
             graphData = new LinkedHashSet<>(manager.getConflictMap().values());
-            recalculateGraphData(manager, graphData);
+            recalculateTables(manager, graphData);
         }
         if (graphData != null) {
-            for (Conflict conflict : graphData) {
-                System.out.println("Updating graphs " + conflict.getName() + " | " + conflict.getId());
-                conflict.updateGraphsLegacy(manager);
-            }
+            recalculateGraphs(manager, graphData);
         }
         return "Done!\nNote: this does not push the data to the site";
     }

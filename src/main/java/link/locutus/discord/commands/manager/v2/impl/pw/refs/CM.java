@@ -1295,11 +1295,18 @@ public class CM {
                         return createArgs("conflicts", conflicts);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="recalculateTableData")
+                public static class recalculate_tables extends CommandRef {
+                    public static final recalculate_tables cmd = new recalculate_tables();
+                    public recalculate_tables create(String conflicts) {
+                        return createArgs("conflicts", conflicts);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="syncConflictData")
                 public static class website extends CommandRef {
                     public static final website cmd = new website();
-                    public website create(String conflicts, String includeGraphs, String reloadWars) {
-                        return createArgs("conflicts", conflicts, "includeGraphs", includeGraphs, "reloadWars", reloadWars);
+                    public website create(String conflicts, String upload_graphs, String reinitialize_wars, String reinitialize_graphs) {
+                        return createArgs("conflicts", conflicts, "upload_graphs", upload_graphs, "reinitialize_wars", reinitialize_wars, "reinitialize_graphs", reinitialize_graphs);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importWikiAll")
