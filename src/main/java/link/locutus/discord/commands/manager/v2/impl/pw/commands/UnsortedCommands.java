@@ -1843,7 +1843,7 @@ public class UnsortedCommands {
             JavaCity jc = new JavaCity(build);
             jc.zeroNonMilitary();
             build = jc.toCityBuild();
-            if (geographicContinent == null) {
+            if (geographicContinent == null && build.getCity_id() != null) {
                 DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(build.getCity_id());
                 if (city != null) {
                     DBNation nation = city.getNation();
