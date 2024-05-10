@@ -49,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -80,7 +81,36 @@ public class ConflictManager {
         if (!key.isEmpty() && !secret.isEmpty() && !region.isEmpty() && !bucket.isEmpty()) {
             return new AwsManager(key, secret, bucket, region);
         }
+        Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(() -> {
+            try {
+                pushDirtyConflicts();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, 17, 7, TimeUnit.MINUTES);
         return null;
+    }
+
+    public String pushIndex() {
+        String key = "conflicts/index.gzip";
+        byte[] value = getPsonGzip();
+        aws.putObject(key, value);
+        return aws.getLink(key);
+    }
+
+    public boolean pushDirtyConflicts() {
+        boolean hasDirty = false;
+        for (Conflict conflict : getActiveConflicts()) {
+            if (conflict.isDirty()) {
+                conflict.push(this, null, false);
+                hasDirty = true;
+            }
+        }
+        if (hasDirty) {
+            pushIndex();
+            return true;
+        }
+        return false;
     }
 
     private synchronized void initTurn() {
@@ -210,9 +240,14 @@ public class ConflictManager {
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
         long turn = event.getCurrent();
-        for (Conflict conflict : getActiveConflicts()) {
+        boolean updated = false;
+        List<Conflict> conflicts = new ArrayList<>(getActiveConflicts());
+        for (Conflict conflict : conflicts) {
             conflict.getSide(true).updateTurnChange(this, turn, true);
             conflict.getSide(false).updateTurnChange(this, turn, false);
+        }
+        for (Conflict conflict : conflicts) {
+            conflict.push(this, null, true);
         }
     }
 

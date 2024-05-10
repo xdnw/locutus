@@ -151,11 +151,12 @@ public class ConflictCommands {
                 urls.addAll(conflict.push(manager, null, includeGraphs));
             }
             return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
+        } else {
+            if (!manager.pushDirtyConflicts()) {
+                manager.pushIndex();
+            }
+            return "Done! See: <https://wars.locutus.link/>";
         }
-        String key = "conflicts/index.gzip";
-        byte[] value = manager.getPsonGzip();
-        aws.putObject(key, value);
-        return "Done! See: <" + aws.getLink(key) + ">";
     }
 
     @Command(desc = "Delete a conflict from the database\n" +

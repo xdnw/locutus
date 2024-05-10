@@ -120,7 +120,7 @@ public class DBNation implements NationOrAlliance {
     private int alliance_id;
     private long last_active;
     private double score;
-    private int cities; // TODO remove
+    private int cities;
     private DomesticPolicy domestic_policy;
     private WarPolicy war_policy;
     private int soldiers;
@@ -4055,7 +4055,7 @@ public class DBNation implements NationOrAlliance {
     public int getRemainingUnitBuy(MilitaryUnit unit, long timeSince) {
         if (unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) return -1;
 
-        int previousAmt = getUnits(unit, timeSince);
+        int previousAmt = getUnitsAt(unit, timeSince);
         int currentAmt = getUnits(unit);
         int lostInAttacks = 0;
 
@@ -5398,17 +5398,9 @@ public class DBNation implements NationOrAlliance {
         return body.toString().replaceAll(" \\| ","|");
     }
 
-//    public int getCities(long date) {
-//
-//    }
-//
-//    public Set<Project> getProjects(long date) {
-//
-//    }
-
     @Command(desc = "Get units at a specific date")
     @RolePermission(Roles.MILCOM)
-    public int getUnits(MilitaryUnit unit, long date) {
+    public int getUnitsAt(MilitaryUnit unit, long date) {
         long now = System.currentTimeMillis();
         if (date > now - TimeUnit.MILLISECONDS.toMillis(15)) {
             return getUnits(unit);

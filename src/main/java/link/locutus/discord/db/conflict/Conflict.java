@@ -710,4 +710,8 @@ public class Conflict {
         }
         return urls;
     }
+
+    public boolean isDirty() {
+        return this.dirtyJson;
+    }
 }
