@@ -1288,14 +1288,14 @@ public class CM {
                         return createArgs("ctowned", ctowned, "graphData", graphData, "allianceNames", allianceNames, "wiki", wiki, "all", all);
                     }
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="recalculateGraphData")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="recalculateGraphs")
                 public static class recalculate_graphs extends CommandRef {
                     public static final recalculate_graphs cmd = new recalculate_graphs();
                     public recalculate_graphs create(String conflicts) {
                         return createArgs("conflicts", conflicts);
                     }
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="recalculateTableData")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="recalculateTables")
                 public static class recalculate_tables extends CommandRef {
                     public static final recalculate_tables cmd = new recalculate_tables();
                     public recalculate_tables create(String conflicts) {

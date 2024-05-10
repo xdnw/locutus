@@ -26,6 +26,8 @@ public class WikiConflictsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.conflict.list.cmd),
                 "# Viewing conflict attributes on discord",
                 commandMarkdownSpoiler(CM.conflict.info.cmd),
+                "# Creating a personal unlisted conflict",
+                commandMarkdownSpoiler(CM.conflict.create_temp.cmd),
                 "# Site Administration",
                 "!! ONLY AVAILABLE TO SITE MODERATORS !!",
                 "Note: Conflicts created within the bot are NOT automatically pushed to the site, see below for instructions",
