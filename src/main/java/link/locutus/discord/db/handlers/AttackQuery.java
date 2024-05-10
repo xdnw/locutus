@@ -42,6 +42,18 @@ public class AttackQuery {
         return this;
     }
 
+    public AttackQuery withWars(long start, long end) {
+        if (end == Long.MAX_VALUE) {
+            if (start <= 0) {
+                return withAllWars();
+            } else {
+                return withWars(getDb().getWars(f -> f.getDate() >= start));
+            }
+        } else {
+            return withWars(getDb().getWars(f -> f.getDate() >= start && f.getDate() <= end));
+        }
+    }
+
     public AttackQuery withWars(Map<Integer, DBWar> wars) {
         this.wars = new ObjectOpenHashSet<>(wars.values());
         return this;

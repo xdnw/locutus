@@ -313,8 +313,8 @@ public class CoalitionSide {
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker) {
-        AttackTypeSubCategory subCategory = attack.getSubCategory(true);
+    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker, boolean checkActivity) {
+        AttackTypeSubCategory subCategory = attack.getSubCategory(checkActivity);
         int attackerAA, attackerId, cities;
         long day = TimeUtil.getDay(attack.getDate());
         if (isAttacker) {

@@ -34,44 +34,37 @@ public class GetBuild extends Command {
     }
 
     public static String onCommand(DBNation nation, IMessageIO channel) throws Exception {
-        Map<DBNation, Map<Integer, JavaCity>> builds = Collections.singletonMap(nation, nation.getCityMap(true));
-        Map<DBNation, Map<CityBuild, List<String>>> uniqueBuilds = new HashMap<>();
-        for (Map.Entry<DBNation, Map<Integer, JavaCity>> nationEntry : builds.entrySet()) {
-            Map<CityBuild, List<String>> nMap = uniqueBuilds.computeIfAbsent(nationEntry.getKey(), i -> Maps.newHashMap());
-            for (Map.Entry<Integer, JavaCity> entry : nationEntry.getValue().entrySet()) {
-                int cityId = entry.getKey();
-                String url = "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
-                String link = MarkupUtil.markdownUrl(cityId + "", url);
-                JavaCity build = entry.getValue();
-                nMap.computeIfAbsent(build.toCityBuild(), i -> Lists.newArrayList()).add(link);
-            }
+        Map<Integer, JavaCity> builds = nation.getCityMap(true);
+        Map<CityBuild, List<String>> nMap = new HashMap<>();
+        for (Map.Entry<Integer, JavaCity> entry : builds.entrySet()) {
+            int cityId = entry.getKey();
+            String url = "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
+            String link = MarkupUtil.markdownUrl(cityId + "", url);
+            JavaCity build = entry.getValue();
+            nMap.computeIfAbsent(build.toCityBuild(), i -> Lists.newArrayList()).add(link);
         }
 
         IMessageBuilder msg = channel.create();
-        for (Map.Entry<DBNation, Map<CityBuild, List<String>>> entry : uniqueBuilds.entrySet()) {
-            msg.append(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:");
-
-            Map<CityBuild, List<String>> cityPair = entry.getValue();
-            nation = entry.getKey();
-            List<Map.Entry<String, String>> buildStr = new ObjectArrayList<>();
-            for (Map.Entry<CityBuild, List<String>> cityEntry : cityPair.entrySet()) {
-                String title = cityEntry.getValue().size() + " cities";
-                StringBuilder response = new StringBuilder();
-                String cityStr = StringMan.getString(cityEntry.getValue());
-                response.append(cityStr)
-                        .append("```")
-                        .append(cityEntry.getKey().toString())
-                        .append("```");
-                buildStr.add(Map.entry(title, response.toString()));
+        msg.append(nation.getNation() + " has " + nMap.size() + " unique builds in " + nation.getCities() + " cities:");
+        Map<String, Set<Integer>> unique = new LinkedHashMap<>();
+        List<Map.Entry<String, String>> buildStr = new ObjectArrayList<>();
+        for (Map.Entry<CityBuild, List<String>> cityEntry : nMap.entrySet()) {
+            String title = cityEntry.getValue().size() + " cities";
+            StringBuilder response = new StringBuilder();
+            String cityStr = StringMan.getString(cityEntry.getValue());
+            response.append(cityStr)
+                    .append("```")
+                    .append(cityEntry.getKey().toString())
+                    .append("```");
+            buildStr.add(Map.entry(title, response.toString()));
+        }
+        if (buildStr.size() <= 4) {
+            for (Map.Entry<String, String> build : buildStr) {
+                msg.embed(build.getKey(), build.getValue());
             }
-            if (buildStr.size() <= 10) {
-                for (Map.Entry<String, String> build : buildStr) {
-                    msg.embed(build.getKey(), build.getValue());
-                }
-            } else {
-                for (Map.Entry<String, String> build : buildStr) {
-                    msg.append("### " + build.getKey() + ":\n" + build.getValue() + "\n");
-                }
+        } else {
+            for (Map.Entry<String, String> build : buildStr) {
+                msg.append("### " + build.getKey() + ":\n" + build.getValue() + "\n");
             }
         }
         msg.send();

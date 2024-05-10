@@ -476,9 +476,9 @@ public class Conflict {
         return warsVsAlliance.computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> new DamageStatGroup());
     }
 
-    public void updateWar(DBWar previous, DBWar current, long turn) {
+    public boolean updateWar(DBWar previous, DBWar current, long turn) {
         CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa(), turn);
-        if (side == null) return;
+        if (side == null) return false;
 
         CoalitionSide otherSide = side.getOther();
         side.updateWar(previous, current, true);
@@ -489,9 +489,10 @@ public class Conflict {
         }
 
         dirtyJson = true;
+        return true;
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, long turn) {
+    public void updateAttack(DBWar war, AbstractCursor attack, long turn, boolean checkActivity) {
         int attackerAA, defenderAA;
         if (attack.getAttacker_id() == war.getAttacker_id()) {
             attackerAA = war.getAttacker_aa();
@@ -503,8 +504,8 @@ public class Conflict {
         CoalitionSide side = getCoalition(attackerAA, defenderAA, turn);
         if (side == null) return;
         CoalitionSide otherSide = side.getOther();
-        side.updateAttack(war, attack, true);
-        otherSide.updateAttack(war, attack, false);
+        side.updateAttack(war, attack, true, checkActivity);
+        otherSide.updateAttack(war, attack, false, checkActivity);
         getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
         getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
         getWarWebEntry(defenderAA, attackerAA).apply(attack, false);

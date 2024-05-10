@@ -177,8 +177,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");
         getCommands().registerMethod(new StatCommands(), List.of("stats_other", "global_metrics"), "orbisStatByDay", "by_time");
 
-        getCommands().registerMethod(new StatCommands(), List.of("channel", "sort"), "sortChannelsSheet", "sheet");
-        getCommands().registerMethod(new StatCommands(), List.of("channel", "sort"), "sortChannelsName", "category_filter");
+        getCommands().registerMethod(new IACommands(), List.of("channel", "sort"), "sortChannelsSheet", "sheet");
+        getCommands().registerMethod(new IACommands(), List.of("channel", "sort"), "sortChannelsName", "category_filter");
 
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militaryRanking", "militarization");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "listMerges", "merges");
@@ -192,9 +192,10 @@ public class CommandManager2 {
         getCommands().registerMethod(new UtilityCommands(), List.of("land"), "landROI", "roi");
         getCommands().registerMethod(new UtilityCommands(), List.of("infra"), "infraROI", "roi");
 
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "info", "info");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
+        getCommands().registerMethod(new VirtualConflictCommands(), List.of("conflict"), "createTemporary", "create_temp");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictEnd", "end");

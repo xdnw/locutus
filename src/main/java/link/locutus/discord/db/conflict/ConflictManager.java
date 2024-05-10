@@ -19,6 +19,7 @@ import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
+import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.war.WarCreateEvent;
@@ -203,7 +204,7 @@ public class ConflictManager {
     public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Integer> allowed) {
         long turn = TimeUtil.getTurn(war.getDate());
         if (turn > lastTurn) initTurn();
-        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn));
+        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, true));
     }
 
     @Subscribe
@@ -371,6 +372,31 @@ public class ConflictManager {
         System.out.println("Load graph data: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
     }
 
+    public void loadVirtualConflict(Conflict conflict, boolean clearBeforeUpdate) {
+        if (clearBeforeUpdate) {
+            conflict.clearWarData();
+        }
+        long start = TimeUtil.getTimeFromTurn(conflict.getStartTurn());
+        long end = conflict.getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(conflict.getEndTurn() + 60);
+
+        Set<Integer> aaIds = conflict.getAllianceIds();
+
+        AttackQuery query = Locutus.imp().getWarDb().queryAttacks()
+                .withWarsForNationOrAlliance(null, aaIds::contains, f -> f.getDate() >= start && f.getDate() <= end);
+        Set<DBWar> wars = new ObjectOpenHashSet<>();
+        for (DBWar war : query.wars) {
+            if (conflict.updateWar(null, war, TimeUtil.getTurn(war.getDate()))) {
+                wars.add(war);
+            }
+        }
+        db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
+            long turn = TimeUtil.getTurn(attack.getDate());
+            if (TimeUtil.getTurn(war.getDate()) <= turn) {
+                conflict.updateAttack(war, attack, turn, false);
+            }
+        });
+    }
+
     public void loadConflictWars(Collection<Conflict> conflicts, boolean clearBeforeUpdate) {
         try {
             long start = System.currentTimeMillis();
@@ -432,26 +458,26 @@ public class ConflictManager {
                 }
             });
 
-            System.out.println("Loaded attacks in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-            //
-            db.query("SELECT * FROM conflict_graphs2", stmt -> {
-            }, (ThrowingConsumer<ResultSet>) rs -> {
-                while (rs.next()) {
-                    int conflictId = rs.getInt("conflict_id");
-                    boolean side = rs.getBoolean("side");
-                    int allianceId = rs.getInt("alliance_id");
-                    int metricOrd = rs.getInt("metric");
-                    long turnOrDay = rs.getLong("turn");
-                    int city = rs.getInt("city");
-                    int value = rs.getInt("value");
-                    Conflict conflict = conflictById.get(conflictId);
-                    if (conflict != null) {
-                        ConflictMetric metric = ConflictMetric.values[metricOrd];
-                        conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
+            if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {
+                db.query("SELECT * FROM conflict_graphs2", stmt -> {
+                }, (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        int conflictId = rs.getInt("conflict_id");
+                        boolean side = rs.getBoolean("side");
+                        int allianceId = rs.getInt("alliance_id");
+                        int metricOrd = rs.getInt("metric");
+                        long turnOrDay = rs.getLong("turn");
+                        int city = rs.getInt("city");
+                        int value = rs.getInt("value");
+                        Conflict conflict = conflictById.get(conflictId);
+                        if (conflict != null) {
+                            ConflictMetric metric = ConflictMetric.values[metricOrd];
+                            conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
+                        }
                     }
-                }
-            });
-            System.out.println("Loaded graph data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+                });
+                System.out.println("Loaded graph data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         }

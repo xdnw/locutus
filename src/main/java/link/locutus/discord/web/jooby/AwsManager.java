@@ -86,10 +86,31 @@ public class AwsManager {
 
         // Write some code to list the items in the bucket
         AwsManager awsManager = new AwsManager(awsKey, awsSecret, bucketName, region);
-        ListObjectsV2Result result = awsManager.s3Client.listObjectsV2(bucketName);
-        List<S3ObjectSummary> objects = result.getObjectSummaries();
-        for (S3ObjectSummary os : objects) {
-            System.out.println("* " + os.getKey() + " - size: " + os.getSize() + " - last modified: " + os.getLastModified());
-        }
+//        ListObjectsV2Result result = awsManager.s3Client.listObjectsV2(bucketName);
+//        List<S3ObjectSummary> objects = result.getObjectSummaries();
+//        for (S3ObjectSummary os : objects) {
+//            System.out.println("* " + os.getKey() + " - size: " + os.getSize() + " - last modified: " + os.getLastModified());
+//        }
+
+        // move conflicts/7.gzip to conflicts/n/189573/1-2.gzip
+
+
+    }
+    public void copyObject(String sourceKey, String destinationKey) {
+        s3Client.copyObject(bucketName, sourceKey, bucketName, destinationKey);
+    }
+
+    public void deleteObject(String key) {
+        s3Client.deleteObject(bucketName, key);
+    }
+
+    public void moveObject(String sourceKey, String destinationKey) {
+        copyObject(sourceKey, destinationKey);
+        deleteObject(sourceKey);
+    }
+
+    public List<S3ObjectSummary> getObjects() {
+        ListObjectsV2Result result = s3Client.listObjectsV2(bucketName);
+        return result.getObjectSummaries();
     }
 }
