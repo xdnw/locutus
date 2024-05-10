@@ -2738,6 +2738,19 @@ public class GuildKey {
         }
     }.requireValidAlliance().requiresOffshore();
 
+    public static GuildSetting<Boolean> MEMBER_CAN_ESCROW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String MEMBER_CAN_WITHDRAW(@Me GuildDB db, @Me User user, boolean enabled) {
+            return MEMBER_CAN_ESCROW.setAndValidate(db, user, enabled);
+        }
+        @Override
+        public String help() {
+            return "Whether members can use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw their escrowed funds";
+        }
+    }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
+
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {
