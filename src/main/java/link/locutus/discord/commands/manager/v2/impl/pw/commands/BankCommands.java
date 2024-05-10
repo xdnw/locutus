@@ -3463,7 +3463,7 @@ public class BankCommands {
                        @Default DBAlliance sender_alliance,
 
                        @Switch("f") boolean force) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
+        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) throw new IllegalArgumentException("Error: Maintenance");
         return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
     }
 
@@ -3495,8 +3495,8 @@ public class BankCommands {
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
                          @Switch("f") boolean force) throws IOException {
-        if (me.getId() != Settings.INSTANCE.NATION_ID) return "WIP";
-        if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
+        if (user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return "WIP";
+        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) throw new IllegalArgumentException("Error: Maintenance");
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
         }
