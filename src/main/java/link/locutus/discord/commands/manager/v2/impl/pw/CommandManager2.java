@@ -213,8 +213,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importCtowned", "ctowned");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importWikiPage", "wiki_page");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importWikiAll", "wiki_all");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "recalculateGraphData", "recalculate_graphs");
-        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "recalculateTableData", "recalculate_tables");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "recalculateGraphs", "recalculate_graphs");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "recalculateTables", "recalculate_tables");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importAllianceNames", "alliance_names");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");

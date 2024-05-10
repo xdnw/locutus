@@ -984,6 +984,7 @@ public class OffshoreInstance {
                     senderDB.setEscrowed(receiver.asNation(), balance, escrowDate);
                 }
 //                result = Map.entry(TransferStatus.SUCCESS, "Escrowed `" + PW.resourcesToString(amount) + "` for " + receiver.getName() + ". use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
+                isInternalTransfer = true;
                 result = new TransferResult(TransferStatus.SUCCESS, receiver, amount, ingameNote)
                         .addMessage("Escrowed `" + ResourceType.resourcesToString(amount) + "` for " + receiver.getMarkdownUrl(),
                         "Use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
