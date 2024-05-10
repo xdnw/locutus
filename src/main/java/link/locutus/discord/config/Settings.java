@@ -498,6 +498,12 @@ public class Settings extends Config {
 
             @Comment("Name of AWS S3 bucket (e.g. `locutus`)")
             public String BUCKET = "";
+
+            @Comment({
+                    "The frontend url for war stats",
+                    "Not hosted locally, see: <https://github.com/xdnw/lc_stats_svelte/> (github pages)"
+            })
+            public String SITE = "https://wars.locutus.link";
         }
         @Comment("The cosmetic name of the web interface")
         public String INTERFACE_NAME = "Locutus";

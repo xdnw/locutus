@@ -42,6 +42,7 @@ import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
@@ -525,7 +526,7 @@ public class StatCommands {
             }
             msg.embed("War Status", response.toString());
         }
-        msg.append("\n\nSee also: <https://wars.locutus.link/>");
+        msg.append("\n\nSee also: <" + Settings.INSTANCE.WEB.S3.SITE + ">");
         msg.send();
         return null;
     }

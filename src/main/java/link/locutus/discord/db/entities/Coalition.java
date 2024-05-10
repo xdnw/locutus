@@ -120,6 +120,13 @@ public enum Coalition {
         public boolean hasPermission(Guild guild, User user) {
             return Roles.ADMIN.hasOnRoot(user);
         }
+    },
+
+    MANAGE_CONFLICTS("Users with MILCOM role in this coalition can manage the featured conflicts") {
+        @Override
+        public boolean hasPermission(Guild guild, User user) {
+            return Roles.ADMIN.hasOnRoot(user);
+        }
     }
 
     ;

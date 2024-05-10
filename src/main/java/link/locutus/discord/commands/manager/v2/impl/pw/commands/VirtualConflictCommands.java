@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -54,7 +55,7 @@ public class VirtualConflictCommands {
 
         String id = "n/" + nation.getId() + "/" + UUID.randomUUID();
         List<String> urls = conflict.push(manager, id, true);
-        return "https://wars.locutus.link/conflict?id=" + id;
+        return Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + id;
     }
 
 }

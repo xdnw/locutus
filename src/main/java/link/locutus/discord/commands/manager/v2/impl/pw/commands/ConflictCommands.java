@@ -1,9 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.conflict.CoalitionSide;
 import link.locutus.discord.db.conflict.CtownedFetcher;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.gpt.pw.WikiPagePW;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -16,10 +22,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBTopic;
-import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -99,11 +101,12 @@ public class ConflictCommands {
             response.append("Use `showParticipants: True` to list participants");
         }
 
-        return response.toString() + "\n\n<http://wars.locutus.link/conflict?id=" + conflict.getId() + ">";
+        return response.toString() + "\n\n<" + Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + conflict.getId() + ">";
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(value = Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setWiki(ConflictManager manager, Conflict conflict, String url) throws IOException {
         if (url.startsWith("http")) {
             if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
@@ -115,28 +118,32 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setStatus(ConflictManager manager, Conflict conflict, String status) throws IOException {
         conflict.setStatus(status);
         return "Done! Set the status of `" + conflict.getName() + "` to `" + status + "`";
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCB(ConflictManager manager, Conflict conflict, String casus_belli) throws IOException {
         conflict.setCasusBelli(casus_belli);
         return "Done! Set the casus belli of `" + conflict.getName() + "` to `" + casus_belli + "`";
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCategory(ConflictManager manager, Conflict conflict, ConflictCategory category) throws IOException {
         conflict.setCategory(category);
         return "Done! Set the category of `" + conflict.getName() + "` to `" + category + "`";
     }
 
     @Command(desc = "Pushes conflict data to the AWS bucket for the website")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("g") boolean includeGraphs, @Switch("w") boolean reloadWars) {
         AwsManager aws = manager.getAws();
         if (aws == null) {
@@ -155,13 +162,14 @@ public class ConflictCommands {
             if (!manager.pushDirtyConflicts()) {
                 manager.pushIndex();
             }
-            return "Done! See: <https://wars.locutus.link/>";
+            return "Done! See: <" + Settings.INSTANCE.WEB.S3.SITE + ">";
         }
     }
 
     @Command(desc = "Delete a conflict from the database\n" +
             "Does not push changes to the website")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String deleteConflict(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, Conflict conflict, @Switch("f") boolean confirm) {
         if (!confirm) {
             String title = "Delete conflict " + conflict.getName();
@@ -224,7 +232,8 @@ public class ConflictCommands {
     @Command(desc = "Set the end date for a conflict\n" +
             "Use a value of `-1` to specify no end date\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setConflictEnd(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Arg("Only set the end date for a single alliance") @Switch("a") DBAlliance alliance) {
         String timeStr = command.getString("time");
         if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) < 0) {
@@ -246,7 +255,8 @@ public class ConflictCommands {
     @Command(desc = "Set the start date for a conflict\n" +
             "Use a value of `-1` to specify no start date (if prividing an alliance)\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setConflictStart(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
         String timeStr = command.getString("time");
         if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) < 0) {
@@ -269,7 +279,8 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Set the name of a conflict")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setConflictName(ConflictManager manager, Conflict conflict, String name, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
         if (isCoalition1 && isCoalition2) {
             throw new IllegalArgumentException("Cannot specify both `isCoalition1` and `isCoalition2`");
@@ -310,7 +321,8 @@ public class ConflictCommands {
     }
 
     @Command(desc = "Manually create an ongoing conflict between two coalitions")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String addConflict(ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d")@Timestamp Long start) {
         if (conflictName != null) {
             if (MathMan.isInteger(conflictName)) {
@@ -378,7 +390,8 @@ public class ConflictCommands {
 
     @Command(desc = "Remove a set of alliances from a conflict\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String removeCoalition(Conflict conflict, Set<DBAlliance> alliances) {
         Set<DBAlliance> notRemoved = new LinkedHashSet<>();
         for (DBAlliance alliance : alliances) {
@@ -408,6 +421,8 @@ public class ConflictCommands {
 
     @Command(desc = "Add a set of alliances to a conflict\n" +
             "This does not push the data to the site")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String addCoalition(@Me User user, Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
         boolean hasAdmin = Roles.ADMIN.hasOnRoot(user);
         if (isCoalition1 && isCoalition2) {
@@ -485,7 +500,8 @@ public class ConflictCommands {
 
     @Command(desc = "Import ctowned conflicts into the database\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importCtowned(ConflictManager manager,
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
@@ -497,7 +513,8 @@ public class ConflictCommands {
 
     @Command(desc = "Import alliance names (to match with the ids of deleted alliances)\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importAllianceNames(ConflictManager manager) throws IOException, ParseException {
         manager.saveDataCsvAllianceNames();
         for (Map.Entry<String, Integer> entry : PWWikiUtil.getWikiAllianceIds().entrySet()) {
@@ -510,7 +527,8 @@ public class ConflictCommands {
 
     @Command(desc = "Import a wiki page as a conflict\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importWikiPage(ConflictManager manager, String name, @Default String url, @Default("true") boolean useCache) throws IOException {
         if (name.contains("http")) return "Please specify the name of the wiki page, not the URL for `name`";
         if (url == null) {
@@ -583,7 +601,8 @@ public class ConflictCommands {
 
     @Command(desc = "Import all wiki pages as conflicts\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importWikiAll(ConflictManager manager, @Default("true") boolean useCache) throws IOException {
         Map<String, String> errors = new LinkedHashMap<>();
         List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
@@ -594,7 +613,8 @@ public class ConflictCommands {
 
     @Command(desc = "Recalculate the graph data for a set of conflicts\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String recalculateGraphData(ConflictManager manager, Set<Conflict> conflicts) {
         manager.loadConflictWars(conflicts, true);
         return "Done!\nNote: this does not push the data to the site";
@@ -603,7 +623,8 @@ public class ConflictCommands {
     @Command(desc = "Bulk import conflict data from multiple sources\n" +
             "Including ctowned, wiki, graph data, alliance names or ALL\n" +
             "This does not push the data to the site")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki, @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
         boolean loadGraphData = false;
         if (all) {

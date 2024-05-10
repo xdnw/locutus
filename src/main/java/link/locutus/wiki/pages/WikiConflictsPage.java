@@ -19,7 +19,6 @@ public class WikiConflictsPage extends BotWikiGen {
                 """
                 Live at: <https://wars.locutus.link/>
                 
-                
                 Browse featured Alliance Vs Alliance conflicts and statistics
                 For fine grained war stats, please use other bot commands
                 """,
