@@ -318,10 +318,10 @@ public interface NationList extends NationFilter {
 
         Collection<DBNation> aaNations = getNations();
         for (DBNation nation : aaNations) {
-            oldSoldier += nation.getUnits(MilitaryUnit.SOLDIER, yesterday);
-            oldTanks += nation.getUnits(MilitaryUnit.TANK, yesterday);
-            oldAir += nation.getUnits(MilitaryUnit.AIRCRAFT, yesterday);
-            oldSea += nation.getUnits(MilitaryUnit.SHIP, yesterday);
+            oldSoldier += nation.getUnitsAt(MilitaryUnit.SOLDIER, yesterday);
+            oldTanks += nation.getUnitsAt(MilitaryUnit.TANK, yesterday);
+            oldAir += nation.getUnitsAt(MilitaryUnit.AIRCRAFT, yesterday);
+            oldSea += nation.getUnitsAt(MilitaryUnit.SHIP, yesterday);
         }
 
         double soldierBuyTotal = (total.getSoldiers() - oldSoldier) / oldSoldier;

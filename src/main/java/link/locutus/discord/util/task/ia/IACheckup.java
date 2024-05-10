@@ -772,7 +772,7 @@ public class IACheckup {
         double threshold = maxPlanes * 0.9;
         if (nation.getAircraft() < threshold) {
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3);
-            int previousAir = nation.getUnits(MilitaryUnit.AIRCRAFT, cutoff);
+            int previousAir = nation.getUnitsAt(MilitaryUnit.AIRCRAFT, cutoff);
             if (previousAir == nation.getAircraft()) {
                 String desc = "Planes can attack ground, air, or sea and are the best unit for defending your infra and allies. You can buy aircraft from the military tab. <https://politicsandwar.com/nation/military/aircraft/>";
                 return new AbstractMap.SimpleEntry<>(nation.getAircraft() / (double) threshold, desc);
@@ -1327,7 +1327,7 @@ public class IACheckup {
 
             double maxPlanes = Math.min(numHangars * 15, pop * 0.95 * 0.001);
             Integer currentAircraft = nation.getAircraft();
-            int previousPlanes = nation.getUnits(MilitaryUnit.AIRCRAFT, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1));
+            int previousPlanes = nation.getUnitsAt(MilitaryUnit.AIRCRAFT, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1));
             if (previousPlanes == currentAircraft && currentAircraft < maxPlanes) {
                 double canBuy = Math.min(numHangars * 15, pop * 0.001);
                 message = "You can purchase up to " + (int) canBuy + " aircraft.";
@@ -1368,7 +1368,7 @@ public class IACheckup {
 
             double maxSoldiers = Math.min(3000 * numBarracks, pop * 0.95 * 0.15);
             Integer currentSoldiers = nation.getSoldiers();
-            int previousSoldiers = nation.getUnits(MilitaryUnit.SOLDIER, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1));
+            int previousSoldiers = nation.getUnitsAt(MilitaryUnit.SOLDIER, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1));
             if (previousSoldiers == currentSoldiers && currentSoldiers < maxSoldiers) {
                 double canBuy = Math.min(pop * 0.15, 3000 * numBarracks);
                 message = "You can purchase up to " + (int) canBuy + " soldiers.";

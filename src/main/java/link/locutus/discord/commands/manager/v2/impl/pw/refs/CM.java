@@ -950,6 +950,22 @@ public class CM {
                     return createArgs("category", category);
                 }
             }
+            public static class sort{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="sortChannelsName")
+                public static class category_filter extends CommandRef {
+                    public static final category_filter cmd = new category_filter();
+                    public category_filter create(String from, String categoryPrefix, String filter, String warn_on_filter_fail, String force) {
+                        return createArgs("from", from, "categoryPrefix", categoryPrefix, "filter", filter, "warn_on_filter_fail", warn_on_filter_fail, "force", force);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="sortChannelsSheet")
+                public static class sheet extends CommandRef {
+                    public static final sheet cmd = new sheet();
+                    public sheet create(String from, String sheet, String filter, String warn_on_filter_fail, String force) {
+                        return createArgs("from", from, "sheet", sheet, "filter", filter, "warn_on_filter_fail", warn_on_filter_fail, "force", force);
+                    }
+                }
+            }
         }
         public static class chat{
             public static class conversion{
@@ -1169,6 +1185,13 @@ public class CM {
                 public static final create cmd = new create();
                 public create create(String category, String coalition1, String coalition2, String conflictName, String start) {
                     return createArgs("category", category, "coalition1", coalition1, "coalition2", coalition2, "conflictName", conflictName, "start", start);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.VirtualConflictCommands.class,method="createTemporary")
+            public static class create_temp extends CommandRef {
+                public static final create_temp cmd = new create_temp();
+                public create_temp create(String col1, String col2, String start, String end, String includeGraphs) {
+                    return createArgs("col1", col1, "col2", col2, "start", start, "end", end, "includeGraphs", includeGraphs);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="deleteConflict")
