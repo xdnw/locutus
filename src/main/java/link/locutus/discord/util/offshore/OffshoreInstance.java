@@ -981,10 +981,13 @@ public class OffshoreInstance {
                     for (int i = 0; i < amount.length; i++) {
                         balance[i] += amount[i];
                     }
+                    if (!isInternalTransfer && !depositType.isIgnored()) {
+                        if (nationAccount == null) nationAccount = receiver.asNation();
+                        senderDB.subtractBalance(timestamp, nationAccount, bankerNation.getNation_id(), note, amount);
+                    }
                     senderDB.setEscrowed(receiver.asNation(), balance, escrowDate);
                 }
 //                result = Map.entry(TransferStatus.SUCCESS, "Escrowed `" + PW.resourcesToString(amount) + "` for " + receiver.getName() + ". use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
-                isInternalTransfer = true;
                 result = new TransferResult(TransferStatus.SUCCESS, receiver, amount, ingameNote)
                         .addMessage("Escrowed `" + ResourceType.resourcesToString(amount) + "` for " + receiver.getMarkdownUrl(),
                         "Use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
