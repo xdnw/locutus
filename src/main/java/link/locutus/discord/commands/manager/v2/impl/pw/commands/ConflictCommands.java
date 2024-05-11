@@ -727,7 +727,7 @@ public class ConflictCommands {
         }
         manager.pushIndex();
         messages.add("Pushed changed to site index");
-        messages.add("See: TODO CM REF to view the current featured conflict settings");
+        messages.add("See: " + CM.conflict.featured.list_rules.cmd.toSlashMention());
         return StringMan.join(messages, "\n");
     }
 
@@ -737,7 +737,7 @@ public class ConflictCommands {
         List<Long> config = manager.getSourceSets().get(db.getIdLong());
         if (config == null || config.isEmpty()) {
             return "This guild has no customized featured conflict ruleset. All conflicts are featured by default\n" +
-                    "Use TODO CM REF to set what conflicts are featured";
+                    "Use " + CM.conflict.featured.list_rules.cmd.toSlashMention();
         }
 
         List<String> items = new ArrayList<>();

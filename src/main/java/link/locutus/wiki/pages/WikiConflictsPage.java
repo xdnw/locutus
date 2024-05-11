@@ -68,7 +68,12 @@ public class WikiConflictsPage extends BotWikiGen {
                 "### Updating a specific conflict",
                 "The conflict ID is in the conflict URL",
                 "Set `reinitialize_wars` or `reinitialize_graphs` to fully recalculate table and graph data before uploading",
-                CM.conflict.sync.website.cmd.create("1234", "true", null, null).toString()
+                CM.conflict.sync.website.cmd.create("1234", "true", null, null).toString(),
+                "# Filtering Featured Conflicts",
+                "Select the guilds or conflict ids that are featured on the website when your guild's featured ruleset is selected",
+                commandMarkdownSpoiler(CM.conflict.featured.add_rule.cmd),
+                commandMarkdownSpoiler(CM.conflict.featured.remove_rule.cmd),
+                commandMarkdownSpoiler(CM.conflict.featured.list_rules.cmd)
         );
     }
 }
