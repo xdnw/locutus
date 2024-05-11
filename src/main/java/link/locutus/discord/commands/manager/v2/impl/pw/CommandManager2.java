@@ -192,6 +192,10 @@ public class CommandManager2 {
         getCommands().registerMethod(new UtilityCommands(), List.of("land"), "landROI", "roi");
         getCommands().registerMethod(new UtilityCommands(), List.of("infra"), "infraROI", "roi");
 
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "featured"), "featureConflicts", "add_rule");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "featured"), "removeFeature", "remove_rule");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "featured"), "listFeaturedRuleset", "list_rules");
+
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "info", "info");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "listConflicts", "list");
         getCommands().registerMethod(new VirtualConflictCommands(), List.of("conflict"), "createTemporary", "create_temp");

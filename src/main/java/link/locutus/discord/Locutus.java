@@ -231,12 +231,14 @@ public final class Locutus extends ListenerAdapter {
             throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
         }
 
-        Settings.INSTANCE.NATION_ID = 0;
-        Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
-        if (nationIdFromKey == null) {
-            throw new IllegalStateException("Could not get NATION_ID from key. Please ensure a valid API_KEY is set in " + Settings.INSTANCE.getDefaultFile());
+        if (Settings.INSTANCE.NATION_ID <= 0) {
+            Settings.INSTANCE.NATION_ID = 0;
+            Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
+            if (nationIdFromKey == null) {
+                throw new IllegalStateException("Could not get NATION_ID from key. Please ensure a valid API_KEY is set in " + Settings.INSTANCE.getDefaultFile());
+            }
+            Settings.INSTANCE.NATION_ID = nationIdFromKey;
         }
-        Settings.INSTANCE.NATION_ID = nationIdFromKey;
 
         System.out.println("remove:|| nationid " + (((-start)) + (start = System.currentTimeMillis())));
 

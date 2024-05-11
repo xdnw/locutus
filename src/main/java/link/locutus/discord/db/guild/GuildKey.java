@@ -2742,7 +2742,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String MEMBER_CAN_WITHDRAW(@Me GuildDB db, @Me User user, boolean enabled) {
+        public String MEMBER_CAN_ESCROW(@Me GuildDB db, @Me User user, boolean enabled) {
             return MEMBER_CAN_ESCROW.setAndValidate(db, user, enabled);
         }
         @Override

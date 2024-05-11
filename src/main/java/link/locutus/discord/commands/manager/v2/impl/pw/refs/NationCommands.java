@@ -1269,6 +1269,13 @@ public class NationCommands {
                 return createArgs("unit", unit);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUnitsAt")
+        public static class getUnitsAt extends CommandRef {
+            public static final getUnitsAt cmd = new getUnitsAt();
+            public getUnitsAt create(String unit, String date) {
+                return createArgs("unit", unit, "date", date);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUpdateTZ")
         public static class getUpdateTZ extends CommandRef {
             public static final getUpdateTZ cmd = new getUpdateTZ();

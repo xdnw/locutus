@@ -10,6 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
@@ -23,7 +24,7 @@ public class VirtualConflictCommands {
     @Command(desc = "Create a temporary conflict between two coalitions\n" +
             "Conflict is not auto updated")
     @RolePermission(Roles.ADMIN)
-    public String createTemporary(ConflictManager manager, @Me DBNation nation, @Me User author, Set<DBAlliance> col1, Set<DBAlliance> col2, @Timestamp long start, @Default @Timestamp Long end, @Switch("g") boolean includeGraphs) throws IOException, ParseException {
+    public String createTemporary(@Me Guild guild, ConflictManager manager, @Me DBNation nation, @Me User author, Set<DBAlliance> col1, Set<DBAlliance> col2, @Timestamp long start, @Default @Timestamp Long end, @Switch("g") boolean includeGraphs) throws IOException, ParseException {
         if (end == null) end = Long.MAX_VALUE;
         if (includeGraphs && (Math.min(System.currentTimeMillis(), end) - start > TimeUnit.DAYS.toMillis(90))) {
             throw new IllegalArgumentException("Graph generation is limited to 90 days of data. Please reduce the time range or set `includeGraphs: false`");
@@ -35,7 +36,7 @@ public class VirtualConflictCommands {
 
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = end == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(end);
-        Conflict conflict = new Conflict(-1, -1, ConflictCategory.GENERATED,
+        Conflict conflict = new Conflict(-1, -1, guild.getIdLong(), ConflictCategory.GENERATED,
                 conflictName,
                 col1Name,
                 col2Name,
