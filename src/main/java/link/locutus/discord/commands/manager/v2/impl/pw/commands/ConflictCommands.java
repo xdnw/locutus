@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.conflict.CoalitionSide;
 import link.locutus.discord.db.conflict.CtownedFetcher;
 import link.locutus.discord.db.entities.*;
@@ -27,6 +28,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -107,14 +109,14 @@ public class ConflictCommands {
     @Command(desc = "Sets the wiki page for a conflict")
     @RolePermission(value = Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String setWiki(ConflictManager manager, Conflict conflict, String url) throws IOException {
+    public String setWiki(@Me GuildDB db, ConflictManager manager, Conflict conflict, String url) throws IOException {
         if (url.startsWith("http")) {
             if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
             url = url.substring(url.lastIndexOf("/") + 1);
         }
         conflict.setWiki(url);
         return "Set wiki to: `" + url + "`. Attempting to load additional wiki information...\n\n" +
-                importWikiPage(manager, conflict.getName(), url, false);
+                importWikiPage(db, manager, conflict.getName(), url, false);
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
@@ -328,7 +330,7 @@ public class ConflictCommands {
     @Command(desc = "Manually create an ongoing conflict between two coalitions")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String addConflict(ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d") @Timestamp Long start) {
+    public String addConflict(@Me GuildDB db, ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d") @Timestamp Long start) {
         if (conflictName != null) {
             if (MathMan.isInteger(conflictName)) {
                 throw new IllegalArgumentException("Conflict name cannot be a number (`" + conflictName + "`)");
@@ -379,7 +381,7 @@ public class ConflictCommands {
         if (manager.getConflict(conflictName) != null) {
             throw new IllegalArgumentException("Conflict with name `" + conflictName + "` already exists");
         }
-        Conflict conflict = manager.addConflict(conflictName, category, "Coalition 1", "Coalition 2", "", "", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
+        Conflict conflict = manager.addConflict(conflictName, db.getIdLong(), category, "Coalition 1", "Coalition 2", "", "", "", TimeUtil.getTurn(start), Long.MAX_VALUE);
         StringBuilder response = new StringBuilder();
         response.append("Created conflict `" + conflictName + "`\n");
         // add coalitions
@@ -508,12 +510,12 @@ public class ConflictCommands {
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String importCtowned(ConflictManager manager,
+    public String importCtowned(@Me GuildDB db, ConflictManager manager,
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
         CtownedFetcher fetcher = new CtownedFetcher(manager);
-        fetcher.loadCtownedConflicts(useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-        fetcher.loadCtownedConflicts(useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
         return "Done!\nNote: this does not push the data to the site";
     }
 
@@ -535,7 +537,10 @@ public class ConflictCommands {
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String importWikiPage(ConflictManager manager, String name, @Default String url, @Default("true") boolean useCache) throws IOException {
+    public String importWikiPage(@Me GuildDB db, ConflictManager manager,
+                                 String name,
+                                 @Default String url,
+                                 @Default("true") boolean useCache) throws IOException {
         if (name.contains("http")) return "Please specify the name of the wiki page, not the URL for `name`";
         if (url == null) {
             url = Normalizer.normalize(name.replace(" ", "_"), Normalizer.Form.NFKC);
@@ -553,7 +558,7 @@ public class ConflictCommands {
             if (conflict.getStartTurn() < TimeUtil.getTurn(1577836800000L)) {
                 response.append("Conflict `" + name + "` before the war cutoff date of " + DiscordUtil.timestamp(1577836800000L, null) + "\n");
             } else {
-                loadWikiConflicts(manager, List.of(conflict));
+                loadWikiConflicts(db, manager, List.of(conflict));
                 response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
                 response.append("See: " +
                         CM.conflict.info.cmd.toSlashMention() +
@@ -566,7 +571,7 @@ public class ConflictCommands {
         return response.toString() + "\n\nNote: this does not push the data to the site";
     }
 
-    private String loadWikiConflicts(ConflictManager manager, List<Conflict> conflicts) {
+    private String loadWikiConflicts(GuildDB db, ConflictManager manager, List<Conflict> conflicts) {
         Map<String, Set<Conflict>> conflictsByWiki = manager.getConflictMap().values().stream().collect(Collectors.groupingBy(Conflict::getWiki, Collectors.toSet()));
         // Cutoff date
         conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
@@ -575,7 +580,7 @@ public class ConflictCommands {
             Conflict original = conflict;
             Set<Conflict> existingSet = conflictsByWiki.get(conflict.getWiki());
             if (existingSet == null) {
-                conflict = manager.addConflict(conflict.getName(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
+                conflict = manager.addConflict(conflict.getName(), db.getIdLong(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
                 existingSet = Set.of(conflict);
             }
             for (Conflict existing : existingSet) {
@@ -609,11 +614,11 @@ public class ConflictCommands {
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String importWikiAll(ConflictManager manager, @Default("true") boolean useCache) throws IOException {
+    public String importWikiAll(@Me GuildDB db, ConflictManager manager, @Default("true") boolean useCache) throws IOException {
         Map<String, String> errors = new LinkedHashMap<>();
         List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
 
-        return loadWikiConflicts(manager, conflicts);
+        return loadWikiConflicts(db, manager, conflicts);
     }
 
 
@@ -642,7 +647,12 @@ public class ConflictCommands {
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String importConflictData(ConflictManager manager, @Switch("c") boolean ctowned, @Switch("g") Set<Conflict> graphData, @Switch("a") boolean allianceNames, @Switch("w") boolean wiki, @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    public String importConflictData(@Me GuildDB db, ConflictManager manager,
+                                     @Switch("c") boolean ctowned,
+                                     @Switch("g") Set<Conflict> graphData,
+                                     @Switch("a") boolean allianceNames,
+                                     @Switch("w") boolean wiki,
+                                     @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
         boolean loadGraphData = false;
         if (all) {
             Locutus.imp().getWarDb().loadWarCityCountsLegacy();
@@ -655,10 +665,10 @@ public class ConflictCommands {
             importAllianceNames(manager);
         }
         if (ctowned) {
-            importCtowned(manager, true);
+            importCtowned(db, manager, true);
         }
         if (wiki) {
-            importWikiAll(manager, true);
+            importWikiAll(db, manager, true);
         }
         if (loadGraphData && graphData == null) {
             graphData = new LinkedHashSet<>(manager.getConflictMap().values());
@@ -668,5 +678,81 @@ public class ConflictCommands {
             recalculateGraphs(manager, graphData);
         }
         return "Done!\nNote: this does not push the data to the site";
+    }
+
+    @Command(desc = "Configure the guilds and conflict ids that will be featured by this guild\n" +
+            "By default all conflicts are featured\n" +
+            "Specify either a set of conflicts, or a guild to feature all conflicts from that guild")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    public String featureConflicts(ConflictManager manager, @Me GuildDB db, @Default Set<Conflict> conflicts, @Default Guild guild) {
+        if (conflicts == null && guild == null) {
+            throw new IllegalArgumentException("Please specify either `conflicts` or `guild`");
+        }
+        List<String> messages = new ArrayList<>();
+        if (conflicts != null) {
+            for (Conflict conflict : conflicts) {
+                manager.addSource(db.getIdLong(), conflict.getId(), 0);
+            }
+            messages.add("Added " + conflicts.size() + " conflicts to the featured list");
+        }
+        if (guild != null) {
+            manager.addSource(db.getIdLong(), guild.getIdLong(), 1);
+            messages.add("Added all conflicts from " + guild.toString() + " to the featured list");
+        }
+        manager.pushIndex();
+        messages.add("Pushed changed to site index");
+        return StringMan.join(messages, "\n");
+    }
+
+    @Command(desc = "Configure the guilds and conflict ids that will be featured by this guild\n" +
+            "By default all conflicts are featured\n" +
+            "Specify either a set of conflicts, or a guild to feature all conflicts from that guild")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    public String removeFeature(ConflictManager manager, @Me GuildDB db, @Default Set<Conflict> conflicts, @Default Guild guild) {
+        if (conflicts == null && guild == null) {
+            throw new IllegalArgumentException("Please specify either `conflicts` or `guild`");
+        }
+        List<String> messages = new ArrayList<>();
+        if (conflicts != null) {
+            for (Conflict conflict : conflicts) {
+                manager.removeSource(db.getIdLong(), conflict.getId(), 0);
+            }
+            messages.add("Removed " + conflicts.size() + " conflicts from the featured list");
+        }
+        if (guild != null) {
+            manager.removeSource(db.getIdLong(), guild.getIdLong(), 1);
+            messages.add("Removed all conflicts from " + guild.toString() + " from the featured list");
+        }
+        manager.pushIndex();
+        messages.add("Pushed changed to site index");
+        messages.add("See: TODO CM REF to view the current featured conflict settings");
+        return StringMan.join(messages, "\n");
+    }
+
+    @Command(desc = "List the ruleset for which conflicts are featured by this guild (if any are set)\n" +
+            "This consists of a list of either guilds that created the conflict, or individual conflicts")
+    public String listFeaturedRuleset(ConflictManager manager, @Me GuildDB db) {
+        List<Long> config = manager.getSourceSets().get(db.getIdLong());
+        if (config == null || config.isEmpty()) {
+            return "This guild has no customized featured conflict ruleset. All conflicts are featured by default\n" +
+                    "Use TODO CM REF to set what conflicts are featured";
+        }
+
+        List<String> items = new ArrayList<>();
+
+        for (long id : config) {
+            String name;
+            if (id > Long.MAX_VALUE) {
+                GuildDB guild = Locutus.imp().getGuildDB(id);
+                name = guild == null ? "guild:" + id : guild.getGuild().toString();
+            } else {
+                Conflict conflict = manager.getConflictById((int) id);
+                name = conflict == null ? "conflict:" + id : conflict.getName() + "/" + id;
+            }
+            items.add(name);
+        }
+        return "Featured conflicts:\n" + StringMan.join(items, "\n");
     }
 }

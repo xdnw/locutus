@@ -1252,6 +1252,29 @@ public class CM {
                     }
                 }
             }
+            public static class featured{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="featureConflicts")
+                public static class add_rule extends CommandRef {
+                    public static final add_rule cmd = new add_rule();
+                    public add_rule create(String conflicts, String guild) {
+                        return createArgs("conflicts", conflicts, "guild", guild);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="listFeaturedRuleset")
+                public static class list_rules extends CommandRef {
+                    public static final list_rules cmd = new list_rules();
+                    public list_rules create() {
+                        return createArgs();
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="removeFeature")
+                public static class remove_rule extends CommandRef {
+                    public static final remove_rule cmd = new remove_rule();
+                    public remove_rule create(String conflicts, String guild) {
+                        return createArgs("conflicts", conflicts, "guild", guild);
+                    }
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="info")
             public static class info extends CommandRef {
                 public static final info cmd = new info();
@@ -1305,8 +1328,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="syncConflictData")
                 public static class website extends CommandRef {
                     public static final website cmd = new website();
-                    public website create(String conflicts, String upload_graphs, String reinitialize_wars, String reinitialize_graphs) {
-                        return createArgs("conflicts", conflicts, "upload_graphs", upload_graphs, "reinitialize_wars", reinitialize_wars, "reinitialize_graphs", reinitialize_graphs);
+                    public website create(String conflicts, String upload_graph, String reinitialize_wars, String reinitialize_graphs) {
+                        return createArgs("conflicts", conflicts, "upload_graph", upload_graph, "reinitialize_wars", reinitialize_wars, "reinitialize_graphs", reinitialize_graphs);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importWikiAll")

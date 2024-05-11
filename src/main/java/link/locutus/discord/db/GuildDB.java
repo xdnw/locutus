@@ -1061,10 +1061,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             if (getTableColumns("INFO").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
                 executeStmt("ALTER TABLE `INFO` ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
-
         };
         createDeletionsTables();
     }
+
 
     public void purgeOldInterviews(long cutoff) {
         update("DELETE FROM INTERVIEW_MESSAGES2 WHERE date_updated < ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, cutoff));

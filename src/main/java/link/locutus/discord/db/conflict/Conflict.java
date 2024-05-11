@@ -14,7 +14,10 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DBNationSnapshot;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
@@ -24,6 +27,7 @@ import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.conflict.ConflictColumn;
 import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
@@ -61,6 +65,7 @@ public class Conflict {
     private final Map<String, DBTopic> announcements = new Object2ObjectLinkedOpenHashMap<>();
     private String casusBelli = "";
     private String statusDesc = "";
+    private long createdByServer;
 
     public void clearWarData() {
         warsVsAlliance.clear();;
@@ -70,9 +75,10 @@ public class Conflict {
         dirtyJson = true;
     }
 
-    public Conflict(int id, int ordinal, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
+    public Conflict(int id, int ordinal, long createdByServer, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
         this.id = id;
         this.ordinal = ordinal;
+        this.createdByServer = createdByServer;
         this.category = category;
         this.name = name;
         this.wiki = wiki == null ? "" : wiki;
@@ -98,6 +104,7 @@ public class Conflict {
         getManager().setStatus(id, status);
     }
 
+    @Command(desc = "The conflict category")
     public ConflictCategory getCategory() {
         return category;
     }
@@ -404,10 +411,12 @@ public class Conflict {
         return result;
     }
 
+    @Command(desc = "The status of the conflict")
     public String getStatusDesc() {
         return statusDesc;
     }
 
+    @Command(desc = "The casus belli of the conflict")
     public String getCasusBelli() {
         return casusBelli;
     }
@@ -589,22 +598,35 @@ public class Conflict {
         return this;
     }
 
+    @Command(desc = "The id of the conflict in the database and website url")
     public int getId() {
         return id;
     }
 
+    @Command(desc = "The url of this conflict (if pushed live)")
+    public String getUrl() {
+        return Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + id;
+    }
+
+    @Command(desc = "The ordinal of the conflict (load order)")
     public int getOrdinal() {
         return ordinal;
     }
 
+    @Command(desc = "The name of the conflict")
     public String getName() {
         return name;
     }
 
+    @Command(desc = "The turn the conflict started\n" +
+            "Measured in 2h turns from unix epoch")
     public long getStartTurn() {
         return turnStart;
     }
 
+    @Command(desc = "The turn the conflict ends\n" +
+            "Measured in 2h turns from unix epoch\n" +
+            "If the conflict is ongoing, this will be Long.MAX_VALUE")
     public long getEndTurn() {
         return turnEnd;
     }
@@ -615,6 +637,44 @@ public class Conflict {
 
     public Set<Integer> getCoalition2() {
         return coalition2.getAllianceIds();
+    }
+
+    @Command(desc = "If an alliance is a participant in the conflict")
+    public boolean isParticipant(DBAlliance alliance) {
+        return coalition1.hasAlliance(alliance.getId()) || coalition2.hasAlliance(alliance.getId());
+    }
+
+    @Command(desc = "A number representing the side an alliance is on in the conflict\n" +
+            "0 = No side, 1 = Primary/Coalition 1, 2 = Secondary/Coalition 2")
+    public int getSide(DBAlliance alliance) {
+        if (coalition1.hasAlliance(alliance.getId())) return 1;
+        if (coalition2.hasAlliance(alliance.getId())) return 2;
+        return 0;
+    }
+
+    @Command(desc = "The start turn of the conflict in milliseconds since unix epoch")
+    public long getStartMS() {
+        return TimeUtil.getTimeFromTurn(turnStart);
+    }
+
+    @Command(desc = "The end turn of the conflict in milliseconds since unix epoch")
+    public long getEndMS() {
+        return turnEnd == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(turnEnd);
+    }
+
+    @Command(desc = "The alliance list of for the first coalition")
+    public AllianceList getCol1List() {
+        return new AllianceList(getCoalition1());
+    }
+
+    @Command(desc = "The alliance list of for the second coalition")
+    public AllianceList getCol2List() {
+        return new AllianceList(getCoalition2());
+    }
+
+    @Command(desc = "The alliance list for ALL participants")
+    public AllianceList getAllianceList() {
+        return new AllianceList(getAllianceIds());
     }
 
     public Set<DBAlliance> getCoalition1Obj() {
@@ -642,14 +702,17 @@ public class Conflict {
         return ids;
     }
 
+    @Command(desc = "The number of active wars in the conflict")
     public int getActiveWars() {
         return coalition1.getOffensiveStats(null, false).activeWars + coalition2.getOffensiveStats(null, false).activeWars;
     }
 
+    @Command(desc = "The number of total wars in the conflict")
     public int getTotalWars() {
         return coalition1.getOffensiveStats(null, false).totalWars + coalition2.getOffensiveStats(null, false).totalWars;
     }
 
+    @Command(desc = "The current damage dealt between the conflict's participants, using market prices")
     public double getDamageConverted(boolean isPrimary) {
         return (isPrimary ? coalition1 : coalition2).getInflicted().getTotalConverted();
     }
@@ -672,8 +735,19 @@ public class Conflict {
         }
     }
 
+    @Command(desc = "The wiki link for this conflict (or null)")
     public String getWiki() {
         return wiki;
+    }
+
+    @Command(desc = "The discord guild that created this conflict (or null)")
+    public GuildDB getGuild() {
+        return createdByServer <= 0 ? null : Locutus.imp().getGuildDB(createdByServer);
+    }
+
+    @Command(desc = "The id of the discord guild that created this conflict")
+    public long getGuildId() {
+        return createdByServer;
     }
 
     public Map<String, DBTopic> getAnnouncement() {
@@ -711,6 +785,7 @@ public class Conflict {
         return urls;
     }
 
+    @Command(desc = "If the conflict has been updated since the last push")
     public boolean isDirty() {
         return this.dirtyJson;
     }

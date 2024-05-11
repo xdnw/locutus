@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -283,6 +284,7 @@ public class ConflictManager {
                 String name = rs.getString("name");
                 long startTurn = rs.getLong("start");
                 long endTurn = rs.getLong("end");
+                long createdByGuild = rs.getLong("creator");
                 String wiki = rs.getString("wiki");
                 String col1 = rs.getString("col1");
                 String col2 = rs.getString("col2");
@@ -291,7 +293,7 @@ public class ConflictManager {
                 if (col2.isEmpty()) col2 = "Coalition 2";
                 String cb = rs.getString("cb");
                 String status = rs.getString("status");
-                Conflict conflict = new Conflict(id, ordinal++, category, name, col1, col2, wiki, cb, status, startTurn, endTurn);
+                Conflict conflict = new Conflict(id, ordinal++, createdByGuild, category, name, col1, col2, wiki, cb, status, startTurn, endTurn);
                 conflicts.add(conflict);
                 conflictById.put(id, conflict);
             }
@@ -873,7 +875,6 @@ public class ConflictManager {
     }
 
     public void createTables() {
-        System.out.println("Create tables");
 //        // drop table conflicts
 //        db.executeStmt("DROP TABLE IF EXISTS conflict_participant");
 //        db.executeStmt("DROP TABLE IF EXISTS conflicts");
@@ -881,11 +882,13 @@ public class ConflictManager {
 //        db.executeStmt("DROP TABLE IF EXISTS conflict_graphs2");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL)");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL, creator BIGINT NOT NULL)");
+        // add column `creator`
         // add col1 and col2 (string) to conflicts, default ""
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
         // add wiki column, default empty
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0");
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''");
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''");
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''");
@@ -899,6 +902,50 @@ public class ConflictManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         // drop conflict_graphs
         db.executeStmt("DROP TABLE conflict_graphs");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS source_sets (guild BIGINT NOT NULL, source_id BIGINT NOT NULL, source_type INT NOT NULL, PRIMARY KEY (guild, source_id, source_type))");
+    }
+
+    public Map<Long, List<Long>> getSourceSets() {
+        Map<Long, List<Long>> sourceSets = new Long2ObjectOpenHashMap<>();
+        db.query("SELECT * FROM source_sets", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                long guildId = rs.getLong("guild");
+                long sourceId = rs.getLong("source_id");
+                sourceSets.computeIfAbsent(guildId, f -> new LongArrayList()).add(sourceId);
+            }
+        });
+        return sourceSets;
+    }
+
+    /**
+     * type 0 = conflict
+     * type 1 = guild
+     * @param guild
+     * @param sourceId
+     * @param sourceType
+     */
+    public void addSource(long guild, long sourceId, int sourceType) {
+        db.update("INSERT OR IGNORE INTO source_sets (guild, source_id, source_type) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, guild);
+            stmt.setLong(2, sourceId);
+            stmt.setInt(3, sourceType);
+        });
+    }
+
+    public void removeSource(long guild, long sourceId, int sourceType) {
+        db.update("DELETE FROM source_sets WHERE guild = ? AND source_id = ? AND source_type = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, guild);
+            stmt.setLong(2, sourceId);
+            stmt.setInt(3, sourceType);
+        });
+    }
+
+    public void deleteAllSources(long guild) {
+        db.update("DELETE FROM source_sets WHERE guild = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, guild);
+        });
     }
 
     public void addAnnouncement(int conflictId, int topicId, String description) {
@@ -975,8 +1022,8 @@ public class ConflictManager {
         }
     }
 
-    public Conflict addConflict(String name, ConflictCategory category, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
-        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category, cb, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public Conflict addConflict(String name, long creator, ConflictCategory category, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
+        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category, cb, status, creator) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = db.getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
             stmt.setString(2, col1);
@@ -987,11 +1034,12 @@ public class ConflictManager {
             stmt.setInt(7, category.ordinal());
             stmt.setString(8, cb);
             stmt.setString(9, status);
+            stmt.setLong(10, creator);
             stmt.executeUpdate();
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 int id = rs.getInt(1);
-                Conflict conflict = new Conflict(id, conflictArr.length, category, name, col1, col2, wiki, cb, status, turnStart, turnEnd);
+                Conflict conflict = new Conflict(id, conflictArr.length, creator, category, name, col1, col2, wiki, cb, status, turnStart, turnEnd);
                 conflictById.put(id, conflict);
                 conflictArr = Arrays.copyOf(conflictArr, conflictArr.length + 1);
                 conflictArr[conflictArr.length - 1] = conflict;
@@ -1188,7 +1236,6 @@ public class ConflictManager {
     public byte[] getPsonGzip() {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         Map<Integer, Conflict> map = getConflictMap();
-        System.out.println("Conflict map " + map.size());
         Map<Integer, String> aaNameById = new HashMap<>();
 
         Map<String, Function<Conflict, Object>> headerFuncs = new LinkedHashMap<>();
@@ -1208,6 +1255,7 @@ public class ConflictManager {
         headerFuncs.put("status", Conflict::getStatusDesc);
         headerFuncs.put("cb", Conflict::getCasusBelli);
         headerFuncs.put("posts", Conflict::getAnnouncementsList);
+        headerFuncs.put("source", Conflict::getGuildId);
 
         List<String> headers = new ObjectArrayList<>();
         List<Function<Conflict, Object>> funcs = new ObjectArrayList<>();
@@ -1215,8 +1263,6 @@ public class ConflictManager {
             headers.add(entry.getKey());
             funcs.add(entry.getValue());
         }
-        root.put("headers", headers);
-        System.out.println("Headers " + root.get("headers"));
 
         List<List<Object>> rows = new ObjectArrayList<>();
         JteUtil.writeArray(rows, funcs, map.values());
@@ -1235,6 +1281,7 @@ public class ConflictManager {
         List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
         root.put("alliance_ids", allianceIds);
         root.put("alliance_names", aaNames);
+        root.put("source_sets", getSourceSets());
 
         return JteUtil.compress(JteUtil.toBinary(root));
     }

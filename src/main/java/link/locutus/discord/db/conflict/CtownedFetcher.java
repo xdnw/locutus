@@ -1,6 +1,7 @@
 package link.locutus.discord.db.conflict;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -73,7 +74,7 @@ public class CtownedFetcher {
         }
     }
 
-    private void loadCtownedConflict(boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Date startDate, Date endDate) throws IOException {
+    private void loadCtownedConflict(GuildDB db, boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Date startDate, Date endDate) throws IOException {
         String conflictHtml = getCtoConflict(cellUrl, conflictName, useCache);
 
         long startMs = startDate.getTime();
@@ -148,7 +149,7 @@ public class CtownedFetcher {
             conflict = manager.getConflictMap().values().stream().filter(f -> finalWiki.equalsIgnoreCase(f.getWiki())).findFirst().orElse(null);
         }
         if (conflict == null) {
-            conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
+            conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, db.getIdLong(), category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
         }
         if (conflict.getSide(true).getName().equalsIgnoreCase("coalition 1")) {
             conflict.setName(col1Name, true);
@@ -165,7 +166,7 @@ public class CtownedFetcher {
         }
     }
 
-    public void loadCtownedConflicts(boolean useCache, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    public void loadCtownedConflicts(GuildDB db, boolean useCache, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
         Document document = Jsoup.parse(getCtoConflict(urlStub, fileName, useCache));
         // get table id=conflicts-table
         Element table = document.getElementById("conflicts-table");
@@ -187,7 +188,7 @@ public class CtownedFetcher {
             String endDateStr = row.select("td").get(7).text();
             Date startDate = TimeUtil.YYYY_MM_DD_FORMAT.parse(startDateStr);
             Date endDate = endDateStr.contains("Ongoing") ? null : TimeUtil.YYYY_MM_DD_FORMAT.parse(endDateStr);
-            loadCtownedConflict(useCache, cellUrl, category, conflictName, startDate, endDate);
+            loadCtownedConflict(db, useCache, cellUrl, category, conflictName, startDate, endDate);
         }
     }
 }
