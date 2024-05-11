@@ -2168,7 +2168,6 @@ public class GrantCommands {
         if (GuildKey.MEMBER_CAN_ESCROW.getOrNull(db) != Boolean.TRUE) {
             return "To enable member withdrawal of escrowed funds, see: " + CM.settings.info.cmd.create(GuildKey.MEMBER_CAN_ESCROW.name(), null, null);
         }
-        if (author.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return "Error";
         // Require ECON_STAFF if receiver is not me
         if (receiver.getId() != me.getId()) {
             if (!Roles.ECON_STAFF.has(author, db.getGuild())) {

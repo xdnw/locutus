@@ -665,6 +665,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return results;
     }
 
+    public void deleteAllMeta(NationMeta meta) {
+        update("DELETE FROM NATION_META where key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, meta.ordinal()));
+    }
+
     public ByteBuffer getMeta(long userId, NationMeta key) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
