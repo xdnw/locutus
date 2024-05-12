@@ -79,6 +79,93 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class IACommands {
+    @Command(desc = "Rename channels in a category to match the nation registered to the user added")
+    @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    public String renameInterviewChannels(@Me GuildDB db, @Me Guild guild, @Me User author, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                          Set<Category> categories,
+                                          @Switch("m") boolean allow_non_members,
+                                          @Switch("v") boolean allow_vm,
+                                          @Switch("f") boolean force) {
+        Map<TextChannel, String> errors = new LinkedHashMap<>();
+        Map<TextChannel, String> warnings = new LinkedHashMap<>();
+        List<String> changes = new ArrayList<>();
+        for (TextChannel channel : categories.stream().flatMap(f -> f.getTextChannels().stream()).collect(Collectors.toSet())) {
+            List<PermissionOverride> overrides = channel.getMemberPermissionOverrides();
+            List<Member> members = overrides.stream().map(PermissionOverride::getMember).filter(Objects::nonNull).toList();
+            if (members.isEmpty()) {
+                errors.put(channel, "No users added to channel");
+                continue;
+            }
+            if (members.size() > 1) {
+                errors.put(channel, "Multiple users added to channel");
+                continue;
+            }
+            Member member = members.get(0);
+            if (!channel.canTalk(member)) {
+                errors.put(channel, "User does not have permission to talk in channel: `" + DiscordUtil.getFullUsername(member.getUser()) + "` | `" + member.getId() + "`");
+                continue;
+            }
+            DBNation nation = DiscordUtil.getNation(member.getIdLong());
+            if (nation == null) {
+                errors.put(channel, "User is not registered to a nation: `" + DiscordUtil.getFullUsername(member.getUser()) + "` | `" + member.getId() + "`");
+                continue;
+            }
+            if (!allow_non_members && !db.isAllianceId(nation.getAlliance_id())) {
+                warnings.put(channel, "Nation is not in the alliance: " + nation.getMarkdownUrl() + " (ignore with `allow_non_members: True`");
+            } else if (!allow_vm && nation.getVm_turns() > 0) {
+                warnings.put(channel, "Nation is a VM: " + nation.getMarkdownUrl() + " (ignore with `allow_vm: True`");
+            }
+            changes.add(channel.getAsMention() + ": " + channel.getName() + " -> " + nation.getName() + "-" + nation.getId());
+            if (force) {
+                try {
+                    RateLimitUtil.queue(channel.getManager().setName(nation.getName() + "-" + nation.getId()));
+                } catch (PermissionException e) {
+                    errors.put(channel, "Error renaming channel: " + e.getMessage());
+                }
+            }
+        }
+        StringBuilder errorsStr = new StringBuilder();
+        if (!errors.isEmpty()) {
+            errorsStr.append("channnel_name\tchannel_id\terror\n");
+            for (Map.Entry<TextChannel, String> entry : errors.entrySet()) {
+                TextChannel channel = entry.getKey();
+                errorsStr.append(channel.getName() + "\t" + channel.getId() + "\t" + entry.getValue() + "\n");
+            }
+        }
+        StringBuilder warningsStr = new StringBuilder();
+        if (!warnings.isEmpty()) {
+            warningsStr.append("channnel_name\tchannel_id\twarning\n");
+            for (Map.Entry<TextChannel, String> entry : warnings.entrySet()) {
+                TextChannel channel = entry.getKey();
+                warningsStr.append(channel.getName() + "\t" + channel.getId() + "\t" + entry.getValue() + "\n");
+            }
+        }
+        IMessageBuilder msg = io.create();
+        StringBuilder append = new StringBuilder();
+        if (!errors.isEmpty()) {
+            append.append("Errors, see attached `errors.txt` for details");
+            msg.file("errors.txt", errorsStr.toString());
+        }
+        if (!warnings.isEmpty()) {
+            append.append("Warnings, see attached `warnings.txt` for details");
+            msg.file("warnings.txt", warningsStr.toString());
+        }
+
+        if (changes.isEmpty()) {
+            append.append("No changes to be made");
+            msg.append(append.toString()).send();
+            return null;
+        }
+        if (!force) {
+            append.append(changes.size() + " changes.");
+            msg.confirmation("Confirm rename channels", append.toString() + "\n" +
+                    StringMan.join(changes, "\n"), command).send();
+        } else {
+            msg.append(append.toString() + "\n" + StringMan.join(changes, "\n")).send();
+        }
+        return null;
+    }
+
     @Command(desc = "Sort the channels in a set of categories into new categories based on the category name\n" +
             "The channels must be in the form `{nation}-{nation_id}`\n" +
             "Receiving categories must resolve to a nation filter: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>\n" +

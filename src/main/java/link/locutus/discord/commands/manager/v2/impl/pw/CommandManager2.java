@@ -185,6 +185,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new StatCommands(), List.of("stats_war", "attack_breakdown"), "attackBreakdownSheet", "sheet");
         getCommands().registerMethod(new IACommands(), List.of("interview", "questions"), "viewInterview", "view");
         getCommands().registerMethod(new IACommands(), List.of("interview", "questions"), "setInterview", "set");
+        getCommands().registerMethod(new IACommands(), List.of("interview", "channel"), "renameInterviewChannels", "auto_rename");
+
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncWars", "wars");
         getCommands().registerMethod(new WarCommands(), List.of("war", "room"), "warRoomList", "list");
         getCommands().registerMethod(new WarCommands(), List.of("war", "room"), "deletePlanningChannel", "delete_planning");
