@@ -178,6 +178,10 @@ public class NationHeader extends DataHeader<DBNation> {
     public final BooleanColumn<DBNation> mars_landing_np = new BooleanColumn<>(this, (nation, value) -> nation.setProject(Projects.MARS_LANDING));
 //    public int surveillance_network_np;
     public final BooleanColumn<DBNation> surveillance_network_np = new BooleanColumn<>(this, (nation, value) -> nation.setProject(Projects.SURVEILLANCE_NETWORK));
+//    public int guiding_satellite_np
+    public final BooleanColumn<DBNation> guiding_satellite_np = new BooleanColumn<>(this, (nation, value) -> nation.setProject(Projects.GUIDING_SATELLITE));
+//    public int nuclear_launch_facility_np
+    public final BooleanColumn<DBNation> nuclear_launch_facility_np = new BooleanColumn<>(this, (nation, value) -> nation.setProject(Projects.NUCLEAR_LAUNCH_FACILITY));
 
     private DBNationSnapshot cached;
     private int nationLoaded;
