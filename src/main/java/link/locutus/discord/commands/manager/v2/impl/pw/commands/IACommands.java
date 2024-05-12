@@ -94,7 +94,7 @@ public class IACommands {
         List<String> changes = new ArrayList<>();
         for (TextChannel channel : categories.stream().flatMap(f -> f.getTextChannels().stream()).collect(Collectors.toSet())) {
             List<PermissionOverride> overrides = channel.getMemberPermissionOverrides();
-            List<Member> members = overrides.stream().map(PermissionOverride::getMember).filter(Objects::nonNull).toList();
+            List<Member> members = overrides.stream().map(PermissionOverride::getMember).filter(Objects::nonNull).filter(f -> !f.getUser().isBot()).toList();
             if (members.isEmpty()) {
                 errors.put(channel, "No users added to channel");
                 continue;
