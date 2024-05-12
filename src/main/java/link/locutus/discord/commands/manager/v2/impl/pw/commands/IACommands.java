@@ -88,6 +88,8 @@ public class IACommands {
                                           @Switch("f") boolean force) {
         Map<TextChannel, String> errors = new LinkedHashMap<>();
         Map<TextChannel, String> warnings = new LinkedHashMap<>();
+        Map<DBNation, Set<TextChannel>> nationChannels = new HashMap<>();
+        Map<User, Set<TextChannel>> userChannels = new HashMap<>();
         List<String> changes = new ArrayList<>();
         for (TextChannel channel : categories.stream().flatMap(f -> f.getTextChannels().stream()).collect(Collectors.toSet())) {
             List<PermissionOverride> overrides = channel.getMemberPermissionOverrides();
@@ -101,6 +103,7 @@ public class IACommands {
                 continue;
             }
             Member member = members.get(0);
+            userChannels.computeIfAbsent(member.getUser(), f -> new HashSet<>()).add(channel);
             if (!channel.canTalk(member)) {
                 errors.put(channel, "User does not have permission to talk in channel: `" + DiscordUtil.getFullUsername(member.getUser()) + "` | `" + member.getId() + "`");
                 continue;
@@ -110,20 +113,27 @@ public class IACommands {
                 errors.put(channel, "User is not registered to a nation: `" + DiscordUtil.getFullUsername(member.getUser()) + "` | `" + member.getId() + "`");
                 continue;
             }
+            nationChannels.computeIfAbsent(nation, f -> new HashSet<>()).add(channel);
             if (!allow_non_members && !db.isAllianceId(nation.getAlliance_id())) {
                 warnings.put(channel, "Nation is not in the alliance: " + nation.getMarkdownUrl() + " (ignore with `allow_non_members: True`");
             } else if (!allow_vm && nation.getVm_turns() > 0) {
                 warnings.put(channel, "Nation is a VM: " + nation.getMarkdownUrl() + " (ignore with `allow_vm: True`");
             }
+            String newName = nation.getName() + "-" + nation.getId();
+            if (channel.getName().equalsIgnoreCase(newName)) continue;
             changes.add(channel.getAsMention() + ": " + channel.getName() + " -> " + nation.getName() + "-" + nation.getId());
             if (force) {
                 try {
-                    RateLimitUtil.queue(channel.getManager().setName(nation.getName() + "-" + nation.getId()));
+                    RateLimitUtil.queue(channel.getManager().setName(newName));
                 } catch (PermissionException e) {
                     errors.put(channel, "Error renaming channel: " + e.getMessage());
                 }
             }
         }
+        // add duplicates to errors
+        nationChannels.entrySet().stream().filter(f -> f.getValue().size() > 1).forEach(f -> errors.putIfAbsent(f.getValue().iterator().next(), "Nation has multiple channels"));
+        userChannels.entrySet().stream().filter(f -> f.getValue().size() > 1).forEach(f -> errors.putIfAbsent(f.getValue().iterator().next(), "User has multiple channels"));
+
         StringBuilder errorsStr = new StringBuilder();
         if (!errors.isEmpty()) {
             errorsStr.append("channnel_name\tchannel_id\terror\n");
@@ -305,6 +315,7 @@ public class IACommands {
         Map<TextChannel, String> errors = new LinkedHashMap<>();
         Map<TextChannel, Set<String>> warnings = new LinkedHashMap<>();
         List<String> changes = new ArrayList<>();
+        Map<DBNation, Set<TextChannel>> nationChannels = new HashMap<>();
 
         for (TextChannel channel : channels) {
             String[] split = channel.getName().split("-");
@@ -323,6 +334,7 @@ public class IACommands {
                 errors.put(channel, "Nation not found: `" + id + "`");
                 continue;
             }
+            nationChannels.computeIfAbsent(nation, f -> new HashSet<>()).add(channel);
             User user = nation.getUser();
             if (user == null) {
                 warnings.computeIfAbsent(channel, f -> new HashSet<>()).add("Nation " + nation.getMarkdownUrl() + " is not registered with bot: " + CM.register.cmd.toSlashMention());
@@ -386,8 +398,8 @@ public class IACommands {
                 }
 
             }
-
         }
+        nationChannels.entrySet().stream().filter(f -> f.getValue().size() > 1).forEach(f -> errors.putIfAbsent(f.getValue().iterator().next(), "Nation has multiple channels"));
 
         Supplier<String> errorsToString = () -> {
             StringBuilder response = new StringBuilder();
