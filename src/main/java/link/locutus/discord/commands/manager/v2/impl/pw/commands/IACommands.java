@@ -121,7 +121,7 @@ public class IACommands {
                 warnings.put(channel, "Nation is a VM: " + nation.getMarkdownUrl() + " (ignore with `allow_vm: True`");
             }
             String newName = nation.getName() + "-" + nation.getId();
-            if (channel.getName().equalsIgnoreCase(newName)) continue;
+            if (channel.getName().replace(" ", "-").equalsIgnoreCase(newName.replace(" ", "-"))) continue;
             changes.add(channel.getAsMention() + ": " + channel.getName() + " -> " + nation.getName() + "-" + nation.getId());
             if (force) {
                 try {
