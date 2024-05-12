@@ -30,6 +30,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
@@ -396,7 +397,6 @@ public class IACommands {
                 } else {
                     changes.add(channel.getAsMention() + ": " + currCategory.getAsMention() + " -> " + nonMax.getName());
                 }
-
             }
         }
         nationChannels.entrySet().stream().filter(f -> f.getValue().size() > 1).forEach(f -> errors.putIfAbsent(f.getValue().iterator().next(), "Nation has multiple channels"));
@@ -1185,6 +1185,7 @@ public class IACommands {
     public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
         if (!url.contains("message/id=")) return "URL must be a message url";
         int messageId = Integer.parseInt(url.split("=")[1]);
+        GPTUtil.checkThrowModeration(message);
 
         Auth auth;
         if (sender == null) {
@@ -1281,6 +1282,7 @@ public class IACommands {
     @NoFormat
     public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
+        GPTUtil.checkThrowModeration(message);
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
@@ -1673,6 +1675,9 @@ public class IACommands {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.MAIL_RESPONSES_SHEET);
         }
+        if (body != null) {
+            GPTUtil.checkThrowModeration(body);
+        }
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -1802,6 +1807,10 @@ public class IACommands {
         int applicants = 0;
 
         Map<DBNation, Map.Entry<String, String>> messageMap = new LinkedHashMap<>();
+        if (force) {
+            String messagesJoined = messageMap.values().stream().map(e -> e.getKey() + " " + e.getValue()).collect(Collectors.joining("\n"));
+            GPTUtil.checkThrowModeration(messagesJoined);
+        }
 
         for (int i = 1; i < nationNames.size(); i++) {
             Object nationNameObj = nationNames.get(i);

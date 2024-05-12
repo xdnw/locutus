@@ -53,7 +53,9 @@ public class Settings extends Config {
     @Comment("Your P&W password (optional, but recommended)")
     public String PASSWORD = "";
 
-    @Comment("Your P&W verified bot key (optional)")
+    @Comment({"Your P&W verified bot key (optional)",
+            "Needed to perform ingame actions such as banking",
+            "Open a ticket in the Politics And Programming server to obtain a key"})
     public String ACCESS_KEY = "";
 
     @Comment("Your api key (generated if username/password is set)")

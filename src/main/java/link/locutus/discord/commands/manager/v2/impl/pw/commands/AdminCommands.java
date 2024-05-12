@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.wiki.WikiGenHandler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.RequestTracker;
@@ -1093,7 +1094,7 @@ public class AdminCommands {
     public String dm(@Me User author, DBNation nation, String message) {
         User user = nation.getUser();
         if (user == null) return "No user found for " + nation.getNation();
-
+        GPTUtil.checkThrowModeration(message);
         user.openPrivateChannel().queue(new Consumer<PrivateChannel>() {
             @Override
             public void accept(PrivateChannel channel) {

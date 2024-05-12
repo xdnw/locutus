@@ -34,6 +34,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.NationList;
@@ -3186,6 +3187,9 @@ public class WarCommands {
                               @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader,
                               @Arg("Send instructions as direct message on discord")
                               @Switch("d") boolean dm) throws IOException, GeneralSecurityException {
+        if(header != null) {
+            GPTUtil.checkThrowModeration(header);
+        }
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
         ApiKeyPool key = null;

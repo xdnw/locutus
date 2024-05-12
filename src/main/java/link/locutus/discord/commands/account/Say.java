@@ -36,12 +36,7 @@ public class Say extends Command {
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-        if (gpt != null) {
-            GptHandler handler = gpt.getHandler();
-            List<ModerationResult> result = handler.getModerator().moderate(msg);
-            GPTUtil.checkThrowModeration(result, "<redacted>");
-        }
+        GPTUtil.checkThrowModeration(msg);
         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         return formatter.format2(guild, me, author, msg.substring(5) + "\n\n- " + author.getAsMention(), me, false);
     }

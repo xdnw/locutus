@@ -11,6 +11,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -101,6 +102,9 @@ public class MailTargets extends Command {
             header = args.get(3);
 
             if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see " + CM.role.setAlias.cmd.toSlashMention() + ") to add the custom message: `" + header + "`";
+        }
+        if(header != null && !header.isEmpty()) {
+            GPTUtil.checkThrowModeration(header);
         }
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);

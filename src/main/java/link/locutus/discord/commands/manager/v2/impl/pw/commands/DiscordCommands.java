@@ -130,12 +130,7 @@ public class DiscordCommands {
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-        if (gpt != null) {
-            GptHandler handler = gpt.getHandler();
-            List<ModerationResult> result = handler.getModerator().moderate(msg);
-            GPTUtil.checkThrowModeration(result, "<redacted>");
-        }
+        GPTUtil.checkThrowModeration(msg);
 
         msg = msg + "\n\n- " + author.getAsMention();
 

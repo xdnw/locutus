@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -75,6 +76,7 @@ public class MailCommand extends Command implements Noformat {
                 String content = DiscordUtil.trimContent(fullCommandRaw);
                 String body = content.substring(content.indexOf(' ', content.indexOf("message/id=")) + 1);
 
+                GPTUtil.checkThrowModeration(body);
                 String result = new MailRespondTask(auth, arg0, messageId, body, null).call();
                 return "Mail: " + result;
             }
@@ -131,6 +133,7 @@ public class MailCommand extends Command implements Noformat {
             if (!Roles.ADMIN.hasOnRoot(author)) {
                 message += "\n\n<i>This message was sent by: " + author.getName() + "</i>";
             }
+            GPTUtil.checkThrowModeration(message);
 
             CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending to...");
             IMessageBuilder msg = null;
