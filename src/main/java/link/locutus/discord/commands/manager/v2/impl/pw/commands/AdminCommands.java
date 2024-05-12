@@ -657,6 +657,9 @@ public class AdminCommands {
         ApiKeyPool keys = (sendMail || sendDM) ? db.getMailKey() : null;
         if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
         Set<Integer> aaIds = db.getAllianceIds();
+        if (sendMail || sendDM) {
+            GPTUtil.checkThrowModeration(announcement + "\n" + replacements);
+        }
 
         List<String> errors = new ArrayList<>();
         Collection<DBNation> nations = sendTo.getNations();

@@ -1676,7 +1676,9 @@ public class IACommands {
             sheet = SpreadSheet.create(db, SheetKey.MAIL_RESPONSES_SHEET);
         }
         if (body != null) {
-            GPTUtil.checkThrowModeration(body);
+            GPTUtil.checkThrowModeration(body + "\n" + command);
+        } else {
+            GPTUtil.checkThrowModeration(command);
         }
 
         List<String> header = new ArrayList<>(Arrays.asList(

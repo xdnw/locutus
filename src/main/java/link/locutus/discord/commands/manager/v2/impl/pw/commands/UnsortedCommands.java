@@ -52,6 +52,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -2094,6 +2095,9 @@ public class UnsortedCommands {
         }
         if (!member.hasPermission(Permission.CREATE_INSTANT_INVITE) && !Roles.ADMIN.has(author, inviteTo) && !Roles.INTERNAL_AFFAIRS.has(author, inviteTo)) {
             throw new IllegalArgumentException("You do not have permission to create invites in " + inviteTo);
+        }
+        if (message != null) {
+            GPTUtil.checkThrowModeration(message);
         }
 
         // dm user instructions find_announcement
