@@ -260,7 +260,8 @@ public class DataDumpParser {
         long currentDay = TimeUtil.getDay();
         if (currentDay > lastUpdatedNations) {
             Map<Long, File> downloaded = load("https://politicsandwar.com/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
-            downloaded.forEach((day, file) -> {
+            downloaded.forEach((time, file) -> {
+                long day = TimeUtil.getDay(time);
                 NationsFile natFile = new NationsFile(file, nationDict);
                 nationFilesByDay.putIfAbsent(day, natFile);
             });
@@ -288,7 +289,8 @@ public class DataDumpParser {
         long currentDay = TimeUtil.getDay();
         if (currentDay > lastUpdatedCities) {
             Map<Long, File> downloaded = load("https://politicsandwar.com/data/cities/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
-            downloaded.forEach((day, file) -> {
+            downloaded.forEach((time, file) -> {
+                long day = TimeUtil.getDay(time);
                 CitiesFile cityFile = new CitiesFile(file, cityDict);
                 cityFilesByDay.putIfAbsent(day, cityFile);
             });
