@@ -634,6 +634,7 @@ public class GuildKey {
         public String validate(GuildDB db, String value) {
             if (value.length() >= 50)
                 throw new IllegalArgumentException("Your subject line cannot be longer than 50 characters.");
+            GPTUtil.checkThrowModeration(value);
             return value;
         }
 
@@ -654,6 +655,12 @@ public class GuildKey {
         public String help() {
             return "The recruit message body\n" +
                     "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention();
+        }
+
+        @Override
+        public String validate(GuildDB db, String value) {
+            GPTUtil.checkThrowModeration(value);
+            return value;
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_SUBJECT).requires(ALLIANCE_ID).requires(API_KEY));
     public static GuildSetting<MessageChannel> RECRUIT_MESSAGE_OUTPUT = new GuildChannelSetting(GuildSettingCategory.RECRUIT) {

@@ -87,7 +87,6 @@ public class MailCommand extends Command implements Noformat {
             }
 
             String message = StringMan.join(args.subList(2, args.size()), " ");
-
             message = MarkupUtil.transformURLIntoLinks(message);
             String subject = args.get(1);
 
@@ -133,7 +132,7 @@ public class MailCommand extends Command implements Noformat {
             if (!Roles.ADMIN.hasOnRoot(author)) {
                 message += "\n\n<i>This message was sent by: " + author.getName() + "</i>";
             }
-            GPTUtil.checkThrowModeration(message);
+            GPTUtil.checkThrowModeration(subject + " " + message);
 
             CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending to...");
             IMessageBuilder msg = null;
