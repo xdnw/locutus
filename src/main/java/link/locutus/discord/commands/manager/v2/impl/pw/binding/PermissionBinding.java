@@ -1,21 +1,12 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.ClassPermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.DenyPermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.NotGuild;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -178,9 +169,28 @@ public class PermissionBinding extends BindingHelper {
     @Binding("Must be registered to a nation with an in-game rank equal to or above the provided rank\n" +
             "Default: MEMBER")
     @RankPermission
-    public boolean checkRank(@Me Guild guild, RankPermission perm, @Me DBNation me) {
+    public boolean checkRank(RankPermission perm, @Me DBNation me) {
         if (me.getPosition() < perm.value().id) {
             throw new IllegalCallerException("Your ingame alliance positions is below " + perm.value());
+        }
+        return true;
+    }
+
+    @Binding("Must have the permissions ingame with their alliance")
+    @CmdAlliancePermission
+    public boolean checkRank(CmdAlliancePermission perm, @Me DBNation me) {
+        if (me.getPositionEnum().id >= Rank.HEIR.id) return true;
+        if (me.getPositionEnum().id <= Rank.APPLICANT.id) return false;
+        boolean hasAny = false;
+        for (AlliancePermission requiredPermission : perm.value()) {
+            if (!me.hasPermission(requiredPermission)) {
+                if (!perm.any()) throw new IllegalCallerException("You do not have " + requiredPermission + " in your alliance");
+            } else {
+                hasAny = true;
+            }
+        }
+        if (!hasAny) {
+            throw new IllegalCallerException("You do not have any of " + Arrays.toString(perm.value()) + " in your alliance");
         }
         return true;
     }

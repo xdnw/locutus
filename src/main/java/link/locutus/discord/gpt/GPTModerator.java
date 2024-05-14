@@ -88,13 +88,11 @@ public class GPTModerator implements IModerator{
 
     public void addToObject(Object classWithProperties, JSONObject categoriesObject) {
         for (Field field : classWithProperties.getClass().getDeclaredFields()) {
-            if (field.isAnnotationPresent(JsonProperty.class)) {
-                try {
-                    field.setAccessible(true);
-                    categoriesObject.put(field.getName(), field.get(classWithProperties));
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
+            try {
+                field.setAccessible(true);
+                categoriesObject.put(field.getName(), field.get(classWithProperties));
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
             }
         }
     }

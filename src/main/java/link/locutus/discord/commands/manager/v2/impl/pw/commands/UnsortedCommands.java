@@ -21,11 +21,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -559,7 +555,7 @@ public class UnsortedCommands {
 
     @Command(desc="Login to allow the bot to run scripts through your account\n" +
             "(Avoid using this if possible)")
-    @RankPermission(Rank.OFFICER)
+    @CmdAlliancePermission(AlliancePermission.WITHDRAW_BANK)
     public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me,
                                @Arg("Your username (i.e. email) for Politics And War")
                                String username,
@@ -568,7 +564,7 @@ public class UnsortedCommands {
         try {
             if (msg != null) io.delete(msg.getId());
         } catch (Throwable ignore) {};
-        if (me == null || me.getPosition() < Rank.OFFICER.id) return "You are not an officer of an alliance";
+        if (me == null || !me.hasAllPermission(Set.of(AlliancePermission.WITHDRAW_BANK))) return "You are not an officer of an alliance";
         DBAlliance alliance = me.getAlliance();
         Auth existingAuth = alliance.getAuth();;
         if (existingAuth != null) {

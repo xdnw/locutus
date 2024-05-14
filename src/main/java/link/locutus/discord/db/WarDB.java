@@ -501,7 +501,7 @@ public class WarDB extends DBMainV2 {
 
         activeWars.syncBlockades();
         if (conflictManager != null) {
-//            conflictManager.loadConflicts();
+            conflictManager.loadConflicts();
         }
     }
 

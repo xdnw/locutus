@@ -103,7 +103,7 @@ public class ConflictManager {
         boolean hasDirty = false;
         for (Conflict conflict : getActiveConflicts()) {
             if (conflict.isDirty()) {
-                conflict.push(this, null, false);
+                conflict.push(this, null, false, false);
                 hasDirty = true;
             }
         }
@@ -242,13 +242,16 @@ public class ConflictManager {
     public void onTurnChange(TurnChangeEvent event) {
         long turn = event.getCurrent();
         boolean updated = false;
-        List<Conflict> conflicts = new ArrayList<>(getActiveConflicts());
-        for (Conflict conflict : conflicts) {
-            conflict.getSide(true).updateTurnChange(this, turn, true);
-            conflict.getSide(false).updateTurnChange(this, turn, false);
-        }
-        for (Conflict conflict : conflicts) {
-            conflict.push(this, null, true);
+        List<Conflict> conflicts = getActiveConflicts();
+        if (!conflicts.isEmpty()) {
+            for (Conflict conflict : conflicts) {
+                conflict.getSide(true).updateTurnChange(this, turn, true);
+                conflict.getSide(false).updateTurnChange(this, turn, false);
+            }
+            for (Conflict conflict : conflicts) {
+                conflict.push(this, null, true, false);
+            }
+            pushIndex();
         }
     }
 
@@ -1263,6 +1266,7 @@ public class ConflictManager {
             headers.add(entry.getKey());
             funcs.add(entry.getValue());
         }
+        root.put("headers", headers);
 
         List<List<Object>> rows = new ObjectArrayList<>();
         JteUtil.writeArray(rows, funcs, map.values());

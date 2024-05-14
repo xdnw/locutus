@@ -61,8 +61,8 @@ public class Settings extends Config {
     @Comment("Your api key (generated if username/password is set)")
     public String API_KEY_PRIMARY = "";
 
-    @Comment({"A list of api keys the bot can use for requests (optional)",
-            "See: `/admin validateApiKeys`"})
+    @Comment({"A list of api keys the bot can use for general requests (optional)",
+            "To validate these keys, see: `/admin validateApiKeys`"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
     @Comment({"The discord id of the bot (generated)",

@@ -642,7 +642,9 @@ public class PWWikiUtil {
             String name = entry.getKey();
             String urlStub = entry.getValue();
             Conflict conflict = loadWikiConflict(name, urlStub, errorsByPage, allowCache);
-            conflicts.add(conflict);
+            if (conflict != null) {
+                conflicts.add(conflict);
+            }
         }
         return conflicts;
     }

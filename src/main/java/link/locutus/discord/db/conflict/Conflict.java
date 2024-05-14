@@ -763,7 +763,7 @@ public class Conflict {
      * @param includeGraphs
      * @return List of URLs
      */
-    public List<String> push(ConflictManager manager, String webIdOrNull, boolean includeGraphs) {
+    public List<String> push(ConflictManager manager, String webIdOrNull, boolean includeGraphs, boolean updateIndex) {
         AwsManager aws = manager.getAws();
         if (webIdOrNull == null) {
             if (getId() == -1) throw new IllegalArgumentException("Conflict has no id");
@@ -781,6 +781,9 @@ public class Conflict {
             byte[] graphValue = getGraphPsonGzip(manager);
             aws.putObject(graphKey, graphValue);
             urls.add(aws.getLink(graphKey));
+        }
+        if (updateIndex) {
+            manager.pushIndex();
         }
         return urls;
     }

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -54,6 +55,7 @@ import java.sql.SQLException;
 import java.text.Normalizer;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -115,8 +117,10 @@ public class ConflictCommands {
             url = url.substring(url.lastIndexOf("/") + 1);
         }
         conflict.setWiki(url);
+        String importResult = importWikiPage(db, manager, conflict.getName(), url, false, true);
+        conflict.push(manager, null, false, false);
         return "Set wiki to: `" + url + "`. Attempting to load additional wiki information...\n\n" +
-                importWikiPage(db, manager, conflict.getName(), url, false);
+                importResult;
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
@@ -124,6 +128,7 @@ public class ConflictCommands {
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setStatus(ConflictManager manager, Conflict conflict, String status) throws IOException {
         conflict.setStatus(status);
+        conflict.push(manager, null, false, false);
         return "Done! Set the status of `" + conflict.getName() + "` to `" + status + "`";
     }
 
@@ -132,6 +137,7 @@ public class ConflictCommands {
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCB(ConflictManager manager, Conflict conflict, String casus_belli) throws IOException {
         conflict.setCasusBelli(casus_belli);
+        conflict.push(manager, null, false, false);
         return "Done! Set the casus belli of `" + conflict.getName() + "` to `" + casus_belli + "`";
     }
 
@@ -140,30 +146,39 @@ public class ConflictCommands {
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCategory(ConflictManager manager, Conflict conflict, ConflictCategory category) throws IOException {
         conflict.setCategory(category);
+        conflict.push(manager, null, false, true);
         return "Done! Set the category of `" + conflict.getName() + "` to `" + category + "`";
     }
 
     @Command(desc = "Pushes conflict data to the AWS bucket for the website")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String syncConflictData(ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("u") boolean upload_graph, @Switch("w") boolean reinitialize_wars, @Switch("g") boolean reinitialize_graphs) throws IOException, ParseException {
+    public String syncConflictData(@Me IMessageIO io, ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("u") boolean upload_graph, @Switch("w") boolean reinitialize_wars, @Switch("g") boolean reinitialize_graphs) throws IOException, ParseException {
         AwsManager aws = manager.getAws();
         if (aws == null) {
             throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
         }
+        CompletableFuture<IMessageBuilder> msgFuture;
         if (reinitialize_wars) {
+            msgFuture = io.send("Initializing wars...");
             manager.loadConflictWars(conflicts, true);
+        } else {
+            msgFuture = io.send("Please wait...");
         }
         if (reinitialize_graphs) {
             for (Conflict conflict : conflicts) {
+                io.updateOptionally(msgFuture, "Initializing graphs for " + conflict.getName() + "...");
                 conflict.updateGraphsLegacy(manager);
             }
         }
         if (conflicts != null) {
             List<String> urls = new ArrayList<>();
             for (Conflict conflict : conflicts) {
-                urls.addAll(conflict.push(manager, null, upload_graph));
+                io.updateOptionally(msgFuture, "Pushing " + conflict.getName() + "...");
+                urls.addAll(conflict.push(manager, null, upload_graph, false));
             }
+            io.updateOptionally(msgFuture, "Pushing index...");
+            urls.add(manager.pushIndex());
             return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
         } else {
             if (!manager.pushDirtyConflicts()) {
@@ -190,6 +205,7 @@ public class ConflictCommands {
             return null;
         }
         manager.deleteConflict(conflict);
+        manager.pushIndex();
         return "Deleted conflict: #" + conflict.getId() + " - `" + conflict.getName() + "`" +
                 "\nNote: this does not push the data to the site";
     }
@@ -255,8 +271,9 @@ public class ConflictCommands {
             return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setEnd(time);
+        conflict.push(manager, null, false, true);
         return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time) +
-                "\nNote: this does not push the data to the site";
+                "\nNote: this does not recalculate conflict data";
     }
 
     @Command(desc = "Set the start date for a conflict\n" +
@@ -281,8 +298,9 @@ public class ConflictCommands {
             return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setStart(time);
+        conflict.push(manager, null, false, true);
         return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) +
-                "\nNote: this does not push the data to the site";
+                "\nNote: this does not recalculate conflict data";
     }
 
     @Command(desc = "Set the name of a conflict")
@@ -310,8 +328,8 @@ public class ConflictCommands {
             sideName = "conflict";
             conflict.setName(name);
         }
-        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "`" +
-                "\nNote: this does not push the data to the site";
+        conflict.push(manager, null, false, true);
+        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "`";
     }
 
     private int getFighting(DBAlliance alliance, Set<DBAlliance> enemyCoalition) {
@@ -540,7 +558,8 @@ public class ConflictCommands {
     public String importWikiPage(@Me GuildDB db, ConflictManager manager,
                                  String name,
                                  @Default String url,
-                                 @Default("true") boolean useCache) throws IOException {
+                                 @Default("true") boolean useCache,
+                                 @Switch("p") boolean skipPushToSite) throws IOException {
         if (name.contains("http")) return "Please specify the name of the wiki page, not the URL for `name`";
         if (url == null) {
             url = Normalizer.normalize(name.replace(" ", "_"), Normalizer.Form.NFKC);
@@ -635,8 +654,14 @@ public class ConflictCommands {
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String recalculateGraphs(ConflictManager manager, Set<Conflict> conflicts) throws IOException, ParseException {
+    public String recalculateGraphs(@Me IMessageIO io, ConflictManager manager, Set<Conflict> conflicts) throws IOException, ParseException {
+        CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
+        return recalculateGraphs2(io, future, manager, conflicts);
+    }
+
+    private String recalculateGraphs2(@Me IMessageIO io, CompletableFuture<IMessageBuilder> updateMsg, ConflictManager manager, Set<Conflict> conflicts) throws IOException, ParseException {
         for (Conflict conflict : conflicts) {
+            io.updateOptionally(updateMsg, "Updating " + conflict.getName());
             conflict.updateGraphsLegacy(manager);
         }
         return "Done!\nNote: this does not push the data to the site";
@@ -647,12 +672,14 @@ public class ConflictCommands {
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String importConflictData(@Me GuildDB db, ConflictManager manager,
+    public String importConflictData(@Me IMessageIO io, @Me GuildDB db, ConflictManager manager,
                                      @Switch("c") boolean ctowned,
                                      @Switch("g") Set<Conflict> graphData,
                                      @Switch("a") boolean allianceNames,
                                      @Switch("w") boolean wiki,
                                      @Switch("s") boolean all) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+
         boolean loadGraphData = false;
         if (all) {
             Locutus.imp().getWarDb().loadWarCityCountsLegacy();
@@ -662,22 +689,37 @@ public class ConflictCommands {
             loadGraphData = true;
         }
         if (allianceNames) {
+            io.updateOptionally(msgFuture, "Importing alliance names");
             importAllianceNames(manager);
         }
         if (ctowned) {
+            io.updateOptionally(msgFuture, "Importing from ctowned.net");
             importCtowned(db, manager, true);
         }
         if (wiki) {
+            io.updateOptionally(msgFuture, "Importing from wiki");
             importWikiAll(db, manager, true);
         }
         if (loadGraphData && graphData == null) {
+            io.updateOptionally(msgFuture, "Recaculating tables");
             graphData = new LinkedHashSet<>(manager.getConflictMap().values());
             recalculateTables(manager, graphData);
         }
         if (graphData != null) {
-            recalculateGraphs(manager, graphData);
+            io.updateOptionally(msgFuture, "Recaculating graphs");
+            recalculateGraphs2(io, msgFuture, manager, graphData);
+            if (all && !graphData.isEmpty()) {
+                io.updateOptionally(msgFuture, "Pushing data to the site");
+                for (Conflict conflict : graphData) {
+                    conflict.push(manager, null, true, false);
+                }
+                manager.pushIndex();
+                return "Done!";
+            }
         }
-        return "Done!\nNote: this does not push the data to the site";
+        return "Done!\n" +
+                "Note: this does not push the data to the site\n" +
+                "See: " + CM.conflict.sync.website.cmd.toSlashMention();
     }
 
     @Command(desc = "Configure the guilds and conflict ids that will be featured by this guild\n" +

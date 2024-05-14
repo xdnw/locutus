@@ -2300,8 +2300,8 @@ public class IACommands {
     @Command(desc = "Set the interview message")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String setInterview(@Me GuildDB db, IACategory category, String message) {
-        db.setCopyPasta("interview", message);
-        return "Set `interview` to:\n```md\n" + message + "```\n\nUse ";// TODO CM REF + CM.interview.questions.view.toSlashMention() + " to view";
+        db.setCopyPasta("interview", message.replace("\\n", "\n"));
+        return "Set `interview` to:\n```md\n" + message + "```\n\nUse " + CM.interview.questions.view.cmd.toSlashMention() + " to view";
     }
 
     @Command(desc = "View the interview message")
@@ -2309,8 +2309,8 @@ public class IACommands {
     public String viewInterview(@Me GuildDB db, IACategory category) {
         String message = db.getCopyPasta("interview", true);
         if (message == null) {
-            return "No message set. Set one with " + "";//TODO CM REF CM.interview.questions.set.cmd.toSlashMention();
+            return "No message set. Set one with " + "" +  CM.interview.questions.set.cmd.toSlashMention();
         }
-        return "Interview questions:\n```md\n" + message + "```";
+        return "Interview questions:\n" + message + "";
     }
 }
