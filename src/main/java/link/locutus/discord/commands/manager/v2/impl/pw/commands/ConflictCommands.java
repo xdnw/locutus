@@ -68,8 +68,13 @@ public class ConflictCommands {
         response.append("wiki: `" + conflict.getWiki() + "`\n");
         response.append("Start: " + DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getStartTurn()), null) + "\n");
         response.append("End: " + (conflict.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getEndTurn()), null)) + "\n");
-        response.append("Casus Belli: `" + conflict.getCasusBelli() + "`\n");
-        response.append("Status: `" + conflict.getStatusDesc() + "`\n");
+        response.append("Casus Belli: `" + (conflict.getCasusBelli().isEmpty() ? "N/A" : conflict.getCasusBelli().isEmpty()) + "`\n");
+        response.append("Status: `" + (conflict.getStatusDesc().isEmpty() ? "N/A" : conflict.getStatusDesc().isEmpty()) + "`\n");
+        response.append("Num wars: `" + conflict.getTotalWars() + "`");
+        if (conflict.getEndMS() > System.currentTimeMillis()) {
+            response.append(" (`" + conflict.getActiveWars() + "` active)");
+        }
+        response.append("\n");
 
         CoalitionSide col1 = conflict.getSide(true);
         CoalitionSide col2 = conflict.getSide(false);
@@ -231,7 +236,7 @@ public class ConflictCommands {
                     "includeInactive", "list inactive").send();
             return null;
         }
-        StringBuilder response = new StringBuilder();
+        StringBuilder response = new StringBuilder(conflicts.size() + " conflicts:\n");
         // Name - Start date - End date (bold underline
         // - Coalition1:
         // - Coalition2:
