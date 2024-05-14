@@ -68,6 +68,26 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return o.getName();
     }
 
+    @Override
+    public Set<DBNation> deserializeSelection(ValueStore store, String input) {
+        Set<DBNation> superSet = super.deserializeSelection(store, input);
+        List<Function<DBNation, Double>> sortCriteria = List.of(
+                n -> (double) n.getAlliance_id(),
+                n -> (double) n.getCities(),
+                n -> (double) n.getId()
+        );
+        return superSet.stream().sorted((n1, n2) -> {
+            for (Function<DBNation, Double> criteria : sortCriteria) {
+                double val1 = criteria.apply(n1);
+                double val2 = criteria.apply(n2);
+                if (val1 != val2) {
+                    return Double.compare(val1, val2);
+                }
+            }
+            return 0;
+        }).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     @NoFormat
     @Command(desc = "Add an alias for a selection of Nations")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
