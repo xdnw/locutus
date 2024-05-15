@@ -166,7 +166,7 @@ public class TransferSheet {
     }
 
     public TransferSheet write() {
-        List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
+        List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities", "worth"));
         for (ResourceType value : ResourceType.values) {
             if (value != ResourceType.CREDITS) header.add(value.name());
         }
@@ -188,6 +188,7 @@ public class TransferSheet {
                 row.add(nation.getCities());
             }
             Map<ResourceType, Double> transfer = entry.getValue();
+            row.add(ResourceType.convertedTotal(transfer));
             for (ResourceType type : ResourceType.values) {
                 if (type != ResourceType.CREDITS) {
                     double amt = transfer.getOrDefault(type, 0d);
