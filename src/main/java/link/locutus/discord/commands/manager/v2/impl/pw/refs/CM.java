@@ -1289,6 +1289,22 @@ public class CM {
                     return createArgs("includeInactive", includeInactive);
                 }
             }
+            public static class purge{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="purgeFeatured")
+                public static class featured extends CommandRef {
+                    public static final featured cmd = new featured();
+                    public featured create(String olderThan, String force) {
+                        return createArgs("olderThan", olderThan, "force", force);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="purgeTemporaryConflicts")
+                public static class user_generated extends CommandRef {
+                    public static final user_generated cmd = new user_generated();
+                    public user_generated create(String olderThan, String force) {
+                        return createArgs("olderThan", olderThan, "force", force);
+                    }
+                }
+            }
             public static class sync{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importAllianceNames")
                 public static class alliance_names extends CommandRef {
@@ -1342,8 +1358,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importWikiPage")
                 public static class wiki_page extends CommandRef {
                     public static final wiki_page cmd = new wiki_page();
-                    public wiki_page create(String name, String url, String useCache) {
-                        return createArgs("name", name, "url", url, "useCache", useCache);
+                    public wiki_page create(String name, String url, String useCache, String skipPushToSite) {
+                        return createArgs("name", name, "url", url, "useCache", useCache, "skipPushToSite", skipPushToSite);
                     }
                 }
             }
@@ -1898,6 +1914,15 @@ public class CM {
                 public static final adRanking cmd = new adRanking();
                 public adRanking create(String uploadFile) {
                     return createArgs("uploadFile", uploadFile);
+                }
+            }
+            public static class channel{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="renameInterviewChannels")
+                public static class auto_rename extends CommandRef {
+                    public static final auto_rename cmd = new auto_rename();
+                    public auto_rename create(String categories, String allow_non_members, String allow_vm, String force) {
+                        return createArgs("categories", categories, "allow_non_members", allow_non_members, "allow_vm", allow_vm, "force", force);
+                    }
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="interview")
@@ -3091,6 +3116,13 @@ public class CM {
                 public static final GRANT_LIMIT_DELAY cmd = new GRANT_LIMIT_DELAY();
                 public GRANT_LIMIT_DELAY create(String timediff) {
                     return createArgs("timediff", timediff);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_ESCROW", field="MEMBER_CAN_ESCROW")
+            public static class MEMBER_CAN_ESCROW extends CommandRef {
+                public static final MEMBER_CAN_ESCROW cmd = new MEMBER_CAN_ESCROW();
+                public MEMBER_CAN_ESCROW create(String enabled) {
+                    return createArgs("enabled", enabled);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_OFFSHORE", field="MEMBER_CAN_OFFSHORE")
