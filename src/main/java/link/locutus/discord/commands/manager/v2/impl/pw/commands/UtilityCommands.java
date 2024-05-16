@@ -690,65 +690,88 @@ public class UtilityCommands {
     }
 
     @Command(aliases = {"nap", "napdown"})
-    public String nap() {
-        long turnEnd = 238338;
-        String napLink = "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>";
+
+    public String nap(@Default boolean listExpired) {
+        Map<Long, String> naps = new LinkedHashMap<>();
+        naps.put(238332L, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
+        naps.put(239436L, "<https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
+
         long turn = TimeUtil.getTurn();
+        int skippedExpired = 0;
 
-        long diff = (turnEnd - turn) * TimeUnit.HOURS.toMillis(2);
-
-        if (diff <= 0) {
-            String[] images = new String[] {
-                    "3556290",
-                    "13099758",
-                    "5876175",
-                    "15996537",
-                    "13578642",
-                    "11331727",
-                    "13776910",
-                    "3381639",
-                    "8476393",
-                    "3581186",
-                    "13354647",
-                    "5652813",
-                    "7645437",
-                    "9507023",
-                    "8832122",
-                    "4735568",
-                    "7391113",
-                    "5196956",
-                    "11955188",
-                    "5483839",
-                    "12321108",
-                    "17686107",
-                    "12262416",
-                    "13093956",
-                    "4909014",
-                    "17318955",
-                    "4655431",
-                    "14853646",
-                    "14464332",
-                    "14583973",
-                    "18127160",
-                    "4897716",
-                    "15353915",
-                    "8503723"
-            };
-            String baseUrl = "https://tenor.com/view/";
-            String id = images[ThreadLocalRandom.current().nextInt(images.length)];
-            return baseUrl + id;
-        }
-
-        String title = "GW Countdown: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff) + " | " + (turnEnd - turn) + " turns";
         StringBuilder response = new StringBuilder();
-
-        String url = "https://www.epochconverter.com/countdown?q=" + TimeUtil.getTimeFromTurn(turnEnd);
-        response.append(url);
-        if (napLink != null && !napLink.isEmpty()) {
-            response.append("\n" + napLink);
+        for (Map.Entry<Long, String> entry : naps.entrySet()) {
+            long turnEnd = entry.getKey();
+            if (turnEnd < turn && !listExpired) {
+                skippedExpired++;
+                continue;
+            }
+            response.append("## " + DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(turnEnd), null) + ":\n");
+            response.append("- " + StringMan.join(entry.getValue().split("\n"), "\n- ") + "\n\n");
         }
 
-        return "**" + title + "**\n" + response.toString();
+        if (response.length() == 0) {
+            if (skippedExpired > 0) {
+                response.append("Skipped " + skippedExpired + " expired NAPs, set `listExpired: True` to include\n");
+            }
+            response.append("No active NAPs");
+        }
+        return response.toString();
+//
+//        long diff = (turnEnd - turn) * TimeUnit.HOURS.toMillis(2);
+//
+//        if (diff <= 0) {
+//            String[] images = new String[] {
+//                    "3556290",
+//                    "13099758",
+//                    "5876175",
+//                    "15996537",
+//                    "13578642",
+//                    "11331727",
+//                    "13776910",
+//                    "3381639",
+//                    "8476393",
+//                    "3581186",
+//                    "13354647",
+//                    "5652813",
+//                    "7645437",
+//                    "9507023",
+//                    "8832122",
+//                    "4735568",
+//                    "7391113",
+//                    "5196956",
+//                    "11955188",
+//                    "5483839",
+//                    "12321108",
+//                    "17686107",
+//                    "12262416",
+//                    "13093956",
+//                    "4909014",
+//                    "17318955",
+//                    "4655431",
+//                    "14853646",
+//                    "14464332",
+//                    "14583973",
+//                    "18127160",
+//                    "4897716",
+//                    "15353915",
+//                    "8503723"
+//            };
+//            String baseUrl = "https://tenor.com/view/";
+//            String id = images[ThreadLocalRandom.current().nextInt(images.length)];
+//            return baseUrl + id;
+//        }
+//
+//        String title = "GW Countdown: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff) + " | " + (turnEnd - turn) + " turns";
+//        StringBuilder response = new StringBuilder();
+//
+//        String url = "https://www.epochconverter.com/countdown?q=" + TimeUtil.getTimeFromTurn(turnEnd);
+//        response.append(url);
+//        if (napLink != null && !napLink.isEmpty()) {
+//            response.append("\n" + napLink);
+//        }
+//
+//        return "**" + title + "**\n" + response.toString();
     }
     @Command(desc = "Rank the number of wars between two coalitions by nation or alliance\n" +
             "Defaults to alliance ranking")

@@ -514,6 +514,7 @@ public class ConflictManager {
                         });
                     }
                 });
+                System.out.println("Loaded conflict attacks in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             }
 
             if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {

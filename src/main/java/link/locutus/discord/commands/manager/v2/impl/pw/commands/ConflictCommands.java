@@ -123,10 +123,9 @@ public class ConflictCommands {
             url = url.substring(url.lastIndexOf("/") + 1);
         }
         conflict.setWiki(url);
-        String importResult = importWikiPage(db, manager, conflict.getName(), url, false, true);
+//        String importResult = importWikiPage(db, manager, conflict.getName(), url, false, true);
         conflict.push(manager, null, false, false);
-        return "Set wiki to: `" + url + "`. Attempting to load additional wiki information...\n\n" +
-                importResult;
+        return "Set wiki to: `" + url + "`. To pull additional wiki information, use: " + CM.conflict.sync.wiki_page.cmd.toSlashMention();
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
@@ -310,7 +309,7 @@ public class ConflictCommands {
                 "\nNote: this does not recalculate conflict data";
     }
 
-    @Command(desc = "Set the name of a conflict")
+    @Command(desc = "Set the name of a conflict, or the name of a conflict's coalition")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setConflictName(ConflictManager manager, Conflict conflict, String name, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
@@ -336,7 +335,7 @@ public class ConflictCommands {
             conflict.setName(name);
         }
         conflict.push(manager, null, false, true);
-        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "`";
+        return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "` and pushed to the site";
     }
 
     private int getFighting(DBAlliance alliance, Set<DBAlliance> enemyCoalition) {
@@ -352,10 +351,18 @@ public class ConflictCommands {
         }).count();
     }
 
-    @Command(desc = "Manually create an ongoing conflict between two coalitions")
+    @Command(desc = "Manually create an ongoing conflict between two coalitions\n" +
+            "Use `-1` for end date to specify no end date\n")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String addConflict(@Me GuildDB db, ConflictManager manager, @Me User user, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Switch("n") String conflictName, @Switch("d") @Timestamp Long start) {
+    public String addConflict(@Me GuildDB db, ConflictManager manager, @Me JSONObject command, @Me IMessageIO io, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Timestamp long start, @Timestamp long end, @Switch("n") String conflictName) throws IOException, ParseException {
+        String timeStr = command.getString("end");
+        if (MathMan.isInteger(timeStr) && Long.parseLong(timeStr) < 0) {
+            end = Long.MAX_VALUE;
+        }
+        if (end <= start) {
+            throw new IllegalArgumentException("End date must be after start date (" + start + " >= " + end + ")");
+        }
         if (conflictName != null) {
             if (MathMan.isInteger(conflictName)) {
                 throw new IllegalArgumentException("Conflict name cannot be a number (`" + conflictName + "`)");
@@ -364,36 +371,8 @@ public class ConflictCommands {
                 throw new IllegalArgumentException("Conflict name must be alphanumeric (`" + conflictName + "`)");
             }
         }
-        boolean isAdmin = Roles.ADMIN.hasOnRoot(user);
-        if (!isAdmin) {
-            if (conflictName != null) {
-                throw new IllegalArgumentException("Cannot specify `conflictName` " + Roles.ADMIN.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
-            }
-            if (start != null && (start > System.currentTimeMillis() || start < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2) - 1000)) {
-                throw new IllegalArgumentException("Date for `start` must be within 2 days");
-            }
-            // coalition1 and coalition 2 cannot have overlap
-            if (coalition1.stream().filter(coalition2::contains).count() > 0) {
-                throw new IllegalArgumentException("Cannot have overlap between `coalition1` and `coalition2`");
-            }
-            // each alliance must have at least 1 war with an enemy alliance
-            int totalWars = 0;
-            for (DBAlliance aa : coalition1) {
-                int wars = getFighting(aa, coalition2);
-                if (wars == 0) {
-                    throw new IllegalArgumentException("Alliance " + aa.getMarkdownUrl() + " does not have any active wars with an alliance in `coalition2`");
-                }
-                totalWars += wars;
-            }
-            for (DBAlliance aa : coalition2) {
-                if (getFighting(aa, coalition1) == 0) {
-                    throw new IllegalArgumentException("Alliance " + aa.getMarkdownUrl() + " does not have any active wars with an alliance in `coalition1`");
-                }
-            }
-            // ensure
-            if (totalWars <= 15) {
-                throw new IllegalArgumentException("Total wars between `coalition1` and `coalition2` must be greater than 15");
-            }
+        if (coalition1.stream().filter(coalition2::contains).count() > 0) {
+            throw new IllegalArgumentException("Cannot have overlap between `coalition1` and `coalition2`");
         }
         if (conflictName == null) {
             DBAlliance largest1 = coalition1.stream().max(Comparator.comparingDouble(DBAlliance::getScore)).orElse(null);
@@ -414,15 +393,25 @@ public class ConflictCommands {
         for (DBAlliance alliance : coalition2) conflict.addParticipant(alliance.getId(), false, null, null);
         response.append("- Coalition1: `").append(coalition1.stream().map(f -> f.getName()).collect(Collectors.joining(","))).append("`\n");
         response.append("- Coalition2: `").append(coalition2.stream().map(f -> f.getName()).collect(Collectors.joining(",")));
+        String reinitializeGraphsArg = null;
+        {
+            CompletableFuture<IMessageBuilder> msgFuture = io.send("Loading conflict stats");
+            manager.loadVirtualConflict(conflict, false);
+            long diff = end - start;
+            if (diff < TimeUnit.DAYS.toMillis(90)) {
+                io.updateOptionally(msgFuture, "Updating graphs...");
+                conflict.updateGraphsLegacy(manager);
+            } else {
+                reinitializeGraphsArg = "true";
+            }
+        }
         return response.toString() +
-                "\nTo set the end date, use:" +
-                CM.conflict.edit.end.cmd.toSlashMention() +
                 "\nThen to initialize the stats and push to the site:\n" +
-                CM.conflict.sync.website.cmd.create(conflict.getId() + "", "true", "true", "true");
+                CM.conflict.sync.website.cmd.create(conflict.getId() + "", "true", null, reinitializeGraphsArg);
     }
 
     @Command(desc = "Remove a set of alliances from a conflict\n" +
-            "This does not push the data to the site")
+            "This does NOT update conflict stats")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String removeCoalition(Conflict conflict, Set<DBAlliance> alliances) {
@@ -449,11 +438,11 @@ public class ConflictCommands {
         if (!errors.isEmpty()) {
             msg += "\n- " + StringMan.join(errors, "\n- ");
         }
-        return msg + "\nNote: this does not push the data to the site";
+        return msg + "\nThis does NOT update conflict stats.";
     }
 
     @Command(desc = "Add a set of alliances to a conflict\n" +
-            "This does not push the data to the site")
+            "This does NOT update conflict stats")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String addCoalition(@Me User user, Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
@@ -528,7 +517,7 @@ public class ConflictCommands {
             conflict.addParticipant(aa.getId(), false, null, null);
         }
         return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2\n" +
-                "Note: this does not push the data to the site";
+                "Note: this does NOT update conflict stats";
     }
 
     @Command(desc = "Import ctowned conflicts into the database\n" +
@@ -566,7 +555,7 @@ public class ConflictCommands {
                                  String name,
                                  @Default String url,
                                  @Default("true") boolean useCache,
-                                 @Switch("p") boolean skipPushToSite) throws IOException {
+                                 @Switch("p") boolean skipPushToSite) throws IOException, ParseException {
         if (name.contains("http")) return "Please specify the name of the wiki page, not the URL for `name`";
         if (url == null) {
             url = Normalizer.normalize(name.replace(" ", "_"), Normalizer.Form.NFKC);
@@ -577,6 +566,7 @@ public class ConflictCommands {
         }
         Map<String, String> errors = new HashMap<>();
         Conflict conflict = PWWikiUtil.loadWikiConflict(name, url, errors, useCache);
+
         StringBuilder response = new StringBuilder();
         if (conflict == null) {
             response.append("Failed to load conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
@@ -584,7 +574,7 @@ public class ConflictCommands {
             if (conflict.getStartTurn() < TimeUtil.getTurn(1577836800000L)) {
                 response.append("Conflict `" + name + "` before the war cutoff date of " + DiscordUtil.timestamp(1577836800000L, null) + "\n");
             } else {
-                loadWikiConflicts(db, manager, List.of(conflict));
+                loadWikiConflicts(db, manager, List.of(conflict), true, true);
                 response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
                 response.append("See: " +
                         CM.conflict.info.cmd.toSlashMention() +
@@ -597,54 +587,41 @@ public class ConflictCommands {
         return response.toString() + "\n\nNote: this does not push the data to the site";
     }
 
-    private String loadWikiConflicts(GuildDB db, ConflictManager manager, List<Conflict> conflicts) {
+    private Set<Conflict> loadWikiConflicts(GuildDB db, ConflictManager manager, List<Conflict> wikiConflicts, boolean loadWars, boolean includeGraphs) throws IOException, ParseException {
         Map<String, Set<Conflict>> conflictsByWiki = manager.getConflictMap().values().stream().collect(Collectors.groupingBy(Conflict::getWiki, Collectors.toSet()));
         // Cutoff date
-        conflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
+        wikiConflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
         // print all ongoing conflicts
-        for (Conflict conflict : conflicts) {
-            Conflict original = conflict;
-            Set<Conflict> existingSet = conflictsByWiki.get(conflict.getWiki());
+        Set<Conflict> loaded = new LinkedHashSet<>();
+        for (Conflict wikiConflict : wikiConflicts) {
+            Set<Conflict> existingSet = conflictsByWiki.get(wikiConflict.getWiki());
             if (existingSet == null) {
-                conflict = manager.addConflict(conflict.getName(), db.getIdLong(), conflict.getCategory(), conflict.getSide(true).getName(), conflict.getSide(false).getName(), conflict.getWiki(), conflict.getCasusBelli(), conflict.getStatusDesc(), conflict.getStartTurn(), conflict.getEndTurn());
+                Conflict conflict = manager.addConflict(wikiConflict.getName(), db.getIdLong(), wikiConflict.getCategory(), wikiConflict.getSide(true).getName(), wikiConflict.getSide(false).getName(), wikiConflict.getWiki(), wikiConflict.getCasusBelli(), wikiConflict.getStatusDesc(), wikiConflict.getStartTurn(), wikiConflict.getEndTurn());
                 existingSet = Set.of(conflict);
-            }
-            for (Conflict existing : existingSet) {
-                if (existing.getStatusDesc().isEmpty()) {
-                    existing.setStatus(conflict.getStatusDesc());
-                }
-                if (existing.getCasusBelli().isEmpty()) {
-                    existing.setCasusBelli(conflict.getCasusBelli());
-                }
-                if (existingSet.size() == 1 && !conflict.getName().equalsIgnoreCase(existing.getName())) {
-                    existing.setName(conflict.getName());
-                }
-                if (existing.getAnnouncement().isEmpty() && !original.getAnnouncement().isEmpty()) {
-                    for (Map.Entry<String, DBTopic> entry : original.getAnnouncement().entrySet()) {
-                        existing.addAnnouncement(entry.getKey(), entry.getValue(), true);
+                if (loadWars) {
+                    manager.loadVirtualConflict(conflict, true);
+                    if (includeGraphs) {
+                        conflict.updateGraphsLegacy(manager);
                     }
                 }
-                if (existing.getCategory() != conflict.getCategory()) {
-                    existing.setCategory(conflict.getCategory());
-                }
-                if (existing.getAllianceIds().isEmpty()) {
-                    for (int aaId : original.getCoalition1()) existing.addParticipant(aaId, true, null, null);
-                    for (int aaId : original.getCoalition2()) existing.addParticipant(aaId, false, null, null);
-                }
             }
+            for (Conflict existing : existingSet) {
+                existing.set(wikiConflict, existingSet.size() == 1 && manager.getConflict(wikiConflict.getName()) == null);
+            }
+            loaded.addAll(existingSet);
         }
-        return "Done!\nNote: this does not push the data to the site";
+        return loaded;
     }
 
     @Command(desc = "Import all wiki pages as conflicts\n" +
             "This does not push the data to the site")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String importWikiAll(@Me GuildDB db, ConflictManager manager, @Default("true") boolean useCache) throws IOException {
+    public String importWikiAll(@Me GuildDB db, ConflictManager manager, @Default("true") boolean useCache) throws IOException, ParseException {
         Map<String, String> errors = new LinkedHashMap<>();
         List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
-
-        return loadWikiConflicts(db, manager, conflicts);
+        Set<Conflict> loaded = loadWikiConflicts(db, manager, conflicts, false, false);
+        return "Loaded " + loaded.size() + " conflicts from the wiki. Use " + CM.conflict.sync.website.cmd.create("*", "true", "true", "true") + " recalculate stats and push to the website.";
     }
 
 
@@ -676,7 +653,7 @@ public class ConflictCommands {
 
     @Command(desc = "Bulk import conflict data from multiple sources\n" +
             "Including ctowned, wiki, graph data, alliance names or ALL\n" +
-            "This does not push the data to the site")
+            "This does not push the data to the site unless `all` is used")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importConflictData(@Me IMessageIO io, @Me GuildDB db, ConflictManager manager,

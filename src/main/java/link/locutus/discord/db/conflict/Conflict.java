@@ -793,4 +793,28 @@ public class Conflict {
     public boolean isDirty() {
         return this.dirtyJson;
     }
+
+    public void set(Conflict wikiConflict, boolean setName) {
+        if (getStatusDesc().isEmpty()) {
+            setStatus(wikiConflict.getStatusDesc());
+        }
+        if (getCasusBelli().isEmpty()) {
+            setCasusBelli(wikiConflict.getCasusBelli());
+        }
+        if (setName && !wikiConflict.getName().equalsIgnoreCase(getName())) {
+            setName(wikiConflict.getName());
+        }
+        if (getAnnouncement().isEmpty() && !wikiConflict.getAnnouncement().isEmpty()) {
+            for (Map.Entry<String, DBTopic> entry : wikiConflict.getAnnouncement().entrySet()) {
+                addAnnouncement(entry.getKey(), entry.getValue(), true);
+            }
+        }
+        if (getCategory() != wikiConflict.getCategory()) {
+            setCategory(wikiConflict.getCategory());
+        }
+        if (getAllianceIds().isEmpty()) {
+            for (int aaId : wikiConflict.getCoalition1()) addParticipant(aaId, true, null, null);
+            for (int aaId : wikiConflict.getCoalition2()) addParticipant(aaId, false, null, null);
+        }
+    }
 }
