@@ -16,6 +16,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -314,8 +315,7 @@ public class CoalitionSide {
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker, BiFunction<DBNation, Long, Integer> checkActivity) {
-        AttackTypeSubCategory subCategory = attack.getSubCategory(checkActivity);
+    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker, AttackTypeSubCategory subCategory) {
         int attackerAA, attackerId, cities;
         long day = TimeUtil.getDay(attack.getDate());
         if (isAttacker) {

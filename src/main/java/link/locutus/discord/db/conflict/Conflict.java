@@ -11,9 +11,11 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DBNationSnapshot;
@@ -502,7 +504,7 @@ public class Conflict {
         return true;
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, long turn, BiFunction<DBNation, Long, Integer> checkActivity) {
+    public void updateAttack(DBWar war, AbstractCursor attack, long turn, Function<IAttack, AttackTypeSubCategory> getCached) {
         int attackerAA, defenderAA;
         if (attack.getAttacker_id() == war.getAttacker_id()) {
             attackerAA = war.getAttacker_aa();
@@ -514,8 +516,9 @@ public class Conflict {
         CoalitionSide side = getCoalition(attackerAA, defenderAA, turn);
         if (side == null) return;
         CoalitionSide otherSide = side.getOther();
-        side.updateAttack(war, attack, true, checkActivity);
-        otherSide.updateAttack(war, attack, false, checkActivity);
+        AttackTypeSubCategory subCategory = getCached.apply(attack);
+        side.updateAttack(war, attack, true, subCategory);
+        otherSide.updateAttack(war, attack, false, subCategory);
         getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
         getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
         getWarWebEntry(defenderAA, attackerAA).apply(attack, false);

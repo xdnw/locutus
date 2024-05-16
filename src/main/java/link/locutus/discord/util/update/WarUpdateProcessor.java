@@ -439,9 +439,7 @@ public class WarUpdateProcessor {
                 if (root.getAtt_mun_used() == 0) {
                     return AttackTypeSubCategory.GROUND_NO_MUNITIONS_NO_TANKS;
                 }
-
                 double enemyGroundStrength = defSoldiers * 1.7_5 + defTanks * 40;
-
                 if (attTanks > 0) {
                     if (root.getDefcas3() == 0) {
                         if (attSoldiers * 1.7_5 > enemyGroundStrength) {

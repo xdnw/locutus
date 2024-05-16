@@ -1837,11 +1837,12 @@ public class UnsortedCommands {
         if (days != null) cmd.add(days + "");
         Set<Character> flags = new HashSet<>();
         if (build.getCity_id() != null) {
+            int originalCityId = build.getCity_id();
             JavaCity jc = new JavaCity(build);
             jc.zeroNonMilitary();
             build = jc.toCityBuild();
-            if (geographicContinent == null && build.getCity_id() != null) {
-                DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(build.getCity_id());
+            if (geographicContinent == null) {
+                DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(originalCityId);
                 if (city != null) {
                     DBNation nation = city.getNation();
                     if (nation != null) {

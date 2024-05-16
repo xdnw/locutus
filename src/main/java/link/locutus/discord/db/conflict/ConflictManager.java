@@ -1,10 +1,7 @@
 package link.locutus.discord.db.conflict;
 
 import com.google.common.eventbus.Subscribe;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntArraySet;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -13,6 +10,8 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -92,6 +91,41 @@ public class ConflictManager {
             }
         }, 17, 7, TimeUnit.MINUTES);
         return null;
+    }
+
+    public void createTables() {
+//        // drop table conflicts
+//        db.executeStmt("DROP TABLE IF EXISTS conflict_participant");
+//        db.executeStmt("DROP TABLE IF EXISTS conflicts");
+//        db.executeStmt("DROP TABLE IF EXISTS conflict_announcements2");
+//        db.executeStmt("DROP TABLE IF EXISTS conflict_graphs2");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL, creator BIGINT NOT NULL)");
+        // add column `creator`
+        // add col1 and col2 (string) to conflicts, default ""
+//        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
+//        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
+        // add wiki column, default empty
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
+        db.executeStmt("DROP TABLE legacy_names");
+//        db.executeStmt("DELETE FROM conflicts");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        // drop conflict_graphs
+        db.executeStmt("DROP TABLE conflict_graphs");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS source_sets (guild BIGINT NOT NULL, source_id BIGINT NOT NULL, source_type INT NOT NULL, PRIMARY KEY (guild, source_id, source_type))");
+
+        // attack_subtypes attack id int primary key, subtype int not null
+        db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
     }
 
     public String pushIndex() {
@@ -230,14 +264,14 @@ public class ConflictManager {
         AbstractCursor attack = event.getAttack();
         DBWar war = attack.getWar();
         if (war != null) {
-            updateAttack(war, attack, f -> true, DBNation::getActive_m);
+            updateAttack(war, attack, f -> true, f -> f.getSubCategory(DBNation::getActive_m));
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Integer> allowed, BiFunction<DBNation, Long, Integer> checkActivity) {
+    public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Integer> allowed, Function<IAttack, AttackTypeSubCategory> getCached) {
         long turn = TimeUtil.getTurn(war.getDate());
         if (turn > lastTurn) initTurn();
-        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, checkActivity));
+        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, getCached));
     }
 
     @Subscribe
@@ -494,27 +528,51 @@ public class ConflictManager {
 
             System.out.println("Loaded wars in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             if (!wars.isEmpty()) {
-                Map<Integer, Set<Long>> activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
-                System.out.println("Loaded activity in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+                Map<Integer, Byte> subTypes = loadSubTypes();
+                System.out.println("Loaded subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms") + " | " + subTypes.size());
+                Map<Integer, Byte> newSubTypes = new Int2ByteOpenHashMap();
+                BiFunction<DBNation, Long, Integer> activityCache = new BiFunction<>() {
+                    private Map<Integer, Set<Long>> activity;
+                    @Override
+                    public Integer apply(DBNation nation, Long dateMs) {
+                        if (activity == null) {
+                            long start = System.currentTimeMillis();
+                            activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
+                            System.out.println("Loaded activity in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+                        }
+                        Set<Long> natAct = activity.get(nation.getId());
+                        if (natAct == null) return Integer.MAX_VALUE;
+                        long currDay = TimeUtil.getDay(dateMs);
+                        for (long day = currDay; day >= currDay - 10; day--) {
+                            if (natAct.contains(day)) {
+                                return (int) (TimeUnit.DAYS.toMinutes((int) (currDay - day)));
+                            }
+                        }
+                        return 20000;
+                    }
+                };
                 db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
                     if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
-                        updateAttack(war, attack, allowedConflicts, new BiFunction<DBNation, Long, Integer>() {
+                        updateAttack(war, attack, allowedConflicts, new Function<IAttack, AttackTypeSubCategory>() {
                             @Override
-                            public Integer apply(DBNation nation, Long dateMs) {
-                                Set<Long> natAct = activity.get(nation.getId());
-                                if (natAct == null) return Integer.MAX_VALUE;
-                                long currDay = TimeUtil.getDay(dateMs);
-                                for (long day = currDay; day >= currDay - 10; day--) {
-                                    if (natAct.contains(day)) {
-                                        return Math.toIntExact(TimeUnit.DAYS.toMinutes((int) (currDay - day)));
-                                    }
+                            public AttackTypeSubCategory apply(IAttack a) {
+                                int id = a.getWar_attack_id();
+                                Byte cached = subTypes.get(id);
+                                if (cached != null) {
+                                    return cached == -1 ? null : AttackTypeSubCategory.values[cached];
                                 }
-                                return Integer.MAX_VALUE;
+                                AttackTypeSubCategory sub = a.getSubCategory(activityCache);
+                                newSubTypes.put(id, sub == null ? -1 : (byte) sub.ordinal());
+                                return sub;
                             }
                         });
                     }
                 });
-                System.out.println("Loaded conflict attacks in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+                System.out.println("Loaded conflict attacks and subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+                if (!newSubTypes.isEmpty()) {
+                    saveSubTypes(newSubTypes);
+                }
+                System.out.println("Saved new conflict subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms") + " | " + newSubTypes.size());
             }
 
             if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {
@@ -896,36 +954,23 @@ public class ConflictManager {
         });
     }
 
-    public void createTables() {
-//        // drop table conflicts
-//        db.executeStmt("DROP TABLE IF EXISTS conflict_participant");
-//        db.executeStmt("DROP TABLE IF EXISTS conflicts");
-//        db.executeStmt("DROP TABLE IF EXISTS conflict_announcements2");
-//        db.executeStmt("DROP TABLE IF EXISTS conflict_graphs2");
+    private Map<Integer, Byte> loadSubTypes() {
+        Map<Integer, Byte> subTypes = new Int2ByteOpenHashMap();
+        db.query("SELECT * FROM attack_subtypes", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                subTypes.put(rs.getInt("attack_id"), rs.getByte("subtype"));
+            }
+        });
+        return subTypes;
+    }
 
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL, creator BIGINT NOT NULL)");
-        // add column `creator`
-        // add col1 and col2 (string) to conflicts, default ""
-//        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
-//        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
-        // add wiki column, default empty
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0");
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
-        db.executeStmt("DROP TABLE legacy_names");
-//        db.executeStmt("DELETE FROM conflicts");
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        // drop conflict_graphs
-        db.executeStmt("DROP TABLE conflict_graphs");
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS source_sets (guild BIGINT NOT NULL, source_id BIGINT NOT NULL, source_type INT NOT NULL, PRIMARY KEY (guild, source_id, source_type))");
+    public void saveSubTypes(Map<Integer, Byte> subTypes) {
+        String query = "INSERT OR REPLACE INTO attack_subtypes (attack_id, subtype) VALUES (?, ?)";
+        db.executeBatch(subTypes.entrySet(), query, (ThrowingBiConsumer<Map.Entry<Integer, Byte>, PreparedStatement>) (entry, stmt) -> {
+            stmt.setInt(1, entry.getKey());
+            stmt.setByte(2, entry.getValue());
+        });
     }
 
     public Map<Long, List<Long>> getSourceSets() {
