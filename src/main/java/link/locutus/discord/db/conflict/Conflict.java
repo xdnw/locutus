@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -501,7 +502,7 @@ public class Conflict {
         return true;
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, long turn, boolean checkActivity) {
+    public void updateAttack(DBWar war, AbstractCursor attack, long turn, BiFunction<DBNation, Long, Integer> checkActivity) {
         int attackerAA, defenderAA;
         if (attack.getAttacker_id() == war.getAttacker_id()) {
             attackerAA = war.getAttacker_aa();

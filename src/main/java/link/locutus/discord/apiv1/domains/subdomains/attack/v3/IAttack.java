@@ -5,12 +5,14 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public interface IAttack {
     /*
@@ -171,7 +173,7 @@ public interface IAttack {
 
     DBWar getWar();
 
-    default AttackTypeSubCategory getSubCategory(boolean checkActive) {
-        return WarUpdateProcessor.subCategorize(this, checkActive);
+    default AttackTypeSubCategory getSubCategory(BiFunction<DBNation, Long, Integer> checkActiveM) {
+        return WarUpdateProcessor.subCategorize(this, checkActiveM);
     }
 }

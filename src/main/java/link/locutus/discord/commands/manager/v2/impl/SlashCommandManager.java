@@ -310,7 +310,6 @@ public class SlashCommandManager extends ListenerAdapter {
         StringBuilder builder = new StringBuilder();
         builder.append("/").append(path.toLowerCase(Locale.ROOT));
         if (!arguments.isEmpty()) {
-            // join on " "
             for (Map.Entry<String, String> entry : arguments.entrySet()) {
                 if (entry.getValue() == null) continue;
                 builder.append(" ").append(entry.getKey().toLowerCase(Locale.ROOT)).append(": ").append(entry.getValue());

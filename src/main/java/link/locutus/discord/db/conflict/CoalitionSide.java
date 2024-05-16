@@ -36,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -313,7 +314,7 @@ public class CoalitionSide {
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker, boolean checkActivity) {
+    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker, BiFunction<DBNation, Long, Integer> checkActivity) {
         AttackTypeSubCategory subCategory = attack.getSubCategory(checkActivity);
         int attackerAA, attackerId, cities;
         long day = TimeUtil.getDay(attack.getDate());

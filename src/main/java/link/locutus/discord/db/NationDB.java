@@ -6,11 +6,7 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.*;
-import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
@@ -3688,6 +3684,30 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             result.add(turn / 12);
         }
         return result;
+    }
+
+    public Map<Integer, Set<Long>> getActivityByDay(long minDate, long maxDate) {
+        // dates are inclusive
+        long minTurn = TimeUtil.getTurn(minDate);
+        long maxTurn = TimeUtil.getTurn(maxDate);
+        try (PreparedStatement stmt = prepareQuery("select nation, (`turn`/12) FROM ACTIVITY WHERE turn >= ? AND turn <= ?")) {
+            stmt.setLong(1, minTurn);
+            stmt.setLong(2, maxTurn);
+
+            Map<Integer, Set<Long>> result = new Int2ObjectOpenHashMap<>();
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    long day = rs.getLong(2);
+                    result.computeIfAbsent(id, f -> new LongOpenHashSet()).add(day);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     public Map<Long, Set<Integer>> getActivityByDay(long minDate, Predicate<Integer> allowNation) {

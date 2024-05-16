@@ -16,6 +16,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -228,14 +230,14 @@ public class ConflictManager {
         AbstractCursor attack = event.getAttack();
         DBWar war = attack.getWar();
         if (war != null) {
-            updateAttack(war, attack, f -> true);
+            updateAttack(war, attack, f -> true, DBNation::getActive_m);
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Integer> allowed) {
+    public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Integer> allowed, BiFunction<DBNation, Long, Integer> checkActivity) {
         long turn = TimeUtil.getTurn(war.getDate());
         if (turn > lastTurn) initTurn();
-        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, true));
+        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, checkActivity));
     }
 
     @Subscribe
@@ -432,7 +434,7 @@ public class ConflictManager {
         db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
             long turn = TimeUtil.getTurn(attack.getDate());
             if (TimeUtil.getTurn(war.getDate()) <= turn) {
-                conflict.updateAttack(war, attack, turn, false);
+                conflict.updateAttack(war, attack, turn, null);
             }
         });
     }
@@ -491,12 +493,28 @@ public class ConflictManager {
             }
 
             System.out.println("Loaded wars in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
-            db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
-                if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
-                    updateAttack(war, attack, allowedConflicts);
-                }
-            });
+            if (!wars.isEmpty()) {
+                Map<Integer, Set<Long>> activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
+                System.out.println("Loaded activity in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+                db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
+                    if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
+                        updateAttack(war, attack, allowedConflicts, new BiFunction<DBNation, Long, Integer>() {
+                            @Override
+                            public Integer apply(DBNation nation, Long dateMs) {
+                                Set<Long> natAct = activity.get(nation.getId());
+                                if (natAct == null) return Integer.MAX_VALUE;
+                                long currDay = TimeUtil.getDay(dateMs);
+                                for (long day = currDay; day >= currDay - 10; day--) {
+                                    if (natAct.contains(day)) {
+                                        return Math.toIntExact(TimeUnit.DAYS.toMinutes((int) (currDay - day)));
+                                    }
+                                }
+                                return Integer.MAX_VALUE;
+                            }
+                        });
+                    }
+                });
+            }
 
             if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {
                 db.query("SELECT * FROM conflict_graphs2", stmt -> {

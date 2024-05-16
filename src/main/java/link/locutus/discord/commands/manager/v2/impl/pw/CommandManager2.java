@@ -203,6 +203,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new VirtualConflictCommands(), List.of("conflict"), "createTemporary", "create_temp");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "deleteConflict", "delete");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict"), "addConflict", "create");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "purge"), "purgeFeatured", "featured");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "purge"), "purgeTemporaryConflicts", "user_generated");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictEnd", "end");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictStart", "start");

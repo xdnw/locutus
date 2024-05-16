@@ -33,7 +33,7 @@ public class DBWar {
     private byte warStatusType;
     private final long date;
     private char attDefCities;
-    private byte attDefActiveFlag;
+//    private byte attDefActiveFlag;
 
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
@@ -50,21 +50,21 @@ public class DBWar {
         this.attDefCities = (char) (attCities | (defCities << 8));
     }
 
-    public boolean isAttActive() {
-        return (attDefActiveFlag & 0x01) == 1;
-    }
-
-    public boolean isDefActive() {
-        return (attDefActiveFlag & 0x02) == 2;
-    }
-
-    public void setAttActive(boolean value) {
-        attDefActiveFlag = (byte) (value ? attDefActiveFlag | 0x01 : attDefActiveFlag & 0xFE);
-    }
-
-    public void setDefActive(boolean value) {
-        attDefActiveFlag = (byte) (value ? attDefActiveFlag | 0x02 : attDefActiveFlag & 0xFD);
-    }
+//    public boolean isAttActive() {
+//        return (attDefActiveFlag & 0x01) == 1;
+//    }
+//
+//    public boolean isDefActive() {
+//        return (attDefActiveFlag & 0x02) == 2;
+//    }
+//
+//    public void setAttActive(boolean value) {
+//        attDefActiveFlag = (byte) (value ? attDefActiveFlag | 0x01 : attDefActiveFlag & 0xFE);
+//    }
+//
+//    public void setDefActive(boolean value) {
+//        attDefActiveFlag = (byte) (value ? attDefActiveFlag | 0x02 : attDefActiveFlag & 0xFD);
+//    }
 
     public int getAttCities() {
         return attDefCities & 0xFF;

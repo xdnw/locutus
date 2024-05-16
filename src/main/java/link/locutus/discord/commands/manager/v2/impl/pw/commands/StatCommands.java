@@ -2375,7 +2375,7 @@ public class StatCommands {
         for (AbstractCursor attack : allAttacks) {
             if (!isAttacker.test(attack)) continue;
             attacksByNation.merge(attack.getAttacker_id(), 1, Integer::sum);
-            AttackTypeSubCategory subType = attack.getSubCategory(true);
+            AttackTypeSubCategory subType = attack.getSubCategory(DBNation::getActive_m);
             if (subType == null) continue;
             if (allowedTypes[subType.ordinal()]) {
                 countsByNation.computeIfAbsent(attack.getAttacker_id(), f -> new EnumMap<>(AttackTypeSubCategory.class)).merge(subType, 1, Integer::sum);

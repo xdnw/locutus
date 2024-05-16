@@ -864,7 +864,7 @@ public class GuildKey {
 
             }
         }
-    }));
+    }, "Requires having `" + GuildKey.ALLIANCE_ID.name() + "` set here, or `" + GuildKey.FA_SERVER.name() + "` set to this guild in another guild."));
     public static GuildSetting<Map<Role, Set<Role>>> ASSIGNABLE_ROLES = new GuildSetting<Map<Role, Set<Role>>>(GuildSettingCategory.ROLE, Map.class, Role.class, TypeToken.getParameterized(Set.class, Role.class).getType()) {
         @NoFormat
         @Command(descMethod = "help")
@@ -928,13 +928,7 @@ public class GuildKey {
                     "Members and `" + Roles.MILCOM.name() + "` are pinged for defensive wars\n" +
                     "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.MILCOM.name(), "", null, null);
         }
-    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance().requireFunction(new Consumer<GuildDB>() {
-        @Override
-        public void accept(GuildDB guildDB) {
-
-            // if ((!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive()) || db.isDelegateServer()) continue;
-        }
-    }));
+    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
     public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1420,12 +1414,7 @@ public class GuildKey {
             return "If war rooms should be enabled (i.e. auto generate a channel for wars against active nations)\n" +
                     "Note: Defensive war channels must be enabled to have auto war room creation";
         }
-    }.setupRequirements(f -> f.requireFunction(new Consumer<GuildDB>() {
-        @Override
-        public void accept(GuildDB db) {
-            db.getOrThrow(ALLIANCE_ID);
-        }
-    }));
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID));
     public static GuildSetting<Guild> WAR_SERVER = new GuildSetting<Guild>(GuildSettingCategory.WAR_ROOM, Guild.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1948,7 +1937,9 @@ public class GuildKey {
             throw new IllegalArgumentException("Please use: " + CM.role.setAlias.cmd.toSlashMention() + " to set at least ONE of the following:\n" +
                     StringMan.join(Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS), ", "));
         }
-    }));
+        // to name
+    }, "Please set one of the roles:" + Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS)
+            .stream().map(Enum::name).collect(Collectors.joining(", ")) + " via " + CM.role.setAlias.cmd.toSlashMention()));
     public static GuildSetting<Category> ARCHIVE_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2304,7 +2295,7 @@ public class GuildKey {
         if (offshoreDb == null || offshoreDb.getKey().getIdLong() != db.getIdLong()) {
             throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
         }
-    }));
+    }, "The guild must be a valid offshore"));
     public static GuildSetting<Set<Integer>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<Integer>>(GuildSettingCategory.BANK_ACCESS, Set.class, Integer.class) {
 
         @Command(descMethod = "help")
@@ -2721,15 +2712,12 @@ public class GuildKey {
             return toJson(value).toString(4);
         }
 
-    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT)
+    }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance().requiresCoalitionRoot("recruit").requires(RECRUIT_MESSAGE_OUTPUT)
         .requireFunction((db) -> {
         if (!Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
             throw new IllegalArgumentException("This setting is disabled. Enable it in the settings file");
         }
-        if (!db.hasCoalitionPermsOnRoot("recruit")) {
-            throw new IllegalArgumentException("You must have `recruit` permissions on the root channel to use this setting");
-        }
-    }));
+    }, ""));
 
     public static GuildSetting<Boolean> ALLOW_UNVERIFIED_BANKING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat

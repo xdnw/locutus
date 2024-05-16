@@ -92,7 +92,7 @@ public class AwsManager {
 //            System.out.println("* " + os.getKey() + " - size: " + os.getSize() + " - last modified: " + os.getLastModified());
 //        }
 
-        // move conflicts/7.gzip to conflicts/n/189573/1-2.gzip
+        // move conflicts/7.gzip to conflicts/n/189573/<uuid>.gzip
 
 
     }

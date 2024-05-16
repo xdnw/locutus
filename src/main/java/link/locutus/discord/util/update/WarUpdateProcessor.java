@@ -52,6 +52,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -402,14 +403,14 @@ public class WarUpdateProcessor {
         if (root.getImprovements_destroyed() != 0) {
             sum.put(AttackTypeSubCategory.IMPROVEMENTS_DESTROYED, sum.getOrDefault(AttackTypeSubCategory.IMPROVEMENTS_DESTROYED, 0) + root.getImprovements_destroyed());
         }
-        AttackTypeSubCategory category = subCategorize(root, true);
+        AttackTypeSubCategory category = subCategorize(root, DBNation::getActive_m);
         if (category != null) {
             sum.put(category, sum.getOrDefault(category, 0) + 1);
         }
         return category;
     }
 
-    public static AttackTypeSubCategory subCategorize(IAttack root, boolean checkActive) {
+    public static AttackTypeSubCategory subCategorize(IAttack root, BiFunction<DBNation, Long, Integer> checkActiveM) {
         DBNation attacker = DBNation.getOrCreate(root.getAttacker_id());
         DBNation defender = DBNation.getOrCreate(root.getDefender_id());
         int attTanks = -1;
@@ -444,14 +445,14 @@ public class WarUpdateProcessor {
                 if (attTanks > 0) {
                     if (root.getDefcas3() == 0) {
                         if (attSoldiers * 1.7_5 > enemyGroundStrength) {
-                            if (!checkActive || defender.getActive_m(root.getDate()) < 10000) {
+                            if (checkActiveM == null || checkActiveM.apply(defender, root.getDate()) < 10000) {
                                 return AttackTypeSubCategory.GROUND_TANKS_MUNITIONS_USED_UNNECESSARY;
                             } else {
                                 return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE;
                             }
                         }
                         if (root.getMoney_looted() == 0 && root.getDefcas2() == 0 && defender.getUnitsAt(MilitaryUnit.AIRCRAFT, root.getDate()) == 0 && attacker.getUnitsAt(MilitaryUnit.AIRCRAFT, root.getDate()) > 3) {
-                            if (!checkActive || defender.getActive_m(root.getDate()) < 10000) {
+                            if (checkActiveM == null || checkActiveM.apply(defender, root.getDate()) < 10000) {
                                 return AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR;
                             } else {
                                 return AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR_INACTIVE;
@@ -464,7 +465,7 @@ public class WarUpdateProcessor {
                         if (root.getAtt_mun_used() == 0) {
                             return AttackTypeSubCategory.GROUND_NO_MUNITIONS_NO_TANKS;
                         }
-                        if (!checkActive || defender.getActive_m(root.getDate()) < 10000) {
+                        if (checkActiveM == null || checkActiveM.apply(defender, root.getDate()) < 10000) {
                             return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY;
                         } else {
                             return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE;
@@ -505,8 +506,8 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_FAILED_NOT_DOGFIGHT;
                 }
                 int active_m = -1;
-                if (checkActive && root.getAttack_type() == NAVAL) {
-                    active_m = defender.getActive_m(root.getDate());
+                if (checkActiveM != null && root.getAttack_type() == NAVAL) {
+                    active_m = checkActiveM.apply(defender, root.getDate());
                     if (active_m > 10000) {
                         defSoldiers = defender.getUnitsAt(MilitaryUnit.SOLDIER, root.getDate());
                         defTanks = defender.getUnitsAt(MilitaryUnit.TANK, root.getDate());
@@ -538,8 +539,8 @@ public class WarUpdateProcessor {
                         }
                     }
                 }
-                if (active_m == -1 && checkActive) {
-                    active_m = defender.getActive_m(root.getDate());
+                if (active_m == -1 && checkActiveM != null) {
+                    active_m = checkActiveM.apply(defender, root.getDate());
                 }
                 if (active_m > 10000 && defender.getUnitsAt(MilitaryUnit.SHIP, root.getDate()) == 0) {
                     return AttackTypeSubCategory.AIRSTRIKE_INACTIVE_NO_SHIP;
@@ -552,13 +553,13 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
                 }
                 if (root.getDefcas1() == 0) {
-                    if (!checkActive || defender.getActive_m(root.getDate()) < 10000) {
+                    if (checkActiveM == null || checkActiveM.apply(defender, root.getDate()) < 10000) {
                         return AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE;
                     } else {
                         return AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE_INACTIVE;
                     }
                 }
-                if (checkActive && defender.getActive_m(root.getDate()) > 10000) {
+                if (checkActiveM != null && checkActiveM.apply(defender, root.getDate()) > 10000) {
                     defSoldiers = defender.getUnitsAt(MilitaryUnit.SOLDIER, root.getDate());
                     defTanks = defender.getUnitsAt(MilitaryUnit.TANK, root.getDate());
                     if (defSoldiers == 0 && defTanks == 0) {

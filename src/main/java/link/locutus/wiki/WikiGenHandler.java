@@ -37,6 +37,7 @@ public class WikiGenHandler {
     public List<BotWikiGen> getCommandPages() {
         List<BotWikiGen> pages = new ArrayList<>();
         pages.add(new WikiCommandsPage(manager));
+        pages.add(new WikiSettingsPage(manager));
         pages.add(new WikiArgumentsPage(manager));
         pages.add(new WikiPermsPage(manager));
         return pages;

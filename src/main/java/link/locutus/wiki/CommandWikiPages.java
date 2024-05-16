@@ -9,8 +9,10 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.Config;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import retrofit2.http.HEAD;
@@ -136,6 +138,28 @@ Message: `$who Rose -l`
             result.append("\n---\n\n");
         }
 
+        return result.toString();
+    }
+
+    public static String printSettings(List<GuildSetting> settings) {
+        StringBuilder result = new StringBuilder();
+        for (GuildSetting setting : settings) {
+            Set<ParametricCallable> callables = setting.getCallables();
+            List<String> commandRefs = callables.stream().map(c -> c.getSlashCommand(Collections.emptyMap())).toList();
+            if (commandRefs.isEmpty()) commandRefs = List.of(CM.settings.info.cmd.create(setting.name(), "<value>", null).toString());
+
+            List<String> requirementsStr = setting.getRequirementDesc();
+
+            result.append("## `").append(setting.name()).append("`\n");
+            result.append("type: `" + setting.getType().toSimpleString() + "`\n");
+            result.append("category: `" + setting.getCategory() + "`\n");
+            result.append("Desc:\n```" + setting.help() + "```\n");
+            result.append("commands:\n- " + String.join("\n- ", commandRefs) + "\n");
+            if (!requirementsStr.isEmpty()) {
+                result.append("requirements:\n- " + String.join("\n- ", requirementsStr) + "\n");
+            }
+            result.append("\n");
+        }
         return result.toString();
     }
 

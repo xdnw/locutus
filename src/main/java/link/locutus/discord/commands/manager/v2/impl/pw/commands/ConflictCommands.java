@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -781,6 +782,7 @@ public class ConflictCommands {
 
     @Command(desc = "List the ruleset for which conflicts are featured by this guild (if any are set)\n" +
             "This consists of a list of either guilds that created the conflict, or individual conflicts")
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String listFeaturedRuleset(ConflictManager manager, @Me GuildDB db) {
         List<Long> config = manager.getSourceSets().get(db.getIdLong());
         if (config == null || config.isEmpty()) {
@@ -802,5 +804,97 @@ public class ConflictCommands {
             items.add(name);
         }
         return "Featured conflicts:\n" + StringMan.join(items, "\n");
+    }
+
+    @Command(desc = "Purge permenent conflicts that aren't in the database")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    public String purgeFeatured(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Default @Timestamp Long olderThan, @Switch("f") boolean force) {
+        Set<String> deleted = new LinkedHashSet<>();
+        Set<String> kept = new LinkedHashSet<>();
+        for (S3ObjectSummary object : manager.getAws().getObjects()) {
+            Date date = object.getLastModified();
+            if (olderThan != null && olderThan < date.getTime()) {
+                continue;
+            }
+            String key = object.getKey();
+            boolean matches = key.matches("conflict/graphs/[0-9]+\\.gzip") || key.matches("conflict/[0-9]+\\.gzip");
+            if (!matches) continue;
+            int id = Integer.parseInt(key.replaceAll("[^0-9]", ""));
+            Conflict conflict = manager.getConflictById(id);
+            if (conflict == null) {
+                deleted.add(id + "");
+                if (force) {
+                    manager.getAws().deleteObject(key);
+                }
+            } else {
+                kept.add(id + "");
+            }
+        }
+        if (deleted.isEmpty()) {
+            if (kept.isEmpty()) {
+                return "No featured conflicts found on the website matching the database";
+            } else {
+                return "No featured conflicts found on the website missing from the database\n" +
+                        "Kept: " + StringMan.join(kept, ", ");
+            }
+        }
+        if (force) {
+            return "**Deleted:**\n- " + StringMan.join(deleted, "\n- ") + "\n" +
+                    "**Kept:**\n- " + StringMan.join(kept, "\n- ");
+        } else {
+            StringBuilder body = new StringBuilder();
+            body.append("Deleted " + deleted.size() + " conflicts\n");
+            body.append("Kept: " + kept.size() + "/" + manager.getConflictMap().size() + "\n");
+            io.create().confirmation("Deleted " + deleted.size() + " conflicts", body.toString(), command)
+                    .file("deleted.txt", StringMan.join(deleted, "\n"))
+                    .send();
+            return null;
+        }
+    }
+
+    @Command(desc = "Purge permenent conflicts that aren't in the database")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    public String purgeTemporaryConflicts(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Timestamp long olderThan, @Switch("f") boolean force) {
+        List<String> deleted = new ArrayList<>();
+        List<String> kept = new ArrayList<>();
+        for (S3ObjectSummary object : manager.getAws().getObjects()) {
+            String key = object.getKey();
+            boolean matches = key.matches("conflicts/n/[0-9]+/[a-z0-9]+\\.gzip") || key.matches("conflicts/graphs/n/[0-9]+/[a-z0-9]+\\.gzip");
+            if (!matches) continue;
+            int nationId = Integer.parseInt(key.replaceAll("[^0-9]", ""));
+            String uuidStr = key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf("."));
+            String nameStr = PW.getMarkdownUrl(nationId, false) + "/" + uuidStr;
+            Date date = object.getLastModified();
+            if (olderThan < date.getTime()) {
+                kept.add(nameStr);
+                continue;
+            }
+            deleted.add(nameStr);
+            if (force) {
+                manager.getAws().deleteObject(key);
+            }
+        }
+        if (deleted.isEmpty()) {
+            if (kept.isEmpty()) {
+                return "No featured conflicts found on the website matching the database";
+            } else {
+                return "No featured conflicts found on the website missing from the database\n" +
+                        "Kept: " + StringMan.join(kept, ", ");
+            }
+        }
+        if (force) {
+            return "**Deleted:**\n- " + StringMan.join(deleted, "\n- ") + "\n" +
+                    "**Kept:**\n- " + StringMan.join(kept, "\n- ");
+        } else {
+            StringBuilder body = new StringBuilder();
+            body.append("Deleted " + deleted.size() + " conflicts\n");
+            body.append("Kept: " + kept.size() + "/" + manager.getConflictMap().size() + "\n");
+            io.create().confirmation("Deleted " + deleted.size() + " conflicts", body.toString(), command)
+                    .file("deleted.txt", StringMan.join(deleted, "\n"))
+                    .send();
+            return null;
+        }
     }
 }
