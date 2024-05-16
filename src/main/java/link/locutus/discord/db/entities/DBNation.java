@@ -547,7 +547,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "If the nation has all of the specified projects")
-    public boolean hasProjects(Set<Project> projects, @Default boolean any) {
+    public boolean hasProjects(Set<Project> projects, @Default("false") boolean any) {
         if (any) {
             for (Project p : projects) {
                 if (hasProject(p)) {

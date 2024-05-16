@@ -691,7 +691,7 @@ public class UtilityCommands {
 
     @Command(aliases = {"nap", "napdown"})
 
-    public String nap(@Default boolean listExpired) {
+    public String nap(@Default("false") boolean listExpired) {
         Map<Long, String> naps = new LinkedHashMap<>();
         naps.put(238332L, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
         naps.put(239436L, "<https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
@@ -717,10 +717,6 @@ public class UtilityCommands {
             response.append("No active NAPs");
         }
         return response.toString();
-//
-//        long diff = (turnEnd - turn) * TimeUnit.HOURS.toMillis(2);
-//
-//        if (diff <= 0) {
 //            String[] images = new String[] {
 //                    "3556290",
 //                    "13099758",
@@ -761,17 +757,6 @@ public class UtilityCommands {
 //            String id = images[ThreadLocalRandom.current().nextInt(images.length)];
 //            return baseUrl + id;
 //        }
-//
-//        String title = "GW Countdown: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff) + " | " + (turnEnd - turn) + " turns";
-//        StringBuilder response = new StringBuilder();
-//
-//        String url = "https://www.epochconverter.com/countdown?q=" + TimeUtil.getTimeFromTurn(turnEnd);
-//        response.append(url);
-//        if (napLink != null && !napLink.isEmpty()) {
-//            response.append("\n" + napLink);
-//        }
-//
-//        return "**" + title + "**\n" + response.toString();
     }
     @Command(desc = "Rank the number of wars between two coalitions by nation or alliance\n" +
             "Defaults to alliance ranking")

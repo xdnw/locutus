@@ -452,13 +452,12 @@ public class ParametricCallable implements ICommand {
                         if (!parameter.getBinding().isConsumer(stack.getStore())) {
                             value = store.getProvided(parameter.getBinding().getKey(), false);
                         } else {
-                            if (parameter.getDefaultValue() == null) {
+                            if (parameter.getDefaultValue() == null || parameter.getDefaultValue().length == 0) {
                                 continue;
                             } else {
                                 unparsed = parameter.getDefaultValueString();
-                                stack.add(parameter.getDefaultValue());
+                                value = locals.get(parameter.getBinding().getKey()).apply(stack.getStore(), unparsed);
                             }
-                            continue;
                         }
                     } else if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                         if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
