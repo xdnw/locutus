@@ -1383,4 +1383,11 @@ public class ConflictManager {
     public AwsManager getAws() {
         return aws;
     }
+
+    public void removeAnnouncement(int id, int topicId) {
+        db.update("DELETE FROM conflict_announcements2 WHERE conflict_id = ? AND topic_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, id);
+            stmt.setInt(2, topicId);
+        });
+    }
 }

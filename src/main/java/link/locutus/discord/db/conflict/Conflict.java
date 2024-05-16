@@ -807,8 +807,18 @@ public class Conflict {
         if (setName && !wikiConflict.getName().equalsIgnoreCase(getName())) {
             setName(wikiConflict.getName());
         }
-        if (getAnnouncement().isEmpty() && !wikiConflict.getAnnouncement().isEmpty()) {
+        if (!wikiConflict.getAnnouncement().isEmpty()) {
+            Map<Integer, String> annByIds = getAnnouncementsById();
+            Map<Integer, String> wikiAnnById = wikiConflict.getAnnouncementsById();
+            // delete old announcements
+            for (Map.Entry<Integer, String> entry : annByIds.entrySet()) {
+                if (!wikiAnnById.containsKey(entry.getKey())) {
+                    getManager().removeAnnouncement(id, entry.getKey());
+                    announcements.remove(entry.getValue());
+                }
+            }
             for (Map.Entry<String, DBTopic> entry : wikiConflict.getAnnouncement().entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(annByIds.get(entry.getValue().topic_id))) continue;
                 addAnnouncement(entry.getKey(), entry.getValue(), true);
             }
         }
@@ -819,5 +829,13 @@ public class Conflict {
             for (int aaId : wikiConflict.getCoalition1()) addParticipant(aaId, true, null, null);
             for (int aaId : wikiConflict.getCoalition2()) addParticipant(aaId, false, null, null);
         }
+    }
+
+    private Map<Integer, String> getAnnouncementsById() {
+        Map<Integer, String> map = new Int2ObjectOpenHashMap<>();
+        for (Map.Entry<String, DBTopic> entry : announcements.entrySet()) {
+            map.put(entry.getValue().topic_id, entry.getKey());
+        }
+        return map;
     }
 }
