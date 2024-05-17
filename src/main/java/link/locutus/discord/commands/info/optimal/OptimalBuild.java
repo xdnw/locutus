@@ -252,9 +252,7 @@ public class OptimalBuild extends Command {
             cityEntry.update(true);
             me = Locutus.imp().getNationDB().getNation(cityEntry.getNationId());
             origin = cityEntry.toJavaCity(me);
-
             checkup(io, me, cityId, origin); // show help
-
 //            if (days == null)
             {
                 origin.zeroNonMilitary();

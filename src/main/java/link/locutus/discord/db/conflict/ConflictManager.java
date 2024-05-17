@@ -264,7 +264,11 @@ public class ConflictManager {
         AbstractCursor attack = event.getAttack();
         DBWar war = attack.getWar();
         if (war != null) {
-            updateAttack(war, attack, f -> true, f -> f.getSubCategory(DBNation::getActive_m));
+            updateAttack(war, attack, f -> true, f -> {
+                AttackTypeSubCategory cat = f.getSubCategory(DBNation::getActive_m);
+                saveSubTypes(Map.of(attack.getWar_attack_id(), cat == null ? -1 : (byte) cat.ordinal()));
+                return cat;
+            });
         }
     }
 
