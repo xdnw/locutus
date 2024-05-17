@@ -70,8 +70,10 @@ public class WikiWarRoomPage extends BotWikiGen {
                 "# Creating a sheet of war rooms",
                 CM.war.counter.sheet.cmd.create(null, null, null, null, "True", null).toString(),
                 commandMarkdownSpoiler(CM.war.counter.sheet.cmd),
-                "# Force update war rooms",
-                commandMarkdownSpoiler(CM.admin.sync.warrooms.cmd)
+                "# Force update/delete war rooms",
+                commandMarkdownSpoiler(CM.admin.sync.warrooms.cmd),
+                commandMarkdownSpoiler(CM.war.room.delete_planning.cmd),
+                commandMarkdownSpoiler(CM.war.room.delete_for_enemies.cmd)
         );
     }
 }

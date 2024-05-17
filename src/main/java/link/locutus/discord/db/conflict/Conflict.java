@@ -798,10 +798,10 @@ public class Conflict {
     }
 
     public void set(Conflict wikiConflict, boolean setName) {
-        if (getStatusDesc().isEmpty()) {
+        if (!wikiConflict.getStatusDesc().equalsIgnoreCase(getStatusDesc())) {
             setStatus(wikiConflict.getStatusDesc());
         }
-        if (getCasusBelli().isEmpty()) {
+        if (!wikiConflict.getCasusBelli().equalsIgnoreCase(getCasusBelli())) {
             setCasusBelli(wikiConflict.getCasusBelli());
         }
         if (setName && !wikiConflict.getName().equalsIgnoreCase(getName())) {
