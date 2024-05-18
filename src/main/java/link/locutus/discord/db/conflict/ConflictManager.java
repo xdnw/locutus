@@ -36,10 +36,7 @@ import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -131,8 +128,46 @@ public class ConflictManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
     }
 
+    public static void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
+        Connection sourceConnection = sourceDb.getConnection();
+        Connection targetConnection = targetDb.getConnection();
+
+        targetConnection.setAutoCommit(false);
+
+        try (Statement sourceStatement = sourceConnection.createStatement();
+            PreparedStatement targetStatement = targetConnection.prepareStatement("INSERT INTO " + tableName + " SELECT * FROM " + tableName)) {
+            ResultSet resultSet = sourceStatement.executeQuery("SELECT * FROM " + tableName);
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    targetStatement.setObject(i, resultSet.getObject(i));
+                }
+                targetStatement.executeUpdate();
+            }
+            targetConnection.commit();
+        } catch (SQLException e) {
+            targetConnection.rollback();
+            throw e;
+        } finally {
+            targetConnection.setAutoCommit(true);
+        }
+    }
+
     public void importFromExternal(File file) throws SQLException {
         Database otherDb = Database.connect(file);
+        List<String> tables = Arrays.asList(
+            "conflicts",
+                "conflict_participant",
+                "conflict_announcements2",
+                "conflict_graphs2",
+                "legacy_names2",
+                "source_sets",
+                "attack_subtypes"
+        );
+        for (String table : tables) {
+            importData(otherDb, db.getDb(), table);
+        }
     }
 
     public String pushIndex() {

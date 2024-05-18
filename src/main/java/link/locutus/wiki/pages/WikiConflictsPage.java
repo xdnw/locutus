@@ -66,6 +66,7 @@ public class WikiConflictsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.conflict.edit.status.cmd),
                 commandMarkdownSpoiler(CM.conflict.edit.casus_belli.cmd),
                 commandMarkdownSpoiler(CM.conflict.edit.category.cmd),
+                commandMarkdownSpoiler(CM.conflict.edit.add_forum_post.cmd),
                 "## Pushing stats to webpage",
                 "This does NOT create any new conflicts within the bot, only updating the site with the conflicts that already exist",
                 "Note: To recalculate conflict stats before updating the site, set `reloadWars: True` with the command below",

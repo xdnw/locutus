@@ -1183,8 +1183,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="addConflict")
             public static class create extends CommandRef {
                 public static final create cmd = new create();
-                public create create(String category, String coalition1, String coalition2, String conflictName, String start) {
-                    return createArgs("category", category, "coalition1", coalition1, "coalition2", coalition2, "conflictName", conflictName, "start", start);
+                public create create(String category, String coalition1, String coalition2, String start, String end, String conflictName) {
+                    return createArgs("category", category, "coalition1", coalition1, "coalition2", coalition2, "start", start, "end", end, "conflictName", conflictName);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.VirtualConflictCommands.class,method="createTemporary")
@@ -1202,6 +1202,13 @@ public class CM {
                 }
             }
             public static class edit{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="addAnnouncement")
+                public static class add_forum_post extends CommandRef {
+                    public static final add_forum_post cmd = new add_forum_post();
+                    public add_forum_post create(String conflict, String url) {
+                        return createArgs("conflict", conflict, "url", url);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setCB")
                 public static class casus_belli extends CommandRef {
                     public static final casus_belli cmd = new casus_belli();
@@ -5045,8 +5052,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="nap")
             public static class gw_nap extends CommandRef {
                 public static final gw_nap cmd = new gw_nap();
-                public gw_nap create() {
-                    return createArgs();
+                public gw_nap create(String listExpired) {
+                    return createArgs("listExpired", listExpired);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands.class,method="treaties")
