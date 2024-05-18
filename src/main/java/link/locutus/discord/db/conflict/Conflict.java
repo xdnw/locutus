@@ -813,8 +813,7 @@ public class Conflict {
             // delete old announcements
             for (Map.Entry<Integer, String> entry : annByIds.entrySet()) {
                 if (!wikiAnnById.containsKey(entry.getKey())) {
-                    getManager().removeAnnouncement(id, entry.getKey());
-                    announcements.remove(entry.getValue());
+                    deleteAnnouncement(entry.getKey());
                 }
             }
             for (Map.Entry<String, DBTopic> entry : wikiConflict.getAnnouncement().entrySet()) {
@@ -829,6 +828,15 @@ public class Conflict {
             for (int aaId : wikiConflict.getCoalition1()) addParticipant(aaId, true, null, null);
             for (int aaId : wikiConflict.getCoalition2()) addParticipant(aaId, false, null, null);
         }
+    }
+
+    public void deleteAnnouncement(int topicId) {
+        getManager().removeAnnouncement(id, topicId);
+        announcements.entrySet().removeIf(f -> f.getValue().topic_id == topicId);
+    }
+
+    public boolean hasAnnouncement(int topicId) {
+        return announcements.values().stream().anyMatch(f -> f.topic_id == topicId);
     }
 
     private Map<Integer, String> getAnnouncementsById() {

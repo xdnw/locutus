@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.ForumDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.conflict.CoalitionSide;
 import link.locutus.discord.db.conflict.CtownedFetcher;
@@ -828,6 +829,32 @@ public class ConflictCommands {
                     .send();
             return null;
         }
+    }
+
+    @Command(desc = "Purge permenent conflicts that aren't in the database")
+    @RolePermission(Roles.MILCOM)
+    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    public String addAnnouncement(ConflictManager manager, Conflict conflict, String url) throws SQLException, IOException {
+        String urlPattern = "https://forum\\.politicsandwar\\.com/index\\.php\\?/topic/[0-9]+-.+/";
+        if (!url.matches(urlPattern)) {
+            return "Invalid URL format. Please provide a URL in the format: https://forum.politicsandwar.com/index.php?/topic/{topicId}-{topicUrlStub}/";
+        }
+        String[] urlParts = url.split("/");
+        String topicInfo = urlParts[urlParts.length - 1]; // This should be topicId-topicUrlStub
+        String[] topicParts = topicInfo.split("-", 2);
+        int topicId = Integer.parseInt(topicParts[0]);
+        String topicUrlStub = topicParts[1];
+
+        List<String> msgs = new ArrayList<>();
+        DBTopic topic = Locutus.imp().getForumDb().loadTopic(topicId, topicUrlStub);
+        if (conflict.hasAnnouncement(topic.topic_id)) {
+            conflict.deleteAnnouncement(topic.topic_id);
+            msgs.add("Deleted previous announcement for " + topic.topic_name);
+        }
+        conflict.addAnnouncement(topic.topic_name, topic, true);
+        msgs.add("Added announcement for " + topic.topic_name);
+        conflict.push(manager, null, false, false);
+        return StringMan.join(msgs, "\n");
     }
 
     @Command(desc = "Purge permenent conflicts that aren't in the database")

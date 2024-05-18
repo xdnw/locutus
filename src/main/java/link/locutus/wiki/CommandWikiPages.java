@@ -13,8 +13,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import retrofit2.http.HEAD;
 
 import java.lang.annotation.Annotation;
@@ -143,22 +145,27 @@ Message: `$who Rose -l`
 
     public static String printSettings(List<GuildSetting> settings) {
         StringBuilder result = new StringBuilder();
+        GuildSettingCategory cat = null;
         for (GuildSetting setting : settings) {
+            if (cat != setting.getCategory()) {
+                cat = setting.getCategory();
+                result.append("## Category ").append(cat).append("\n\n");
+            }
             Set<ParametricCallable> callables = setting.getCallables();
             List<String> commandRefs = callables.stream().map(c -> c.getSlashCommand(Collections.emptyMap())).toList();
             if (commandRefs.isEmpty()) commandRefs = List.of(CM.settings.info.cmd.create(setting.name(), "<value>", null).toString());
 
             List<String> requirementsStr = setting.getRequirementDesc();
 
-            result.append("## `").append(setting.name()).append("`\n");
-            result.append("type: `" + setting.getType().toSimpleString() + "`\n");
-            result.append("category: `" + setting.getCategory() + "`\n");
-            result.append("Desc:\n```" + setting.help() + "```\n");
-            result.append("commands:\n- " + String.join("\n- ", commandRefs) + "\n");
+            result.append("### `").append(setting.name()).append("`\n");
+            result.append("type: `" + setting.getType().toSimpleString() + "`\n\n");
+            result.append("category: `" + setting.getCategory() + "`\n\n");
+            result.append("Desc:\n```\n" + setting.help() + "\n```\n\n");
+            result.append("commands:\n- " + String.join("\n- ", commandRefs) + "\n\n");
             if (!requirementsStr.isEmpty()) {
-                result.append("requirements:\n- " + String.join("\n- ", requirementsStr) + "\n");
+                result.append("requirements:\n- " + String.join("\n- ", requirementsStr) + "\n\n");
             }
-            result.append("\n");
+            result.append("\n\n---\n\n");
         }
         return result.toString();
     }

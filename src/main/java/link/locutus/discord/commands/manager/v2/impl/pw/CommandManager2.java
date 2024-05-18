@@ -206,6 +206,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "purge"), "purgeFeatured", "featured");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "purge"), "purgeTemporaryConflicts", "user_generated");
 
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addAnnouncement", "add_forum_post");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictEnd", "end");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictStart", "start");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "setConflictName", "rename");

@@ -25,7 +25,8 @@ public class WikiHostingLocutus extends BotWikiGen {
                             
                 ### 1.1. Option 1: Download a precompiled `.jar`
                 If you prefer to skip the compilation process, you can download a precompiled Locutus `.jar` file from the following location:
-                - [Locutus Precompiled Jar](https://locutus.link:8443/job/locutus/) (look for the file named `shadowJar-Locutus-1.0-SNAPSHOT.jar`)
+                - [Locutus Precompiled Jar](https://github.com/xdnw/locutus/releases    ) (look for the file named `shadowJar-Locutus-1.0-SNAPSHOT.jar`)
+                - [Example update script (windows)](https://gist.github.com/xdnw/554ea661ce0babb692033faf6e997ad7)
                             
                 ### 1.2. Option 2: Building from the source
                 If you want to build the Locutus bot from the source code, follow these steps:

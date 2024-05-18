@@ -1,6 +1,7 @@
 package link.locutus.discord.db.conflict;
 
 import com.google.common.eventbus.Subscribe;
+import com.ptsmods.mysqlw.Database;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -13,6 +14,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -32,6 +34,7 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
 
+import java.io.File;
 import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -126,6 +129,10 @@ public class ConflictManager {
 
         // attack_subtypes attack id int primary key, subtype int not null
         db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
+    }
+
+    public void importFromExternal(File file) throws SQLException {
+        Database otherDb = Database.connect(file);
     }
 
     public String pushIndex() {
@@ -472,7 +479,7 @@ public class ConflictManager {
         db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
             long turn = TimeUtil.getTurn(attack.getDate());
             if (TimeUtil.getTurn(war.getDate()) <= turn) {
-                conflict.updateAttack(war, attack, turn, null);
+                conflict.updateAttack(war, attack, turn, f -> null);
             }
         });
     }
@@ -990,6 +997,33 @@ public class ConflictManager {
         return sourceSets;
     }
 
+    private Map<String, List<Object>> getSourceSetStrings(Map<Long, List<Long>> sourceSets) {
+        Map<String, List<Object>> sourceSetStrings = new LinkedHashMap<>();
+        for (Map.Entry<Long, List<Long>> entry : sourceSets.entrySet()) {
+            List<Object> sourceIdList = new ArrayList<>();
+            for (Long sourceId : entry.getValue()) {
+                if (sourceId > Integer.MAX_VALUE) {
+                    sourceIdList.add(String.valueOf(sourceId));
+                } else {
+                    sourceIdList.add(sourceId);
+                }
+            }
+            sourceSetStrings.put(String.valueOf(entry.getKey()), sourceIdList);
+        }
+        return sourceSetStrings;
+    }
+
+    private Map<String, String> getSourceNames(Set<Long> sourceIds) {
+        Map<String, String> sourceNames = new LinkedHashMap<>();
+        for (long id : sourceIds) {
+            GuildDB guild = Locutus.imp().getGuildDB(id);
+            if (guild != null) {
+                sourceNames.put(String.valueOf(id), guild.getName());
+            }
+        }
+        return sourceNames;
+    }
+
     /**
      * type 0 = conflict
      * type 1 = guild
@@ -1353,7 +1387,10 @@ public class ConflictManager {
         List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
         root.put("alliance_ids", allianceIds);
         root.put("alliance_names", aaNames);
-        root.put("source_sets", getSourceSets());
+
+        Map<Long, List<Long>> sourceSets = getSourceSets();
+        root.put("source_sets", getSourceSetStrings(sourceSets));
+        root.put("source_names", getSourceNames(sourceSets.keySet()));
 
         return JteUtil.compress(JteUtil.toBinary(root));
     }
