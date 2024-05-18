@@ -138,7 +138,7 @@ public class ConflictManager {
     public String pushIndex() {
         String key = "conflicts/index.gzip";
         byte[] value = getPsonGzip();
-        aws.putObject(key, value);
+        aws.putObject(key, value,  60);
         return aws.getLink(key);
     }
 

@@ -42,10 +42,11 @@ public class AwsManager {
         this.bucketName = bucketName;
     }
 
-    public void putObject(String key, byte[] data) {
+    public void putObject(String key, byte[] data, long maxAge) {
         ObjectMetadata metadata = new ObjectMetadata();
 
         metadata.setContentLength(data.length);
+        metadata.setCacheControl("max-age=" + maxAge);
 
         ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
 

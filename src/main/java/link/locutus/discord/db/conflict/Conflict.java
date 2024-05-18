@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -760,6 +761,12 @@ public class Conflict {
         }
     }
 
+    public boolean isActive() {
+        if (this.turnEnd == Long.MAX_VALUE) return true;
+        long turn = TimeUtil.getTurn();
+        return turn <= this.turnEnd + 60;
+    }
+
     /**
      * Pushes the conflict to the AWS S3 bucket
      * @param manager
@@ -773,9 +780,10 @@ public class Conflict {
             if (getId() == -1) throw new IllegalArgumentException("Conflict has no id");
             webIdOrNull = Integer.toString(getId());
         }
+        long ttl = isActive() ? TimeUnit.MINUTES.toSeconds(30) : TimeUnit.MINUTES.toSeconds(1);
         String key = "conflicts/" + webIdOrNull + ".gzip";
         byte[] value = getPsonGzip(manager);
-        aws.putObject(key, value);
+        aws.putObject(key, value, ttl);
 
         List<String> urls = new ArrayList<>();
         urls.add(aws.getLink(key));
@@ -783,7 +791,7 @@ public class Conflict {
         if (includeGraphs) {
             String graphKey = "conflicts/graphs/" + webIdOrNull + ".gzip";
             byte[] graphValue = getGraphPsonGzip(manager);
-            aws.putObject(graphKey, graphValue);
+            aws.putObject(graphKey, graphValue, ttl);
             urls.add(aws.getLink(graphKey));
         }
         if (updateIndex) {
