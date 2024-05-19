@@ -1063,30 +1063,6 @@ public class StringMan {
         return (wl.distance(a, b) + s4.distance(a, b)) / 2;
     }
 
-     public static void main(String[] args) {
-
-        // Test cases
-         String[] words1 = {"Knights Radiant", "Knights Radiant"};
-         String[] words2 = {"The Knights Radiant", "Knights Templar"};
-
-         Sift4 sift4 = new Sift4();
-         sift4.setMaxOffset(5);
-
-        for (int i = 0; i < words1.length; i++) {
-            double thermoSimilarity = sift4.distance(words1[i],  words2[i]);;
-            double weighted = distanceWeightedQwertSift4(words1[i], words2[i]);
-            double levenshteinDistance = getLevenshteinDistance(words1[i], words2[i]);
-
-            System.out.println("Word1: " + words1[i]);
-            System.out.println("Word2: " + words2[i]);
-            System.out.println("Thermo Similarity: " + thermoSimilarity);
-            System.out.println("Levenshtein Distance: " + levenshteinDistance);
-            System.out.println("Weighted Distance: " + weighted);
-            System.out.println("Sift4: " + new Sift4().distance(words1[i], words2[i]));
-            System.out.println("-----------------------------");
-        }
-    }
-
     public static int getLevenshteinDistance(String s, String t) {
         int n = s.length();
         int m = t.length();
