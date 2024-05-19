@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -18,6 +20,11 @@ public class ParameterData {
     private Parser binding;
     private String desc;
     private int group = -1;
+
+    public JsonElement toJson() {
+        JsonObject arg = new JsonObject();
+        return null;
+    }
 
     public Type getType() {
         return type;

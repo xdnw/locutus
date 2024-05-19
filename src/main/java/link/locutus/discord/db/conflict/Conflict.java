@@ -781,7 +781,7 @@ public class Conflict {
             if (getId() == -1) throw new IllegalArgumentException("Conflict has no id");
             webIdOrNull = Integer.toString(getId());
         }
-        long ttl = isActive() ? TimeUnit.MINUTES.toSeconds(30) : TimeUnit.MINUTES.toSeconds(1);
+        long ttl = isActive() ? TimeUnit.MINUTES.toSeconds(1) : TimeUnit.MINUTES.toSeconds(5);
         String key = "conflicts/" + webIdOrNull + ".gzip";
         byte[] value = getPsonGzip(manager);
         aws.putObject(key, value, ttl);

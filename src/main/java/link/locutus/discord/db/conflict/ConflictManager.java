@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 public class ConflictManager {
     private final WarDB db;
     private final AwsManager aws;
+    private boolean conflictsLoaded = false;
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
     private Conflict[] conflictArr;
@@ -85,11 +86,12 @@ public class ConflictManager {
         }
         Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(() -> {
             try {
+                if (!conflictsLoaded) return;
                 pushDirtyConflicts();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 17, 7, TimeUnit.MINUTES);
+        }, 8, 1, TimeUnit.MINUTES);
         return null;
     }
 
@@ -322,13 +324,13 @@ public class ConflictManager {
 
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
+        if (!conflictsLoaded) return;
         long turn = event.getCurrent();
-        boolean updated = false;
         List<Conflict> conflicts = getActiveConflicts();
         if (!conflicts.isEmpty()) {
             for (Conflict conflict : conflicts) {
                 conflict.getSide(true).updateTurnChange(this, turn, true);
-                conflict.getSide(false).updateTurnChange(this, turn, false);
+                conflict.getSide(false).updateTurnChange(this, turn, true);
             }
             for (Conflict conflict : conflicts) {
                 conflict.push(this, null, true, false);
@@ -641,6 +643,7 @@ public class ConflictManager {
                 });
                 System.out.println("Loaded graph data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             }
+            conflictsLoaded = true;
         } catch (Throwable e) {
             e.printStackTrace();
         }

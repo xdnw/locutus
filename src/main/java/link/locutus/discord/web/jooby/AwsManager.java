@@ -46,6 +46,7 @@ public class AwsManager {
         ObjectMetadata metadata = new ObjectMetadata();
 
         metadata.setContentLength(data.length);
+        System.out.println("Max age " + maxAge);
         metadata.setCacheControl("max-age=" + maxAge);
 
         ByteArrayInputStream inputStream = new ByteArrayInputStream(data);

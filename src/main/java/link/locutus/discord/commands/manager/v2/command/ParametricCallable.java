@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -891,6 +894,71 @@ public class ParametricCallable implements ICommand {
             paramVals[i] = value;
         }
         return paramVals;
+    }
+
+    @Override
+    public JsonObject toJson() {
+        JsonObject command = new JsonObject();
+        //simpleHelp
+        //simpleDesc
+        //groups
+        //groupDescs
+        //valueFlags
+        //provideFlags
+        //annotations
+        //userParameters
+        command.addProperty("help", simpleHelp());
+        command.addProperty("desc", simpleDesc());
+        if (groups != null && groups.length != 0) {
+            JsonArray groupsList = new JsonArray();
+            for (String g : groups) groupsList.add(g);
+            command.add("groups", groupsList);
+        }
+        if (groupDescs != null && groupDescs.length != 0) {
+            JsonArray groupDescsList = new JsonArray();
+            for (String g : groupDescs) groupDescsList.add(g);
+            command.add("group_descs", groupDescsList);
+        }
+//        Set<String> flags = new LinkedHashSet<>();
+//        if (valueFlags != null && !valueFlags.isEmpty()) flags.addAll(valueFlags);
+//        if (provideFlags != null && !provideFlags.isEmpty()) flags.addAll(provideFlags);
+//        if (!flags.isEmpty()) {
+//            JsonArray valueFlagsList = new JsonArray();
+//            for (String g : flags) valueFlagsList.add(g);
+//            command.add("flags", valueFlagsList);
+//        }
+        JsonObject annotationsObj = new JsonObject();
+        for (Annotation annotation : annotations) {
+            if (annotation instanceof Command) continue;
+            JsonObject annJson = new JsonObject();
+            for (Method method : annotation.annotationType().getDeclaredMethods()) {
+                try {
+                    Object value = method.invoke(annotation);
+                    if (value != null) {
+                        annJson.addProperty(method.getName(), value.toString());
+                    }
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            String key = annotation.annotationType().getSimpleName();
+            if (annJson.isEmpty()) {
+                command.addProperty(key, true);
+            } else {
+                annotationsObj.add(key, annJson);
+            }
+        }
+        if (!annotationsObj.entrySet().isEmpty()) {
+            command.add("annotations", annotationsObj);
+        }
+        JsonObject arguments = new JsonObject();
+        for (ParameterData param : userParameters) {
+            arguments.add(param.getName(), param.toJson());
+        }
+        if (!arguments.isEmpty()) {
+            command.add("arguments", arguments);
+        }
+        return command;
     }
 
     @Override

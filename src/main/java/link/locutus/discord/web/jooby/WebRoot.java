@@ -254,18 +254,6 @@ public class WebRoot {
         return fileRoot;
     }
 
-    private String siteMapB64;
-
-    public String generateSiteMapB64() {
-        if (siteMapB64 != null) return siteMapB64;
-        JsonObject siteMap = pageHandler.getCommands().generateSiteMap();
-        siteMap.add("command", Locutus.cmd().getV2().getCommands().generateSiteMap());
-        WikiGenHandler gen = new WikiGenHandler("", Locutus.cmd().getV2());
-        JsonObject wiki = gen.generateSiteMap();
-        siteMap.add("wiki", wiki);
-        return siteMapB64 = Base64.getEncoder().encodeToString(siteMap.toString().getBytes());
-    }
-
     public PageHandler getPageHandler() {
         return pageHandler;
     }

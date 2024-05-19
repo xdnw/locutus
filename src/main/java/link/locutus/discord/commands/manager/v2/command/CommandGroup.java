@@ -36,22 +36,11 @@ public class CommandGroup implements ICommandGroup {
         this.aliases = Arrays.asList(aliases);
     }
 
-    public JsonObject generateSiteMap() {
+    public JsonObject toJson() {
         JsonObject root = new JsonObject();
-        getParametricCallables(f -> {
-            String fullPath = f.getFullPath();
-            String[] split = fullPath.split(" ");
-            JsonObject current = root;
-            for (int i = 0; i < split.length - 1; i++) {
-                String s = split[i];
-                if (!current.has(s)) {
-                    current.add(s, new JsonObject());
-                }
-                current = current.getAsJsonObject(s);
-            }
-            current.addProperty(split[split.length - 1], "");
-            return false;
-        });
+        for (Map.Entry<String, CommandCallable> entry : subcommands.entrySet()) {
+            root.add(entry.getKey(), entry.getValue().toJson());
+        }
         return root;
     }
 

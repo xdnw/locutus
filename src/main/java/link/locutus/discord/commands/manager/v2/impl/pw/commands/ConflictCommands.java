@@ -78,12 +78,10 @@ public class ConflictCommands {
         }
         response.append("\n");
 
-        CoalitionSide col1 = conflict.getSide(true);
-        CoalitionSide col2 = conflict.getSide(false);
-        List<CoalitionSide> sides = Arrays.asList(col1, col2);
+        List<CoalitionSide> sides = Arrays.asList(conflict.getSide(true), conflict.getSide(false));
         if (showParticipants) {
             for (CoalitionSide side : sides) {
-                response.append("\n**" + col1.getName() + "**\n");
+                response.append("\n**" + side.getName() + "** (1)\n");
                 for (int aaId : side.getAllianceIdsSorted()) {
                     long start = conflict.getStartTurn(aaId);
                     long end = conflict.getEndTurn(aaId);

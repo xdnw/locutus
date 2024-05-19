@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -34,6 +35,8 @@ public interface CommandCallable {
     String simpleHelp();
 
     List<String> aliases();
+
+    JsonObject toJson();
 
     default void validatePermissions(ValueStore store, PermissionHandler permisser) throws IllegalArgumentException {
 
