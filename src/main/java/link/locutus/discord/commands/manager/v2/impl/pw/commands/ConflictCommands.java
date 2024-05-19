@@ -67,7 +67,7 @@ public class ConflictCommands {
         StringBuilder response = new StringBuilder();
 
         response.append("**__" + conflict.getName() + " - `#" + conflict.getId() + "` - " + conflict.getCategory().name() + "__**\n");
-        response.append("wiki: `" + conflict.getWiki() + "`\n");
+        response.append("wiki: `" + (conflict.getWiki().isEmpty() ? "N/A" : conflict.getWiki()) + "`\n");
         response.append("Start: " + DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getStartTurn()), null) + "\n");
         response.append("End: " + (conflict.getEndTurn() == Long.MAX_VALUE ? "Ongoing" : DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(conflict.getEndTurn()), null)) + "\n");
         response.append("Casus Belli: `" + (conflict.getCasusBelli().isEmpty() ? "N/A" : conflict.getCasusBelli().isEmpty()) + "`\n");
@@ -80,8 +80,9 @@ public class ConflictCommands {
 
         List<CoalitionSide> sides = Arrays.asList(conflict.getSide(true), conflict.getSide(false));
         if (showParticipants) {
+            int i = 1;
             for (CoalitionSide side : sides) {
-                response.append("\n**" + side.getName() + "** (1)\n");
+                response.append("\n**" + side.getName() + "** (coalition " + (i++) + ")\n");
                 for (int aaId : side.getAllianceIdsSorted()) {
                     long start = conflict.getStartTurn(aaId);
                     long end = conflict.getEndTurn(aaId);

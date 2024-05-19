@@ -84,14 +84,6 @@ public class ConflictManager {
         if (!key.isEmpty() && !secret.isEmpty() && !region.isEmpty() && !bucket.isEmpty()) {
             return new AwsManager(key, secret, bucket, region);
         }
-        Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(() -> {
-            try {
-                if (!conflictsLoaded) return;
-                pushDirtyConflicts();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }, 8, 1, TimeUnit.MINUTES);
         return null;
     }
 
@@ -189,7 +181,10 @@ public class ConflictManager {
         }
         if (hasDirty) {
             pushIndex();
+            System.out.println("Pushed dirty conflicts");
             return true;
+        } else {
+            System.out.println("No dirty conflicts");
         }
         return false;
     }
@@ -492,7 +487,19 @@ public class ConflictManager {
 //        if (legacyNames.isEmpty()) {
 //            saveDefaultNames();
 //        }
-        Locutus.imp().getExecutor().submit(() -> loadConflictWars(null, false));
+        Locutus.imp().getExecutor().submit(() -> {
+            loadConflictWars(null, false);
+            Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(() -> {
+                try {
+                    System.out.println("Update task " + (!conflictsLoaded) + " | " + (!TimeUtil.checkTurnChange()));
+                    if (!conflictsLoaded || !TimeUtil.checkTurnChange()) return;
+                    System.out.println("Pushing dirty conflicts");
+                    pushDirtyConflicts();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }, 1, 1, TimeUnit.MINUTES);
+        });
         System.out.println("Load graph data: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
     }
 
