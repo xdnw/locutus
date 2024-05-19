@@ -296,6 +296,10 @@ public class TimeUtil {
         return ChronoUnit.DAYS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
     }
 
+    public static long getDayFromTurn(long turn) {
+        return turn / 12;
+    }
+
     public static <T> T runDayTask(String id, Function<Long, T> task) {
         return runTimeTask(id, TimeUtil::getDay, task);
     }

@@ -73,11 +73,11 @@ public class CoalitionSide {
     public void updateTurnChange(ConflictManager manager, long turn, boolean save) {
         Set<DBNation> nations = new AllianceList(coalition).getNations(true, 0, true);
 
-        long day = TimeUtil.getDay(turn);
-        if (day != TimeUtil.getDay(turn - 1)) {
+        long day = TimeUtil.getDayFromTurn(turn);
+        if (day != TimeUtil.getDayFromTurn(turn - 1)) {
             updateDayTierGraph(manager, day, nations, true, save);
         }
-        updateTurnTierGraph(manager, day, nations, true, save);
+        updateTurnTierGraph(manager, turn, nations, true, save);
     }
 
     public void addGraphData(ConflictMetric metric, int allianceId, long turnOrDay, int city, int value) {
@@ -494,6 +494,7 @@ public class CoalitionSide {
                     .put((byte) entry.city(), (long) entry.value());
             cities.add((byte) entry.city());
         }
+
         trimTimeData(turnData);
         trimTimeData(dayData);
 

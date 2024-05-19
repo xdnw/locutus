@@ -523,8 +523,8 @@ public class ConflictCommands {
 
     @Command(desc = "Import ctowned conflicts into the database\n" +
             "This does not push the data to the site")
-    @RolePermission(Roles.MILCOM)
-    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
+    @RolePermission(value = Roles.MILCOM, root = true)
+//    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importCtowned(@Me GuildDB db, ConflictManager manager,
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
@@ -669,7 +669,7 @@ public class ConflictCommands {
         if (all) {
             Locutus.imp().getWarDb().loadWarCityCountsLegacy();
             allianceNames = true;
-            ctowned = true;
+//            ctowned = true;
             wiki = true;
             loadGraphData = true;
         }

@@ -154,8 +154,8 @@ public class Conflict {
 
         System.out.println("Graph 3");
 
-        long dayStart = TimeUtil.getDay(TimeUtil.getTimeFromTurn(getStartTurn()));
-        long dayEnd = getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getDay(TimeUtil.getTimeFromTurn(getEndTurn() + 11));
+        long dayStart = TimeUtil.getDayFromTurn(getStartTurn());
+        long dayEnd = getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getDayFromTurn(getEndTurn() + 11);
 
         parser.iterateAll(day -> {
             if (day >= dayStart && day <= dayEnd) {
@@ -200,7 +200,7 @@ public class Conflict {
                     latest.put(id, nation);
                 }
             }
-            long nextDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + 11));
+            long nextDay = TimeUtil.getDayFromTurn(TimeUtil.getTurn() + 11);
             nationsByDay.put(nextDay, latest);
         } else {
             latest = nationsByDay.get(lastDay);
@@ -241,7 +241,7 @@ public class Conflict {
             MilitaryUnit[] units = {MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP};
 
             long latestTurn = Math.min(getEndTurn(), currentTurn);
-            long latestDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(latestTurn));
+            long latestDay = TimeUtil.getDayFromTurn(latestTurn);
             Map<Integer, Map<MilitaryUnit, Integer>> milCountByNation = new Int2ObjectOpenHashMap<>();
 
             Consumer<Map<Integer, DBNation>> setMilCount = (nations) -> {
