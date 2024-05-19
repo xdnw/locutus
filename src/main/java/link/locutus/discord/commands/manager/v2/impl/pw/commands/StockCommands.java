@@ -262,7 +262,7 @@ public class StockCommands {
     public String exchanges(StockDB db, @Me DBNation me, String filter) {
         filter = filter.toLowerCase();
         List<String> equals = new ArrayList<>();
-        List<Map.Entry<String, Integer>> matches = new ArrayList<>();
+        List<Map.Entry<String, Double>> matches = new ArrayList<>();
         List<String> desc = new ArrayList<>();
         for (Map.Entry<String, Exchange> entry : db.getExchanges().entrySet()) {
             Exchange exchange = entry.getValue();
@@ -273,13 +273,13 @@ public class StockCommands {
             if (entry.getKey().equalsIgnoreCase(filter)) {
                 equals.add("**" + name + "**");
             } else if (entry.getKey().toLowerCase().contains(filter)) {
-                int distance = StringMan.getLevenshteinDistance(filter, name.toLowerCase());
+                double distance = StringMan.distanceWeightedQwertSift4(filter, name.toLowerCase());
                 matches.add(new AbstractMap.SimpleEntry<>(nameBold, distance));
             } else if (exchange.description.toLowerCase().matches(".*\b" + filter + "\b.*")) {
                 desc.add(exchange.symbol);
             }
         }
-        matches.sort(Comparator.comparingInt(Map.Entry::getValue));
+        matches.sort(Comparator.comparingDouble(Map.Entry::getValue));
         List<String> all = new ArrayList<>();
         all.addAll(equals);
         all.addAll(matches.stream().map(Map.Entry::getKey).toList());

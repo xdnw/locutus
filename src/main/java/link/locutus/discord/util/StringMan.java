@@ -1,5 +1,8 @@
 package link.locutus.discord.util;
 
+import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
+import info.debatty.java.stringsimilarity.WeightedLevenshtein;
+import info.debatty.java.stringsimilarity.experimental.Sift4;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
@@ -1015,6 +1018,73 @@ public class StringMan {
             }
         }
         return count;
+    }
+
+    private static final String[] QWERTY_KEYBOARD = {
+            "1234567890",
+            "qwertyuiop",
+            "asdfghjkl",
+            "zxcvbnm"
+    };
+
+    private static int[] getCharPosition(char c) {
+        for (int i = 0; i < QWERTY_KEYBOARD.length; i++) {
+            int index = QWERTY_KEYBOARD[i].indexOf(c);
+            if (index != -1) {
+                return new int[]{i, index};
+            }
+        }
+        return new int[]{-1, -1};
+    }
+
+    private static double getDistance(char c1, char c2) {
+        int[] pos1 = getCharPosition(c1);
+        int[] pos2 = getCharPosition(c2);
+
+        if (pos1[0] == -1 || pos2[0] == -1) {
+            return 1.0;
+        }
+
+        int dx = pos1[1] - pos2[1];
+        int dy = pos1[0] - pos2[0];
+
+        return MathMan.sqrtApprox(dx * dx + dy * dy);
+    }
+
+    public static double distanceWeightedQwertSift4(String a, String b) {
+        // combine wl and sift4
+        WeightedLevenshtein wl = new WeightedLevenshtein(
+                new CharacterSubstitutionInterface() {
+                    public double cost(char c1, char c2) {
+                        return getDistance(c1, c2);
+                    }
+                });
+        Sift4 s4 = new Sift4();
+        return (wl.distance(a, b) + s4.distance(a, b)) / 2;
+    }
+
+     public static void main(String[] args) {
+
+        // Test cases
+         String[] words1 = {"Knights Radiant", "Knights Radiant"};
+         String[] words2 = {"The Knights Radiant", "Knights Templar"};
+
+         Sift4 sift4 = new Sift4();
+         sift4.setMaxOffset(5);
+
+        for (int i = 0; i < words1.length; i++) {
+            double thermoSimilarity = sift4.distance(words1[i],  words2[i]);;
+            double weighted = distanceWeightedQwertSift4(words1[i], words2[i]);
+            double levenshteinDistance = getLevenshteinDistance(words1[i], words2[i]);
+
+            System.out.println("Word1: " + words1[i]);
+            System.out.println("Word2: " + words2[i]);
+            System.out.println("Thermo Similarity: " + thermoSimilarity);
+            System.out.println("Levenshtein Distance: " + levenshteinDistance);
+            System.out.println("Weighted Distance: " + weighted);
+            System.out.println("Sift4: " + new Sift4().distance(words1[i], words2[i]));
+            System.out.println("-----------------------------");
+        }
     }
 
     public static int getLevenshteinDistance(String s, String t) {

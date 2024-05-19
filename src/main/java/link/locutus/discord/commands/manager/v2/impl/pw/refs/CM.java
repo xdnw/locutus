@@ -1205,8 +1205,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="addAnnouncement")
                 public static class add_forum_post extends CommandRef {
                     public static final add_forum_post cmd = new add_forum_post();
-                    public add_forum_post create(String conflict, String url) {
-                        return createArgs("conflict", conflict, "url", url);
+                    public add_forum_post create(String conflict, String url, String desc) {
+                        return createArgs("conflict", conflict, "url", url, "desc", desc);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="setCB")
@@ -1325,6 +1325,13 @@ public class CM {
                     public static final ctowned cmd = new ctowned();
                     public ctowned create(String useCache) {
                         return createArgs("useCache", useCache);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importExternal")
+                public static class db_file extends CommandRef {
+                    public static final db_file cmd = new db_file();
+                    public db_file create(String fileLocation) {
+                        return createArgs("fileLocation", fileLocation);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="importConflictData")

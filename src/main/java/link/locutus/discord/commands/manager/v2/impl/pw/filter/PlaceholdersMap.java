@@ -333,6 +333,7 @@ public class PlaceholdersMap {
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input, boolean allowStar) {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
+        DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
         if (input.equalsIgnoreCase("*") && allowStar) {
             return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNations().values());
         }
@@ -382,6 +383,46 @@ public class PlaceholdersMap {
             Role role = db.getGuild().getRoles().stream().filter(f -> f.getName().equalsIgnoreCase(finalInput)).findFirst().orElse(null);
             if (role != null) {
                 return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+            }
+            for (Member member : db.getGuild().getMembers()) {
+                User user = member.getUser();
+                DBNation nation = DiscordUtil.getNation(user);
+                if (nation == null) continue;
+                if (member.getEffectiveName().equalsIgnoreCase(input) || user.getName().equalsIgnoreCase(input) || user.getGlobalName().equalsIgnoreCase(input)) {
+                    return Set.of(nation);
+                }
+            }
+        }
+        if (!MathMan.isInteger(input)) {
+            String inputLower = input.toLowerCase(Locale.ROOT);
+            String best = null;
+            double bestScore = Double.MAX_VALUE;
+            for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+                String name = nation.getName();
+                double score = StringMan.distanceWeightedQwertSift4(name.toLowerCase(Locale.ROOT), inputLower);
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = "nation:" + name;
+                }
+                String leader = nation.getLeader();
+                if (leader != null) {
+                    score = StringMan.distanceWeightedQwertSift4(leader.toLowerCase(Locale.ROOT), inputLower);
+                    if (score < bestScore) {
+                        bestScore = score;
+                        best = "nation:" + nation.getName();
+                    }
+                }
+            }
+            for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+                String name = alliance.getName();
+                double score = StringMan.distanceWeightedQwertSift4(name.toLowerCase(Locale.ROOT), inputLower);
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = "aa:" + name;
+                }
+            }
+            if (best != null) {
+                throw new IllegalArgumentException("Invalid nation or alliance: `" + input + "`. Did you mean: `" + best + "`?");
             }
         }
         throw new IllegalArgumentException("Invalid nation or alliance: `" + input + "`");

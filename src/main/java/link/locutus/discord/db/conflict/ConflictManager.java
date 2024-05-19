@@ -1430,11 +1430,11 @@ public class ConflictManager {
         return JteUtil.compress(JteUtil.toBinary(root));
     }
 
-    public Map.Entry<String, Integer> getMostSimilar(String name) {
-        int distance = Integer.MAX_VALUE;
+    public Map.Entry<String, Double> getMostSimilar(String name) {
+        double distance = Integer.MAX_VALUE;
         String similar = null;
         for (Map.Entry<Integer, String> entry : legacyNames2.entrySet()) {
-            int d = StringMan.getLevenshteinDistance(name, entry.getValue());
+            double d = StringMan.distanceWeightedQwertSift4(name, entry.getValue());
             if (d < distance) {
                 distance = d;
                 similar = entry.getValue();

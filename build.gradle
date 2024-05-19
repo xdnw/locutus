@@ -191,9 +191,9 @@ dependencies {
     implementation("org.jooq:jooq-codegen:3.17.5")
 
 
-    implementation("com.theokanning.openai-gpt3-java:client:0.14.0")
-    implementation("com.theokanning.openai-gpt3-java:service:0.14.0")
-    implementation("com.theokanning.openai-gpt3-java:api:0.14.0")
+    implementation("com.theokanning.openai-gpt3-java:client:0.18.2")
+    implementation("com.theokanning.openai-gpt3-java:service:0.18.2")
+    implementation("com.theokanning.openai-gpt3-java:api:0.18.2")
 
     implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.3'
     implementation 'com.github.javaparser:javaparser-core:3.25.3'
@@ -215,6 +215,7 @@ dependencies {
     implementation 'org.bytedeco:javacv:1.5.6'
     implementation 'cn.easyproject:easyocr:3.0.4-RELEASE'
     implementation 'com.vdurmont:emoji-java:5.1.1'
+    implementation 'info.debatty:java-string-similarity:2.0.0'
 }
 
 configurations {

@@ -170,7 +170,7 @@ public class PWWikiPage {
             f = Normalizer.normalize(f, Normalizer.Form.NFKD);
             Integer id = manager.getAllianceId(f, dateStart);
             if (id == null) {
-                Map.Entry<String, Integer> similar = manager.getMostSimilar(f);
+                Map.Entry<String, Double> similar = manager.getMostSimilar(f);
                 System.out.println("Unknown combatant: `" + f + "` " + (similar == null ? "" : " | Similar: " + similar.getKey() + "=" + similar.getValue()));
 //                System.out.println(" -  for " + slug + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
                 unknownCombatants.add(f);
@@ -181,7 +181,7 @@ public class PWWikiPage {
             f = Normalizer.normalize(f, Normalizer.Form.NFKD);
             Integer id = manager.getAllianceId(f, dateStart);
             if (id == null) {
-                Map.Entry<String, Integer> similar = manager.getMostSimilar(f);
+                Map.Entry<String, Double> similar = manager.getMostSimilar(f);
                 System.out.println("Unknown combatant: `" + f + "` " + (similar == null ? "" : " | Similar: " + similar.getKey() + "=" + similar.getValue()));
 //                System.out.println(" -  for " + slug + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
                 unknownCombatants.add(f);
