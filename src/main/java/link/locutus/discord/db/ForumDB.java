@@ -140,7 +140,7 @@ public class ForumDB extends DBMain {
     }
 
     public void addTopic(DBTopic topic) throws SQLException {
-        String sql = "INSERT INTO `FORUM_TOPICS` (`topic_id`, `section_id`, `topic_name`, `topic_urlname`, `section_name`, `section_urlname`, `timestamp`, `poster_id`, `poster_name`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO `FORUM_TOPICS` (`topic_id`, `section_id`, `topic_name`, `topic_urlname`, `section_name`, `section_urlname`, `timestamp`, `poster_id`, `poster_name`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             stmt.setInt(1, topic.topic_id);
             stmt.setInt(2, topic.section_id);

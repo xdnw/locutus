@@ -225,6 +225,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "recalculateGraphs", "recalculate_graphs");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "recalculateTables", "recalculate_tables");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importAllianceNames", "alliance_names");
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importExternal", "db_file");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "removeCoalition", "remove");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addCoalition", "add");

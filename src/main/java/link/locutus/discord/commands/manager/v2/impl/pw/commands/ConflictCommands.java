@@ -834,7 +834,7 @@ public class ConflictCommands {
     @Command(desc = "Purge permenent conflicts that aren't in the database")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String addAnnouncement(ConflictManager manager, Conflict conflict, String url) throws SQLException, IOException {
+    public String addAnnouncement(ConflictManager manager, Conflict conflict, String url, @Default String desc) throws SQLException, IOException {
         String urlPattern = "https://forum\\.politicsandwar\\.com/index\\.php\\?/topic/[0-9]+-.+/";
         if (!url.matches(urlPattern)) {
             return "Invalid URL format. Please provide a URL in the format: https://forum.politicsandwar.com/index.php?/topic/{topicId}-{topicUrlStub}/";
@@ -851,8 +851,8 @@ public class ConflictCommands {
             conflict.deleteAnnouncement(topic.topic_id);
             msgs.add("Deleted previous announcement for " + topic.topic_name);
         }
-        conflict.addAnnouncement(topic.topic_name, topic, true);
-        msgs.add("Added announcement for " + topic.topic_name);
+        conflict.addAnnouncement(desc == null ? topic.topic_name : desc, topic, true);
+        msgs.add("Added announcement for " + topic.topic_name + "/" + topic.topic_id + " at " + DiscordUtil.timestamp(topic.timestamp, null));
         conflict.push(manager, null, false, false);
         return StringMan.join(msgs, "\n");
     }
@@ -900,5 +900,18 @@ public class ConflictCommands {
                     .send();
             return null;
         }
+    }
+
+    @Command(desc = "Import from an external database file")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importExternal(ConflictManager manager, String fileLocation, @Me IMessageIO io) throws SQLException {
+        File file = new File(fileLocation);
+        if (!file.exists()) throw new IllegalArgumentException("File does not exist");
+        if (!file.getName().equalsIgnoreCase("war.db")) {
+            throw new IllegalArgumentException("File must be named `war.db`");
+        }
+        CompletableFuture<IMessageBuilder> msgFuture = io.send("Importing from " + file.getName() + "...");
+        manager.importFromExternal(file);
+        return "Done!";
     }
 }

@@ -451,6 +451,7 @@ public class Conflict {
                 root.put("header_group", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.getType().name()).toList()));
                 root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
                 root.put("war_web", warsVsAllianceJson());
+                root.put("update_ms", System.currentTimeMillis());
                 byte[] compressed = JteUtil.compress(JteUtil.toBinary(root));
                 flatStatsGzip = compressed;
                 return compressed;

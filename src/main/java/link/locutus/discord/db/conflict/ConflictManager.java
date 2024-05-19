@@ -128,7 +128,7 @@ public class ConflictManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
     }
 
-    public static void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
+    private void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
         Connection sourceConnection = sourceDb.getConnection();
         Connection targetConnection = targetDb.getConnection();
 
