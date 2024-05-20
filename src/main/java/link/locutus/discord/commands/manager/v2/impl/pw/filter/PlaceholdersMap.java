@@ -388,7 +388,7 @@ public class PlaceholdersMap {
                 User user = member.getUser();
                 DBNation nation = DiscordUtil.getNation(user);
                 if (nation == null) continue;
-                if (member.getEffectiveName().equalsIgnoreCase(input) || user.getName().equalsIgnoreCase(input) || user.getGlobalName().equalsIgnoreCase(input)) {
+                if (member.getEffectiveName().equalsIgnoreCase(input) || user.getName().equalsIgnoreCase(input) || input.equalsIgnoreCase(user.getGlobalName())) {
                     return Set.of(nation);
                 }
             }
