@@ -856,7 +856,7 @@ public class ConflictCommands {
         return StringMan.join(msgs, "\n");
     }
 
-    @Command(desc = "Purge permenent conflicts that aren't in the database")
+    @Command(desc = "Purge permenent conflicts on the website that aren't in the database")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String purgeTemporaryConflicts(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Timestamp long olderThan, @Switch("f") boolean force) {
@@ -901,7 +901,8 @@ public class ConflictCommands {
         }
     }
 
-    @Command(desc = "Import from an external database file")
+    @Command(desc = "Import from an external database file\n" +
+            "Requires a restart of the bot to complete the import")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String importExternal(ConflictManager manager, String fileLocation, @Me IMessageIO io) throws SQLException {
         File file = new File(fileLocation);
@@ -911,6 +912,6 @@ public class ConflictCommands {
         }
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Importing from " + file.getName() + "...");
         manager.importFromExternal(file);
-        return "Done!";
+        return "Done! A restart is required to load the new data.";
     }
 }
