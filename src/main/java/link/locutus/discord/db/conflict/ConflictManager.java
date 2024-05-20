@@ -123,6 +123,7 @@ public class ConflictManager {
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
+        System.out.println("Updating " + tableName);
         Connection sourceConnection = sourceDb.getConnection();
         Connection targetConnection = targetDb.getConnection();
 
