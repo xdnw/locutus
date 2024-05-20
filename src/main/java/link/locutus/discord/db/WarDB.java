@@ -1077,7 +1077,11 @@ public class WarDB extends DBMainV2 {
                 e.printStackTrace();
             }
         };
-        conflictManager = !Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY.isEmpty() ? new ConflictManager(this) : null;
+        boolean enableConflicts = !Settings.INSTANCE.WEB.S3.ACCESS_KEY.isEmpty() &&
+                !Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY.isEmpty() &&
+                !Settings.INSTANCE.WEB.S3.REGION.isEmpty() &&
+                !Settings.INSTANCE.WEB.S3.BUCKET.isEmpty();
+        conflictManager = enableConflicts ? new ConflictManager(this) : null;
         if (conflictManager != null) {
             this.conflictManager.createTables();
         }
