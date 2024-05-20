@@ -123,7 +123,7 @@ public class ConflictManager {
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
-        System.out.println("Updating " + tableName);
+        System.out.println("remove:|| import: updating " + tableName);
         Connection sourceConnection = sourceDb.getConnection();
         Connection targetConnection = targetDb.getConnection();
 
@@ -159,12 +159,20 @@ public class ConflictManager {
             "conflicts",
                 "conflict_participant",
                 "conflict_announcements2",
-                "conflict_graphs2",
+//                "conflict_graphs2",
                 "legacy_names2",
                 "source_sets"
 //                "attack_subtypes"
         );
+        // clear conflict_graphs2 and attack_subtypes
+        System.out.println("Remove:|| import: clearing table conflict_graphs2");
+        db.executeStmt("DELETE FROM conflict_graphs2");
+        System.out.println("Remove:|| import: clearing table attack_subtypes");
+        db.executeStmt("DELETE FROM attack_subtypes");
         for (String table : tables) {
+            // clear all rows of table
+            System.out.println("Remove:|| import: clearing table " + table);
+            db.executeStmt("DELETE FROM " + table);
             importData(otherDb, db.getDb(), table);
         }
     }
