@@ -129,15 +129,19 @@ public class ConflictManager {
         targetConnection.setAutoCommit(false);
 
         try (Statement sourceStatement = sourceConnection.createStatement();
-            PreparedStatement targetStatement = targetConnection.prepareStatement("INSERT INTO " + tableName + " SELECT * FROM " + tableName)) {
-            ResultSet resultSet = sourceStatement.executeQuery("SELECT * FROM " + tableName);
+             ResultSet resultSet = sourceStatement.executeQuery("SELECT * FROM " + tableName)) {
             ResultSetMetaData metaData = resultSet.getMetaData();
             int columnCount = metaData.getColumnCount();
-            while (resultSet.next()) {
-                for (int i = 1; i <= columnCount; i++) {
-                    targetStatement.setObject(i, resultSet.getObject(i));
+            String placeholders = String.join(", ", Collections.nCopies(columnCount, "?"));
+            String targetSql = "INSERT INTO " + tableName + " VALUES (" + placeholders + ")";
+
+            try (PreparedStatement targetStatement = targetConnection.prepareStatement(targetSql)) {
+                while (resultSet.next()) {
+                    for (int i = 1; i <= columnCount; i++) {
+                        targetStatement.setObject(i, resultSet.getObject(i));
+                    }
+                    targetStatement.executeUpdate();
                 }
-                targetStatement.executeUpdate();
             }
             targetConnection.commit();
         } catch (SQLException e) {
