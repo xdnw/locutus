@@ -541,7 +541,7 @@ public abstract class GuildSetting<T> {
 
     public String setAndValidate(GuildDB db, User user, T value) {
         value = allowedAndValidate(db, user, value);
-        return set(db, value);
+        return set(db, user, value);
     }
 
     public GuildSetting<T> requiresAllies() {
