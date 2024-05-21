@@ -1760,7 +1760,7 @@ public class GuildKey {
 
             return response;
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requireValidAlliance());
 
     public static GuildSetting<Map<NationFilter, MMRMatcher>> REQUIRED_MMR = new GuildSetting<Map<NationFilter, MMRMatcher>>(GuildSettingCategory.AUDIT, Map.class, NationFilter.class, MMRMatcher.class) {
 
