@@ -87,6 +87,9 @@ public class IACommands {
                                           @Switch("m") boolean allow_non_members,
                                           @Switch("v") boolean allow_vm,
                                           @Switch("f") boolean force) {
+        for (Category category : categories) {
+            if (!category.getGuild().equals(guild)) throw new IllegalArgumentException("Category " + category.getName() + " is not in this guild");
+        }
         Map<TextChannel, String> errors = new LinkedHashMap<>();
         Map<TextChannel, String> warnings = new LinkedHashMap<>();
         Map<DBNation, Set<TextChannel>> nationChannels = new HashMap<>();
@@ -192,6 +195,9 @@ public class IACommands {
                                    @Default NationFilter filter,
                                    @Switch("w") boolean warn_on_filter_fail,
                                    @Switch("f") boolean force) {
+        for (Category category : from) {
+            if (!category.getGuild().equals(guild)) throw new IllegalArgumentException("Category " + category.getName() + " is not in this guild");
+        }
         List<String> errors = new ArrayList<>();
         Map<Category, NationFilter> filters = new HashMap<>();
 

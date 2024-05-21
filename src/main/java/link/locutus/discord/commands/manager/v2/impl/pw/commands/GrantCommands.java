@@ -2165,7 +2165,7 @@ public class GrantCommands {
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount,
                                    @Switch("f") boolean force) throws IOException {
-        if (GuildKey.MEMBER_CAN_ESCROW.getOrNull(db) != Boolean.TRUE) {
+        if (GuildKey.MEMBER_CAN_ESCROW.getOrNull(db) != Boolean.TRUE && !Roles.ECON_STAFF.has(author, db.getGuild())) {
             return "To enable member withdrawal of escrowed funds, see: " + CM.settings.info.cmd.create(GuildKey.MEMBER_CAN_ESCROW.name(), null, null);
         }
         // Require ECON_STAFF if receiver is not me

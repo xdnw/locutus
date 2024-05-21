@@ -240,6 +240,15 @@ public class ConflictManager {
         }
     }
 
+    public void clearAllianceCache() {
+        synchronized (mapTurnAllianceConflictOrd) {
+            mapTurnAllianceConflictOrd.clear();
+            lastTurn = 0;
+            recreateConflictsByAlliance();
+        }
+    }
+
+
     private boolean applyConflicts(Predicate<Integer> allowed, long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
         if (allianceId1 == 0 || allianceId2 == 0) return false;
         synchronized (mapTurnAllianceConflictOrd)

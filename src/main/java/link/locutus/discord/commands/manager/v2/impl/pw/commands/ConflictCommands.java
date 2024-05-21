@@ -405,6 +405,7 @@ public class ConflictCommands {
                 reinitializeGraphsArg = "true";
             }
         }
+        manager.clearAllianceCache();
         return response.toString() +
                 "\nThen to initialize the stats and push to the site:\n" +
                 CM.conflict.sync.website.cmd.create(conflict.getId() + "", "true", null, reinitializeGraphsArg);
@@ -445,7 +446,7 @@ public class ConflictCommands {
             "This does NOT update conflict stats")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String addCoalition(@Me User user, Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
+    public String addCoalition(ConflictManager manager, @Me User user, Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
         boolean hasAdmin = Roles.ADMIN.hasOnRoot(user);
         if (isCoalition1 && isCoalition2) {
             throw new IllegalArgumentException("Cannot specify both `isCoalition1` and `isCoalition2`");
@@ -516,6 +517,7 @@ public class ConflictCommands {
         for (DBAlliance aa : addCol2) {
             conflict.addParticipant(aa.getId(), false, null, null);
         }
+        manager.clearAllianceCache();
         return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2\n" +
                 "Note: this does NOT update conflict stats";
     }
