@@ -5,6 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
+import net.dv8tion.jda.api.entities.User;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -15,7 +16,7 @@ public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType
     }
 
     @Override
-    public Map<ResourceType, Double> validate(GuildDB db, Map<ResourceType, Double> value) {
+    public Map<ResourceType, Double> validate(GuildDB db, User user, Map<ResourceType, Double> value) {
         // ensure amounts are positive
         for (Map.Entry<ResourceType, Double> entry : value.entrySet()) {
             if (entry.getValue() < 0) {

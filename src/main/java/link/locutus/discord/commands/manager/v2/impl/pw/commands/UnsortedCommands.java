@@ -1865,7 +1865,7 @@ public class UnsortedCommands {
         if (minPopulation != null) cmd.add("population>" + minPopulation);
         if (radiation != null) cmd.add("radiation=" + radiation);
         if (taxRate != null) cmd.add(taxRate.toString());
-        if (useRawsForManu) cmd.add("manu=" + useRawsForManu);
+        if (useRawsForManu) cmd.add("manu=false");
         if (writePlaintext) flags.add('p');
         if (nationalProjects != null) {
             for (Project project : nationalProjects) {

@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.util.StringMan;
 
 import java.lang.annotation.Annotation;
@@ -23,7 +23,33 @@ public class ParameterData {
 
     public JsonElement toJson() {
         JsonObject arg = new JsonObject();
-        return null;
+        arg.addProperty("name", getName());
+        if (optional) arg.addProperty("optional", true);
+        if (isFlag()) arg.addProperty("flag", getFlag());
+        if (this.desc != null && !desc.isEmpty()) arg.addProperty("desc", desc);
+        if (group != -1) arg.addProperty("group", group);
+        arg.addProperty("type", binding.getKey().toSimpleString());
+        if (defaultValue != null && defaultValue.length != 0) {
+            arg.addProperty("default", getDefaultValueString());
+        }
+        ArgChoice choiceAnn = getAnnotation(ArgChoice.class);
+        if (choiceAnn != null) {
+            JsonObject choices = new JsonObject();
+            for (String choice : choiceAnn.value()) choices.addProperty(choice, choice);
+            arg.add("choices", choices);
+        }
+        Range range = getAnnotation(Range.class);
+        if (range != null) {
+            if (range.min() != Double.NEGATIVE_INFINITY)
+                arg.addProperty("min", range.min());
+            if (range.max() != Double.POSITIVE_INFINITY)
+                arg.addProperty("max", range.max());
+        }
+        Filter filter = getAnnotation(Filter.class);
+        if (filter != null) {
+            arg.addProperty("filter", filter.value());
+        }
+        return arg;
     }
 
     public Type getType() {

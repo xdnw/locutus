@@ -96,7 +96,7 @@ public class GuildKey {
             }
             toAdd = ALLIANCE_ID.allowedAndValidate(db, user, toAdd);
             existing.addAll(toAdd);
-            return ALLIANCE_ID.set(db, toAdd);
+            return ALLIANCE_ID.set(db, user, toAdd);
         }
         @NoFormat
         @Command(descMethod = "help")
@@ -113,10 +113,10 @@ public class GuildKey {
             if (existing.isEmpty()) {
                 return ALLIANCE_ID.delete(db, user);
             }
-            return ALLIANCE_ID.set(db, existing);
+            return ALLIANCE_ID.set(db, user, existing);
         }
         @Override
-        public Set<Integer> validate(GuildDB db, Set<Integer> aaIds) {
+        public Set<Integer> validate(GuildDB db, User user, Set<Integer> aaIds) {
             if (DELEGATE_SERVER.has(db, false))
                 throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
 
@@ -131,58 +131,60 @@ public class GuildKey {
                 DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                 GuildDB otherDb = alliance.getGuildDB();
                 Member owner = db.getGuild().getOwner();
-                DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
-                if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
-                    Set<String> inviteCodes = new HashSet<>();
-                    boolean isValid = Roles.ADMIN.hasOnRoot(owner.getUser());
-                    if (!isValid) {
-                        try {
+                if (user == null || user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+                    DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
+                    if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
+                        Set<String> inviteCodes = new HashSet<>();
+                        boolean isValid = Roles.ADMIN.hasOnRoot(owner.getUser());
+                        if (!isValid) {
                             try {
-                                List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites());
-                                for (Invite invite : invites) {
-                                    String inviteCode = invite.getCode();
-                                    inviteCodes.add(inviteCode);
-                                }
-                            } catch (Throwable ignore) {
-                            }
-
-                            if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
-                                for (String code : inviteCodes) {
-                                    if (alliance.getDiscord_link().contains(code)) {
-                                        isValid = true;
-                                        break;
+                                try {
+                                    List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites());
+                                    for (Invite invite : invites) {
+                                        String inviteCode = invite.getCode();
+                                        inviteCodes.add(inviteCode);
                                     }
+                                } catch (Throwable ignore) {
                                 }
-                            }
 
-                            if (!isValid) {
-                                String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
-                                String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE, url);
-                                String idStr = db.getGuild().getId();
-
-                                if (!content.contains(idStr)) {
-                                    for (String inviteCode : inviteCodes) {
-                                        if (content.contains(inviteCode)) {
+                                if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
+                                    for (String code : inviteCodes) {
+                                        if (alliance.getDiscord_link().contains(code)) {
                                             isValid = true;
                                             break;
                                         }
                                     }
-                                } else {
-                                    isValid = true;
                                 }
-                            }
 
-                            if (!isValid) {
-                                String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
-                                        "2. Scroll down to where it says Alliance Description:\n" +
-                                        "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
-                                        "4. Click save\n" +
-                                        "5. Run the command " + getCommandObj(db, aaIds) + " again\n" +
-                                        "(note: you can remove the id after setup)";
-                                throw new IllegalArgumentException(msg);
+                                if (!isValid) {
+                                    String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
+                                    String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE, url);
+                                    String idStr = db.getGuild().getId();
+
+                                    if (!content.contains(idStr)) {
+                                        for (String inviteCode : inviteCodes) {
+                                            if (content.contains(inviteCode)) {
+                                                isValid = true;
+                                                break;
+                                            }
+                                        }
+                                    } else {
+                                        isValid = true;
+                                    }
+                                }
+
+                                if (!isValid) {
+                                    String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
+                                            "2. Scroll down to where it says Alliance Description:\n" +
+                                            "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
+                                            "4. Click save\n" +
+                                            "5. Run the command " + getCommandObj(db, aaIds) + " again\n" +
+                                            "(note: you can remove the id after setup)";
+                                    throw new IllegalArgumentException(msg);
+                                }
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
                             }
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
                         }
                     }
                 }
@@ -217,11 +219,11 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String register_openai_key(@Me GuildDB db, @Me User user, String apiKey) {
-            return OPENAI_KEY.set(db, apiKey);
+            return OPENAI_KEY.set(db, user, apiKey);
         }
 
         @Override
-        public String validate(GuildDB db, String apiKey) {
+        public String validate(GuildDB db, User user, String apiKey) {
             if (apiKey == null || apiKey.isEmpty()) {
                 throw new IllegalArgumentException("Please provide an API key");
             }
@@ -264,11 +266,11 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String register_openai_key(@Me GuildDB db, @Me User user, ModelType model) {
-            return OPENAI_MODEL.set(db, model);
+            return OPENAI_MODEL.set(db, user, model);
         }
 
         @Override
-        public ModelType validate(GuildDB db, ModelType model) {
+        public ModelType validate(GuildDB db, User user, ModelType model) {
             return switch (model) {
                 case GPT_4, GPT_4_32K, GPT_3_5_TURBO, GPT_3_5_TURBO_16K -> model;
                 default -> throw new IllegalArgumentException("Invalid chat model type: " + model);
@@ -299,11 +301,11 @@ public class GuildKey {
         @RolePermission(Roles.ADMIN)
         public String GPT_USAGE_LIMITS(@Me GuildDB db, @Me User user, int userTurnLimit, int userDayLimit, int guildTurnLimit, int guildDayLimit) {
             int[] combined = new int[]{userTurnLimit, userDayLimit, guildTurnLimit, guildDayLimit};
-            return GPT_USAGE_LIMITS.set(db, combined);
+            return GPT_USAGE_LIMITS.set(db, user, combined);
         }
 
         @Override
-        public int[] validate(GuildDB db, int[] limits) {
+        public int[] validate(GuildDB db, User user, int[] limits) {
             // ensure length = 4
             if (limits.length != 4) {
                 throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + limits.length);
@@ -357,7 +359,7 @@ public class GuildKey {
         }
 
         @Override
-        public Boolean validate(GuildDB db, Boolean value) {
+        public Boolean validate(GuildDB db, User user, Boolean value) {
             if (value == Boolean.TRUE) {
                 CopilotDeviceAuthenticationData[] authData = new CopilotDeviceAuthenticationData[1];
 
@@ -445,12 +447,12 @@ public class GuildKey {
                 response.append("The following alliance ids are missing from the api keys: " + StringMan.join(aaIds, ",") + "\n");
             }
 
-            response.append(API_KEY.set(db, existing));
+            response.append(API_KEY.set(db, user, existing));
             return response.toString();
         }
 
         @Override
-        public List<String> validate(GuildDB db, List<String> keys) {
+        public List<String> validate(GuildDB db, User user, List<String> keys) {
             keys = new ArrayList<>(new LinkedHashSet<>(keys));
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty()) {
@@ -537,7 +539,7 @@ public class GuildKey {
         }
 
         @Override
-        public MessageChannel validate(GuildDB db, MessageChannel channel) {
+        public MessageChannel validate(GuildDB db, User user, MessageChannel channel) {
             db.getOrThrow(ALLIANCE_ID);
             Set<Integer> aaIds = db.getAllianceIds(true);
             if (aaIds.isEmpty()) {
@@ -631,7 +633,7 @@ public class GuildKey {
             return RECRUIT_MESSAGE_SUBJECT.setAndValidate(db, user, value);
         }
         @Override
-        public String validate(GuildDB db, String value) {
+        public String validate(GuildDB db, User user, String value) {
             if (value.length() >= 50)
                 throw new IllegalArgumentException("Your subject line cannot be longer than 50 characters.");
             GPTUtil.checkThrowModeration(value);
@@ -658,7 +660,7 @@ public class GuildKey {
         }
 
         @Override
-        public String validate(GuildDB db, String value) {
+        public String validate(GuildDB db, User user, String value) {
             GPTUtil.checkThrowModeration(value);
             return value;
         }
@@ -797,7 +799,7 @@ public class GuildKey {
         }
 
         @Override
-        public Map<NationFilter, Integer> validate(GuildDB db, Map<NationFilter, Integer> parsed) {
+        public Map<NationFilter, Integer> validate(GuildDB db, User user, Map<NationFilter, Integer> parsed) {
 
             AllianceList alliance = db.getAllianceList();
             if (alliance == null || alliance.isEmpty())
@@ -1435,7 +1437,7 @@ public class GuildKey {
         }
 
         @Override
-        public Guild validate(GuildDB db, Guild guild) {
+        public Guild validate(GuildDB db, User user, Guild guild) {
             GuildDB otherDb = Locutus.imp().getGuildDB(guild);
             if (guild.getIdLong() == db.getGuild().getIdLong())
                 throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.create(GuildKey.WAR_SERVER.name()) + " to unset the war server");
@@ -1466,7 +1468,7 @@ public class GuildKey {
         }
 
         @Override
-        public Map.Entry<Integer, Long> validate(GuildDB db, Map.Entry<Integer, Long> ids) {
+        public Map.Entry<Integer, Long> validate(GuildDB db, User user, Map.Entry<Integer, Long> ids) {
             if (db.getOrNull(ALLIANCE_ID) != null) {
                 throw new IllegalArgumentException("You cannot set a delegate a server when this server has `ALLIANCE_ID` set. Remove `DELEGATE_SERVER` or `ALLIANCE_ID` first");
             }
@@ -1528,7 +1530,7 @@ public class GuildKey {
         }
 
         @Override
-        public GuildDB validate(GuildDB db, GuildDB otherDb) {
+        public GuildDB validate(GuildDB db, User user, GuildDB otherDb) {
             if (otherDb.getIdLong() == db.getGuild().getIdLong())
                 throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.create(FA_SERVER.name()) + " to unset the FA_SERVER");
             if (FA_SERVER.has(otherDb, false))
@@ -1651,7 +1653,7 @@ public class GuildKey {
             }
             allowedAndValidate(db, user, Collections.singletonMap(range, reasons));
             existing.put(range, reasons);
-            return response + set(db, existing);
+            return response + set(db, user, existing);
         }
 
         @NoFormat
@@ -1662,7 +1664,7 @@ public class GuildKey {
             if (existing == null || existing.isEmpty()) return "No value is set. Set with: " + getCommandMention();
             if (!existing.containsKey(range)) return "No value is set for range `" + range + "`. Set with " + getCommandMention();
             existing.remove(range);
-            return set(db, existing);
+            return set(db, user, existing);
         }
 
         @Override
@@ -1967,7 +1969,7 @@ public class GuildKey {
             if (existing.isEmpty()) {
                 return RESOURCE_REQUEST_CHANNEL.delete(db, user);
             }
-            return RESOURCE_REQUEST_CHANNEL.set(db, existing);
+            return RESOURCE_REQUEST_CHANNEL.set(db, user, existing);
         }
         @NoFormat
         @Command(desc = "Set the resource withdrawal channel to the current channel\n" +
@@ -1988,7 +1990,7 @@ public class GuildKey {
 //        }
 
         @Override
-        public Map<Long, MessageChannel> validate(GuildDB db, Map<Long, MessageChannel> parsed) {
+        public Map<Long, MessageChannel> validate(GuildDB db, User user, Map<Long, MessageChannel> parsed) {
             if (!parsed.containsKey(0L))
                 throw new IllegalArgumentException("You must first specify a default channel (e.g. `0:#channel`)");
             return parsed;
@@ -2309,13 +2311,13 @@ public class GuildKey {
 
             if(!blacklist.contains(nation.getId())) {
                 blacklist.add(nation.getId());
-                GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+                GRANT_TEMPLATE_BLACKLIST.set(db, null, blacklist);
 
                 return "Member has been added to the black list";
             }
             else {
                 blacklist.remove(nation.getId());
-                GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+                GRANT_TEMPLATE_BLACKLIST.set(db, null, blacklist);
 
                 return "Member has been removed from the black list";
             }
@@ -2327,7 +2329,7 @@ public class GuildKey {
         }
 
         @Override
-        public Set<Integer> validate(GuildDB db, Set<Integer> nationIDs) {
+        public Set<Integer> validate(GuildDB db, User user, Set<Integer> nationIDs) {
             for(int id : nationIDs) {
                 DBNation nation = DBNation.getById(id);
 
@@ -2386,11 +2388,11 @@ public class GuildKey {
         }
 
         @Override
-        public Integer validate(GuildDB db, Integer value) {
+        public Integer validate(GuildDB db, User user, Integer value) {
             // ensure >= 1 and <= 80
             if (value < 1 || value > 80)
                 throw new IllegalArgumentException("Must be between 1 and 80, not `" + value + "`");
-            return super.validate(db, value);
+            return super.validate(db, user, value);
         }
 
         @Override
@@ -2607,7 +2609,7 @@ public class GuildKey {
 
             if (foundMessage != null) {
                 copiedMessages.remove(foundMessage);
-                TIMED_MESSAGES.set(db, copiedMessages);
+                TIMED_MESSAGES.set(db, user, copiedMessages);
                 return "Removed the timed message\n" +
                         "Subject:\n```" + foundMessage.getSubject() + "\n" + "```" +
                         "Message:\n```" + foundMessage.getBody() + "\n" + "```";
@@ -2674,7 +2676,7 @@ public class GuildKey {
         }
 
         @Override
-        public List<CustomConditionMessage> validate(GuildDB db, List<CustomConditionMessage> value) {
+        public List<CustomConditionMessage> validate(GuildDB db, User user, List<CustomConditionMessage> value) {
             for (CustomConditionMessage msg : value) {
                 if (msg.getSubject().length() >= 50) {
                     throw new IllegalArgumentException("Subject must be less than 50 characters");

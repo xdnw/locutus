@@ -159,7 +159,7 @@ public class SettingCommands {
             valueObj = null;
         } else {
             valueObj = key.parse(db, value);
-            valueObj = key.validate(db, valueObj);
+            valueObj = key.validate(db, author, valueObj);
 
             if (valueObj == null) {
                 return "Invalid value for key `" + key.name() + "`";
@@ -172,7 +172,7 @@ public class SettingCommands {
             }
             return key.delete(db, author);
         } else {
-            return key.set(db, valueObj);
+            return key.set(db, author, valueObj);
         }
     }
 

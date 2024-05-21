@@ -3,6 +3,7 @@ package link.locutus.discord.db.guild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.db.GuildDB;
 import net.dv8tion.jda.api.entities.IMentionable;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 public abstract class GuildChannelSetting extends GuildSetting<MessageChannel> {
@@ -11,7 +12,7 @@ public abstract class GuildChannelSetting extends GuildSetting<MessageChannel> {
     }
 
     @Override
-    public MessageChannel validate(GuildDB db, MessageChannel value) {
+    public MessageChannel validate(GuildDB db, User user, MessageChannel value) {
         return validateChannel(db, value);
     }
 

@@ -1048,7 +1048,7 @@ public class GrantCommands {
     // grant_template send <template> <receiver> <partial> <expire>
     @Command
     @RolePermission(Roles.ECON)
-    public String templateSend(@Me GuildDB db, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    public String templateSend(@Me GuildDB db, @Me User user, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("e") @Timediff Long expire,
@@ -1215,7 +1215,7 @@ public class GrantCommands {
                 Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
                 if (blacklist == null) blacklist = new HashSet<>();
                 blacklist.add(receiver.getId());
-                GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+                GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, user, blacklist);
 
                 Role role = Roles.ECON.toRole(db);
                 String econGovMention = role == null ? "" : role.getAsMention();
@@ -2165,7 +2165,7 @@ public class GrantCommands {
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount,
                                    @Switch("f") boolean force) throws IOException {
-        if (GuildKey.MEMBER_CAN_ESCROW.getOrNull(db) != Boolean.TRUE) {
+        if (GuildKey.MEMBER_CAN_ESCROW.getOrNull(db) != Boolean.TRUE && !Roles.ECON_STAFF.has(author, db.getGuild())) {
             return "To enable member withdrawal of escrowed funds, see: " + CM.settings.info.cmd.create(GuildKey.MEMBER_CAN_ESCROW.name(), null, null);
         }
         // Require ECON_STAFF if receiver is not me
