@@ -660,14 +660,14 @@ public class IACommands {
 
     @Command(desc = "Allow a role to add/remove roles from users")
     @RolePermission(Roles.ADMIN)
-    public String addAssignableRole(@Me GuildDB db, @Arg("Require this role in order to use the specified self roles") Role requireRole, Set<Role> assignableRoles) {
+    public String addAssignableRole(@Me GuildDB db, @Me User user, @Arg("Require this role in order to use the specified self roles") Role requireRole, Set<Role> assignableRoles) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null) assignable = new HashMap<>();
 
         assignable.computeIfAbsent(requireRole, f -> new HashSet<>()).addAll(assignableRoles);
 
         StringBuilder result = new StringBuilder();
-        result.append(GuildKey.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
+        result.append(GuildKey.ASSIGNABLE_ROLES.set(db, user, assignable)).append("\n");
 
         result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.self.add.cmd.toSlashMention() + " / " + CM.self.remove.cmd.toSlashMention() + "\n" +
                 "- To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
@@ -677,7 +677,7 @@ public class IACommands {
     @Command(desc = "Remove a role from adding/removing specified roles\n" +
             "(having manage roles perm on discord overrides this)")
     @RolePermission(Roles.ADMIN)
-    public String removeAssignableRole(@Me GuildDB db, Role requireRole, Set<Role> assignableRoles) {
+    public String removeAssignableRole(@Me GuildDB db, @Me User user, Role requireRole, Set<Role> assignableRoles) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null) assignable = new HashMap<>();
 
@@ -697,7 +697,7 @@ public class IACommands {
             }
         }
 
-        response.append("\n" + GuildKey.ASSIGNABLE_ROLES.set(db, assignable));
+        response.append("\n" + GuildKey.ASSIGNABLE_ROLES.set(db, user, assignable));
 
         return response.toString() + "\n" +
                 "- To see a list of current mappings, use " + GuildKey.ASSIGNABLE_ROLES.getCommandMention() + "";

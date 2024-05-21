@@ -4077,7 +4077,7 @@ public class BankCommands {
 
         if (root.isOffshore(true) && (offshoreDB == null || (offshoreDB == root))) {
             if (nation.getAlliance_id() != offshoreAlliance.getAlliance_id()) {
-                GuildKey.ALLIANCE_ID.validate(root, Set.of(offshoreAlliance.getAlliance_id()));
+                GuildKey.ALLIANCE_ID.validate(root, user, Set.of(offshoreAlliance.getAlliance_id()));
 //                throw new IllegalArgumentException("You must be in the provided alliance: " + offshoreAlliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
 
@@ -4133,7 +4133,7 @@ public class BankCommands {
             Set<Integer> newIds = new HashSet<>(aaIds);
             newIds.removeAll(toUnregister);
             newIds.add(offshoreAlliance.getAlliance_id());
-            GuildKey.ALLIANCE_ID.set(root, newIds);
+            GuildKey.ALLIANCE_ID.set(root, user, newIds);
             root.addCoalition(offshoreAlliance.getAlliance_id(), Coalition.OFFSHORE);
             root.addCoalition(offshoreAlliance.getAlliance_id(), Coalition.OFFSHORING);
 
@@ -4340,7 +4340,7 @@ public class BankCommands {
                     }
                     if (root.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) == null) {
                         if (offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
-                            GuildKey.WAR_ALERT_FOR_OFFSHORES.set(root, false);
+                            GuildKey.WAR_ALERT_FOR_OFFSHORES.set(root, user, false);
                             response.append("\nNote: Offshore War alerts are disabled. Enable using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, true));
                         } else {
                             response.append("\nNote: Disable offshore war alerts using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, false));

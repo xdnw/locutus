@@ -1048,7 +1048,7 @@ public class GrantCommands {
     // grant_template send <template> <receiver> <partial> <expire>
     @Command
     @RolePermission(Roles.ECON)
-    public String templateSend(@Me GuildDB db, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    public String templateSend(@Me GuildDB db, @Me User user, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("e") @Timediff Long expire,
@@ -1215,7 +1215,7 @@ public class GrantCommands {
                 Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
                 if (blacklist == null) blacklist = new HashSet<>();
                 blacklist.add(receiver.getId());
-                GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+                GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, user, blacklist);
 
                 Role role = Roles.ECON.toRole(db);
                 String econGovMention = role == null ? "" : role.getAsMention();

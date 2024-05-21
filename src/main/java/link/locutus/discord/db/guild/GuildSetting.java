@@ -141,7 +141,7 @@ public abstract class GuildSetting<T> {
         return this;
     }
 
-    public T validate(GuildDB db, T value) {
+    public T validate(GuildDB db, User user, T value) {
         return value;
     }
 
@@ -210,9 +210,9 @@ public abstract class GuildSetting<T> {
         return StringMan.join(result, ", ");
     }
 
-    public String set(GuildDB db, T value) {
+    public String set(GuildDB db, User user, T value) {
         String readableStr = toReadableString(db, value);
-        db.setInfo(this, value);
+        db.setInfo(this, user, value);
         return "Set `" + name() + "` to `" + readableStr + "`\n" +
                 "Delete with " + CM.settings.delete.cmd.create(name);
     }
@@ -536,7 +536,7 @@ public abstract class GuildSetting<T> {
         if (!hasPermission(db, user, value)) {
             throw new IllegalArgumentException("You do not have permission to set " + name() + " to `" + toReadableString(db, value) + "`");
         }
-        return validate(db, value);
+        return validate(db, user, value);
     }
 
     public String setAndValidate(GuildDB db, User user, T value) {

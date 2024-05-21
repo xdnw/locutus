@@ -2514,10 +2514,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return getInfo(key.name(), allowDelegate);
     }
 
-    public <T> void setInfo(GuildSetting<T> key, T value) {
+    public <T> void setInfo(GuildSetting<T> key, User user, T value) {
         checkNotNull(key);
         checkNotNull(value);
-        value = key.validate(this, value);
+        value = key.validate(this, user, value);
         setInfoRaw(key, value);
     }
 
