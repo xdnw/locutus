@@ -1331,15 +1331,17 @@ public class WarCategory {
             DBNation targetNation = Locutus.imp().getNationDB().getNation(targetId);
 
             WarCatReason enemyReason = getActiveReason(targetNation);
-            for (DBWar war : currentWars) {
-                DBNation ally = war.getNation(!war.isAttacker(targetNation));
-                WarCatReason allyReason = getActiveReason(ally);
-                if (!enemyReason.isActive()) {
-                    if (warsLog != null) warsLog.put(war, enemyReason);
-                } else if (!allyReason.isActive()) {
-                    if (warsLog != null) warsLog.put(war, allyReason);
-                } else {
-                    if (warsLog != null) warsLog.put(war, WarCatReason.ACTIVE);
+            if (targetNation != null) {
+                for (DBWar war : currentWars) {
+                    DBNation ally = war.getNation(!war.isAttacker(targetNation));
+                    WarCatReason allyReason = getActiveReason(ally);
+                    if (!enemyReason.isActive()) {
+                        if (warsLog != null) warsLog.put(war, enemyReason);
+                    } else if (!allyReason.isActive()) {
+                        if (warsLog != null) warsLog.put(war, allyReason);
+                    } else {
+                        if (warsLog != null) warsLog.put(war, WarCatReason.ACTIVE);
+                    }
                 }
             }
 
