@@ -39,6 +39,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.Command.Choice;
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.*;
@@ -407,6 +408,7 @@ public class SlashCommandManager extends ListenerAdapter {
             }
             finalMappings.put(parametric, fullPath);
         }
+        root.setDefaultPermissions(DefaultMemberPermissions.ENABLED);
         return root;
     }
 
