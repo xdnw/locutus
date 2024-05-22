@@ -769,7 +769,7 @@ public class IACommands {
             return WarCommands.beigeAlertMode(member.getUser(), me, NationMeta.BeigeAlertMode.NO_ALERTS);
         }
         RateLimitUtil.queue(guild.addRoleToMember(member, role));
-        return "Opted out of beige alerts";
+        return "Opted out of beige alerts (remove the " + role.getName() + " role to opt in)";
     }
 
     @Command(desc = "Unassign a mentee from all mentors")

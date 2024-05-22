@@ -3687,6 +3687,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Map<Integer, Set<Long>> getActivityByDay(long minDate, long maxDate) {
+        return getActivityByDay(minDate, maxDate, null);
+    }
+
+    public Map<Integer, Set<Long>> getActivityByDay(long minDate, long maxDate, Predicate<Integer> includeNation) {
         // dates are inclusive
         long minTurn = TimeUtil.getTurn(minDate);
         long maxTurn = TimeUtil.getTurn(maxDate);
@@ -3695,12 +3699,18 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             stmt.setLong(2, maxTurn);
 
             Map<Integer, Set<Long>> result = new Int2ObjectOpenHashMap<>();
+            BiConsumer<Integer, Long> applyNation = includeNation == null ?
+                    (nation, day) -> result.computeIfAbsent(nation, f -> new LongOpenHashSet()).add(day) : (nation, day) -> {
+                if (includeNation.test(nation)) {
+                    result.computeIfAbsent(nation, f -> new LongOpenHashSet()).add(day);
+                }
+            };
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt(1);
                     long day = rs.getLong(2);
-                    result.computeIfAbsent(id, f -> new LongOpenHashSet()).add(day);
+                    applyNation.accept(id, day);
                 }
             }
             return result;
