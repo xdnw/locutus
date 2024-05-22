@@ -3907,10 +3907,11 @@ public class BankCommands {
                                  @Arg(value = "Divide stockpiles by city count", group = 1) @Switch("n") boolean normalize,
                                  @Arg(value = "Only show the resources well above warchest and city operation requirements", group = 1) @Switch("e") boolean onlyShowExcess,
                                  @Switch("f") boolean forceUpdate) throws IOException, GeneralSecurityException {
-        if (!db.getAllianceIds().containsAll(nationFilter.getAllianceIds())) {
+        if (nationFilter != null && !db.getAllianceIds().containsAll(nationFilter.getAllianceIds())) {
             return "You can only view stockpiles for nations in your alliance: (" + db.getAllianceIds() + ")";
         }
-        AllianceList alliance = db.getAllianceList().subList(nationFilter.getAllianceIds());
+        AllianceList alliance = db.getAllianceList();
+        if (nationFilter != null) alliance = alliance.subList(nationFilter.getAllianceIds());
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 
