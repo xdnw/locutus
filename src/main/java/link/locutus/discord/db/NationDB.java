@@ -1159,6 +1159,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         while (!dirtyCities.isEmpty()) {
+            System.out.println("Dirty cities " + dirtyCities.size());
             try {
                 Iterator<Integer> iter = dirtyCities.iterator();
                 int cityId = iter.next();
