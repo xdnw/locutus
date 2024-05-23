@@ -526,7 +526,7 @@ public class OffshoreInstance {
             return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Please use `" + DepositType.IGNORE + "` as the `depositType` when transferring to alliances");
         }
 
-        boolean escrowSetting = GuildKey.MEMBER_CAN_ESCROW.get(senderDB) == Boolean.TRUE;
+        boolean escrowSetting = GuildKey.MEMBER_CAN_ESCROW.getOrNull(senderDB) == Boolean.TRUE;
         boolean allowEscrow = escrowMode == EscrowMode.ALWAYS || (escrowMode == EscrowMode.WHEN_BLOCKADED && receiver.isNation());
         boolean escrowFunds = (allowEscrow || escrowSetting) && receiver.isNation() && receiver.asNation().isBlockaded();
 
