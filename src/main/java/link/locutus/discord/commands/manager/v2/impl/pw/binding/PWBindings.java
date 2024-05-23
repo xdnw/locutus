@@ -461,7 +461,12 @@ public class PWBindings extends BindingHelper {
         if (input.contains("city/id=")) {
             cityId = Integer.parseInt(input.split("=")[1]);
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            if (cityEntry == null) throw new IllegalArgumentException("No city found in cache with id " + cityId + " (expecting city id or url)");
+            if (cityEntry == null) {
+                cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, f -> f.post());
+                if (cityEntry == null) {
+                    throw new IllegalArgumentException("No city found in cache with id " + cityId + " (expecting city id or url)");
+                }
+            }
             int nationId = cityEntry.getNationId();
             DBNation nation2 = DBNation.getById(nationId);
             if (nation2 != null) nation = nation2;
