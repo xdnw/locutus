@@ -4077,7 +4077,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
-        int numPurchased = currentAmt - previousAmt + lostInAttacks;
+        int numPurchased = Math.max(0, currentAmt - previousAmt + lostInAttacks);
         int maxPerDay = unit.getMaxPerDay(cities, this::hasProject);
         return Math.max(0, maxPerDay - numPurchased);
     }

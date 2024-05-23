@@ -56,7 +56,8 @@ public class VirtualConflictCommands {
 
         String id = "n/" + nation.getId() + "/" + UUID.randomUUID();
         List<String> urls = conflict.push(manager, id, true, false);
-        return Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + id;
+        return Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + id + "\n" +
+                "Note: Generated conflicts do NOT auto update.";
     }
 
 }

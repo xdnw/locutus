@@ -1244,7 +1244,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 "{missiles}",
                 "{nukes}",
                 "{spies}",
-                "{war_policy}",
+                "{warpolicy}",
                 "={active_m}/60",
                 "{avg_daily_login}",
                 "'=\"{mmr}\"'"
