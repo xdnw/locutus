@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
+import link.locutus.discord.db.entities.CityNode;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -73,17 +74,9 @@ public class BFSUtil {
                             oldQueue = null;
                         }
 
-                        {
-                            Map.Entry<JavaCity, Integer> nextCity = (Map.Entry<JavaCity, Integer>) next;
-                            JavaCity city = nextCity.getKey();
-                        }
-
                         start = System.currentTimeMillis() - timeout + delay;
                     } else if (System.currentTimeMillis() - start > maxTimeout) {
                         break;
-                    } else {
-                        Map.Entry<JavaCity, Integer> nextCity = (Map.Entry<JavaCity, Integer>) next;
-                        JavaCity city = nextCity.getKey();
                     }
                 }
             }

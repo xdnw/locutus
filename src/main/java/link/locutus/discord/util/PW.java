@@ -16,11 +16,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -78,6 +74,20 @@ import java.util.regex.Pattern;
 public class PW {
 
     public static class City {
+        public static int getNukePollution(int nukeTurn) {
+            int pollution = 0;
+            double pollutionMax = 400d;
+            int turnsMax = 11 * 12;
+            long turns = TimeUtil.getTurn() - nukeTurn;
+            if (turns < turnsMax) {
+                double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+                if (nukePollution > 0) {
+                    pollution += (int) nukePollution;
+                }
+            }
+            return pollution;
+        }
+
         public static class Land {
             public static double calculateLand(double from, double to) {
                 if (from < 0 || from == to) return 0;
@@ -162,19 +172,7 @@ public class PW {
             }
         }
 
-        public static int getPollution(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, int nuke_turn) {
-            int pollution = 0;
-            if (nuke_turn > 0) {
-                double pollutionMax = 400d;
-                int turnsMax = 11 * 12;
-                long turns = TimeUtil.getTurn() - nuke_turn;
-                if (turns < turnsMax) {
-                    double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
-                    if (nukePollution > 0) {
-                        pollution += (int) nukePollution;
-                    }
-                }
-            }
+        public static int getPollution(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, int pollution) {
             for (Building building : Buildings.POLLUTION_BUILDINGS) {
                 int amt = getBuildings.apply(building);
                 if (amt == 0) continue;
@@ -186,16 +184,25 @@ public class PW {
             return Math.max(0, pollution);
         }
 
-        public static int getCommerce(Predicate<Project> hasProject, Function<Building, Integer> getBuildings) {
-            int commerce = 0;
+        public static int getCommerce(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, int maxCommerce, int commerce) {
             for (Building building : Buildings.COMMERCE_BUILDINGS) {
                 int amt = getBuildings.apply(building);
                 if (amt == 0) continue;
-                commerce += amt * ((CommerceBuilding) building).getCommerce();
+                commerce += amt * building.getCommerce();
             }
+
+            if (commerce > maxCommerce) {
+                commerce = maxCommerce;
+            }
+            return commerce;
+        }
+
+        public static int getCommerce(Predicate<Project> hasProject, Function<Building, Integer> getBuildings) {
+            int commerce = 0;
             int maxCommerce;
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
                 if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                    commerce += 2;
                     maxCommerce = 125;
                 } else {
                     maxCommerce = 115;
@@ -203,10 +210,7 @@ public class PW {
             } else {
                 maxCommerce = 100;
             }
-            if (commerce > maxCommerce) {
-                commerce = maxCommerce;
-            }
-            return commerce;
+            return getCommerce(hasProject, getBuildings, maxCommerce, commerce);
         }
 
         public static double getCrime(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, long infra_cents, int commerce) {
@@ -261,10 +265,9 @@ public class PW {
 
             int commerce = powered ? city.calcCommerce(hasProject) : 0;
 
-            double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
+            double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);;
 
             double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * city.calcPopulation(hasProject) * newPlayerBonus) * grossModifier;;
-
 
             profit += income;
 
@@ -309,7 +312,7 @@ public class PW {
                         continue;
                     }
                 }
-                profitBuffer = building.profit(continent, rads, date, hasProject, city, profitBuffer, turns);
+                profitBuffer = building.profit(continent, rads, date, hasProject, city, profitBuffer, turns, amt);
                 if (building instanceof APowerBuilding) {
                     for (int i = 0; i < amt; i++) {
                         if (unpoweredInfra > 0) {

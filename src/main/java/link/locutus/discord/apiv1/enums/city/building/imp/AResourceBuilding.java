@@ -102,6 +102,11 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
+    public int getBaseInput() {
+        return baseInput;
+    }
+
+    @Override
     public List<ResourceType> getResourceTypesConsumed() {
         return List.of(inputs);
     }
@@ -116,17 +121,16 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, ICity city, double[] profitBuffer, int turns) {
-        profitBuffer = super.profit(continent, rads, date, hasProjects, city, profitBuffer, turns);
+    public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, ICity city, double[] profitBuffer, int turns, int amt) {
+        profitBuffer = super.profit(continent, rads, date, hasProjects, city, profitBuffer, turns, amt);
 
         ResourceType type = getResourceProduced();
-        int improvements = city.getBuilding(this);
 
-        double production = type.getProduction(continent, rads, hasProjects, city.getLand(), improvements, date);
+        double production = type.getProduction(continent, rads, hasProjects, city.getLand(), amt, date);
         if (production != 0) {
             profitBuffer[type.ordinal()] += production * turns / 12;
 
-            double inputAmt = type.getInput(continent, rads, hasProjects, city, improvements);
+            double inputAmt = type.getInput(continent, rads, hasProjects, city, amt);
 
             for (ResourceType input : inputs) {
                 if (inputAmt != 0) {

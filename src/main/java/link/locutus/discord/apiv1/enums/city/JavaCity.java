@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.CityNode;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
@@ -72,21 +73,13 @@ public class JavaCity implements ICity {
         Arrays.fill(buildings, (byte) 0);
     }
 
-    public void set(JavaCity other, int maxBuildingIndex) {
-//        if (this.metrics != null) {
-//            if (other.metrics != null) {
-//                this.metrics.profit = other.metrics.profit;
-//                this.metrics.population = other.metrics.population;
-//                this.metrics.disease = other.metrics.disease;
-//                this.metrics.crime = other.metrics.crime;
-//                this.metrics.pollution = other.metrics.pollution;
-//                this.metrics.commerce = other.metrics.commerce;
-//            } else {
-//                clearMetrics();
-//            }
-//        }
-//        maxBuildingIndex = Math.min(buildings.length, maxBuildingIndex);
-//        for (int i = 0; i <= maxBuildingIndex; i++) {
+    public void setBuildings(ICity other) {
+        for (Building building : Buildings.values()) {
+            set(building, other.getBuilding(building));
+        }
+    }
+
+    public void set(JavaCity other) {
         for (int i = 0; i < buildings.length; i++) {
             buildings[i] = other.buildings[i];
         }
@@ -104,8 +97,12 @@ public class JavaCity implements ICity {
         }
     }
 
-    public long getNukeTurn() {
+    public int getNukeTurn() {
         return nuke_turn;
+    }
+
+    public void setNuke_turn(int nuke_turn) {
+        this.nuke_turn = nuke_turn;
     }
 
     public int[] getMMRArray() {
@@ -136,15 +133,7 @@ public class JavaCity implements ICity {
             pollution = 0;
             commerce = 0;
 
-            double pollutionMax = 400d;
-            int turnsMax = 11 * 12;
-            long turns = TimeUtil.getTurn() - city.nuke_turn;
-            if (turns < turnsMax) {
-                double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
-                if (nukePollution > 0) {
-                    pollution += (int) nukePollution;
-                }
-            }
+            this.pollution = PW.City.getNukePollution(city.nuke_turn);
 
             for (Building building : Buildings.POLLUTION_BUILDINGS) {
                 int amt = city.buildings[building.ordinal()];
@@ -207,6 +196,20 @@ public class JavaCity implements ICity {
         }
     }
 
+    public int getMaxCommerce(Predicate<Project> hasProject) {
+        int maxCommerce;
+        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+            if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                maxCommerce = 125;
+            } else {
+                maxCommerce = 115;
+            }
+        } else {
+            maxCommerce = 100;
+        }
+        return maxCommerce;
+    }
+
     public Metrics getCachedMetrics() {
         return metrics;
     }
@@ -216,7 +219,6 @@ public class JavaCity implements ICity {
             metrics = new Metrics();
         }
         if (metrics.commerce == null) {
-
             metrics.recalculate(this, hasProject);
         }
         return metrics;
@@ -467,30 +469,43 @@ public class JavaCity implements ICity {
         return this;
     }
 
-    public JavaCity optimalBuild(DBNation nation, long timeout) {
-        return optimalBuild(nation.getContinent(), nation.getRads(), nation.getCities(), nation::hasProject, nation.getGrossModifier(), timeout);
+    public JavaCity optimalBuild(DBNation nation, long timeout, boolean selfSufficient, Double infraLow) {
+        // Continent continent,
+        // int numCities,
+        // Function<CityNode, Double> valueFunction,
+        // Function<CityNode, Boolean> goal,
+        // Predicate<Project> hasProject,
+        // long timeout, double rads,
+        // boolean selfSufficient,
+        // double grossModifier,
+        // Double infraLow
+        return optimalBuild(nation.getContinent(),
+                nation.getCities(),
+                CityNode::getRevenueConverted,
+                null,
+                nation::hasProject,
+                timeout,
+                nation.getRads(),
+                selfSufficient,
+                nation.getGrossModifier(),
+                infraLow);
     }
 
-    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout) {
-        return optimalBuild(continent, rads, numCities, hasProject, grossModifier, timeout, f -> f, null);
+//    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout, boolean selfSufficient,
+//                                 Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
+//        Predicate<Project> finalHasProject = Projects.optimize(hasProject);
+//        Function<JavaCity, Double> valueFunction = javaCity -> {
+//            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getNumBuildings();
+//        };
+//        valueFunction = modifyValueFunc.apply(valueFunction);
+//        return optimalBuild(continent, valueFunction, goal, finalHasProject, timeout, rads, selfSufficient);
+//    }
+
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow) {
+        return roiBuild(continent, rads, numCities, hasProject, grossModifier, days, timeout, selfSufficient, infraLow, f -> f, null);
     }
 
-    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout,
-                                 Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
-        Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
-        Function<JavaCity, Double> valueFunction = javaCity -> {
-            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getNumBuildings();
-        };
-        valueFunction = modifyValueFunc.apply(valueFunction);
-
-        return optimalBuild(continent, valueFunction, goal, finalHasProject, timeout, rads);
-    }
-
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout) {
-        return roiBuild(continent, rads, numCities, hasProject, grossModifier, days, timeout, f -> f, null);
-    }
-
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow, Function<Function<CityNode, Double>, Function<CityNode, Double>> modifyValueFunc, Function<CityNode, Boolean> goal) {
         JavaCity origin = new JavaCity(this);
         origin.setAge(this.getAgeDays() + days / 2);
 
@@ -508,25 +523,15 @@ public class JavaCity implements ICity {
         double baseProfitNonTax = (baseProfit - zeroedProfit);
         double profitPerImp = baseProfitNonTax / impOverZero;
 
-        Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
-        Function<JavaCity, Double> valueFunction = javaCity -> {
-            double newProfit = javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier);
-
+        Predicate<Project> finalHasProject = Projects.optimize(hasProject);
+        Function<CityNode, Double> valueFunction = javaCity -> {
+            double newProfit = javaCity.getRevenueConverted();
             double cost = javaCity.calculateCostConverted(origin);
-
-//            int imp = javaCity.getImpTotal() - baseImp;
-//            double expectedProfit = profitPerImp * imp;
             return (newProfit * days - cost) / javaCity.getNumBuildings();
         };
-
         valueFunction = modifyValueFunc.apply(valueFunction);
-
-        JavaCity optimal = zeroed.optimalBuild(continent, valueFunction, goal, finalHasProject, timeout, rads);
+        JavaCity optimal = zeroed.optimalBuild(continent, numCities, valueFunction, goal, finalHasProject, timeout, rads, selfSufficient, grossModifier, infraLow);
         return optimal;
-    }
-
-    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Predicate<Project> hasProject, long timeout, double rads) {
-        return optimalBuild(continent, valueFunction, null, hasProject, timeout, rads);
     }
 
     public JavaCity zeroPower() {
@@ -570,44 +575,14 @@ public class JavaCity implements ICity {
         return this;
     }
 
-    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Function<JavaCity, Boolean> goal, Predicate<Project> hasProject, long timeout, double rads) {
-        if (goal == null) {
-            goal = javaCity -> javaCity.getFreeInfra() < 50;
-        }
-        CityBranch searchServices = new CityBranch(this, continent, false, rads, hasProject);
-
-        Function<Map.Entry<JavaCity, Integer>, Double> valueFunction2 = e -> valueFunction.apply(e.getKey());
-        Function<JavaCity, Boolean> finalGoal = goal;
-        Function<Map.Entry<JavaCity, Integer>, Boolean> goal2 = e -> finalGoal.apply(e.getKey());
-
-        PriorityQueue<Map.Entry<JavaCity, Integer>> queue = new ObjectHeapPriorityQueue<Map.Entry<JavaCity, Integer>>(500000,
-                (o1, o2) -> Double.compare(valueFunction2.apply(o2), valueFunction2.apply(o1)));
-
-        JavaCity origin = new JavaCity(this);
-
-        Function<Double, Function<Map.Entry<JavaCity, Integer>, Double>> valueCompletionFunction;
-
-        valueCompletionFunction = factor -> (Function<Map.Entry<JavaCity, Integer>, Double>) entry -> {
-            Double parentValue = valueFunction2.apply(entry);
-            int imps = entry.getKey().getNumBuildings();
-
-            if (factor <= 1) {
-                parentValue = (parentValue * imps) * factor + (parentValue * (1 - factor));
-            } else {
-                double factor2 = factor - 1;
-                parentValue = imps * factor2 + (parentValue * imps) * (1 - factor2);
-            }
-            return parentValue;
-        };
-
-        if (origin.getRequiredInfra() > origin.getInfra()) {
-            throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(origin.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(origin.getRequiredInfra()) + ", mmr: " + origin.getMMR() + ")");
-        }
-
-        Map.Entry<JavaCity, Integer> optimized = BFSUtil.search(goal2, valueFunction2, valueCompletionFunction, searchServices, searchServices, new AbstractMap.SimpleEntry<>(origin, 0), queue, timeout);
-
-        System.out.println("Buildings " + optimized.getKey().getNumBuildings());
-        return optimized == null ? null : optimized.getKey();
+    public JavaCity optimalBuild(Continent continent, int numCities, Function<CityNode, Double> valueFunction, Function<CityNode, Boolean> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, double grossModifier, Double infraLow) {
+        JavaCity copy = new JavaCity(this);
+        CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
+        CityBranch searchServices = new CityBranch(cached);
+        CityNode optimized = searchServices.toOptimal(valueFunction, goal, timeout);
+        System.out.println("Buildings " + (optimized == null ? "null" : optimized.getNumBuildings()));
+        if (optimized != null) copy.setBuildings(optimized);
+        return optimized == null ? null : copy;
     }
 
     public double profitConvertedCached(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
@@ -693,29 +668,6 @@ public class JavaCity implements ICity {
 
     public double[] calculateCost(JavaCity from) {
         return calculateCost(from, new double[ResourceType.values.length]);
-    }
-
-    public double calculateCostConverted(JavaCity from) {
-        double total = 0;
-        for (int i = 0; i < buildings.length; i++) {
-            int amtOther = from.buildings[i];
-            int amt = buildings[i];
-            if (amt != amtOther) {
-                if (amtOther > amt) {
-                    total += Buildings.get(i).getNMarketCost((amt - amtOther) * 0.5);
-                } else {
-                    total += Buildings.get(i).getNMarketCost(amt - amtOther);
-                }
-            }
-        }
-
-        if (this.getInfra() > from.getInfra()) {
-            total += PW.City.Infra.calculateInfra(from.getInfra(), getInfra());
-        }
-        if (!Objects.equals(getLand(), from.getLand())) {
-            total += PW.City.Land.calculateLand(from.getLand(), getLand());
-        }
-        return total;
     }
 
     public double[] calculateCost(JavaCity from, double[] buffer) {
@@ -815,6 +767,14 @@ public class JavaCity implements ICity {
     public JavaCity setAge(Integer age) {
         this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(age);
         return this;
+    }
+
+    public void setDateCreated(long dateCreated) {
+        this.dateCreated = dateCreated;
+    }
+
+    public long getDateCreated() {
+        return dateCreated;
     }
 
     public JavaCity setLand(Double land) {

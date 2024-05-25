@@ -1074,7 +1074,7 @@ public class UnsortedCommands {
         }
         msg.append("\nLand: " + jCity.getLand());
 
-        msg.append("\nCommerce: " + metrics.population);
+        msg.append("\nPopulation: " + metrics.population);
 
         if (metrics.commerce > 0) msg.append("\nCommerce: " + MathMan.format(metrics.commerce));
         if (metrics.crime > 0) msg.append("\ncrime: " + MathMan.format(metrics.crime));
