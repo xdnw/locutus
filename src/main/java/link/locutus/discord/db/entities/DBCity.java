@@ -555,7 +555,7 @@ public class DBCity implements ICity {
 
     @Override
     public int calcPollution(Predicate<Project> hasProject) {
-        return PW.City.getPollution(hasProject, this::getBuilding, nuke_turn);
+        return PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(nuke_turn));
     }
 
     @Command(desc = "Get city commerce")
@@ -621,7 +621,7 @@ public class DBCity implements ICity {
 
     @Override
     public double calcDisease(Predicate<Project> hasProject) {
-        double pollution = PW.City.getPollution(hasProject, this::getBuilding, nuke_turn);
+        double pollution = PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(nuke_turn));
         return PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
     }
 
@@ -632,7 +632,7 @@ public class DBCity implements ICity {
 
     @Override
     public int calcPopulation(Predicate<Project> hasProject) {
-        int pollution = PW.City.getPollution(hasProject, this::getBuilding, nuke_turn);
+        int pollution = PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(nuke_turn));
         double disease = PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
         int commerce = PW.City.getCommerce(hasProject, this::getBuilding);
         double crime = PW.City.getCrime(hasProject, this::getBuilding, infra_cents, commerce);

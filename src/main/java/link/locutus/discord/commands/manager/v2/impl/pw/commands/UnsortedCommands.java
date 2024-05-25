@@ -1074,7 +1074,7 @@ public class UnsortedCommands {
         }
         msg.append("\nLand: " + jCity.getLand());
 
-        msg.append("\nCommerce: " + metrics.population);
+        msg.append("\nPopulation: " + metrics.population);
 
         if (metrics.commerce > 0) msg.append("\nCommerce: " + MathMan.format(metrics.commerce));
         if (metrics.crime > 0) msg.append("\ncrime: " + MathMan.format(metrics.crime));
@@ -1829,7 +1829,8 @@ public class UnsortedCommands {
                                @Switch("t")TaxRate taxRate,
 
                                @Arg(value = "Return a result on discord in plain text", group = 3)
-                               @Switch("w") boolean writePlaintext
+                               @Switch("w") boolean writePlaintext,
+                               @Switch("calc") @Timediff Long calc_time
 
 
     ) throws Exception {
@@ -1855,6 +1856,7 @@ public class UnsortedCommands {
         cmd.add(build.toString());
         if (buildMMR != null) cmd.add("mmr=" + buildMMR);
 
+        if (calc_time != null && calc_time > 9000) cmd.add("timeout=" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, calc_time));
         if (buildMMR != null) cmd.add("mmr=" + buildMMR);
         if (age != null) cmd.add("age=" + age);
         if (infra != null) cmd.add("infra=" + infra);

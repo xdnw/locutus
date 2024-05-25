@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
 import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -13,10 +12,8 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -34,7 +31,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -182,7 +178,8 @@ public class DiscordBindings extends BindingHelper {
         throw new IllegalStateException("No guild set in command locals.");
     }
 
-    @Binding(examples = "#channel", value = "A discord channel name or mention")
+    @Binding(examples = "#channel", value = "A discord channel name or mention",
+            components = TextChannel.class)
     public MessageChannel channel(@Me Guild guild, String channel) {
         MessageChannel GuildMessageChannel = DiscordUtil.getChannel(guild, channel);
         if (GuildMessageChannel == null) throw new IllegalArgumentException("No channel found for " + channel);
@@ -222,7 +219,8 @@ public class DiscordBindings extends BindingHelper {
         return result;
     }
 
-    @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention")
+    @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention",
+    components = TextChannel.class)
     public ICategorizableChannel categorizableChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + null);

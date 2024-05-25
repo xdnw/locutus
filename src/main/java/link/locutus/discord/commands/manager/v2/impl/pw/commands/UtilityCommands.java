@@ -2359,15 +2359,18 @@ public class UtilityCommands {
 
         int numCities = nation.getCities();
         if (continent == null) continent = nation.getContinent();
+        origin.setOptimalPower(continent);
+        originMinus50.setOptimalPower(continent);
+
         if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
         double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
 
-        JavaCity optimal1 = origin.optimalBuild(nation, 5000);
+        JavaCity optimal1 = origin.optimalBuild(nation, 5000, false, null);
         if (optimal1 == null) {
             return "Cannot generate optimal city build";
         }
-        JavaCity optimal2 = originMinus50.optimalBuild(nation, 5000);
+        JavaCity optimal2 = originMinus50.optimalBuild(nation, 5000, false, null);
         if (optimal2 == null) {
             return "Cannot generate optimal city build";
         }
@@ -2407,15 +2410,17 @@ public class UtilityCommands {
 
         int numCities = nation.getCities();
         if (continent == null) continent = nation.getContinent();
+        origin.setOptimalPower(continent);
+        originMinus50.setOptimalPower(continent);
         if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
         double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
 
-        JavaCity optimal1 = origin.optimalBuild(nation, 5000);
+        JavaCity optimal1 = origin.optimalBuild(nation, 5000, false, null);
         if (optimal1 == null) {
             return "Cannot generate optimal city build";
         }
-        JavaCity optimal2 = originMinus50.optimalBuild(nation, 5000);
+        JavaCity optimal2 = originMinus50.optimalBuild(nation, 5000, false, null);
         if (optimal2 == null) {
             return "Cannot generate optimal city build";
         }

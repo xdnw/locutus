@@ -415,6 +415,15 @@ public class Projects {
         return 20;
     }
 
+    public static Predicate<Project> optimize(Predicate<Project> projects) {
+        int maxId = Arrays.stream(values).mapToInt(Project::ordinal).max().orElse(0);
+        boolean[] hasProject = new boolean[maxId + 1];
+        for (Project project : values) {
+            hasProject[project.ordinal()] = projects.test(project);
+        }
+        return p -> hasProject[p.ordinal()];
+    }
+
 
     // Recycling Initiative
 
@@ -514,13 +523,5 @@ public class Projects {
             }
         }
         return null;
-    }
-
-    public static Predicate<Project> hasProjectCached(Predicate<Project> hasProject) {
-        Map<Project, Boolean> cached = new HashMap<>();
-        for (Project project : Projects.values) {
-            cached.put(project, hasProject.test(project));
-        }
-        return cached::get;
     }
 }

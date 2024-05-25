@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
+import link.locutus.discord.db.entities.CityNode;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +29,8 @@ public class BFSUtil {
         T max = null;
         double maxValue = Double.NEGATIVE_INFINITY;
 
-        long start = System.currentTimeMillis();
+        long originalStart = System.currentTimeMillis();
+        long start = originalStart;
         long maxTimeout = TimeUnit.MINUTES.toMillis(1);
 
         double completeFactor = 0;
@@ -73,17 +75,9 @@ public class BFSUtil {
                             oldQueue = null;
                         }
 
-                        {
-                            Map.Entry<JavaCity, Integer> nextCity = (Map.Entry<JavaCity, Integer>) next;
-                            JavaCity city = nextCity.getKey();
-                        }
-
                         start = System.currentTimeMillis() - timeout + delay;
                     } else if (System.currentTimeMillis() - start > maxTimeout) {
                         break;
-                    } else {
-                        Map.Entry<JavaCity, Integer> nextCity = (Map.Entry<JavaCity, Integer>) next;
-                        JavaCity city = nextCity.getKey();
                     }
                 }
             }
@@ -111,6 +105,8 @@ public class BFSUtil {
             branch.accept(next, queue);
         }
 
+        long diff = System.currentTimeMillis() - originalStart;
+        System.out.println("BFS. Searched " + i + " in " + diff + " for a rate of " + (i * 1000d / diff) + " per second");
         return max;
     }
 }

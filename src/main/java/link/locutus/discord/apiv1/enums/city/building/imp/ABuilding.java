@@ -84,8 +84,7 @@ public abstract class ABuilding implements Building {
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns) {
-        int amt = city.getBuilding(this);
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns, int amt) {
         if (amt > 0) {
             for (ResourceType type : ResourceType.values) {
                 profitBuffer[type.ordinal()] -= upkeep(type, hasProject) * amt * turns / 12;

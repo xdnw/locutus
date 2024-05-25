@@ -112,7 +112,7 @@ public interface Building {
 
     double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int amt);
 
-    double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns);
+    double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns, int amt);
 
     @Command(desc = "Get the continents this building can be built on")
     default Set<Continent> getContinents() {

@@ -2,174 +2,243 @@ package link.locutus.discord.commands.info.optimal;
 
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
+import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.db.entities.CityNode;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.search.BFSUtil;
 
-import java.util.AbstractMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, PriorityQueue<Map.Entry<JavaCity, Integer>>>, Consumer<Map.Entry<JavaCity, Integer>> {
-    private final Continent continent;
-    private final Predicate<Project> hasProject;
-    private final ObjectArrayFIFOQueue<Map.Entry<JavaCity, Integer>> pool;
+public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>, Consumer<CityNode> {
+    private final Building[] buildings;
     private boolean usedOrigin = false;
     private Building originBuilding = null;
-    public CityBranch(Continent continent, double maxDisease, double minPop, boolean selfSufficient, Predicate<Project> hasProject) {
-        this.continent = continent;
-        this.hasProject = hasProject;
 
-        this.pool = new ObjectArrayFIFOQueue<>(500000);
+    private final CityNode.CachedCity origin;
+
+    public CityNode toOptimal(Function<CityNode, Double> valueFunction, Function<CityNode, Boolean> goal, long timeout) {
+        if (goal == null) {
+            goal = f -> f.getFreeSlots() <= 0;
+        }
+
+        Function<CityNode, Double> valueFunction2 = valueFunction::apply;
+        Function<CityNode, Boolean> finalGoal = goal;
+        Function<CityNode, Boolean> goal2 = finalGoal::apply;
+
+        PriorityQueue<CityNode> queue = new ObjectHeapPriorityQueue<CityNode>(500000,
+                (o1, o2) -> Double.compare(valueFunction2.apply(o2), valueFunction2.apply(o1)));
+
+        CityNode init = origin.create();
+        origin.setMaxIndex(buildings.length);
+
+        Function<Double, Function<CityNode, Double>> valueCompletionFunction;
+
+        valueCompletionFunction = factor -> (Function<CityNode, Double>) entry -> {
+            Double parentValue = valueFunction2.apply(entry);
+            int imps = entry.getNumBuildings();
+            if (factor <= 1) {
+                parentValue = (parentValue * imps) * factor + (parentValue * (1 - factor));
+            } else {
+                double factor2 = factor - 1;
+                parentValue = imps * factor2 + (parentValue * imps) * (1 - factor2);
+            }
+            return parentValue;
+        };
+
+        if (init.getRequiredInfra() > init.getInfra()) {
+            throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(init.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(init.getRequiredInfra()) + ")");
+        }
+
+        CityNode optimized = BFSUtil.search(goal2, valueFunction2, valueCompletionFunction, this, this, init, queue, timeout);
+        return optimized;
     }
 
-    private Map.Entry<JavaCity, Integer> create(Map.Entry<JavaCity, Integer> originPair, Building building, int index) {
-        JavaCity origin = originPair.getKey();
+    public CityBranch(CityNode.CachedCity cached) {
+        this.origin = cached;
+        CityNode tmpNode = origin.create();
+        Map<ResourceBuilding, Double> rssBuildings = new HashMap<>();
+        for (Building building : Buildings.values()) {
+            if (!building.canBuild(origin.getContinent())) continue;
+            if (!(building instanceof ResourceBuilding rssBuild)) continue;
+            if (origin.getRads() <= 0 && building == Buildings.FARM) continue;
+            int cap = Math.min(10, rssBuild.cap(origin.hasProject()));
+            double profit = rssBuild.profitConverted(origin.getContinent(), origin.getRads(), origin.hasProject(), tmpNode, cap) / cap;
+            if (profit <= 0) continue;
+            rssBuildings.put(rssBuild, profit);
+        }
+        List<Building> rssSorted = new ArrayList<>(rssBuildings.entrySet().stream().sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).toList().reversed());
+        if (origin.selfSufficient()) {
+            rssSorted.removeIf(building -> {
+                if (building.getResourceProduced().isManufactured()) {
+                    for (ResourceType req : building.getResourceTypesConsumed()) {
+                        if (!origin.getContinent().hasResource(req)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            resortList(rssSorted);
+        }
+        for (Building building : rssSorted) {
+            System.out.println("rmv:|| " + building.name() + " " + rssBuildings.get(building) + " profit");
+        }
+
+        List<Building> allBuildings = new ArrayList<>(rssSorted);
+        for (Building building : Buildings.values()) {
+            if (building instanceof CommerceBuilding) allBuildings.add(building);
+        }
+        for (Building building : Buildings.values()) {
+            if (building instanceof ServiceBuilding) allBuildings.add(building);
+        }
+        this.buildings = allBuildings.toArray(new Building[0]);
+        for (Building building : buildings) {
+            System.out.println("rmv:|| All " + building.name());
+        }
+    }
+
+    private static void resortList(List<Building> rssSorted) {
+        Set<ResourceType> seen = new HashSet<>();
+        for (int i = 0; i < rssSorted.size(); i++) {
+            ResourceBuilding building = (ResourceBuilding) rssSorted.get(i);
+            seen.add(building.getResourceProduced());
+            if (!building.getResourceProduced().isManufactured()) {
+                continue;
+            }
+            for (ResourceType r : building.getResourceTypesConsumed()) {
+                if (!seen.contains(r)) {
+                    for (int j = i + 1; j < rssSorted.size(); j++) {
+                        if (rssSorted.get(j).getResourceProduced() == r) {
+                            rssSorted.remove(i);
+                            rssSorted.add(j, building);
+                            break;
+                        }
+                    }
+                    i--;
+                    break;
+                }
+            }
+        }
+    }
+
+    private CityNode create(CityNode origin, int index) {
+        if (!usedOrigin) {
+            usedOrigin = true;
+            origin.setIndex(index);
+            return origin;
+        }
+        CityNode newCity = origin.clone();
+        newCity.remove(originBuilding);
+        newCity.setIndex(index);
+        return newCity;
+    }
+
+    private CityNode create(CityNode origin, Building building, int index) {
         if (!usedOrigin) {
             usedOrigin = true;
             originBuilding = building;
-
-            origin.set(building);
-            origin.clearMetrics();
-            originPair.setValue(index);
-
-            return originPair;
+            origin.add(building);
+            origin.setIndex(index);
+            return origin;
         }
-        if (this.pool.isEmpty()) {
-            JavaCity newCity = new JavaCity(origin);
-            newCity.remove(originBuilding);
-            newCity.set(building);
-            return new AbstractMap.SimpleEntry<>(newCity, index);
-        }
-        Map.Entry<JavaCity, Integer> elem = this.pool.dequeue();
-        JavaCity newCity = (elem.getKey());
-        int maxIndex = Math.max(index, elem.getValue());
-
-        newCity.set(origin, maxIndex);
-        newCity.remove(originBuilding);
-
-        newCity.set(building);
-        newCity.clearMetrics();
-        elem.setValue(index);
-
-        return elem;
+        CityNode copy = origin.clone();
+        copy.remove(originBuilding);
+        copy.add(building);
+        copy.setIndex(index);
+        return copy;
     }
 
     @Override
-    public void accept(Map.Entry<JavaCity, Integer> originPair, PriorityQueue<Map.Entry<JavaCity, Integer>> cities) {
+    public void accept(CityNode origin, PriorityQueue<CityNode> cities) {
         usedOrigin = false;
-
-        JavaCity origin = originPair.getKey();
-
-        if (originPair.getValue() <= 4) {
-            double unpowered = origin.getInfra() - origin.getPoweredInfra();
-            if (unpowered > 500 || (unpowered > 250 && origin.getInfra() > 2000)) {
-                cities.enqueue(create(originPair, Buildings.NUCLEAR_POWER, 4));
-                return;
-            }
-            if (unpowered > 250) {
-                if (Buildings.OIL_WELL.canBuild(continent)) {
-                    cities.enqueue(create(originPair, Buildings.OIL_POWER, 4));
-                } else {
-                    cities.enqueue(create(originPair, Buildings.COAL_POWER, 4));
-                }
-                return;
-            }
-            if (unpowered > 0) {
-                cities.enqueue(create(originPair, Buildings.WIND_POWER, 4));
-                return;
-            }
-        }
-
         int freeSlots = origin.getFreeSlots();
-        if (freeSlots <= 0) return;
-
-        int minBuilding = originPair.getValue();
-        int maxBuilding = Buildings.BUILDINGS.length - 4;
-        boolean buildMoreRaws = true;
-        boolean buildMoreManu = true;
-        boolean buildMoreCommerce = true;
-        {
-            Building minBuildingType = Buildings.get(minBuilding);
-            int amt = origin.getBuildingOrdinal(minBuilding);
-            if (amt != 0) {
-                if (minBuildingType instanceof ResourceBuilding rssBuild) {
-                    if (amt < minBuildingType.cap(hasProject)) {
-                        if (rssBuild.getResourceProduced().isRaw()) {
-                            buildMoreRaws = false;
-                        } else {
-                            buildMoreManu = false;
-                        }
-                    }
-                } else if (minBuildingType instanceof CommerceBuilding) {
-                    minBuildingType.cap(hasProject);
-                }
-            }
+        if (freeSlots <= 0) {
+            return;
         }
 
-        int maxCommerce;
-        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-            if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
-                maxCommerce = 125;
-            } else {
-                maxCommerce = 115;
+        int currBuildingIndex = origin.getIndex();
+
+        Building building = buildings[currBuildingIndex];
+        int amt = origin.getBuildingOrdinal(building.ordinal());
+        while (amt >= building.cap(this.origin.hasProject())) {
+            currBuildingIndex++;
+            if (currBuildingIndex >= this.buildings.length) {
+                return;
             }
-        } else {
-            maxCommerce = 100;
+            building = buildings[currBuildingIndex];
+            amt = origin.getBuilding(building);
         }
-        for (int i = minBuilding; i < maxBuilding; i++) {
-            Building building = Buildings.get(i);
-            if (!building.canBuild(continent)) continue;
-            int amt = origin.getBuildingOrdinal(i);
-            if (amt >= building.cap(hasProject)) continue;
 
-            if (building instanceof ResourceBuilding rssBuild) {
-                ResourceType rss = rssBuild.getResourceProduced();
-                if (rss.isRaw()) {
-                    if (buildMoreRaws || i == minBuilding) {
-                        cities.enqueue(create(originPair, building, i));
-                    }
-                } else if (buildMoreManu || i == minBuilding) {
-                    cities.enqueue(create(originPair, building, i));
+        if (building instanceof ResourceBuilding rssBuild) {
+            if (this.origin.selfSufficient() && rssBuild.getResourceProduced().isManufactured()) {
+                double reqAmt = rssBuild.getBaseInput() / 3d;
+                if (this.origin.hasProject().test(rssBuild.getResourceProduced().getProject())) {
+                    reqAmt *= rssBuild.getResourceProduced().getBoostFactor();
                 }
-            } else if (building instanceof CommerceBuilding) {
-
-                if (origin.calcCommerce(hasProject) >= maxCommerce) continue;
-                {
-                    cities.enqueue(create(originPair, building, i));
-                }
-            } else if (building instanceof ServiceBuilding) {
-                if (building == Buildings.HOSPITAL) {
-                    Double disease = origin.calcDisease(hasProject);
-                    if (disease > 0) {
-                        cities.enqueue(create(originPair, building, i));
-                    }
-                } else if (building == Buildings.RECYCLING_CENTER) {
-                    Integer pollution = origin.calcPollution(hasProject);
-                    if (pollution > 0) {
-                        cities.enqueue(create(originPair, building, i));
-                    }
-                } else if (building == Buildings.POLICE_STATION) {
-                    Double crime = origin.calcCrime(hasProject);
-                    if (crime > 0) {
-                        cities.enqueue(create(originPair, building, i));
+                for (ResourceType req : rssBuild.getResourceTypesConsumed()) {
+                    if (origin.getBuilding(req.getBuilding()) < reqAmt) {
+                        cities.enqueue(create(origin, currBuildingIndex + 1));
+                        return;
                     }
                 }
             }
+            CityNode next = create(origin, building, currBuildingIndex);
+            cities.enqueue(next);
+//            CityNode nextCity = next.getKey();
+//            boolean checkDisease = nextCity.calcDisease(hasProject) > 0 && nextCity.getBuilding(Buildings.HOSPITAL) < Buildings.HOSPITAL.cap(hasProject);
+//            if (checkDisease) {
+//                cities.enqueue(create(next, Buildings.HOSPITAL, currBuildingIndex));
+//            }
+//            boolean checkRecycling = nextCity.calcPollution(hasProject) > 0 && nextCity.getBuilding(Buildings.RECYCLING_CENTER) < Buildings.RECYCLING_CENTER.cap(hasProject);
+//            if (checkRecycling) {
+//                cities.enqueue(create(next, Buildings.RECYCLING_CENTER, currBuildingIndex));
+//            }
+        } else if (building instanceof CommerceBuilding) {
+            int commerce = origin.getCommerce();
+            if (commerce < this.origin.getMaxCommerce()) {
+                cities.enqueue(create(origin, building, currBuildingIndex));
+            }
+        } else if (building instanceof ServiceBuilding) {
+            if (building == Buildings.HOSPITAL) {
+                double disease = origin.calcDisease(this.origin.hasProject());
+                if (disease > 0) {
+                    cities.enqueue(create(origin, building, currBuildingIndex));
+                }
+            } else if (building == Buildings.RECYCLING_CENTER) {
+                int pollution = origin.getPollution();
+                if (pollution > 0) {
+                    cities.enqueue(create(origin, building, currBuildingIndex));
+                }
+            } else if (building == Buildings.POLICE_STATION) {
+                double crime = origin.calcCrime(this.origin.hasProject());
+                if (crime > 0) {
+                    cities.enqueue(create(origin, building, currBuildingIndex));
+                }
+            }
         }
-
-        if (!usedOrigin) {
-            pool.enqueue(originPair);
+        if (currBuildingIndex < this.buildings.length - 1) {
+            cities.enqueue(create(origin, currBuildingIndex + 1));
         }
+//        if (!usedOrigin)
+//        {
+//            pool.enqueue(originPair);
+//        }
     }
 
     @Override
-    public void accept(Map.Entry<JavaCity, Integer> originPair) {
-        pool.enqueue(originPair);
+    public void accept(CityNode originPair) {
+//        pool.enqueue(originPair);
     }
 }

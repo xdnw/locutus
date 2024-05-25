@@ -19,6 +19,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -857,6 +858,75 @@ public class StatCommands {
         msg.send();
         return null;
     }
+
+//    @Command(desc = "Generates a spreadsheet of beige reasons for the wars between two coalitions over a period of time\n" +
+//            "The following shortcuts are taken for performance:\n" +
+//            "Only wars between existing nations are included\n" +
+//            "Alliance affiliation, manual color changes, city count and MMR is estimated by start of day rather than time of attack")
+//    public String beigeCycleAnalysis(@Me GuildDB db,
+//                                     Set<DBNation> allies,
+//                                     Set<DBNation> enemies,
+//                                     @Timestamp long start,
+//                                     @Default @Timestamp Long end) throws IOException, ParseException {
+//        if (end == null) end = System.currentTimeMillis();
+//        if (end < start) throw new IllegalArgumentException("Value for `end` must be greater than `start` (" + start + " >= " + end + ")");
+//        if (TimeUnit.DAYS.toMillis(90) > end - start) throw new IllegalArgumentException("Time period must be less than 90 days (90 < " + TimeUnit.MILLISECONDS.toDays(end - start) + ")");
+//
+//        Set<Integer> allNationIds = new IntOpenHashSet();
+//        for (DBNation nation : allies) allNationIds.add(nation.getNation_id());
+//        for (DBNation nation : enemies) allNationIds.add(nation.getNation_id());
+//
+//        Map<Integer, Set<Long>> activity = Locutus.imp().getNationDB().getActivityByDay(start, end, f -> allNationIds.contains(f));
+//        // get attacks (5 days prior)
+//        long blockadeCheckStartMs = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
+//        // get attacks between sides from blockadeCheckStartMs to end
+//        // get wars
+//
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(allNationIds, start, end);
+//        // sort by attack date
+//        attacks.sort(Comparator.comparingLong(AbstractCursor::getDate));
+//
+//        // getBeigeTurns - track beiges
+//        // getOff, getDef
+//        // getOff -> track num wars
+//        // getMissiles -> use getUnitsAt
+//        // getNukes -> use getUnitsAt
+//        // do for the other units, as ground and air strength is checked
+//        // nation.getWars must be accurate
+//        //  - those wars must provide accurate getAttacks2
+//        //  - must also implement getNation properly for those wars
+//
+//        // TODO
+////        beiges
+////        MMR
+////        Color
+//
+//        Map<Integer, Map.Entry<Integer, Long>> nationToBeigeTurnsDate = new Int2ObjectOpenHashMap<>();
+//
+//        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+//
+//        Map<Integer, DBNation> nations = null;
+//        long lastDay = -1;
+//
+//        for (AbstractCursor attack : attacks) {
+//            switch (attack.getAttack_type()) {
+//                case VICTORY -> {
+//                    long turn = TimeUtil.getTurn(attack.getDate());
+//                    long day = TimeUtil.getDayFromTurn(turn);
+//                    int attId = attack.getAttacker_id();
+//                    int defId = attack.getDefender_id();
+//
+//                    if (lastDay != day) {
+//                        nations = parser.getNations(day, true, true, f -> true, f -> true, f -> true)
+//                    }
+//                    // check beige
+//                }
+//            }
+//        }
+//
+//
+//
+//    }
 
     @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
             "1 tank = 1/32 aircraft for strength calculations\n" +

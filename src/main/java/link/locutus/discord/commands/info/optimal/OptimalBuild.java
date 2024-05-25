@@ -9,14 +9,12 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -32,6 +30,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -70,7 +69,8 @@ public class OptimalBuild extends Command {
                 "To require cash positive add `cash=true`\n" +
                 "To avoid importing raws, use. `manu=false`\n" +
                 "For radiation. `radiation=123`\n" +
-                "To specify a tax rate, use `tax=25/25`" +
+                "To specify a tax rate, use `tax=25/25`\n" +
+                "To spend longer finding a build, use e.g. `timeout:60s`\n" +
                 "With an exported build:\n" +
                 "```" + Settings.commandPrefix(true) + "OptimalBuild 30 {\n" +
                 "    \"infra_needed\": 3850,\n" +
@@ -128,6 +128,10 @@ public class OptimalBuild extends Command {
         boolean manu = true;
         String mmr = null;
 
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        Guild root = Locutus.imp().getServer();
+        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 20000 : 9000;
+
         Double crimeLimit = null;
         Double diseaseLimit = null;
         Double popLimit = null;
@@ -154,10 +158,17 @@ public class OptimalBuild extends Command {
                 iter.remove();
                 continue;
             }
-
             String[] split = next.split("[=<>]");
             if (split.length == 2) {
                 switch (split[0].toLowerCase()) {
+                    case "timeout" -> {
+                        String timeoutStr = split[1];
+                        timeout = TimeUtil.timeToSec(timeoutStr) * 1000;
+                        if (timeout > TimeUnit.MINUTES.toMillis(2)) {
+                            throw new IllegalArgumentException("Timeout too long (max: 120s)");
+                        }
+                        iter.remove();
+                    }
                     case "mmr" -> {
                         String mmrStr = split[1];
                         if (MathMan.isInteger(mmrStr) && mmrStr.length() == 4) {
@@ -297,6 +308,7 @@ public class OptimalBuild extends Command {
         if (land != null) origin.setLand(land);
         if (age != null) origin.setAge(age);
         if (continent == null) continent = me.getContinent();
+        origin.setOptimalPower(continent);
 
         if (baseRadiation == -1) {
             baseRadiation = Locutus.imp().getTradeManager().getGlobalRadiation(continent) + Locutus.imp().getTradeManager().getGlobalRadiation();
@@ -308,60 +320,60 @@ public class OptimalBuild extends Command {
 
         double radIndex = baseRadiation;
         double radsFactor = continent == Continent.ANTARCTICA ? 0.5 : 1;
-        double rads = (1 + (radIndex / (-1000))) * radsFactor;
+        double rads = (1 + (Math.min(1000, radIndex) / (-1000))) * radsFactor;
 
         int numCities = me.getCities();
 
         DBNation finalMe = me;
         Continent finalContinent = continent;
-        Predicate<Project> hasProject = project -> addProject.contains(project) || project.get(finalMe) > 0;
+        Predicate<Project> hasProject = Projects.optimize(project -> addProject.contains(project) || project.get(finalMe) > 0);
         double grossModifier = finalMe.getGrossModifier();
 
         CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 
-        Function<JavaCity, Double> valueFunc;
+        Function<CityNode, Double> valueFunc;
         if (taxes != null) {
             double[] buffer = new double[ResourceType.values.length];
             double moneyFactor = (100 - taxes.money) / 100d;
             double rssFactor = (100 - taxes.resources) / 100d;
             valueFunc = javaCity -> {
                 Arrays.fill(buffer, 0);
-                double[] profit = javaCity.profit(finalContinent, rads, -1L, hasProject, buffer, numCities, grossModifier, 12);
+                double[] profit = javaCity.profit(buffer);
                 profit[0] *= moneyFactor;
                 for (int i = 1; i < profit.length; i++) {
                     if (profit[i] > 0) {
                         profit[i] *= rssFactor;
                     }
                 }
-                return ResourceType.convertedTotal(profit) / javaCity.getNumBuildings();
+                return ResourceType.convertedTotal(profit);
             };
         } else {
-            valueFunc = javaCity -> javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getNumBuildings();
+            valueFunc = javaCity -> javaCity.getRevenueConverted();
         }
 
-        if (infraLow != null) {
-            Function<JavaCity, Double> parent = valueFunc;
-            Double finalInfraLow = infraLow;
-            Double popLowFinal = popLow;
-            valueFunc = city -> {
-                if (city.getFreeSlots() <= 0) {
-                    double currentInfra = city.getInfra();
-                    city.setInfra(Math.min(currentInfra, finalInfraLow));
-                    city.getMetrics(hasProject).recalculate(city, hasProject);
-                    if (popLowFinal != null && city.calcPopulation(hasProject) < popLowFinal)
-                        return Double.NEGATIVE_INFINITY;
-                    Double value = parent.apply(city);
-                    city.setInfra(currentInfra);
-                    return value;
-                }
-                return parent.apply(city);
-            };
-        }
+//        if (infraLow != null) {
+//            Function<CityNode, Double> parent = valueFunc;
+//            Double finalInfraLow = infraLow;
+//            Double popLowFinal = popLow;
+//            valueFunc = city -> {
+//                if (city.getFreeSlots() <= 0) {
+//                    double currentInfra = city.getInfra();
+//                    city.setInfra(Math.min(currentInfra, finalInfraLow));
+//                    city.getMetrics(hasProject).recalculate(city, hasProject);
+//                    if (popLowFinal != null && city.calcPopulation(hasProject) < popLowFinal)
+//                        return Double.NEGATIVE_INFINITY;
+//                    Double value = parent.apply(city);
+//                    city.setInfra(currentInfra);
+//                    return value;
+//                }
+//                return parent.apply(city);
+//            };
+//        }
 
         if (popLimit != null) {
             Double finalpopLimit = popLimit;
 
-            Function<JavaCity, Double> parent = valueFunc;
+            Function<CityNode, Double> parent = valueFunc;
             valueFunc = city -> {
                 if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
                 return parent.apply(city);
@@ -371,31 +383,28 @@ public class OptimalBuild extends Command {
         if (popLow != null) {
             Double finalpopLimit = popLow;
 
-            Function<JavaCity, Double> parent = valueFunc;
+            Function<CityNode, Double> parent = valueFunc;
             valueFunc = city -> {
                 if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
                 return parent.apply(city);
             };
         }
+//
+//        if (!manu) {
+//            Function<CityNode, Double> parent = valueFunc;
+//            valueFunc = city -> {
+//                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
+//                    return Double.NEGATIVE_INFINITY;
+//                if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL)) return Double.NEGATIVE_INFINITY;
+//                if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE))
+//                    return Double.NEGATIVE_INFINITY;
+//                if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE) || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE))
+//                    return Double.NEGATIVE_INFINITY;
+//                return parent.apply(city);
+//            };
+//        }
 
-        if (!manu) {
-            Function<JavaCity, Double> parent = valueFunc;
-            valueFunc = city -> {
-                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
-                    return Double.NEGATIVE_INFINITY;
-                if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL)) return Double.NEGATIVE_INFINITY;
-                if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE))
-                    return Double.NEGATIVE_INFINITY;
-                if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE) || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE))
-                    return Double.NEGATIVE_INFINITY;
-                return parent.apply(city);
-            };
-        }
-
-        Function<JavaCity, Double> finalValueFunc = valueFunc;
-        Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc = f -> finalValueFunc;
-
-        Function<JavaCity, Boolean> goal = javaCity -> javaCity.getFreeInfra() < 50;
+        Function<CityNode, Boolean> goal = javaCity -> javaCity.getFreeSlots() <= 0;
 
         if (diseaseLimit != null) {
             Double finalDiseaseLimit = diseaseLimit;
@@ -404,7 +413,7 @@ public class OptimalBuild extends Command {
             double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) * 0.05;
             double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) * 0.05;
 
-            Function<JavaCity, Double> parent = valueFunc;
+            Function<CityNode, Double> parent = valueFunc;
             valueFunc = city -> {
                 Double disease = city.calcDisease(hasProject);
                 if (disease > finalDiseaseLimit) {
@@ -462,39 +471,39 @@ public class OptimalBuild extends Command {
             int max = Buildings.POLICE_STATION.cap(hasProject);
             Double finalCrimeLimit = crimeLimit;
 
-            Function<JavaCity, Double> parent = valueFunc;
+            int maxIndex = Buildings.size() - 1;
+            int policeIndex = Buildings.POLICE_STATION.ordinal();
+            int diff = maxIndex - policeIndex;
+
+            Function<CityNode, Double> parent = valueFunc;
             valueFunc = city -> {
                 double crime = city.calcCrime(hasProject);
 
                 if (crime > finalCrimeLimit) {
                     int remainingSlots = city.getFreeSlots();
                     if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
-                    double reduced = crime - Math.min(max, remainingSlots) * policePct;
+                    int currentPolice = city.getBuilding(Buildings.POLICE_STATION);
+                    if (currentPolice >= max) return Double.NEGATIVE_INFINITY;
+                    double reduced = crime - Math.min(max - currentPolice, remainingSlots) * policePct;
                     if (reduced > crime) return Double.NEGATIVE_INFINITY;
-
-                    // if has any building past police station
-                    byte[] buildings = city.getBuildings();
-                    for (int i = Buildings.POLICE_STATION.ordinal() + 1; i < buildings.length; i++) {
-                        if (buildings[i] > 0) return Double.NEGATIVE_INFINITY;
+                    int index = city.getIndex();
+                    int cachedMaxIndex = city.getCached().getMaxIndex() - 1;
+                    if (index > cachedMaxIndex - diff) {
+                        return Double.NEGATIVE_INFINITY;
                     }
                 }
                 return parent.apply(city);
             };
         }
 
-
         if (positiceCash) {
-            Function<JavaCity, Boolean> parentGoal = goal;
-
+            Function<CityNode, Boolean> parentGoal = goal;
             double[] profitBuffer = new double[ResourceType.values.length];
-
             goal = city -> {
                 if (parentGoal.apply(city)) {
                     Arrays.fill(profitBuffer, 0);
-                    city.profit(finalContinent, rads, -1L, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
+                    city.profit(profitBuffer);
                     profitBuffer[0] += 500000d / numCities;
-                    double original = profitBuffer[0];
-
                     for (MilitaryUnit unit : MilitaryUnit.values) {
                         MilitaryBuilding building = unit.getBuilding();
                         if (building == null) continue;
@@ -511,16 +520,13 @@ public class OptimalBuild extends Command {
             };
         }
 
-        GuildDB db = Locutus.imp().getGuildDB(guild);
-        Guild root = Locutus.imp().getServer();
-        GuildDB rootDb = Locutus.imp().getGuildDB(root);
-        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 15000 : 5000;
-
         JavaCity optimized;
         if (days == null) {
-            optimized = origin.optimalBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), timeout, modifyValueFunc, goal);
+            optimized = origin.optimalBuild(continent, numCities, valueFunc, goal, hasProject, timeout, rads, !manu, finalMe.getGrossModifier(), infraLow);
         } else {
-            optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, modifyValueFunc, goal);
+            Function<CityNode, Double> finalValueFunc = valueFunc;
+            Function<Function<CityNode, Double>, Function<CityNode, Double>> modifyValueFunc = f -> finalValueFunc;
+            optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, !manu, infraLow, modifyValueFunc, goal);
         }
 
         optimized.setInfra(origin.getInfra());
@@ -555,8 +561,9 @@ public class OptimalBuild extends Command {
         String command = Settings.commandPrefix(true) + "grant {usermention} " + json;
 
         result.append(" Disease: ").append(optimized.calcDisease(hasProject)).append("\n");
+        result.append(" Pollution: ").append(optimized.calcPollution(hasProject)).append("\n");
         result.append(" Crime: ").append(optimized.calcCrime(hasProject)).append("\n");
-        result.append(" Commerce: ").append(optimized.calcCommerce(hasProject)).append("\n");
+        result.append(" Commerce: ").append(optimized.calcCommerce(hasProject) + "/" + optimized.getMaxCommerce(hasProject)).append("\n");
         result.append(" Population: ").append(optimized.calcPopulation(hasProject)).append("\n");
 
         result.append(" Click ").append(emoji).append(" to request a grant");
