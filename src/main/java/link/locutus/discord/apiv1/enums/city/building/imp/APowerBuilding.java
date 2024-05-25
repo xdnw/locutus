@@ -60,7 +60,7 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
         } else {
             amt = (Math.min(infra, this.infra) + infraLevels - 1) / infraLevels;
         }
-        return -(amt * resourceValue);
+        return -(amt * resourceValue * inputArr[resource.ordinal()]);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
     @Override
     public double getPowerResourceConsumed(int infra) {
         if (resource != null) {
-            return (Math.min(infra, this.infra) + infraLevels - 1d) / infraLevels;
+            return (Math.min(infra, this.infra) + infraLevels - 1) / infraLevels;
         }
         return 0;
     }

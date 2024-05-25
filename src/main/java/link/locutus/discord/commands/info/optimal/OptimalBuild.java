@@ -14,6 +14,7 @@ import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -29,6 +30,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -67,7 +69,8 @@ public class OptimalBuild extends Command {
                 "To require cash positive add `cash=true`\n" +
                 "To avoid importing raws, use. `manu=false`\n" +
                 "For radiation. `radiation=123`\n" +
-                "To specify a tax rate, use `tax=25/25`" +
+                "To specify a tax rate, use `tax=25/25`\n" +
+                "To spend longer finding a build, use e.g. `timeout:60s`\n" +
                 "With an exported build:\n" +
                 "```" + Settings.commandPrefix(true) + "OptimalBuild 30 {\n" +
                 "    \"infra_needed\": 3850,\n" +
@@ -125,6 +128,10 @@ public class OptimalBuild extends Command {
         boolean manu = true;
         String mmr = null;
 
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        Guild root = Locutus.imp().getServer();
+        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 20000 : 9000;
+
         Double crimeLimit = null;
         Double diseaseLimit = null;
         Double popLimit = null;
@@ -151,10 +158,17 @@ public class OptimalBuild extends Command {
                 iter.remove();
                 continue;
             }
-
             String[] split = next.split("[=<>]");
             if (split.length == 2) {
                 switch (split[0].toLowerCase()) {
+                    case "timeout" -> {
+                        String timeoutStr = split[1];
+                        timeout = TimeUtil.timeToSec(timeoutStr) * 1000;
+                        if (timeout > TimeUnit.MINUTES.toMillis(2)) {
+                            throw new IllegalArgumentException("Timeout too long (max: 120s)");
+                        }
+                        iter.remove();
+                    }
                     case "mmr" -> {
                         String mmrStr = split[1];
                         if (MathMan.isInteger(mmrStr) && mmrStr.length() == 4) {
@@ -331,7 +345,7 @@ public class OptimalBuild extends Command {
                         profit[i] *= rssFactor;
                     }
                 }
-                return ResourceType.convertedTotal(profit) / javaCity.getNumBuildings();
+                return ResourceType.convertedTotal(profit);
             };
         } else {
             valueFunc = javaCity -> javaCity.getRevenueConverted();
@@ -506,12 +520,6 @@ public class OptimalBuild extends Command {
             };
         }
 
-        GuildDB db = Locutus.imp().getGuildDB(guild);
-        Guild root = Locutus.imp().getServer();
-        GuildDB rootDb = Locutus.imp().getGuildDB(root);
-        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 15000 : 5000;
-
-
         JavaCity optimized;
         if (days == null) {
             optimized = origin.optimalBuild(continent, numCities, valueFunc, goal, hasProject, timeout, rads, !manu, finalMe.getGrossModifier(), infraLow);
@@ -553,6 +561,7 @@ public class OptimalBuild extends Command {
         String command = Settings.commandPrefix(true) + "grant {usermention} " + json;
 
         result.append(" Disease: ").append(optimized.calcDisease(hasProject)).append("\n");
+        result.append(" Pollution: ").append(optimized.calcPollution(hasProject)).append("\n");
         result.append(" Crime: ").append(optimized.calcCrime(hasProject)).append("\n");
         result.append(" Commerce: ").append(optimized.calcCommerce(hasProject) + "/" + optimized.getMaxCommerce(hasProject)).append("\n");
         result.append(" Population: ").append(optimized.calcPopulation(hasProject)).append("\n");

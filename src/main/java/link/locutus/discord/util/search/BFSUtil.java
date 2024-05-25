@@ -29,7 +29,8 @@ public class BFSUtil {
         T max = null;
         double maxValue = Double.NEGATIVE_INFINITY;
 
-        long start = System.currentTimeMillis();
+        long originalStart = System.currentTimeMillis();
+        long start = originalStart;
         long maxTimeout = TimeUnit.MINUTES.toMillis(1);
 
         double completeFactor = 0;
@@ -104,7 +105,7 @@ public class BFSUtil {
             branch.accept(next, queue);
         }
 
-        long diff = System.currentTimeMillis() - start;
+        long diff = System.currentTimeMillis() - originalStart;
         System.out.println("BFS. Searched " + i + " in " + diff + " for a rate of " + (i * 1000d / diff) + " per second");
         return max;
     }

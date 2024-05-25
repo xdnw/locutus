@@ -235,9 +235,7 @@ public class PW {
                 for (int ordinal = 0; ordinal < 4; ordinal++) {
                     int amt = city.getBuildingOrdinal(ordinal);
                     if (amt == 0) continue;
-
                     Building building = Buildings.get(ordinal);
-
                     for (int i = 0; i < amt; i++) {
                         if (unpoweredInfra > 0) {
                             profit += ((APowerBuilding) building).consumptionConverted(unpoweredInfra);
@@ -249,7 +247,6 @@ public class PW {
                 for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < Buildings.size(); ordinal++) {
                     int amt = city.getBuildingOrdinal(ordinal);
                     if (amt == 0) continue;
-
                     Building building = Buildings.get(ordinal);
                     profit += building.profitConverted(continent, rads, hasProject, city, amt);
                 }
@@ -265,7 +262,7 @@ public class PW {
 
             int commerce = powered ? city.calcCommerce(hasProject) : 0;
 
-            double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);;
+            double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
 
             double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * city.calcPopulation(hasProject) * newPlayerBonus) * grossModifier;;
 
@@ -306,7 +303,6 @@ public class PW {
             for (Building building : Buildings.values()) {
                 int amt = city.getBuilding(building);
                 if (amt == 0) continue;
-
                 if (!powered) {
                     if (building instanceof CommerceBuilding || building instanceof MilitaryBuilding || (building instanceof ResourceBuilding && ((AResourceBuilding) building).getResourceProduced().isManufactured())) {
                         continue;
@@ -325,7 +321,7 @@ public class PW {
             int commerce = city.calcCommerce(hasProject);
             double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
 
-            double income = (((commerce/50d) * 0.725d) + 0.725d) * city.calcPopulation(hasProject) * newPlayerBonus * grossModifier;
+            double income = (((commerce * 0.02d) * 0.725d) + 0.725d) * city.calcPopulation(hasProject) * newPlayerBonus * grossModifier;
 
             profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
 

@@ -43,13 +43,12 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
         } else {
             this.inputValueFunc = (c0, r0, h0, b0, a0, p0) -> {
                 double factor = 1d / output.getManufacturingMultiplier();
-
                 InputValueFunc newFunc;
                 if (inputs.length == 1) {
                     double value = ResourceType.convertedTotalNegative(inputs[0], 1);
                     newFunc = (c, r, h, b, a, p) -> {
                         double inputAmt = factor * p;
-                        return -value * inputAmt;
+                        return -(value * inputAmt);
                     };
                 } else {
                     double[] values = new double[inputs.length];
@@ -71,7 +70,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
                     }
                     return 0d;
                 };
-                return newFunc.apply(c0, r0, h0, b0, a0, p0);
+                return inputValueFunc.apply(c0, r0, h0, b0, a0, p0);
             };
 
         }
@@ -112,7 +111,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double profitConverted(Continent continent, double rads, Predicate hasProjects, ICity city, int amt) {
+    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProjects, ICity city, int amt) {
         double profit = super.profitConverted(continent, rads, hasProjects, city, amt);
         double production = output.getProduction(continent, rads, hasProjects, city.getLand(), amt, -1);
         profit += production * outputValue.get();
@@ -121,7 +120,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, ICity city, double[] profitBuffer, int turns, int amt) {
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProjects, ICity city, double[] profitBuffer, int turns, int amt) {
         profitBuffer = super.profit(continent, rads, date, hasProjects, city, profitBuffer, turns, amt);
 
         ResourceType type = getResourceProduced();
