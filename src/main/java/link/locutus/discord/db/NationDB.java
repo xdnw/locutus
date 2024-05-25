@@ -1426,7 +1426,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         DBCity existing = getDBCity(city.getNation_id(), city.getId());
 
         if (existing != null) {
-            if (city.getNation_id() == 510930) System.out.println("Remove:|| Updating city " + city.getId() + " " + city.getName() + " " + city.getNation_id());
             buffer.set(existing);
             existing.set(city);
             if (existing.runChangeEvents(city.getNation_id(), buffer, eventConsumer)) {
@@ -1434,7 +1433,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         } else {
             existing = new DBCity(city);
-            if (city.getNation_id() == 510930) System.out.println("Remove:||  New city " + city.getId() + " " + city.getName() + " " + city.getNation_id());
             synchronized (citiesByNation) {
                 ArrayUtil.addElement(DBCity.class, citiesByNation, city.getNation_id(), existing);
             }

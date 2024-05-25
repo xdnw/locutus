@@ -455,6 +455,9 @@ public class DBCity implements ICity {
         if (obj instanceof ArrayUtil.IntKey key) {
             return key.key == id;
         }
+        if (obj instanceof Integer) {
+            return (int) obj == id;
+        }
         return false;
     }
 
