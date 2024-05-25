@@ -21,7 +21,7 @@ public class ParameterData {
     private String desc;
     private int group = -1;
 
-    public JsonObject toJson() {
+    public JsonElement toJson() {
         JsonObject arg = new JsonObject();
         arg.addProperty("name", getName());
         if (optional) arg.addProperty("optional", true);

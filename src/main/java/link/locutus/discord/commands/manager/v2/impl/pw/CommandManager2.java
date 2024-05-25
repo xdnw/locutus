@@ -2,12 +2,13 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.*;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.HtmlOptions;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -33,15 +34,19 @@ import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -49,6 +54,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,72 +69,6 @@ public class CommandManager2 {
     private final PermissionHandler permisser;
     private final PlaceholdersMap placeholders;
     private PWGPTHandler pwgptHandler;
-
-    public JsonObject toJson(ValueStore htmlOptionsStore) {
-        JsonObject cmdJson = commands.toJson();
-
-        Map<String, JsonObject> keysData = new LinkedHashMap<>();
-        Set<String> checkedOptions = new HashSet<>();
-        Map<String, Object> optionsData = new LinkedHashMap<>();
-
-        for (Map.Entry<Key, Parser> entry : store.getParsers().entrySet()) {
-            Key key = entry.getKey();
-            Parser parser = entry.getValue();
-            if (!parser.isConsumer(store)) continue;
-
-            JsonObject typeJson = parser.toJson();
-            keysData.put(key.toSimpleString(), typeJson);
-
-            Key optionsKey = key.append(HtmlOptions.class);
-            Parser optionParser = htmlOptionsStore.get(optionsKey);
-            if (optionParser != null) {
-                WebOption option = (WebOption) optionParser.apply(store, null);
-                optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
-                continue;
-            }
-            Class[] compArr = key.getBinding().components();
-            List<Class> components = compArr.length == 0 ? WebOption.getComponentClasses(key.getType()) : Arrays.asList(compArr);
-            if (components.isEmpty()) {
-                System.out.println("No components for " + key.toSimpleString());
-                continue;
-            }
-            for (Class t : components) {
-                String name = t.getSimpleName();
-                if (!checkedOptions.add(name)) continue;
-                if (t.isEnum()) {
-                    WebOption option = WebOption.fromEnum(t);
-                    optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
-                    continue;
-                }
-                optionsKey = Key.of(t, HtmlOptions.class);
-                optionParser = htmlOptionsStore.get(optionsKey);
-                if (optionParser != null) {
-                    WebOption option = (WebOption) optionParser.apply(htmlOptionsStore, null);
-                    if (!option.getName().equalsIgnoreCase(name)) {
-                        optionsData.put(name, option.getName());
-                    } else {
-                        optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
-                    }
-                } else {
-                    System.out.println("No options for " + name);
-                }
-            }
-        }
-
-        JsonObject phJson = new JsonObject();
-        for (Class t : placeholders.getTypes()) {
-            Placeholders ph = placeholders.get(t);
-            phJson.add(t.getSimpleName(), ph.getCommands().toJson());
-        }
-
-        Gson gson = new Gson();
-        JsonObject result = new JsonObject();
-        result.add("commands", cmdJson);
-        result.add("placeholders", phJson);
-        result.add("keys", gson.toJsonTree(keysData));
-        result.add("options", gson.toJsonTree(optionsData));
-        return result;
-    }
 
     public CommandManager2() {
         this.store = new SimpleValueStore<>();
@@ -149,7 +90,6 @@ public class CommandManager2 {
         // Register bindings
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?> ph = placeholders.get(type);
-            System.out.println("Type " + type);
             ph.register(store);
         }
         // Initialize commands (staged after bindings as there might be cross dependency)

@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
-import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 
 import java.util.function.BiFunction;
@@ -37,10 +36,5 @@ public class FunctionConsumerParser<R> implements Parser<R> {
     @Override
     public String getDescription() {
         return null;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        throw new UnsupportedOperationException();
     }
 }

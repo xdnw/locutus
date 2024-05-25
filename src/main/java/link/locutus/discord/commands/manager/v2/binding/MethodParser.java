@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.google.gson.internal.Primitives;
 import io.javalin.http.RedirectResponse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -15,11 +13,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static com.google.api.client.util.Preconditions.checkNotNull;
 
 public class MethodParser<T> implements Parser<T> {
     private final String desc;
@@ -32,8 +27,11 @@ public class MethodParser<T> implements Parser<T> {
     private boolean isConsumerInit;
     private boolean isConsumer;
 
+    public MethodParser(Object object, Method method, String desc) {
+        this(object, method, desc, null, null);
+    }
+
     public MethodParser(Object object, Method method, String desc, Binding binding, Type ret) {
-        checkNotNull(binding);
         this.object = object;
         this.method = method;
         Annotation[] annotations = method.getAnnotations();
@@ -227,19 +225,5 @@ public class MethodParser<T> implements Parser<T> {
     @Override
     public String getDescription() {
         return desc;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("desc", desc);
-        Binding binding = getKey().getBinding();
-        String[] examples = binding.examples();
-        if (examples != null && examples.length > 0) {
-            JsonArray array = new JsonArray();
-            for (String example : examples) array.add(example);
-            obj.add("examples", array);
-        }
-        return obj;
     }
 }
