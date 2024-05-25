@@ -601,22 +601,18 @@ public class TradeManager {
     }
 
     public int getHigh(ResourceType type) {
-        if (type == ResourceType.MONEY) return 1;
         return high[type.ordinal()];
     }
 
     public int getLow(ResourceType type) {
-        if (type == ResourceType.MONEY) return 1;
         return low[type.ordinal()];
     }
 
     public double getHighAvg(ResourceType type) {
-        if (type == ResourceType.MONEY) return 1;
         return highAvg[type.ordinal()];
     }
 
     public double getLowAvg(ResourceType type) {
-        if (type == ResourceType.MONEY) return 1;
         return lowAvg[type.ordinal()];
     }
 

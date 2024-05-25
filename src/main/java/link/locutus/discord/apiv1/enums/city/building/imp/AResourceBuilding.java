@@ -8,9 +8,12 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.util.PW;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     private final int baseInput;
@@ -18,6 +21,8 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     private final ResourceType output;
     private final ResourceType[] inputs;
     private boolean[] continents;
+    private Supplier<Double> outputValue;
+    private InputValueFunc inputValueFunc;
 
     public AResourceBuilding(BuildingBuilder parent, ResourceType output) {
         this(parent, output.getBaseInput(), output.getBoostFactor(), output, output.getInputs());
@@ -28,6 +33,52 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
         this.boostFactor = boostFactor;
         this.output = output;
         this.inputs = inputs;
+        this.outputValue = () -> {
+            double value = ResourceType.convertedTotalPositive(output, 1);
+            outputValue = () -> value;
+            return value;
+        };
+        if (inputs.length == 0) {
+            this.inputValueFunc = (c, r, h, b, a, p) -> 0d;
+        } else {
+            this.inputValueFunc = (c0, r0, h0, b0, a0, p0) -> {
+                double factor = 1d / output.getManufacturingMultiplier();
+
+                InputValueFunc newFunc;
+                if (inputs.length == 1) {
+                    double value = ResourceType.convertedTotalNegative(inputs[0], 1);
+                    newFunc = (c, r, h, b, a, p) -> {
+                        double inputAmt = factor * p;
+                        return -value * inputAmt;
+                    };
+                } else {
+                    double[] values = new double[inputs.length];
+                    for (int i = 0; i < inputs.length; i++) {
+                        values[i] = ResourceType.convertedTotalNegative(inputs[i], 1);
+                    }
+                    newFunc = (c, r, h, b, a, p) -> {
+                        double inputAmt = factor * p;
+                        double profit = 0;
+                        for (int i = 0; i < values.length; i++) {
+                            profit -= values[i] * inputAmt;
+                        }
+                        return profit;
+                    };
+                }
+                inputValueFunc = (c, r, h, b, a, p) -> {
+                    if (p != 0) {
+                        return newFunc.apply(c, r, h, b, a, p);
+                    }
+                    return 0d;
+                };
+                return newFunc.apply(c0, r0, h0, b0, a0, p0);
+            };
+
+        }
+    }
+
+    private static interface InputValueFunc {
+        public double apply(Continent continent, double rads, Predicate<Project> hasProjects, ICity city, int amt, double production);
     }
 
     public AResourceBuilding continents(Continent... continents) {
@@ -58,30 +109,9 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     @Override
     public double profitConverted(Continent continent, double rads, Predicate hasProjects, ICity city, int amt) {
         double profit = super.profitConverted(continent, rads, hasProjects, city, amt);
-
-        int improvements = city.getBuilding(this);
-
-
-        double production = output.getProduction(continent, rads, hasProjects, city.getLand(), improvements, -1);
-        if (production != 0) {
-            profit += ResourceType.convertedTotalPositive(output, production);
-
-            double inputAmt = output.getInput(continent, rads, hasProjects, city, improvements);
-
-            if (inputAmt > 0) {
-                switch (inputs.length) {
-                    case 0:
-                        break;
-                    case 1:
-                        profit -= ResourceType.convertedTotalNegative(inputs[0], inputAmt);
-                        break;
-                    default:
-                        for (ResourceType input : inputs) {
-                            profit -= ResourceType.convertedTotalNegative(input, inputAmt);
-                        }
-                }
-            }
-        }
+        double production = output.getProduction(continent, rads, hasProjects, city.getLand(), amt, -1);
+        profit += production * outputValue.get();
+        profit += inputValueFunc.apply(continent, rads, hasProjects, city, amt, production);
         return profit;
     }
 

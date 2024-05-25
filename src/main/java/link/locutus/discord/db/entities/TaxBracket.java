@@ -122,6 +122,11 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedId() + "- " : "") + ((name != null && !name.isEmpty()) ? (name + "- ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
     }
 
+    public String getSubText() {
+        return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedId() + "- " : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
+    }
+
+
     @Command(desc = "Tax rate object")
     public TaxRate getTaxRate() {
         return new TaxRate(moneyRate, rssRate);

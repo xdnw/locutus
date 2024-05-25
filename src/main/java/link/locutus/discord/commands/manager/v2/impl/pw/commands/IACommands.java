@@ -1487,12 +1487,9 @@ public class IACommands {
         DBAlliancePosition myPosition = me.getAlliancePosition();
         DBAlliancePosition nationPosition = nation.getAlliancePosition();
         if (!Roles.ADMIN.hasOnRoot(author)) {
-            if (me.getAlliance_id() != allianceId || myPosition == null) {
-                // cannot promote above officer unless admin
-                if (!Roles.ADMIN.has(author, db.getGuild())) {
-                    if (position.hasAnyOfficerPermissions()) {
-                        return "You do not have permission to grant permissions you currently do not posses in the alliance";
-                    }
+            if (me.getAlliance_id() != allianceId || myPosition == null || !db.isAllianceId(myPosition.getAlliance_id())) {
+                if (position.hasAnyOfficerPermissions()) {
+                    return "You do not have permission to grant permissions you currently do not posses in the alliance";
                 }
             } else {
                 if (position.getPosition_level() > myPosition.getPosition_level()) {

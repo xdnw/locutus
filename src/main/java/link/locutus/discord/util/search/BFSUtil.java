@@ -111,6 +111,8 @@ public class BFSUtil {
             branch.accept(next, queue);
         }
 
+        long diff = System.currentTimeMillis() - start;
+        System.out.println("BFS. Searched " + i + " in " + diff + " for a rate of " + (i * 1000d / diff) + " per second");
         return max;
     }
 }

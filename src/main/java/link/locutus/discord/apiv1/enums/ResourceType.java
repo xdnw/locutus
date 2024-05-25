@@ -992,12 +992,12 @@ public enum ResourceType {
 
     @Command(desc = "If this is a raw resource")
     public boolean isRaw() {
-        return inputs == null || inputs.length == 0 && cap > 0;
+        return inputs.length == 0 && cap > 0;
     }
 
     @Command(desc = "If this is a manufactured resource")
     public boolean isManufactured() {
-        return inputs != null && inputs.length > 0;
+        return inputs.length > 0;
     }
 
     @Command(desc = "The pollution modifier for this resource's production")
@@ -1021,7 +1021,7 @@ public enum ResourceType {
     }
 
     public double getInput(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int improvements) {
-        if (inputs == null) return 0;
+        if (inputs.length == 0) return 0;
 
         double base = getBaseProduction(continent, rads, hasProject, city.getLand(), -1);
         base = (base * baseProductionInverse) * baseInput;

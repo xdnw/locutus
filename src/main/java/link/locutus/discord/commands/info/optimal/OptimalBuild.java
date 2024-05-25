@@ -297,6 +297,7 @@ public class OptimalBuild extends Command {
         if (land != null) origin.setLand(land);
         if (age != null) origin.setAge(age);
         if (continent == null) continent = me.getContinent();
+        origin.setOptimalPower(continent);
 
         if (baseRadiation == -1) {
             baseRadiation = Locutus.imp().getTradeManager().getGlobalRadiation(continent) + Locutus.imp().getTradeManager().getGlobalRadiation();
@@ -308,7 +309,7 @@ public class OptimalBuild extends Command {
 
         double radIndex = baseRadiation;
         double radsFactor = continent == Continent.ANTARCTICA ? 0.5 : 1;
-        double rads = (1 + (radIndex / (-1000))) * radsFactor;
+        double rads = (1 + (Math.min(1000, radIndex) / (-1000))) * radsFactor;
 
         int numCities = me.getCities();
 
@@ -391,9 +392,6 @@ public class OptimalBuild extends Command {
                 return parent.apply(city);
             };
         }
-
-        Function<JavaCity, Double> finalValueFunc = valueFunc;
-        Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc = f -> finalValueFunc;
 
         Function<JavaCity, Boolean> goal = javaCity -> javaCity.getFreeInfra() < 50;
 
@@ -482,7 +480,6 @@ public class OptimalBuild extends Command {
             };
         }
 
-
         if (positiceCash) {
             Function<JavaCity, Boolean> parentGoal = goal;
 
@@ -493,7 +490,6 @@ public class OptimalBuild extends Command {
                     Arrays.fill(profitBuffer, 0);
                     city.profit(finalContinent, rads, -1L, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
                     profitBuffer[0] += 500000d / numCities;
-                    double original = profitBuffer[0];
 
                     for (MilitaryUnit unit : MilitaryUnit.values) {
                         MilitaryBuilding building = unit.getBuilding();
@@ -515,6 +511,9 @@ public class OptimalBuild extends Command {
         Guild root = Locutus.imp().getServer();
         GuildDB rootDb = Locutus.imp().getGuildDB(root);
         long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 15000 : 5000;
+
+        Function<JavaCity, Double> finalValueFunc = valueFunc;
+        Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc = f -> finalValueFunc;
 
         JavaCity optimized;
         if (days == null) {

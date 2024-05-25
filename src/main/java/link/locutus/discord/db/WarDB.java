@@ -2357,10 +2357,8 @@ public class WarDB extends DBMainV2 {
                     synchronized (attackList) {
                         attackList.add(attack);
                         if (attackList.size() > 1000) {
-                            System.out.println("Save " + attack.getWar_attack_id());
                             saveAttacks(attackList);
                             attackList.clear();
-                            System.out.println("Save end");
                         }
                     }
                     return false;

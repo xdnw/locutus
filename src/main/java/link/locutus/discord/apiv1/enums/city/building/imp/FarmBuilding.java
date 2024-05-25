@@ -1,7 +1,9 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
 import link.locutus.discord.apiv1.domains.Nation;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;

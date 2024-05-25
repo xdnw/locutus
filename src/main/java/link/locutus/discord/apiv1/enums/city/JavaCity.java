@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.enums.city;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.City;
+import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBCity;
@@ -16,11 +17,6 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.search.BFSUtil;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import it.unimi.dsi.fastutil.PriorityQueue;
@@ -487,7 +483,7 @@ public class JavaCity implements ICity {
         };
         valueFunction = modifyValueFunc.apply(valueFunction);
 
-        return optimalBuild(continent, valueFunction, goal, finalHasProject, timeout);
+        return optimalBuild(continent, valueFunction, goal, finalHasProject, timeout, rads);
     }
 
     public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout) {
@@ -499,7 +495,7 @@ public class JavaCity implements ICity {
         origin.setAge(this.getAgeDays() + days / 2);
 
         JavaCity zeroed = new JavaCity(origin);
-        zeroed.zeroNonMilitary();
+        zeroed.zeroNonMilitary().setOptimalPower(continent);
 
         int maxImp = (int) (this.getInfra() / 50);
         if (maxImp == zeroed.getNumBuildings()) return zeroed;
@@ -525,19 +521,60 @@ public class JavaCity implements ICity {
 
         valueFunction = modifyValueFunc.apply(valueFunction);
 
-        JavaCity optimal = zeroed.optimalBuild(continent, valueFunction, goal, finalHasProject, timeout);
+        JavaCity optimal = zeroed.optimalBuild(continent, valueFunction, goal, finalHasProject, timeout, rads);
         return optimal;
     }
 
-    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Predicate<Project> hasProject, long timeout) {
-        return optimalBuild(continent, valueFunction, null, hasProject, timeout);
+    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Predicate<Project> hasProject, long timeout, double rads) {
+        return optimalBuild(continent, valueFunction, null, hasProject, timeout, rads);
     }
 
-    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Function<JavaCity, Boolean> goal, Predicate<Project> hasProject, long timeout) {
+    public JavaCity zeroPower() {
+        for (int i = 0; i < buildings.length; i++) {
+            if (!(Buildings.get(i) instanceof PowerBuilding)) continue;
+            numBuildings -= buildings[i];
+            buildings[i] = 0;
+        }
+        return this;
+    }
+
+    public JavaCity setOptimalPower(Continent continent) {
+        int nuclear = 0;
+        int coal = 0;
+        int oil = 0;
+        int wind = 0;
+        double infra = getInfra();
+        while (infra > 500 || (getInfra() > 2000 && infra > 250)) {
+            nuclear++;
+            infra -= Buildings.NUCLEAR_POWER.getInfraMax();
+        }
+        while (infra > 250) {
+            if (continent.canBuild(Buildings.COAL_POWER)) {
+                coal++;
+                infra -= Buildings.COAL_POWER.getInfraMax();
+            } else if (continent.canBuild(Buildings.OIL_POWER)) {
+                oil++;
+                infra -= Buildings.OIL_POWER.getInfraMax();
+            } else {
+                break;
+            }
+        }
+        while (infra > 0) {
+            wind++;
+            infra -= Buildings.WIND_POWER.getInfraMax();
+        }
+        set(Buildings.NUCLEAR_POWER, nuclear);
+        set(Buildings.COAL_POWER, coal);
+        set(Buildings.OIL_POWER, oil);
+        set(Buildings.WIND_POWER, wind);
+        return this;
+    }
+
+    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Function<JavaCity, Boolean> goal, Predicate<Project> hasProject, long timeout, double rads) {
         if (goal == null) {
             goal = javaCity -> javaCity.getFreeInfra() < 50;
         }
-        CityBranch searchServices = new CityBranch(continent, -1d, -1d, false, hasProject);
+        CityBranch searchServices = new CityBranch(this, continent, false, rads, hasProject);
 
         Function<Map.Entry<JavaCity, Integer>, Double> valueFunction2 = e -> valueFunction.apply(e.getKey());
         Function<JavaCity, Boolean> finalGoal = goal;
@@ -567,8 +604,9 @@ public class JavaCity implements ICity {
             throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(origin.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(origin.getRequiredInfra()) + ", mmr: " + origin.getMMR() + ")");
         }
 
-        Map.Entry<JavaCity, Integer> optimized = BFSUtil.search(goal2, valueFunction2, valueCompletionFunction, searchServices, searchServices, new AbstractMap.SimpleEntry<>(origin, 4), queue, timeout);
+        Map.Entry<JavaCity, Integer> optimized = BFSUtil.search(goal2, valueFunction2, valueCompletionFunction, searchServices, searchServices, new AbstractMap.SimpleEntry<>(origin, 0), queue, timeout);
 
+        System.out.println("Buildings " + optimized.getKey().getNumBuildings());
         return optimized == null ? null : optimized.getKey();
     }
 

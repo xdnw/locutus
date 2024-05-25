@@ -1553,7 +1553,7 @@ public class BankCommands {
 
             double profit = city1.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
             JavaCity origin = new JavaCity(city1);
-            origin.zeroNonMilitary();
+            origin.zeroNonMilitary().setOptimalPower(nation.getContinent());
             try {
                 JavaCity optimal = origin.optimalBuild(nation, 0);
                 double profitOptimal = 0;

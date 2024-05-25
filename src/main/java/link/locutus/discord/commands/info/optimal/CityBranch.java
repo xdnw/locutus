@@ -9,8 +9,7 @@ import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 
-import java.util.AbstractMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -19,12 +18,42 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
     private final Continent continent;
     private final Predicate<Project> hasProject;
     private final ObjectArrayFIFOQueue<Map.Entry<JavaCity, Integer>> pool;
+    private final Building[] buildings;
     private boolean usedOrigin = false;
     private Building originBuilding = null;
-    public CityBranch(Continent continent, double maxDisease, double minPop, boolean selfSufficient, Predicate<Project> hasProject) {
+    public CityBranch(JavaCity origin, Continent continent, boolean selfSufficient, double rads, Predicate<Project> hasProject) {
         this.continent = continent;
         this.hasProject = hasProject;
+        Map<ResourceBuilding, Double> rssBuildings = new HashMap<>();
+        for (Building building : Buildings.values()) {
+            if (!building.canBuild(continent)) continue;
+            if (!(building instanceof ResourceBuilding rssBuild)) continue;
+            if (rads <= 0 && building == Buildings.FARM) continue;
+            int cap = rssBuild.cap(hasProject);
+            double profit = rssBuild.profitConverted(continent, rads, hasProject, origin, cap) / cap;
+            rssBuildings.put(rssBuild, profit);
+        }
+        List<Building> rssSorted;
+        if (selfSufficient) {
+            List<Building> rawSorted = new ArrayList<>(rssBuildings.entrySet().stream().filter(e -> e.getKey().getResourceProduced().isRaw()).sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).toList().reversed());
+            List<Building> manuSorted = new ArrayList<>(rssBuildings.entrySet().stream().filter(e -> !e.getKey().getResourceProduced().isRaw()).sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).toList().reversed());
+            rssSorted = new ArrayList<>(rawSorted);
+            rssSorted.addAll(manuSorted);
+        } else {
+            rssSorted = new ArrayList<>(rssBuildings.entrySet().stream().sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).toList().reversed());
+        }
+        for (Building building : rssSorted) {
+            System.out.println(building.name() + " " + rssBuildings.get(building) + " profit");
+        }
 
+        List<Building> allBuildings = new ArrayList<>(rssSorted);
+        for (Building building : Buildings.values()) {
+            if (building instanceof CommerceBuilding) allBuildings.add(building);
+        }
+        for (Building building : Buildings.values()) {
+            if (building instanceof ServiceBuilding) allBuildings.add(building);
+        }
+        this.buildings = allBuildings.toArray(new Building[0]);
         this.pool = new ObjectArrayFIFOQueue<>(500000);
     }
 
@@ -65,46 +94,24 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
         usedOrigin = false;
 
         JavaCity origin = originPair.getKey();
-
-        if (originPair.getValue() <= 4) {
-            double unpowered = origin.getInfra() - origin.getPoweredInfra();
-            if (unpowered > 500 || (unpowered > 250 && origin.getInfra() > 2000)) {
-                cities.enqueue(create(originPair, Buildings.NUCLEAR_POWER, 4));
-                return;
-            }
-            if (unpowered > 250) {
-                if (Buildings.OIL_WELL.canBuild(continent)) {
-                    cities.enqueue(create(originPair, Buildings.OIL_POWER, 4));
-                } else {
-                    cities.enqueue(create(originPair, Buildings.COAL_POWER, 4));
-                }
-                return;
-            }
-            if (unpowered > 0) {
-                cities.enqueue(create(originPair, Buildings.WIND_POWER, 4));
-                return;
-            }
-        }
-
         int freeSlots = origin.getFreeSlots();
         if (freeSlots <= 0) return;
 
         int minBuilding = originPair.getValue();
-        int maxBuilding = Buildings.BUILDINGS.length - 4;
-        boolean buildMoreRaws = true;
-        boolean buildMoreManu = true;
-        boolean buildMoreCommerce = true;
+        int maxBuilding = this.buildings.length;
+        Building minBuildingType = buildings[minBuilding];
+        boolean buildMore = true;
         {
-            Building minBuildingType = Buildings.get(minBuilding);
-            int amt = origin.getBuildingOrdinal(minBuilding);
+            int amt = origin.getBuildingOrdinal(minBuildingType.ordinal());
             if (amt != 0) {
                 if (minBuildingType instanceof ResourceBuilding rssBuild) {
                     if (amt < minBuildingType.cap(hasProject)) {
-                        if (rssBuild.getResourceProduced().isRaw()) {
-                            buildMoreRaws = false;
-                        } else {
-                            buildMoreManu = false;
-                        }
+                        buildMore = false;
+//                        if (rssBuild.getResourceProduced().isRaw()) {
+//                            buildMoreRaws = false;
+//                        } else {
+//                            buildMoreManu = false;
+//                        }
                     }
                 } else if (minBuildingType instanceof CommerceBuilding) {
                     minBuildingType.cap(hasProject);
@@ -123,22 +130,22 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
             maxCommerce = 100;
         }
         for (int i = minBuilding; i < maxBuilding; i++) {
-            Building building = Buildings.get(i);
-            if (!building.canBuild(continent)) continue;
-            int amt = origin.getBuildingOrdinal(i);
+            Building building = buildings[i];
+            int ordinal = building.ordinal();
+            int amt = origin.getBuildingOrdinal(ordinal);
             if (amt >= building.cap(hasProject)) continue;
 
             if (building instanceof ResourceBuilding rssBuild) {
                 ResourceType rss = rssBuild.getResourceProduced();
-                if (rss.isRaw()) {
-                    if (buildMoreRaws || i == minBuilding) {
-                        cities.enqueue(create(originPair, building, i));
-                    }
-                } else if (buildMoreManu || i == minBuilding) {
+                if (buildMore || i == minBuilding) {
                     cities.enqueue(create(originPair, building, i));
                 }
+//                if (rss.isRaw()) {
+//
+//                } else if (buildMoreManu || i == minBuilding) {
+//                    cities.enqueue(create(originPair, building, i));
+//                }
             } else if (building instanceof CommerceBuilding) {
-
                 if (origin.calcCommerce(hasProject) >= maxCommerce) continue;
                 {
                     cities.enqueue(create(originPair, building, i));

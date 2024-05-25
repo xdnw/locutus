@@ -15,4 +15,12 @@ public @interface Binding {
     Class<?>[] types() default {};
 
     boolean multiple() default false;
+
+    /**
+     * Defer to specific component classes making up this type e.g. Set&lt;MyType&gt; would have MyType as a component
+     * Leave this blank unless the component type is NOT correctly inferred
+     * e.g. NationList should defer -> DBNation
+     * @return
+     */
+    Class[] components() default {};
 }

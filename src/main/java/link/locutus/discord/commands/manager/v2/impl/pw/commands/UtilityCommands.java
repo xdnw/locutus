@@ -2359,6 +2359,9 @@ public class UtilityCommands {
 
         int numCities = nation.getCities();
         if (continent == null) continent = nation.getContinent();
+        origin.setOptimalPower(continent);
+        originMinus50.setOptimalPower(continent);
+
         if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
         double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
@@ -2407,6 +2410,8 @@ public class UtilityCommands {
 
         int numCities = nation.getCities();
         if (continent == null) continent = nation.getContinent();
+        origin.setOptimalPower(continent);
+        originMinus50.setOptimalPower(continent);
         if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
         double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));

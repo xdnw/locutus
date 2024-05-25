@@ -590,7 +590,7 @@ public class NationUpdateProcessor {
                         continue;
                     }
 
-                    NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NONES);
+                    NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
                     if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) continue;
                     if (mode == null) mode = NationMeta.BeigeAlertMode.NONES;
 

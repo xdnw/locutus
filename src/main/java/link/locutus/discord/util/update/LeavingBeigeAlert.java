@@ -156,7 +156,7 @@ public class LeavingBeigeAlert {
         NationMeta.BeigeAlertRequiredStatus requiredStatus = attacker.getBeigeRequiredStatus(NationMeta.BeigeAlertRequiredStatus.ONLINE);
 
         if ((attacker.active_m() <= 15 || requiredStatus.getApplies().test(member) || attacker.getNation_id() == Settings.INSTANCE.NATION_ID)) {
-            NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NONES);
+            NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
             if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) {
                 if (throwError) throw new IllegalArgumentException("You have disabled beige alerts. See " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention());
                 return false;
@@ -294,9 +294,8 @@ public class LeavingBeigeAlert {
 
                     NationMeta.BeigeAlertRequiredStatus requiredStatus = attacker.getBeigeRequiredStatus(NationMeta.BeigeAlertRequiredStatus.ONLINE);
 
-                    NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NONES);
+                    NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
                     if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) continue;
-                    if (mode == null) mode = NationMeta.BeigeAlertMode.NONES;
 
                     double requiredLoot = 15000000;
                     ByteBuffer requiredLootBuf = attacker.getMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT);

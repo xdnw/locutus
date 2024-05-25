@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.entities.Guild;
 
 public class JavalinBindings extends BindingHelper {
     @Binding
+
     public Context context() {
         throw new IllegalStateException("No context set in command locals");
     }
