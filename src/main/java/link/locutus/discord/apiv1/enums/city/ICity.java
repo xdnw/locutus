@@ -7,10 +7,12 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.util.PW;
 
 import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 public interface ICity {
@@ -19,6 +21,37 @@ public interface ICity {
     int getPoweredInfra();
 
     double getInfra();
+
+    default double getFreeInfra() {
+        return getInfra() - getNumBuildings() * 50;
+    }
+
+    default double caclulateBuildingCostConverted(JavaCity from) {
+        double total = 0;
+        for (Building building : Buildings.values()) {
+            int amtA = getBuilding(building);
+            int amtB = from.getBuilding(building);
+            if (amtA != amtB) {
+                if (amtB > amtA) {
+                    total += building.getNMarketCost((amtB - amtA) * 0.5);
+                } else {
+                    total += building.getNMarketCost(amtB - amtA);
+                }
+            }
+        }
+        return total;
+    }
+
+    default double calculateCostConverted(JavaCity from) {
+        double total = caclulateBuildingCostConverted(from);
+        if (this.getInfra() > from.getInfra()) {
+            total += PW.City.Infra.calculateInfra(from.getInfra(), getInfra());
+        }
+        if (!Objects.equals(getLand(), from.getLand())) {
+            total += PW.City.Land.calculateLand(from.getLand(), getLand());
+        }
+        return total;
+    }
 
     double getLand();
 

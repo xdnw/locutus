@@ -377,7 +377,7 @@ public class ROI extends Command {
         Predicate<Project> hasProjects = p -> p.get(nation) > 0;
 
         {
-            JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout);
+            JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout, false, null);
             if (optimal != null) {
                 double baseOptimizedProfit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 if (baseOptimizedProfit > baseProfit) {
@@ -411,7 +411,7 @@ public class ROI extends Command {
                     }
                 };
 
-                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout);
+                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout, false, null);
                 if (optimal != null) {
                     double profit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjectsProxy, numCities, nation.getGrossModifier());
                     Map<ResourceType, Double> cost = ResourceType.add(
@@ -440,7 +440,7 @@ public class ROI extends Command {
                         return project == p || p.get(nation) > 0;
                     }
                 };
-                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout);
+                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout, false, null);
                 if (optimal != null) {
                     double profit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjectsProxy, numCities, nation.getGrossModifier());
                     Map<ResourceType, Double> cost = ResourceType.add(
@@ -489,7 +489,7 @@ public class ROI extends Command {
 
         {
             JavaCity withInfra = new JavaCity(existingCity).setInfra(existingCity.getInfra() + Math.max(100, 1500 - existingCity.getInfra()));
-            withInfra = withInfra.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout);
+            withInfra = withInfra.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout, false, null);
             if (withInfra != null) {
                 double profit = withInfra.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 double[] cost = withInfra.calculateCost(existingCity);
@@ -505,7 +505,7 @@ public class ROI extends Command {
 
         {
             JavaCity withLand = new JavaCity(existingCity).setLand(existingCity.getLand() + 500);
-            withLand = withLand.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout);
+            withLand = withLand.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout, false, null);
             if (withLand != null) {
                 double profit = withLand.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 double[] cost = withLand.calculateCost(existingCity);

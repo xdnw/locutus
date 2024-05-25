@@ -19,4 +19,6 @@ public interface ResourceBuilding extends Building {
     ResourceBuilding continents(Continent... continents);
 
     int getBaseProduction();
+
+    int getBaseInput();
 }
