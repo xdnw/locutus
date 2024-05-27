@@ -576,7 +576,7 @@ public class ConflictCommands {
             if (conflict.getStartTurn() < TimeUtil.getTurn(1577836800000L)) {
                 response.append("Conflict `" + name + "` before the war cutoff date of " + DiscordUtil.timestamp(1577836800000L, null) + "\n");
             } else {
-                loadWikiConflicts(db, manager, List.of(conflict), true, true);
+                loadWikiConflicts(db, manager, new ArrayList<>(List.of(conflict)), true, true);
                 response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
                 response.append("See: " +
                         CM.conflict.info.cmd.toSlashMention() +
@@ -622,7 +622,7 @@ public class ConflictCommands {
     public String importWikiAll(@Me GuildDB db, ConflictManager manager, @Default("true") boolean useCache) throws IOException, ParseException {
         Map<String, String> errors = new LinkedHashMap<>();
         List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
-        Set<Conflict> loaded = loadWikiConflicts(db, manager, conflicts, false, false);
+        Set<Conflict> loaded = loadWikiConflicts(db, manager, new ArrayList<>(conflicts), false, false);
         return "Loaded " + loaded.size() + " conflicts from the wiki. Use " + CM.conflict.sync.website.cmd.create("*", "true", "true", "true") + " recalculate stats and push to the website.";
     }
 

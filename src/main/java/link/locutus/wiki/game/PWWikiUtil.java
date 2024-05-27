@@ -585,7 +585,7 @@ public class PWWikiUtil {
         Set<String> unknownAlliances = new LinkedHashSet<>();
         Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances, date.getKey());
         if (combatants == null) {
-            errorsByPage.put(name, "No combatants found");
+            errorsByPage.put(name, "No combatants found (unknown: " + unknownAlliances + ")");
             return null;
         }
 //            if (!unknownAlliances.isEmpty()) {

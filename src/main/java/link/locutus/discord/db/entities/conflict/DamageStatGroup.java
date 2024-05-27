@@ -160,9 +160,9 @@ public class DamageStatGroup {
     public void apply(AbstractCursor attack, boolean isAttacker) {
         attack.getLosses(totalCost, isAttacker, true, true, true, true, true);
         attack.getLosses(consumption, isAttacker, false, false, true, false, false);
-        attack.getLosses(loot, isAttacker, false, false, false, true, false);
         attack.getUnitLosses(units, isAttacker);
         if (!isAttacker) {
+            attack.getLosses(loot, false, false, false, false, true, false);
             infraCents += Math.round(attack.getInfra_destroyed_value() * 100);
             attack.addBuildingsDestroyed(buildings);
         }

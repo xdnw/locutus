@@ -727,6 +727,7 @@ public class Conflict {
         announcements.put(desc, topic);
         if (saveToDB) {
             getManager().addAnnouncement(id, topic.topic_id, desc);
+            dirtyJson = true;
         }
     }
 
