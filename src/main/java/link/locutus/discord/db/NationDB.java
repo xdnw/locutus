@@ -4281,7 +4281,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return getRemovesByNation(nationId, null);
     }
     public List<AllianceChange> getRemovesByNation(int nationId, Long date) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (date != null ? " AND date < ? " : "") + "ORDER BY date DESC")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (date != null ? " AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
 
             List<AllianceChange> list = new ObjectArrayList<>();
@@ -4369,8 +4369,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         List<AllianceChange> list = new ObjectArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE (from_aa = ? OR to_aa = ?) " + (cutoff > 0 ? "AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, allianceId);
+            stmt.setInt(2, allianceId);
             if (cutoff > 0) {
-                stmt.setLong(2, cutoff);
+                stmt.setLong(3, cutoff);
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
