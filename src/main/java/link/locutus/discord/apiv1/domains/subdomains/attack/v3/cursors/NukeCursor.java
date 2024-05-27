@@ -25,7 +25,7 @@ public class NukeCursor extends ProjectileCursor {
 
     @Override
     public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
-        return unit == MilitaryUnit.NUKE ? 1 : 0;
+        return attacker && unit == MilitaryUnit.NUKE ? 1 : 0;
     }
 
     @Override
