@@ -153,8 +153,6 @@ public class PWWikiPage {
         return null;
     }
 
-
-
     public Map.Entry<Set<Integer>, Set<Integer>> getCombatants(Set<String> unknownCombatants, long dateStart) {
         List<String> combatants = getTableData().get("combatants");
         if (combatants == null || combatants.size() != 2) {

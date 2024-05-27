@@ -2,6 +2,8 @@ package link.locutus.discord.web.commands.options;
 
 import com.google.gson.JsonArray;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -27,6 +29,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -187,6 +190,11 @@ public class WebOptionBindings extends BindingHelper {
         });
     }
 //Project - return list Projects.values -> name()
+    @Binding(types = Project.class)
+    public WebOption getProject() {
+        List<String> options = Arrays.stream(Projects.values).map(Project::name).toList();
+        return new WebOption(Project.class).setOptions(options);
+    }
 //Building - return Buildings.values -> name()
 
 //DBLoan - locutus -> loan manager -> getloans

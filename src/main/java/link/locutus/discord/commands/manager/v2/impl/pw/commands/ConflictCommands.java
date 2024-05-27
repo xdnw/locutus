@@ -38,6 +38,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import retrofit2.http.HEAD;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -576,7 +577,7 @@ public class ConflictCommands {
             if (conflict.getStartTurn() < TimeUtil.getTurn(1577836800000L)) {
                 response.append("Conflict `" + name + "` before the war cutoff date of " + DiscordUtil.timestamp(1577836800000L, null) + "\n");
             } else {
-                Set<Conflict> conflicts = loadWikiConflicts(db, manager, List.of(conflict), true, true);
+                Set<Conflict> conflicts = loadWikiConflicts(db, manager, new ArrayList<>(List.of(conflict)), true, true);
                 List<String> conflictNamesAndIds = conflicts.stream().map(f -> f.getName() + " - #" + f.getId()).toList();
                 response.append("Loaded conflict `" + name + "` with url `https://politicsandwar.com/wiki/" + url + "`\n");
                 if (conflictNamesAndIds.isEmpty()) {
@@ -628,7 +629,7 @@ public class ConflictCommands {
     public String importWikiAll(@Me GuildDB db, ConflictManager manager, @Default("true") boolean useCache) throws IOException, ParseException {
         Map<String, String> errors = new LinkedHashMap<>();
         List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
-        Set<Conflict> loaded = loadWikiConflicts(db, manager, conflicts, false, false);
+        Set<Conflict> loaded = loadWikiConflicts(db, manager, new ArrayList<>(conflicts), false, false);
         return "Loaded " + loaded.size() + " conflicts from the wiki. Use " + CM.conflict.sync.website.cmd.create("*", "true", "true", "true") + " recalculate stats and push to the website.";
     }
 
