@@ -724,6 +724,7 @@ public class Conflict {
     }
 
     public void addAnnouncement(String desc, DBTopic topic, boolean saveToDB) {
+        announcements.entrySet().removeIf(f -> f.getValue().topic_id == topic.topic_id);
         announcements.put(desc, topic);
         if (saveToDB) {
             getManager().addAnnouncement(id, topic.topic_id, desc);
