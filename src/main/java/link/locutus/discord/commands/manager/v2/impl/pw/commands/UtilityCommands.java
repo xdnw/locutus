@@ -2287,7 +2287,7 @@ public class UtilityCommands {
         for (DBNation nation : nations) {
             long dayStart = TimeUtil.getDay(nation.getDate());
             long lastStatus = -1; // -1 indicates no previous status
-            for (long day = dayStart; day <= today; day++) {
+            for (long day = dayStart; day < today; day++) {
                 Set<Long> vmDays = daysVM.getOrDefault(nation.getNation_id(), Collections.emptySet());
                 Set<Long> presentNotVMDays = daysPresentNotVM.getOrDefault(nation.getNation_id(), Collections.emptySet());
 
@@ -2311,6 +2311,10 @@ public class UtilityCommands {
                 }
                 lastStatus = currentStatus;
             }
+        }
+
+        if (changesByNation.isEmpty()) {
+            return "No changes found in VM status for the specified nations";
         }
 
         if (sheet != null) {
