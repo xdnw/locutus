@@ -24,6 +24,7 @@ import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,8 +130,9 @@ public class DataFile<T, H extends DataHeader<T>> {
         if (!csvExists) {
             throw new IllegalArgumentException("CSV file does not exist: " + csvFile);
         }
-        readAllCsv(csvFile, (csvHeader, row) -> {
-            List<ColumnInfo<T, Object>> columns = new ArrayList<>();
+        readAllCsv(csvFile, (csvHeader, rows) -> {
+            List<ColumnInfo<T, Object>> columnsInCsv = new ArrayList<>();
+
             for (int i = 0; i < csvHeader.size(); i++) {
                 String header = csvHeader.get(i);
                 ColumnInfo<T, Object> column = headers.get(header);
@@ -144,11 +146,18 @@ public class DataFile<T, H extends DataHeader<T>> {
                 }
                 if (column != null) {
                     column.setIndex(i, 0);
-                    columns.add(column);
+                    columnsInCsv.add(column);
                 } else {
                     throw new IllegalArgumentException("Unknown header: `" + header + "` in " + csvFile);
                 }
             }
+
+            List<ColumnInfo<T, Object>> writeOrder = new ArrayList<>(headers.values());
+            {
+                Set<ColumnInfo<T, Object>> present = new ObjectLinkedOpenHashSet<>(columnsInCsv);
+                writeOrder.removeIf(f -> !present.contains(f));
+            }
+
             FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
             try (DataOutputStream dos = new DataOutputStream(baos)) {
                 dos.writeInt(headers.size());
@@ -156,19 +165,22 @@ public class DataFile<T, H extends DataHeader<T>> {
                     dos.writeBoolean(header.getIndex() != -1);
                 }
                 List<List<Object>> all = new ObjectArrayList<>();
-                while (row.hasNext()) {
-                    CsvRow csvRow = row.next();
-                    ObjectArrayList<Object> rowData = new ObjectArrayList<>(columns.size());
-                    for (ColumnInfo<T, Object> column : columns) {
+                while (rows.hasNext()) {
+                    CsvRow csvRow = rows.next();
+                    ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
+                    for (ColumnInfo<T, Object> column : columnsInCsv) {
                         String cell = csvRow.getField(column.getIndex());
                         Object value = column.read(cell);
+
+
                         rowData.add(value);
+
                     }
                     all.add(rowData);
                 }
                 dos.writeInt(all.size());
                 for (List<Object> rowData : all) {
-                    for (ColumnInfo<T, Object> column : columns) {
+                    for (ColumnInfo<T, Object> column : writeOrder) {
                         column.write(dos, rowData.get(column.getIndex()));
                     }
                 }
@@ -277,7 +289,6 @@ public class DataFile<T, H extends DataHeader<T>> {
         }
 
         public void read(Consumer<H> onEachRow) throws IOException {
-            List<ColumnInfo<T, Object>> presentColumns = new ObjectArrayList<>();
             List<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
             for (ColumnInfo<T, Object> col : allColumns) {
                 col.setIndex(-1, -1);
@@ -299,7 +310,6 @@ public class DataFile<T, H extends DataHeader<T>> {
                 if (hasIndex) {
                     ColumnInfo<T, Object> column = allColumns.get(i);
                     column.setIndex(i, rowBytes);
-                    presentColumns.add(column);
                     rowBytes += column.getBytes();
                 }
             }
@@ -317,6 +327,7 @@ public class DataFile<T, H extends DataHeader<T>> {
                 }
             }
             ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
+            Arrays.sort(shouldRead, (a, b) -> Integer.compare(a.getIndex(), b.getIndex()));
             int numLines = SafeUtils.readIntBE(decompressed, index);
             index += 4;
 

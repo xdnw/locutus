@@ -2,12 +2,15 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -71,6 +74,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -78,6 +82,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -2214,6 +2219,32 @@ public class UtilityCommands {
 
         return response.toString();
     }
+
+//    public static String vmHistory(Set<DBNation> nations) throws IOException, ParseException {
+//        Predicate<Integer> contains;
+//        if (nations.size() == 1) {
+//            int natId = nations.iterator().next().getNation_id();
+//            contains = f -> f == natId;
+//        } else {
+//            Set<Integer> natIds = new IntOpenHashSet(nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet()));
+//            contains = natIds::contains;
+//        }
+//        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+//        List<Long> days = parser.getDays(true, false);
+//        long lastDay = Long.MIN_VALUE;
+//        for (int i = 0; i < days.size(); i++) {
+//            // every 14 days
+//            long day = days.get(i);
+//            if (day - lastDay < 14) continue;
+//            lastDay = day;
+//            parser.withNationFile(day, new Consumer<NationsFile>() {
+//                @Override
+//                public void accept(NationsFile file) {
+//                    file.reader().required(f -> List.of(f.nation_id, f.vm_turns));
+//                }
+//            });
+//        }
+//    }
 
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,

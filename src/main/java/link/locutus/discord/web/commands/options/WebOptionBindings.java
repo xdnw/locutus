@@ -2,6 +2,8 @@ package link.locutus.discord.web.commands.options;
 
 import com.google.gson.JsonArray;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -196,6 +198,11 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(Project.class).setOptions(options);
     }
 //Building - return Buildings.values -> name()
+    @Binding(types = Building.class)
+    public WebOption getBuilding() {
+        List<String> options = Arrays.stream(Buildings.values()).map(Building::name).toList();
+        return new WebOption(Building.class).setOptions(options);
+    }
 
 //DBLoan - locutus -> loan manager -> getloans
 //Report - locutus - report manager -> get reports
@@ -205,13 +212,9 @@ public class WebOptionBindings extends BindingHelper {
 //Conflict - locutus -> conflict manager -> conflicts
 
 
-//DBCity
-//TaxRate
-//NationFilter
-//CityRanges
-//MMRInt
-//MMRDouble
-//MMRMatcher
+
+
+
 //ParametricCallable
 //ICommand
 //NationAttribute
@@ -253,11 +256,17 @@ public class WebOptionBindings extends BindingHelper {
 //defer
 
 //NationList -> Set<DBNation>
+//NationFilter -> defer Set<DBNation>
 //DepositTypeInfo -> DepositType
 //NationAttributeDouble -> defer to Set<DBNation>
 //NationOrAllianceOrGuildOrTaxid -> guild + taxbracket
 //GuildDB - return same as guild()
-
+//DBCity -> fetch via api, or accept int
+//TaxRate
+//CityRanges
+//MMRInt
+//MMRDouble
+//MMRMatcher
 
 //
 // compound

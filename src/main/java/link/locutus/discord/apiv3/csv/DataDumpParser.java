@@ -123,6 +123,16 @@ public class DataDumpParser {
         }
     }
 
+    public void withNationFile(long day, Consumer<NationsFile> withFile) throws IOException, ParseException {
+        downloadNationFilesByDay();
+        synchronized (nationFilesByDay) {
+            NationsFile nationFile = nationFilesByDay.get(day);
+            if (nationFile != null) {
+                withFile.accept(nationFile);
+            }
+        }
+    }
+
     public void iterateAll(Predicate<Long> acceptDay,
                             BiConsumer<NationHeader, DataFile<DBNation, NationHeader>.Builder> nationColumns,
                             BiConsumer<CityHeader, DataFile<DBCity, CityHeader>.Builder> cityColumns,
