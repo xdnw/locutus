@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.column.BooleanColumn;
 import link.locutus.discord.apiv3.csv.column.DoubleColumn;
 import link.locutus.discord.apiv3.csv.column.EnumColumn;
@@ -18,6 +19,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;
+import java.util.Map;
 import java.util.function.Predicate;
 
 public class NationHeader extends DataHeader<DBNation> {
@@ -316,6 +318,8 @@ public class NationHeader extends DataHeader<DBNation> {
         setProject(nation, this.bureau_of_domestic_affairs_np);
         setProject(nation, this.mars_landing_np);
         setProject(nation, this.surveillance_network_np);
+        setProject(nation, this.guiding_satellite_np);
+        setProject(nation, this.nuclear_launch_facility_np);
         return nation;
     }
 

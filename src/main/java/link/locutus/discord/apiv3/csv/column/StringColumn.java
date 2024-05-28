@@ -19,14 +19,6 @@ public class StringColumn<P> extends ColumnInfo<P, String> {
         super(header, setter);
     }
 
-//    @Override
-//    public String read(DataInputStream dis) throws IOException {
-//        this.id = dis.readInt();
-//        cacheValue = null;
-//        return null;
-//    }
-
-
     @Override
     public String read(byte[] buffer, int offset) throws IOException {
         this.id = SafeUtils.readIntBE(buffer, offset);

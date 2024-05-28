@@ -28,13 +28,19 @@ public abstract class DataHeader<T> {
     }
 
     public final Map<String, ColumnInfo<T, Object>> getHeaders() {
+        return getHeaders(true);
+    }
+
+    public final Map<String, ColumnInfo<T, Object>> getHeaders(boolean clear) {
         Map<String, ColumnInfo<T, Object>> headers = new Object2ObjectLinkedOpenHashMap<>();
         for (Field field : getClass().getDeclaredFields()) {
             if (Modifier.isStatic(field.getModifiers()) || !field.canAccess(this)) continue;
             try {
                 ColumnInfo<T, Object> column = (ColumnInfo<T, Object>) field.get(this);
-                column.setIndex(-1, -1);
-                column.setCachedValue(null);
+                if (clear) {
+                    column.setIndex(-1, -1);
+                    column.setCachedValue(null);
+                }
                 column.setName(field.getName());
                 headers.put(field.getName(), column);
             } catch (IllegalAccessException e) {
@@ -43,6 +49,8 @@ public abstract class DataHeader<T> {
         }
         return headers;
     }
+
+
 
     public abstract void clear();
 

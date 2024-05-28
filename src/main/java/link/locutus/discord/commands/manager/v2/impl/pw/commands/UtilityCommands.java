@@ -2,12 +2,17 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.DataFile;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -71,6 +76,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -78,6 +84,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -2213,6 +2220,135 @@ public class UtilityCommands {
         }
 
         return response.toString();
+    }
+
+    @Command(desc = "Get the VM history of a set of nations")
+    public static String vmHistory(@Me IMessageIO io, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException {
+        if (nations.size() > 1000) {
+            throw new IllegalArgumentException("Cannot check more than 1000 nations (" + nations.size() + " provided)");
+        }
+
+        long minDay = Long.MAX_VALUE;
+        for (DBNation nation : nations) {
+            minDay = Math.min(minDay, TimeUtil.getDay(nation.getDate()));
+        }
+
+        Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, f -> f));
+        Map<Integer, Set<Long>> daysVM = new HashMap<>();
+        Map<Integer, Set<Long>> daysPresentNotVM = new HashMap<>();
+
+        Predicate<Integer> contains;
+        if (nations.size() == 1) {
+            int natId = nations.iterator().next().getNation_id();
+            contains = f -> f == natId;
+        } else {
+            Set<Integer> natIds = new IntOpenHashSet(nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet()));
+            contains = natIds::contains;
+        }
+
+        long[] lastMsg = {System.currentTimeMillis()};
+        CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
+
+        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        long today = TimeUtil.getDay();
+
+        long finalMinDay = minDay;
+        parser.iterateAll(f -> f >= finalMinDay, (h, r) -> r.required(h.nation_id).optional(h.vm_turns), null, new BiConsumer<Long, NationHeader>() {
+            private long timestampFromDay;
+            private long lastDay = -1;
+
+            @Override
+            public void accept(Long day, NationHeader header) {
+                int nationId = header.nation_id.get();
+                if (!contains.test(nationId)) return;
+                if (lastDay != day) {
+                    lastDay = day;
+                    timestampFromDay = TimeUtil.getTimeFromDay(day);
+                }
+                Integer vmTurns = header.vm_turns.get();
+                if (vmTurns != null && vmTurns > 0) {
+                    daysVM.computeIfAbsent(nationId, f -> new LinkedHashSet<>()).add(day);
+                } else {
+                    daysPresentNotVM.computeIfAbsent(nationId, f -> new LinkedHashSet<>()).add(day);
+                }
+            }
+        }, null, new Consumer<Long>() {
+            @Override
+            public void accept(Long day) {
+                long now = System.currentTimeMillis();
+                if (now - lastMsg[0] > 5000) {
+                    lastMsg[0] = now;
+                    io.updateOptionally(msgFuture, (day - finalMinDay) + "/" + (today - finalMinDay));
+                }
+            }
+        });
+
+        Map<Integer, List<String[]>> changesByNation = new LinkedHashMap<>();
+        for (DBNation nation : nations) {
+            long dayStart = TimeUtil.getDay(nation.getDate());
+            long lastStatus = -1; // -1 indicates no previous status
+            for (long day = dayStart; day <= today; day++) {
+                Set<Long> vmDays = daysVM.getOrDefault(nation.getNation_id(), Collections.emptySet());
+                Set<Long> presentNotVMDays = daysPresentNotVM.getOrDefault(nation.getNation_id(), Collections.emptySet());
+
+                long currentStatus;
+                if (vmDays.contains(day)) {
+                    currentStatus = 2; // VM
+                } else if (presentNotVMDays.contains(day)) {
+                    currentStatus = 0; // ACTIVE
+                } else {
+                    currentStatus = 1; // VM_ABSENT
+                }
+                if (lastStatus != -1 && lastStatus != currentStatus) {
+                    String statusString = switch ((int) currentStatus) {
+                        case 0 -> "ACTIVE";
+                        case 1 -> "VM_ABSENT";
+                        case 2 -> "VM";
+                        default -> "UNKNOWN";
+                    };
+                    changesByNation.computeIfAbsent(nation.getNation_id(), k -> new ArrayList<>())
+                            .add(new String[]{new Date(TimeUtil.getTimeFromDay(day)).toString(), statusString});
+                }
+                lastStatus = currentStatus;
+            }
+        }
+
+        if (sheet != null) {
+            List<String> header = new ArrayList<>(Arrays.asList("nation", "date", "status"));
+            sheet.setHeader(header);
+            for (Map.Entry<Integer, List<String[]>> entry : changesByNation.entrySet()) {
+                int nationId = entry.getKey();
+                DBNation nation = nationMap.get(nationId);
+                for (String[] change : entry.getValue()) {
+                    ArrayList<Object> row = new ArrayList<>();
+                    row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+                    row.add(change[0]);
+                    row.add(change[1]);
+                    sheet.addRow(row);
+                }
+            }
+            sheet.updateClearCurrentTab();
+            sheet.updateWrite();
+            sheet.attach(io.create(), "revenue").send();
+        } else {
+            StringBuilder file = new StringBuilder();
+            file.append("nation\tdate\tstatus\n");
+            for (Map.Entry<Integer, List<String[]>> entry : changesByNation.entrySet()) {
+                int nationId = entry.getKey();
+                DBNation nation = nationMap.get(nationId);
+                for (String[] change : entry.getValue()) {
+                    file.append(nation.getNation()).append("\t").append(change[0]).append("\t").append(change[1]).append("\n");
+                }
+            }
+            IMessageBuilder msg = io.create();
+            if (nations.size() == 1) {
+                msg.append(file.toString());
+            } else {
+                msg = msg.file("vm_history.txt", file.toString());
+            }
+            msg.send();
+        }
+        return null;
     }
 
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
