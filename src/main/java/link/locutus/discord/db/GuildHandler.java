@@ -1858,7 +1858,7 @@ public class GuildHandler {
                                     }
                                     if (faRole != null) {
                                         String enemyStr = "(Or mark as enemy " + CM.coalition.create.cmd.create(attacker.getAlliance_id() + "", "enemies") + ")";
-                                        tips.add("Please ping @\u200B" + faRole.getName() + " to get help negotiating peace. " + (attacker.al));
+                                        tips.add("Please ping @\u200B" + faRole.getName() + " to get help negotiating peace. " + (attacker.getAlliance_id() == 0 ? "" : enemyStr));
                                     }
                                     if (milcomRole != null) {
                                         tips.add("Please ping @\u200B" + milcomRole.getName() + " to get military advice");
