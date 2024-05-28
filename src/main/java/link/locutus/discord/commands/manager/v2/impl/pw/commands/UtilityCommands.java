@@ -76,12 +76,13 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.text.DateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -2250,6 +2251,7 @@ public class UtilityCommands {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
 
         DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        List<Long> validDays = parser.getDays(true, false);
         long today = TimeUtil.getDay();
 
         long finalMinDay = minDay;
@@ -2284,6 +2286,7 @@ public class UtilityCommands {
         });
 
         Map<Integer, List<String[]>> changesByNation = new LinkedHashMap<>();
+
         for (DBNation nation : nations) {
             long dayStart = TimeUtil.getDay(nation.getDate());
             long lastStatus = -1; // -1 indicates no previous status
@@ -2306,8 +2309,9 @@ public class UtilityCommands {
                         case 2 -> "VM";
                         default -> "UNKNOWN";
                     };
+                    long timeMs = TimeUtil.getTimeFromDay(day);
                     changesByNation.computeIfAbsent(nation.getNation_id(), k -> new ArrayList<>())
-                            .add(new String[]{new Date(TimeUtil.getTimeFromDay(day)).toString(), statusString});
+                            .add(new String[]{TimeUtil.DD_MM_YYYY.format(new Date(timeMs)), statusString});
                 }
                 lastStatus = currentStatus;
             }
