@@ -1857,22 +1857,20 @@ public class GuildHandler {
                                         tips.add("Deposit your excess money in the bank or it will be stolen: " + bankUrl + " (only $" + MathMan.format(unraidable) + " is unraidable)");
                                     }
                                     if (faRole != null) {
-                                        tips.add("Please ping @\u200B" + faRole.getName() + " to get help negotiating peace");
+                                        String enemyStr = "(Or mark as enemy " + CM.coalition.create.cmd.create(attacker.getAlliance_id() + "", "enemies") + ")";
+                                        tips.add("Please ping @\u200B" + faRole.getName() + " to get help negotiating peace. " + (attacker.getAlliance_id() == 0 ? "" : enemyStr));
                                     }
                                     if (milcomRole != null) {
                                         tips.add("Please ping @\u200B" + milcomRole.getName() + " to get military advice");
                                     }
                                 }
-                                Map<Integer, JavaCity> defCities = defender.getCityMap(false, false);
-                                if (attacker.getSoldiers() > defender.getSoldiers()) {
-                                    for (JavaCity value : defCities.values()) {
-                                        if (value.getBuilding(Buildings.BARRACKS) != 5) {
-                                            tips.add("Buy max barracks and soldiers (you may need to sell off some mines)");
-                                            break;
-                                        }
-                                    }
+                                if (defender.getMMRBuildingArr()[0] <= 4) {
+                                    tips.add("Buy max barracks and soldiers (you may need to sell off some mines)");
+                                } else if (defender.getSoldierPct() < 0.8) {
+                                    tips.add("Buy more soldiers to help defend yourself");
                                 }
                                 if (attacker.getShips() > 0 && defender.getShips() == 0 && defender.getAvg_infra() >= 1450 && defender.getAircraft() > attacker.getAircraft()) {
+                                    Map<Integer, JavaCity> defCities = defender.getCityMap(false, false);
                                     boolean hasDock = false;
                                     for (JavaCity value : defCities.values()) {
                                         if (value.getBuilding(Buildings.DRYDOCK) != 0) {
