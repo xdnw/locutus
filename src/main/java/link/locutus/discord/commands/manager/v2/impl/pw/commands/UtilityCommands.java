@@ -2340,7 +2340,13 @@ public class UtilityCommands {
                     file.append(nation.getNation()).append("\t").append(change[0]).append("\t").append(change[1]).append("\n");
                 }
             }
-            io.create().file("vm_history.txt", file.toString()).send();
+            IMessageBuilder msg = io.create();
+            if (nations.size() == 1) {
+                msg.append(file.toString());
+            } else {
+                msg = msg.file("vm_history.txt", file.toString());
+            }
+            msg.send();
         }
         return null;
     }
