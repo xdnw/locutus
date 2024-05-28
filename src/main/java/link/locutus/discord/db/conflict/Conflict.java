@@ -821,12 +821,12 @@ public class Conflict {
         if (!wikiConflict.getAnnouncement().isEmpty()) {
             Map<Integer, String> annByIds = getAnnouncementsById();
             Map<Integer, String> wikiAnnById = wikiConflict.getAnnouncementsById();
-            // delete old announcements
-            for (Map.Entry<Integer, String> entry : annByIds.entrySet()) {
-                if (!wikiAnnById.containsKey(entry.getKey())) {
-                    deleteAnnouncement(entry.getKey());
-                }
-            }
+//            // delete old announcements
+//            for (Map.Entry<Integer, String> entry : annByIds.entrySet()) {
+//                if (!wikiAnnById.containsKey(entry.getKey())) {
+//                    deleteAnnouncement(entry.getKey());
+//                }
+//            }
             for (Map.Entry<String, DBTopic> entry : wikiConflict.getAnnouncement().entrySet()) {
                 if (entry.getKey().equalsIgnoreCase(annByIds.get(entry.getValue().topic_id))) continue;
                 addAnnouncement(entry.getKey(), entry.getValue(), true);

@@ -243,6 +243,8 @@ public class GuildHandler {
         return nationsMovedRate;
     }
 
+    private Map<Long, Long> usersWithAppRole = new ConcurrentHashMap<>();
+
     public void onGuildMemberRoleAdd(GuildMemberRoleAddEvent event) {
         Guild guild = event.getGuild();
         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -253,8 +255,13 @@ public class GuildHandler {
         List<Role> roles = event.getRoles();
         Role appRole = Roles.APPLICANT.toRole(guild);
         if (!roles.contains(appRole)) return;
+        User user = event.getUser();
+        Long last = usersWithAppRole.get(user.getIdLong());
+        long now = System.currentTimeMillis();
+        if (last != null && now - last < TimeUnit.MINUTES.toMillis(5)) return;
+        usersWithAppRole.put(user.getIdLong(), now);
 
-        newApplicantOnDiscord(event.getUser());
+        newApplicantOnDiscord(user);
     }
 
     public void newApplicantOnDiscord(User author) {

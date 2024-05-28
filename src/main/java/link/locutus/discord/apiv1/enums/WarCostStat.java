@@ -81,7 +81,7 @@ public enum WarCostStat {
 
     public final BiFunction<Boolean, AbstractCursor, Double> getFunction(boolean excludeUnits, boolean excludeInfra, boolean excludeConsumption, boolean excludeLoot, boolean excludeBuildings) {
         if (unit != null) {
-            return (attacker, attack) -> (double) attack.getUnitLosses(unit(), !attacker);
+            return (attacker, attack) -> (double) attack.getUnitLosses(unit(), attacker);
         } else if (resource != null) {
             double[] rssBuffer = ResourceType.getBuffer();
             Arrays.fill(rssBuffer, 0);
