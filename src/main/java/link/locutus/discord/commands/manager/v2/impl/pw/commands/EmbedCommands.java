@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -1216,8 +1217,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 //        3. Spy blitz sheet (spyops coalition)
 //        4. Mail targets (spyops coalition)
 
-        String title = "Spy Sheets";
-
         String footer = "\n\n(do not spam)";
         if (outputChannel != null) {
             footer += "\n\n> Output in " + outputChannel.getAsMention();
@@ -1247,7 +1246,10 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 "{warpolicy}",
                 "={active_m}/60",
                 "{avg_daily_login}",
-                "'=\"{mmr}\"'"
+                "'=\"{mmr}\"'",
+                "{hasProject(" + Projects.INTELLIGENCE_AGENCY.name() + ")}",
+                "{hasProject(" + Projects.SPY_SATELLITE.name() + ")}",
+                "{hasProject(" + Projects.SURVEILLANCE_NETWORK.name() + ")}"
         ), " ");
 
         String spySheetId = spySheet != null ? spySheet.getSpreadsheetId() : SpreadSheet.create(db, SheetKey.SPYOP_SHEET).getSpreadsheetId();

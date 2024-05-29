@@ -12,7 +12,6 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
@@ -23,13 +22,9 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
-import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
-import link.locutus.discord.commands.manager.v2.impl.pw.SimpleNationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -657,16 +652,6 @@ public class PWBindings extends BindingHelper {
     @Binding
     public AlliancePlaceholders aa_placeholders() {
         return Locutus.imp().getCommandManager().getV2().getAlliancePlaceholders();
-    }
-
-    @Binding(examples = "{nation}", value = "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
-    public static NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
-        CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
-        NationPlaceholders placeholders = v2.getNationPlaceholders();
-        ParametricCallable ph = placeholders.get(input);
-        ph.validatePermissions(store, permisser);
-        TypedFunction<DBNation, ?> entry = placeholders.formatRecursively(store, input, null, 0, true);
-        return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getType(), entry);
     }
 
     @Binding(examples = {"25/25"}, value = "A tax rate in the form of `money/rss`")
