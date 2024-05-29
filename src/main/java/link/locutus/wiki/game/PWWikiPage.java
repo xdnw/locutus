@@ -280,7 +280,11 @@ public class PWWikiPage {
             Elements parents = link.parents();
             for (Element parent : parents) {
                 if (parent.tagName().equalsIgnoreCase("li")) {
-                    desc = parent.text();
+                    String parentText = parent.text();
+                    if (parentText.length() > 100 || parent.html().contains("navbox-subgroup")) {
+                        break;
+                    }
+                    desc = parentText;
                     break;
                 }
             }
