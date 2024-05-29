@@ -222,7 +222,8 @@ public class WebOptionBindings extends BindingHelper {
         });
     }
 //Report - locutus - report manager -> get reports
-
+//DBAlliancePosition
+    
 //NationOrAllianceOrGuild -> same as guild()
 //Conflict - locutus -> conflict manager -> conflicts
 //ParametricCallable -> CommandCallable
@@ -230,9 +231,9 @@ public class WebOptionBindings extends BindingHelper {
 
 
 //AGrantTemplate
-//GuildOrAlliance
+
 //Newsletter
-//DBAlliancePosition
+
 //GuildSetting
 //EmbeddingSource
 //GPTProvider
@@ -248,6 +249,7 @@ public class WebOptionBindings extends BindingHelper {
 //UserWrapper
 //Transaction2
 //TaxDeposit
+//GuildOrAlliance -> guild
 
     //unused
 //UUID

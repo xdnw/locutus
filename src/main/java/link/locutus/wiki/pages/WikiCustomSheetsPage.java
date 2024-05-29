@@ -106,12 +106,12 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 "Populate a sheet's tabs based on the first row column",
                 """
                 - Each tab can have 1 selection. See the list above for supported types
-                - Enter placeholders in the first row, for example, `{nation}` is a placeholder for a nation selection.
+                - Name the tab the selection type, colon, the selection e.g. `nation:Rose,#position>1`
+                ![Tab Selection](tab_selection.png)
+                - Enter placeholders in the first row, for example, `{nation}` is a placeholder for a nation type.
                 - Placeholders can be combined with formulas. 
                 - Use `$row` or `$column` to reference the current row or column
                 ![Column Placeholder](column_placeholders.png)
-                - The tab name **must** be the type, colon, followed by the comma-separated selection
-                ![Tab Selection](tab_selection.png)
                 
                 Run the command:
                 """,
