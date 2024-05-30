@@ -233,7 +233,6 @@ public class LoanManager {
     }
 
     public DBLoan getLoanById(int loanId) {
-        List<DBLoan> loans = new ArrayList<>();
         try (PreparedStatement stmt = db.prepareQuery("select * FROM LOANS where loan_id = ?")) {
             stmt.setInt(1, loanId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -265,5 +264,20 @@ public class LoanManager {
         Set<Long> senderIds = getIds(db);
         long receiverId = getId(receiver.getId(), receiver.isAlliance());
         return getLoansByGuildOrAA(senderIds, receiverId);
+    }
+
+    public List<DBLoan> getLoans() {
+        List<DBLoan> loans = new ArrayList<>();
+        try (PreparedStatement stmt = db.prepareQuery("select * FROM LOANS")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    loans.add(new DBLoan(rs));
+                }
+            }
+            return loans;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

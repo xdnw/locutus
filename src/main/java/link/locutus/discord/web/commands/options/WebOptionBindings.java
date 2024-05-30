@@ -16,7 +16,9 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.util.scheduler.TriFunction;
 import net.dv8tion.jda.api.entities.Guild;
@@ -205,24 +207,33 @@ public class WebOptionBindings extends BindingHelper {
     }
 
 //DBLoan - locutus -> loan manager -> getloans
+    @Binding(types = DBLoan.class)
+    public WebOption getDBLoan() {
+        return new WebOption(DBLoan.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            LoanManager loanUtil = Locutus.imp().getNationDB().getLoanManager();
+            for (DBLoan loan : loanUtil.getLoans()) {
+                data.add(Map.of(
+                        "key", String.valueOf(loan.loanId),
+                        "text", loan.getLineString(true, true)
+                ));
+            }
+            return data;
+        });
+    }
 //Report - locutus - report manager -> get reports
-
-
+//DBAlliancePosition
+    
 //NationOrAllianceOrGuild -> same as guild()
 //Conflict - locutus -> conflict manager -> conflicts
+//ParametricCallable -> CommandCallable
+//ICommand -> CommandCallable
 
 
-
-
-
-//ParametricCallable
-//ICommand
-//NationAttribute
-//NationPlaceholder
 //AGrantTemplate
-//GuildOrAlliance
+
 //Newsletter
-//DBAlliancePosition
+
 //GuildSetting
 //EmbeddingSource
 //GPTProvider
@@ -238,6 +249,7 @@ public class WebOptionBindings extends BindingHelper {
 //UserWrapper
 //Transaction2
 //TaxDeposit
+//GuildOrAlliance -> guild
 
     //unused
 //UUID
@@ -254,6 +266,7 @@ public class WebOptionBindings extends BindingHelper {
 //NationOrAlliance
 
 //defer
+    //NationAttribute
 
 //NationList -> Set<DBNation>
 //NationFilter -> defer Set<DBNation>

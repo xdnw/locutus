@@ -437,15 +437,6 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(Project::name).collect(Collectors.toList());
     }
 
-
-    @Autocomplete
-    @Binding(types={NationPlaceholder.class})
-    public List<String> NationPlaceholder(String input) {
-        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        List<String> options = new ArrayList<>(placeholders.getKeys());
-        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
-    }
-
     @Autocomplete
     @Binding(types={GuildSetting.class})
     public List<String> setting(String input) {
