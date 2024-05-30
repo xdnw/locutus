@@ -1182,7 +1182,6 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph comparing market values of two resource amounts by day")
-    @RolePermission(value = Roles.MEMBER)
     public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
                                              Map<ResourceType, Double> stockpile1,
                                              Map<ResourceType, Double> stockpile2,
@@ -1262,7 +1261,6 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average buy and sell trade price by day")
-    @RolePermission(value = Roles.MEMBER)
     public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
                                   List<ResourceType> resources,
                                   int numDays,
@@ -1321,7 +1319,6 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell margin by day")
-    @RolePermission(value = Roles.MEMBER)
     public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int numDays,
                                    @Arg("Use the margin percent instead of absolute difference")
                                    @Default("true") boolean percent,
@@ -1416,7 +1413,6 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day")
-    @RolePermission(value = Roles.MEMBER)
     public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
                                    @Range(min=1, max=300) int numDays,
                                    @Switch("j") boolean attachJson,
@@ -1428,7 +1424,6 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day")
-    @RolePermission(value = Roles.MEMBER)
     public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
                                   @Range(min=1, max=300) int numDays,
                                   @Switch("j") boolean attachJson,
@@ -1517,7 +1512,6 @@ public class TradeCommands {
     }
 
     @Command(desc = "List nations who have bought and sold the most of a resource over a period")
-    @RolePermission(value = Roles.MEMBER)
     public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db,
                              ResourceType type,
                              @Arg("Date to start from")

@@ -682,7 +682,6 @@ public class StatCommands {
     }
 
     @Command(desc = "View the percent times an alliance counters in-game wars")
-    @RolePermission(Roles.MEMBER)
     public String counterStats(@Me IMessageIO channel, DBAlliance alliance) {
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(alliance.getAlliance_id()));
 
@@ -2543,11 +2542,11 @@ public class StatCommands {
 
         String turnOrDayStr = hasTurn ? "turn" : "day";
         String title = (metrics.size() == 1 ? metrics.iterator().next() : "Game Stats") + " by " + turnOrDayStr;
-        String[] labels = metrics.stream().map(f -> f.name().toLowerCase().replace("_", " ")).toArray(String[]::new);
+        String[] labels = metricList.stream().map(f -> f.name().toLowerCase().replace("_", " ")).toArray(String[]::new);
         double[] buffer = new double[labels.length];
 
         long finalMinTurn = minTurn;
-        TimeNumericTable<Void> table = new TimeNumericTable<>(title, turnOrDayStr, "Radiation", labels) {
+        TimeNumericTable<Void> table = new TimeNumericTable<>(title, turnOrDayStr, "Resource", labels) {
             @Override
             public void add(long turn, Void ignore) {
                 int turnRelative = (int) (turn - finalMinTurn);
@@ -2557,9 +2556,6 @@ public class StatCommands {
                         double rads = turnData.getOrDefault(metricList.get(i), 0d);
                         buffer[i] = rads;
                     }
-                    double total = 0;
-                    for (double val : turnData.values()) total += val;
-                    buffer[buffer.length - 1] = total / 5d;
                 }
                 add(turnRelative, buffer);
             }

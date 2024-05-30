@@ -692,7 +692,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Days since joining the alliance")
-    @RolePermission(Roles.MEMBER)
     public double allianceSeniority() {
         long result = allianceSeniorityMs();
         if (result == 0 || result == Long.MAX_VALUE) return result;
@@ -700,7 +699,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Days since joining the alliance")
-    @RolePermission(Roles.MEMBER)
         public double allianceSeniorityApplicant() {
         long result = allianceSeniorityApplicantMs();
         if (result == 0 || result == Long.MAX_VALUE) return result;
@@ -708,7 +706,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    @RolePermission(Roles.MEMBER)
     public long allianceSeniorityNoneMs() {
         if (alliance_id != 0) return 0;
         long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
@@ -718,7 +715,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Milliseconds since joining the alliance")
-    @RolePermission(Roles.MEMBER)
     public long allianceSeniorityApplicantMs() {
         if (alliance_id == 0) return 0;
         long timestamp = Locutus.imp().getNationDB().getAllianceApplicantSeniorityTimestamp(this, getSnapshot());
@@ -728,7 +724,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Milliseconds since joining the alliance")
-    @RolePermission(Roles.MEMBER)
     public long allianceSeniorityMs() {
         if (alliance_id == 0) return 0;
         long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
@@ -875,7 +870,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Set of projects this nation has")
-    @RolePermission(Roles.MEMBER)
     public Set<Project> getProjects() {
         if (this.projects == -1) return Collections.EMPTY_SET;
 
@@ -3007,19 +3001,16 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "All time offensive wars involved in")
-    @RolePermission(Roles.MEMBER)
     public int getAllTimeOffensiveWars() {
         return (int) getWars().stream().filter(f -> f.getAttacker_id() == nation_id).count();
     }
 
     @Command(desc = "All time defensive wars involved in")
-    @RolePermission(Roles.MEMBER)
     public int getAllTimeDefensiveWars() {
         return (int) getWars().stream().filter(f -> f.getDefender_id() == nation_id).count();
     }
 
     @Command
-    @RolePermission(Roles.MEMBER)
     public Map.Entry<Integer, Integer> getAllTimeOffDefWars() {
         Set<DBWar> wars = getWars();
         int off = (int) wars.stream().filter(f -> f.getAttacker_id() == nation_id).count();
@@ -3028,7 +3019,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "All time wars involved in")
-    @RolePermission(Roles.MEMBER)
     public int getAllTimeWars() {
         return getWars().size();
     }

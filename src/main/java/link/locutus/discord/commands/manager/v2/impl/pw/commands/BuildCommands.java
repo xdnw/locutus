@@ -85,7 +85,6 @@ public class BuildCommands {
     }
 
     @Command(desc = "Print the current city builds being used by a nation")
-    @RolePermission(Roles.MEMBER)
     public String get(DBNation nation, @Me IMessageIO channel) throws Exception {
         return GetBuild.onCommand(nation, channel);
     }

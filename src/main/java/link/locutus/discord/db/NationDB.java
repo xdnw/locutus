@@ -3256,7 +3256,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     private Map<OrbisMetric, Map<Long, Double>> getMetrics(Collection<OrbisMetric> metrics, boolean isTurn, long start, long end) {
-        List<Integer> ids = metrics.stream().filter(f -> f.isTurn() == isTurn).map(Enum::ordinal).toList();
+        List<Integer> ids = new ArrayList<>(metrics.stream().filter(f -> f.isTurn() == isTurn).map(Enum::ordinal).toList());
+        if (isTurn) {
+            start = TimeUtil.getTurn(start);
+            end = end == Long.MAX_VALUE ? end : TimeUtil.getTurn(end);
+        } else {
+            start = TimeUtil.getDay(start);
+            end = end == Long.MAX_VALUE ? end : TimeUtil.getDay(end);
+        }
         if (ids.isEmpty()) return new HashMap<>();
         if (ids.size() == 1) {
             OrbisMetric metric = metrics.iterator().next();
@@ -3267,9 +3274,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         String turnOrDayCol = isTurn ? "turn" : "day";
         String query = "SELECT * FROM " + table + " WHERE metric in " + StringMan.getString(ids) + " AND " + turnOrDayCol + " >= ? AND " + turnOrDayCol + " <= ?";
         Map<OrbisMetric, Map<Long, Double>> result = new Object2ObjectOpenHashMap<>();
+        long finalStart = start;
+        long finalEnd = end;
         query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, start);
-            stmt.setLong(2, end);
+            stmt.setLong(1, finalStart);
+            stmt.setLong(2, finalEnd);
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 int metricId = rs.getInt("metric");
