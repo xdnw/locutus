@@ -205,7 +205,7 @@ public class WarCommands {
     public String beigeAlertRequiredStatus(@Me DBNation me, NationMeta.BeigeAlertRequiredStatus status) {
         me.setMeta(NationMeta.BEIGE_ALERT_REQUIRED_STATUS, (byte) status.ordinal());
         NationMeta.BeigeAlertMode mode = me.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
-        return "Set beige alert required status to " + status + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();;
+        return "Set beige alert required status to " + status + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();
     }
 
     @Command(desc = "List your current beige reminders", aliases = {"beigeReminders", "listBeigeReminders"})
