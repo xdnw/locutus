@@ -1823,7 +1823,7 @@ public class GuildKey {
                     "- active in the past 24h" +
                     "- Have a free offensive war slot\n" +
                     "- Have at least 70% of the target's military\n" +
-                    "- Are online, away, or DND on discord";
+                    "- Are online, away, or DND on discord, or have the `" + Roles.ENEMY_ALERT_OFFLINE.name() + "` role";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requiresCoalition(Coalition.ENEMIES).requireValidAlliance().requireActiveGuild());
     public static GuildSetting<EnemyAlertChannelMode> ENEMY_ALERT_CHANNEL_MODE = new GuildEnumSetting<EnemyAlertChannelMode>(GuildSettingCategory.BEIGE_ALERTS, EnemyAlertChannelMode.class) {

@@ -165,6 +165,38 @@ public class WarCommands {
         return response.toString();
     }
 
+    @Command(desc = "Set the types of nations to receive automatic beige alerts for", aliases = {"beigeAlertMode", "setBeigeAlertMode"})
+    @WhitelistPermission
+    @RolePermission(value = {Roles.BEIGE_ALERT, Roles.BEIGE_ALERT_OPT_OUT}, any = true)
+    @CoalitionPermission(Coalition.RAIDPERMS)
+    public String testBeigeAlertAuto(@Me GuildDB db, @Me DBNation me, @Me Member member) {
+        NationMeta.BeigeAlertMode mode = me.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
+        if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) {
+            return "Please enable via: " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention();
+        }
+        NationMeta.BeigeAlertRequiredStatus requiredStatus = me.getBeigeRequiredStatus(NationMeta.BeigeAlertRequiredStatus.ONLINE);
+        if (!requiredStatus.getApplies().test(member)) {
+            return "You are not online on discord. You can change this via: " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention();
+        }
+        Role role = Roles.BEIGE_ALERT.toRole(db);
+        Role optOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(db);
+        Set<Integer> allianceIds = db.getAllianceIds();
+        try {
+            LeavingBeigeAlert.testBeigeAlertAuto(db, member, role, optOut, allianceIds, true, false);
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
+        }
+        StringBuilder result = new StringBuilder();
+        result.append("**Result: Success**\n");
+        result.append("- require-role:").append(role == null ? "N/A" : role.getName()).append("=").append(member.getRoles().contains(role)).append("\n");
+        result.append("- optout:").append(optOut == null ? "N/A" : optOut.getName()).append("=").append(member.getRoles().contains(optOut)).append("\n");
+        result.append("- mode:").append(me.getBeigeAlertMode(null)).append(" (default:`NO_ALERTS`)\n");
+        result.append("- score-leway:").append(me.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY)).append(" (default:`0ns`)\n");
+        result.append("- required-loot:").append(me.getMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT)).append(" (default:`$15m`)\n");
+        result.append("- required-status:").append(requiredStatus.name()).append("(default:`ONLINE`)\n");
+        return result.toString();
+    }
+
     @Command(desc = "Only get the automatic beige alerts if you have the online status on discord\n" +
             "Note: You will still receive alerts for targets you have subscribed to via `{prefix}alerts beige beigereminders`",
             aliases = {"beigeAlertRequiredStatus", "setBeigeAlertRequiredStatus"})
@@ -172,6 +204,7 @@ public class WarCommands {
     @CoalitionPermission(Coalition.RAIDPERMS)
     public String beigeAlertRequiredStatus(@Me DBNation me, NationMeta.BeigeAlertRequiredStatus status) {
         me.setMeta(NationMeta.BEIGE_ALERT_REQUIRED_STATUS, (byte) status.ordinal());
+        NationMeta.BeigeAlertMode mode = me.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
         return "Set beige alert required status to " + status;
     }
 
