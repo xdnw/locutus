@@ -232,7 +232,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc ="Generate a google sheet of tax revenue for a list of nations")
-    @RolePermission(Roles.MEMBER)
+    @RolePermission(value = {Roles.ECON_STAFF, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
     public String taxRevenueSheet(@Me IMessageIO io, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("f") boolean forceUpdate,
                                   @Arg("Include the potential revenue of untaxable nations\n" +

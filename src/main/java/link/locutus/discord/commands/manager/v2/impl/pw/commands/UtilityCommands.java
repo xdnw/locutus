@@ -301,108 +301,107 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "See who was online at the time of a spy op (UTC)")
-    @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
-    public String findSpyOp(@Me DBNation me, String times, int defenderSpies, @Default DBNation defender) {
-        if (defender == null) defender = me;
-
-        Set<Integer> ids = new HashSet<>();
-        Map<DBSpyUpdate, Long> updatesTmp = new HashMap<>();
-        long interval = TimeUnit.MINUTES.toMillis(3);
-
-        for (String timeStr : times.split(",")) {
-            long timestamp = TimeUtil.parseDate(TimeUtil.MMDD_HH_MM_A, timeStr, true);
-            List<DBSpyUpdate> updates = Locutus.imp().getNationDB().getSpyActivity(timestamp, interval);
-            for (DBSpyUpdate update : updates) {
-//                nations.put(update.nation_id, nations.getOrDefault(update.nation_id, 0) + 1);
-                DBNation nation = DBNation.getById(update.nation_id);
-                if (nation == null) continue;
-                if (!defender.isInSpyRange(nation)) continue;
-
-                if (ids.contains(update.nation_id)) continue;
-                ids.add(update.nation_id);
-                updatesTmp.put(update, Math.abs(timestamp - update.timestamp));
-
-            }
-        }
-
-        if (updatesTmp.isEmpty()) return "No results (0)";
-
-        Map<DBNation, Map.Entry<Double, String>> allOdds = new HashMap<>();
-
-        for (Map.Entry<DBSpyUpdate, Long> entry : updatesTmp.entrySet()) {
-            DBSpyUpdate update = entry.getKey();
-            long diff = entry.getValue();
-//            if (update.spies <= 0) continue;
-//            if (update.change == 0) continue;
-
-            DBNation attacker = Locutus.imp().getNationDB().getNation(update.nation_id);
-            if (attacker == null || (defender != null && !attacker.isInSpyRange(defender)) || attacker.getNation_id() == defender.getNation_id()) continue;
-
-            int spiesUsed = update.spies;
-
-
-            int safety = 3;
-            int uncertainty = -1;
-            boolean foundOp = false;
-            boolean spySatellite = Projects.SPY_SATELLITE.hasBit(update.projects);
-            boolean intelligence = Projects.INTELLIGENCE_AGENCY.hasBit(update.projects);
-
-            if (spiesUsed == -1) spiesUsed = attacker.getSpies();
-
-            double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, SpyCount.Operation.SPIES, defender);
-            if (spySatellite) odds = Math.min(100, odds * 1.2);
-//            if (odds < 10) continue;
-
-            double ratio = odds;
-
-            int numOps = (int) Math.ceil((double) spiesUsed / attacker.getSpies());
-
-            if (!foundOp) {
-                ratio -= ratio * 0.1 * Math.abs((double) diff / interval);
-
-                ratio *= 0.1;
-
-                if (attacker.getPosition() <= 1) ratio *= 0.1;
-            } else {
-                ratio -= 0.1 * ratio * uncertainty;
-
-                if (attacker.getPosition() <= 1) ratio *= 0.5;
-            }
-
-            StringBuilder message = new StringBuilder();
-
-            if (foundOp) message.append("**");
-            message.append(MathMan.format(odds) + "%");
-            if (spySatellite) message.append(" | SAT");
-            if (intelligence) message.append(" | IA");
-            message.append(" | " + spiesUsed + "? spies (" + safety + ")");
-            long diff_m = Math.abs(diff / TimeUnit.MINUTES.toMillis(1));
-            message.append(" | " + diff_m + "m");
-            if (foundOp) message.append("**");
-
-            allOdds.put(attacker, new AbstractMap.SimpleEntry<>(ratio, message.toString()));
-        }
-
-        List<Map.Entry<DBNation, Map.Entry<Double, String>>> sorted = new ArrayList<>(allOdds.entrySet());
-        sorted.sort((o1, o2) -> Double.compare(o2.getValue().getKey(), o1.getValue().getKey()));
-
-        if (sorted.isEmpty()) {
-            return "No results";
-        }
-
-        StringBuilder response = new StringBuilder();
-        for (Map.Entry<DBNation, Map.Entry<Double, String>> entry : sorted) {
-            DBNation att = entry.getKey();
-
-            response.append(att.getNation() + " | " + att.getAllianceName() + "\n");
-            response.append(entry.getValue().getValue()).append("\n\n");
-        }
-
-        return response.toString();
-
-    }
+//    @Command(desc = "See who was online at the time of a spy op (UTC)")
+//    @RolePermission(Roles.MEMBER)
+//    @WhitelistPermission
+//    public String findSpyOp(@Me DBNation me, String times, int defenderSpies, @Default DBNation defender) {
+//        if (defender == null) defender = me;
+//
+//        Set<Integer> ids = new HashSet<>();
+//        Map<DBSpyUpdate, Long> updatesTmp = new HashMap<>();
+//        long interval = TimeUnit.MINUTES.toMillis(3);
+//
+//        for (String timeStr : times.split(",")) {
+//            long timestamp = TimeUtil.parseDate(TimeUtil.MMDD_HH_MM_A, timeStr, true);
+//            List<DBSpyUpdate> updates = Locutus.imp().getNationDB().getSpyActivity(timestamp, interval);
+//            for (DBSpyUpdate update : updates) {
+////                nations.put(update.nation_id, nations.getOrDefault(update.nation_id, 0) + 1);
+//                DBNation nation = DBNation.getById(update.nation_id);
+//                if (nation == null) continue;
+//                if (!defender.isInSpyRange(nation)) continue;
+//
+//                if (ids.contains(update.nation_id)) continue;
+//                ids.add(update.nation_id);
+//                updatesTmp.put(update, Math.abs(timestamp - update.timestamp));
+//
+//            }
+//        }
+//
+//        if (updatesTmp.isEmpty()) return "No results (0)";
+//
+//        Map<DBNation, Map.Entry<Double, String>> allOdds = new HashMap<>();
+//
+//        for (Map.Entry<DBSpyUpdate, Long> entry : updatesTmp.entrySet()) {
+//            DBSpyUpdate update = entry.getKey();
+//            long diff = entry.getValue();
+////            if (update.spies <= 0) continue;
+////            if (update.change == 0) continue;
+//
+//            DBNation attacker = Locutus.imp().getNationDB().getNation(update.nation_id);
+//            if (attacker == null || (defender != null && !attacker.isInSpyRange(defender)) || attacker.getNation_id() == defender.getNation_id()) continue;
+//
+//            int spiesUsed = update.spies;
+//
+//
+//            int safety = 3;
+//            int uncertainty = -1;
+//            boolean foundOp = false;
+//            boolean spySatellite = Projects.SPY_SATELLITE.hasBit(update.projects);
+//            boolean intelligence = Projects.INTELLIGENCE_AGENCY.hasBit(update.projects);
+//
+//            if (spiesUsed == -1) spiesUsed = attacker.getSpies();
+//
+//            double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, SpyCount.Operation.SPIES, defender);
+//            if (spySatellite) odds = Math.min(100, odds * 1.2);
+////            if (odds < 10) continue;
+//
+//            double ratio = odds;
+//
+//            int numOps = (int) Math.ceil((double) spiesUsed / attacker.getSpies());
+//
+//            if (!foundOp) {
+//                ratio -= ratio * 0.1 * Math.abs((double) diff / interval);
+//
+//                ratio *= 0.1;
+//
+//                if (attacker.getPosition() <= 1) ratio *= 0.1;
+//            } else {
+//                ratio -= 0.1 * ratio * uncertainty;
+//
+//                if (attacker.getPosition() <= 1) ratio *= 0.5;
+//            }
+//
+//            StringBuilder message = new StringBuilder();
+//
+//            if (foundOp) message.append("**");
+//            message.append(MathMan.format(odds) + "%");
+//            if (spySatellite) message.append(" | SAT");
+//            if (intelligence) message.append(" | IA");
+//            message.append(" | " + spiesUsed + "? spies (" + safety + ")");
+//            long diff_m = Math.abs(diff / TimeUnit.MINUTES.toMillis(1));
+//            message.append(" | " + diff_m + "m");
+//            if (foundOp) message.append("**");
+//
+//            allOdds.put(attacker, new AbstractMap.SimpleEntry<>(ratio, message.toString()));
+//        }
+//
+//        List<Map.Entry<DBNation, Map.Entry<Double, String>>> sorted = new ArrayList<>(allOdds.entrySet());
+//        sorted.sort((o1, o2) -> Double.compare(o2.getValue().getKey(), o1.getValue().getKey()));
+//
+//        if (sorted.isEmpty()) {
+//            return "No results";
+//        }
+//
+//        StringBuilder response = new StringBuilder();
+//        for (Map.Entry<DBNation, Map.Entry<Double, String>> entry : sorted) {
+//            DBNation att = entry.getKey();
+//
+//            response.append(att.getNation() + " | " + att.getAllianceName() + "\n");
+//            response.append(entry.getValue().getValue()).append("\n\n");
+//        }
+//
+//        return response.toString();
+//    }
 
     @Command
     @RolePermission(value = {Roles.ADMIN}, root = true)
@@ -1014,7 +1013,6 @@ public class UtilityCommands {
 
     @Command(desc = "Get nation or bank loot history\n" +
             "Shows how much you will receive if you defeat a nation")
-    @RolePermission(Roles.MEMBER)
     public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance,
                               @Arg("Score of the defeated nation\n" +
                                       "i.e. For determining bank loot percent")
