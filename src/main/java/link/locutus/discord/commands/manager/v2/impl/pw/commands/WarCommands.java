@@ -165,7 +165,7 @@ public class WarCommands {
         return response.toString() + "\n\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();
     }
 
-    @Command(desc = "Set the types of nations to receive automatic beige alerts for", aliases = {"beigeAlertMode", "setBeigeAlertMode"})
+    @Command(desc = "View and test that the current automatic beige alert settings allow for notification")
     @WhitelistPermission
     @RolePermission(value = {Roles.BEIGE_ALERT, Roles.BEIGE_ALERT_OPT_OUT}, any = true)
     @CoalitionPermission(Coalition.RAIDPERMS)
