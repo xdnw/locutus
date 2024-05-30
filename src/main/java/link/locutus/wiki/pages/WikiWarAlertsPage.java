@@ -87,6 +87,7 @@ public class WikiWarAlertsPage extends BotWikiGen {
             commandMarkdownSpoiler(CM.settings_beige_alerts.BEIGE_ALERT_CHANNEL.cmd, true),
             ///alerts beige beigeAlertMode
             commandMarkdownSpoiler(CM.alerts.beige.beigeAlertOptOut.cmd, true),
+            commandMarkdownSpoiler(CM.alerts.beige.test_auto.cmd, true),
             commandMarkdownSpoiler(CM.alerts.beige.beigeAlertMode.cmd, true),
             commandMarkdownSpoiler(CM.alerts.beige.beigeAlert.cmd, true),
             commandMarkdownSpoiler(CM.alerts.beige.beigeAlertRequiredLoot.cmd, true),

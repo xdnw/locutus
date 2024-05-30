@@ -119,7 +119,7 @@ public class WarCommands {
     public String setBeigeAlertScoreLeeway(@Me DBNation me,
                                            @Range(min=0) double scoreLeeway) {
         me.setMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY, scoreLeeway);
-        return "Set beige alert score leeway to " + MathMan.format(scoreLeeway) + "ns";
+        return "Set beige alert score leeway to " + MathMan.format(scoreLeeway) + "ns" + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();;
     }
 
     @Command(desc = "Set the required amount of loot for automatic beige alerts\n" +
@@ -131,7 +131,7 @@ public class WarCommands {
                                                  "Resources are valued at weekly market average prices")
                                          double requiredLoot) {
         me.setMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT, requiredLoot);
-        return "Set beige alert required loot to $" + MathMan.format(requiredLoot);
+        return "Set beige alert required loot to $" + MathMan.format(requiredLoot) + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();
     }
 
     @Command(desc = "Set the types of nations to receive automatic beige alerts for", aliases = {"beigeAlertMode", "setBeigeAlertMode"})
@@ -162,7 +162,7 @@ public class WarCommands {
                 }
             }
         }
-        return response.toString();
+        return response.toString() + "\n\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();
     }
 
     @Command(desc = "Set the types of nations to receive automatic beige alerts for", aliases = {"beigeAlertMode", "setBeigeAlertMode"})
@@ -205,7 +205,7 @@ public class WarCommands {
     public String beigeAlertRequiredStatus(@Me DBNation me, NationMeta.BeigeAlertRequiredStatus status) {
         me.setMeta(NationMeta.BEIGE_ALERT_REQUIRED_STATUS, (byte) status.ordinal());
         NationMeta.BeigeAlertMode mode = me.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
-        return "Set beige alert required status to " + status;
+        return "Set beige alert required status to " + status + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();;
     }
 
     @Command(desc = "List your current beige reminders", aliases = {"beigeReminders", "listBeigeReminders"})
