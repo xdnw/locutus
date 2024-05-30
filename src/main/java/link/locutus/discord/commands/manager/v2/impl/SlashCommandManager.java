@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -133,13 +134,13 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     private Set<String> generateEphemeral(CommandGroup group) {
-        Set<String> ephemeral = new HashSet<>();
+        Set<String> ephemeral = new ObjectOpenHashSet<>();
         for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
             if (cmd.getAnnotation(Ephemeral.class) != null) {
                 ephemeral.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
         }
-
+        return ephemeral;
     }
 
     public static Collection<ChannelType> getChannelType(Type type) {

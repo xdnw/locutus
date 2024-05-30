@@ -119,7 +119,7 @@ public class WarCommands {
     public String setBeigeAlertScoreLeeway(@Me DBNation me,
                                            @Range(min=0) double scoreLeeway) {
         me.setMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY, scoreLeeway);
-        return "Set beige alert score leeway to " + MathMan.format(scoreLeeway) + "ns" + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();;
+        return "Set beige alert score leeway to " + MathMan.format(scoreLeeway) + "ns" + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();
     }
 
     @Command(desc = "Set the required amount of loot for automatic beige alerts\n" +
