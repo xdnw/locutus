@@ -317,7 +317,7 @@ public class DataFile<T, H extends DataHeader<T>> {
             Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
             for (ColumnInfo<T, Object> column : requiredColumns) {
                 if (column.getIndex() == -1) {
-                    throw new IllegalArgumentException("Required column `" + column + "` is missing in " + filePart);
+                    throw new IllegalArgumentException("Required column `" + column.getName() + "` is missing in " + filePart);
                 }
                 presetAndSpecified.add(column);
             }

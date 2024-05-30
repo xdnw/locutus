@@ -108,7 +108,6 @@ public class LeavingBeigeAlert {
             return false;
         }
 
-
         double loot = lootEstimateByNation.computeIfAbsent(target, f -> f.lootTotal());
         if (requiredLoot > 0) {
             if (loot < requiredLoot) {

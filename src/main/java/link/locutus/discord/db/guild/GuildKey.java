@@ -1816,7 +1816,14 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "The #channel to receive alerts when an enemy nation leaves beige";
+            return "The #channel to receive alerts when an enemy nation leaves beige\n" +
+                    "Requirements for receiving alerts:\n" +
+                    "- Must have the `" + Roles.BEIGE_ALERT.name() + "` or `" + Roles.ENEMY_ALERT_OFFLINE.name() + "` role\n" +
+                    "- Be in range (score)\n" +
+                    "- active in the past 24h" +
+                    "- Have a free offensive war slot\n" +
+                    "- Have at least 70% of the target's military\n" +
+                    "- Are online, away, or DND on discord";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requiresCoalition(Coalition.ENEMIES).requireValidAlliance().requireActiveGuild());
     public static GuildSetting<EnemyAlertChannelMode> ENEMY_ALERT_CHANNEL_MODE = new GuildEnumSetting<EnemyAlertChannelMode>(GuildSettingCategory.BEIGE_ALERTS, EnemyAlertChannelMode.class) {

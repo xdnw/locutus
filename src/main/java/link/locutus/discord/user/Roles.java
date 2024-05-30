@@ -146,6 +146,8 @@ public enum Roles {
 
     ESPIONAGE_ALERTS(41, "Role to receive pings when an alliance member gets spied", GuildKey.DEFENSE_WAR_CHANNEL),
 
+    ENEMY_ALERT_OFFLINE(42, "Able to receive enemy alerts when offline or invisible on discord (unless opt out, or player setting overrides)", GuildKey.BEIGE_ALERT_CHANNEL),
+
 
     ;
 

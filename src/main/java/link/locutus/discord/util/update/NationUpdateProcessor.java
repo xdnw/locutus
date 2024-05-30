@@ -53,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -438,6 +437,12 @@ public class NationUpdateProcessor {
 
                     Guild guild = guildDB.getGuild();
                     Role bountyRole = Roles.BEIGE_ALERT.toRole(guild);
+                    Role bountyRoleOffline = Roles.ENEMY_ALERT_OFFLINE.toRole(guild);
+                    boolean checkDiscord = true;
+                    if (bountyRole == null) {
+                        bountyRole = bountyRoleOffline;
+                        checkDiscord = false;
+                    }
                     if (bountyRole == null) {
                         msg.send();
                         return;
@@ -461,8 +466,11 @@ public class NationUpdateProcessor {
                             if (attacker == null) continue;
 
                             OnlineStatus status = member.getOnlineStatus();
-                            if (attacker.active_m() > 15 && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE))
-                                continue;
+                            if (attacker.active_m() > 15 && checkDiscord && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE)) {
+                                if (bountyRoleOffline == null || !member.getRoles().contains(bountyRoleOffline)) {
+                                    continue;
+                                }
+                            }
                             if (optOut != null && member.getRoles().contains(optOut)) continue;
 
                             if (/* attacker.active_m() > 1440 || */attacker.getDef() >= 3 || attacker.getVm_turns() != 0 || attacker.isBeige())
