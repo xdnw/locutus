@@ -154,7 +154,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = CommandCallable.class)
     public WebOption getCommandCallable() {
         List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
-        return new WebOption(CommandCallable.class).setOptions((List<String>) options.stream().map(f -> f.getFullPath()));
+        return new WebOption(CommandCallable.class).setOptions(options.stream().map(f -> f.getFullPath()).toList());
     }
 //MessageChannel - just return textChannel()
     @Binding(types = MessageChannel.class)
@@ -222,8 +222,6 @@ public class WebOptionBindings extends BindingHelper {
         });
     }
 //Report - locutus - report manager -> get reports
-//DBAlliancePosition
-    
 //NationOrAllianceOrGuild -> same as guild()
 //Conflict - locutus -> conflict manager -> conflicts
 //ParametricCallable -> CommandCallable
@@ -280,6 +278,7 @@ public class WebOptionBindings extends BindingHelper {
 //MMRInt
 //MMRDouble
 //MMRMatcher
+//DBAlliancePosition
 
 //
 // compound
