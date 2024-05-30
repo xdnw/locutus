@@ -188,12 +188,12 @@ public class WarCommands {
         }
         StringBuilder result = new StringBuilder();
         result.append("**Result: Success**\n");
-        result.append("- require-role:").append(role == null ? "N/A" : role.getName()).append("=").append(member.getRoles().contains(role)).append("\n");
-        result.append("- optout:").append(optOut == null ? "N/A" : optOut.getName()).append("=").append(member.getRoles().contains(optOut)).append("\n");
-        result.append("- mode:").append(me.getBeigeAlertMode(null)).append(" (default:`NO_ALERTS`)\n");
-        result.append("- score-leway:").append(me.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY)).append(" (default:`0ns`)\n");
-        result.append("- required-loot:").append(me.getMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT)).append(" (default:`$15m`)\n");
-        result.append("- required-status:").append(requiredStatus.name()).append("(default:`ONLINE`)\n");
+        result.append("- require-role:`").append(role == null ? "N/A" : role.getName()).append("`=").append(member.getRoles().contains(role)).append("\n");
+        result.append("- optout:`").append(optOut == null ? "N/A" : optOut.getName()).append("`=").append(member.getRoles().contains(optOut)).append("\n");
+        result.append("- mode:`").append(me.getBeigeAlertMode(null)).append("` (default:`NO_ALERTS`)\n");
+        result.append("- score-leway:`").append(me.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY)).append("` (default:`0ns`)\n");
+        result.append("- required-loot:`").append(me.getMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT)).append("` (default:`$15m`)\n");
+        result.append("- required-status:`").append(requiredStatus.name()).append("` (default:`ONLINE`)\n");
         return result.toString();
     }
 
