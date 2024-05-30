@@ -529,6 +529,7 @@ public class UnsortedCommands {
     @Command(desc="Set your api and bot key for the bot\n" +
             "Your API key can be found on the account page: <https://politicsandwar.com/account/>\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
+    @Ephemeral
     public String addApiKey(@Me IMessageIO io, @Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
         apiKey = apiKey.trim();
         // check if string is HEX (case insensitive)
@@ -556,6 +557,7 @@ public class UnsortedCommands {
     @Command(desc="Login to allow the bot to run scripts through your account\n" +
             "(Avoid using this if possible)")
     @CmdAlliancePermission(AlliancePermission.WITHDRAW_BANK)
+    @Ephemeral
     public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me,
                                @Arg("Your username (i.e. email) for Politics And War")
                                String username,

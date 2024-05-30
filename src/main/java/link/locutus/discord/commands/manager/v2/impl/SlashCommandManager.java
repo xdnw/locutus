@@ -122,12 +122,24 @@ public class SlashCommandManager extends ListenerAdapter {
     private final CommandManager2 commands;
     private final Map<String, Long> commandIds = new HashMap<>();
     private final Set<Key> bindingKeys = new HashSet<>();
+    private Set<String> ephemeral;
 
     private Map<ParametricCallable, String> commandNames = new HashMap<>();
 
     public SlashCommandManager(Locutus locutus) {
         this.root = locutus;
         this.commands = root.getCommandManager().getV2();
+        this.ephemeral = generateEphemeral(commands.getCommands());
+    }
+
+    private Set<String> generateEphemeral(CommandGroup group) {
+        Set<String> ephemeral = new HashSet<>();
+        for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
+            if (cmd.getAnnotation(Ephemeral.class) != null) {
+                ephemeral.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
+            }
+        }
+
     }
 
     public static Collection<ChannelType> getChannelType(Type type) {
@@ -694,7 +706,8 @@ public class SlashCommandManager extends ListenerAdapter {
             String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
                 isModal = false;
-                if (path.equalsIgnoreCase("announcement view")) {
+                System.out.println("Path " + path);
+                if (ephemeral.contains(path)) {
                     RateLimitUtil.complete(event.deferReply(true));
                     hook.setEphemeral(true);
                 } else {
@@ -708,8 +721,6 @@ public class SlashCommandManager extends ListenerAdapter {
             for (OptionMapping option : options) {
                 combined.put(option.getName(), option.getAsString());
             }
-
-            System.out.println("Path: " + path + " | values=" + combined);
 
             DiscordHookIO io = new DiscordHookIO(hook, event);
             if (isModal) {

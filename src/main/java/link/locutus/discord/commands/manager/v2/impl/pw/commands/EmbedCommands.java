@@ -499,7 +499,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null, null);
             CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
             CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null, null, null, null, null, null);
-            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
             CM.trade.price tradeprice = CM.trade.price.cmd.create();
             CM.trade.margin trademargin = CM.trade.margin.cmd.create(null);
             CM.trade.profit tradeprofit = CM.trade.profit.cmd.create("{nation_id}", "7d");

@@ -218,6 +218,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
+        @Ephemeral
         public String register_openai_key(@Me GuildDB db, @Me User user, String apiKey) {
             return OPENAI_KEY.set(db, user, apiKey);
         }
@@ -394,6 +395,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
+        @Ephemeral
         public String registerApiKey(@Me GuildDB db, @Me User user, @TextArea(',') List<String> apiKeys) {
             List<String> existing = API_KEY.getOrNull(db);
             existing = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
