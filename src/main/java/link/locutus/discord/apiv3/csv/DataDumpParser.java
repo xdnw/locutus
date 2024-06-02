@@ -3,6 +3,7 @@ package link.locutus.discord.apiv3.csv;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.DataFile;
@@ -40,53 +41,9 @@ public class DataDumpParser {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         DataDumpParser parser = new DataDumpParser().load();
         System.out.println("Loaded");
-        Map<Long, Integer> citiesByDay = new LinkedHashMap<>();
-        Map<Long, Integer> nonGray = new LinkedHashMap<>();
-        Map<Integer, Integer> lastBeigeTurns = new LinkedHashMap<>();
-        parser.iterateAll(f -> true, (h, r) -> r.required(h.cities, h.color, h.nation_id).optional(h.vm_turns, h.beige_turns_remaining), null, new BiConsumer<Long, NationHeader>() {
-            private long timestampFromDay;
-            private long lastDay = -1;
-
-            @Override
-            public void accept(Long day, NationHeader header) {
-                Integer vmTurns = header.vm_turns.get();
-                if (vmTurns != null && vmTurns > 0) {
-                    return;
-                }
-                int cities = header.cities.get();
-                citiesByDay.merge(day, cities, Integer::sum);
-                Integer beigeTurns = header.beige_turns_remaining.get();
-                if (beigeTurns == null) return;
-
-                NationColor color = header.color.get();
-                if (color != NationColor.GRAY) {
-                    if (color == NationColor.BEIGE) {
-                        int natId = header.nation_id.get();
-                        int lastBeige = lastBeigeTurns.getOrDefault(natId, 0);
-                        if (beigeTurns == lastBeige) return;
-                        lastBeigeTurns.put(natId, beigeTurns);
-                    }
-                    nonGray.merge(day, cities, Integer::sum);
-                }
-            }
-        }, null, new Consumer<Long>() {
-            @Override
-            public void accept(Long aLong) {
-                System.out.println("Day " + aLong);
-            }
-        });
-
-        for (Map.Entry<Long, Integer> entry : citiesByDay.entrySet()) {
-            long day = entry.getKey();
-            int nonGrayCities = nonGray.getOrDefault(day, 0);
-            Date date = new Date(TimeUtil.getTimeFromDay(day));
-            String dateStr = TimeUtil.DD_MM_YYYY.format(date);
-            System.out.println(dateStr + "\t" + entry.getValue() + "\t" + nonGrayCities);
-        }
 
         System.out.println("Done!");
         System.exit(1);
-
     }
 
     private Map<Long, NationsFile> nationFilesByDay;
