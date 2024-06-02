@@ -206,11 +206,11 @@ dependencies {
     implementation 'gg.acai:chatgpt-java:1.0.2'
     implementation platform("ai.djl:bom:0.22.1")
     implementation "ai.djl:api:0.22.1"
-    runtimeOnly "ai.djl.pytorch:pytorch-engine:0.22.1"
-    runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.22.1"
-    implementation "ai.djl.huggingface:tokenizers:0.22.1"
-//    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu118:2.0.0:win-x86_64'
-    runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.0.0-0.22.1'
+    runtimeOnly "ai.djl.pytorch:pytorch-engine:0.28.0"
+    runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.28.0"
+    implementation "ai.djl.huggingface:tokenizers:0.28.0"
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu121:2.2.2:win-x86_64'
+    runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.2.2-0.28.0'
 //    implementation 'net.sourceforge.tess4j:tess4j:4.5.1'
     implementation 'org.bytedeco:javacv:1.5.6'
     implementation 'cn.easyproject:easyocr:3.0.4-RELEASE'

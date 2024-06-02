@@ -32,6 +32,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
+import java.util.List;
 
 public class PlayerSettingCommands {
 
@@ -127,8 +128,15 @@ public class PlayerSettingCommands {
     public String auditAlertOptOut(@Me Member member, @Me DBNation me, @Me Guild guild, @Me GuildDB db) {
         Role role = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
         if (role == null) {
-            role = RateLimitUtil.complete(guild.createRole().setName(Roles.AUDIT_ALERT_OPT_OUT.name()));
-            db.addRole(Roles.AUDIT_ALERT_OPT_OUT, role, 0);
+            // find role by name
+            List<Role> roles = db.getGuild().getRolesByName(Roles.AUDIT_ALERT_OPT_OUT.name(), true);
+            if (!roles.isEmpty()) {
+                role = roles.get(0);
+                db.addRole(Roles.AUDIT_ALERT_OPT_OUT, role, 0);
+            } else {
+                role = RateLimitUtil.complete(guild.createRole().setName(Roles.AUDIT_ALERT_OPT_OUT.name()));
+                db.addRole(Roles.AUDIT_ALERT_OPT_OUT, role, 0);
+            }
         }
         RateLimitUtil.queue(guild.addRoleToMember(member, role));
         return "Opted out of audit alerts";
