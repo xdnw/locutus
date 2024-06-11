@@ -4,6 +4,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.MethodParser;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
@@ -257,6 +258,7 @@ Message: `$who Rose -l`
         for (Map.Entry<Key, Parser> entry : parsersList) {
             Parser parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;
+            if (parser.getKey().getAnnotation(Autocomplete.class) != null) continue;
             result.append("## " + parser.getNameDescriptionAndExamples(true, true,false, true));
             result.append("---\n");
         }
