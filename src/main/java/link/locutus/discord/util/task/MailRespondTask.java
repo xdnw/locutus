@@ -45,7 +45,7 @@ public class MailRespondTask implements Callable<String> {
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + convoid;
                 String msgResponse = auth.readStringFromURL(PagePriority.MAIL_REPLY, url, msgPost);
                 if (msgResponse.contains("You have successfully sent a message.")) {
-                    return "Message sent to " + leader + "! (check your out folder)";
+                    return "Message sent to " + leader + "! (check your out folder)\n```md\n" + message + "\n```";
                 } else if (msgResponse.contains("because they are less than 3 minutes old. Please give new players some time to catch their")) {
                     Locutus.imp().getCommandManager().getExecutor().schedule(CaughtRunnable.wrap(() -> {
                         String result = MailRespondTask.this.call();

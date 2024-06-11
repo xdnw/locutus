@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -34,8 +35,8 @@ public class ParameterData {
         }
         ArgChoice choiceAnn = getAnnotation(ArgChoice.class);
         if (choiceAnn != null) {
-            JsonObject choices = new JsonObject();
-            for (String choice : choiceAnn.value()) choices.addProperty(choice, choice);
+            JsonArray choices = new JsonArray();
+            for (String choice : choiceAnn.value()) choices.add(choice);
             arg.add("choices", choices);
         }
         Range range = getAnnotation(Range.class);

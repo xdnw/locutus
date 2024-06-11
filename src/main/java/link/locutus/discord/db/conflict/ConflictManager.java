@@ -109,12 +109,8 @@ public class ConflictManager {
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
-        db.executeStmt("DROP TABLE legacy_names");
-//        db.executeStmt("DELETE FROM conflicts");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        // drop conflict_graphs
-        db.executeStmt("DROP TABLE conflict_graphs");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS source_sets (guild BIGINT NOT NULL, source_id BIGINT NOT NULL, source_type INT NOT NULL, PRIMARY KEY (guild, source_id, source_type))");
 
@@ -419,8 +415,10 @@ public class ConflictManager {
                     }
                 }
             }
-            for (int aaId : conflict.getAllianceIds()) {
-                activeConflictOrdByAllianceId.computeIfAbsent(aaId, k -> new IntArraySet()).add(conflict.getOrdinal());
+            if (conflict.isActive()) {
+                for (int aaId : conflict.getAllianceIds()) {
+                    activeConflictOrdByAllianceId.computeIfAbsent(aaId, k -> new IntArraySet()).add(conflict.getOrdinal());
+                }
             }
             addAllianceTurn(conflict, conflict.getStartTurn(), Math.min(TimeUtil.getTurn(), conflict.getEndTurn()));
         }

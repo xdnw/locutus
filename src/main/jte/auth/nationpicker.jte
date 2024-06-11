@@ -18,7 +18,6 @@
     <div class="container-flex rounded shadow bg-lightp-1">
     <h3>Select your nation</h3>
     <input class="form-control form-control-sm" id="nationpicker" type="text" placeholder="Search..">
-
     <div class="clusterize">
         <table class="table" style="background-color:#fff;color:#333">
             <thead>

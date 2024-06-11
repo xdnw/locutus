@@ -393,7 +393,7 @@ public class ConflictCommands {
         for (DBAlliance alliance : coalition1) conflict.addParticipant(alliance.getId(), true, null, null);
         for (DBAlliance alliance : coalition2) conflict.addParticipant(alliance.getId(), false, null, null);
         response.append("- Coalition1: `").append(coalition1.stream().map(f -> f.getName()).collect(Collectors.joining(","))).append("`\n");
-        response.append("- Coalition2: `").append(coalition2.stream().map(f -> f.getName()).collect(Collectors.joining(",")));
+        response.append("- Coalition2: `").append(coalition2.stream().map(f -> f.getName()).collect(Collectors.joining(","))).append("`");
         String reinitializeGraphsArg = null;
         {
             CompletableFuture<IMessageBuilder> msgFuture = io.send("Loading conflict stats");

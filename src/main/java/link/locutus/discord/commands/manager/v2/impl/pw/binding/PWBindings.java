@@ -1040,7 +1040,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = {"aluminum", "money", "`*`", "manu", "raws", "!food"}, value = "A comma separated list of resource types")
-    public static List<ResourceType> rssTypes(String input) {
+    public static Set<ResourceType> rssTypes(String input) {
         Set<ResourceType> types = new LinkedHashSet<>();
         for (String arg : input.split(",")) {
             boolean remove = arg.startsWith("!");
@@ -1067,7 +1067,7 @@ public class PWBindings extends BindingHelper {
             if (remove) types.removeAll(toAddOrRemove);
             else types.addAll(toAddOrRemove);
         }
-        return new ArrayList<>(types);
+        return new LinkedHashSet<>(types);
     }
 
     @AllianceDepositLimit

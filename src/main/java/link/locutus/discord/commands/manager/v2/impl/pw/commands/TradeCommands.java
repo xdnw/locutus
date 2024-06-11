@@ -187,7 +187,7 @@ public class TradeCommands {
                               @Arg("When the offer is no longer available")
                               @Switch("e") @Timediff Long expire,
                               @Arg("The resources you will accept in return")
-                              @Switch("x") List<ResourceType> exchangeFor,
+                              @Switch("x") Set<ResourceType> exchangeFor,
                               @Arg("The equivalent price per unit you will accept for each resource")
                               @Switch("p") Map<ResourceType, Double> exchangePPU,
                               @Switch("f") boolean force) {
@@ -328,7 +328,7 @@ public class TradeCommands {
                            @Arg("When the offer is no longer available")
                                @Switch("e") @Timediff Long expire,
                            @Arg("The resources you will exchange for")
-                               @Switch("x") List<ResourceType> exchangeFor,
+                               @Switch("x") Set<ResourceType> exchangeFor,
                            @Arg("The equivalent price per unit you will accept for each resource")
                                @Switch("p") Map<ResourceType, Double> exchangePPU,
                            @Switch("f") boolean force) {
@@ -417,7 +417,7 @@ public class TradeCommands {
                             @Arg("When the offer is no longer available")
                                 @Switch("e") @Timediff Long expire,
                             @Arg("The resources you will exchange for")
-                                @Switch("x") List<ResourceType> exchangeFor,
+                                @Switch("x") Set<ResourceType> exchangeFor,
                             @Arg("The equivalent price per unit you will accept for each resource")
                                 @Switch("p") Map<ResourceType, Double> exchangePPU,
                             @Switch("f") boolean force) {
@@ -1262,14 +1262,15 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average buy and sell trade price by day")
     public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
-                                  List<ResourceType> resources,
+                                  Set<ResourceType> resources,
                                   int numDays,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv) throws IOException, GeneralSecurityException {
         if (numDays <= 1) return "Invalid number of days";
-        resources.remove(ResourceType.MONEY);
-        resources.remove(ResourceType.CREDITS);
-        if (resources.isEmpty()) return "Invalid resources";
+        List<ResourceType> rssList = new ArrayList<>(resources);
+        rssList.remove(ResourceType.MONEY);
+        rssList.remove(ResourceType.CREDITS);
+        if (rssList.isEmpty()) return "Invalid resources";
 
         long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
 
@@ -1277,7 +1278,7 @@ public class TradeCommands {
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
 
-        for (ResourceType type : resources) {
+        for (ResourceType type : rssList) {
             // long minDate, ResourceType type, int minQuantity, int min, int max
             double curAvg = manager.getHighAvg(type);
             int min = (int) (curAvg * 0.2);
@@ -1293,14 +1294,14 @@ public class TradeCommands {
 
         String title = "Trade average by day";
 
-        double[] buffer = new double[resources.size()];
+        double[] buffer = new double[rssList.size()];
         long finalMinDay = minDay;
-        String[] labels = resources.stream().map(f -> f.getName()).toArray(String[]::new);
+        String[] labels = rssList.stream().map(f -> f.getName()).toArray(String[]::new);
         TimeNumericTable<Map<ResourceType, Map<Long, Double>>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
             @Override
             public void add(long day, Map<ResourceType, Map<Long, Double>> cost) {
-                for (int i = 0; i < resources.size(); i++) {
-                    ResourceType type = resources.get(i);
+                for (int i = 0; i < rssList.size(); i++) {
+                    ResourceType type = rssList.get(i);
                     Double value = cost.getOrDefault(type, Collections.emptyMap()).get(day);
                     if (value != null) buffer[i] = value;
                 }
@@ -1417,7 +1418,7 @@ public class TradeCommands {
                                    @Range(min=1, max=300) int numDays,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv,
-                                   @Switch("r") List<ResourceType> resources) throws IOException, GeneralSecurityException {
+                                   @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "volume by day";
         rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers), attachJson, attachCsv, resources);
         return null;
@@ -1428,7 +1429,7 @@ public class TradeCommands {
                                   @Range(min=1, max=300) int numDays,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv,
-                                  @Switch("r") List<ResourceType> resources) throws IOException, GeneralSecurityException {
+                                  @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "total by day";
         rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers), attachJson, attachCsv, resources);
         return null;
@@ -1436,7 +1437,7 @@ public class TradeCommands {
 
     public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction, boolean
             attachJson,
-                              boolean attachCsv, List<ResourceType> resources) throws IOException {
+                              boolean attachCsv, Set<ResourceType> resources) throws IOException {
         TradeManager manager = Locutus.imp().getTradeManager();
         link.locutus.discord.db.TradeDB tradeDb = manager.getTradeDb();
 
@@ -1465,7 +1466,7 @@ public class TradeCommands {
             }
         }
 
-        if (resources == null) resources = Arrays.asList(ResourceType.values);
+        if (resources == null) resources = new LinkedHashSet<>(Arrays.asList(ResourceType.values));
         for (ResourceType type : resources) {
             if (type == ResourceType.CREDITS || type == ResourceType.MONEY) continue;
             String finalTital = type + " " + title;
@@ -1601,7 +1602,7 @@ public class TradeCommands {
     @Command(desc = "Create an alert when an in-game trade for a resource is past the top price point of the opposite buy or sell offer")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertMistrade(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
+    public String tradeAlertMistrade(TradeDB db, @Me User  author, Set<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
                                      @Arg("Price per unit")
                                      int ppu,
                                      @Arg("How long to subscribe for")
@@ -1625,7 +1626,7 @@ public class TradeCommands {
     @Command(desc = "Create an alert for specific differences between buy and sell prices for in-game resource trades")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertDisparity(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
+    public String tradeAlertDisparity(TradeDB db, @Me User  author, Set<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
                                       @Arg("Price per unit")
                                       int ppu,
                                        @Arg("How long to subscribe for")
@@ -1649,7 +1650,7 @@ public class TradeCommands {
     @Command(desc = "Create an alert when there are no standing offers for resources in-game")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertNoOffer(TradeDB db, @Me User  author, List<ResourceType> resources,
+    public String tradeAlertNoOffer(TradeDB db, @Me User  author, Set<ResourceType> resources,
                                     @Arg("How long to subscribe for")
                                     @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
@@ -1668,7 +1669,7 @@ public class TradeCommands {
     @Command(desc = "Create an alert when a top offer you have in-game is undercut by another nation")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertUndercut(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={"BUY", "SELL", "*"}) String buyOrSell,
+    public String tradeAlertUndercut(TradeDB db, @Me User  author, Set<ResourceType> resources, @ArgChoice(value={"BUY", "SELL", "*"}) String buyOrSell,
                                      @Arg("How long to subscribe for")
                                      @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;

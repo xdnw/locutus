@@ -4653,7 +4653,6 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
-        long exponentialBackoff = 1000;
         while (true) {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
@@ -4677,7 +4676,8 @@ public class DBNation implements NationOrAlliance {
                 }
             }
             try {
-                return JsonParser.parseString(result).getAsJsonObject();
+                JsonObject obj = JsonParser.parseString(result).getAsJsonObject();
+                String generalMessage = obj.get("general_message").getAsString();
             } catch (JsonSyntaxException e) {
                 System.out.println("Error sending mail to " + getNation_id() + " with key " + pair.getKey());
                 System.out.println(result);
