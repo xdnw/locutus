@@ -65,7 +65,7 @@ public class FindProducer extends Command {
         boolean newNationBonus = !flags.contains('b');
         boolean includeNegative = flags.contains('n');
 
-        List<ResourceType> types = args.get(0).equals("*") ? ResourceType.valuesList : PWBindings.rssTypes(args.get(0));
+        Set<ResourceType> types = args.get(0).equals("*") ? new HashSet<>(ResourceType.valuesList) : PWBindings.rssTypes(args.get(0));
         if (types.isEmpty()) return "Please provide more than one resource type: `" + args.get(0) + "`";
 
         List<DBNation> nations;
@@ -106,7 +106,7 @@ public class FindProducer extends Command {
             double[] profit = nation.getRevenue();
             double value;
             if (types.size() == 1) {
-                value = profit[types.get(0).ordinal()];
+                value = profit[types.iterator().next().ordinal()];
             } else {
                 value = 0;
                 for (ResourceType type : types) {

@@ -1183,7 +1183,7 @@ public class UnsortedCommands {
     @Command(desc = "Get a ranking of alliances or nations by their resource production")
     public String findProducer(@Me IMessageIO channel, @Me JSONObject command, @Me Guild guild, @Me User author, @Me DBNation me,
                                @Arg("The resources to rank production of")
-                               List<ResourceType> resources,
+                               Set<ResourceType> resources,
                                @Arg("Nations to include in the ranking")
                                @Default NationList nationList,
                                @Switch("m") boolean ignoreMilitaryUpkeep,
@@ -1232,7 +1232,7 @@ public class UnsortedCommands {
             double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false, treasureBonus, false);
             double value;
             if (resources.size() == 1) {
-                value = profit[resources.get(0).ordinal()];
+                value = profit[resources.iterator().next().ordinal()];
             } else {
                 value = 0;
                 for (ResourceType type : resources) {

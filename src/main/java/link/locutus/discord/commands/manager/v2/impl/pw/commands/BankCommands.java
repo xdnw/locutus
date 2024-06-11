@@ -2704,7 +2704,7 @@ public class BankCommands {
                                           Set<DBNation> nations,
 
                                           @Arg(value = "The resources to convert", group = 0)
-                                          @Default("manu,raws,food") List<ResourceType> negativeResources,
+                                          @Default("manu,raws,food") Set<ResourceType> negativeResources,
                                           @Arg(value = "What resource to convert to\n" +
                                                   "Conversion uses weekly market average prices", group = 0)
                                           @Default("money") ResourceType convertTo,

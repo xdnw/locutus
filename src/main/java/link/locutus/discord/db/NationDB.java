@@ -934,6 +934,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         } else {
             fetched = updateNations(r -> r.setId(idsFinal), eventConsumer);
+            System.out.println("Fetched " + fetched);
         }
         if (ids.size() >= 500 && fetched.isEmpty()) {
             System.out.println("No nations fetched");
@@ -1152,14 +1153,16 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
             updateCities(completeCities, eventConsumer);
         }
+        System.out.println("Done update cities of nations");
     }
 
     public boolean updateDirtyCities(boolean priority, Consumer<Event> eventConsumer) {
         List<Integer> cityIds = new ArrayList<>();
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        markDirtyIncorrectNations(true, true);
 
+        if (!dirtyCities.isEmpty()) System.out.println("Dirty cities " + dirtyCities.size());
         while (!dirtyCities.isEmpty()) {
-            System.out.println("Dirty cities " + dirtyCities.size());
             try {
                 Iterator<Integer> iter = dirtyCities.iterator();
                 int cityId = iter.next();
@@ -1256,7 +1259,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     NationDB.this.dirtyCities.remove(city.getId());
                 }
             }
-
             synchronized (citiesByNation) {
                 Object map = citiesByNation.get(nationId);
                 if (map != null) {
@@ -1836,7 +1838,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public void markDirtyIncorrectNations(boolean score, boolean cities) {
         int originalSize = dirtyNations.size();
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
-            if (score && Math.round(100 * (nation.estimateScore() - nation.getScore())) > 0.01) {
+            if (score && Math.round(100 * (nation.estimateScore() - nation.getScore())) != 0) {
                 dirtyNations.add(nation.getNation_id());
             } else if (cities && nation.getCities() != getCitiesV3(nation.getNation_id()).size()) {
                 dirtyNations.add(nation.getNation_id());
@@ -1850,18 +1852,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer, long timestamp) {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
-        Set<Integer> nationsFetched = new HashSet<>();
+        Set<Integer> nationsIdsFetched = new HashSet<>();
+        Set<DBNation> nationsFetched = new HashSet<>();
         for (Nation nation : nations) {
             if (nation.getId() != null) {
-                nationsFetched.add(nation.getId());
+                nationsIdsFetched.add(nation.getId());
                 if (!NationDB.this.dirtyNations.isEmpty()) {
                     NationDB.this.dirtyNations.remove(nation.getId());
                 }
             }
             updateNation(nation, eventConsumer, nationChanges::put, timestamp);
+            DBNation dbNat = DBNation.getById(nation.getId());
+            if (dbNat != null) {
+                nationsFetched.add(dbNat);
+            }
         }
-        updateNationCitiesAndPositions(nationChanges, eventConsumer);
-        return nationsFetched;
+        updateNationCitiesAndPositions(nationsFetched, nationChanges, eventConsumer);
+        return nationsIdsFetched;
 
     }
 
@@ -1871,6 +1878,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         Set<Integer> nationsFetched = new HashSet<>();
 
         long timestamp = System.currentTimeMillis();
+        Set<DBNation> nations = new HashSet<>();
         Predicate<Nation> onEachNation = nation -> {
             if (nation.getId() != null) {
                 nationsFetched.add(nation.getId());
@@ -1879,53 +1887,69 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 }
             }
             updateNation(nation, eventConsumer, (prev, curr) -> nationChanges.put(curr, prev), timestamp);
+            DBNation dbNat = DBNation.getById(nation.getId());
+            if (dbNat != null) nations.add(dbNat);
             return false;
         };
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         v3.fetchNationsWithInfo(false, filter, onEachNation);
-
-        updateNationCitiesAndPositions(nationChanges, eventConsumer);
+        updateNationCitiesAndPositions(nations, nationChanges, eventConsumer);
         return nationsFetched;
     }
 
-    public void updateNationCitiesAndPositions(Map<DBNation, DBNation> nationChanges,
+    public void updateNationCitiesAndPositions(Collection<DBNation> allNations, Map<DBNation, DBNation> nationChanges,
                                       Consumer<Event> eventConsumer) {
-        if (nationChanges.isEmpty()) return;
-
         boolean fetchCitiesIfNew = true;
         boolean fetchCitiesIfOutdated = true;
         boolean fetchAlliancesIfOutdated = true;
         boolean fetchPositionsIfOutdated = true;
         boolean fetchMostActiveIfNoneOutdated = true;
-
-        Set<DBNation> nationsToSave = new LinkedHashSet<>();
-        for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
-            DBNation nation = entry.getKey();
-            if (nation == null) nation = entry.getValue();
-            nationsToSave.add(nation);
-        }
-        saveNations(nationsToSave);
-
         Set<Integer> fetchCitiesOfNations = new HashSet<>();
 
-        if (fetchCitiesIfNew) {
-            // num cities has changed
+        if (!nationChanges.isEmpty()) {
+            Set<DBNation> nationsToSave = new LinkedHashSet<>();
             for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
-                DBNation prev = entry.getValue();
-                DBNation curr = entry.getKey();
-                if (curr == null) continue;
-                if (prev == null || curr.getCities() != prev.getCities()) {
-                    fetchCitiesOfNations.add(curr.getNation_id());
+                DBNation nation = entry.getKey();
+                if (nation == null) nation = entry.getValue();
+                nationsToSave.add(nation);
+            }
+            saveNations(nationsToSave);
+
+            if (fetchCitiesIfNew) {
+                // num cities has changed
+                for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
+                    DBNation prev = entry.getValue();
+                    DBNation curr = entry.getKey();
+                    if (curr == null) continue;
+                    if (prev == null || curr.getCities() != prev.getCities()) {
+                        fetchCitiesOfNations.add(curr.getNation_id());
+                    }
                 }
             }
         }
+
         if (fetchCitiesIfOutdated) {
-            for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
-                DBNation prev = entry.getValue();
-                DBNation curr = entry.getKey();
-                if (curr == null) continue;
-                if (prev == null || (Math.round((curr.getScore() - prev.getScore()) * 100) != 0 && Math.round(100 * (curr.estimateScore() - curr.getScore())) != 0)) {
-                    fetchCitiesOfNations.add(curr.getNation_id());
+//            for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
+//                DBNation prev = entry.getValue();
+//                DBNation curr = entry.getKey();
+//                if (curr == null) continue;
+//                if (prev == null || (Math.round(100 * (curr.estimateScore() - curr.getScore())) != 0)) {
+//                    if (Math.round((curr.getScore() - prev.getScore()) * 100) == 0) {
+//                        System.out.println("Score change " + curr.getNation() + " " + curr.getScore() + " " + prev.getScore() + " " + curr.estimateScore());
+//                    }
+//                    fetchCitiesOfNations.add(curr.getNation_id());
+//                }
+//            }
+            System.out.println("Nations " + allNations.size());
+            System.out.println("Contains " + allNations.contains(DBNation.getById(10251)));
+            for (DBNation nation : allNations) {
+                if (nation.getId() == 10251) {
+                    System.out.println("Score " + nation.getScore() + " | " + nation.estimateScore());
+                } else if (allNations.size() == 1) {
+                    System.out.println("Updated " + nation.getId());
+                }
+                if (Math.round(100 * (nation.getScore() - nation.estimateScore())) != 0) {
+                    fetchCitiesOfNations.add(nation.getId());
                 }
             }
         }

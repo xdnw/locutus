@@ -160,7 +160,7 @@ public class TradeDB extends DBMainV2 {
                 }
             }
         }
-        public BulkTradeOffer(int resourceId, int nation, long quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, List<ResourceType> exchangeFor, double[] exchangePPU) {
+        public BulkTradeOffer(int resourceId, int nation, long quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU) {
             this.resourceId = resourceId;
             this.nation = nation;
             this.quantity = quantity;

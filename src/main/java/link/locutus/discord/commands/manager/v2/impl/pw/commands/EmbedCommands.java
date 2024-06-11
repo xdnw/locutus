@@ -84,7 +84,6 @@ public class EmbedCommands {
         }
     }
 
-
     @Command(desc = "Set the title of an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String title(@Me User user, @Me Guild guild, Message discMessage, String title) {

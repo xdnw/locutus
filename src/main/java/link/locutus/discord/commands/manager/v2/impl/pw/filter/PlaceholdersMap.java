@@ -100,9 +100,9 @@ public class PlaceholdersMap {
     private static PlaceholdersMap INSTANCE;
 
     public static String getClassName(String simpleName) {
-        return simpleName.replace("DB", "").replace("Wrapper", "")
-                .replaceAll("[0-9]", "")
-                .toLowerCase(Locale.ROOT);
+            return simpleName.replace("DB", "").replace("Wrapper", "")
+                    .replaceAll("[0-9]", "")
+                    .toLowerCase(Locale.ROOT);
     }
     public static String getClassName(Class clazz) {
         return getClassName(clazz.getSimpleName());
