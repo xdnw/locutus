@@ -236,6 +236,7 @@ public class ConflictManager {
         if (currIds == null) {
             currIds = new int[]{conflict.getOrdinal()};
         } else {
+            if (Arrays.binarySearch(currIds, conflict.getOrdinal()) >= 0) return;
             int[] newIds = new int[currIds.length + 1];
             System.arraycopy(currIds, 0, newIds, 0, currIds.length);
             newIds[currIds.length] = conflict.getOrdinal();
