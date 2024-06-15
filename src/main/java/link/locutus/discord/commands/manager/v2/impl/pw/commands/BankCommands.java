@@ -1412,22 +1412,21 @@ public class BankCommands {
             DBNation nation = entry.getKey();
             Map<ResourceType, Double> transfer = entry.getValue();
 
-            JSONObject command = CM.transfer.resources.cmd.create(
-                    nation.getUrl(),
-                    ResourceType.resourcesToString(transfer),
-                    bank_note.toString(),
-                    nation_account != null ? nation_account.getUrl() : null,
-                    ingame_bank != null ? ingame_bank.getUrl() : null,
-                    offshore_account != null ? offshore_account.getUrl() : null,
-                    tax_account != null ? tax_account.getQualifiedId() : null,
-                    use_receiver_tax_account + "",
-                    Boolean.FALSE.toString(),
-                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
-                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
-                    null,
-                    String.valueOf(deduct_as_cash),
-                    escrow_mode == null ? null : escrow_mode.name(),
-                    String.valueOf(bypass_checks),
+            JSONObject command = CM.transfer.resources.cmd.receiver(
+                    nation.getUrl()).transfer(
+                    ResourceType.resourcesToString(transfer)).depositType(
+                    bank_note.toString()).nationAccount(
+                    nation_account != null ? nation_account.getUrl() : null).senderAlliance(
+                    ingame_bank != null ? ingame_bank.getUrl() : null).allianceAccount(
+                    offshore_account != null ? offshore_account.getUrl() : null).taxAccount(
+                    tax_account != null ? tax_account.getQualifiedId() : null).existingTaxAccount(
+                    use_receiver_tax_account + "").onlyMissingFunds(
+                    Boolean.FALSE.toString()).expire(
+                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
+                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).convertCash(
+                    String.valueOf(deduct_as_cash)).escrow_mode(
+                    escrow_mode == null ? null : escrow_mode.name()).bypassChecks(
+                    String.valueOf(bypass_checks)).force(
                     String.valueOf(force)
             ).toJson();
 
@@ -3681,12 +3680,13 @@ public class BankCommands {
                 if (me != null && me.getId() == nationOrAllianceOrGuild.getId()) {
                     buttons.put("withdraw",
                             Map.entry(
-                                    CM.transfer.self.cmd.create("", null, DepositType.DEPOSIT.name()),
+                                    CM.transfer.self.cmd.amount("").bank_note(DepositType.DEPOSIT.name()),
                                     true));
                 }
                 buttons.put("withdraw elsewhere",
                         Map.entry(
-                                CM.transfer.resources.cmd.create("", "", DepositType.DEPOSIT.name(), nationOrAllianceOrGuild.getQualifiedId()),
+                                CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.DEPOSIT.name())
+                                        .nationAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.resources.cmd.toSlashMention() + " ");
             }
@@ -3703,14 +3703,15 @@ public class BankCommands {
             if (econ) {
                 buttons.put("withdraw",
                         Map.entry(
-                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), nationOrAllianceOrGuild.getQualifiedId()),
+                                CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.IGNORE.name())
+                                        .nationAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             buttons.put("withdraw",
                     Map.entry(
-                            CM.transfer.resources.cmd.create("", "", "", nationOrAllianceOrGuild.getQualifiedId(), null, null, nationOrAllianceOrGuild.getQualifiedName()),
+                            CM.transfer.resources.cmd.receiver("").transfer("").depositType("").taxAccount(nationOrAllianceOrGuild.getQualifiedName()),
                             true));
             footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `taxaccount: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
 

@@ -268,22 +268,22 @@ public class GrantCmd extends Command {
             resources = PW.multiply(resources, factor);
         }
 
-        JSONObject command = CM.transfer.resources.cmd.create(
-                me.getUrl(),
-                ResourceType.resourcesToString(resources),
-                grant.getType().toString(),
-                (nationAccount == null ? me : nationAccount).getUrl(),
-                allianceAccount != null ? allianceAccount.getUrl() : null,
-                offshoreAccount != null ? offshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedId() : null,
-                flags.contains('t') ? "true" : null,
-                String.valueOf(flags.contains('o')),
-                expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null,
-                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null,
-                uuid.toString(),
-                String.valueOf(flags.contains('c')),
-                escrowMode == null ? null : escrowMode.name(),
-                String.valueOf(flags.contains('f')),
+        JSONObject command = CM.transfer.resources.cmd.receiver(
+                me.getUrl()).transfer(
+                ResourceType.resourcesToString(resources)).depositType(
+                grant.getType().toString()).nationAccount(
+                (nationAccount == null ? me : nationAccount).getUrl()).senderAlliance(
+                allianceAccount != null ? allianceAccount.getUrl() : null).allianceAccount(
+                offshoreAccount != null ? offshoreAccount.getUrl() : null).taxAccount(
+                taxAccount != null ? taxAccount.getQualifiedId() : null).existingTaxAccount(
+                flags.contains('t') ? "true" : null).onlyMissingFunds(
+                String.valueOf(flags.contains('o'))).expire(
+                expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null).decay(
+                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).token(
+                uuid.toString()).convertCash(
+                String.valueOf(flags.contains('c'))).escrow_mode(
+                escrowMode == null ? null : escrowMode.name()).bypassChecks(
+                String.valueOf(flags.contains('f'))).force(
                 "false"
         ).toJson();
         StringBuilder msg = new StringBuilder();
