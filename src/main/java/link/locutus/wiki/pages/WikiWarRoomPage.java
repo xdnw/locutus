@@ -68,7 +68,7 @@ public class WikiWarRoomPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.channel.close.current.cmd),
                 "Note: The channel close command can only close war rooms and interviews",
                 "# Creating a sheet of war rooms",
-                CM.war.counter.sheet.cmd.create(null, null, null, null, "True", null).toString(),
+                CM.war.counter.sheet.cmd.create(null, null, null, null, "True").toString(),
                 commandMarkdownSpoiler(CM.war.counter.sheet.cmd),
                 "# Force update/delete war rooms",
                 commandMarkdownSpoiler(CM.admin.sync.warrooms.cmd),

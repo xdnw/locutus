@@ -380,20 +380,19 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-        CM.war.find.raid app = CM.war.find.raid.cmd.create(
-                null, "10", null, null, null, null, null, null, null, null, null);
-        CM.war.find.raid members = CM.war.find.raid.cmd.create(
-                "*", "25", null, null, null, null, null, null, null, null, null);
-        CM.war.find.raid beige = CM.war.find.raid.cmd.create(
-                "*", "25", null, null, "24", null, null, null, null, null, null);
-        CM.war.find.raid ground = CM.war.find.raid.cmd.create(
-                "#tankpct<0.2,#soldierpct<0.4,*", "25", "0d", "true", null, null, null, null, null, null, null);
-        CM.war.find.raid ground_2d = CM.war.find.raid.cmd.create(
-                "#tankpct<0.2,#soldierpct<0.4,*", "25", "2d",  "true", null,null, null, null, null, null, null);
-        CM.war.find.raid losing = CM.war.find.raid.cmd.create(
-                "#def>0,#RelativeStrength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
+        CM.war.find.raid app = CM.war.find.raid.cmd.numResults("10");
+        CM.war.find.raid members = CM.war.find.raid.cmd.targets(
+                "*").numResults("25");
+        CM.war.find.raid beige = CM.war.find.raid.cmd.targets(
+                "*").numResults("25").beigeTurns("24");
+        CM.war.find.raid ground = CM.war.find.raid.cmd.targets(
+                "#tankpct<0.2,#soldierpct<0.4,*").numResults("25").activeTimeCutoff("0d").weakground("true");
+        CM.war.find.raid ground_2d = CM.war.find.raid.cmd.targets(
+                "#tankpct<0.2,#soldierpct<0.4,*").numResults("25").activeTimeCutoff("2d").weakground("true");
+        CM.war.find.raid losing = CM.war.find.raid.cmd.targets(
+                "#def>0,#RelativeStrength<1,*").numResults("25").activeTimeCutoff("0d").weakground("true");
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
-                "*", "25", null, "true", null,  null, "90", null, null, null);
+                "*", "25", null, "true", null,  null, "90");
 
         CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
@@ -442,7 +441,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             String title = "Blockade Target & Requests";
             String body = """
                     **Request your blockade broken**
-                    See e.g.: """ + CM.war.blockade.request.cmd.create("3d", "some reason", null).toSlashCommand(true)+ """
+                    See e.g.: """ + CM.war.blockade.request.cmd.create("3d", "some reason").toSlashCommand(true)+ """
                     Press `Low` if low on resources
                     Press `deposit` if you need to deposit
                     Press `broke` if you are out of resources
@@ -450,15 +449,15 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     Press `break` to find enemies w/ blockades
                     Press `unpowered` to find enemies w/ blockades on unpowered allies
                     """;
-            body += "\nSee e.g: " + CM.war.blockade.find.cmd.create("~allies", null, "250", null).toSlashCommand();
+            body += "\nSee e.g: " + CM.war.blockade.find.cmd.create("~allies", null, "250").toSlashCommand();
 
             if (channelId != null) {
                 body += "\n\n> Results in <#" + channelId + ">";
             }
 
-            CM.war.blockade.request low = CM.war.blockade.request.cmd.create("3d", "Low on resources", null);
-            CM.war.blockade.request deposit = CM.war.blockade.request.cmd.create("3d", "Need to deposit", null);
-            CM.war.blockade.request broke = CM.war.blockade.request.cmd.create("3d", "Broke", null);
+            CM.war.blockade.request low = CM.war.blockade.request.cmd.create("3d", "Low on resources");
+            CM.war.blockade.request deposit = CM.war.blockade.request.cmd.create("3d", "Need to deposit");
+            CM.war.blockade.request broke = CM.war.blockade.request.cmd.create("3d", "Broke");
             CM.war.blockade.find breakCmd = CM.war.blockade.find.cmd.create("~allies,#active_m<2880", null, null, "10");
             CM.war.blockade.find breakUnpowered = CM.war.blockade.find.cmd.create("~allies,#ispowered=0,#active_m<2880", null, null, "10");
 
@@ -493,14 +492,14 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 body += "\n\n> Results in <#" + channelId + ">";
             }
 
-            CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null, null);
-            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, showDepositsInDms + "", null, null, null, null);
-            CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null, null);
+            CM.offshore.send send = CM.offshore.send.cmd.createEmpty();
+            CM.deposits.check deposits = CM.deposits.check.cmd.nationOrAllianceOrGuild("{nation_id}").replyInDMs(showDepositsInDms ? "true" : null);
+            CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.nationOrAllianceOrGuild("{nation_id}").showCategories("true");
             CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
-            CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null, null, null, null, null, null);
-            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true");
+            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}");
             CM.trade.price tradeprice = CM.trade.price.cmd.create();
-            CM.trade.margin trademargin = CM.trade.margin.cmd.create(null);
+            CM.trade.margin trademargin = CM.trade.margin.cmd.createEmpty();
             CM.trade.profit tradeprofit = CM.trade.profit.cmd.create("{nation_id}", "7d");
 
             io.create().embed(title, body)
@@ -574,11 +573,11 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         CM.war.find.damage damage = CM.war.find.damage.cmd.create(
-                "~enemies", null, null, null, null, null, null, null, null, null, null);
+                "~enemies");
         CM.war.find.damage damageWeak = CM.war.find.damage.cmd.create(
-                "~enemies", "true", "true", "true", null, null, null, null, null, null, null);
+                "~enemies", "true", "true", "true");
         CM.war.find.damage damageNoNavy = CM.war.find.damage.cmd.create(
-                "~enemies", null, null, null, "true", null, null, null, null, null, null);
+                "~enemies", null, null, null, "true");
         CM.war.find.damage damageNoVDS = CM.war.find.damage.cmd.create(
                 "~enemies,#hasProject(vital_defense_system)=0", null, null, null, null, null, null, null, null, null, null);
         CM.war.find.damage damageNoID = CM.war.find.damage.cmd.create(
@@ -656,8 +655,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         String rangeStr = String.format("%.2f", minScore) + "," + String.format("%.2f", maxScore);
 
         String dmStr = resultsInDm ? "true" : null;
-        CM.war.find.enemy easy = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0", null, null, null, null, null, null, "true", null, dmStr, null);
+        CM.war.find.enemy easy = CM.war.find.enemy.cmd.targets(
+                "~enemies,#off>0").onlyEasy("true").resultsInDm(dmStr);
         int scoreMax;
         if (greaterOrLess == Operation.GREATER || greaterOrLess == Operation.GREATER_EQUAL) {
             scoreMax = (int) Math.ceil(score / 0.75);
@@ -665,14 +664,14 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             scoreMax = (int) Math.ceil(score * 0.75);
         }
         int scoreInt = (int) score;
-        CM.war.find.enemy high = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66", null, null, null, null, "true", null, null, null, dmStr, null);
-        CM.war.find.enemy low = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66", null, null, null, null, "true", null, "true", null, dmStr, null);
-        CM.war.find.enemy weak = CM.war.find.enemy.cmd.create(
-                "~enemies", null, null, "true", "true", null, null, "true", null, dmStr, "true");
-        CM.war.find.damage infra = CM.war.find.damage.cmd.create(
-                "~enemies,#active_m>2880|~enemies,#score" + greaterOrLess + scoreMax +"|~enemies,#barracks=0,#off=0", "true", "true", null, null, null, null, null, dmStr, null, null);
+        CM.war.find.enemy high = CM.war.find.enemy.cmd.targets(
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66").onlyPriority("true").resultsInDm(dmStr);
+        CM.war.find.enemy low = CM.war.find.enemy.cmd.targets(
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66").onlyPriority("true").onlyWeak("true").resultsInDM(dmStr);
+        CM.war.find.enemy weak = CM.war.find.enemy.cmd.targets(
+                "~enemies").includeInactives("true").includeApplicants("true").onlyEasy("true").resultsInDm(dmStr).includeStrong("true");
+        CM.war.find.damage infra = CM.war.find.damage.cmd.nations(
+                "~enemies,#active_m>2880|~enemies,#score" + greaterOrLess + scoreMax +"|~enemies,#barracks=0,#off=0").includeApps("true").includeInactives("true").resultsInDm(dmStr);
 
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, easy, "easy")
@@ -724,9 +723,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.spy.find.target nuke = CM.spy.find.target.cmd.create(
                 "~" + coalition + ",#active_m<2880", SpyCount.Operation.NUKE.name(), null, null, null, null);
         CM.spy.find.target dmg = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", "*", null, null, null, null);
+                "~" + coalition + ",#active_m<1440", "*");
         CM.spy.find.target kill = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", "*", null, null, "true", null);
+                "~" + coalition + ",#active_m<1440", "*", null, null, "true");
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, spy, "spy")
@@ -781,19 +780,20 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         String dmStr = resultsInDm ? "true" : null;
-        CM.war.find.enemy high = CM.war.find.enemy.cmd.create(
-                "~enemies,#fighting(~allies),#getStrongestEnemy()>0.66", null, null, null, null, "true", null, "true", null, dmStr, null);
-        CM.war.find.enemy med = CM.war.find.enemy.cmd.create(
-                "~enemies,#fighting(~allies)", null, null, null, null, "true", null, "true", null, dmStr, null);
-        CM.war.find.enemy low = CM.war.find.enemy.cmd.create(
-                "~enemies", null, null, null, null, "true", null, "true", null, dmStr, null);
-        CM.war.find.enemy easy = CM.war.find.enemy.cmd.create(
-                "~enemies", null, null, null, null, null, null, "true", null, dmStr, null);
-        CM.war.find.enemy inactive = CM.war.find.enemy.cmd.create(
-                "~enemies", null, null, "true", "true", null, null, "true", null, dmStr, null);
-        CM.war.find.damage infra = CM.war.find.damage.cmd.create(
+        CM.war.find.enemy high = CM.war.find.enemy.cmd.targets(
+                "~enemies,#fighting(~allies),#getStrongestEnemy()>0.66").onlyPriority("true").onlyEasy("true")
+                .resultsInDm(dmStr);
+        CM.war.find.enemy med = CM.war.find.enemy.cmd.targets(
+                "~enemies,#fighting(~allies)").onlyPriority("true").onlyEasy("true").resultsInDm(dmStr);
+        CM.war.find.enemy low = CM.war.find.enemy.cmd.targets(
+                "~enemies").onlyPriority("true").onlyEasy("true").resultsInDm(dmStr);
+        CM.war.find.enemy easy = CM.war.find.enemy.cmd.targets(
+                "~enemies").onlyEasy("true").resultsInDm(dmStr);
+        CM.war.find.enemy inactive = CM.war.find.enemy.cmd.targets(
+                "~enemies").includeInactives("true").includeApplicants("true").onlyEasy("true").resultsInDm(dmStr);
+        CM.war.find.damage infra = CM.war.find.damage.cmd.nations(
                 "~enemies", "true", "true", null, null, null, null, null, null, dmStr, null);
-        CM.war.find.enemy beige = CM.war.find.enemy.cmd.create(
+        CM.war.find.enemy beige = CM.war.find.enemy.cmd.targets(
                 "~enemies,#color=beige", null, null, "true", "true", null, null, "true", null, dmStr, null);
 
         io.create().embed(title, body)
@@ -850,23 +850,23 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         IMessageBuilder msg = io.create().embed(title, body);
         if (offshoreBalance) {
-            msg = msg.commandButton(behavior, channelId, CM.offshore.accountSheet.cmd.create(null), "offshore");
+            msg = msg.commandButton(behavior, channelId, CM.offshore.accountSheet.cmd.createEmpty(), "offshore");
         }
         if (offshoreSend) {
-            msg = msg.commandButton(behavior, channelId, CM.offshore.send.cmd.create(null, null, null, null), "offshore");
+            msg = msg.commandButton(behavior, channelId, CM.offshore.send.cmd.createEmpty(), "offshore");
         }
         // deposits
-        msg = msg.commandButton(behavior, channelId, CM.deposits.sheet.cmd.create(null, null, null, null, null, null, null, null, pastDepositorsStr, null, useFlowNoteStr, null), "deposits");
+        msg = msg.commandButton(behavior, channelId, CM.deposits.sheet.cmd.create(null, null, null, null, null, null, null, null, pastDepositorsStr, null, useFlowNoteStr), "deposits");
         // stockpile
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.stockpileSheet.cmd.create(null, null, null, null), "stockpile");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.stockpileSheet.cmd.createEmpty(), "stockpile");
         // revenue
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.create(allianceStr, null, null), "revenue");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.create(allianceStr), "revenue");
         // bracket
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxBracketSheet.cmd.create(null, null), "bracket");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxBracketSheet.cmd.createEmpty(), "bracket");
         // tax
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxRevenue.cmd.create(null, null, null, null), "tax");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxRevenue.cmd.createEmpty(), "tax");
         // warchest
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.warchestSheet.cmd.create(allianceStr, null, null, null, null, null, null, null), "warchest");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.warchestSheet.cmd.create(allianceStr), "warchest");
         msg.send();
     }
 
@@ -903,19 +903,19 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         IMessageBuilder msg = io.create().embed(title, body);
         // audit
-        msg = msg.commandButton(behavior, channelId, CM.audit.sheet.cmd.create(null, null, null, null, null, null), "audit");
+        msg = msg.commandButton(behavior, channelId, CM.audit.sheet.cmd.createEmpty(), "audit");
         // mail
-        msg = msg.commandButton(behavior, channelId, CM.audit.run.cmd.create(allianceStr, null, null, "true", null, null), "mail");
+        msg = msg.commandButton(behavior, channelId, CM.audit.run.cmd.create(allianceStr, null, null, "true"), "mail");
         // activity
-        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.ActivitySheet.cmd.create(allianceStr, null, null), "activity");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.ActivitySheet.cmd.create(allianceStr), "activity");
         // daychange
-        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.daychange.cmd.create(allianceStr, null), "dc");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.daychange.cmd.create(allianceStr), "dc");
         // spies
         msg = msg.commandButton(behavior, channelId, CM.audit.hasNotBoughtSpies.cmd.create(allianceStr), "spies");
         // mmr
-        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.create(allianceStr, null, null, null, null), "mmr");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.create(allianceStr), "mmr");
         // auto
-        msg = msg.commandButton(behavior, channelId, CM.role.autoassign.cmd.create(null), "auto");
+        msg = msg.commandButton(behavior, channelId, CM.role.autoassign.cmd.createEmpty(), "auto");
 
         msg.send();
     }
@@ -952,11 +952,11 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     "Press `trade deposit` if you have sent trades\n" +
                     "Press `trade deposit amount` if you want to create trades for an amount\n";
 
-            addButtons.add(CM.trade.accept.cmd.create(nationId + "", null, null, null));
+            addButtons.add(CM.trade.accept.cmd.create(nationId + ""));
             addLabels.add("deposit trade");
             isModals.add(false);
 
-            addButtons.add(CM.trade.accept.cmd.create(nationId + "", "", null, null));
+            addButtons.add(CM.trade.accept.cmd.create(nationId + "", ""));
             addLabels.add("deposit trade amount");
             isModals.add(false);
         } else {
@@ -974,7 +974,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             addButtons.add(depositAuto);
             addLabels.add("deposit auto");
             isModals.add(false);
-            CommandRef offshore = CM.offshore.send.cmd.create(null, null, null, null);
+            CommandRef offshore = CM.offshore.send.cmd.createEmpty();
             addButtons.add(offshore);
             addLabels.add("offshore");
             isModals.add(false);
@@ -985,9 +985,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-        CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null, null);
-        CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null);
-        CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}", null, null, null, null, null, null, null, null, null, null, null, null);
+        CM.deposits.check deposits = CM.deposits.check.cmd.nationOrAllianceOrGuild("nation:{nation_id}");
+        CM.transfer.self self = CM.transfer.self.cmd.create("");
+        CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}");
         CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.create("nation:{nation_id}");
 
         CommandBehavior behavior = CommandBehavior.EPHEMERAL;
@@ -1334,7 +1334,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Collection<DBNation> nations = sendTo.getNations();
         Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, 0, 0);
 
-        CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", "true", null);
+        CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", "true");
 
         StringBuilder body = new StringBuilder();
         body.append("Title: `" + title + "`\n");

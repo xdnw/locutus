@@ -1150,7 +1150,7 @@ public class GrantCommands {
                 }
             }
             if (limit == null) {
-                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.create(GuildKey.GRANT_TEMPLATE_LIMITS.name(), null, null).toSlashMention() + ")\n" +
+                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.key(GuildKey.GRANT_TEMPLATE_LIMITS.name()).toSlashMention() + ")\n" +
                         "However you have none of the roles set in the limits.");
             }
         }
@@ -2166,7 +2166,7 @@ public class GrantCommands {
     public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount,
                                    @Switch("f") boolean force) throws IOException {
         if (GuildKey.MEMBER_CAN_ESCROW.getOrNull(db) != Boolean.TRUE && !Roles.ECON_STAFF.has(author, db.getGuild())) {
-            return "To enable member withdrawal of escrowed funds, see: " + CM.settings.info.cmd.create(GuildKey.MEMBER_CAN_ESCROW.name(), null, null);
+            return "To enable member withdrawal of escrowed funds, see: " + CM.settings.info.cmd.key(GuildKey.MEMBER_CAN_ESCROW.name());
         }
         // Require ECON_STAFF if receiver is not me
         if (receiver.getId() != me.getId()) {

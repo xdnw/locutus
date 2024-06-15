@@ -67,10 +67,10 @@ public class WikiHelpPage extends BotWikiGen {
                 CM.help.find_setting.cmd.getCallable(true).simpleDesc() + "\n\n" +
                 CM.help.find_setting.cmd.toSlashCommand(true))),
                 spoiler("List ALL settings",
-                MarkupUtil.markdownToHTML(CM.settings.info.cmd.create(null, null, Boolean.TRUE + "").toSlashCommand(true))),
+                MarkupUtil.markdownToHTML(CM.settings.info.cmd.listAll(Boolean.TRUE + "").toSlashCommand(true))),
                 spoiler("View a setting",
                         MarkupUtil.markdownToHTML("For example, the `" + GuildKey.ALLIANCE_ID.name() + "` setting" + "\n\n" +
-                CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true))),
+                CM.settings.info.cmd.key(GuildKey.ALLIANCE_ID.name()).toSlashCommand(true))),
                 "# Overview of this Wiki",
                 pageList.toString(),
                 "# Placeholders & Filters",

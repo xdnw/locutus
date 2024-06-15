@@ -24,7 +24,7 @@ public class WikiAntiLeakPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.settings_default.registerAlliance.cmd),
                 commandMarkdownSpoiler(CM.settings_default.registerApiKey.cmd),
                 "Set a role for who can use the mail commands",
-                CM.role.setAlias.cmd.create(Roles.MAIL.name(), "@discordRole", null, null).toString(),
+                CM.role.setAlias.cmd.locutusRole(Roles.MAIL.name()).discordRole("@discordRole").toString(),
                 "# Bulk mail",
                 commandMarkdownSpoiler(CM.mail.send.cmd),
                 // /mail reply

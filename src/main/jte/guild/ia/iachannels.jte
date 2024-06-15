@@ -52,7 +52,7 @@
     <div class="container">
     <div class="bg-lightmt-3 rounded shadow py-1 row">
         <div class="col-auto">
-            <button type="button" cmd="${CM.interview.sortInterviews.cmd.create(null).toSlashCommand(false)}" refresh="1" class="btn btn-primary">Sort channels</button>
+            <button type="button" cmd="${CM.interview.sortInterviews.cmd.createEmpty().toSlashCommand(false)}" refresh="1" class="btn btn-primary">Sort channels</button>
             <button type="button" cmd="${CM.interview.syncInterviews.cmd.create().toSlashCommand(false)}" refresh="1" class="btn btn-primary">List old channels</button>
         </div>
         <div class="col">

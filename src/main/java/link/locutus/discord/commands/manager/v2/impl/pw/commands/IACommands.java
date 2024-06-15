@@ -670,7 +670,7 @@ public class IACommands {
         result.append(GuildKey.ASSIGNABLE_ROLES.set(db, user, assignable)).append("\n");
 
         result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.self.add.cmd.toSlashMention() + " / " + CM.self.remove.cmd.toSlashMention() + "\n" +
-                "- To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
+                "- To see a list of current mappings, use " + CM.settings.info.cmd.key(GuildKey.ASSIGNABLE_ROLES.name()) + "");
         return result.toString();
     }
 
@@ -1580,7 +1580,7 @@ public class IACommands {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 3 days";
 
-                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, nation.getNation_id() + "", null, null, null, null, null, null, null, null, "true", null);
+                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, nation.getNation_id() + "", null, null, null, null, null, null, null, null, "true");
                     channel.create().embed(title, body)
                             .commandButton(cmd, "Disburse 3 days")
                             .send();

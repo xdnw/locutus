@@ -118,7 +118,7 @@ public class DocumentConverter {
         EmbeddingSource source = getEmbeddings().getOrCreateSource(documentName, db.getIdLong());
         long hash = embeddings.getHash(markdown);
         if (hash == source.source_hash) {
-            throw new IllegalArgumentException("An identical document already exists: `" + documentName + "`. See: " + CM.chat.dataset.view.cmd.create(source.getQualifiedName(), null, null));
+            throw new IllegalArgumentException("An identical document already exists: `" + documentName + "`. See: " + CM.chat.dataset.view.cmd.create(source.getQualifiedName()));
         }
 
         ConvertingDocument document = new ConvertingDocument();

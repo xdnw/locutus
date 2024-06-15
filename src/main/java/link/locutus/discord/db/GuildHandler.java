@@ -1857,7 +1857,8 @@ public class GuildHandler {
                                         tips.add("Deposit your excess money in the bank or it will be stolen: " + bankUrl + " (only $" + MathMan.format(unraidable) + " is unraidable)");
                                     }
                                     if (faRole != null) {
-                                        String enemyStr = "(Or mark as enemy " + CM.coalition.create.cmd.create(attacker.getAlliance_id() + "", "enemies") + ")";
+                                        String enemyStr = "(Or mark as enemy " +
+                                                CM.coalition.create.cmd.alliances(attacker.getAlliance_id() + "").coalitionName(Coalition.ENEMIES.name()) + ")";
                                         tips.add("Please ping @\u200B" + faRole.getName() + " to get help negotiating peace. " + (attacker.getAlliance_id() == 0 ? "" : enemyStr));
                                     }
                                     if (milcomRole != null) {
@@ -2461,7 +2462,7 @@ public class GuildHandler {
                     }
                     if (membersWithRoles.isEmpty()) {
                         try {
-                            RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null, null, null) + " and assign it to an active gov member\n" +
+                            RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.locutusRole(Roles.INTERNAL_AFFAIRS.name()).discordRole(null) + " and assign it to an active gov member\n" +
                                     "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
                             db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                         } catch (Throwable e) {

@@ -919,7 +919,7 @@ public class GPTCommands {
 
             body.append("\n\nReview and edit: " + MarkupUtil.markdownUrl("sheet:RENAME_CHANNELS", sheet.getURL()));
 
-            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.create("sheet:" + sheet.getSpreadsheetId(), null, null, "true", null));
+            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.create("sheet:" + sheet.getSpreadsheetId(), null, null, "true"));
             if (!errors.isEmpty()) {
                 msg = msg.file("errors.txt", String.join("\n", errors));
             }

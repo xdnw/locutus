@@ -142,9 +142,9 @@ public class SettingCommands {
 
                 response.append("\n");
                 if (!listAll) {
-                    response.append("To list all setting: " + CM.settings.info.cmd.create(null, null, "true") + "\n");
+                    response.append("To list all setting: " + CM.settings.info.cmd.listAll("true") + "\n");
                 }
-                response.append("For info/usage: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null).toSlashCommand(false) + "\n");
+                response.append("For info/usage: " + CM.settings.info.cmd.key("YOUR_KEY_HERE").toSlashCommand(false) + "\n");
                 response.append("To delete: " + CM.settings.delete.cmd.toSlashMention() + "\n");
                 response.append("Find a setting: " + CM.help.find_setting.cmd.toSlashMention());
 

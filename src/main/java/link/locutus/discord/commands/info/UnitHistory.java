@@ -111,7 +111,7 @@ public class UnitHistory extends Command {
             }
         }
 
-        CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name(), null);
+        CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name());
 
         String title = "`" + nation.getNation() + "` " + unit.name() + " history";
         int perPage = 15;

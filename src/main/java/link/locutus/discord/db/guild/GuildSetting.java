@@ -197,7 +197,7 @@ public abstract class GuildSetting<T> {
 
     public String getCommandMention() {
         if (Locutus.imp() == null || Locutus.imp().getSlashCommands() == null) {
-            return CM.settings.info.cmd.create(name, null, null).toSlashCommand();
+            return CM.settings.info.cmd.key(name).toSlashCommand();
         }
         return getCommandMention(getCallables());
     }
@@ -288,7 +288,7 @@ public abstract class GuildSetting<T> {
         for (String coalition : requiresCoalitionStr) {
             if (db.getCoalition(coalition).isEmpty()) {
                 if (throwException) {
-                    errors.add("You must first set the coalition `" + coalition + "` (see: " + CM.coalition.add.cmd.create(null, coalition).toSlashCommand() + ")");
+                    errors.add("You must first set the coalition `" + coalition + "` (see: " + CM.coalition.add.cmd.coalitionName(coalition).toSlashCommand() + ")");
                 } else {
                     return false;
                 }
@@ -310,7 +310,7 @@ public abstract class GuildSetting<T> {
             Map<Long, Role> roleMap = db.getRoleMap(role);
             if (roleMap.isEmpty() || (!allowAARole && !roleMap.containsKey(0L))) {
                 if (throwException) {
-                    errors.add("Missing required role " + role.name() + " (see: " + CM.role.setAlias.cmd.create(role.name(), null, null, null).toSlashCommand() + ")");
+                    errors.add("Missing required role " + role.name() + " (see: " + CM.role.setAlias.cmd.locutusRole(role.name()).discordRole(null).toSlashCommand() + ")");
                 } else {
                     return false;
                 }

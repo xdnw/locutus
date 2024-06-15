@@ -174,8 +174,8 @@ public class HelpCommands {
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();
-            msg.append("**All settings: **" + CM.settings.info.cmd.create(null, null, "true") + "\n");
-            msg.append("- More Info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null) + "\n");
+            msg.append("**All settings: **" + CM.settings.info.cmd.key("true") + "\n");
+            msg.append("- More Info: " + CM.settings.info.cmd.key("YOUR_KEY_HERE") + "\n");
             msg.append("- To Delete: " + CM.settings.delete.cmd.create("YOUR_KEY_HERE") + "\n\n");
 
             List<GuildSetting> results = getGPT().getClosestSettings(store, query, num_results);

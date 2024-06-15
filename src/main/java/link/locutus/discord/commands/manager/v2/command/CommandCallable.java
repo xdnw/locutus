@@ -184,9 +184,6 @@ public interface CommandCallable {
         } else if (this instanceof ParametricCallable callable) {
             Method method = callable.getMethod();
             List<String> params = callable.getUserParameterMap().values().stream().map(ParameterData::getName).toList();
-            // join with comma
-            String typeArgs = params.stream().map(f -> "String " + f).collect(Collectors.joining(", "));
-            String args = params.stream().map(f -> "\"" + f + "\", " + f).collect(Collectors.joining(", "));
 
             Class<?> clazz = method.getDeclaringClass();
             String className = clazz.getName();
@@ -214,16 +211,23 @@ public interface CommandCallable {
                 }
             }
 
+            List<String> argMethods = new ArrayList<>();
+            for (String arg : params) {
+                argMethods.add(String.format("""
+                        %1$spublic %2$s %3$s(String value) {
+                        %1$s    return set("%3$s", value);
+                        %1$s}
+                        """, indentStr, name, arg));
+            }
+
             output.append(String.format("""
-                            %1$s@AutoRegister(clazz=%2$s.class,method="%3$s"%7$s)
+                            %1$s@AutoRegister(clazz=%2$s.class,method="%3$s"%5$s)
                             %1$spublic static class %4$s extends CommandRef {
                             %1$s    public static final %4$s cmd = new %4$s();
-                            %1$s    public %4$s create(%5$s) {
-                            %1$s        return createArgs(%6$s);
-                            %1$s    }
+                            %6$s
                             %1$s}
                             """,
-                    indentStr, className, method.getName(), name, typeArgs, args, fieldExt));
+                    indentStr, className, method.getName(), name, fieldExt, String.join("\n", argMethods)));
         } else {
             throw new IllegalArgumentException("Unknown callable type: " + this.getClass().getSimpleName());
         }

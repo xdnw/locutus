@@ -373,7 +373,7 @@ public class UnsortedCommands {
             }
             totals = alliance.getStockpile();
             if (totals == null) {
-                return "No stockpile found for " + alliance.getMarkdownUrl() + ". Ensure the api key is set correctly: " + CM.settings.info.cmd.create(GuildKey.API_KEY.name(), null, null);
+                return "No stockpile found for " + alliance.getMarkdownUrl() + ". Ensure the api key is set correctly: " + CM.settings.info.cmd.key(GuildKey.API_KEY.name());
             }
         } else {
             DBNation nation = nationOrAlliance.asNation();
@@ -1168,7 +1168,7 @@ public class UnsortedCommands {
             }
         }
 
-        CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name(), null);
+        CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name());
 
         String title = "`" + nation.getNation() + "` " + unit.name() + " history";
         int perPage =15;
@@ -1444,7 +1444,7 @@ public class UnsortedCommands {
                 // buttons
                 IMessageBuilder msg = io.create().append("Options:");
                 for (String option : options) {
-                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.create(option, null, null, null), option);
+                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.create(option), option);
                 }
                 msg.send();
                 return null;
@@ -2247,7 +2247,7 @@ public class UnsortedCommands {
 
             msg = msg.embed("[#" + annId + "] " + subject, body.toString());
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null, null);
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "");
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 
