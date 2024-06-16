@@ -391,6 +391,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addButton", "command");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addModal", "modal");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addButtonRaw", "raw");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "rename"), "renameButton", "button");
 
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));

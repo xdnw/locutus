@@ -39,6 +39,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -86,7 +87,7 @@ public class EmbedCommands {
 
     @Command(desc = "Set the title of an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String title(@Me User user, @Me Guild guild, Message discMessage, String title) {
+    public String title(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String title) {
         checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
         List<MessageEmbed> embeds = message.getEmbeds();
@@ -99,12 +100,13 @@ public class EmbedCommands {
         message.clearEmbeds();
         message.embed(builder.build());
         message.send();
-        return "Done! See: " + discMessage.getJumpUrl();
+        io.create().embed("Set Title", "Done! See: " + discMessage.getJumpUrl()).cancelButton().send();
+        return null;
     }
 
     @Command(desc = "Set the description of an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String description(@Me User user, @Me Guild guild, Message discMessage, String description) {
+    public String description(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String description) {
         checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
         List<MessageEmbed> embeds = message.getEmbeds();
@@ -117,12 +119,52 @@ public class EmbedCommands {
         message.clearEmbeds();
         message.embed(builder.build());
         message.send();
-        return "Done! See: " + discMessage.getJumpUrl();
+        io.create().embed("Set Description", "Done! See: " + discMessage.getJumpUrl()).cancelButton().send();
+        return null;
     }
 
     @Command(desc = "Remove a button from an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String removeButton(@Me User user, @Me Guild guild, Message message, @Arg("A comma separated list of button labels") @TextArea(',') List<String> labels) {
+    public String renameButton(@Me User user, @Me IMessageIO io, @Me Guild guild, @Me JSONObject cmdJson, Message message, String label, String rename_to) {
+        checkMessagePerms(user, guild, message);
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        if (!rename_to.matches("[a-zA-Z0-9_ ]+")) {
+            throw new IllegalArgumentException("Label must be alphanumeric, not: `" + rename_to + "`");
+        }
+
+        Button found = null;
+        List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                found = button;
+                break;
+            }
+        }
+        if (found == null) {
+            throw new IllegalArgumentException("Button `" + label + "` not found on the embed");
+        }
+        List<MessageEmbed> embeds = message.getEmbeds();
+        if (embeds.size() != 1) {
+            throw new IllegalArgumentException("No embeds found on message: `" + message.getId() + "`");
+        }
+        Map<String, String> reactions = DiscordUtil.getReactions(embeds.get(0));
+
+        DiscordMessageBuilder msg = new DiscordMessageBuilder(message.getChannel(), message);
+        msg.clearButtons();
+        for (Map.Entry<String, String> entry : reactions.entrySet()) {
+            msg.commandButton(entry.getValue(), entry.getKey());
+        }
+        msg.send();
+        io.create().embed("Deleted Button", "Done! Renamed button `" + label + "` to " + rename_to + "\n" +
+                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton().send();
+        return null;
+    }
+
+    @Command(desc = "Remove a button from an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String removeButton(@Me User user, @Me IMessageIO io, @Me Guild guild, Message message, @Arg("A comma separated list of button labels") @TextArea(',') List<String> labels) {
         checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
@@ -153,7 +195,8 @@ public class EmbedCommands {
         }
 
         RateLimitUtil.queue(message.editMessageComponents(rows));
-        return "Done! Deleted " + labels.size() + " buttons";
+        io.create().embed("Deleted Button", "Done! Deleted " + labels.size() + " buttons").cancelButton().send();
+        return null;
     }
 
     @Command(desc = "Add a button to a discord embed from this bot which runs a command\n" +
@@ -191,8 +234,10 @@ public class EmbedCommands {
                 .removeButtonByLabel(label)
                 .commandButton(behavior, channelId, command.replace("\\n", "\n"), label)
                 .send();
-        return "Done! Added button `" + label + "` to " + message.getJumpUrl() + "\n" +
-                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention();
+        io.create().embed("Added Button", "Added button `" + label + "` to " + message.getJumpUrl() + "\n" +
+                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention() + "\n" +
+                "Rename using TODO CM REF").cancelButton().send();// + CM.embed.rename.button.cmd.toSlashMention();
+        return null;
     }
 
     @Command(desc = "Add a button to a discord embed from this bot which runs a command")
@@ -224,7 +269,7 @@ public class EmbedCommands {
     @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addModal(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
+    public String addModal(@Me User user, @Me IMessageIO io, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
                            @Arg("A comma separated list of the command arguments to prompt for\n" +
                                    "Arguments can be one of the named arguments for the command, or the name of any `{placeholder}` you have for `defaults`") String arguments,
                            @Arg("The default arguments and values you want to submit to the command\n" +
@@ -283,7 +328,8 @@ public class EmbedCommands {
         new DiscordMessageBuilder(message.getChannel(), message)
                 .modal(behavior, channelId, command, full, label)
                 .send();
-        return "Done! Added modal button `" + label + "` to " + message.getJumpUrl();
+        io.create().embed("Added Modal", "Added modal button `" + label + "` to " + message.getJumpUrl()).cancelButton().send();
+        return null;
     }
 
 
