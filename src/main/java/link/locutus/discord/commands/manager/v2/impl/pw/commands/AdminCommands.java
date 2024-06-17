@@ -779,7 +779,7 @@ public class AdminCommands {
                 msg = msg.append(bottomText);
             }
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null, null);
+            CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "");
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 
@@ -1296,7 +1296,7 @@ public class AdminCommands {
         }
 
         if (removeRole) {
-            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.create(locutusRole.name(), null).toSlashCommand() + "");
+            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand() + "");
         }
 
 
@@ -1304,7 +1304,7 @@ public class AdminCommands {
         String allianceStr = alliance == null ? "*" : alliance.getName() + "/" + aaId;
         db.addRole(locutusRole, discordRole, aaId);
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + " for alliance " + allianceStr + "\n" +
-                "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name(), null).toSlashCommand() + "";
+                "To unregister, use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand() + "";
     }
 
     public String printApiStats(ApiKeyPool keys) {

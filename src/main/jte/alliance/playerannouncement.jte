@@ -52,9 +52,9 @@ bg-secondary border-dark
     </figure>
     @if(showFooter)
         @if(plrAnn.isActive())
-        <button cmd="${CM.announcement.read.cmd.create(plrAnn.getParent().id + "", null).toSlashCommand(false)}" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button cmd="${CM.announcement.read.cmd.ann_id(plrAnn.getParent().id + "").toSlashCommand(false)}" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         @else
-        <button cmd="${CM.announcement.read.cmd.create(plrAnn.getParent().id + "", "false").toSlashCommand(false)}" type="button" class="btn btn-danger">Mark Unread</button>
+        <button cmd="${CM.announcement.read.cmd.ann_id(plrAnn.getParent().id + "").markRead("false").toSlashCommand(false)}" type="button" class="btn btn-danger">Mark Unread</button>
         @endif
     @endif
 </div>

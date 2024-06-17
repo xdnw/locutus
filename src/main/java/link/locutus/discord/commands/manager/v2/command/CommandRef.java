@@ -37,6 +37,23 @@ public class CommandRef {
         return createArgs(argMap);
     }
 
+    public <T extends CommandRef> T createEmpty() {
+        return createArgs(new HashMap<>());
+    }
+
+    public <T extends CommandRef> T set(String arg, String value) {
+        CommandRef instance = this;
+        if (arguments.isEmpty()) {
+            instance = createArgs();
+        }
+        if (value != null) {
+            instance.arguments.put(arg, value);
+        } else {
+            instance.arguments.remove(arg);
+        }
+        return (T) instance;
+    }
+
     public <T extends CommandRef> T createArgs(Map<String, String> args) {
         try {
             CommandRef instance = getClass().newInstance();

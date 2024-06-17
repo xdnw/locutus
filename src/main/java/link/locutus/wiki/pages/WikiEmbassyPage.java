@@ -24,7 +24,7 @@ public class WikiEmbassyPage extends BotWikiGen {
                 "To open an embassy for yourself:",
                 CM.embassy.cmd.toSlashCommand(true),
                 "Or for another player:",
-                CM.embassy.cmd.create("@Borg").toSlashCommand(true)
+                CM.embassy.cmd.nation("@Borg").toSlashCommand(true)
         );
     }
 }

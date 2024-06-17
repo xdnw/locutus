@@ -136,7 +136,7 @@ public class HelpCommands {
             for (ParametricCallable callable : closest) {
                 if (callable.getMethod().equals(pc.getMethod())) continue;
                 embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
-                        CM.help.command.cmd.create(callable.getFullPath()),
+                        CM.help.command.cmd.command(callable.getFullPath()),
                         callable.getFullPath());
             }
         }
@@ -161,7 +161,7 @@ public class HelpCommands {
             for (ParametricCallable other : closest) {
                 if (other.getMethod().equals(command.getMethod())) continue;
                 embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
-                        CM.help.nation_placeholder.cmd.create(other.getFullPath()), other.getFullPath());
+                        CM.help.nation_placeholder.cmd.command(other.getFullPath()), other.getFullPath());
             }
         }
 
@@ -174,9 +174,9 @@ public class HelpCommands {
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();
-            msg.append("**All settings: **" + CM.settings.info.cmd.create(null, null, "true") + "\n");
-            msg.append("- More Info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null) + "\n");
-            msg.append("- To Delete: " + CM.settings.delete.cmd.create("YOUR_KEY_HERE") + "\n\n");
+            msg.append("**All settings: **" + CM.settings.info.cmd.key("true") + "\n");
+            msg.append("- More Info: " + CM.settings.info.cmd.key("YOUR_KEY_HERE") + "\n");
+            msg.append("- To Delete: " + CM.settings.delete.cmd.key("YOUR_KEY_HERE") + "\n\n");
 
             List<GuildSetting> results = getGPT().getClosestSettings(store, query, num_results);
             for (int i = 0; i < results.size(); i++) {

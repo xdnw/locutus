@@ -1045,7 +1045,7 @@ public class TradeCommands {
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append(CM.deposits.add.cmd.create(url, ResourceType.resourcesToString(entry.getValue()), "#deposit", null).toSlashCommand());
+                response.append(CM.deposits.add.cmd.accounts(url).amount(ResourceType.resourcesToString(entry.getValue())).note("#deposit").toSlashCommand());
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
@@ -1167,7 +1167,7 @@ public class TradeCommands {
         body.append("\nPress `" + emoji + "` to compare by day (200 days)");
 
 
-        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.create(ResourceType.resourcesToString(stockpile), ResourceType.resourcesToString(allDeposits), "200", null, null);
+        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.stockpile1(ResourceType.resourcesToString(stockpile)).stockpile2(ResourceType.resourcesToString(allDeposits)).numDays("200");
 
         IMessageBuilder msg = channel.create().embed(title, body.toString())
                 .commandButton(cmd, "Show Graph (200d)")

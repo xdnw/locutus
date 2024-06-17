@@ -117,33 +117,33 @@
         <div class="list-group">
         @if(nation.getTankPct() > 0.8 && nation.getAircraftPct() > 0.8)
             @if(db.hasAlliance())
-                <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.create("#off>0,~enemies,#getAttacking(~allies,#active_m<7200)>0", null, null, null, null, "true", null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Priority War targets</a>
+                <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.targets("#off>0,~enemies,#getAttacking(~allies,#active_m<7200)>0").onlyPriority("true").toSlashCommand(false)}" class="link-primary list-group-item bg-light">Priority War targets</a>
             @endif
-            <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.create(null, null, null, null, null, "true", null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Secondary War targets</a>
-            <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.create(null, null, null, null, null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">All enemies</a>
+            <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.onlyPriority("true").toSlashCommand(false)}" class="link-primary list-group-item bg-light">Secondary War targets</a>
+            <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.createEmpty().toSlashCommand(false)}" class="link-primary list-group-item bg-light">All enemies</a>
         @endif
-        <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.create(null, null, null, null, null, null, "true", "true", null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Weak enemies</a>
-        <a href="javascript:void(0)" cmd="${CM.war.find.damage.cmd.create("~enemies", null, null, null, null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Find damage targets</a>
+        <a href="javascript:void(0)" cmd="${CM.war.find.enemy.cmd.onlyWeak("true").onlyEasy("true").toSlashCommand(false)}" class="link-primary list-group-item bg-light">Weak enemies</a>
+        <a href="javascript:void(0)" cmd="${CM.war.find.damage.cmd.nations("~enemies").toSlashCommand(false)}" class="link-primary list-group-item bg-light">Find damage targets</a>
         </div>
     </div>
 @endif
 <div class="bg-white container mt-3 rounded shadow py-1">
     <h2 class="">&#127919; Raid Finder</h2>
-    <a href="javascript:void(0)" cmd="${CM.spy.find.intel.cmd.create(null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Intel Op</a>
+    <a href="javascript:void(0)" cmd="${CM.spy.find.intel.cmd.createEmpty().toSlashCommand(false)}" class="link-primary list-group-item bg-light">Intel Op</a>
     <hr>
     <p class="lead">
         This is a tool, you are responsible for your own raids. Ask a gov member if you are unsure about a target
     </p>
     <div class="list-group">
-    <a href="javascript:void(0)" replace for="raid-out-1" cmd="${CM.war.find.raid.cmd.create(null, "10", null, null, null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Safe inactive nones/apps</a>
+    <a href="javascript:void(0)" replace for="raid-out-1" cmd="${CM.war.find.raid.cmd.numResults("10").toSlashCommand(false)}" class="link-primary list-group-item bg-light">Safe inactive nones/apps</a>
         <div id="raid-out-1" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
-    <a href="javascript:void(0)" replace for="raid-out-2" cmd="${CM.war.find.raid.cmd.create("(*,#color=beige)|(*,#vm_turns>0)", "25", "2d", null, null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">List nations coming out of beige</a>
+    <a href="javascript:void(0)" replace for="raid-out-2" cmd="${CM.war.find.raid.cmd.targets("(*,#color=beige)|(*,#vm_turns>0)").numResults("25").activeTimeCutoff("2d").toSlashCommand(false)}" class="link-primary list-group-item bg-light">List nations coming out of beige</a>
         <div id="raid-out-2" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
-    <a href="javascript:void(0)" replace for="raid-out-3" cmd="${CM.war.find.raid.cmd.create("#tankpct<0.2,#soldierpct<0.4,*", "25", "2d", "true", null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">List actives with minimal ground (2d inactive)</a>
+    <a href="javascript:void(0)" replace for="raid-out-3" cmd="${CM.war.find.raid.cmd.targets("#tankpct<0.2,#soldierpct<0.4,*").numResults("25").activeTimeCutoff("2d").weakground("true").toSlashCommand(false)}" class="link-primary list-group-item bg-light">List actives with minimal ground (2d inactive)</a>
         <div id="raid-out-3" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
-    <a href="javascript:void(0)" replace for="raid-out-4" cmd="${CM.war.find.raid.cmd.create("#def>0,#RelativeStrength<1,*", "25", "0d", "true", null, null, null, null, null, null, null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">Include actives losing their current wars</a>
+    <a href="javascript:void(0)" replace for="raid-out-4" cmd="${CM.war.find.raid.cmd.targets("#def>0,#RelativeStrength<1,*").numResults("25").activeTimeCutoff("0d").weakground("true").toSlashCommand(false)}" class="link-primary list-group-item bg-light">Include actives losing their current wars</a>
         <div id="raid-out-4" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
-    <a href="javascript:void(0)" replace for="raid-out-5" cmd="${CM.war.find.unprotected.cmd.create("*", "25", null, "true", null, null, null, null, "true", null).toSlashCommand(false)}" class="link-primary list-group-item bg-light">List actives possibly unable to counter properly</a>
+    <a href="javascript:void(0)" replace for="raid-out-5" cmd="${CM.war.find.unprotected.cmd.targets("*").numResults("25").includeAllies("true").ignoreODP("true").toSlashCommand(false)}" class="link-primary list-group-item bg-light">List actives possibly unable to counter properly</a>
         <div id="raid-out-5" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
     </div>
 </div>

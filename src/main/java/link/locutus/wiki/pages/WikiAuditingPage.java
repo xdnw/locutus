@@ -30,7 +30,7 @@ public class WikiAuditingPage extends BotWikiGen {
         commandMarkdownSpoiler(CM.settings_audit.MEMBER_LEAVE_ALERT_CHANNEL.cmd),
         "# Automatic Attack Audits",
         "Set an opt out role on discord",
-        CM.role.setAlias.cmd.create(Roles.AUDIT_ALERT_OPT_OUT.name(), "@audit_opt_out", null, null).toString(),
+        CM.role.setAlias.cmd.locutusRole(Roles.AUDIT_ALERT_OPT_OUT.name()).discordRole("@audit_opt_out").toString(),
         commandMarkdownSpoiler(CM.settings_audit.MEMBER_AUDIT_ALERTS.cmd),
         commandMarkdownSpoiler(CM.alerts.audit.optout.cmd),
         "# Create or send audit reports",

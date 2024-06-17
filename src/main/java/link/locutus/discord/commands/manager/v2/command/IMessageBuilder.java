@@ -80,7 +80,7 @@ public interface IMessageBuilder {
             arguments = arguments.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(Locale.ROOT),
                     Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
             String argumentJson = arguments.isEmpty() ? null : new Gson().toJson(arguments);
-            CM.modal.create attach = CM.modal.create.cmd.create(path, StringMan.join(promptFor, ","), argumentJson);
+            CM.modal.create attach = CM.modal.create.cmd.command(path).arguments(StringMan.join(promptFor, ",")).defaults(argumentJson);
             return commandButton(behavior, attach, message);
         }
 
@@ -115,7 +115,7 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder modalLegacy(CommandBehavior behavior, CommandRef ref, String message) {
-        CM.fun.say say = CM.fun.say.cmd.create(behavior.getValue() + ref.toSlashCommand());
+        CM.fun.say say = CM.fun.say.cmd.msg(behavior.getValue() + ref.toSlashCommand());
         commandButton(behavior, say, message);
         return this;
     }

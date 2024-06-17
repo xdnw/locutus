@@ -21,11 +21,11 @@ public class WikiRecruitmentPage extends BotWikiGen {
                         - Alliances with 9 or less members (non inactive) will also require an online nation on discord with the INTERNAL_AFFAIRS role
                         """,
                 "# Set an `" + Roles.INTERNAL_AFFAIRS.name() + "` role",
-                CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), "@discordRole", null, null).toString(),
+                CM.role.setAlias.cmd.locutusRole(Roles.INTERNAL_AFFAIRS.name()).discordRole("@discordRole").toString(),
                 "# Setup a recruitment message",
                 """
                 - Messages will automatically send once configured. 
-                - Disable by using """ + CM.settings.delete.cmd.create(GuildKey.RECRUIT_MESSAGE_OUTPUT.name()),
+                - Disable by using """ + CM.settings.delete.cmd.key(GuildKey.RECRUIT_MESSAGE_OUTPUT.name()),
                 "1. First ensure you have your alliance and api key set",
                 commandMarkdownSpoiler(CM.settings_default.registerAlliance.cmd),
                 commandMarkdownSpoiler(CM.settings_default.registerApiKey.cmd),

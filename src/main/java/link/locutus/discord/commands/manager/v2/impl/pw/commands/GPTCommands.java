@@ -264,7 +264,7 @@ public class GPTCommands {
         if (sources.isEmpty()) {
             if (!listRoot) {
                 io.create().embed("No sources found", "Try `listRoot` to see the default sources")
-                        .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.dataset.list.cmd.create(Boolean.TRUE + ""), "List Root")
+                        .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.dataset.list.cmd.listRoot(Boolean.TRUE + ""), "List Root")
                         .send();
                 return null;
             }
@@ -919,7 +919,7 @@ public class GPTCommands {
 
             body.append("\n\nReview and edit: " + MarkupUtil.markdownUrl("sheet:RENAME_CHANNELS", sheet.getURL()));
 
-            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.create("sheet:" + sheet.getSpreadsheetId(), null, null, "true", null));
+            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.sheet("sheet:" + sheet.getSpreadsheetId()).force("true"));
             if (!errors.isEmpty()) {
                 msg = msg.file("errors.txt", String.join("\n", errors));
             }

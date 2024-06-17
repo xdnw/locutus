@@ -52,7 +52,7 @@ public class WikiCounteringPage extends BotWikiGen {
                         -   If the enemy is weak and their military is not currently a threat, get a blockade up and sit on them
                                                 
                         -   Don't airstrike infra, cash, waste fortifies, or double blockades, or unnecessarily suicide units
-                        """.replace("{command}", CM.nation.score.cmd.create("@user", null, null, null, null, null, null, null, null, null, null, "5551").toString())
+                        """.replace("{command}", CM.nation.score.cmd.nation("@user").builtMMR("5551").toString())
         );
     }
 }

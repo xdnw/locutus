@@ -4147,7 +4147,12 @@ public class WarCommands {
             if (aaIds.isEmpty()) {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
-                    if (me.getAlliance_id() == 0) return "No alliance or allies are set.\n" + GuildKey.ALLIANCE_ID.getCommandMention() + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
+                    if (me.getAlliance_id() == 0) {
+                        return "No alliance or allies are set.\n" +
+                                GuildKey.ALLIANCE_ID.getCommandMention() +
+                                "\nOR\n " +
+                                CM.coalition.create.cmd.coalitionName(Coalition.ALLIES.name());
+                    }
                     aaIds = new HashSet<>(Arrays.asList(me.getAlliance_id()));
                     counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 0, true));
                 } else {

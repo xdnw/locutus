@@ -3903,9 +3903,9 @@ public class DBNation implements NationOrAlliance {
         String response = toEmbedString();
         response += "To report in-game fraud: " + CM.report.add.cmd.toSlashMention();
         IMessageBuilder msg = channel.create().embed(title, response)
-                .commandButton(CommandBehavior.UNPRESS, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null, null, null), "Counter");
+                .commandButton(CommandBehavior.UNPRESS, CM.war.counter.nation.cmd.target(getId() + ""), "Counter");
         if (refresh) {
-            msg = msg.commandButton(CM.who.cmd.create(getId() + "", null, null, null, null, null, null, null, null, null), "Refresh");
+            msg = msg.commandButton(CM.who.cmd.nationOrAlliances(getId() + ""), "Refresh");
         }
         msg.send();
     }

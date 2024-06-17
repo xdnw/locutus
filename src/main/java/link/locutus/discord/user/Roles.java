@@ -228,7 +228,7 @@ public enum Roles {
         if (role != null) {
             return role.getName();
         }
-        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null, null, null);
+        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.locutusRole(name()).discordRole(null);
     }
 
     public GuildSetting getKey() {

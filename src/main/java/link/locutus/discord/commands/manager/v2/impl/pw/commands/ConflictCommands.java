@@ -409,7 +409,7 @@ public class ConflictCommands {
         manager.clearAllianceCache();
         return response.toString() +
                 "\nThen to initialize the stats and push to the site:\n" +
-                CM.conflict.sync.website.cmd.create(conflict.getId() + "", "true", null, reinitializeGraphsArg);
+                CM.conflict.sync.website.cmd.conflicts(conflict.getId() + "").upload_graph("true").reinitialize_graphs(reinitializeGraphsArg);
     }
 
     @Command(desc = "Remove a set of alliances from a conflict\n" +
@@ -630,7 +630,7 @@ public class ConflictCommands {
         Map<String, String> errors = new LinkedHashMap<>();
         List<Conflict> conflicts = PWWikiUtil.loadWikiConflicts(errors, useCache);
         Set<Conflict> loaded = loadWikiConflicts(db, manager, new ArrayList<>(conflicts), false, false);
-        return "Loaded " + loaded.size() + " conflicts from the wiki. Use " + CM.conflict.sync.website.cmd.create("*", "true", "true", "true") + " recalculate stats and push to the website.";
+        return "Loaded " + loaded.size() + " conflicts from the wiki. Use " + CM.conflict.sync.website.cmd.conflicts("*").upload_graph("true").reinitialize_wars("true").reinitialize_graphs("true") + " recalculate stats and push to the website.";
     }
 
 

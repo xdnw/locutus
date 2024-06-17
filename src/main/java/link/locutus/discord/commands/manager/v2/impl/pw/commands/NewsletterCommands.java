@@ -171,7 +171,7 @@ public class NewsletterCommands {
         return "Autosend enabled. You will be notified every `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, interval) + "` since the last send in this channel\n" +
                 "- The role: `" + pingRole.getName() + "` will be mentioned\n" +
                 "- Autosend task will check every turn\n" +
-                "- Disable with " + CM.newsletter.auto.cmd.create(newsletter.getName(), "0", null);
+                "- Disable with " + CM.newsletter.auto.cmd.newsletter(newsletter.getName()).interval("0");
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MAIL})
@@ -193,7 +193,7 @@ public class NewsletterCommands {
             Set<DBNation> nations = subscribed.stream().map(f -> DBNation.getById(f)).filter(Objects::nonNull).collect(Collectors.toSet());
             if (nations.isEmpty()) {
                 throw new IllegalArgumentException("No nations subscribed to newsletter: `" + newsletter.getName() + "`\n" +
-                        "Subscribe with " + CM.newsletter.subscribe.cmd.create(newsletter.getName(), null));
+                        "Subscribe with " + CM.newsletter.subscribe.cmd.newsletter(newsletter.getName()));
             }
 
             String title = "newsletter:" + newsletter.getName() + " " + fromStr + " to " + toStr;
@@ -201,7 +201,7 @@ public class NewsletterCommands {
 
             newsletter.setLastSent(now);
 
-            JSONObject confirm = CM.mail.send.cmd.create(StringMan.join(nations, ","), title, body, "true", null, null).toJson();
+            JSONObject confirm = CM.mail.send.cmd.nations(StringMan.join(nations, ",")).subject(title).message(body).confirm("true").toJson();
             return IACommands.mail(me, confirm, db, io,  author, nations, title, body, true, true, null);
         }
 
@@ -342,7 +342,7 @@ public class NewsletterCommands {
         }
 
         return "Successfully subscribed " + (nations.size() == 1 ? nations.iterator().next().getMarkdownUrl() : nations.size() + " nations") + " to " + newsletter.getName()
-                + "\n- Unsubscribe with " + CM.newsletter.unsubscribe.cmd.create(newsletter.getName(), null);
+                + "\n- Unsubscribe with " + CM.newsletter.unsubscribe.cmd.newsletter(newsletter.getName());
     }
 
     @Command(desc = "Unsubscribe yourself or a set of nations from a newsletter")

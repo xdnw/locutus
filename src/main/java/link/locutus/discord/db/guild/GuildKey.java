@@ -930,7 +930,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for defensive wars\n" +
                     "Members and `" + Roles.MILCOM.name() + "` are pinged for defensive wars\n" +
-                    "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.MILCOM.name(), "", null, null);
+                    "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.locutusRole(Roles.MILCOM.name()).discordRole("");
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
     public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
@@ -981,7 +981,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for offensive wars\n" +
                     "Members and `" + Roles.FOREIGN_AFFAIRS.name() + "` role are pinged for Do Not Raid (DNR) violations\n" +
-                    "To set the `" + Roles.FOREIGN_AFFAIRS.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.FOREIGN_AFFAIRS.name(), "", null, null) + "\n" +
+                    "To set the `" + Roles.FOREIGN_AFFAIRS.name() + "` role, see: " + CM.role.setAlias.cmd.locutusRole(Roles.FOREIGN_AFFAIRS.name()).discordRole("") + "\n" +
                     "Wars against inactive nones do not create alerts";
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
@@ -1300,7 +1300,7 @@ public class GuildKey {
         public String help() {
             return "Options: " + StringMan.getString(GuildDB.AutoRoleOption.values()) + "\n" +
                     "See also:\n" +
-                    "- " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
+                    "- " + CM.coalition.create.cmd.coalitionName(Coalition.MASKEDALLIANCES.name()) + "\n" +
                     "- " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
                     "- " + AUTOROLE_ALLIANCE_RANK.getCommandMention() + "\n" +
                     "- " + AUTOROLE_MEMBER_APPS.getCommandMention() + "\n" +
@@ -1442,7 +1442,7 @@ public class GuildKey {
         public Guild validate(GuildDB db, User user, Guild guild) {
             GuildDB otherDb = Locutus.imp().getGuildDB(guild);
             if (guild.getIdLong() == db.getGuild().getIdLong())
-                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.create(GuildKey.WAR_SERVER.name()) + " to unset the war server");
+                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()) + " to unset the war server");
             if (otherDb.getOrNull(GuildKey.WAR_SERVER, false) != null)
                 throw new IllegalArgumentException("Circular reference. The server you have set already defers its war room");
             return guild;
@@ -1534,7 +1534,7 @@ public class GuildKey {
         @Override
         public GuildDB validate(GuildDB db, User user, GuildDB otherDb) {
             if (otherDb.getIdLong() == db.getGuild().getIdLong())
-                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.create(FA_SERVER.name()) + " to unset the FA_SERVER");
+                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.key(FA_SERVER.name()) + " to unset the FA_SERVER");
             if (FA_SERVER.has(otherDb, false))
                 throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
             return otherDb;
@@ -1599,7 +1599,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The #channel to receive alerts when a raid target leaves beige.\n" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null, null, null) + " must also be set and have members in range";
+            return "The #channel to receive alerts when a raid target leaves beige.\n" + CM.role.setAlias.cmd.locutusRole(Roles.BEIGE_ALERT.name()).discordRole(null) + " must also be set and have members in range";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted().requireActiveGuild());
 

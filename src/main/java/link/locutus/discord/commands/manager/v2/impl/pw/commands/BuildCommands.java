@@ -56,7 +56,7 @@ public class BuildCommands {
         for (CityBuildRange existing : existingRanges) {
             for (Map.Entry<Integer, Integer> range : ranges.getRanges()) {
                 if (Math.max(range.getKey(), existing.getMin()) <= Math.min(range.getValue(), existing.getMax())) {
-                    response.append('\n').append("- Overlaps with (category, min-city, max-city) ").append(category).append(" ").append(existing.getMin()).append(" ").append(existing.getMax()).append(". Use ").append(CM.build.delete.cmd.create(category, existing.getMin() + "").toSlashCommand()).append(" to delete it.");
+                    response.append('\n').append("- Overlaps with (category, min-city, max-city) ").append(category).append(" ").append(existing.getMin()).append(" ").append(existing.getMax()).append(". Use ").append(CM.build.delete.cmd.category(category).minCities(existing.getMin() + "").toSlashCommand()).append(" to delete it.");
                 }
             }
         }

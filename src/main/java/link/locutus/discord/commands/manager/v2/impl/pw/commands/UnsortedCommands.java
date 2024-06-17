@@ -373,7 +373,7 @@ public class UnsortedCommands {
             }
             totals = alliance.getStockpile();
             if (totals == null) {
-                return "No stockpile found for " + alliance.getMarkdownUrl() + ". Ensure the api key is set correctly: " + CM.settings.info.cmd.create(GuildKey.API_KEY.name(), null, null);
+                return "No stockpile found for " + alliance.getMarkdownUrl() + ". Ensure the api key is set correctly: " + CM.settings.info.cmd.key(GuildKey.API_KEY.name());
             }
         } else {
             DBNation nation = nationOrAlliance.asNation();
@@ -1168,7 +1168,7 @@ public class UnsortedCommands {
             }
         }
 
-        CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name(), null);
+        CM.unit.history cmd = CM.unit.history.cmd.nation(nation.getNation_id() + "").unit(unit.name());
 
         String title = "`" + nation.getNation() + "` " + unit.name() + " history";
         int perPage =15;
@@ -1444,7 +1444,7 @@ public class UnsortedCommands {
                 // buttons
                 IMessageBuilder msg = io.create().append("Options:");
                 for (String option : options) {
-                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.create(option, null, null, null), option);
+                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.key(option), option);
                 }
                 msg.send();
                 return null;
@@ -1735,20 +1735,19 @@ public class UnsortedCommands {
         TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
         BankCommands.APPROVED_BULK_TRANSFER.put(key, sheet.getTransfers());
 
-        JSONObject command = CM.transfer.bulk.cmd.create(
-                sheet.getSheet().getURL(),
-                note.toString(),
-                depositsAccount != null ? depositsAccount.getUrl() : null,
-                useAllianceBank != null ? useAllianceBank.getUrl() : null,
-                useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedId() : null,
-                existingTaxAccount + "",
-                expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
-                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
-                Boolean.FALSE.toString(),
-                escrow_mode == null ? null : escrow_mode.name(),
-                String.valueOf(force),
-                null,
+        JSONObject command = CM.transfer.bulk.cmd.sheet(
+                sheet.getSheet().getURL()).depositType(
+                note.toString()).depositsAccount(
+                depositsAccount != null ? depositsAccount.getUrl() : null).useOffshoreAccount(
+                useAllianceBank != null ? useAllianceBank.getUrl() : null).useOffshoreAccount(
+                useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null).taxAccount(
+                taxAccount != null ? taxAccount.getQualifiedId() : null).existingTaxAccount(
+                existingTaxAccount + "").expire(
+                expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
+                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).convertToMoney(
+                Boolean.FALSE.toString()).escrow_mode(
+                escrow_mode == null ? null : escrow_mode.name()).bypassChecks(
+                String.valueOf(force)).key(
                 key.toString()
         ).toJson();
 
@@ -2247,7 +2246,7 @@ public class UnsortedCommands {
 
             msg = msg.embed("[#" + annId + "] " + subject, body.toString());
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null, null);
+            CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "");
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 

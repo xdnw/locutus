@@ -466,7 +466,7 @@ public class IACheckup {
                 return stockpile == null || stockpile.isEmpty() ? null : checkWarchest(nation, stockpile, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
-                    String cmd = CM.war.find.raid.cmd.create("*", "15", null, null, "170", null, null, null, null, null, null).toString();
+                    String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("170").toString();
                     String shortDesc = "`" + cmd + "`";
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +
@@ -529,13 +529,13 @@ public class IACheckup {
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.spies.cmd.create("https://politicsandwar.com/nation/id=6", null, null) + "\n";
+                        "" + CM.nation.spies.cmd.nation("https://politicsandwar.com/nation/id=6") + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.loot.cmd.create("https://politicsandwar.com/nation/id=6", null, null).toSlashCommand() + "\n";
+                        "" + CM.nation.loot.cmd.nationOrAlliance("https://politicsandwar.com/nation/id=6").toSlashCommand() + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
@@ -590,23 +590,9 @@ public class IACheckup {
                 String cityUrl = PW.City.getCityUrl(cityId);
                 String mmrStr = StringMan.join(mmr, "");
                 response.append("The " + CM.city.optimalBuild.cmd.toSlashMention() + " command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                        "" + CM.city.optimalBuild.cmd.create(cityUrl,
-                                null,
-                                mmrStr,
-                                null,
-                                MathMan.format(maxInfra),
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null, null).toSlashCommand());
+                        "" + CM.city.optimalBuild.cmd.build(cityUrl).buildMMR(
+                                mmrStr).infra(
+                                MathMan.format(maxInfra)).toSlashCommand());
                 return new AbstractMap.SimpleEntry<>(false, response.toString());
             }
             case ROI: {
@@ -629,7 +615,7 @@ public class IACheckup {
                 String desc ="During Peace time, you can find targets to gather intel on using:\n" +
                         "" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
                         "During wartime, you can find enemies to spy using:\n" +
-                        "" + CM.spy.find.target.cmd.create("enemies", "*", null, null, null, null) + "\n\n" +
+                        "" + CM.spy.find.target.cmd.targets("enemies").operations("*") + "\n\n" +
                         "(You should conduct a spy op every day)";
                 return new AbstractMap.SimpleEntry<>(diff, desc);
             }
@@ -817,7 +803,7 @@ public class IACheckup {
             }
         }
 
-        String cmd = CM.war.find.raid.cmd.create("*", "15", null, null, "12", null, null, null, null, null, null).toSlashCommand(false);
+        String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("12").toSlashCommand(false);
         String longDesc = "Let's declare on a target as they come off beige:\n" +
                 "1. Use e.g. `" + cmd + "` to find a target that ends beige in the next 12 turns\n" +
                 "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
@@ -1127,14 +1113,14 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, null, "true", null, null, null).toSlashCommand(false);
+            String warPriority = CM.war.find.enemy.cmd.onlyEasy("true").toSlashCommand(false);
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
         } else hasEnemies = false;
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");
             else resposnse.append("or ");
 
-            String cmd = CM.war.find.raid.cmd.create("*", null, null, null, null, null, null, null, null, null, null).toSlashCommand(false);
+            String cmd = CM.war.find.raid.cmd.targets("*").toSlashCommand(false);
             resposnse.append("`" + cmd + "` ");
         }
         resposnse.append("for some juicy targets");

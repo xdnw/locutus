@@ -178,7 +178,7 @@ public class WarPages {
             return TimeUtil.secToTime(TimeUnit.MINUTES, f.getNation(false).active_m());
         });
         table.addColumn("actions", false, false, f -> {
-            String cmd = CM.war.counter.auto.cmd.create(f.getAttacker_id() + "", null, null, null, null, null).toCommandArgs();
+            String cmd = CM.war.counter.auto.cmd.enemy(f.getAttacker_id() + "").toCommandArgs();
             String button = "<button cmd=\"" + cmd + "\" type=\"button\" class=\"btn-sm btn-primary\">Autocounter</button>";
             return button;
         });

@@ -20,7 +20,7 @@ public class WikiInterviewPage extends BotWikiGen {
             "# Prerequisites",
             "- Register the server to an alliance: " + CM.settings_default.registerAlliance.cmd.toString(),
             "## Create discord roles",
-            "Register a role using: " + CM.role.setAlias.cmd.create("LOCUTUS_ROLE", "@discordRole", null, null),
+            "Register a role using: " + CM.role.setAlias.cmd.locutusRole("LOCUTUS_ROLE").discordRole("@discordRole"),
             "The following Locutus roles can be set",
             "- " + Roles.APPLICANT.toString(),
             "- " + Roles.GRADUATED.toString(),

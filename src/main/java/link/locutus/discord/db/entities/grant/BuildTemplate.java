@@ -97,16 +97,27 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
-        return CM.grant_template.create.build.cmd.create(name, allowedRecipients,
-                build != null ? JavaCity.fromBytes(build).toJson() : null,
-                mmr == null ? null : mmr.toString(),
-                onlyNewCities ? "true" : null,
-                allow_switch_after_days >0 ? allow_switch_after_days + "" : null,
-                allow_switch_after_offensive ? "true" : null,
-                allow_switch_after_infra ? "true" : null,
-                allow_all ? "true" : null,
-                allow_switch_after_land_or_project ? "true" : null,
-                econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowDecay, allowIgnore, repeatable, null).toString();
+        return CM.grant_template.create.build.cmd.name(name).allowedRecipients(allowedRecipients).build(
+                build != null ? JavaCity.fromBytes(build).toJson() : null).mmr(
+                mmr == null ? null : mmr.toString()).only_new_cities(
+                onlyNewCities ? "true" : null).allow_after_days(
+                allow_switch_after_days >0 ? allow_switch_after_days + "" : null).allow_after_offensive(
+                allow_switch_after_offensive ? "true" : null).allow_after_infra(
+                allow_switch_after_infra ? "true" : null).allow_all(
+                allow_all ? "true" : null).allow_after_land_or_project(
+                allow_switch_after_land_or_project ? "true" : null).econRole(
+                econRole).selfRole(
+                selfRole).bracket(
+                bracket).useReceiverBracket(
+                useReceiverBracket).maxTotal(
+                maxTotal).maxDay(
+                maxDay).maxGranterDay(
+                maxGranterDay).maxGranterTotal(
+                maxGranterTotal).expireTime(
+                allowExpire).decayTime(
+                allowDecay).allowIgnore(
+                allowIgnore).repeatable(
+                repeatable).toString();
     }
 
     @Override

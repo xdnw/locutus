@@ -49,22 +49,24 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
     @Override
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
-        return CM.grant_template.create.warchest.cmd.create(name,
-                allowedRecipients,
-                allowancePerCity == null ? null : ResourceType.resourcesToString(allowancePerCity),
-                trackDays <= 0 ? null : trackDays + "",
-                subtractExpenditure ? "true" : null,
-                overdrawPercentCents <= 0 ? null : overdrawPercentCents + "",
-                econRole,
-                selfRole,
-                bracket,
-                useReceiverBracket,
-                maxTotal,
-                maxDay,
-                maxGranterDay,
-                maxGranterTotal, allowExpire, allowDecay, allowIgnore,
-                isRepeatable() ? null : "true",
-                null).toSlashCommand();
+        return CM.grant_template.create.warchest.cmd.name(name).allowedRecipients(
+                allowedRecipients).allowancePerCity(
+                allowancePerCity == null ? null : ResourceType.resourcesToString(allowancePerCity)).trackDays(
+                trackDays <= 0 ? null : trackDays + "").subtractExpenditure(
+                subtractExpenditure ? "true" : null).overdrawPercent(
+                overdrawPercentCents <= 0 ? null : overdrawPercentCents + "").econRole(
+                econRole).selfRole(
+                selfRole).bracket(
+                bracket).useReceiverBracket(
+                useReceiverBracket).maxTotal(
+                maxTotal).maxDay(
+                maxDay).maxGranterDay(
+                maxGranterDay).maxGranterTotal(
+                maxGranterTotal).expireTime(
+                allowExpire).decayTime(
+                allowDecay).allowIgnore(
+                allowIgnore).nonRepeatable(
+                isRepeatable() ? null : "true").toString();
     }
 
     @Override

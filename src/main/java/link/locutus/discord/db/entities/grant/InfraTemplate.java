@@ -101,10 +101,23 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
-        return CM.grant_template.create.infra.cmd.create(name, allowedRecipients,
-                level + "", onlyNewCities ? "true" : null,
-                require_n_offensives > 0 ? "true" : null,
-                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowDecay, allowIgnore, repeatable, null).toString();
+        return CM.grant_template.create.infra.cmd.name(name).allowedRecipients(allowedRecipients).level(
+                level + "").onlyNewCities(
+                onlyNewCities ? "true" : null).requireNOffensives(
+                require_n_offensives > 0 ? "true" : null).allowRebuild(
+                allow_rebuild ? "true" : null).econRole(
+                econRole).selfRole(
+                selfRole).bracket(
+                bracket).useReceiverBracket(
+                useReceiverBracket).maxTotal(
+                maxTotal).maxDay(
+                maxDay).maxGranterDay(
+                maxGranterDay).maxGranterTotal(
+                maxGranterTotal).expireTime(
+                allowExpire).decayTime(
+                allowDecay).allowIgnore(
+                allowIgnore).repeatable(
+                repeatable).toString();
     }
 
     @Override

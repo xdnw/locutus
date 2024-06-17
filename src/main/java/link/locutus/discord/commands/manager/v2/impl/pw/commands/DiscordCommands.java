@@ -320,7 +320,7 @@ public class DiscordCommands {
         Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, embedMessage.getButtons(), embedMessage.getJumpUrl(), true);
         List<String> commands = new ArrayList<>();
 
-        commands.add(CM.embed.create.cmd.create(title, desc).toSlashCommand(false));
+        commands.add(CM.embed.create.cmd.title(title).description(desc).toSlashCommand(false));
 
         String url = copyToMessage == null ? "" : copyToMessage.getJumpUrl();
 
@@ -340,7 +340,7 @@ public class DiscordCommands {
             String label = entry.getKey();
 
             String behaviorStr = (behavior == null ? CommandBehavior.DELETE_MESSAGE : behavior).name();
-            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString(), null).toSlashCommand(false);
+            String cmdStr = CM.embed.add.raw.cmd.message(url).label(label).behavior(behaviorStr).command(StringMan.join(current, "\n")).channel(channelId == null ? null : channelId.toString()).toSlashCommand(false);
             commands.add(cmdStr);
         }
 
@@ -431,7 +431,7 @@ public class DiscordCommands {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command " + CM.register.cmd.create(nation.getNation_id() + "").toSlashCommand() + " again";
+                "5. Run the command " + CM.register.cmd.nation(nation.getNation_id() + "").toSlashCommand() + " again";
 
         long id = user.getIdLong();
         boolean checkId = false;
@@ -450,7 +450,7 @@ public class DiscordCommands {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command " + CM.register.cmd.create(nation.getNation_id() + "").toSlashCommand() + " again";
+                "5. Run the command " + CM.register.cmd.nation(nation.getNation_id() + "").toSlashCommand() + " again";
 
         if (existingUser != null && existingUser.getNationId() != nation.getNation_id()) {
             if (existingUser.getDiscordId() != id) {

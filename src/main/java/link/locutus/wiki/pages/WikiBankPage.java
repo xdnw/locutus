@@ -41,12 +41,12 @@ public class WikiBankPage extends BotWikiGen {
                     
                     The bot owner runs the public offshore. For Locutus that is `Borg`.
                     Use the who command to see the current offshore alliance""",
-                    CM.who.cmd.create("Borg", null, null, null, null, null, null, null, null, null).toString(),
+                    CM.who.cmd.nationOrAlliances("Borg").toString(),
                 "Set that alliance as your offshore:",
                 commandMarkdownSpoiler(CM.offshore.add.cmd),
                 "**Alternatively** you can use the coalition command in your alliance server to set `" + Coalition.OFFSHORE.name() + "` to the desired offshore alliance, and ensure `" + Coalition.OFFSHORING.name() + "` is empty",
-                CM.coalition.create.cmd.create("", Coalition.OFFSHORE.name()).toString(),
-                CM.coalition.delete.cmd.create(Coalition.OFFSHORING.name()).toString(),
+                CM.coalition.create.cmd.alliances("").coalitionName(Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.delete.cmd.coalitionName(Coalition.OFFSHORING.name()).toString(),
                 "And ask an admin in the offshore alliance to add your alliance to the `" + Coalition.OFFSHORING.name() + "` coalition",
                 MarkupUtil.spoiler("Legal/Disclaimer", """
                         Offshoring and bot services are non political, and should be assumed to continue operating regardless of any attacks on Borg.
@@ -89,7 +89,7 @@ public class WikiBankPage extends BotWikiGen {
                     "Specify a receiver nation that has bank access to an alliance using the offshore, who has provided credentials to the bot (i.e. " + CM.credentials.login.cmd.toString() + ")",
                     "- Input the amount you wish to deposit",
                     "- Run the command in the discord server you wish to deposit into (i.e. your alliance or corporate server)",
-                    CM.trade.accept.cmd.create("Borg", "{food=1,coal=3,money=4}", null, null).toString(),
+                    CM.trade.accept.cmd.receiver("Borg").amount("{food=1,coal=3,money=4}").toString(),
                 """
                 Note: If the banker has not provided their login, or the sender has not provided their api, then trades must be sent to the receiver.
                 - Create a __private__ trade of either a `$0` ppu sell offer, or a food buy offer __over__ `$100,000` ppu.
@@ -106,50 +106,50 @@ public class WikiBankPage extends BotWikiGen {
                         Use the command with either your alliance or guild id.
                         The command must be run in the guild for that account.
                         - [How-To: Obtaining Guild Id](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)""",
-                CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null, null).toString(),
+                CM.deposits.check.cmd.nationOrAllianceOrGuild("").toString(),
                 "# Using the local alliance",
                 """
                         It is recommended to use an offshore instead, to avoid loot losses.
                         To enable banking using the local alliance, use your alliance url in:""",
-                        CM.offshore.add.cmd.create("", null, null, null).toString(),
+                        CM.offshore.add.cmd.offshoreAlliance("").toString(),
                 "**Alternatively** you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your alliance",
-                CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
-                CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
+                CM.coalition.add.cmd.alliances("").coalitionName(Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.add.cmd.alliances("").coalitionName(Coalition.OFFSHORING.name()).toString(),
                 "And no other values are set:",
                 CM.coalition.list.cmd.toString(),
                 "# Running your own offshore",
                 """
                 Go to the discord guild for your offshore, or create a new one if it does not exist.
                 Ensure no other alliance is registered for that guild:""",
-                CM.settings.delete.cmd.create(GuildKey.ALLIANCE_ID.name()).toString(),
+                CM.settings.delete.cmd.key(GuildKey.ALLIANCE_ID.name()).toString(),
                 "### Register the alliance and api key",
                 """
                 Set the alliance to the alliance for your offshore.""",
-                CM.settings_default.registerAlliance.cmd.create("").toString(),
+                CM.settings_default.registerAlliance.cmd.alliances("").toString(),
                 """
                  Set the api key to someone with bank access in the offshore alliance.
                  - For the api key, enable whitelisted access from the account page: <https://politicsandwar.com/account/>""",
-                CM.settings_default.registerApiKey.cmd.create("").toString(),
+                CM.settings_default.registerApiKey.cmd.apiKeys("").toString(),
                 "### Set it as an offshore",
                 "In the guild for your offshore, use the alliance id of the offshore:",
-                CM.offshore.add.cmd.create("", null, null, null).toString(),
+                CM.offshore.add.cmd.offshoreAlliance("").toString(),
                 "**Alternatively**, you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your offshore alliance",
-                CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
-                CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
+                CM.coalition.add.cmd.alliances("").coalitionName(Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.add.cmd.alliances("").coalitionName(Coalition.OFFSHORING.name()).toString(),
                 "And ensure ONLY past offshores (not connected to any other guild) are set as those coalitions",
                 CM.coalition.list.cmd.toString(),
                 "### Set the offshore in your alliance or corporation",
                 "Go to the guild you have setup for your alliance or corporation, and use the offshore add command with the alliance id of your offshore:",
-                CM.offshore.add.cmd.create("", null, null, null).toString(),
+                CM.offshore.add.cmd.offshoreAlliance("").toString(),
                 "**Alternatively**:\n" +
                 "1. In your alliance/corporation server, use the coalition command to set `" + Coalition.OFFSHORE.name() + "` and ensure `" + Coalition.OFFSHORING.name() + "` is not set",
-                CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString() + "\n" +
-                CM.coalition.delete.cmd.create(Coalition.OFFSHORING.name()).toString(),
+                CM.coalition.add.cmd.alliances("").coalitionName(Coalition.OFFSHORE.name()).toString() + "\n" +
+                CM.coalition.delete.cmd.coalitionName(Coalition.OFFSHORING.name()).toString(),
                 "2. In your offshore server, add your alliance id (if an alliance) or guild id (if corporation) to the `" + Coalition.OFFSHORING.name() + "` coalition",
-                CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
+                CM.coalition.add.cmd.alliances("").coalitionName(Coalition.OFFSHORING.name()).toString(),
                 "### Check deposits of alliances or guilds",
                 "In the offshore server, as above, use the deposits command with the alliance or guild id you wish to check",
-                CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null, null).toString(),
+                CM.deposits.check.cmd.nationOrAllianceOrGuild("").toString(),
                 "Or get a spreadsheet and breakdown",
                 commandMarkdownSpoiler(CM.offshore.accountSheet.cmd),
                 "### Adjust the balance of any alliance or corporation",
@@ -157,26 +157,26 @@ public class WikiBankPage extends BotWikiGen {
                     Deposits are automatically tracked, but you may need to adjust balances if funds are sent from another source, using the wrong note, or to set initial amounts.
                     Use the alliance or guild id as the account, and then the amounts you wish to add.    
                         """,
-                CM.deposits.add.cmd.create("", "", "#deposit", null).toString(),
+                CM.deposits.add.cmd.accounts("").amount("").note("#deposit").toString(),
                 "### Creating a new offshore (e.g. during war)",
                 "In the offshore server, add the new offshore using the alliance id of the new offshore:",
-                CM.offshore.add.cmd.create("", null, null, null).toString(),
+                CM.offshore.add.cmd.offshoreAlliance("").toString(),
                 """
                     Guilds using the previous offshore should be updated.
                     You can manually add an offshore by going to the alliance or corporation discord which has an account and adding the alliance id of the offshore to the `offshore` coalition.""",
-                CM.coalition.add.cmd.create("id of offshore", Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.add.cmd.alliances("id of offshore").coalitionName(Coalition.OFFSHORE.name()).toString(),
                 "# Removing an offshore",
                 "If you wish to stop using an offshore. In the alliance or corporation discord:",
-                CM.coalition.remove.cmd.create(null, Coalition.OFFSHORE.name()).toString(),
-                CM.coalition.remove.cmd.create(null, Coalition.OFFSHORING.name()).toString(),
+                CM.coalition.remove.cmd.coalitionName(Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.remove.cmd.coalitionName(Coalition.OFFSHORING.name()).toString(),
                 "Note: If a new offshore is created, use offshore add to add it. You should keep deleted alliances for deposit tracking purposes",
                 "# Enabling member withdrawals",
                 "### Set your member role:",
-                CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "@someRole", null, null).toString(),
+                CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("@someRole").toString(),
                 "### To allow members to use the offshore command or embed (if enabled)",
-                CM.settings_bank_access.MEMBER_CAN_WITHDRAW.cmd.create("true").toString(),
+                CM.settings_bank_access.MEMBER_CAN_WITHDRAW.cmd.enabled("true").toString(),
                 "### To enable a role to withdraw their own funds.\n(where someRole is the role needed to withdraw your own funds - you can set this to the member role if you’d like)",
-                CM.role.setAlias.cmd.create(Roles.ECON_WITHDRAW_SELF.name(), "@someRole", null, null).toString(),
+                CM.role.setAlias.cmd.locutusRole(Roles.ECON_WITHDRAW_SELF.name()).discordRole("@someRole").toString(),
                 "### To enable that role to withdraw:",
                 commandMarkdownSpoiler(CM.settings_bank_access.MEMBER_CAN_WITHDRAW.cmd),
                 commandMarkdownSpoiler(CM.settings_bank_access.addResourceChannel.cmd),

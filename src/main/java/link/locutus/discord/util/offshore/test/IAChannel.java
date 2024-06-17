@@ -91,7 +91,7 @@ public class IAChannel {
                 Map.Entry<Object, String> result = entry.getValue();
                 emojis.add(type.emoji);
             }
-            String cmd = CM.audit.run.cmd.create(nation.getNation_id() + "", null, null, null, null, null).toCommandArgs();
+            String cmd = CM.audit.run.cmd.nationList(nation.getNation_id() + "").toCommandArgs();
             IACheckup.createEmbed(new DiscordChannelIO(channel), cmd, nation, audits, 0);
         }
 //        emojis.remove("");

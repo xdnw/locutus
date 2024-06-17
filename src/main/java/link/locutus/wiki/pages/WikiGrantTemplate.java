@@ -79,7 +79,7 @@ public class WikiGrantTemplate extends BotWikiGen {
                 Use the `show_command: True` argument to get the creation command\n
                 Modify the command to edit, use a new template name to create a copy.
                 """,
-                CM.grant_template.info.cmd.create("YOUR_TEMPLATE", null, null, "True").toString(),
+                CM.grant_template.info.cmd.template("YOUR_TEMPLATE").show_command("True").toString(),
                 "# Deleting a template",
                 commandMarkdownSpoiler(CM.grant_template.delete.cmd),
                 "# Requirements",

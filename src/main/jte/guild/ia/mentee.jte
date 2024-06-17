@@ -54,7 +54,7 @@
         @endif
     </td>
     <td>
-        <button class="btn btn-sm btn-primary" cmd="${CM.interview.unassignMentee.cmd.create(mentee.getNation_id() + "").toSlashCommand(false)}">Unassign</button>
+        <button class="btn btn-sm btn-primary" cmd="${CM.interview.unassignMentee.cmd.mentee(mentee.getNation_id() + "").toSlashCommand(false)}">Unassign</button>
     </td>
 </tr>
 @if(checkup != null && !checkup.isEmpty())
