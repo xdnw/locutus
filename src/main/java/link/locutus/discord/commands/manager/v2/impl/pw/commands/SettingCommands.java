@@ -103,7 +103,7 @@ public class SettingCommands {
                     } else {
                         response.append("**current value**: `" + key.toReadableString(db, valueObj) + "`\n\n");
                     }
-                    response.append("`note: to delete, use: " + CM.settings.delete.cmd.create(key.name()).toSlashCommand(false) + "`\n");
+                    response.append("`note: to delete, use: " + CM.settings.delete.cmd.key(key.name()).toSlashCommand(false) + "`\n");
                 } else {
                     response.append("`no value is set`\n");
                 }

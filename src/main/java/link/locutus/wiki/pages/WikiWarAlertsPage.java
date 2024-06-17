@@ -43,7 +43,7 @@ public class WikiWarAlertsPage extends BotWikiGen {
             - Activity""",
             "# Prerequisites",
             "Register your alliance",
-            CM.settings_default.registerAlliance.cmd.create("").toString(),
+            CM.settings_default.registerAlliance.cmd.alliances("").toString(),
             "# War Declarations",
             "## Defensive Wars",
                 commandMarkdownSpoiler(CM.settings_war_alerts.DEFENSE_WAR_CHANNEL.cmd, true),

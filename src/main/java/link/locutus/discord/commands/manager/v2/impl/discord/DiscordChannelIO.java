@@ -195,7 +195,7 @@ public class DiscordChannelIO implements IMessageIO {
             String argName = input.getId();
             argList.add(argName);
         }
-        CM.modal.create cmRef = CM.modal.create.cmd.create(cmd, StringMan.join(argList, " "), defaultsStr);
+        CM.modal.create cmRef = CM.modal.create.cmd.command(cmd).arguments(StringMan.join(argList, " ")).defaults(defaultsStr);
         io.create().embed("Form: `" + cmd + "`", cmRef.toSlashCommand(true))
                 .commandButton(cmRef, "Open")
                 .send();

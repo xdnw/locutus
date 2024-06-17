@@ -1442,7 +1442,7 @@ public class GuildKey {
         public Guild validate(GuildDB db, User user, Guild guild) {
             GuildDB otherDb = Locutus.imp().getGuildDB(guild);
             if (guild.getIdLong() == db.getGuild().getIdLong())
-                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.create(GuildKey.WAR_SERVER.name()) + " to unset the war server");
+                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()) + " to unset the war server");
             if (otherDb.getOrNull(GuildKey.WAR_SERVER, false) != null)
                 throw new IllegalArgumentException("Circular reference. The server you have set already defers its war room");
             return guild;
@@ -1534,7 +1534,7 @@ public class GuildKey {
         @Override
         public GuildDB validate(GuildDB db, User user, GuildDB otherDb) {
             if (otherDb.getIdLong() == db.getGuild().getIdLong())
-                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.create(FA_SERVER.name()) + " to unset the FA_SERVER");
+                throw new IllegalArgumentException("Use " + CM.settings.delete.cmd.key(FA_SERVER.name()) + " to unset the FA_SERVER");
             if (FA_SERVER.has(otherDb, false))
                 throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
             return otherDb;

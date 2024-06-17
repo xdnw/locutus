@@ -65,16 +65,14 @@ public class Who extends Command {
             return "Usage: `" + Settings.commandPrefix(true) + "pnw-who <discord-user>`";
         }
         // String nationOrAlliances, String sortBy, String list, String listAlliances, String listRawUserIds, String listMentions, String listInfo, String listChannels, String page
-        CM.who command = CM.who.cmd.create(
-                arg0,
-                null,
-                flags.contains('l') ? "True" : null,
-                flags.contains('a') ? "True" : null,
-                flags.contains('r') ? "True" : null,
-                flags.contains('m') ? "True" : null,
-                flags.contains('i') ? "True" : null,
-                flags.contains('c') ? "True" : null,
-                null,
+        CM.who command = CM.who.cmd.nationOrAlliances(
+                arg0).list(
+                flags.contains('l') ? "True" : null).listAlliances(
+                flags.contains('a') ? "True" : null).listRawUserIds(
+                flags.contains('r') ? "True" : null).listMentions(
+                flags.contains('m') ? "True" : null).listInfo(
+                flags.contains('i') ? "True" : null).listChannels(
+                flags.contains('c') ? "True" : null).page(
                 page == null ? null : page.toString()
         );
         GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);

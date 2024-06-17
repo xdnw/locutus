@@ -323,7 +323,7 @@ public class GuildHandler {
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to {usermention} in {timediff}'\n" +
-                CM.interview.create.cmd.create(author.getAsMention()).toCommandArgs();
+                CM.interview.create.cmd.user(author.getAsMention()).toCommandArgs();
 
         IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(pending, emoji);
         if (mentionInterviewer) {
@@ -2689,7 +2689,7 @@ public class GuildHandler {
 
                     IMessageIO io = new DiscordChannelIO(channel);
                     IMessageBuilder msg = io.create().embed(title, body);
-                    msg = msg.commandButton(CM.escrow.withdraw.cmd.create(receiver.getQualifiedId(), ResourceType.resourcesToString(escrowed), "true"), "send");
+                    msg = msg.commandButton(CM.escrow.withdraw.cmd.receiver(receiver.getQualifiedId()).amount(ResourceType.resourcesToString(escrowed)).force("true"), "send");
                     if (!mentions.isEmpty()) {
                         msg = msg.append(StringMan.join(mentions, ", "));
                     }

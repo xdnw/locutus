@@ -27,9 +27,9 @@ public class WikiBeigeCyclingPage extends BotWikiGen {
                 """
                         Beige cycling rules can be set for multiple city ranges.
                         Use the command below to add a city range and a comma separated list of allowed beige reasons""",
-                        CM.settings_beige_alerts.addBeigeReasons.cmd.create("", "").toSlashCommand(true),
+                        CM.settings_beige_alerts.addBeigeReasons.cmd.range("").reasons("").toSlashCommand(true),
                         "Here is an example",
-                CM.settings_beige_alerts.addBeigeReasons.cmd.create("c10-15", INACTIVE.name() + "," + VACATION_MODE.name() + "," + APPLICANT.name()).toSlashCommand(true),
+                CM.settings_beige_alerts.addBeigeReasons.cmd.range("c10-15").reasons(INACTIVE.name() + "," + VACATION_MODE.name() + "," + APPLICANT.name()).toSlashCommand(true),
                 "To remove a city range:",
                 CM.settings_beige_alerts.removeBeigeReasons.cmd.toSlashCommand(true),
                 "To view current beige cycling settings:",

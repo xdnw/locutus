@@ -529,13 +529,13 @@ public class IACheckup {
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.spies.cmd.create("https://politicsandwar.com/nation/id=6") + "\n";
+                        "" + CM.nation.spies.cmd.nation("https://politicsandwar.com/nation/id=6") + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.loot.cmd.create("https://politicsandwar.com/nation/id=6").toSlashCommand() + "\n";
+                        "" + CM.nation.loot.cmd.nationOrAlliance("https://politicsandwar.com/nation/id=6").toSlashCommand() + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
@@ -590,23 +590,9 @@ public class IACheckup {
                 String cityUrl = PW.City.getCityUrl(cityId);
                 String mmrStr = StringMan.join(mmr, "");
                 response.append("The " + CM.city.optimalBuild.cmd.toSlashMention() + " command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                        "" + CM.city.optimalBuild.cmd.create(cityUrl,
-                                null,
-                                mmrStr,
-                                null,
-                                MathMan.format(maxInfra),
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null, null).toSlashCommand());
+                        "" + CM.city.optimalBuild.cmd.build(cityUrl).buildMMR(
+                                mmrStr).infra(
+                                MathMan.format(maxInfra)).toSlashCommand());
                 return new AbstractMap.SimpleEntry<>(false, response.toString());
             }
             case ROI: {
@@ -629,7 +615,7 @@ public class IACheckup {
                 String desc ="During Peace time, you can find targets to gather intel on using:\n" +
                         "" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
                         "During wartime, you can find enemies to spy using:\n" +
-                        "" + CM.spy.find.target.cmd.create("enemies", "*") + "\n\n" +
+                        "" + CM.spy.find.target.cmd.targets("enemies").operations("*") + "\n\n" +
                         "(You should conduct a spy op every day)";
                 return new AbstractMap.SimpleEntry<>(diff, desc);
             }

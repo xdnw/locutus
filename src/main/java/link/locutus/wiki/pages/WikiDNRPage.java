@@ -37,7 +37,7 @@ public class WikiDNRPage extends BotWikiGen {
                 "# Set DNR to top alliances",
                 commandMarkdownSpoiler(CM.settings_foreign_affairs.DO_NOT_RAID_TOP_X.cmd),
                 "# Check the DNR",
-                CM.coalition.list.cmd.create("dnr").toString(),
+                CM.coalition.list.cmd.filter("dnr").toString(),
                 commandMarkdownSpoiler(CM.war.dnr.cmd),
                 "# DNR an alliance and its applicants",
                 CM.coalition.create.cmd.alliances("AA:Rose").coalitionName(Coalition.DNR.name()).toString(),

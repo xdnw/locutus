@@ -43,19 +43,22 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     @Override
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
-        return CM.grant_template.create.raws.cmd.create(name,
-                allowedRecipients,
-                days + "",
-                overdrawPercent <= 0 ? null : overdrawPercent + "",
-                econRole,
-                selfRole,
-                bracket,
-                useReceiverBracket,
-                maxTotal,
-                maxDay,
-                maxGranterDay,
-                maxGranterTotal, allowExpire, allowDecay, allowIgnore,
-                isRepeatable() ? null : "true", null).toSlashCommand();
+        return CM.grant_template.create.raws.cmd.name(name).allowedRecipients(
+                allowedRecipients).days(
+                days + "").overdrawPercent(
+                overdrawPercent <= 0 ? null : overdrawPercent + "").econRole(
+                econRole).selfRole(
+                selfRole).bracket(
+                bracket).useReceiverBracket(
+                useReceiverBracket).maxTotal(
+                maxTotal).maxDay(
+                maxDay).maxGranterDay(
+                maxGranterDay).maxGranterTotal(
+                maxGranterTotal).expireTime(
+                allowExpire).decayTime(
+                allowDecay).allowIgnore(
+                allowIgnore).nonRepeatable(
+                isRepeatable() ? null : "true").toString();
     }
 
     @Override

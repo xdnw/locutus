@@ -21,7 +21,7 @@ public class WikiCoalitionsPage extends BotWikiGen {
                 - In built coalitions have functionality, such as for do not raid, or banking.
                 - Create custom coalitions for your own use.
                 - Mention coalitions in commands using `~coalitionName` e.g.""",
-                CM.who.cmd.create("~coalitionName,#position>1").toString(),
+                CM.who.cmd.nationOrAlliances("~coalitionName,#position>1").toString(),
                 "# In built coalitions",
                 "- " + Arrays.stream(Coalition.values()).map(Coalition::toString).collect(Collectors.joining("\n- ")),
                 "# Adding to in-built coalition",
@@ -30,7 +30,7 @@ public class WikiCoalitionsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.coalition.list.cmd),
                 "# Removing a coalition",
                 "## Removing a single alliance",
-                CM.coalition.remove.cmd.create("AA:Rose", Coalition.ALLIES.name()).toString(),
+                CM.coalition.remove.cmd.alliances("AA:Rose").coalitionName(Coalition.ALLIES.name()).toString(),
                 "## Removing an entire coalition",
                 CM.coalition.delete.cmd.coalitionName(Coalition.ALLIES.name()).toString(),
                 "# Creating a custom coaltion",

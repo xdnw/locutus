@@ -82,7 +82,7 @@ public class WikiDepositsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.deposits.convertNegative.cmd),
                 "# Resetting deposits",
                 "Set the arguments for the categories you do not wish to reset to false",
-                CM.deposits.reset.cmd.create("", "true", "true", "true", "true", "true").toString(),
+                CM.deposits.reset.cmd.nations("").ignoreGrants("true").ignoreLoans("true").ignoreTaxes("true").ignoreBankDeposits("true").ignoreEscrow("true").toString(),
                 commandMarkdownSpoiler(CM.deposits.reset.cmd),
                 "# Allow members to withdraw or offshore",
                 "See: " + linkPage("banking"),

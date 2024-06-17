@@ -695,7 +695,7 @@ public class OffshoreInstance {
                 if (disabledNations.containsKey(nationAccount.getId())) {
                     // Account temporarily disabled due to error. Use CM.bank.unlockTransfers.cmd.toSlashMention() to re-enable
 //                    return Map.entry(TransferStatus.AUTHORIZATION, "Transfers are temporarily disabled for this account due to an error. Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.create(nationAccount.getId() + "") + " in " + getGuild());
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.nationOrAllianceOrGuild(nationAccount.getId() + "") + " in " + getGuild());
                 }
                 if (!depositType.isDeposits() || depositType.isIgnored()) {
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
@@ -1189,7 +1189,7 @@ public class OffshoreInstance {
             }
 
             if (isDisabled(senderDB.getIdLong())) {
-                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.create(senderDB.getIdLong() + "") + " in the offshore server (" + getGuild() + ")");
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.nationOrAllianceOrGuild(senderDB.getIdLong() + "") + " in the offshore server (" + getGuild() + ")");
             }
 
             boolean hasAdmin = false;
@@ -1218,7 +1218,7 @@ public class OffshoreInstance {
             if (route) {
                 boolean hasNonAlliance = depositsByAA.keySet().stream().anyMatch(n -> !n.isAlliance());
                 if (hasNonAlliance || depositsByAA.isEmpty()) {
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("`" + GuildKey.ROUTE_ALLIANCE_BANK.name() + "` is enabled, but this server is not registered to an alliance. Disable with " + CM.settings.delete.cmd.create(GuildKey.ROUTE_ALLIANCE_BANK.name()));
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("`" + GuildKey.ROUTE_ALLIANCE_BANK.name() + "` is enabled, but this server is not registered to an alliance. Disable with " + CM.settings.delete.cmd.key(GuildKey.ROUTE_ALLIANCE_BANK.name()));
                 }
             }
 

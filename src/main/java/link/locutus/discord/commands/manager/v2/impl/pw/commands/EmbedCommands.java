@@ -213,7 +213,7 @@ public class EmbedCommands {
             String name = param.getName();
             if (!parsed.containsKey(name) && !parsed.containsKey(name.toLowerCase(Locale.ROOT))) {
                 throw new IllegalArgumentException("The command `" + command.getFullPath() + "` has a required argument `" + name + "` that is missing from your `arguments` value: `" + arguments + "`.\n" +
-                        "See: " + CM.help.command.cmd.create(command.getFullPath()));
+                        "See: " + CM.help.command.cmd.command(command.getFullPath()));
             }
         }
 
@@ -270,7 +270,7 @@ public class EmbedCommands {
             String nameL = name.toLowerCase(Locale.ROOT);
             if (!promptedArguments.contains(name) && !promptedArguments.contains(nameL) && !providedArguments.containsKey(name) && !providedArguments.containsKey(nameL)) {
                 throw new IllegalArgumentException("The command `" + command.getFullPath() + "` has a required argument `" + name + "` that is missing from your `arguments` or `defaults`.\n" +
-                        "See: " + CM.help.command.cmd.create(command.getFullPath()));
+                        "See: " + CM.help.command.cmd.command(command.getFullPath()));
             }
         }
 
@@ -391,8 +391,8 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
                 "#tankpct<0.2,#soldierpct<0.4,*").numResults("25").activeTimeCutoff("2d").weakground("true");
         CM.war.find.raid losing = CM.war.find.raid.cmd.targets(
                 "#def>0,#RelativeStrength<1,*").numResults("25").activeTimeCutoff("0d").weakground("true");
-        CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
-                "*", "25", null, "true", null,  null, "90");
+        CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.targets(
+                "*").numResults("25").includeAllies("true").ignoreODP("true").maxRelativeCounterStrength("90");
 
         CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
@@ -441,7 +441,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             String title = "Blockade Target & Requests";
             String body = """
                     **Request your blockade broken**
-                    See e.g.: """ + CM.war.blockade.request.cmd.create("3d", "some reason").toSlashCommand(true)+ """
+                    See e.g.: """ + CM.war.blockade.request.cmd.diff("3d").note("some reason").toSlashCommand(true)+ """
                     Press `Low` if low on resources
                     Press `deposit` if you need to deposit
                     Press `broke` if you are out of resources
@@ -449,17 +449,17 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     Press `break` to find enemies w/ blockades
                     Press `unpowered` to find enemies w/ blockades on unpowered allies
                     """;
-            body += "\nSee e.g: " + CM.war.blockade.find.cmd.create("~allies", null, "250").toSlashCommand();
+            body += "\nSee e.g: " + CM.war.blockade.find.cmd.allies("~allies").myShips("250").toSlashCommand();
 
             if (channelId != null) {
                 body += "\n\n> Results in <#" + channelId + ">";
             }
 
-            CM.war.blockade.request low = CM.war.blockade.request.cmd.create("3d", "Low on resources");
-            CM.war.blockade.request deposit = CM.war.blockade.request.cmd.create("3d", "Need to deposit");
-            CM.war.blockade.request broke = CM.war.blockade.request.cmd.create("3d", "Broke");
-            CM.war.blockade.find breakCmd = CM.war.blockade.find.cmd.create("~allies,#active_m<2880", null, null, "10");
-            CM.war.blockade.find breakUnpowered = CM.war.blockade.find.cmd.create("~allies,#ispowered=0,#active_m<2880", null, null, "10");
+            CM.war.blockade.request low = CM.war.blockade.request.cmd.diff("3d").note("Low on resources");
+            CM.war.blockade.request deposit = CM.war.blockade.request.cmd.diff("3d").note("Need to deposit");
+            CM.war.blockade.request broke = CM.war.blockade.request.cmd.diff("3d").note("Broke");
+            CM.war.blockade.find breakCmd = CM.war.blockade.find.cmd.allies("~allies,#active_m<2880").numResults("10");
+            CM.war.blockade.find breakUnpowered = CM.war.blockade.find.cmd.allies("~allies,#ispowered=0,#active_m<2880").numResults("10");
 
             io.create().embed(title, body)
                     .commandButton(behavior, channelId, low, "low")
@@ -495,12 +495,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             CM.offshore.send send = CM.offshore.send.cmd.createEmpty();
             CM.deposits.check deposits = CM.deposits.check.cmd.nationOrAllianceOrGuild("{nation_id}").replyInDMs(showDepositsInDms ? "true" : null);
             CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.nationOrAllianceOrGuild("{nation_id}").showCategories("true");
-            CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
-            CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true");
-            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}");
-            CM.trade.price tradeprice = CM.trade.price.cmd.create();
+            CM.tax.info taxInfo = CM.tax.info.cmd.nation("{nation_id}");
+            CM.nation.revenue revenue = CM.nation.revenue.cmd.nations("{nation_id}").includeUntaxable("true");
+            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.build("{city 1}");
+            CM.trade.price tradeprice = CM.trade.price.cmd.createEmpty();
             CM.trade.margin trademargin = CM.trade.margin.cmd.createEmpty();
-            CM.trade.profit tradeprofit = CM.trade.profit.cmd.create("{nation_id}", "7d");
+            CM.trade.profit tradeprofit = CM.trade.profit.cmd.nations("{nation_id}").time("7d");
 
             io.create().embed(title, body)
                     .commandButton(behavior, channelId, send, "offshore")
@@ -572,18 +572,18 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-        CM.war.find.damage damage = CM.war.find.damage.cmd.create(
+        CM.war.find.damage damage = CM.war.find.damage.cmd.nations(
                 "~enemies");
-        CM.war.find.damage damageWeak = CM.war.find.damage.cmd.create(
-                "~enemies", "true", "true", "true");
-        CM.war.find.damage damageNoNavy = CM.war.find.damage.cmd.create(
-                "~enemies", null, null, null, "true");
-        CM.war.find.damage damageNoVDS = CM.war.find.damage.cmd.create(
-                "~enemies,#hasProject(vital_defense_system)=0", null, null, null, null, null, null, null, null, null, null);
-        CM.war.find.damage damageNoID = CM.war.find.damage.cmd.create(
-                "~enemies,#hasProject(iron_dome)=0", null, null, null, null, null, null, null, null, null, null);
-        CM.war.find.damage damageNoVDSID = CM.war.find.damage.cmd.create(
-                "~enemies,#hasProject(iron_dome)=0,#hasProject(vital_defense_system)=0", null, null, null, null, null, null, null, null, null, null);
+        CM.war.find.damage damageWeak = CM.war.find.damage.cmd.nations(
+                "~enemies").includeApps("true").includeInactives("true").filterWeak("true");
+        CM.war.find.damage damageNoNavy = CM.war.find.damage.cmd.nations(
+                "~enemies").noNavy("true");
+        CM.war.find.damage damageNoVDS = CM.war.find.damage.cmd.nations(
+                "~enemies,#hasProject(vital_defense_system)=0");
+        CM.war.find.damage damageNoID = CM.war.find.damage.cmd.nations(
+                "~enemies,#hasProject(iron_dome)=0");
+        CM.war.find.damage damageNoVDSID = CM.war.find.damage.cmd.nations(
+                "~enemies,#hasProject(iron_dome)=0,#hasProject(vital_defense_system)=0");
 
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, damage, "active")
@@ -710,22 +710,22 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-      CM.spy.find.target spy = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", SpyCount.Operation.SPIES.name(), null, null, null, null);
-        CM.spy.find.target airplane = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", SpyCount.Operation.AIRCRAFT.name(), null, null, null, null);
-        CM.spy.find.target tank = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", SpyCount.Operation.TANKS.name(), null, null, null, null);
-        CM.spy.find.target ship = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", SpyCount.Operation.SHIPS.name(), null, null, null, null);
-        CM.spy.find.target missile = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<2880", SpyCount.Operation.MISSILE.name(), null, null, null, null);
-        CM.spy.find.target nuke = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<2880", SpyCount.Operation.NUKE.name(), null, null, null, null);
-        CM.spy.find.target dmg = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", "*");
-        CM.spy.find.target kill = CM.spy.find.target.cmd.create(
-                "~" + coalition + ",#active_m<1440", "*", null, null, "true");
+      CM.spy.find.target spy = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.SPIES.name());
+        CM.spy.find.target airplane = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.AIRCRAFT.name());
+        CM.spy.find.target tank = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.TANKS.name());
+        CM.spy.find.target ship = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.SHIPS.name());
+        CM.spy.find.target missile = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<2880").operations(SpyCount.Operation.MISSILE.name());
+        CM.spy.find.target nuke = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<2880").operations(SpyCount.Operation.NUKE.name());
+        CM.spy.find.target dmg = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<1440").operations("*");
+        CM.spy.find.target kill = CM.spy.find.target.cmd.targets(
+                "~" + coalition + ",#active_m<1440").operations("*").prioritizeKills("true");
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, spy, "spy")
@@ -856,17 +856,17 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             msg = msg.commandButton(behavior, channelId, CM.offshore.send.cmd.createEmpty(), "offshore");
         }
         // deposits
-        msg = msg.commandButton(behavior, channelId, CM.deposits.sheet.cmd.create(null, null, null, null, null, null, null, null, pastDepositorsStr, null, useFlowNoteStr), "deposits");
+        msg = msg.commandButton(behavior, channelId, CM.deposits.sheet.cmd.includePastDepositors(pastDepositorsStr).useFlowNote(useFlowNoteStr), "deposits");
         // stockpile
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.stockpileSheet.cmd.createEmpty(), "stockpile");
         // revenue
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.create(allianceStr), "revenue");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.nations(allianceStr), "revenue");
         // bracket
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxBracketSheet.cmd.createEmpty(), "bracket");
         // tax
         msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxRevenue.cmd.createEmpty(), "tax");
         // warchest
-        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.warchestSheet.cmd.create(allianceStr), "warchest");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.warchestSheet.cmd.nations(allianceStr), "warchest");
         msg.send();
     }
 
@@ -905,15 +905,15 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         // audit
         msg = msg.commandButton(behavior, channelId, CM.audit.sheet.cmd.createEmpty(), "audit");
         // mail
-        msg = msg.commandButton(behavior, channelId, CM.audit.run.cmd.create(allianceStr, null, null, "true"), "mail");
+        msg = msg.commandButton(behavior, channelId, CM.audit.run.cmd.nationList(allianceStr).mailResults("true"), "mail");
         // activity
-        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.ActivitySheet.cmd.create(allianceStr), "activity");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.ActivitySheet.cmd.nations(allianceStr), "activity");
         // daychange
-        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.daychange.cmd.create(allianceStr), "dc");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.daychange.cmd.nations(allianceStr), "dc");
         // spies
-        msg = msg.commandButton(behavior, channelId, CM.audit.hasNotBoughtSpies.cmd.create(allianceStr), "spies");
+        msg = msg.commandButton(behavior, channelId, CM.audit.hasNotBoughtSpies.cmd.nations(allianceStr), "spies");
         // mmr
-        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.create(allianceStr), "mmr");
+        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.nations(allianceStr), "mmr");
         // auto
         msg = msg.commandButton(behavior, channelId, CM.role.autoassign.cmd.createEmpty(), "auto");
 
@@ -952,11 +952,11 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     "Press `trade deposit` if you have sent trades\n" +
                     "Press `trade deposit amount` if you want to create trades for an amount\n";
 
-            addButtons.add(CM.trade.accept.cmd.create(nationId + ""));
+            addButtons.add(CM.trade.accept.cmd.receiver(nationId + ""));
             addLabels.add("deposit trade");
             isModals.add(false);
 
-            addButtons.add(CM.trade.accept.cmd.create(nationId + "", ""));
+            addButtons.add(CM.trade.accept.cmd.receiver(nationId + "").amount(""));
             addLabels.add("deposit trade amount");
             isModals.add(false);
         } else {
@@ -965,12 +965,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     "And then press" +
                     "- `deposit custom` or `deposit auto`" +
                     "- `offshore` to offshore funds";
-            addButtons.add(CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true"));
+            addButtons.add(CM.bank.deposit.cmd.nations("nation:{nation_id}").amount("").useApi("true").force("true"));
             addLabels.add("deposit custom");
             isModals.add(true);
 
 
-            CommandRef depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
+            CommandRef depositAuto = CM.bank.deposit.cmd.nations("nation:{nation_id}").rawsDays("7").keepWarchestFactor("1").useApi("true").force("true");
             addButtons.add(depositAuto);
             addLabels.add("deposit auto");
             isModals.add(false);
@@ -986,9 +986,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         CM.deposits.check deposits = CM.deposits.check.cmd.nationOrAllianceOrGuild("nation:{nation_id}");
-        CM.transfer.self self = CM.transfer.self.cmd.create("");
-        CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}");
-        CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.create("nation:{nation_id}");
+        CM.transfer.self self = CM.transfer.self.cmd.amount("");
+        CM.transfer.resources other = CM.transfer.resources.cmd.receiver("").transfer("").nationAccount("{nation_id}");
+        CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.nationOrAlliance("nation:{nation_id}");
 
         CommandBehavior behavior = CommandBehavior.EPHEMERAL;
 
@@ -1166,35 +1166,31 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         io.create()
                 .embed("All Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
-                        CM.nation.sheet.NationSheet.cmd.create(
-                                allEnemies.getKey(),
-                                StringMan.join(allEnemies.getValue(), " "),
-                                null, null,
+                        CM.nation.sheet.NationSheet.cmd.nations(
+                                allEnemies.getKey()).columns(
+                                StringMan.join(allEnemies.getValue(), " ")).sheet(
                                 "sheet:" + allEnemiesSheet.getSpreadsheetId()
                         ), "update").send();
 
         io.create().embed("All Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
-                CM.nation.sheet.NationSheet.cmd.create(
-                        allAllies.getKey(),
-                        StringMan.join(allAllies.getValue(), " "),
-                        null, null,
+                CM.nation.sheet.NationSheet.cmd.nations(
+                        allAllies.getKey()).columns(
+                        StringMan.join(allAllies.getValue(), " ")).sheet(
                         "sheet:" + allAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
         io.create().embed("Priority Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
-                CM.nation.sheet.NationSheet.cmd.create(
-                        priorityEnemies.getKey(),
-                        StringMan.join(priorityEnemies.getValue(), " "),
-                        null, null,
+                CM.nation.sheet.NationSheet.cmd.nations(
+                        priorityEnemies.getKey()).columns(
+                        StringMan.join(priorityEnemies.getValue(), " ")).sheet(
                         "sheet:" + priorityEnemiesSheet.getSpreadsheetId()
 
                 ), "update").send();
 
         io.create().embed("Underutilized Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
-                CM.nation.sheet.NationSheet.cmd.create(
-                        underutilizedAllies.getKey(),
-                        StringMan.join(underutilizedAllies.getValue(), " "),
-                        null, null,
+                CM.nation.sheet.NationSheet.cmd.nations(
+                        underutilizedAllies.getKey()).columns(
+                        StringMan.join(underutilizedAllies.getValue(), " ")).sheet(
                         "sheet:" + underutilizedAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
@@ -1254,65 +1250,49 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         String spySheetId = spySheet != null ? spySheet.getSpreadsheetId() : SpreadSheet.create(db, SheetKey.SPYOP_SHEET).getSpreadsheetId();
 
         io.create().embed("Update ally", "Press `allies` to update active ally spy counts" + footer)
-                .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(
-                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        columns, null,
-                        "true",
-                        null
+                .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.nations(
+                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10").columns(
+                        columns
                 ), "allies").send();
 
         io.create().embed("Update enemy", "Press `enemies` to update active enemy spy counts" + footer)
-                .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(
-                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        columns, null,
-                        "true",
-                        null
+                .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.nations(
+                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10").columns(
+                        columns
                 ), "enemies").send();
 
         io.create().embed("Blitz priority kills", "Press `blitz_kill` for a spy blitz sheet focusing spies/air" + footer)
-        .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.create(
-                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        StringMan.join(Arrays.asList(SpyCount.Operation.SPIES.name(),SpyCount.Operation.AIRCRAFT.name()), ","),
-                        "true",
-                        "true",
-                        "true",
-                        "sheet:" + spySheetId,
-                        null,
-                        null, null, null, null, null
+        .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.attackers(
+                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10").defenders(
+                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10").allowedTypes(
+                        StringMan.join(Arrays.asList(SpyCount.Operation.SPIES.name(),SpyCount.Operation.AIRCRAFT.name()), ",")).forceUpdate(
+                        "true").checkEspionageSlots(
+                        "true").prioritizeKills(
+                        "true").sheet(
+                        "sheet:" + spySheetId
                 ), "blitz_kill").send();
 
         io.create().embed("Blitz priority damage", "Press `blitz_dmg` for a spy blitz sheet focusing damage" + footer)
-                .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.create(
-                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
-                        null,
-                        "true",
-                        "true",
-                        "true",
-                        "sheet:" + spySheetId,
-                        null,
-                        null, null, null, null, null
+                .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.attackers(
+                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10").defenders(
+                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10").forceUpdate(
+                        "true").checkEspionageSlots(
+                        "true").prioritizeKills(
+                        "true").sheet(
+                        "sheet:" + spySheetId
                 ), "blitz_dmg").send();
         io.create().embed("Validate and send", """
                         Press `check` to validate spy blitz sheet
                         Press `mail` to mail targets
                         """ + footer)
-                .commandButton(behavior, channelId, CM.spy.sheet.validate.cmd.create(
-                        "sheet:" + spySheetId,
-                        null,
-                        "~" + allies, null
+                .commandButton(behavior, channelId, CM.spy.sheet.validate.cmd.sheet(
+                        "sheet:" + spySheetId).filter(
+                        "~" + allies
                 ), "validate")
-        .commandButton(behavior, channelId, CM.mail.targets.cmd.create(
-                        null,
-                        "sheet:" + spySheetId,
-                        "~" + allies,
-                        null,
-                        "true",
-                        null,
-                        null,
-                        null,
-                        null, null, null
+        .commandButton(behavior, channelId, CM.mail.targets.cmd.spySheet(
+                        "sheet:" + spySheetId).allowedNations(
+                        "~" + allies).sendFromGuildAccount(
+                        "true").force("true"
                 ), "mail").send();
     }
 
@@ -1334,7 +1314,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Collection<DBNation> nations = sendTo.getNations();
         Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, 0, 0);
 
-        CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", "true");
+        CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "", "true");
 
         StringBuilder body = new StringBuilder();
         body.append("Title: `" + title + "`\n");

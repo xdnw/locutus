@@ -1720,54 +1720,54 @@ public class UtilityCommands {
 
                 //Run audit (if ia/econ, or self)
                 if ((myNation != null && myNation.getId() == nation.getId()) || Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
-                    CM.audit.run audit = CM.audit.run.cmd.create(nation.getQualifiedId());
+                    CM.audit.run audit = CM.audit.run.cmd.nationList(nation.getQualifiedId());
                     msg = msg.commandButton(CommandBehavior.EPHEMERAL, audit, "Audit");
                 }
                 //Bans
-                CM.nation.list.bans bans = CM.nation.list.bans.cmd.create(nation.getId() + "");
+                CM.nation.list.bans bans = CM.nation.list.bans.cmd.nationId(nation.getId() + "");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, bans, "Bans");
                 //Reports
-                CM.report.search reports = CM.report.search.cmd.create(nation.getNation_id() + "");
+                CM.report.search reports = CM.report.search.cmd.nationIdReported(nation.getNation_id() + "");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reports, "Reports");
                 //Projects
-                CM.project.slots projects = CM.project.slots.cmd.create(nation.getUrl());
+                CM.project.slots projects = CM.project.slots.cmd.nation(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, projects, "Projects");
                 //Departures
-                CM.nation.departures departures = CM.nation.departures.cmd.create(nation.getUrl(), "9999d");
+                CM.nation.departures departures = CM.nation.departures.cmd.nationOrAlliance(nation.getUrl()).time("9999d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, departures, "Departures");
                 //Multis
-                CM.nation.list.multi multis = CM.nation.list.multi.cmd.create(nation.getUrl());
+                CM.nation.list.multi multis = CM.nation.list.multi.cmd.nation(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, multis, "Multis");
                 //Reroll
-                CM.nation.reroll reroll = CM.nation.reroll.cmd.create(nation.getUrl());
+                CM.nation.reroll reroll = CM.nation.reroll.cmd.nation(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reroll, "Reroll");
                 //Open alliance info
                 if (nation.getAlliance_id() != 0) {
-                    CM.who info = CM.who.cmd.create(nation.getAllianceUrl());
+                    CM.who info = CM.who.cmd.nationOrAlliances(nation.getAllianceUrl());
                     msg = msg.commandButton(CommandBehavior.EPHEMERAL, info, "Alliance");
                 }
                 //Score command
 
-                CM.nation.score score = CM.nation.score.cmd.create(nation.getUrl(), null, null, null, null, null, "", "", "", "", null, "");
+                CM.nation.score score = CM.nation.score.cmd.nation(nation.getUrl()).missiles("").nukes("").projects("").avg_infra("").builtMMR("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, score, "Score");
                 //Revenue
-                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getUrl());
+                CM.nation.revenue revenue = CM.nation.revenue.cmd.nations(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, revenue, "Revenue");
                 //WarInfo
-                CM.war.info warInfo = CM.war.info.cmd.create(nation.getUrl());
+                CM.war.info warInfo = CM.war.info.cmd.nation(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, warInfo, "War Info");
                 //Counter
                 String aaIdStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
-                CM.war.counter.nation counter = CM.war.counter.nation.cmd.create(nation.getUrl(), aaIdStr, null, null, null, null, null, null, null, "");
+                CM.war.counter.nation counter = CM.war.counter.nation.cmd.target(nation.getUrl()).counterWith(aaIdStr).ping("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, counter, "Counter");
                 //Loot
-                CM.nation.loot loot = CM.nation.loot.cmd.create(nation.getUrl());
+                CM.nation.loot loot = CM.nation.loot.cmd.nationOrAlliance(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, loot, "Loot");
                 //Cost
-                CM.alliance.cost cost = CM.alliance.cost.cmd.create(nation.getUrl());
+                CM.alliance.cost cost = CM.alliance.cost.cmd.nations(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 //unit history
-                CM.unit.history history = CM.unit.history.cmd.create(nation.getUrl(), "");
+                CM.unit.history history = CM.unit.history.cmd.nation(nation.getUrl()).unit("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, history, "Unit History");
 
                 msg.send();
@@ -1786,23 +1786,23 @@ public class UtilityCommands {
 
                 // Militarization graph
                 CM.alliance.stats.metricsByTurn militarization =
-                        CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), alliance.getQualifiedId(), "7d");
+                        CM.alliance.stats.metricsByTurn.cmd.metric(AllianceMetric.GROUND_PCT.name()).coalition(alliance.getQualifiedId()).time("7d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
                 // Tiering graph
                 CM.stats_tier.cityTierGraph tiering =
-                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "");
+                        CM.stats_tier.cityTierGraph.cmd.coalition1(alliance.getQualifiedId()).coalition2("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
                 // strength graph
                 CM.stats_tier.strengthTierGraph strength =
-                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedId(), "");
+                        CM.stats_tier.strengthTierGraph.cmd.coalition1(alliance.getQualifiedId()).coalition2("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
                 // mmr tier
                 CM.stats_tier.mmrTierGraph mmr =
-                        CM.stats_tier.mmrTierGraph.cmd.create(alliance.getQualifiedId(), "");
+                        CM.stats_tier.mmrTierGraph.cmd.coalition1(alliance.getQualifiedId()).coalition2("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
                 // spy tier
                 CM.stats_tier.spyTierGraph spy =
-                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedId(), "");
+                        CM.stats_tier.spyTierGraph.cmd.coalition1(alliance.getQualifiedId()).coalition2("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
 
                 //- /coalition create - add
@@ -1812,24 +1812,24 @@ public class UtilityCommands {
 
                 //- /coalition generate - sphere
                 CM.coalition.generate generateCoalition =
-                        CM.coalition.generate.cmd.create("", alliance.getQualifiedId(), "80");
+                        CM.coalition.generate.cmd.coalition("").rootAlliance(alliance.getQualifiedId()).topX("80");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, generateCoalition, "Add Sphere Coalition");
                 //- /alliance departures
                 CM.alliance.departures departures =
-                        CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "");
+                        CM.alliance.departures.cmd.nationOrAlliance(alliance.getQualifiedId()).time("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, departures, "Departures");
                 //- loot
                 CM.nation.loot loot =
-                        CM.nation.loot.cmd.create(alliance.getQualifiedId(), "");
+                        CM.nation.loot.cmd.nationOrAlliance(alliance.getQualifiedId()).nationScore("");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, loot, "Loot");
 
                 // alliance cost
                 CM.alliance.cost cost =
-                        CM.alliance.cost.cmd.create(alliance.getQualifiedId());
+                        CM.alliance.cost.cmd.nations(alliance.getQualifiedId());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 // offshore find
                 CM.offshore.findForCoalition findOffshore =
-                        CM.offshore.findForCoalition.cmd.create(alliance.getQualifiedId(), "200d");
+                        CM.offshore.findForCoalition.cmd.alliance(alliance.getQualifiedId()).cutoffMs("200d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
 
                 msg.send();
@@ -2062,7 +2062,7 @@ public class UtilityCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(sheet.getURL(), "#deposit");
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(sheet.getURL()).note("#deposit");
 
         IMessageBuilder msg = channel.create();
         StringBuilder result = new StringBuilder();

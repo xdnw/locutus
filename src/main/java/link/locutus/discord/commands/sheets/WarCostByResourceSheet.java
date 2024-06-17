@@ -63,19 +63,18 @@ public class WarCostByResourceSheet extends Command {
 
         long cutoffMs = System.currentTimeMillis() - timeRel * 1000;
 
-        JSONObject cmd = CM.sheets_milcom.WarCostByResourceSheet.cmd.create(
-                args.get(0),
-                args.get(1),
-                args.get(2),
-                flags.contains('c') ? "true" : null,
-                flags.contains('i') ? "true" : null,
-                flags.contains('l') ? "true" : null,
-                flags.contains('u') ? "true" : null,
-                flags.contains('g') ? "true" : null,
-                flags.contains('d') ? "true" : null,
-                flags.contains('n') ? "true" : null,
-                flags.contains('w') ? "true" : null,
-                null
+        JSONObject cmd = CM.sheets_milcom.WarCostByResourceSheet.cmd.attackers(
+                args.get(0)).defenders(
+                args.get(1)).time(
+                args.get(2)).excludeConsumption(
+                flags.contains('c') ? "true" : null).excludeInfra(
+                flags.contains('i') ? "true" : null).excludeLoot(
+                flags.contains('l') ? "true" : null).excludeUnitCost(
+                flags.contains('u') ? "true" : null).includeGray(
+                flags.contains('g') ? "true" : null).includeDefensives(
+                flags.contains('d') ? "true" : null).normalizePerCity(
+                flags.contains('n') ? "true" : null).normalizePerWar(
+                flags.contains('w') ? "true" : null
             ).toJson();
 
         return StatCommands.WarCostByResourceSheet(

@@ -214,7 +214,7 @@ public abstract class GuildSetting<T> {
         String readableStr = toReadableString(db, value);
         db.setInfo(this, user, value);
         return "Set `" + name() + "` to `" + readableStr + "`\n" +
-                "Delete with " + CM.settings.delete.cmd.create(name);
+                "Delete with " + CM.settings.delete.cmd.key(name);
     }
 
     public T parse(GuildDB db, String input) {

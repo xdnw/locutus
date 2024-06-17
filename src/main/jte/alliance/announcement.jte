@@ -33,9 +33,9 @@ bg-secondary border-dark
     Replacements: <kbd>${announcement.replacements}</kbd><br>
 
     @if(announcement.active)
-        <button cmd="${CM.announcement.archive.cmd.create(announcement.id + "").toSlashCommand(false)}" type="button" class="btn btn-danger">Archive</button>
+        <button cmd="${CM.announcement.archive.cmd.announcementId(announcement.id + "").toSlashCommand(false)}" type="button" class="btn btn-danger">Archive</button>
     @else
-        <button cmd="${CM.announcement.archive.cmd.create(announcement.id + "", "false").toSlashCommand(false)}" type="button" class="btn btn-danger">Unarchive</button>
+        <button cmd="${CM.announcement.archive.cmd.announcementId(announcement.id + "").archive("false").toSlashCommand(false)}" type="button" class="btn btn-danger">Unarchive</button>
     @endif
     <a href="${WebRoot.REDIRECT}/announcementvariations/${announcement.id}" type="button" class="btn btn-primary">View Variations</a>
 </div>

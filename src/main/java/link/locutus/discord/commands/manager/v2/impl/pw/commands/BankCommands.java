@@ -1436,20 +1436,20 @@ public class BankCommands {
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
             APPROVED_BULK_TRANSFER.put(key, sheet.getTransfers());
 
-            JSONObject command = CM.transfer.bulk.cmd.create(
-                    sheet.getSheet().getURL(),
-                    bank_note.toString(),
-                    nation_account != null ? nation_account.getUrl() : null,
-                    ingame_bank != null ? ingame_bank.getUrl() : null,
-                    offshore_account != null ? offshore_account.getUrl() : null,
-                    tax_account != null ? tax_account.getQualifiedId() : null,
-                    use_receiver_tax_account + "",
-                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
-                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
-                    Boolean.FALSE.toString(),
-                    escrow_mode == null ? null : escrow_mode.name(),
-                    String.valueOf(bypass_checks),
-                    String.valueOf(force),
+            JSONObject command = CM.transfer.bulk.cmd.sheet(
+                    sheet.getSheet().getURL()).depositType(
+                    bank_note.toString()).depositsAccount(
+                    nation_account != null ? nation_account.getUrl() : null).useAllianceBank(
+                    ingame_bank != null ? ingame_bank.getUrl() : null).useOffshoreAccount(
+                    offshore_account != null ? offshore_account.getUrl() : null).taxAccount(
+                    tax_account != null ? tax_account.getQualifiedId() : null).existingTaxAccount(
+                    use_receiver_tax_account + "").expire(
+                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
+                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).convertToMoney(
+                    Boolean.FALSE.toString()).escrow_mode(
+                    escrow_mode == null ? null : escrow_mode.name()).bypassChecks(
+                    String.valueOf(bypass_checks)).force(
+                    String.valueOf(force)).key(
                     key.toString()
             ).toJson();
 
@@ -2771,7 +2771,7 @@ public class BankCommands {
             }
         }
 
-        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(txSheet.getSheet().getURL(), note);
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL()).note(note);
 
         String title = "Addbalance";
         String body = "Total: \n`" + ResourceType.resourcesToString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total));
@@ -3600,7 +3600,7 @@ public class BankCommands {
                     Map<ResourceType, Double> stock = alliance.getStockpile();
                     accountDeposits.put(DepositType.DEPOSIT, ResourceType.resourcesToArray(stock));
                 } else {
-                    return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORING.name()) + "";
+                    return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORING.name()) + "";
                 }
             } else if (otherDb2 != db && offshore.getGuildDB() != db) {
                 return "You do not have permisssion to check another alliance's deposits (2)";
@@ -3614,7 +3614,7 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isGuild()) {
             GuildDB otherDb = nationOrAllianceOrGuild.asGuild();
             OffshoreInstance offshore = otherDb.getOffshore();
-            if (offshore == null) return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create(nationOrAllianceOrGuild.getIdLong() + "", Coalition.OFFSHORING.name()) + "";
+            if (offshore == null) return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORING.name()) + "";
 
             if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild())) {
                 return "You do not have permission to check another guild's deposits";
@@ -3694,7 +3694,7 @@ public class BankCommands {
             if (escrowed != null && !ResourceType.isZero(escrowed)) {
                 if (Roles.ECON_WITHDRAW_SELF.has(author, guild)) {
                     // add button, add note
-                    buttons.put("withdraw escrow", Map.entry(CM.escrow.withdraw.cmd.create(nationOrAllianceOrGuild.getQualifiedId(), ""), true));
+                    buttons.put("withdraw escrow", Map.entry(CM.escrow.withdraw.cmd.receiver(nationOrAllianceOrGuild.getQualifiedId()).amount(""), true));
                 } else if (!condensedFormat) {
                     footers.add("You do not have permission to withdraw escrowed funds");
                 }
@@ -3723,7 +3723,7 @@ public class BankCommands {
             if (econ) {
                 buttons.put("withdraw",
                         Map.entry(
-                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name()),
+                                CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.IGNORE.name()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
                 Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
@@ -4193,7 +4193,7 @@ public class BankCommands {
         }
 
         if (offshoreDB == null) {
-            return "No guild found for alliance: " + offshoreAlliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings_default.registerAlliance.cmd.create(offshoreAlliance.getAlliance_id() + "");
+            return "No guild found for alliance: " + offshoreAlliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings_default.registerAlliance.cmd.alliances(offshoreAlliance.getAlliance_id() + "");
         }
 
         OffshoreInstance currentOffshore = root.getOffshore();
@@ -4232,7 +4232,7 @@ public class BankCommands {
                 body.append("Withdraw commands will use this alliance bank\n");
                 body.append("To have another alliance/corporation use this bank as an offshore:\n");
                 body.append("- You must be admin or econ on both discord servers\n");
-                body.append("- On the other guild, use: " + CM.offshore.add.cmd.create(offshoreAlliance.getAlliance_id() + "") + "\n\n");
+                body.append("- On the other guild, use: " + CM.offshore.add.cmd.offshoreAlliance(offshoreAlliance.getAlliance_id() + "") + "\n\n");
                 body.append("If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
 
                 confirmButton.embed(title, body.toString()).send();

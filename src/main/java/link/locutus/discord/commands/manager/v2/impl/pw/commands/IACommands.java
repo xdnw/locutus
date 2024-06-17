@@ -1579,8 +1579,7 @@ public class IACommands {
                 if (db.getOffshore() != null) {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 3 days";
-
-                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, nation.getNation_id() + "", null, null, null, null, null, null, null, null, "true");
+                    CM.transfer.raws cmd = CM.transfer.raws.cmd.nationList(nation.getNation_id() + "").days("3").bank_note("#deposit").nation_account(nation.getNation_id() + "").bypass_checks("true");
                     channel.create().embed(title, body)
                             .commandButton(cmd, "Disburse 3 days")
                             .send();
@@ -1776,7 +1775,7 @@ public class IACommands {
         IMessageBuilder msg = channel.create();
         sheet.attach(msg, "mail_command", embed, false, 0);
         embed.append("\nPress `confirm` to confirm");
-        CM.mail.sheet cmd = CM.mail.sheet.cmd.create(sheet.getURL(), null, sendDM ? "true" : null, skipMail ? "true" : null);
+        CM.mail.sheet cmd = CM.mail.sheet.cmd.sheet(sheet.getURL()).dm(sendDM ? "true" : null).skipMail(skipMail ? "true" : null);
 
         msg.confirmation(title, embed.toString(), cmd).send();
 

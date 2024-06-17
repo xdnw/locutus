@@ -109,7 +109,7 @@
                 ${categoryMap.get(nation)}
             </td>
             <td>
-                <button class="btn btn-sm btn-primary" cmd="${CM.interview.mentee.cmd.create(nation.getNation_id() + "", "true").toSlashCommand(false)}">Assign Self</button>
+                <button class="btn btn-sm btn-primary" cmd="${CM.interview.mentee.cmd.mentee(nation.getNation_id() + "", "true").toSlashCommand(false)}">Assign Self</button>
             </td>
         </tr>
         @endfor

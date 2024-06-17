@@ -89,7 +89,7 @@ public class MailListener {
 
         builder.embed(event.getTitle(), body.toString());
         DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(event.getMail().leader);
-        CM.mail.reply mailCmd = CM.mail.reply.cmd.create(receiver.getId() + "", event.getUrl(), "", event.getAuth().getNationId() + "");
+        CM.mail.reply mailCmd = CM.mail.reply.cmd.receiver(receiver.getId() + "").url(event.getUrl()).message("").sender(event.getAuth().getNationId() + "");
         builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
         builder.send();
 

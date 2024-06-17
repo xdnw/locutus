@@ -74,7 +74,7 @@ public class WikiSetupPage extends BotWikiGen {
                 CM.register.cmd.toSlashCommand(true),
                 commandMarkdownSpoiler(CM.register.cmd, false),
                 "Example:",
-                CM.register.cmd.create("https://politicsandwar.com/nation/id=189573").toSlashCommand(true),
+                CM.register.cmd.nation("https://politicsandwar.com/nation/id=189573").toSlashCommand(true),
                 "You can verify by using:",
                 CM.me.cmd.toSlashCommand(true),
                 "# Registering your alliance",

@@ -1007,7 +1007,7 @@ public class ReportCommands {
         });
 
         return "Report " + (existing == null ? "created" : "updated") + " with id `" + report.reportId + "`\n" +
-                "See: " + CM.report.show.cmd.create(report.reportId + "").toSlashCommand(true);
+                "See: " + CM.report.show.cmd.report(report.reportId + "").toSlashCommand(true);
     }
 
     @Command(desc = "Remove a report of a nation or user")

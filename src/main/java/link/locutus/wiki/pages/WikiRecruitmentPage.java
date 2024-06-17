@@ -25,7 +25,7 @@ public class WikiRecruitmentPage extends BotWikiGen {
                 "# Setup a recruitment message",
                 """
                 - Messages will automatically send once configured. 
-                - Disable by using """ + CM.settings.delete.cmd.create(GuildKey.RECRUIT_MESSAGE_OUTPUT.name()),
+                - Disable by using """ + CM.settings.delete.cmd.key(GuildKey.RECRUIT_MESSAGE_OUTPUT.name()),
                 "1. First ensure you have your alliance and api key set",
                 commandMarkdownSpoiler(CM.settings_default.registerAlliance.cmd),
                 commandMarkdownSpoiler(CM.settings_default.registerApiKey.cmd),

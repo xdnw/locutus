@@ -154,7 +154,7 @@ public class RegisterCommand extends Command {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
+                "5. Run the command " + CM.register.cmd.nation(nationId + "").toSlashCommand() + " again";
 
         long id = user.getIdLong();
         boolean checkId = false;
@@ -167,7 +167,7 @@ public class RegisterCommand extends Command {
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
+                        "5. Run the command " + CM.register.cmd.nation(nationId + "").toSlashCommand() + " again";
                 checkId = fullDiscriminator.contains("#");
             }
         }
