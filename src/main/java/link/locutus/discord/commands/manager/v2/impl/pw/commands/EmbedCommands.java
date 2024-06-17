@@ -667,7 +667,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.enemy high = CM.war.find.enemy.cmd.targets(
                 "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66").onlyPriority("true").resultsInDm(dmStr);
         CM.war.find.enemy low = CM.war.find.enemy.cmd.targets(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66").onlyPriority("true").onlyWeak("true").resultsInDM(dmStr);
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#strongestEnemyOfScore" + rangeStr + "<1,#strongestEnemyOfScore" + rangeStr + ">0.66").onlyPriority("true").onlyWeak("true").resultsInDm(dmStr);
         CM.war.find.enemy weak = CM.war.find.enemy.cmd.targets(
                 "~enemies").includeInactives("true").includeApplicants("true").onlyEasy("true").resultsInDm(dmStr).includeStrong("true");
         CM.war.find.damage infra = CM.war.find.damage.cmd.nations(
@@ -792,9 +792,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.enemy inactive = CM.war.find.enemy.cmd.targets(
                 "~enemies").includeInactives("true").includeApplicants("true").onlyEasy("true").resultsInDm(dmStr);
         CM.war.find.damage infra = CM.war.find.damage.cmd.nations(
-                "~enemies", "true", "true", null, null, null, null, null, null, dmStr, null);
+                "~enemies").includeApps("true").includeInactives("true").resultsInDm(dmStr);
         CM.war.find.enemy beige = CM.war.find.enemy.cmd.targets(
-                "~enemies,#color=beige", null, null, "true", "true", null, null, "true", null, dmStr, null);
+                "~enemies,#color=beige").includeInactives("true").includeApplicants("true").onlyEasy("true").resultsInDm(dmStr);
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, high, "high")
@@ -1314,7 +1314,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Collection<DBNation> nations = sendTo.getNations();
         Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, 0, 0);
 
-        CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "", "true");
+        CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "").document("true");
 
         StringBuilder body = new StringBuilder();
         body.append("Title: `" + title + "`\n");

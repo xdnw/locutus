@@ -1167,7 +1167,7 @@ public class TradeCommands {
         body.append("\nPress `" + emoji + "` to compare by day (200 days)");
 
 
-        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.stockpile1(ResourceType.resourcesToString(stockpile)).stockpile2(ResourceType.resourcesToString(allDeposits), "200");
+        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.stockpile1(ResourceType.resourcesToString(stockpile)).stockpile2(ResourceType.resourcesToString(allDeposits)).numDays("200");
 
         IMessageBuilder msg = channel.create().embed(title, body.toString())
                 .commandButton(cmd, "Show Graph (200d)")
