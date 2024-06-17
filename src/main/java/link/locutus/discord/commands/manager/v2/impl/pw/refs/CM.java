@@ -6353,7 +6353,7 @@ public class CM {
         }
         public static class selection_alias{
             public static class add{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders.class,method="addSelectionAlias")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="ALLIANCES")
                 public static class alliance extends CommandRef {
                     public static final alliance cmd = new alliance();
                 public alliance name(String value) {
@@ -6497,7 +6497,7 @@ public class CM {
                 }
 
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders.class,method="addSelectionAlias")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="NATIONS")
                 public static class nation extends CommandRef {
                     public static final nation cmd = new nation();
                 public nation name(String value) {
@@ -7883,7 +7883,7 @@ public class CM {
         }
         public static class sheet_template{
             public static class add{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders.class,method="addColumns")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="ALLIANCES")
                 public static class alliance extends CommandRef {
                     public static final alliance cmd = new alliance();
                 public alliance sheet(String value) {
@@ -9131,7 +9131,7 @@ public class CM {
                 }
 
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders.class,method="addColumns")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="NATIONS")
                 public static class nation extends CommandRef {
                     public static final nation cmd = new nation();
                 public nation sheet(String value) {

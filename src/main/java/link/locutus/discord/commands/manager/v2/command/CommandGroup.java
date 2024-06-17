@@ -382,16 +382,22 @@ public class CommandGroup implements ICommandGroup {
 
             try {
                 CommandRef ref = (CommandRef) clazz.getDeclaredField("cmd").get(null);
-                Method create = ref.getClass().getDeclaredMethods()[0];
-                for (Parameter parameter : create.getParameters()) {
-                    String name = parameter.getName().toLowerCase(Locale.ROOT);
-                    if (userParamsLower.contains(name)) continue;
-                    // replace camelCase with under_case
-                    String nameUnder = parameter.getName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase(Locale.ROOT);
-                    if (userParamsLower.contains(nameUnder)) continue;
-                    System.out.println("Missing parameter `" + name + "` for " + methodInfo.clazz().getSimpleName() + " | " + methodInfo.method() + " | " + methodInfo.field() + " | " + clazz.getSimpleName() + " | " + callable.getUserParameterMap().keySet());
+                Set<String> argsPresent = new LinkedHashSet<>();
+                for (Method method : ref.getClass().getDeclaredMethods()) {
+                    if (method.getReturnType().equals(ref.getClass()) && method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(String.class)) {
+                        argsPresent.add(method.getName().toLowerCase(Locale.ROOT));
+                    }
                 }
-
+                for (String arg : userParamsLower) {
+                    if (!argsPresent.contains(arg)) {
+                        System.out.println("Missing method for " + methodInfo.clazz().getSimpleName() + " | " + methodInfo.method() + " | " + methodInfo.field() + " | " + clazz.getSimpleName() + " | " + arg);
+                    }
+                }
+                for (String arg : argsPresent) {
+                    if (!userParamsLower.contains(arg)) {
+                        System.out.println("Missing parameter (2) for " + methodInfo.clazz().getSimpleName() + " | " + methodInfo.method() + " | " + methodInfo.field() + " | " + clazz.getSimpleName() + " | " + arg);
+                    }
+                }
             } catch (IllegalAccessException | NoSuchFieldException e) {
                 throw new RuntimeException(e);
             }
