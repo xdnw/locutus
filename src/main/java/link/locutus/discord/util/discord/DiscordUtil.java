@@ -83,6 +83,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.parseFilter;
 import static link.locutus.discord.util.MathMan.parseStringFilter;
@@ -983,10 +984,10 @@ public class DiscordUtil {
         return null;
     }
 
-    public static CompletableFuture<Message> sendMessage(MessageChannel channel, String message) {
+    public static CompletableFuture<List<Message>> sendMessage(MessageChannel channel, String message) {
         if (message.length() > 20000) {
             if (message.length() < 200000) {
-                return DiscordUtil.upload(channel, "message.txt", message);
+                return DiscordUtil.upload(channel, "message.txt", message).thenApply(List::of);
             }
             new Exception().printStackTrace();
             throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
@@ -997,25 +998,33 @@ public class DiscordUtil {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        message = WordUtils.wrap(message, 2000, "\n", true, ",");
         if (message.length() > 2000) {
+            message = WordUtils.wrap(message, 2000, "\n", true, "[,\n ]");
             String[] lines = message.split("\\r?\\n");
+            List<CompletableFuture<Message>> futures = new ArrayList<>();
             StringBuilder buffer = new StringBuilder();
             for (String line : lines) {
                 if (buffer.length() + 1 + line.length() > 2000) {
                     String str = buffer.toString().trim();
                     if (!str.isEmpty()) {
-                        RateLimitUtil.complete(channel.sendMessage(str));
+                        futures.add(RateLimitUtil.queue(channel.sendMessage(str)));
                     }
                     buffer.setLength(0);
                 }
                 buffer.append('\n').append(line);
             }
             if (buffer.length() != 0) {
-                return RateLimitUtil.queue(channel.sendMessage(buffer));
+                String str = buffer.toString().trim();
+                if (!str.isEmpty()) {
+                    futures.add(RateLimitUtil.queue(channel.sendMessage(str)));
+                }
             }
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .thenApply(v -> futures.stream()
+                            .map(CompletableFuture::join)
+                            .collect(Collectors.toList()));
         } else if (!message.isEmpty()) {
-            return RateLimitUtil.queue(channel.sendMessage(message));
+            return RateLimitUtil.queue(channel.sendMessage(message)).thenApply(List::of);
         }
         return null;
     }

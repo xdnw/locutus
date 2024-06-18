@@ -105,28 +105,27 @@ public class DiscordChannelIO implements IMessageIO {
                 discMsg.embeds.clear();
             }
             if (discMsg.content.length() > 2000) {
-                DiscordUtil.sendMessage(channel, discMsg.content.toString());
+                CompletableFuture<List<Message>> future1 = DiscordUtil.sendMessage(channel, discMsg.content.toString());
                 discMsg.content.setLength(0);
             }
             CompletableFuture<IMessageBuilder> msgFuture = null;
             boolean sendFiles = true;
             if (!discMsg.content.isEmpty() || !discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
                 MessageCreateData message = discMsg.build(true);
-
                 if (message.getContent().length() > 20000) {
                     Message result = null;
                     if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
                         message = discMsg.build(false);
                         result = RateLimitUtil.complete(channel.sendMessage(message));
                     }
-                    CompletableFuture<Message> future = DiscordUtil.sendMessage(channel, discMsg.content.toString());
+                    CompletableFuture<List<Message>> future = DiscordUtil.sendMessage(channel, discMsg.content.toString());
                     if (result != null) {
                         assert future != null;
-                        msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
+                        msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f.getLast()));
                     }
                 } else {
                     sendFiles = false;
-                    CompletableFuture<Message> future =RateLimitUtil.queue(channel.sendMessage(message));
+                    CompletableFuture<Message> future = RateLimitUtil.queue(channel.sendMessage(message));
                     msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
 

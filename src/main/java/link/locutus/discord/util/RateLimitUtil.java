@@ -7,7 +7,11 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.commands.WebIO;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.requests.RestAction;
 
 import java.util.*;
@@ -15,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
@@ -89,13 +94,11 @@ public class RateLimitUtil {
                 lastLimitTime = now;
                 lastLimitTotal = requestsThisMinute.size();
                 String msg = getRateLimitMessage(category, cutoff);
-
                 lastErrorMsg.put(action.getClass(), msg);
             }
         } else {
             lastLimitTotal = 0;
         }
-
         return action;
     }
 
@@ -107,7 +110,6 @@ public class RateLimitUtil {
     }
     public static void queueMessage(MessageChannel channel, String message, boolean condense, Integer bufferSeconds) {
         if (message.isBlank()) return;
-
         DiscordChannelIO io = new DiscordChannelIO(channel);
         queueMessage(io, new Function<IMessageBuilder, Boolean>() {
             @Override
@@ -232,11 +234,26 @@ public class RateLimitUtil {
     }
 
     public static <T> T complete(RestAction<T> action) {
-        return (T) addRequest(action).complete();
+        return (T) handleNews(addRequest(action).complete());
     }
 
     public static <T> CompletableFuture<T> queue(RestAction<T> action) {
         if (action == null) return null;
-        return addRequest(action).submit();
+        return handleNews(addRequest(action).submit());
+    }
+
+    private static <T> T handleNews(T t) {
+        if (t instanceof Message msg) {
+            MessageChannelUnion channel = msg.getChannel();
+            if (channel instanceof NewsChannel news && msg.getGuild().getSelfMember().hasAccess(news)) {
+                news.crosspostMessageById(msg.getIdLong()).queue();
+            }
+        }
+        return t;
+    }
+
+    private static <T> CompletableFuture<T> handleNews(CompletableFuture<T> future) {
+        future.thenAccept(RateLimitUtil::handleNews);
+        return future;
     }
 }
