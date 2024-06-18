@@ -246,7 +246,7 @@ public class RateLimitUtil {
         if (t instanceof Message msg) {
             MessageChannelUnion channel = msg.getChannel();
             if (channel instanceof NewsChannel news && msg.getGuild().getSelfMember().hasAccess(news)) {
-                news.crosspostMessageById(msg.getIdLong()).queue();
+                queue(news.crosspostMessageById(msg.getIdLong()));
             }
         }
         return t;
