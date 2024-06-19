@@ -147,7 +147,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "The name of a nation attribute\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"})
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"},
+    webType = "CommandCallable")
     @NationAttributeCallable
     public ParametricCallable nationAttribute(NationPlaceholders placeholders, ValueStore store, String input) {
         List<ParametricCallable> options = placeholders.getParametricCallables();
@@ -158,7 +159,8 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
-    @Binding(value = "A discord slash command reference for the bot")
+    @Binding(value = "A discord slash command reference for the bot",
+    webType = "CommandCallable")
     public ICommand slashCommand(String input) {
         List<String> split = StringMan.split(input, ' ');
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);

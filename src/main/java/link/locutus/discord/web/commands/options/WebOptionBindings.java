@@ -244,7 +244,6 @@ public class WebOptionBindings extends BindingHelper {
 
 
 //AGrantTemplate
-
 //Newsletter
 
 //GuildSetting
