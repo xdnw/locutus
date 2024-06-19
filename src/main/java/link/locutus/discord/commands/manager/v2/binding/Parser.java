@@ -22,6 +22,15 @@ public interface Parser<T> {
 
     String getDescription();
 
+    default String getWebTypeStr() {
+        Key key = getKey();
+        Binding binding = key.getBinding();
+        if (binding != null && !binding.webType().isEmpty()) {
+            return binding.webType();
+        }
+        return key.toSimpleString();
+    }
+
     default T apply(LocalValueStore store, ValidatorStore validators, PermissionHandler permisser, String... args) {
         List<String> argsList;
         if (args == null) {

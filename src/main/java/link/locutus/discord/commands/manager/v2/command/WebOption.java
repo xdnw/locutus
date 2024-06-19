@@ -25,6 +25,7 @@ public class WebOption {
     private boolean allowCompletions;
     private JsonArray options;
     private TriFunction<GuildDB, User, DBNation, JsonArray> queryOptions;
+    private List<String> compositeTypes;
     private boolean requiresGuild;
     private boolean requiresNation;
     private boolean requiresUser;
@@ -46,6 +47,11 @@ public class WebOption {
             Number.class,
             String.class
     ));
+
+    public WebOption setCompositeTypes(String... types) {
+        this.compositeTypes = Arrays.asList(types);
+        return this;
+    }
 
     public WebOption setRequiresGuild() {
         this.requiresGuild = true;
@@ -184,6 +190,9 @@ public class WebOption {
         JsonObject json = new JsonObject();
         if (options != null) {
             json.add("options", options);
+        }
+        if (compositeTypes != null) {
+            json.add("composite", new Gson().toJsonTree(compositeTypes));
         }
         if (isAllowQuery()) {
             json.addProperty("query", true);

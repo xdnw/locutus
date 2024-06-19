@@ -29,7 +29,8 @@ public class ParameterData {
         if (isFlag()) arg.addProperty("flag", getFlag());
         if (this.desc != null && !desc.isEmpty()) arg.addProperty("desc", desc);
         if (group != -1) arg.addProperty("group", group);
-        arg.addProperty("type", binding.getKey().toSimpleString());
+        String webType = binding.getWebTypeStr();
+        arg.addProperty("type", webType);
         if (defaultValue != null && defaultValue.length != 0) {
             arg.addProperty("default", getDefaultValueString());
         }

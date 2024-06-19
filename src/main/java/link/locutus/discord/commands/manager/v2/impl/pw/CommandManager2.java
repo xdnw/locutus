@@ -6,10 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.HtmlOptions;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
@@ -70,14 +67,21 @@ public class CommandManager2 {
         Set<String> checkedOptions = new HashSet<>();
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
-        for (Map.Entry<Key, Parser> entry : store.getParsers().entrySet()) {
-            Key key = entry.getKey();
-            Parser parser = entry.getValue();
-            if (!parser.isConsumer(store)) continue;
+        Set<Parser> parsers = new LinkedHashSet<>();
+        for (ParametricCallable callable : commands.getParametricCallables(f -> true)) {
+            for (ParameterData param : callable.getUserParameters()) {
+                Parser<?> parser = param.getBinding();
+                Binding binding = parser.getKey().getBinding();
+                if (binding != null && binding.webType().isEmpty()) {
+                    parsers.add(parser);
+                }
+            }
 
+        }
+        for (Parser parser : parsers) {
+            Key key = parser.getKey();
             JsonObject typeJson = parser.toJson();
             keysData.put(key.toSimpleString(), typeJson);
-
             Key optionsKey = key.append(HtmlOptions.class);
             Parser optionParser = htmlOptionsStore.get(optionsKey);
             if (optionParser != null) {
@@ -85,8 +89,7 @@ public class CommandManager2 {
                 optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                 continue;
             }
-            Class[] compArr = key.getBinding().components();
-            List<Class> components = compArr.length == 0 ? WebOption.getComponentClasses(key.getType()) : Arrays.asList(compArr);
+            List<Class> components = WebOption.getComponentClasses(key.getType());
             if (components.isEmpty()) {
                 System.out.println("No components for " + key.toSimpleString());
                 continue;

@@ -179,7 +179,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel", value = "A discord channel name or mention",
-            components = TextChannel.class)
+            webType = "TextChannel")
     public MessageChannel channel(@Me Guild guild, String channel) {
         MessageChannel GuildMessageChannel = DiscordUtil.getChannel(guild, channel);
         if (GuildMessageChannel == null) throw new IllegalArgumentException("No channel found for " + channel);
@@ -220,7 +220,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention",
-    components = TextChannel.class)
+    webType = "TextChannel")
     public ICategorizableChannel categorizableChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + null);

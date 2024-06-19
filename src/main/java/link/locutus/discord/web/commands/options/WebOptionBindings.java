@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LoanManager;
@@ -222,6 +223,20 @@ public class WebOptionBindings extends BindingHelper {
         });
     }
 //Report - locutus - report manager -> get reports
+    @Binding(types = ReportManager.Report.class)
+    public WebOption getReport() {
+        return new WebOption(ReportManager.Report.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            ReportManager reportManager = Locutus.imp().getNationDB().getReportManager();
+            for (ReportManager.Report report : reportManager.loadReports()) {
+                data.add(Map.of(
+                        "key", report.reportId + "",
+                        "text", report.getTitle()
+                ));
+            }
+            return data;
+        });
+    }
 //NationOrAllianceOrGuild -> same as guild()
 //Conflict - locutus -> conflict manager -> conflicts
 //ParametricCallable -> CommandCallable

@@ -827,7 +827,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1", value = "A comma separated list of nations, alliances and filters",
-            components = DBNation.class)
+            webType = "DBNation")
     public static NationList nationList(ParameterData data, @Default @Me Guild guild, String input, @Default @Me User author, @Default @Me DBNation me) {
         return new SimpleNationList(nations(data, guild, input, author, me)).setFilter(input);
     }
