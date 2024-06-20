@@ -51,6 +51,11 @@ public class DBBounty {
         );
     }
 
+    @Command(desc = "String of the bounty type and amount")
+    public String toLineString() {
+        return "#" + id + ": " + type + " $" + MathMan.format(amount);
+    }
+
     @Command(desc = "Get the date this bounty was posted (epoch milliseconds)")
     public long getDate() {
         return date;

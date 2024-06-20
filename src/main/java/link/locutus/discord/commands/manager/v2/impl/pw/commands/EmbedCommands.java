@@ -10,7 +10,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
-import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -52,7 +52,6 @@ import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.json.JSONObject;
-import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -658,11 +657,11 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             "To find contestable range, see: strengthTierGraph")
     @RolePermission(Roles.ADMIN)
     public void warContestedRange(@Me User user, @Me GuildDB db, @Me IMessageIO io,
-                                  @Arg("If the cutoff is greater or less than the score") Operation greaterOrLess,
+                                  @Arg("If the cutoff is greater or less than the score") MathOperation greaterOrLess,
                                   @Arg("The score at which the conflict is not contestable")
                                   double score, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean resultsInDm) {
         if (behavior == null) behavior = CommandBehavior.UNPRESS;
-        if (greaterOrLess == Operation.EQUAL || greaterOrLess == Operation.NOT_EQUAL) {
+        if (greaterOrLess == MathOperation.EQUAL || greaterOrLess == MathOperation.NOT_EQUAL) {
             if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
                 throw new IllegalArgumentException("No " + Coalition.ENEMIES.name() + " coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
             }
@@ -694,8 +693,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in DM";
         }
 
-        Operation opposite = greaterOrLess.opposite();
-        boolean greater = greaterOrLess == Operation.GREATER || greaterOrLess == Operation.GREATER_EQUAL;
+        MathOperation opposite = greaterOrLess.opposite();
+        boolean greater = greaterOrLess == MathOperation.GREATER || greaterOrLess == MathOperation.GREATER_EQUAL;
         double minScore = greater ? score : 0;
         double maxScore = greater ? Integer.MAX_VALUE : score;
         String rangeStr = String.format("%.2f", minScore) + "," + String.format("%.2f", maxScore);
@@ -704,7 +703,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.enemy easy = CM.war.find.enemy.cmd.targets(
                 "~enemies,#off>0").onlyEasy("true").resultsInDm(dmStr);
         int scoreMax;
-        if (greaterOrLess == Operation.GREATER || greaterOrLess == Operation.GREATER_EQUAL) {
+        if (greaterOrLess == MathOperation.GREATER || greaterOrLess == MathOperation.GREATER_EQUAL) {
             scoreMax = (int) Math.ceil(score / 0.75);
         } else {
             scoreMax = (int) Math.ceil(score * 0.75);

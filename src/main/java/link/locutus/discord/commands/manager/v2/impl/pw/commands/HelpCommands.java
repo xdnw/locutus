@@ -152,9 +152,7 @@ public class HelpCommands {
         if (body.length() > 4096) {
             return "#" + title + "\n" + body;
         }
-
         IMessageBuilder embed = io.create().embed(title, body);
-
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null) {
             List<ParametricCallable> closest = gpt.getClosestNationAttributes(store, command, 6);

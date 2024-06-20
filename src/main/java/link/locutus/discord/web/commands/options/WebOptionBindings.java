@@ -10,17 +10,24 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.HtmlOptions;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
-import link.locutus.discord.db.entities.DBLoan;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.LoanManager;
-import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.conflict.Conflict;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.pnw.*;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.scheduler.TriFunction;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -33,10 +40,8 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class WebOptionBindings extends BindingHelper {
 //Parser
@@ -237,71 +242,226 @@ public class WebOptionBindings extends BindingHelper {
             return data;
         });
     }
-//NationOrAllianceOrGuild -> same as guild()
 //Conflict - locutus -> conflict manager -> conflicts
-//ParametricCallable -> CommandCallable
-//ICommand -> CommandCallable
-
-
-//AGrantTemplate
-
-//Newsletter
-
+    @Binding(types = Conflict.class)
+    public WebOption getConflict() {
+        return new WebOption(Conflict.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            for (Conflict conflict : Locutus.imp().getWarDb().getConflicts().getConflictMap().values()) {
+                data.add(Map.of(
+                        "key", conflict.getId() + "",
+                        "text", conflict.getName()
+                ));
+            }
+            return data;
+        });
+    }
 //GuildSetting
+    @Binding(types = GuildSetting.class)
+    public WebOption getGuildSetting() {
+        return new WebOption(GuildSetting.class).setRequiresGuild()
+                .setOptions((List<String>) Arrays.stream(GuildKey.values()).map(GuildSetting::name));
+    }
 //EmbeddingSource
+    @Binding(types = EmbeddingSource.class)
+    public WebOption getEmbeddingSource() {
+        return new WebOption(EmbeddingSource.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            PWGPTHandler gpt = Locutus.cmd().getV2().getPwgptHandler();
+            if (gpt == null) {
+                return new ArrayList<>();
+            }
+            List<Map<String, String>> data = new ArrayList<>();
+            Set<EmbeddingSource> sources = gpt.getSources(db.getGuild(), true);
+            for (EmbeddingSource source : sources) {
+                data.add(Map.of(
+                        "key", source.source_id + "",
+                        "text", source.source_name
+                ));
+            }
+            return data;
+        });
+    }
 //GPTProvider
-//SpreadSheet
-//GoogleDoc
+    @Binding(types = GPTProvider.class)
+    public WebOption getGPTProvider() {
+        return new WebOption(GPTProvider.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            PWGPTHandler gpt = Locutus.cmd().getV2().getPwgptHandler();
+            if (gpt == null) {
+                return new ArrayList<>();
+            }
+            Set<GPTProvider> providers = gpt.getProviderManager().getProviders(db);
+            List<Map<String, String>> data = new ArrayList<>();
+            for (GPTProvider provider : providers) {
+                data.add(Map.of(
+                        "key", provider.getId(),
+                        "text", provider.getType() + ":" + provider.getId()
+                ));
+            }
+            return data;
+        });
+    }
+//DBAlliancePosition
+    @Binding(types = DBAlliancePosition.class)
+    public WebOption getDBAlliancePosition() {
+        return new WebOption(DBAlliancePosition.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            AllianceList aaList = db.getAllianceList();
+            for (DBAlliancePosition position : aaList.getPositions()) {
+                data.add(Map.of(
+                        "key", position.getId() + "",
+                        "text", aaList.size() > 1 ? position.getQualifiedName() : position.getName()
+                ));
+            }
+            return data;
+        });
+    }
 //SheetTemplate
+    @Binding(types = SheetTemplate.class)
+    public WebOption getSheetTemplate() {
+        return new WebOption(SheetTemplate.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+            Map<String, SheetTemplate> templates = db.getSheetManager().getSheetTemplates(errors);
+            for (Map.Entry<String, SheetTemplate> entry : templates.entrySet()) {
+                data.add(Map.of(
+                        "key", entry.getKey(),
+                        "text", PlaceholdersMap.getClassName(entry.getValue().getType()) + ":" + entry.getKey(),
+                        "subtext", entry.getValue().getColumns().toString()
+                ));
+            }
+            return data;
+        });
+    }
 //CustomSheet
-//TransferSheet
+    @Binding(types = CustomSheet.class)
+    public WebOption getCustomSheet() {
+        return new WebOption(CustomSheet.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+            Map<String, String> sheets = db.getSheetManager().getCustomSheets();
+            for (Map.Entry<String, String> entry : sheets.entrySet()) {
+                data.add(Map.of(
+                        "key", entry.getKey(),
+                        "text", entry.getKey()
+                ));
+            }
+            return data;
+        });
+    }
 //SelectionAlias
-//Class
+    @Binding(types = SelectionAlias.class)
+    public WebOption getSelectionAlias() {
+        return new WebOption(SelectionAlias.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            Map<Class, Map<String, SelectionAlias>> aliases = db.getSheetManager().getSelectionAliases();
+            Set<SelectionAlias> allAliases = new LinkedHashSet<>();
+            for (Map<String, SelectionAlias> map : aliases.values()) {
+                allAliases.addAll(map.values());
+            }
+
+            for (SelectionAlias alias : allAliases) {
+                data.add(Map.of(
+                        "key", alias.getName(),
+                        "text", PlaceholdersMap.getClassName(alias.getType()) + ":" + alias.getName(),
+                        "subtext", alias.getSelection()
+                ));
+            }
+            return data;
+        });
+    }
 //DBBounty
+    @Binding(types = DBBounty.class)
+    public WebOption getDBBounty() {
+        return new WebOption(DBBounty.class).setQueryMap((guild, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            for (DBBounty bounty : Locutus.imp().getWarDb().getBounties()) {
+                data.add(Map.of(
+                        "key", bounty.getId() + "",
+                        "text", bounty.toLineString()
+                ));
+            }
+            return data;
+        });
+    }
+    //NationOrAllianceOrGuild -> set components to nation, alliance and guild
+    @Binding(types = NationOrAllianceOrGuild.class)
+    public WebOption getNationOrAllianceOrGuild() {
+        return new WebOption(DBNation.class).setCompositeTypes("DBNation", "DBAlliance", "GuildDB");
+    }
+    @Binding(types = GuildOrAlliance.class)
+    public WebOption getGuildOrAlliance() {
+        return new WebOption(GuildOrAlliance.class).setCompositeTypes("GuildDB", "DBAlliance");
+    }
+    //NationOrAlliance
+    @Binding(types = NationOrAlliance.class)
+    public WebOption getNationOrAlliance() {
+        return new WebOption(DBNation.class).setCompositeTypes("DBNation", "DBAlliance");
+    }
+// NationOrAllianceOrGuildOrTaxid
+    @Binding(types = NationOrAllianceOrGuildOrTaxid.class)
+    public WebOption getNationOrAllianceOrGuildOrTaxid() {
+        return new WebOption(DBNation.class).setCompositeTypes("DBNation", "DBAlliance", "GuildDB", "TaxBracket");
+    }
+    //Treaty
+    @Binding(types = Treaty.class)
+    public WebOption getTreaty() {
+        return new WebOption(Treaty.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            for (Treaty treaty : Locutus.imp().getNationDB().getTreaties()) {
+                data.add(Map.of(
+                        "key", treaty.getId() + "",
+                        "text", treaty.toLineString(),
+                        "subtext", treaty.getTurnsRemaining() + " turns",
+                ));
+            }
+            return data;
+        });
+    }
+//DBBan
+    @Binding(types = DBBan.class)
+    public WebOption getDBBan() {
+        return new WebOption(DBBan.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            Map<Integer, DBBan> bans = Locutus.imp().getNationDB().getBansByNation();
+            for (Map.Entry<Integer, DBBan> entry : bans.entrySet()) {
+                DBBan ban = entry.getValue();
+                data.add(Map.of(
+                        "key", entry.getKey() + "",
+                        "text", PW.getName(ban.nation_id, false),
+                        "subtext", ban.reason
+                ));
+            }
+            return data;
+        });
+    }
+
+//DBTreasure
+    @Binding(types = DBTreasure.class)
+
+//DBNation
+//DBAlliance - prefix with AA:<id>
+//GuildDB
+//Newsletter
+//AGrantTemplate
+//    AllianceDepositLimit
+//    NationDepositLimit
+// WikiCategory
+
+//unused
+//Class
+// IAttack
+//DBWar
 //DBTrade
 //UserWrapper
 //Transaction2
 //TaxDeposit
-//GuildOrAlliance -> guild
 
-    //unused
-//UUID
-//Color
-//Message
-//DBNation
-//DBAlliance
-//Treaty
-//CityBuild
-//DBBan
-//DBTreasure
-//IAttack
-//DBWar
-//NationOrAlliance
-
-//defer
-    //NationAttribute
-
-//NationList -> Set<DBNation>
-//NationFilter -> defer Set<DBNation>
-//DepositTypeInfo -> DepositType
-//NationAttributeDouble -> defer to Set<DBNation>
-//NationOrAllianceOrGuildOrTaxid -> guild + taxbracket
-//GuildDB - return same as guild()
 //DBCity -> fetch via api, or accept int
-//TaxRate
-//CityRanges
-//MMRInt
-//MMRDouble
-//MMRMatcher
-//DBAlliancePosition
 
-//
 // compound
 //Map<ResourceType, Double>[AllianceDepositLimit]
 //Map<ResourceType, Double>[NationDepositLimit]
 //Newsletter[ReportPerms]
 //String[GuildCoalition]
-//ParametricCallable[NationAttributeCallable]
-//Class[PlaceholderType]
 //Set<String>[WikiCategory]
 }

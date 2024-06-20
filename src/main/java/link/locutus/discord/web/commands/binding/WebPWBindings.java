@@ -22,7 +22,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -1127,9 +1127,9 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= Operation.class)
+    @Binding(types= MathOperation.class)
     public String operation(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(Operation.values()), op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()));
+        return multipleSelect(param, Arrays.asList(MathOperation.values()), op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()));
     }
 
     @HtmlInput
