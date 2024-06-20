@@ -436,7 +436,11 @@ public class WebOptionBindings extends BindingHelper {
     }
 
 //DBTreasure
-    @Binding(types = DBTreasure.class)
+//    @Binding(types = DBTreasure.class)
+    //ParametricCallable -> CommandCallable
+//ICommand -> CommandCallable
+//AGrantTemplate
+//Newsletter
 
 //DBNation
 //DBAlliance - prefix with AA:<id>
