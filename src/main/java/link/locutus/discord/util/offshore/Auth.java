@@ -230,13 +230,13 @@ public class Auth {
     public String createTrade(DBNation receiver, ResourceType resource, int amount, int ppu, boolean isBuy) {
         String leadername = receiver.getLeader();
         String leaderUrlEscape = URLEncoder.encode(leadername, StandardCharsets.UTF_8);
-        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/create?leadername=" + leaderUrlEscape;
+        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/create";
         Map<String, String> post = new HashMap<>();
         post.put("resourceoffer", resource.name().toLowerCase());
         post.put("offeramount", "" + amount);
         post.put("wantamount", "" + ppu);
         post.put("offertype", "personal");
-        post.put("leaderpersonal", leadername);
+        post.put("leaderpersonal", leaderUrlEscape);
         post.put("submit", isBuy ? "Buy" : "Sell");
 
         return PW.withLogin(() -> {

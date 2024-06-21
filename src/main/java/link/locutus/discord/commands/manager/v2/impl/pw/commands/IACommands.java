@@ -1212,6 +1212,13 @@ public class IACommands {
         return "Mail: " + result;
     }
 
+//    @Command(desc = "Read a message for an id")
+//    @RolePermission(Roles.MAIL)
+//    @IsAlliance
+//    public String viewMail(@Me )
+
+    // todo add mail search SearchMailTask
+
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @RolePermission(Roles.MILCOM)
