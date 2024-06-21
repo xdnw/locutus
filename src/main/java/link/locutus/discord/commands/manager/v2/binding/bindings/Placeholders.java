@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.MethodParser;
@@ -22,7 +21,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,10 +28,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.HtmlInput;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -42,9 +37,7 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -304,8 +297,8 @@ public abstract class Placeholders<T> extends BindingHelper {
         ParametricCallable callable = get(cmd);
         StringBuilder html = new StringBuilder(callable.toBasicHtml(store));
         html.append("<select name=\"filter-operator\" for=\"").append(parentId).append("\" class=\"form-control\">");
-        for (Operation value : Operation.values()) {
-            String selected = value == Operation.EQUAL ? "selected=\"selected\"" : "";
+        for (MathOperation value : MathOperation.values()) {
+            String selected = value == MathOperation.EQUAL ? "selected=\"selected\"" : "";
             html.append("<option value=\"").append(value.code).append("\" ").append(selected).append(">").append(StringEscapeUtils.escapeHtml4(value.code)).append("</option>");
         }
         html.append("</select>");
@@ -348,8 +341,8 @@ public abstract class Placeholders<T> extends BindingHelper {
         return parseSet(store, input);
     }
 
-    private static Triple<String, Operation, String> opSplit(String input) {
-        for (Operation op : Operation.values()) {
+    private static Triple<String, MathOperation, String> opSplit(String input) {
+        for (MathOperation op : MathOperation.values()) {
             List<String> split = StringMan.split(input, op.code, 2);
             if (split.size() == 2) {
                 return Triple.of(split.get(0), op, split.get(1));

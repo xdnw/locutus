@@ -2,7 +2,7 @@ package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import java.util.function.Predicate;
 
-public enum Operation {
+public enum MathOperation {
     LESSER_EQUAL("<="),
     GREATER_EQUAL(">="),
     NOT_EQUAL("!="),
@@ -12,16 +12,16 @@ public enum Operation {
 
     public final String code;
 
-    Operation(String s) {
+    MathOperation(String s) {
         this.code = s;
     }
 
     public Predicate<Number> getNumberPredicate(Number compareTo) {
         double val2 = compareTo.doubleValue();
         return input -> {
-            if (input == null) return Operation.this == Operation.NOT_EQUAL;
+            if (input == null) return MathOperation.this == MathOperation.NOT_EQUAL;
             double val1 = input.doubleValue();
-            return switch (Operation.this) {
+            return switch (MathOperation.this) {
                 case LESSER_EQUAL -> val1 <= val2;
                 case GREATER_EQUAL -> val1 >= val2;
                 case EQUAL -> val1 == val2;
@@ -34,8 +34,8 @@ public enum Operation {
 
     public Predicate<String> getStringPredicate(String compareTo) {
         return val1 -> {
-            if (val1 == null) return Operation.this == Operation.NOT_EQUAL;
-            return switch (Operation.this) {
+            if (val1 == null) return MathOperation.this == MathOperation.NOT_EQUAL;
+            return switch (MathOperation.this) {
                 case LESSER_EQUAL -> val1.compareTo(compareTo) <= 0;
                 case GREATER_EQUAL -> val1.compareTo(compareTo) >= 0;
                 case EQUAL -> val1.equalsIgnoreCase(compareTo) || val1.matches(compareTo);
@@ -48,8 +48,8 @@ public enum Operation {
 
     public Predicate<Boolean> getBooleanPredicate(boolean compareTo) {
         return val1 -> {
-            if (val1 == null) return Operation.this == Operation.NOT_EQUAL;
-            return switch (Operation.this) {
+            if (val1 == null) return MathOperation.this == MathOperation.NOT_EQUAL;
+            return switch (MathOperation.this) {
                 case LESSER_EQUAL -> !val1;
                 case GREATER_EQUAL -> val1;
                 case EQUAL -> val1 == compareTo;
@@ -60,7 +60,7 @@ public enum Operation {
         };
     }
 
-    public Operation opposite() {
+    public MathOperation opposite() {
         return switch (this) {
             case LESSER_EQUAL -> GREATER;
             case GREATER_EQUAL -> LESSER;

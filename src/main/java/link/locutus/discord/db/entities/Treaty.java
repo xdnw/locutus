@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import org.jooq.meta.derby.sys.Sys;
 
@@ -121,6 +122,11 @@ public class Treaty {
                 ", to=" + to +
                 ", turn_ends=" + turn_ends +
                 '}';
+    }
+
+    @Command
+    public String toLineString() {
+        return type + ":" + PW.getName(from, true) + "/" + PW.getName(to, true);
     }
 
     @Command(desc = "Timestamp the treaty ends")

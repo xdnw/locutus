@@ -30,7 +30,7 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -147,7 +147,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "The name of a nation attribute\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"})
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"},
+    webType = "CommandCallable<DBNation>")
     @NationAttributeCallable
     public ParametricCallable nationAttribute(NationPlaceholders placeholders, ValueStore store, String input) {
         List<ParametricCallable> options = placeholders.getParametricCallables();
@@ -158,7 +159,7 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
-    @Binding(value = "A discord slash command reference for the bot")
+    @Binding(value = "A discord slash command reference for the bot", webType = "CommandCallable")
     public ICommand slashCommand(String input) {
         List<String> split = StringMan.split(input, ' ');
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
@@ -505,7 +506,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = ("#grant #city=1"), value = "A DepositType optionally with a value and a city tag\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/deposits#transfer-notes>")
+            "See: <https://github.com/xdnw/locutus/wiki/deposits#transfer-notes>",
+    webType = "DepositType")
     public static DepositType.DepositTypeInfo DepositTypeInfo(String input) {
         DepositType type = null;
         long value = 0;
@@ -832,12 +834,14 @@ public class PWBindings extends BindingHelper {
         return new SimpleNationList(nations(data, guild, input, author, me)).setFilter(input);
     }
 
-    @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)")
+    @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)",
+    webType = "Predicate<DBNation>")
     public NationFilter nationFilter(@Default @Me User author, @Default @Me DBNation nation, @Default @Me Guild guild, String input) {
         return new NationFilterString(input, guild, author, nation);
     }
 
-    @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes")
+    @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes",
+    webType = "Set<TypedFunction<DBNation, Double>>")
     public Set<NationAttributeDouble> nationMetricDoubles(ValueStore store, String input) {
         Set<NationAttributeDouble> metrics = new LinkedHashSet<>();
         for (String arg : StringMan.split(input, ',')) {
@@ -1411,8 +1415,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Math comparison operation")
-    public Operation op(String input) {
-        return emum(Operation.class, input);
+    public MathOperation op(String input) {
+        return emum(MathOperation.class, input);
     }
 
     @Binding(value = "Spy safety level")
@@ -1506,7 +1510,8 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A completed nation attribute that accepts no arguments and returns a number\n" +
             "To get the attribute for an attribute with arguments, you must provide a value in brackets\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"score", "ships", "land", "getCitiesSince(5d)"})
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"score", "ships", "land", "getCitiesSince(5d)"},
+    webType = "TypedFunction<DBNation,Double>")
     public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttributeDouble metric = placeholders.getMetricDouble(store, input);
