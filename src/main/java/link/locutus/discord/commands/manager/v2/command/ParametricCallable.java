@@ -897,7 +897,7 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public JsonObject toJson() {
+    public JsonObject toJson(PermissionHandler permHandler) {
         JsonObject command = new JsonObject();
         //simpleHelp
         //simpleDesc
@@ -930,6 +930,7 @@ public class ParametricCallable implements ICommand {
         JsonObject annotationsObj = new JsonObject();
         for (Annotation annotation : annotations) {
             if (annotation instanceof Command) continue;
+            if (permHandler != null && permHandler.isPermission(annotation)) continue;
             JsonObject annJson = new JsonObject();
             for (Method method : annotation.annotationType().getDeclaredMethods()) {
                 try {
