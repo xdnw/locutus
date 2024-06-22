@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
+import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.Trade;
@@ -16,6 +17,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.ApiKeyPermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -4132,6 +4134,23 @@ public class DBNation implements NationOrAlliance {
             StringBuilder response = new StringBuilder("Checking trades...");
 
             List<Auth.TradeResult> trades = tradeSupplier.get();
+            if (trades.isEmpty()) {
+                ApiKeyDetails stats = receiverApi.getApiKeyStats();
+                int bits = stats.getPermission_bits();
+                List<String> errors = new ArrayList<>();
+                if (!ApiKeyPermission.NATION_VIEW_TRADES.has(bits)) {
+                    errors.add("Missing `" + ApiKeyPermission.NATION_VIEW_TRADES + "`");
+                }
+                if (!ApiKeyPermission.NATION_ACCEPT_TRADE.has(bits)) {
+                    errors.add("Missing `" + ApiKeyPermission.NATION_ACCEPT_TRADE + "`");
+                }
+                if (!errors.isEmpty()) {
+                    // for the key starting with <letter> and ending with `<letter>`
+                    String key = stats.getKey();
+                    String redacted = key.substring(0, 1) + "..." + key.substring(key.length() - 1);
+                    throw new IllegalArgumentException("Error: " + String.join(", ", errors) + " for key: `" + redacted + "` at <https://politicsandwar.com/account/#7>");
+                }
+            }
 
             double[] toDeposit = ResourceType.getBuffer();
             for (Auth.TradeResult trade : trades) {
