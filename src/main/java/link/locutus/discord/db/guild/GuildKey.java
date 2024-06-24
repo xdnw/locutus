@@ -91,7 +91,8 @@ public class GuildKey {
             Set<Integer> toAdd = alliances.stream().map(DBAlliance::getId).collect(Collectors.toSet());
             for (DBAlliance alliance : alliances) {
                 if (existing.contains(alliance.getId())) {
-                    throw new IllegalArgumentException("Alliance " + alliance.getName() + " (id: " + alliance.getId() + ") is already registered (registered: " + StringMan.join(existing, ",") + ")");
+                    throw new IllegalArgumentException("Alliance " + alliance.getName() + " (id: " + alliance.getId() + ") is already registered (registered: " + StringMan.join(existing, ",") + ")\n" +
+                            "To set multiple alliances, first delete the currently set alliance ids: " + CM.settings.delete.cmd.key(GuildKey.ALLIANCE_ID.name()));
                 }
             }
             toAdd = ALLIANCE_ID.allowedAndValidate(db, user, toAdd);
