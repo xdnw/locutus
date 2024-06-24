@@ -853,14 +853,12 @@ public class StringMan {
         for (int i = 0; i < len; i++) {
             String arg = split[i];
             T parsed = parse.apply(arg);
-            // Dont modify the original list
             if (options == optionsOriginal) options = new ArrayList<>(options);
             options.remove(parsed);
             prefixArgs.add(parsed);
         }
         String prefixEnd = prefixArgs.isEmpty() ? "" : ",";
         String prefixKey = prefixArgs.stream().map(keyFunc).collect(Collectors.joining(",")) + prefixEnd;
-        String prefixValue = prefixArgs.stream().map(valueFunc).collect(Collectors.joining(",")) + prefixEnd;
 
         options = getClosest(trailing, options, true);
         if (options.size() > maxResults) {

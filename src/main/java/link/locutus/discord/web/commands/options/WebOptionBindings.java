@@ -21,6 +21,10 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.newsletter.Newsletter;
+import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.GPTUtil;
@@ -260,7 +264,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = GuildSetting.class)
     public WebOption getGuildSetting() {
         return new WebOption(GuildSetting.class).setRequiresGuild()
-                .setOptions((List<String>) Arrays.stream(GuildKey.values()).map(GuildSetting::name));
+                .setOptions((Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList()));
     }
 //EmbeddingSource
     @Binding(types = EmbeddingSource.class)
@@ -411,7 +415,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(Map.of(
                         "key", treaty.getId() + "",
                         "text", treaty.toLineString(),
-                        "subtext", treaty.getTurnsRemaining() + " turns",
+                        "subtext", treaty.getTurnsRemaining() + ""
                 ));
             }
             return data;
@@ -434,23 +438,90 @@ public class WebOptionBindings extends BindingHelper {
             return data;
         });
     }
-
 //DBTreasure
-//    @Binding(types = DBTreasure.class)
-    //ParametricCallable -> CommandCallable
-//ICommand -> CommandCallable
+    @Binding(types = DBTreasure.class)
+    public WebOption getDBTreasure() {
+        List<String> names = Locutus.imp().getNationDB().getTreasuresByName().keySet().stream().toList();
+        return new WebOption(DBTreasure.class).setOptions(names);
+    }
 //AGrantTemplate
+    @Binding(types = AGrantTemplate.class)
+    public WebOption getAGrantTemplate() {
+        return new WebOption(AGrantTemplate.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            GrantTemplateManager manager = db.getGrantTemplateManager();
+            for (AGrantTemplate template : manager.getTemplates()) {
+                data.add(Map.of(
+                        "key", template.getName() + "",
+                        "text", template.getType().name() + ":" + template.getName()
+                ));
+            }
+            return data;
+        });
+    }
 //Newsletter
-
+    @Binding(types = Newsletter.class)
+    public WebOption getNewsletter() {
+        return new WebOption(Newsletter.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            NewsletterManager manager = db.getNewsletterManager();
+            if (manager != null) {
+                for (Map.Entry<Integer, Newsletter> entry : manager.getNewsletters().entrySet()) {
+                    Newsletter newsletter = entry.getValue();
+                    data.add(Map.of(
+                            "key", entry.getKey() + "",
+                            "text", newsletter.getName()
+                    ));
+                }
+            }
+            return data;
+        });
+    }
 //DBNation
+    @Binding(types = DBNation.class)
+    public WebOption getDBNation() {
+        return new WebOption(DBNation.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            for (DBNation n : Locutus.imp().getNationDB().getNations().values()) {
+                data.add(Map.of(
+                        "key", n.getId() + "",
+                        "text", n.getName()
+                ));
+            }
+            return data;
+        });
+    }
 //DBAlliance - prefix with AA:<id>
+    @Binding(types = DBAlliance.class)
+    public WebOption getDBAlliance() {
+        return new WebOption(DBAlliance.class).setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            for (DBAlliance aa : Locutus.imp().getNationDB().getAlliances()) {
+                data.add(Map.of(
+                        "key", "AA:" + aa.getId(),
+                        "text", aa.getName()
+                ));
+            }
+            return data;
+        });
+    }
 //GuildDB
-//Newsletter
-//AGrantTemplate
+    @Binding(types = GuildDB.class)
+    public WebOption getGuildDB() {
+        return new WebOption(GuildDB.class).setRequiresUser().setQueryMap((db, user, nation) -> {
+            List<Map<String, String>> data = new ArrayList<>();
+            for (Guild guild : user.getMutualGuilds()) {
+                data.add(Map.of(
+                        "key", guild.getId(),
+                        "text", guild.getName()
+                ));
+            }
+            return data;
+        });
+    }
 //    AllianceDepositLimit
 //    NationDepositLimit
 // WikiCategory
-
 //unused
 //Class
 // IAttack

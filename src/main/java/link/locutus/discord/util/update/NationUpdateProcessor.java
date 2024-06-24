@@ -633,7 +633,7 @@ public class NationUpdateProcessor {
             if (position == null || !position.hasAnyAdminPermission()) return;
         }
         DBAlliance alliance = previous.getAlliance(false);
-        if (alliance.getRank() < 50) {
+        if (alliance != null && alliance.getRank() < 50) {
             String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") deleted from " + previous.getAllianceName();
             String body = previous.toEmbedString();
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
