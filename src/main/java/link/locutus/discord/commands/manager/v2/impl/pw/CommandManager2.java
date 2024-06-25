@@ -380,6 +380,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheetCmd", "view_sheet");
 
         this.commands.registerMethod(new IACommands(), List.of("nation", "list"), "viewBans", "bans");
+        this.commands.registerMethod(new IACommands(), List.of("mail"), "readMail", "read");
+        this.commands.registerMethod(new IACommands(), List.of("mail"), "searchMail", "search");
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "importLinkedBans", "multi_bans");
 

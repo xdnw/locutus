@@ -14,10 +14,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -117,14 +114,11 @@ public class SearchMailTask implements Callable<List<Mail>> {
                         List<String> messagesStr = new ArrayList<>();
 
                         if (readContent) {
-                            Document msgDom = Jsoup.parse(auth.readStringFromURL(PagePriority.MAIL_READ, url, Collections.emptyMap()));
-                            Elements messages = msgDom.select(".red-msg");
-
-                            for (Element message : messages) {
-                                message.child(0).remove();
-                                String firstMsg = message.text();
-                                String msgMarkdown = MarkupUtil.htmlToMarkdown(firstMsg);
-                                messagesStr.add(msgMarkdown);
+                            List<ReadMailTask.MailMessage> replies = new ReadMailTask(auth, msgId).call();
+                            for (ReadMailTask.MailMessage reply : replies) {
+                                if (reply.isReceived()) {
+                                    messagesStr.add(reply.getContent());
+                                }
                             }
                         } else {
                             messagesStr.add("" + recRead);
