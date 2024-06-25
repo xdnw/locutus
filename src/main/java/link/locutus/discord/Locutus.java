@@ -1144,6 +1144,10 @@ public final class Locutus extends ListenerAdapter {
 
             Button button = event.getButton();
             System.out.println("Button press " + button.getId() + " | " + button.getLabel());
+            if (button.getId().equalsIgnoreCase(" ") && message != null) {
+                RateLimitUtil.queue(message.delete());
+                return;
+            }
 
             if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
                 System.out.println("Author not application");

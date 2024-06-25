@@ -1217,7 +1217,7 @@ public class IACommands {
 
     @Command(desc = "Read and display an in-game message for an id from a nation's account\n" +
             "The nation must be your own or in the same alliance\n" +
-            "Login details via `{prefix}credentials login`\n")
+            "Login details via `{prefix}credentials login`")
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String readMail(@Me DBNation me, @Me GuildDB db, int message_id, @Default DBNation account) throws Exception {
@@ -1239,7 +1239,6 @@ public class IACommands {
         return response.toString();
     }
 
-    // <query> <checkUnread=true> <checkRead=false> <readContent=true>
     @Command(desc = "Show ingame mail and optionally the responses\n" +
             "Results are in a spreadsheet\n" +
             "A search term can be specified to only show messages containing that in the subject line\n" +

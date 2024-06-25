@@ -357,6 +357,11 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
+    default IMessageBuilder cancelButton(String label) {
+        return commandButton(CommandBehavior.DELETE_MESSAGE, " ", label);
+    }
+
+    @CheckReturnValue
     default IMessageBuilder file(String name, String data) {
         return file(name, data.getBytes(StandardCharsets.UTF_8));
     }

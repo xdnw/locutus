@@ -99,7 +99,7 @@ public class EmbedCommands {
         message.clearEmbeds();
         message.embed(builder.build());
         message.send();
-        io.create().embed("Set Title", "Done! See: " + discMessage.getJumpUrl()).cancelButton().send();
+        io.create().embed("Set Title", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send();
         return null;
     }
 
@@ -118,7 +118,7 @@ public class EmbedCommands {
         message.clearEmbeds();
         message.embed(builder.build());
         message.send();
-        io.create().embed("Set Description", "Done! See: " + discMessage.getJumpUrl()).cancelButton().send();
+        io.create().embed("Set Description", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send();
         return null;
     }
 
@@ -157,7 +157,7 @@ public class EmbedCommands {
         }
         msg.send();
         io.create().embed("Deleted Button", "Done! Renamed button `" + label + "` to " + rename_to + "\n" +
-                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton().send();
+                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton("Dismiss").send();
         return null;
     }
 
@@ -194,7 +194,7 @@ public class EmbedCommands {
         }
 
         RateLimitUtil.queue(message.editMessageComponents(rows));
-        io.create().embed("Deleted Button", "Done! Deleted " + labels.size() + " buttons").cancelButton().send();
+        io.create().embed("Deleted Button", "Done! Deleted " + labels.size() + " buttons").cancelButton("Dismiss").send();
         return null;
     }
 
@@ -235,7 +235,7 @@ public class EmbedCommands {
                 .send();
         io.create().embed("Added Button", "Added button `" + label + "` to " + message.getJumpUrl() + "\n" +
                 "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention() + "\n" +
-                "Rename using TODO CM REF").cancelButton().send();// + CM.embed.rename.button.cmd.toSlashMention();
+                "Rename using TODO CM REF").cancelButton("Dismiss").send();// + CM.embed.rename.button.cmd.toSlashMention();
         return null;
     }
 
@@ -327,7 +327,7 @@ public class EmbedCommands {
         new DiscordMessageBuilder(message.getChannel(), message)
                 .modal(behavior, channelId, command, full, label)
                 .send();
-        io.create().embed("Added Modal", "Added modal button `" + label + "` to " + message.getJumpUrl()).cancelButton().send();
+        io.create().embed("Added Modal", "Added modal button `" + label + "` to " + message.getJumpUrl()).cancelButton("Dismiss").send();
         return null;
     }
 
