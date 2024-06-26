@@ -40,7 +40,7 @@ public class StrengthCitySheet extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Locutus.imp().getGuildDB(server).isValidAlliance() && Roles.MILCOM.has(user, server);
+        return server != null && Locutus.imp().getGuildDB(server).isValidAlliance() && Roles.MILCOM.has(user, server);
     }
 
     @Override

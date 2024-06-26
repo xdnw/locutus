@@ -46,7 +46,7 @@ public class SettingCommands {
 
     @Command(desc = "Delete an alliance or guild setting")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String delete( @Me GuildDB db, @Me User author, @Default GuildSetting key) {
+    public String delete( @Me GuildDB db, @Me User author, GuildSetting key) {
         if (!key.hasPermission(db, author, null)) {
             return "You do not have permission to delete the key `" + key.name() + "`";
         }

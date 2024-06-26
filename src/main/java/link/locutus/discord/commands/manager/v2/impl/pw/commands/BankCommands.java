@@ -3597,7 +3597,7 @@ public class BankCommands {
                     if (!Roles.ECON.has(author, otherDb2.getGuild())) {
                         return "You do not have permisssion to check another alliance's deposits (1)";
                     }
-                    Map<ResourceType, Double> stock = alliance.getStockpile();
+                    Map<ResourceType, Double> stock = alliance.getStockpile(true);
                     accountDeposits.put(DepositType.DEPOSIT, ResourceType.resourcesToArray(stock));
                 } else {
                     return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORING.name()) + "";
