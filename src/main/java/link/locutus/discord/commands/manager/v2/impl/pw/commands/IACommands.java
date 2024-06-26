@@ -48,6 +48,9 @@ import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.mail.Mail;
+import link.locutus.discord.util.task.mail.ReadMailTask;
+import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -1212,12 +1215,130 @@ public class IACommands {
         return "Mail: " + result;
     }
 
-//    @Command(desc = "Read a message for an id")
-//    @RolePermission(Roles.MAIL)
-//    @IsAlliance
-//    public String viewMail(@Me )
+    @Command(desc = "Read and display an in-game message for an id from a nation's account\n" +
+            "The nation must be your own or in the same alliance\n" +
+            "Login details via `{prefix}credentials login`")
+    @RolePermission(Roles.MAIL)
+    @IsAlliance
+    public String readMail(@Me DBNation me, @Me GuildDB db, int message_id, @Default DBNation account) throws Exception {
+        if (account == null) account = me;
+        if (me.getId() != account.getId()) {
+            if (!db.isAllianceId(account.getAlliance_id())) return "Nation is not a member of the alliance";
+        }
+        Auth auth = account.getAuth(true);
 
-    // todo add mail search SearchMailTask
+        List<ReadMailTask.MailMessage> msgs = new ReadMailTask(auth, message_id).call();
+        if (msgs.isEmpty()) {
+            return "No messages found for " + account.getMarkdownUrl() + " with id `" + message_id + "`. Ensure the `account` is correct and the message is not more than 30 days old";
+        }
+        StringBuilder response = new StringBuilder();
+        for (ReadMailTask.MailMessage msg : msgs) {
+            response.append("**__" + PW.getMarkdownUrl(msg.getNationId(), false) + "__**" + DiscordUtil.timestamp(msg.getDate(), null) + "\n");
+            response.append(msg.getContent()).append("\n\n");
+        }
+        return response.toString();
+    }
+
+    @Command(desc = "Show ingame mail and optionally the responses\n" +
+            "Results are in a spreadsheet\n" +
+            "A search term can be specified to only show messages containing that in the subject line\n" +
+            "By default only unread messages are checked")
+    @IsAlliance
+    public String searchMail(@Me GuildDB db, @Me IMessageIO io,
+                             @Me DBNation me,
+                             @Arg("The account to check the mail of\n" +
+                                     "Defaults to your own nation")
+                             @Default DBNation account,
+                             @Arg("The term to search for\n" +
+                                     "Defaults to show all messages")
+                             @Switch("q") String search_for,
+                             @Arg("Don't search unread messages\n" +
+                                     "Defaults to false")
+                             @Switch("u") boolean skip_unread,
+                             @Switch("r") boolean check_read,
+                             @Switch("c") boolean read_content,
+                             @Arg("If responses are grouped by nation")
+                             @Switch("g") boolean group_by_nation,
+                             @Arg("If responses are counted")
+                             @Switch("n") boolean count_replies
+                             ) throws Exception {
+        if (account == null) account = me;
+        if (me.getId() != account.getId()) {
+            if (!db.isAllianceId(account.getAlliance_id())) return "Nation is not a member of the alliance";
+        }
+        Auth auth = account.getAuth(true);
+
+        if (skip_unread) {
+            check_read = true;
+        }
+        Map<DBNation, Map<Mail, List<String>>> results = new LinkedHashMap<>();
+        SearchMailTask task = new SearchMailTask(auth, search_for, !skip_unread, check_read, read_content, (mail, strings) -> {
+            DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
+            if (nation != null) {
+                results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
+            }
+        });
+        task.call();
+
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.MAIL_RESPONSES_SHEET);
+
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "alliance",
+                "mail-id",
+                "subject",
+                "response"
+        ));
+
+        sheet.setHeader(header);
+
+        List<Object> row = new ArrayList<>();
+        for (Map.Entry<DBNation, Map<Mail, List<String>>> entry : results.entrySet()) {
+            row.clear();
+            DBNation nation = entry.getKey();
+
+            int countVal = 0;
+            for (Map.Entry<Mail, List<String>> mailListEntry : entry.getValue().entrySet()) {
+                if (!group_by_nation) row.clear();
+
+                Mail mail = mailListEntry.getKey();
+                List<String> strings = mailListEntry.getValue();
+
+                if (row.isEmpty()) {
+                    int allianceId = nation != null ? nation.getAlliance_id() : 0;
+                    row.add(MarkupUtil.sheetUrl(PW.getName(mail.nationId, false), PW.getUrl(mail.nationId, false)));
+                    row.add(MarkupUtil.sheetUrl(PW.getName(allianceId, true), PW.getUrl(allianceId, true)));
+                    row.add(mail.id + "");
+                    row.add(mail.subject);
+                }
+
+                if (count_replies) {
+                    strings.removeIf(f -> f.equalsIgnoreCase("false"));
+                    if (group_by_nation) {
+                        countVal += strings.size();
+                    } else {
+                        row.add(strings.size());
+                    }
+                } else {
+                    row.addAll(strings);
+                }
+
+                if (!group_by_nation) sheet.addRow(row);
+            }
+            if (group_by_nation) {
+                if (count_replies) {
+                    row.add(countVal);
+                }
+                sheet.addRow(row);
+            }
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "mail", null, false, 0).send();
+        return null;
+    }
 
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`")

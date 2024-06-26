@@ -91,6 +91,8 @@ public class MailListener {
         DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(event.getMail().leader);
         CM.mail.reply mailCmd = CM.mail.reply.cmd.receiver(receiver.getId() + "").url(event.getUrl()).message("").sender(event.getAuth().getNationId() + "");
         builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
+
+        builder.commandButton(CM.mail.read.cmd.messageId(event.getMail().id + "").account(receiver.getId() + ""), "Read");
         builder.send();
 
         processCommands(Locutus.imp().getGuildDB(guild), guild, outputBuilder, event);

@@ -1140,10 +1140,14 @@ public final class Locutus extends ListenerAdapter {
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         try {
             Message message = event.getMessage();
-            // Only process locutus buttons
 
             Button button = event.getButton();
             System.out.println("Button press " + button.getId() + " | " + button.getLabel());
+
+            if (button.getId().equalsIgnoreCase("")) {
+                RateLimitUtil.queue(message.delete());
+                return;
+            }
 
             if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
                 System.out.println("Author not application");

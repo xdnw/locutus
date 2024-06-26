@@ -307,7 +307,7 @@ public class DiscordMessageBuilder implements IMessageBuilder {
             command = id + "";
             remapLongCommands.put(command, cmdLong);
         }
-        if (message.equalsIgnoreCase("cancel")) {
+        if (message.equalsIgnoreCase("cancel") || message.equalsIgnoreCase("dismiss")) {
             buttons.add(Button.danger(command, message));
         } else {
             buttons.add(Button.primary(command, message));

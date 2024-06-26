@@ -3264,6 +3264,24 @@ public class CM {
 
                 }
             }
+            public static class rename{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="renameButton")
+                public static class button extends CommandRef {
+                    public static final button cmd = new button();
+                public button message(String value) {
+                    return set("message", value);
+                }
+
+                public button label(String value) {
+                    return set("label", value);
+                }
+
+                public button rename_to(String value) {
+                    return set("rename_to", value);
+                }
+
+                }
+            }
             public static class template{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="allyEnemySheets")
                 public static class ally_enemy_sheets extends CommandRef {
@@ -4806,6 +4824,18 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="readMail")
+            public static class read extends CommandRef {
+                public static final read cmd = new read();
+            public read messageId(String value) {
+                return set("messageId", value);
+            }
+
+            public read account(String value) {
+                return set("account", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="testRecruitMessage")
             public static class recruit extends CommandRef {
                 public static final recruit cmd = new recruit();
@@ -4828,6 +4858,38 @@ public class CM {
 
             public reply sender(String value) {
                 return set("sender", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="searchMail")
+            public static class search extends CommandRef {
+                public static final search cmd = new search();
+            public search account(String value) {
+                return set("account", value);
+            }
+
+            public search search_for(String value) {
+                return set("search_for", value);
+            }
+
+            public search skip_unread(String value) {
+                return set("skip_unread", value);
+            }
+
+            public search check_read(String value) {
+                return set("check_read", value);
+            }
+
+            public search read_content(String value) {
+                return set("read_content", value);
+            }
+
+            public search group_by_nation(String value) {
+                return set("group_by_nation", value);
+            }
+
+            public search count_replies(String value) {
+                return set("count_replies", value);
             }
 
             }
