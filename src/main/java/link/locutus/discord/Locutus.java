@@ -1140,7 +1140,6 @@ public final class Locutus extends ListenerAdapter {
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         try {
             Message message = event.getMessage();
-            // Only process locutus buttons
 
             Button button = event.getButton();
             System.out.println("Button press " + button.getId() + " | " + button.getLabel());
