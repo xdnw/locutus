@@ -152,8 +152,16 @@ public class EmbedCommands {
 
         DiscordMessageBuilder msg = new DiscordMessageBuilder(message.getChannel(), message);
         msg.clearButtons();
-        for (Map.Entry<String, String> entry : reactions.entrySet()) {
-            msg.commandButton(entry.getValue(), entry.getKey());
+
+        if (reactions != null) {
+            for (Map.Entry<String, String> entry : reactions.entrySet()) {
+                msg.commandButton(entry.getValue(), entry.getKey());
+            }
+        }
+        for (Button button : message.getButtons()) {
+            if (!button.getId().equalsIgnoreCase(button.getLabel())) {
+                msg.commandButton(button.getId(), button.getLabel());
+            }
         }
         msg.send();
         io.create().embed("Deleted Button", "Done! Renamed button `" + label + "` to " + rename_to + "\n" +
