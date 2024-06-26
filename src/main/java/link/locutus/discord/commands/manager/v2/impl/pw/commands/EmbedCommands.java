@@ -155,16 +155,16 @@ public class EmbedCommands {
 
         if (reactions != null) {
             for (Map.Entry<String, String> entry : reactions.entrySet()) {
-                msg.commandButton(entry.getValue(), entry.getKey());
+                msg.commandButton(entry.getValue(), entry.getKey().equalsIgnoreCase(label) ? rename_to : entry.getKey());
             }
         }
         for (Button button : message.getButtons()) {
             if (!button.getId().equalsIgnoreCase(button.getLabel())) {
-                msg.commandButton(button.getId(), button.getLabel());
+                msg.commandButton(button.getId(), button.getLabel().equalsIgnoreCase(label) ? rename_to : button.getLabel());
             }
         }
         msg.send();
-        io.create().embed("Deleted Button", "Done! Renamed button `" + label + "` to " + rename_to + "\n" +
+        io.create().embed("Renamed Button", "Done! Renamed button `" + label + "` to " + rename_to + "\n" +
                 "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton("Dismiss").send();
         return null;
     }
