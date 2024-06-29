@@ -37,11 +37,11 @@ public class WikiHostingLocutus extends BotWikiGen {
                 `Note: Development branches may not compile or run.`
                 Selecting a branch:\s
                             
-                ![Example 1](https://cdn.discordapp.com/attachments/1054912868706955305/1054913309620580433/image.png)
+                ![Example 1](branch.png)
                             
                 3. (option 1) Downloading the code as a zip:
                 Extract the code from the zip file into the directory you want
-                ![Example 1](https://cdn.discordapp.com/attachments/1054912868706955305/1054913432740188211/image.png) \s
+                ![Example 1](zip.png) \s
                             
                 3. (option 2) Clone the repository with git.\s
                 Install git: https://git-scm.com/downloads
@@ -50,8 +50,7 @@ public class WikiHostingLocutus extends BotWikiGen {
                 #### 1.2.2. Compiling the source code
                 1. After downloading the source code, navigate to the directory that contains all the Locutus source files.
                 2. Open a command prompt or terminal in that directory. (see: <https://www.lifewire.com/open-command-prompt-in-a-folder-5185505>)
-                   - Example for Windows: ![Example 1](https://cdn.discordapp.com/attachments/1054912868706955305/1054946012504010762/image.png)
-                   - Example for Windows: ![Example 2](https://cdn.discordapp.com/attachments/1054912868706955305/1054946335591252049/image.png)
+                   - Example for Windows: ![Example 1](cmd-prompt.png)
                             
                 3. Run the following command: `./gradlew build shadowJar`.
                             
@@ -64,7 +63,7 @@ public class WikiHostingLocutus extends BotWikiGen {
                 To run the Locutus `.jar` file, you need to have Java installed on your system. Follow these steps:
                             
                 1. Download and install Java. You will need Java 21 or a newer version. You can download Java from Oracle. I use Oracle's GraalVM for its scripting and profiling support [GraalVM Download](https://www.graalvm.org/downloads/).
-                   - Note: If you encounter an `UnsupportedClassVersionError`, it means you are using an outdated Java version. Install Java 17 and ensure it is
+                   - Note: If you encounter an `UnsupportedClassVersionError`, it means you are using an outdated Java version. Install Java 21 or newer and ensure it is
                  set as the default version on your system. You can refer to this guide on [how to set the default Java version in Windows](https://superuser.com/a/1057552).
                 2. Open a command prompt or terminal.
                 3. Navigate to the directory where you downloaded the Locutus `.jar` file.
@@ -81,9 +80,9 @@ public class WikiHostingLocutus extends BotWikiGen {
                 3. Provide your P&W and Discord details in the `config.yaml` file.
                    - To register a bot with Discord, go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a new application. Make sure to enable the guild and message intents for your bot user.
                    - To obtain server IDs, you can refer to this guide on [how to find your User, Server, and Message ID](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-).
-                   - To create an invite for your bot
-                        - example 1: <https://cdn.discordapp.com/attachments/1054912868706955305/1054950323782950943/image.png>)
-                        - example 2: <https://cdn.discordapp.com/attachments/1054912868706955305/1054950520223182938/image.png>)
+                   - To create an invite for your bot go to My Apps page under the "Applications" section, click on your bot application, and open the OAuth2 page.
+                   - In the sidebar, you'll find the OAuth2 URL generator. Select the bot and applications.
+                   - Select the permissions you want to invite the bot with, such as `Administrator`, then copy the URL and paste it into your browser.
                 4. Save the `config.yaml` file after updating it with your details.
                 5. Restart the Locutus bot by running the same command as before: `java -jar shadowJar-Locutus-1.0-SNAPSHOT.jar`.
                             
