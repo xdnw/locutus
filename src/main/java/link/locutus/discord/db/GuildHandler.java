@@ -1604,10 +1604,6 @@ public class GuildHandler {
                 if (defender != null) {
                     boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.active_m() < 2440 || (aaIds.contains(defender.getAlliance_id()) && defender.active_m() < 7200);
                     if (pingMilcom && milcomRole != null) {
-                        CounterStat counterStat = war.getCounterStat();
-                        if (counterStat != null && counterStat.type == CounterType.IS_COUNTER && !enemies.contains(attacker.getAlliance_id())) {
-                            pingMilcom = false;
-                        }
                         if (pingMilcom && attacker != null && enemies.contains(attacker.getAlliance_id()) && attacker.getDef() >= 3) {
                             pingMilcom = false;
                         }
@@ -1616,6 +1612,13 @@ public class GuildHandler {
                             if (allowedMentions != null) {
                                 if (!allowedMentions.test(attacker) && !allowedMentions.test(defender)) {
                                     pingMilcom = false;
+                                }
+                            }
+                            if (pingMilcom && GuildKey.MENTION_MILCOM_COUNTERS.getOrNull(db) != Boolean.TRUE) {
+                                CounterStat counterStat = war.getCounterStat();
+                                if (counterStat != null && counterStat.type == CounterType.IS_COUNTER && !enemies.contains(attacker.getAlliance_id())) {
+                                    pingMilcom = false;
+                                    pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add("No `" + Roles.MILCOM.name() + "` ping as `" + GuildKey.MENTION_MILCOM_COUNTERS.name() + "` is NOT `true`." );
                                 }
                             }
                         }

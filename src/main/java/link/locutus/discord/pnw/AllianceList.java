@@ -168,7 +168,8 @@ public class AllianceList {
             Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
         }
         for (DBAlliance alliance : getAlliances()) {
-            result.putAll(alliance.calculateDisburse(nations, cachedStockpilesorNull, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, bypassChecks, false));
+            Set<DBNation> nationsInAA = nations.stream().filter(f -> f.getAlliance_id() == alliance.getAlliance_id()).collect(Collectors.toSet());
+            result.putAll(alliance.calculateDisburse(nationsInAA, cachedStockpilesorNull, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, bypassChecks, false));
         }
         return result;
     }

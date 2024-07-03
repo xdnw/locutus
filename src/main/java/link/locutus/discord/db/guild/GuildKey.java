@@ -2758,6 +2758,20 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
 
+    public static GuildSetting<Boolean> MENTION_MILCOM_COUNTERS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String MENTION_MILCOM_COUNTERS(@Me GuildDB db, @Me User user, boolean value) {
+            return MENTION_MILCOM_COUNTERS.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "If the " + Roles.MILCOM.name() + " role is pinged for defensive wars that are counters";
+        }
+    }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
+
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {

@@ -1415,8 +1415,9 @@ public class IACommands {
             "(Note: DM Borg to setup mail responses)")
     @NoFormat
     public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
-        message = MarkupUtil.transformURLIntoLinks(subject + " " + message);
-        GPTUtil.checkThrowModeration(message);
+        subject = MarkupUtil.transformURLIntoLinks(subject);
+        message = MarkupUtil.transformURLIntoLinks(message);
+        GPTUtil.checkThrowModeration(subject + " " + message);
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
