@@ -1345,7 +1345,7 @@ public class BankCommands {
         }
 
         List<String> output = new ArrayList<>();
-        List<String> allStatuses = new ArrayList<>();
+        List<TransferResult> allStatuses = new ArrayList<>();
 
         if (nations.size() != 1) {
             int originalSize = nations.size();
@@ -1368,7 +1368,7 @@ public class BankCommands {
                 }
                 if (!status.isSuccess()) {
                     iter.remove();
-                    allStatuses.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage() + debug);
+                    allStatuses.add(new TransferResult(status, nation, new HashMap<>(), status.getMessage() + debug));
                 }
             }
             int removed = originalSize - nations.size();
@@ -1382,7 +1382,8 @@ public class BankCommands {
         if (nations.isEmpty()) {
             msg.append("No nations found (1)\n" + StringMan.join(output, "\n"));
             if (!allStatuses.isEmpty()) {
-                msg.file("errors.csv", StringMan.join(allStatuses, "\n"));
+                msg.file("errors.csv", TransferResult.toFileString(allStatuses));
+                msg.append("\nSummary: `" + TransferResult.count(allStatuses) + "`");
             }
             msg.send();
             return null;
@@ -1398,13 +1399,15 @@ public class BankCommands {
             if (status == OffshoreInstance.TransferStatus.SUCCESS) {
                 fundsToSendNations.put(nation, ResourceType.resourcesToMap(amount));
             } else {
-                allStatuses.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage());
+                allStatuses.add(new TransferResult(status, nation, ResourceType.resourcesToMap(amount), status.getMessage()));
             }
         }
 
-        if (!allStatuses.isEmpty()) {
-            msg.file("errors.csv", StringMan.join(allStatuses, "\n"));
+        if (fundsToSendNations.isEmpty()) {
+            msg.file("errors.csv", TransferResult.toFileString(allStatuses));
+            msg.append("Error. No funds to send.\nSummary: `" + TransferResult.count(allStatuses) + "`");
             msg.send();
+            return null;
         }
 
         if (fundsToSendNations.size() == 1) {
@@ -1453,7 +1456,8 @@ public class BankCommands {
                     key.toString()
             ).toJson();
 
-            return transferBulk(io, command, author, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key);
+            Map errors = TransferResult.toMap(allStatuses);
+            return transferBulkWithErrors(io, command, author, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, errors);
         }
     }
 
@@ -2938,7 +2942,7 @@ public class BankCommands {
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key,
-                                                Map<NationOrAlliance, String> errors) throws IOException {
+                                                Map<NationOrAlliance, TransferResult> errors) throws IOException {
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
         }
@@ -3030,6 +3034,7 @@ public class BankCommands {
         }
 
         Map<ResourceType, Double> totalSent = new HashMap<>();
+        Map<OffshoreInstance.TransferStatus, Integer> transferStatusMap = new HashMap<>();
 
         StringBuilder output = new StringBuilder();
         for (Map.Entry<NationOrAlliance, Map<ResourceType, Double>> entry : transfers.entrySet()) {
@@ -3077,17 +3082,26 @@ public class BankCommands {
             if (result.getStatus().isSuccess()) {
                 totalSent = ResourceType.add(totalSent, ResourceType.resourcesToMap(amount));
                 io.create().embed(result.toTitleString(), result.toEmbedString()).send();
+                transferStatusMap.merge(OffshoreInstance.TransferStatus.SUCCESS, 1, Integer::sum);
+            } else {
+                transferStatusMap.merge(result.getStatus(), 1, Integer::sum);
             }
         }
-
-        for (Map.Entry<NationOrAlliance, String> entry : errors.entrySet()) {
-            NationOrAlliance receiver = entry.getKey();
-            output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + "\t" + OffshoreInstance.TransferStatus.OTHER + "\t" + "\"" + entry.getValue() + "\"");
-            output.append("\n");
+        IMessageBuilder msg = io.create();
+        if (!errors.isEmpty()) {
+            for (Map.Entry<NationOrAlliance, TransferResult> entry : errors.entrySet()) {
+                NationOrAlliance receiver = entry.getKey();
+                TransferResult result = entry.getValue();
+                output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + result.getStatus() + "\t" + "\"" + result.getMessageJoined(true) + "\"");
+                output.append("\n");
+            }
+            msg.append("Summary: `" + TransferResult.count(new ArrayList<>(errors.values())) + "`\n");
         }
 
+        msg.file("transfer-results.csv", output.toString())
+                .append("Done!\nTotal sent: `" + resourcesToString(totalSent) + "` worth: ~$" + MathMan.format(convertedTotal(totalSent)));
 
-        io.create().file("transfer-results.csv", output.toString()).append("Done!\nTotal sent: `" + ResourceType.resourcesToString(totalSent) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalSent))).send();
+        msg.send();
         return null;
     }
 

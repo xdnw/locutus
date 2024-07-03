@@ -3,15 +3,15 @@ package link.locutus.discord.util.offshore;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.math.ArrayUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TransferResult {
@@ -20,6 +20,18 @@ public class TransferResult {
     private final List<String> resultMessage;
     private final double[] amount;
     private final String note;
+
+    public static Map<OffshoreInstance.TransferStatus, Integer> count(List<TransferResult> list) {
+        Map<OffshoreInstance.TransferStatus, Integer> map = new HashMap<>();
+        for (TransferResult result : list) {
+            map.put(result.getStatus(), map.getOrDefault(result.getStatus(), 0) + 1);
+        }
+        return ArrayUtil.sortMap(map, false);
+    }
+
+    public static String toFileString(List<TransferResult> list) {
+        return list.stream().map(f -> f.getReceiver().getName() + "\t" + f.getStatus().name() + "\t" + f.getStatus().getMessage()).collect(Collectors.joining("\n"));
+    }
 
     public static Map.Entry<String, String> toEmbed(List<TransferResult> results) {
         String title, body;
@@ -41,6 +53,10 @@ public class TransferResult {
 
     public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {
         this(status, receiver, ResourceType.resourcesToArray(amount), note);
+    }
+
+    public static Map<NationOrAllianceOrGuild, TransferResult> toMap(List<TransferResult> list) {
+        return list.stream().collect(Collectors.toMap(TransferResult::getReceiver, Function.identity()));
     }
 
     public void setStatus(OffshoreInstance.TransferStatus status) {

@@ -66,6 +66,8 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -1667,7 +1669,7 @@ public class UnsortedCommands {
         if (note == null) note = DepositType.WARCHEST.withValue();
 
         Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
-        Map<NationOrAlliance, String> errors = new HashMap<>();
+        Map<NationOrAlliance, TransferResult> errors = new HashMap<>();
 
         boolean hasEcon = Roles.ECON.has(author, guild);
         if (!hasEcon && (nationSet.size() != 1 || !nationSet.iterator().next().equals(me))) return "You only have permission to send to your own nation";
@@ -1677,13 +1679,13 @@ public class UnsortedCommands {
             DBNation nation = iter.next();
             if (nation.active_m() > 7200) {
                 iter.remove();
-                errors.put(nation, "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INACTIVE, nation, new HashMap<>(), "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())));
             } else if (nation.getPosition() <= 1) {
                 iter.remove();
-                errors.put(nation, "Nation is not a member");
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), "Nation is not a member"));
             } else if (nation.getVm_turns() != 0) {
                 iter.remove();
-                errors.put(nation, "Nation is in Vacation Mode");
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.VACATION_MODE, nation, new HashMap<>(), "Nation is in Vacation Mode"));
             }
         }
 
@@ -1704,14 +1706,14 @@ public class UnsortedCommands {
                 stockpile = memberResources2.get(nation);
                 if (stockpile == null) {
                     if (!aaList.isInAlliance(nation)) {
-                        errors.put(nation, "No stockpile information available (not in the guild's alliance)");
+                        errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), "No stockpile information available (not in the guild's alliance)"));
                     } else {
-                        errors.put(nation, "No stockpile information available (are you sure a valid api key is set?)");
+                        errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INVALID_API_KEY, nation, new HashMap<>(), "No stockpile information available (are you sure a valid api key is set?)"));
                     }
                     continue;
                 }
                 if (ResourceType.convertedTotal(stockpile) < 0) {
-                    errors.put(nation, "Alliance information access is disabled from their **account** page");
+                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, new HashMap<>(), "Alliance information access is disabled from their **account** page"));
                     continue;
                 }
                 Map<ResourceType, Double> toSendCurrent = new HashMap<>();
@@ -1725,7 +1727,7 @@ public class UnsortedCommands {
                 if (!toSendCurrent.isEmpty()) {
                     fundsToSendNations.put(nation, toSendCurrent);
                 } else {
-                    errors.put(nation, "No funds need to be sent");
+                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, nation, new HashMap<>(), "No funds need to be sent"));
                     continue;
                 }
             }

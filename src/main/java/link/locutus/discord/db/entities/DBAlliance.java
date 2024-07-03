@@ -1565,6 +1565,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             }
             if (nation.getVm_turns() > 0) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.VACATION_MODE, ResourceType.getBuffer()));
+                continue;
             }
             if (nation.isGray() && !ignoreInactives && !bypassChecks) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.GRAY, ResourceType.getBuffer()));
@@ -1572,9 +1573,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             }
             if (nation.active_m() > TimeUnit.DAYS.toMinutes(4) && !ignoreInactives && !bypassChecks) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.INACTIVE, ResourceType.getBuffer()));
+                continue;
             }
             if (nation.isBeige() && !allowBeige && !bypassChecks) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.BEIGE, ResourceType.getBuffer()));
+                continue;
             }
             if (value.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
                 toSend.put(nation, value);
