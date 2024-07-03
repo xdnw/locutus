@@ -69,7 +69,7 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
             // the nationId is from the first a link within the child (not a direct descendent, use a selector to get the first)
             // the date string is the only text not in a span tag, parse it, it's in the form `06/20/2024 Thursday 9:48 am`
             // i assume the day name e.g. `Thursday` can be ignored and just the month/day/year and time is needed
-            Element header = secondChild.child(0);
+            Element header = message.child(0);
             // get the nation id
             Element nationLink = header.selectFirst("a");
             String nationIdStr = nationLink.attr("href").split("=")[1];

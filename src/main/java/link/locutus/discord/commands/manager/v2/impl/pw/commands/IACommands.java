@@ -1192,8 +1192,8 @@ public class IACommands {
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
-        if (!url.contains("message/id=")) return "URL must be a message url";
-        int messageId = Integer.parseInt(url.split("=")[1]);
+        if (!url.contains("message/id=") && !MathMan.isInteger(url)) return "URL must be a message url";
+        int messageId = MathMan.isInteger(url) ? Integer.parseInt(url) : Integer.parseInt(url.split("=")[1]);
         GPTUtil.checkThrowModeration(message);
 
         Auth auth;

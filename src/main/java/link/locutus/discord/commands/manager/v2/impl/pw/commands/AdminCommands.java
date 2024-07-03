@@ -278,18 +278,16 @@ public class AdminCommands {
         return "Done! (see console)";
     }
 
-    @Command
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String unset() {
-        // TODO list servers
-
-        // unset from specified servers (coalition, or NOT coalitions)
-        // use Set<GuildDB> and have filters ig for in root coalition (or not)
-
-        // 
-
-
-    }
+//    @Command
+//    @RolePermission(value = Roles.ADMIN, root = true)
+//    public String unset() {
+//        // TODO list servers
+//
+//        // unset from specified servers (coalition, or NOT coalitions)
+//        // use Set<GuildDB> and have filters ig for in root coalition (or not)
+//
+//        // option 2, set to follow a channel
+//    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
