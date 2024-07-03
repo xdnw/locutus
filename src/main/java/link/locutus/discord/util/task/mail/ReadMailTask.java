@@ -62,7 +62,7 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
             this.isReceived = message.hasClass("red-msg");
             Element secondChild = message.child(1);
             // html to markdown
-            this.content = MarkupUtil.htmlToMarkdown(message.text());
+            this.content = MarkupUtil.htmlToMarkdown(secondChild.text());
 
             // first child has header, get it and then parse it to get the date, nationId
             // the nationId is from the first a link within the child (not a direct descendent, use a selector to get the first)
