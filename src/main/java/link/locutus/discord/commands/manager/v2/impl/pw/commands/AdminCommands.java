@@ -280,6 +280,19 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
+    public String unset() {
+        // TODO list servers
+
+        // unset from specified servers (coalition, or NOT coalitions)
+        // use Set<GuildDB> and have filters ig for in root coalition (or not)
+
+        // 
+
+
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String checkActiveConflicts() {
         WarUpdateProcessor.checkActiveConflicts();
         return "Done! (see console)";
