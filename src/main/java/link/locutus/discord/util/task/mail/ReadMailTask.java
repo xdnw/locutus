@@ -14,11 +14,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
     private final Auth auth;
@@ -74,8 +73,11 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
             Element nationLink = header.selectFirst("a");
             String nationIdStr = nationLink.attr("href").split("=")[1];
             this.nationId = Integer.parseInt(nationIdStr);
-            String dateStr = header.textNodes().get(0).text().trim();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy EEEE h:mm a");
+            String dateStr = header.textNodes().stream().map(f -> f.text()).collect(Collectors.joining()).trim();
+            DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern("MM/dd/yyyy EEEE h:mm a")
+                    .toFormatter(Locale.US);
             LocalDateTime dateTime = LocalDateTime.parse(dateStr, formatter);
             Instant instant = dateTime.atZone(ZoneOffset.UTC).toInstant();
             this.date = instant.toEpochMilli();
