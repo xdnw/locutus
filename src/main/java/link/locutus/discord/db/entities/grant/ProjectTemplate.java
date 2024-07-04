@@ -120,7 +120,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // already have project
-        list.add(new Grant.Requirement("Requires the project " + (template == null ? "`{project}`" : template.project.name()), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation does NOT have the project " + (template == null ? "`{project}`" : template.project.name()), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return !nation.hasProject(template.project);
@@ -144,7 +144,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
             list.add(new Grant.Requirement("Project requires at most " + (template == null ? "`{max_cities}`" : "`" + template.project.maxCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return template.project.maxCities() != Integer.MAX_VALUE || nation.getCities() <= template.project.maxCities();
+                    return template.project.maxCities() == Integer.MAX_VALUE || nation.getCities() <= template.project.maxCities();
                 }
             }));
         }

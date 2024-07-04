@@ -1403,13 +1403,15 @@ public class BankCommands {
             }
         }
 
-        if (fundsToSendNations.isEmpty()) {
+        if (fundsToSendNations.size() <= 1) {
             msg.file("errors.csv", TransferResult.toFileString(allStatuses));
-            msg.append("Error. No funds to send.\nSummary: `" + TransferResult.count(allStatuses) + "`");
-            msg.send();
-            return null;
+            msg.append("Summary: `" + TransferResult.count(allStatuses) + "`");
+            if (fundsToSendNations.isEmpty()) {
+                msg.append("\nError. No funds to send.");
+                msg.send();
+                return null;
+            }
         }
-
         if (fundsToSendNations.size() == 1) {
             Map.Entry<DBNation, Map<ResourceType, Double>> entry = fundsToSendNations.entrySet().iterator().next();
             DBNation nation = entry.getKey();
@@ -3082,9 +3084,8 @@ public class BankCommands {
             if (result.getStatus().isSuccess()) {
                 totalSent = ResourceType.add(totalSent, ResourceType.resourcesToMap(amount));
                 io.create().embed(result.toTitleString(), result.toEmbedString()).send();
-                transferStatusMap.merge(OffshoreInstance.TransferStatus.SUCCESS, 1, Integer::sum);
             } else {
-                transferStatusMap.merge(result.getStatus(), 1, Integer::sum);
+                errors.put(receiver, result);
             }
         }
         IMessageBuilder msg = io.create();
