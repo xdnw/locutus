@@ -230,8 +230,12 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }
             // ensure no buildings are negative
             for (Building building : Buildings.values()) {
-                if (jc.getBuilding(building) < 0) {
+                int amt = jc.getBuilding(building);
+                if (amt < 0) {
                     throw new IllegalArgumentException("Build has negative " + building.name() + " buildings");
+                }
+                if (amt > building.getCap(f -> true)) {
+                    throw new IllegalArgumentException("Build has more than " + building.getCap(f -> true) + " " + building.name() + " buildings");
                 }
             }
             // no more than 2 power plants
@@ -248,17 +252,17 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 throw new IllegalArgumentException("Build has more than 8 oil power");
             }
             // 5,5,5,3 max military buildings
-            if (jc.getBuilding(Buildings.BARRACKS) > 5) {
-                throw new IllegalArgumentException("Build has more than 5 barracks");
+            if (jc.getBuilding(Buildings.BARRACKS) > Buildings.BARRACKS.cap(f -> true)) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.BARRACKS.cap(f -> true) + " barracks");
             }
-            if (jc.getBuilding(Buildings.FACTORY) > 5) {
-                throw new IllegalArgumentException("Build has more than 5 factories");
+            if (jc.getBuilding(Buildings.FACTORY) > Buildings.FACTORY.cap(f -> true)) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.FACTORY.cap(f -> true) + " factories");
             }
-            if (jc.getBuilding(Buildings.HANGAR) > 5) {
-                throw new IllegalArgumentException("Build has more than 5 hangars");
+            if (jc.getBuilding(Buildings.HANGAR) > Buildings.HANGAR.cap(f -> true)) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.HANGAR.cap(f -> true) + " hangars");
             }
-            if (jc.getBuilding(Buildings.DRYDOCK) > 3) {
-                throw new IllegalArgumentException("Build has more than 3 drydocks");
+            if (jc.getBuilding(Buildings.DRYDOCK) > Buildings.DRYDOCK.cap(f -> true)) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.DRYDOCK.cap(f -> true) + " drydocks");
             }
         }
         // return map of city and build
@@ -318,6 +322,22 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                     }
                 }
 
+                return true;
+            }
+        }));
+
+        list.add(new Grant.Requirement("Cannot build in " + (receiver == null ? "{continent}" : receiver.getContinent()), false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+                for (CityBuild value : parsed.values()) {
+                    JavaCity city = new JavaCity(value);
+                    for (Building building : Buildings.values()) {
+                        int amt = city.getBuilding(building);
+                        if (amt > 0 && !building.canBuild(receiver.getContinent())) {
+                            return false;
+                        }
+                    }
+                }
                 return true;
             }
         }));

@@ -594,8 +594,8 @@ public abstract class AGrantTemplate<T> {
         stmt.setInt(11, this.getMaxGranterTotal());
         stmt.setLong(12, this.getDateCreated());
         stmt.setLong(13, this.getExpire());
-        stmt.setLong(15, this.getDecay());
-        stmt.setBoolean(14, this.allowsIgnore());
+        stmt.setLong(14, this.getDecay());
+        stmt.setBoolean(15, this.allowsIgnore());
         stmt.setBoolean(16, this.isRepeatable());
     }
 
