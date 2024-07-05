@@ -150,11 +150,11 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }
 
         // min city
-        if (template == null || template.project.maxCities() != Integer.MAX_VALUE) {
+        if (template == null || template.project.requiredCities() != 0) {
             list.add(new Grant.Requirement("Project requires at least " + (template == null ? "`{min_cities}`" : "`" + template.project.requiredCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return template.project.requiredCities() <= Integer.MAX_VALUE || nation.getCities() >= template.project.requiredCities();
+                    return nation.getCities() >= template.project.requiredCities();
                 }
             }));
         }
