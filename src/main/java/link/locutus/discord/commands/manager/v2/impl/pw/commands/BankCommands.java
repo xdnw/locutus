@@ -1403,13 +1403,17 @@ public class BankCommands {
             }
         }
 
-        if (fundsToSendNations.size() <= 1) {
-            msg.file("errors.csv", TransferResult.toFileString(allStatuses));
-            msg.append("Summary: `" + TransferResult.count(allStatuses) + "`");
+        if (fundsToSendNations.size() <= 1 || !force) {
+            if (!allStatuses.isEmpty()) {
+                msg.file("errors.csv", TransferResult.toFileString(allStatuses));
+                msg.append("Summary: `" + TransferResult.count(allStatuses) + "`");
+            }
             if (fundsToSendNations.isEmpty()) {
                 msg.append("\nError. No funds to send.");
                 msg.send();
                 return null;
+            } else {
+                msg.send();
             }
         }
         if (fundsToSendNations.size() == 1) {
@@ -1457,8 +1461,7 @@ public class BankCommands {
                     String.valueOf(force)).key(
                     key.toString()
             ).toJson();
-
-            Map errors = TransferResult.toMap(allStatuses);
+            Map errors = force ? new HashMap<>() : TransferResult.toMap(allStatuses);
             return transferBulkWithErrors(io, command, author, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, errors);
         }
     }
@@ -3043,7 +3046,6 @@ public class BankCommands {
         }
 
         Map<ResourceType, Double> totalSent = new HashMap<>();
-        Map<OffshoreInstance.TransferStatus, Integer> transferStatusMap = new HashMap<>();
 
         Map<NationOrAlliance, String> notes = sheet.getNotes();
         StringBuilder output = new StringBuilder();
@@ -3055,7 +3057,6 @@ public class BankCommands {
             TaxBracket taxAccountFinal = taxAccount;
             if (existingTaxAccount) {
                 if (!receiver.isNation()) {
-//                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
                     result = new TransferResult(OffshoreInstance.TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("Cannot use `existingTaxAccount` for transfers to alliances");
                 } else {
                     taxAccountFinal = receiver.asNation().getTaxBracket();
