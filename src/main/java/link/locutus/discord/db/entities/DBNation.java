@@ -6497,4 +6497,14 @@ public class DBNation implements NationOrAlliance {
     public double attritionBountyValue() {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ATT).mapToLong(DBBounty::getAmount).sum();
     }
+
+    public Member getMember(GuildDB db) {
+        if (db != null) {
+            User user = getUser();
+            if (user != null) {
+                return db.getGuild().getMember(user);
+            }
+        }
+        return null;
+    }
 }

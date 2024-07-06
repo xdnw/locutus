@@ -819,6 +819,18 @@ public enum ResourceType {
     public static class ResourcesBuilder {
         private double[] resources = null;
 
+        public String toString() {
+            return resourcesToString(build());
+        }
+
+        public double convertedTotal() {
+            return ResourceType.convertedTotal(build());
+        }
+
+        public String convertedStr() {
+            return "~$" + MathMan.format(convertedTotal());
+        }
+
         private double[] getResources() {
             if (resources == null) resources = getBuffer();
             return resources;

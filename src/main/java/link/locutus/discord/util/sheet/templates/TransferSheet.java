@@ -25,6 +25,7 @@ import java.util.Set;
 
 public class TransferSheet {
     private final Map<NationOrAlliance, Map<ResourceType, Double>> transfers;
+    private final Map<NationOrAlliance, String> notes = new LinkedHashMap<>();
 
     private final SpreadSheet parent;
 
@@ -43,6 +44,10 @@ public class TransferSheet {
 
     public Map<NationOrAlliance, Map<ResourceType, Double>> getTransfers() {
         return transfers;
+    }
+
+    public Map<NationOrAlliance, String> getNotes() {
+        return notes;
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getNationTransfers() {
@@ -114,6 +119,7 @@ public class TransferSheet {
             String nameStr = name + "";
             if (nameStr.isEmpty()) continue;
 
+            String note = null;
             Map<ResourceType, Double> transfer = new LinkedHashMap<>();
             for (int j = 1; j < row.size(); j++) {
                 Object rssName = header.size() > j ? header.get(j) : null;
@@ -136,6 +142,8 @@ public class TransferSheet {
                     for (Map.Entry<ResourceType, Double> entry : ResourceType.parseResources(amtStr.toString()).entrySet()) {
                         transfer.putIfAbsent(entry.getKey(), entry.getValue());
                     }
+                } else if (rssName.toString().equalsIgnoreCase("note")) {
+                    note = amtStr.toString();
                 }
             }
             if (transfer.isEmpty()) continue;
@@ -144,7 +152,9 @@ public class TransferSheet {
                 Integer allianceId = PW.parseAllianceId(nameStr);
                 if (allianceId == null) invalidNationOrAlliance.add(nameStr);
                 else {
-                    transfers.put(DBAlliance.getOrCreate(allianceId), transfer);
+                    DBAlliance entity = DBAlliance.getOrCreate(allianceId);
+                    transfers.put(entity, transfer);
+                    if (note != null) notes.put(entity, note);
                 }
             } else {
                 DBNation nation;
@@ -159,6 +169,7 @@ public class TransferSheet {
                 if (nation == null) invalidNationOrAlliance.add(nameStr);
                 else {
                     transfers.put(nation, transfer);
+                    if (note != null) notes.put(nation, note);
                 }
             }
         }
@@ -167,6 +178,9 @@ public class TransferSheet {
 
     public TransferSheet write() {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities", "worth"));
+        if (!notes.isEmpty()) {
+            header.add("note");
+        }
         for (ResourceType value : ResourceType.values) {
             if (value != ResourceType.CREDITS) header.add(value.name());
         }
@@ -186,6 +200,10 @@ public class TransferSheet {
                 row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(nation.getCities());
+            }
+            String note = notes.get(nationOrAA);
+            if (note != null) {
+                row.add(note);
             }
             Map<ResourceType, Double> transfer = entry.getValue();
             row.add(ResourceType.convertedTotal(transfer));

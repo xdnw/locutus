@@ -1268,7 +1268,7 @@ public class UnsortedCommands {
         }
 
         String rssNames = resources.size() >= ResourceType.values.length - 1 ? "market" : StringMan.join(resources, ",");
-        String title = "Daily " + rssNames + " production";
+        String title = "Daily " + (includeNegative ? "net" : "gross") + " " + rssNames + " " + "production";
         if (!listByNation && listAverage) title += " per member";
         if (resources.size() > 1) title += " (market value)";
         ranks.build(channel, command, title, uploadFile);

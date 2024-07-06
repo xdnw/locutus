@@ -20,6 +20,7 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.MailRespondTask;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -108,7 +109,6 @@ public class MailCommand extends Command implements Noformat {
 
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages.";
-                String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(fullCommandRaw).replaceFirst(" ", " -f ");
 
                 Set<Integer> alliances = new LinkedHashSet<>();
                 for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
@@ -124,8 +124,9 @@ public class MailCommand extends Command implements Noformat {
                 String body = "subject: " + subject + "\n" +
                         "body: ```" + message + "```";
 
+                JSONObject json = CM.mail.send.cmd.confirm("true").message(message).subject(subject).nations(arg0).toJson();
                 channel.create().embed(embedTitle, body)
-                                .commandButton(pending, "Next").send();
+                                .confirmation(json).send();
                 return null;
             }
 

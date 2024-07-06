@@ -21,7 +21,7 @@ public class TransferResult {
     private final double[] amount;
     private final String note;
 
-    public static Map<OffshoreInstance.TransferStatus, Integer> count(List<TransferResult> list) {
+    public static Map<OffshoreInstance.TransferStatus, Integer> count(Collection<TransferResult> list) {
         Map<OffshoreInstance.TransferStatus, Integer> map = new HashMap<>();
         for (TransferResult result : list) {
             map.put(result.getStatus(), map.getOrDefault(result.getStatus(), 0) + 1);
@@ -29,7 +29,7 @@ public class TransferResult {
         return ArrayUtil.sortMap(map, false);
     }
 
-    public static String toFileString(List<TransferResult> list) {
+    public static String toFileString(Collection<TransferResult> list) {
         return list.stream().map(f -> f.getReceiver().getName() + "\t" + f.getStatus().name() + "\t" + f.getStatus().getMessage()).collect(Collectors.joining("\n"));
     }
 

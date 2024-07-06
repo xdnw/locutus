@@ -1,15 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.AccessType;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -31,57 +31,85 @@ import link.locutus.discord.db.entities.grant.RawsTemplate;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.grant.WarchestTemplate;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class GrantCommands {
 
-//    @Command
-//    @RolePermission(Roles.ECON)
-//    public String grantCity(
-//            @Me IMessageIO io, @Me GuildDB db,
-//            Set<DBNation> receivers,
-//            int amount,
-//            @Switch("u") @Arg("If buying up to a city count, instead of additional cities") boolean upTo,
-//            @Switch("o") boolean onlySendMissingFunds,
-//
-//            @Arg("The transfer note\nUse `#IGNORE` to not deduct from deposits") @Default("#tax") DepositType.DepositTypeInfo depositType,
-//
-//            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-//            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-//            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-//            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-//            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-//            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-//            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-//
-//            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
-//            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
-//
-//            @Switch("f") boolean force
-//            ) {
-//
-//    }
+    // Standard grant commands
 
-    ////////////////////////////////
+    @Command(desc = "Grant cities to a set of nations")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantCity(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            int amount,
+            @Switch("u") @Arg("If buying up to a city count, instead of additional cities") boolean upTo,
+            @Switch("o") boolean onlySendMissingFunds,
+            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+            @Switch("i") boolean ignore,
+            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Switch("md") Boolean manifest_destiny,
+            @Switch("up") Boolean urban_planning,
+            @Switch("aup") Boolean advanced_urban_planning,
+            @Switch("mp") Boolean metropolitan_planning,
+            @Switch("gsa") Boolean gov_support_agency,
+
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+            ) throws IOException, GeneralSecurityException {
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+                receiver -> {
+                    int currentCity = receiver.getCities();
+                    int numBuy = upTo ? amount - currentCity : amount;
+                    if (numBuy <= 0) {
+                        TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + amount + " cities");
+                        return Triple.of(null, null, error);
+                    }
+                    DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
+                    double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
+                            urban_planning != null ? urban_planning : receiver.hasProject(Projects.URBAN_PLANNING),
+                            advanced_urban_planning != null ? advanced_urban_planning : receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                            metropolitan_planning != null ? metropolitan_planning : receiver.hasProject(Projects.METROPOLITAN_PLANNING),
+                            gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+                    double[] resources = ResourceType.MONEY.toArray(cost);
+                    return Triple.of(resources, note, null);
+        }, DepositType.CITY, receiver -> {
+            return CityTemplate.getRequirements(me, receiver, null);
+        });
+    }
+
+    // Template commands
 
     @Command(desc = "List all grant templates for the specified category")
     @RolePermission(Roles.MEMBER)

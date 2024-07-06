@@ -1105,7 +1105,7 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String dm(@Me User author, DBNation nation, String message) {
+    public String dm(@Me User author, DBNation nation, String message, @Switch("f") boolean force) {
         User user = nation.getUser();
         if (user == null) return "No user found for " + nation.getNation();
         GPTUtil.checkThrowModeration(message);
