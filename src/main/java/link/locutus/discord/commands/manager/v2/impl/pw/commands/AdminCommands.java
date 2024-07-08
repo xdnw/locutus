@@ -1104,18 +1104,50 @@ public class AdminCommands {
     }
 
     @Command
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String dm(@Me User author, DBNation nation, String message, @Switch("f") boolean force) {
-        User user = nation.getUser();
-        if (user == null) return "No user found for " + nation.getNation();
-        GPTUtil.checkThrowModeration(message);
-        user.openPrivateChannel().queue(new Consumer<PrivateChannel>() {
-            @Override
-            public void accept(PrivateChannel channel) {
-                RateLimitUtil.queue(channel.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)"));
+    @RolePermission(value = Roles.MAIL, root = true)
+    public String dm(@Me User author, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command, Set<DBNation> nations, String message, @Switch("f") boolean force) {
+        if (nations.size() > 500) {
+            throw new IllegalArgumentException("Too many nations: " + nations.size() + " (max 500)");
+        }
+        if (!force) {
+            String title = "Send " + nations.size() + " messages";
+            Set<Integer> alliances = new LinkedHashSet<>();
+            for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
+            String embedTitle = title + " to nations.";
+            if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances.";
+            String dmMsg = "content: ```" + message + "```";
+            io.create().embed(embedTitle, dmMsg).confirmation(command).send();
+            return null;
+        }
+        boolean hasAdmin = Roles.ADMIN.hasOnRoot(author);
+        List<String> errors = new ArrayList<>();
+        List<User> users = new ArrayList<>();
+        for (DBNation nation : nations) {
+            User user = nation.getUser();
+            if (user == null) {
+                errors.add("No user found for " + nation.getNation());
+            } else {
+                if (!hasAdmin) {
+                    Member member = guild.getMember(user);
+                    if (member == null) {
+                        errors.add("No member found for " + nation.getNation() + " in guild " + guild);
+                        continue;
+                    }
+                }
+
+                users.add(user);
             }
-        });
-        return "Done!";
+        }
+        if (users.isEmpty()) {
+            return "No users found. Are they registered? " + CM.register.cmd.toSlashMention();
+        }
+        GPTUtil.checkThrowModeration(message);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"));
+        for (User mention : users) {
+            mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)")));
+        }
+        io.sendMessage("Done! Sent " + users.size() + " messages");
+        return null;
     }
 
     @Command(desc = "Edit an attribute of your in-game alliance\n" +
