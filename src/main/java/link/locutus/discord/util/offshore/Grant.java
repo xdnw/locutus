@@ -1,31 +1,31 @@
 package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.*;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.sheet.templates.TransferSheet;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.lang3.tuple.Triple;
+import org.json.JSONObject;
 
+import java.io.IOException;
 import java.lang.reflect.Member;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.security.GeneralSecurityException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -476,5 +476,216 @@ public class Grant {
 
     public double[] cost() {
         return cost.apply(nation);
+    }
+
+    public static String generateCommandLogic(
+            IMessageIO io, GuildDB db, DBNation me, User author,
+            Set<DBNation> receivers,
+            boolean onlySendMissingFunds,
+            DBNation depositsAccount,
+            DBAlliance useAllianceBank,
+            DBAlliance useOffshoreAccount,
+            TaxBracket taxAccount,
+            boolean existingTaxAccount,
+            Long expire,
+            Long decay,
+            boolean ignore,
+            boolean convertToMoney,
+            EscrowMode escrow_mode,
+            boolean bypass_checks,
+            boolean force,
+            Function<DBNation, Triple<double[], DepositType.DepositTypeInfo, TransferResult>> getCostInfo,
+            DepositType baseNote,
+            Function<DBNation, List<Grant.Requirement>> getRequirements
+    ) throws GeneralSecurityException, IOException {
+        List<TransferResult> errors = new ArrayList<>();
+        SpreadSheet sheet = receivers.size() > 1 ? SpreadSheet.create(db, SheetKey.GRANT_SHEET) : null;
+        if (sheet != null) {
+            List<String> header = new ArrayList<>(Arrays.asList(
+                    "nation",
+                    "cities",
+                    "avg_infra",
+                    "response",
+                    "cost_converted",
+                    "cost_raw",
+                    "note"
+            ));
+            sheet.updateClearCurrentTab();
+            sheet.setHeader(header);
+        }
+
+        ResourceType.ResourcesBuilder total = ResourceType.builder();
+        Map<DBNation, Grant> grantByReceiver = new LinkedHashMap<>();
+        for (DBNation receiver : receivers) {
+            if (!db.isAllianceId(receiver.getAlliance_id())) {
+                errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, receiver, new HashMap<>(), "Nation is not in an alliance registered to this guild"));
+                if (!force) {
+                    continue;
+                }
+            }
+            Role noGrants = Roles.TEMP.toRole(db);
+            if (noGrants != null) {
+                net.dv8tion.jda.api.entities.Member member = receiver.getMember(db);
+                if (member != null && Roles.TEMP.has(member)) {
+                    errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), "Nation has the @" + noGrants.getName() + " role"));
+                    if (!force) {
+                        continue;
+                    }
+                }
+            }
+
+            ArrayList<Object> row = new ArrayList<>();
+            if (sheet != null) {
+                row.add(MarkupUtil.sheetUrl(receiver.getNation(), receiver.getUrl()));
+                row.add(receiver.getCities());
+                row.add(receiver.getAvg_infra());
+            }
+
+            try {
+                List<Grant.Requirement> requirements = new ArrayList<>();
+                requirements.addAll(AGrantTemplate.getRequirements(me, receiver, null));
+                requirements.addAll(getRequirements.apply(receiver));
+                // todo fixme warnings
+
+                DepositType.DepositTypeInfo note;
+                DepositType type = baseNote;
+
+                Triple<double[], DepositType.DepositTypeInfo, TransferResult> costInfo = getCostInfo.apply(receiver);
+                TransferResult error = costInfo.getRight();
+                if (error != null) {
+                    errors.add(error);
+                    continue;
+                }
+                double[] resources = costInfo.getLeft();
+                note = costInfo.getMiddle();
+
+                Grant grant = new Grant(receiver, note);
+                grant.setCost(f -> resources);
+                grant.setInstructions(type.getDescription() + "\nFor `" + ResourceType.resourcesToString(resources) + "`");
+                grantByReceiver.put(receiver, grant);
+
+                if (sheet != null) {
+                    double[] costApplyMissing = resources.clone();
+                    if (onlySendMissingFunds) {
+                        if (!db.isAllianceId(me.getAlliance_id())) {
+                            throw new IllegalArgumentException("Nation " + me.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
+                        }
+                        Map<ResourceType, Double> stockpile = me.getStockpile();
+                        for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
+                            if (entry.getValue() > 0) {
+                                double newAmt = Math.max(0, costApplyMissing[entry.getKey().ordinal()] - entry.getValue());
+                                if (newAmt <= 0) {
+                                    costApplyMissing[entry.getKey().ordinal()] = 0;
+                                } else {
+                                    costApplyMissing[entry.getKey().ordinal()] = newAmt;
+                                }
+                            }
+                        }
+                    }
+                    row.add(grant.getInstructions());
+                    row.add(ResourceType.convertedTotal(costApplyMissing));
+                    row.add(ResourceType.resourcesToString(costApplyMissing));
+                    row.add(note.toString());
+                }
+
+                total.add(resources);
+            } catch (IllegalArgumentException e) {
+                errors.add(new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, new HashMap<>(), e.getMessage()));
+                if (sheet != null) {
+                    row.add(e.getMessage());
+                    row.add(0);
+                    row.add("{}");
+                }
+            }
+            if (sheet != null) {
+                sheet.addRow(row);
+            }
+        }
+        if (grantByReceiver.isEmpty()) {
+            io.create().embed("No Grants Created", "Summary: `" + TransferResult.count(errors) + "`\n\n" +
+                            "See attached `errors.csv`")
+                    .file("errors.csv", TransferResult.toFileString(errors))
+                    .send();
+            return null;
+        }
+
+        String typeStr = (ignore ? DepositType.IGNORE : DepositType.GRANT).name();
+        if (sheet == null) {
+            DBNation receiver = receivers.iterator().next();
+            Grant grant = grantByReceiver.get(receiver);
+            double[] resources = grant.cost();
+
+            JSONObject command = CM.transfer.resources.cmd
+                    .receiver(me.getUrl())
+                    .transfer(ResourceType.resourcesToString(resources))
+                    .nationAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
+                    .senderAlliance(useAllianceBank != null ? useAllianceBank.getQualifiedId() : null)
+                    .allianceAccount(useOffshoreAccount != null ? useOffshoreAccount.getQualifiedId() : null)
+                    .taxAccount(taxAccount != null ? taxAccount.getQualifiedId() : null)
+                    .existingTaxAccount(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .onlyMissingFunds(onlySendMissingFunds ? "true" : null)
+                    .convertCash(convertToMoney ? "true" : null)
+                    .escrow_mode(escrow_mode != null ? escrow_mode.name() : null)
+                    .bypassChecks(bypass_checks ? "true" : null)
+                    .force(force ? "true" : null)
+                    .toJson();
+            StringBuilder msg = new StringBuilder();
+            msg.append(ResourceType.resourcesToString(resources)).append("\n")
+                    .append("Current values for: " + me.getNation()).append('\n')
+                    .append("Cities: " + me.getCities()).append('\n')
+                    .append("Infra: " + me.getAvg_infra()).append('\n')
+            ;
+            StringBuilder body = new StringBuilder();
+            body.append("**INSTRUCTIONS:** " + grant.getInstructions());
+            if (!errors.isEmpty()) {
+                body.append("\n\n**Warnings:**\n");
+                body.append(TransferResult.toEmbed(errors).getValue());
+            }
+
+            io.create().embed("Instruct: " + grant.title(), body.toString()).send();
+            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), command).cancelButton().send();
+            return null;
+        } else {
+            sheet.updateWrite();
+
+            TransferSheet transferSheet = new TransferSheet(sheet);
+            transferSheet.read();
+
+            JSONObject command = CM.transfer.bulk.cmd
+                    .sheet(sheet.getURL())
+                    .depositType(typeStr)
+                    .depositsAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
+                    .useAllianceBank(useAllianceBank != null ? useAllianceBank.getQualifiedId() : null)
+                    .useOffshoreAccount(useOffshoreAccount != null ? useOffshoreAccount.getQualifiedId() : null)
+                    .taxAccount(taxAccount != null ? taxAccount.getQualifiedId() : null)
+                    .existingTaxAccount(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .convertToMoney(convertToMoney ? "true" : null)
+                    .escrow_mode(escrow_mode != null ? escrow_mode.name() : null)
+                    .bypassChecks(bypass_checks ? "true" : null)
+                    .force(force ? "true" : null)
+                    .toJson();
+
+            return BankCommands.transferBulkWithErrors(io, command, author, me, db,
+                    transferSheet,
+                    (ignore ? DepositType.IGNORE : DepositType.GRANT).withValue(),
+                    depositsAccount,
+                    useAllianceBank,
+                    useOffshoreAccount,
+                    taxAccount,
+                    existingTaxAccount,
+                    expire,
+                    decay,
+                    convertToMoney,
+                    escrow_mode,
+                    bypass_checks,
+                    force,
+                    null,
+                    (Map) TransferResult.toMap(errors)
+            );
+        }
     }
 }

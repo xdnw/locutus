@@ -1,6 +1,10 @@
 package link.locutus.discord.apiv1.enums;
 
+import link.locutus.discord.util.MathMan;
+
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
 
 public enum DepositType {
     DEPOSIT("For funds directly deposited or withdrawn"),
@@ -10,30 +14,35 @@ public enum DepositType {
     IGNORE("Excluded from deposits"),
     TRADE("Sub type of deposits, earmarked as trading funds"),
 
-    CITY(GRANT, "Go to <https://politicsandwar.com/city/create/> and purchase a new city"),
-    PROJECT(GRANT, "Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project"),
-    INFRA(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired infrastructure"),
-    LAND(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired land"),
-    BUILD(GRANT, "Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build"),
-    WARCHEST(GRANT, "Go to <https://politicsandwar.com/nation/military/> and purchase the desired units"),
+    CITY(GRANT, "Go to <https://politicsandwar.com/city/create/> and purchase a new city", true),
+    PROJECT(GRANT, "Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project", true),
+    INFRA(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired infrastructure", true),
+    LAND(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired land", true),
+    BUILD(GRANT, "Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build", true),
+    WARCHEST(GRANT, "Go to <https://politicsandwar.com/nation/military/> and purchase the desired units", true),
+    RAWS(GRANT, "Raw resources for city consumption", true),
 
-    RAWS(GRANT, "Raw resources for city consumption"),
-
-    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`"),
-    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`"),
+    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", false),
+    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", false),
 
     ;
 
     private final String description;
     private DepositType parent;
+    private boolean isClassifier;
 
     DepositType(String description) {
-        this(null, description);
+        this(null, description, false);
     }
 
-    DepositType(DepositType parent, String description) {
+    DepositType(DepositType parent, String description, boolean isClassifier) {
         this.parent = parent;
         this.description = description;
+        this.isClassifier = isClassifier;
+    }
+
+    public boolean isClassifier() {
+        return isClassifier;
     }
 
     public String getDescription() {
@@ -76,6 +85,10 @@ public enum DepositType {
             this.amount = amount;
             this.city = city;
             this.ignore = ignore;
+        }
+
+        public DepositTypeInfo clone() {
+            return new DepositTypeInfo(type, amount, city, ignore);
         }
 
         public DepositTypeInfo(DepositType type) {
@@ -142,6 +155,29 @@ public enum DepositType {
 
         public boolean isIgnored() {
             return ignore || type == IGNORE;
+        }
+
+        public DepositTypeInfo applyClassifiers(Map<String, String> parsed) {
+            for (Map.Entry<String, String> noteEntry : parsed.entrySet()) {
+                String noteStr = noteEntry.getKey().substring(1);
+                String valueStr = noteEntry.getValue();
+                boolean ignore = isIgnored();
+                try {
+                    DepositType type = DepositType.valueOf(noteStr.toUpperCase(Locale.ROOT));
+                    if (!type.isClassifier()) {
+                        throw new IllegalArgumentException();
+                    }
+                    long amount = getAmount();
+                    if (valueStr != null && !valueStr.isEmpty() && MathMan.isInteger(valueStr)) {
+                        amount = Long.parseLong(valueStr);
+                    }
+                    return new DepositTypeInfo(type, amount, 0, ignore);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Cannot apply modifier: `" + noteStr + "`, only " +
+                            Arrays.stream(DepositType.values()).filter(DepositType::isClassifier).map(DepositType::name).toList());
+                }
+            }
+            return this;
         }
     }
 }

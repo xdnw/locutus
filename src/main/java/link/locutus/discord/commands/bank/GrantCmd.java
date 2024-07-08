@@ -338,8 +338,6 @@ public class GrantCmd extends Command {
             grant.addCity(me.getCities());
             grant.setInstructions(grantCity(me, numBuy, resources, force));
         } else if (arg.equalsIgnoreCase("infra")) {
-            // city id
-            // amt
             grant = new Grant(me, DepositType.INFRA.withValue((int) amt, -1).ignore(ignore));
             grant.setAmount(amt);
             grant.setInstructions(grantInfra(me, (int) amt, resources, force, single));

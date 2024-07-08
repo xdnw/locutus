@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager;
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.account.*;
 import link.locutus.discord.commands.account.question.Interview;
@@ -101,7 +100,6 @@ import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.rankings.AllianceLootRanking;
 import link.locutus.discord.commands.info.Reroll;
 import link.locutus.discord.commands.account.CheckMail;
-import link.locutus.discord.commands.info.PendingCommand;
 import link.locutus.discord.commands.info.HelpCommand;
 import link.locutus.discord.commands.account.AutoRole;
 import link.locutus.discord.commands.account.RegisterCommand;
@@ -569,15 +567,25 @@ public class CommandManager {
             modernized.registerDefaults();
         }
         this.register(new RaidCommand());
-        this.register(new PendingCommand());
+        /// not useful
+        this.register(new Kev());
+        this.register(new Nev());
+        this.register(new SriCommand());
+//        this.register(new TagCommand(this));
+        this.register(new Lury());
+
+
+        // unknown
+        this.register(new TradeId());
+        this.register(new WarCitySheet());
+        this.register(new StrengthCitySheet());
+        this.register(new GuildInfo());
         this.register(new ForumScrape());
         this.register(new KickLocutus());
-
         this.register(new Sudo());
         this.register(new MsgInfo());
         this.register(new Runall());
         this.register(new RunAllNations());
-
         this.register(new SyncBounties());
         this.register(new SyncWarRooms());
         this.register(new SyncTreaties());
@@ -589,24 +597,11 @@ public class CommandManager {
         this.register(new SyncTaxes());
         this.register(new SyncMail());
         this.register(new SyncBanks());
-
         this.register(new SafekeepCommand());
         this.register(new Permission());
         this.register(new CheckPermission());
         this.register(new Meta());
         this.register(new CheckMail());
-
-        /// not useful
-        this.register(new GuildInfo());
-        this.register(new Kev());
-        this.register(new Nev());
-        this.register(new SriCommand());
-//        this.register(new TagCommand(this));
-        this.register(new Lury());
-        this.register(new TradeId());
-
-        this.register(new WarCitySheet());
-        this.register(new StrengthCitySheet());
 
         ///////// Added
         this.register(new WeeklyInterest()); //

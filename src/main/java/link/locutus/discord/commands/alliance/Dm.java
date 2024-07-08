@@ -3,6 +3,7 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
@@ -13,6 +14,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.json.JSONObject;
 
 import java.util.*;
 
@@ -61,7 +63,6 @@ public class Dm extends Command {
 
         if (mentions.size() > 1 && !flags.contains('f')) {
             String title = "Send " + mentions.size() + " messages.";
-            String pending = Settings.commandPrefix(true) + "pending " + DiscordUtil.trimContent(fullCommandRaw) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
@@ -71,7 +72,8 @@ public class Dm extends Command {
 
             String dmMsg = "content: ```" + body + "```";
 
-            channel.create().embed( embedTitle, dmMsg).commandButton(pending, "Next").send();
+            JSONObject json = CM.admin.dm.cmd.message(dmMsg).nation(args.get(0)).force("true").toJson();
+            channel.create().embed( embedTitle, dmMsg).confirmation(json).send();
             return null;
         }
 

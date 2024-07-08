@@ -2376,6 +2376,8 @@ public class BankCommands {
                                @Arg("The alliances to track transfers from") @Default Set<DBAlliance> offshores,
                                @Arg("use 0/0 as the tax base") @Switch("b") boolean ignoreTaxBase,
                                @Arg("Do NOT include any manual deposit offsets") @Switch("o") boolean ignoreOffsets,
+                                      @Arg("Include ALL #expire and #decay transfers") @Switch("ex") boolean includeExpired,
+                                      @Arg("Include #ignore transfers") @Switch("i") boolean includeIgnored,
                                @Arg("Do NOT include taxes") @Switch("t") boolean noTaxes,
                                @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
                                @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
@@ -2483,7 +2485,7 @@ public class BankCommands {
             double[] withdrawal = FlowType.WITHDRAWAL.getTotal(flowTransfers, nation.getId());
             double[] deposit = FlowType.DEPOSIT.getTotal(flowTransfers, nation.getId());
 
-            Map<DepositType, double[]> deposits = PW.sumNationTransactions(db, tracked, transactions, false, false, f -> true);
+            Map<DepositType, double[]> deposits = PW.sumNationTransactions(db, tracked, transactions, includeExpired, includeIgnored, f -> true);
             double[] buffer = ResourceType.getBuffer();
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
@@ -3006,6 +3008,11 @@ public class BankCommands {
             }
             sheet.getSheet().attach(msg, "transfers", desc, true, desc.length());
 
+            if (!errors.isEmpty()) {
+                desc.append("**Warnings**: `" + TransferResult.count(errors.values()) + "`\n");
+                msg = msg.file("errors.csv", TransferResult.toFileString(errors.values()));
+            }
+
             key = UUID.randomUUID();
             APPROVED_BULK_TRANSFER.put(key, transfers);
             String commandStr = command.put("force", "true").put("key", key).toString();
@@ -3048,6 +3055,7 @@ public class BankCommands {
 
         Map<ResourceType, Double> totalSent = new HashMap<>();
 
+        Map<NationOrAlliance, String> notes = sheet.getNotes();
         StringBuilder output = new StringBuilder();
         for (Map.Entry<NationOrAlliance, Map<ResourceType, Double>> entry : transfers.entrySet()) {
             NationOrAlliance receiver = entry.getKey();
@@ -3063,6 +3071,13 @@ public class BankCommands {
                 }
             }
 
+            DepositType.DepositTypeInfo depositTypeFinal = depositType.clone();
+            String note = notes.get(receiver);
+            if (note != null) {
+                Map<String, String> parsed = PW.parseTransferHashNotes(note);
+                depositTypeFinal.applyClassifiers(parsed);
+            }
+
             if (result == null) {
                 try {
                     result = offshore.transferFromNationAccountWithRoleChecks(
@@ -3074,7 +3089,7 @@ public class BankCommands {
                             io.getIdLong(),
                             receiver,
                             amount,
-                            depositType,
+                            depositTypeFinal,
                             expire,
                             decay,
                             null,

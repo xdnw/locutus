@@ -45,6 +45,10 @@ public class CM {
                 return set("nation", value);
             }
 
+            public dm force(String value) {
+                return set("force", value);
+            }
+
             public dm message(String value) {
                 return set("message", value);
             }

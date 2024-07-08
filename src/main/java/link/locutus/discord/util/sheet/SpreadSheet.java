@@ -545,8 +545,6 @@ public class SpreadSheet {
                     msg.file(title + ".csv", csv);
                 }
             }
-
-
         } else {
             append = ("\n" + (name == null ? "" : name + ": " + getURL(false, true)));
         }
