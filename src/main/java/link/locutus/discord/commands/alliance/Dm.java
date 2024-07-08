@@ -72,7 +72,7 @@ public class Dm extends Command {
 
             String dmMsg = "content: ```" + body + "```";
 
-            JSONObject json = CM.admin.dm.cmd.message(dmMsg).nation(args.get(0)).force("true").toJson();
+            JSONObject json = CM.admin.dm.cmd.message(dmMsg).nations(args.get(0)).force("true").toJson();
             channel.create().embed( embedTitle, dmMsg).confirmation(json).send();
             return null;
         }
