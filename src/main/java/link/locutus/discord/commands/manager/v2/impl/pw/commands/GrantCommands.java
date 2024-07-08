@@ -1167,7 +1167,6 @@ public class GrantCommands {
 
     // grant_template send <template> <receiver> <partial> <expire>
     @Command
-    @RolePermission(Roles.ECON)
     public String templateSend(@Me GuildDB db, @Me User user, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
@@ -1213,7 +1212,7 @@ public class GrantCommands {
                 throw new IllegalArgumentException("You must have the role `" + econRole.getName() + "` to send grants to other nations");
             }
             // check has self role
-            if (!selfMember.getRoles().contains(selfRole)) {
+            if (selfRole == null || !selfMember.getRoles().contains(selfRole)) {
                 throw new IllegalArgumentException("You must have the role `" + selfRole.getName() + "` to send grants to yourself");
             }
         }

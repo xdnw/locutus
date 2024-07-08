@@ -1956,10 +1956,18 @@ public class BankCommands {
                     long expireEpoch = Long.MAX_VALUE;
                     long decayEpoch = Long.MAX_VALUE;
                     if (expire2 != null) {
-                        expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
+                        try {
+                            expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
+                        } catch (IllegalArgumentException e) {
+                            continue;
+                        }
                     }
                     if (decay2 != null) {
-                        decayEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(decay2, tx.tx_datetime) * 1000L;
+                        try {
+                            decayEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(decay2, tx.tx_datetime) * 1000L;
+                        } catch (IllegalArgumentException e) {
+                            continue;
+                        }
                     }
                     expireEpoch = Math.min(expireEpoch, decayEpoch);
                     if (expireEpoch > now) {
