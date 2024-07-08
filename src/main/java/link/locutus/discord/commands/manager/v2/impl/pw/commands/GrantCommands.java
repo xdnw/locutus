@@ -65,7 +65,7 @@ public class GrantCommands {
     public String grantCity(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
-            int amount,
+            @Range(min=1, max=100) int amount,
             @Switch("u") @Arg("If buying up to a city count, instead of additional cities") boolean upTo,
             @Switch("o") boolean onlySendMissingFunds,
             @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
@@ -88,10 +88,14 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
             ) throws IOException, GeneralSecurityException {
+        Function<DBNation, Integer> getNumBuy = receiver -> {
+            int currentCity = receiver.getCities();
+            return Math.max(upTo ? amount - currentCity : amount, 0);
+        };
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
                 receiver -> {
                     int currentCity = receiver.getCities();
-                    int numBuy = upTo ? amount - currentCity : amount;
+                    int numBuy = getNumBuy.apply(receiver);
                     if (numBuy <= 0) {
                         TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + amount + " cities");
                         return Triple.of(null, null, error);
@@ -105,9 +109,97 @@ public class GrantCommands {
                     double[] resources = ResourceType.MONEY.toArray(cost);
                     return Triple.of(resources, note, null);
         }, DepositType.CITY, receiver -> {
-            return CityTemplate.getRequirements(me, receiver, null);
+            int numBuy = getNumBuy.apply(receiver);
+            return CityTemplate.getRequirements(me, receiver, null, numBuy);
         });
     }
+
+    @Command(desc = "Grant a project to a set of nations")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantProject(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            Project project,
+            @Switch("o") boolean onlySendMissingFunds,
+            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+            @Switch("i") boolean ignore,
+            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Switch("ta") Boolean technological_advancement,
+            @Switch("gsa") Boolean gov_support_agency,
+
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+    ) throws IOException, GeneralSecurityException {
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+            receiver -> {
+                if (receiver.hasProject(project)) {
+                    TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has project: " + project.name());
+                    return Triple.of(null, null, error);
+                }
+                boolean ta = technological_advancement != null ? technological_advancement : receiver.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
+                boolean gsa = gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                double[] cost = project.cost(ta, gsa);
+                return Triple.of(cost, DepositType.PROJECT.withAmount(project.ordinal()), null);
+            }, DepositType.PROJECT, receiver -> {
+                return ProjectTemplate.getRequirementsProject(me, receiver, null, project);
+            });
+    }
+
+    // infra
+    @Command(desc = "Grant infra to a set of nations")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantInfra(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            @Range(min=50, max=10000) int amount,
+            @Switch("o") boolean onlySendMissingFunds,
+            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+            @Switch("i") boolean ignore,
+            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Switch("u") Boolean urbanization,
+            @Switch("gsa") Boolean gov_support_agency,
+
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+
+    ) throws IOException, GeneralSecurityException {
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+                receiver -> {
+                    // infra is per city, not nation
+                    return null;
+                }, DepositType.INFRA, receiver -> {
+                    return InfraTemplate.getRequirements(me, receiver, null, (double) amount);
+                });
+    }
+
+    // land
+
+    // build
+
+    // mmr
+    // mmrbuy
+    // unit
+    // consumption
+    // ?? warchest
+
 
     // Template commands
 

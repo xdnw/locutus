@@ -123,7 +123,7 @@ public class ConflictCommands {
             if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
             url = url.substring(url.lastIndexOf("/") + 1);
         }
-        conflict.setWiki(url);
+        conflict.setWiki(url.replace(" ", "_"));
 //        String importResult = importWikiPage(db, manager, conflict.getName(), url, false, true);
         conflict.push(manager, null, false, false);
         return "Set wiki to: `" + url + "`. To pull additional wiki information, use: " + CM.conflict.sync.wiki_page.cmd.toSlashMention();
@@ -198,8 +198,8 @@ public class ConflictCommands {
             "Does not push changes to the website")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String deleteConflict(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, Conflict conflict, @Switch("f") boolean confirm) {
-        if (!confirm) {
+    public String deleteConflict(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, Conflict conflict, @Switch("f") boolean force) {
+        if (!force) {
             String title = "Delete conflict " + conflict.getName();
             StringBuilder body = new StringBuilder();
             body.append("ID: `" + conflict.getId() + "`\n");
@@ -569,6 +569,7 @@ public class ConflictCommands {
         }
         Map<String, String> errors = new HashMap<>();
         Conflict conflict = PWWikiUtil.loadWikiConflict(name, url, errors, useCache);
+        String footer = "";
 
         StringBuilder response = new StringBuilder();
         if (conflict == null) {
@@ -588,12 +589,20 @@ public class ConflictCommands {
                 response.append("See: " +
                         CM.conflict.info.cmd.toSlashMention() +
                         "\n\n");
+
+                for (Conflict dbCon : conflicts) {
+                    if (!skipPushToSite && dbCon.getId() != -1) {
+                        dbCon.push(manager, null, false, true);
+                        footer = "\n\nNote: this does not push the data to the site";
+                    }
+                }
             }
         }
         if (!errors.isEmpty()) {
             response.append("Errors: " + StringMan.join(errors.values(), "\n"));
         }
-        return response.toString() + "\n\nNote: this does not push the data to the site";
+
+        return response.toString() + footer;
     }
 
     private Set<Conflict> loadWikiConflicts(GuildDB db, ConflictManager manager, List<Conflict> wikiConflicts, boolean loadWars, boolean includeGraphs) throws IOException, ParseException {

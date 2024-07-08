@@ -66,10 +66,14 @@ public interface Project {
         return total / count;
     }
 
-    default double[] cost(boolean technologicalAdvancement) {
+    default double[] cost(boolean technologicalAdvancement, boolean governmentSupportAgency) {
         double[] cost = ResourceType.resourcesToArray(cost());
         if (technologicalAdvancement) {
-            cost = PW.multiply(cost, 0.95);
+            double factor = 0.95;
+            if (governmentSupportAgency) {
+                factor -= 0.025;
+            }
+            cost = PW.multiply(cost, factor);
         }
         return cost;
     }

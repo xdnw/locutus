@@ -653,7 +653,7 @@ public class StockCommands {
 
     @Command(desc = "Give some of your shares to another nation")
     @RolePermission(value = {Roles.ECON}, root = true)
-    public String give(@Me IMessageIO channel, StockDB db, @Me DBNation me, NationOrExchange receiver, Exchange exchange, @Range(min = 0.01) double amount, @Switch("f") boolean confirm, @Switch("a") boolean anonymous) {
+    public String give(@Me IMessageIO channel, StockDB db, @Me DBNation me, NationOrExchange receiver, Exchange exchange, @Range(min = 0.01) double amount, @Switch("a") boolean anonymous) {
         Map.Entry<Boolean, String> result = new NationOrExchange(me).give(me, receiver, exchange, amount, anonymous);
         return result.getValue();
     }

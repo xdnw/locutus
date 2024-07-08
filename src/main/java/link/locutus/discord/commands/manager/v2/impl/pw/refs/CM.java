@@ -41,7 +41,7 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dm")
             public static class dm extends CommandRef {
                 public static final dm cmd = new dm();
-            public dm nation(String value) {
+            public dm nations(String value) {
                 return set("nation", value);
             }
 

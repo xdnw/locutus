@@ -83,6 +83,10 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, ProjectTemplate template, Void parsed) {
+        return getRequirementsProject(sender, receiver, template, template != null ? template.project : null);
+    }
+
+    public static List<Grant.Requirement> getRequirementsProject(DBNation sender, DBNation receiver, ProjectTemplate template, Project project) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // has a timer
@@ -94,11 +98,11 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // received project already
-        list.add(new Grant.Requirement("Must not have received a transfer for " + (template == null ? "`{project}`" : template.project) + " already", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Must not have received a transfer for " + (project == null ? "`{project}`" : project) + " already", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                String findNote = "#project=" + template.project.name().toLowerCase();
-                String findNotr2 = "#project=" + template.project.ordinal();
+                String findNote = "#project=" + project.name().toLowerCase();
+                String findNotr2 = "#project=" + project.ordinal();
                 for (Transaction2 transaction : nation.getTransactions(true)) {
                     if (transaction.note == null) continue;
                     String noteLower = transaction.note.toLowerCase();
@@ -120,17 +124,17 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // already have project
-        list.add(new Grant.Requirement("Nation does NOT have the project " + (template == null ? "`{project}`" : template.project.name()), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation does NOT have the project " + (project == null ? "`{project}`" : project.name()), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return !nation.hasProject(template.project);
+                return !nation.hasProject(project);
             }
         }));
         // required projects
-        list.add(new Grant.Requirement("Requires the projects: " + (template == null ? "`{required_projects}`" : "`" + StringMan.getString(template.project.requiredProjects()) + "`"), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the projects: " + (project == null ? "`{required_projects}`" : "`" + StringMan.getString(project.requiredProjects()) + "`"), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                for (Project req : template.project.requiredProjects()) {
+                for (Project req : project.requiredProjects()) {
                     if (!nation.hasProject(req)) {
                         return false;
                     }
@@ -140,21 +144,21 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // max city
-        if (template == null || template.project.maxCities() != Integer.MAX_VALUE) {
-            list.add(new Grant.Requirement("Project requires at most " + (template == null ? "`{max_cities}`" : "`" + template.project.maxCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
+        if (project == null || project.maxCities() != Integer.MAX_VALUE) {
+            list.add(new Grant.Requirement("Project requires at most " + (project == null ? "`{max_cities}`" : "`" + project.maxCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return template.project.maxCities() == Integer.MAX_VALUE || nation.getCities() <= template.project.maxCities();
+                    return project.maxCities() == Integer.MAX_VALUE || nation.getCities() <= project.maxCities();
                 }
             }));
         }
 
         // min city
-        if (template == null || template.project.requiredCities() != 0) {
-            list.add(new Grant.Requirement("Project requires at least " + (template == null ? "`{min_cities}`" : "`" + template.project.requiredCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
+        if (project == null || project.requiredCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at least " + (template == null ? "`{min_cities}`" : "`" + project.requiredCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return nation.getCities() >= template.project.requiredCities();
+                    return nation.getCities() >= project.requiredCities();
                 }
             }));
         }

@@ -1414,7 +1414,7 @@ public class IACommands {
             "`Hello Nation/12345678910`\n" +
             "(Note: DM Borg to setup mail responses)")
     @NoFormat
-    public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
+    public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean force, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         subject = MarkupUtil.transformURLIntoLinks(subject);
         message = MarkupUtil.transformURLIntoLinks(message);
         GPTUtil.checkThrowModeration(subject + " " + message);
@@ -1445,7 +1445,7 @@ public class IACommands {
             }
         }
 
-        if (!confirm) {
+        if (!force) {
             String title = "Send " + nations.size() + " messages";
 
             Set<Integer> alliances = new LinkedHashSet<>();
@@ -1463,7 +1463,7 @@ public class IACommands {
             body.append("subject: " + subject + "\n");
             body.append("body: ```" + message + "```");
 
-            channel.create().confirmation(embedTitle, body.toString(), command, "confirm").send();
+            channel.create().confirmation(embedTitle, body.toString(), command).send();
             return null;
         }
 
