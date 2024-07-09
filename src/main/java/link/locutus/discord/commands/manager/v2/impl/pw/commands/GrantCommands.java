@@ -350,6 +350,69 @@ public class GrantCommands {
             });
     }
     // consumption
+    @Command(desc = "Grant consumptions resources for a specified number of attacks at max MMR (military units)")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantConsumption(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            @Range(min=0, max=10000) Integer soldier_attacks,
+            @Range(min=0, max=10000) Integer tank_attacks,
+            @Range(min=0, max=10000) Integer airstrikes,
+            @Range(min=0, max=10000) Integer naval_attacks,
+            @Range(min=0, max=10000) @Default Integer missiles,
+            @Range(min=0, max=10000) @Default Integer nukes,
+            @Arg("Attach a bonus percent, to account for loot losses") @Switch("d") Integer bonus_percent,
+            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("n") boolean is_additional,
+            @Switch("o") boolean onlySendMissingFunds,
+            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+            @Switch("i") boolean ignore,
+            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+    ) throws IOException, GeneralSecurityException {
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+                receiver -> {
+                    int cities = receiver.getCities();
+                    Map<MilitaryUnit, Integer> numAttacks = Map.of(
+                            MilitaryUnit.SOLDIER, soldier_attacks,
+                            MilitaryUnit.TANK, tank_attacks,
+                            MilitaryUnit.AIRCRAFT, airstrikes,
+                            MilitaryUnit.SHIP, naval_attacks,
+                            MilitaryUnit.MISSILE, missiles == null ? 0 : missiles,
+                            MilitaryUnit.NUKE, nukes == null ? 0 : nukes
+                    );
+                    ResourceType.ResourcesBuilder cost = ResourceType.builder();
+                    numAttacks.forEach((unit, amount) -> {
+                        if (amount <= 0) return;
+                        if (unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE) {
+                            cost.add(unit.getCost(amount));
+                            return;
+                        }
+                        int maxUnits = unit.getMaxMMRCap(cities, receiver::hasProject);
+                        cost.add(PW.multiply(unit.getConsumption(), amount * maxUnits));
+                    });
+                    if (cost.isEmpty()) {
+                        TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "No attacks specified");
+                        return Triple.of(null, null, error);
+                    }
+                    double[] costFinal = cost.build();;
+                    if (bonus_percent != null && bonus_percent != 0) {
+                        double factor = 1 + bonus_percent * 0.01;
+                        costFinal = PW.multiply(costFinal, factor);
+                    }
+                    return Triple.of(costFinal, DepositType.WARCHEST.withValue(), null);
+                }, DepositType.WARCHEST, receiver -> {
+                    return null;
+                });
+    }
     // build
     // warchest_ratio
 
