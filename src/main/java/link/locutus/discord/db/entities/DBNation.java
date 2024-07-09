@@ -6311,7 +6311,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] projectCost(Project project) {
-        return project.cost(getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT);
+        return project.cost(getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT, hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
     }
 
     public double getGrossModifier() {

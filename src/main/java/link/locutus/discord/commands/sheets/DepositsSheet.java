@@ -70,20 +70,31 @@ public class DepositsSheet extends Command {
             }
         }
 
+        boolean ignoreTaxBase = flags.contains('b');
+        boolean ignoreOffset = flags.contains('o');
+        boolean noLoans = flags.contains('l');
+        boolean noGrants = flags.contains('g');
+        boolean noTaxes = flags.contains('t');
+        boolean noDeposits = flags.contains('d');
+        Set<Integer> includePastDepositors = flags.contains('p') ? db.getAllianceIds() : null;
+        boolean noEscrowSheet = flags.contains('e');
+
         return BankCommands.depositSheet(
                 channel,
                 guild,
                 db,
                 nations,
                 tracked == null ? null : new ArrayList<>(tracked).stream().map(f -> DBAlliance.getOrCreate(f.intValue())).collect(Collectors.toSet()),
-                flags.contains('f'),
-                flags.contains('o'),
-                flags.contains('t'),
-                flags.contains('l'),
-                flags.contains('g'),
-                flags.contains('d'),
-                flags.contains('p') ? db.getAllianceIds() : null,
-                flags.contains('e'),
+                ignoreTaxBase,
+                ignoreOffset,
+                false,
+                false,
+                noTaxes,
+                noLoans,
+                noGrants,
+                noDeposits,
+                includePastDepositors,
+                noEscrowSheet,
                 noteFlow == null ? null : PWBindings.DepositType(noteFlow),
                 flags.contains('f')
         );
@@ -111,12 +122,7 @@ public class DepositsSheet extends Command {
 //
 //        sheet.setHeader(header);
 //
-//        boolean useTaxBase = !flags.contains('b');
-//        boolean useOffset = !flags.contains('o');
-//        boolean noLoans = flags.contains('l');
-//        boolean noGrants = flags.contains('g');
-//        boolean noTaxes = flags.contains('t');
-//        boolean noDeposits = flags.contains('d');
+
 //
 //        double[] aaTotalPositive = ResourceType.getBuffer();
 //        double[] aaTotalNet = ResourceType.getBuffer();

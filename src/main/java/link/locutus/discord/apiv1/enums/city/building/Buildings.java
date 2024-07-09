@@ -133,6 +133,7 @@ public class Buildings {
     public final static Building[] BUILDINGS;
     public final static Building[] POLLUTION_BUILDINGS;
     public final static Building[] COMMERCE_BUILDINGS = {SUBWAY, MALL, STADIUM, BANK, SUPERMARKET};
+    public final static Building[] MILITARY_BUILDINGS = {BARRACKS, FACTORY, HANGAR, DRYDOCK};
 
     public final static Map<ResourceType, Building> RESOURCE_BUILDING = new ConcurrentHashMap<>();
     static {

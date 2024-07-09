@@ -54,6 +54,10 @@ public class MailReceivedEvent extends Event {
         return auth.getNation();
     }
 
+    public int getAuthNationId() {
+        return auth.getNationId();
+    }
+
     public GuildMessageChannel getChannel() {
         String[] split = mail.subject.split("/");
         if (split.length > 1 && MathMan.isInteger(split[split.length - 1])) {
