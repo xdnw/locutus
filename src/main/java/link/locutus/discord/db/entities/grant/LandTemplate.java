@@ -172,13 +172,13 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
-        list.addAll(getRequirements(sender, receiver, this, parsed));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+        list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, LandTemplate template, Double parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, LandTemplate template, Double parsed) {
         if (parsed == null && template != null) parsed = (double) template.level;
 
         List<Grant.Requirement> list = new ArrayList<>();
@@ -195,7 +195,6 @@ public class LandTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Requires the project: `" + Projects.ARABLE_LAND_AGENCY + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 return receiver.hasProject(Projects.ARABLE_LAND_AGENCY);
             }
         }));
@@ -204,7 +203,6 @@ public class LandTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Requires the project: `" + Projects.ADVANCED_ENGINEERING_CORPS + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 return receiver.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
             }
         }));
@@ -212,8 +210,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
-                if(template.onlyNewCities)
+                if(template != null && template.onlyNewCities)
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
                 else
                     return true;
@@ -225,7 +222,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Requires domestic policy to be `" + DomesticPolicy.RAPID_EXPANSION + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-                return receiver.getDomesticPolicy() != DomesticPolicy.RAPID_EXPANSION;
+                return receiver.getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION;
             }
         }));
 

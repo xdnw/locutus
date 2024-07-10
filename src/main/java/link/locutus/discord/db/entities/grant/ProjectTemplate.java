@@ -76,17 +76,17 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Void parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
-        list.addAll(getRequirements(sender, receiver, this, parsed));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Void parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+        list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, ProjectTemplate template, Void parsed) {
-        return getRequirementsProject(sender, receiver, template, template != null ? template.project : null);
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, ProjectTemplate template, Void parsed) {
+        return getRequirementsProject(db, sender, receiver, template, template != null ? template.project : null);
     }
 
-    public static List<Grant.Requirement> getRequirementsProject(DBNation sender, DBNation receiver, ProjectTemplate template, Project project) {
+    public static List<Grant.Requirement> getRequirementsProject(GuildDB db, DBNation sender, DBNation receiver, ProjectTemplate template, Project project) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // has a timer
@@ -116,7 +116,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         list.add(new Grant.Requirement("Has NOT received a project grant in the past 10 days", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                List<GrantTemplateManager.GrantSendRecord> received = template.getDb().getGrantTemplateManager().getRecordsByReceiver(nation.getId());
+                List<GrantTemplateManager.GrantSendRecord> received = db.getGrantTemplateManager().getRecordsByReceiver(nation.getId());
                 long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
                 received.removeIf(f -> f.date <= cutoff || f.grant_type != TemplateTypes.PROJECT);
                 return received.size() == 0;

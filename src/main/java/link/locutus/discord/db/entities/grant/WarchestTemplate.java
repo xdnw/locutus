@@ -162,19 +162,20 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<ResourceType, Double> parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
-        list.addAll(getRequirements(sender, receiver, this, parsed));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<ResourceType, Double> parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+        list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, WarchestTemplate template, Map<ResourceType, Double> parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, WarchestTemplate template, Map<ResourceType, Double> parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         if (template == null || parsed != null) {
-            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (template == null ? "{amount}" : ResourceType.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (parsed == null ? "{amount}" : ResourceType.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
+                    if (parsed == null) return true;
                     for (Map.Entry<ResourceType, Double> entry : parsed.entrySet()) {
                         if (entry.getValue() < 0) {
                             return false;
@@ -183,10 +184,9 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                     return true;
                 }
             }));
-
             double[] allowance;
             StringBuilder allowanceStr = new StringBuilder();
-            if (receiver != null) {
+            if (receiver != null && template != null) {
                 allowance = template.getCost(null, sender, receiver, parsed, allowanceStr);
             } else {
                 allowance = null;

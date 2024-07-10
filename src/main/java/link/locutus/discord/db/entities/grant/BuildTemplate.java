@@ -274,15 +274,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
-            List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
-            list.addAll(getRequirements(sender, receiver, this, build));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
+            List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, build);
+            list.addAll(getRequirements(db, sender, receiver, this, build));
             return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, BuildTemplate template, Map<Integer, CityBuild> parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, BuildTemplate template, Map<Integer, CityBuild> parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
-
         // cap at 4k infra worth of buildings
         list.add(new Grant.Requirement("Build must NOT have more than 80 buildings (4k infra)", false, new Function<DBNation, Boolean>() {
             @Override
@@ -300,7 +299,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             list.add(new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation receiver) {
-                    return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
+                    return template == null || receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
                 }
             }));
         }
@@ -308,10 +307,10 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         list.add(new Grant.Requirement("Nation must NOT have received a new city build grant (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-                if (template.isRepeatable()) return true;
+                if (template == null || template.isRepeatable()) return true;
                 if (template.allow_switch_after_offensive || template.allow_switch_after_infra || template.allow_switch_after_land_or_project) return true;
 
-                List<GrantTemplateManager.GrantSendRecord> records = template.getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+                List<GrantTemplateManager.GrantSendRecord> records = db.getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
 
                 for(GrantTemplateManager.GrantSendRecord record : records) {
                     if (template.allow_switch_after_days > 0 && record.date < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(template.allow_switch_after_days)) {

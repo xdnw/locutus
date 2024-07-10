@@ -31,22 +31,18 @@ import link.locutus.discord.db.entities.grant.RawsTemplate;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.grant.WarchestTemplate;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
-import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -106,11 +102,12 @@ public class GrantCommands {
                             metropolitan_planning != null ? metropolitan_planning : receiver.hasProject(Projects.METROPOLITAN_PLANNING),
                             gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
                     double[] resources = ResourceType.MONEY.toArray(cost);
+                    grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
                     grant.setCost(f -> resources).setType(note);
                     return null;
         }, DepositType.CITY, receiver -> {
             int numBuy = getNumBuy.apply(receiver);
-            return CityTemplate.getRequirements(me, receiver, null, numBuy);
+            return CityTemplate.getRequirements(db, me, receiver, null, numBuy);
         });
     }
 
@@ -148,9 +145,10 @@ public class GrantCommands {
                 boolean gsa = gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 double[] cost = project.cost(ta, gsa);
                 grant.setCost(f -> cost).setType(DepositType.PROJECT.withAmount(project.ordinal()));
+                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase `" + project.name() + "`");
                 return null;
             }, DepositType.PROJECT, receiver -> {
-                return ProjectTemplate.getRequirementsProject(me, receiver, null, project);
+                return ProjectTemplate.getRequirementsProject(db, me, receiver, null, project);
             });
     }
 
@@ -162,6 +160,7 @@ public class GrantCommands {
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             @Range(min=50, max=10000) int infra_level,
+            @Switch("new") @Arg("If the grant is for a new city") boolean single_new_city,
             @Switch("o") boolean onlySendMissingFunds,
             @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
             @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
@@ -185,18 +184,33 @@ public class GrantCommands {
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
             (receiver, grant) -> {
-                double cost = receiver.getBuyInfraCost(infra_level,
-                        urbanization != null ? urbanization : false,
-                        advanced_engineering_corps != null ? advanced_engineering_corps : false,
-                        center_for_civil_engineering != null ? center_for_civil_engineering : false,
-                        gov_support_agency != null ? gov_support_agency : false);
+                double cost;
+                if (single_new_city) {
+                    cost = PW.City.Infra.calculateInfra(10, infra_level,
+                            advanced_engineering_corps != null ? advanced_engineering_corps : false,
+                            center_for_civil_engineering != null ? center_for_civil_engineering : false,
+                            urbanization != null ? urbanization : false,
+                            gov_support_agency != null ? gov_support_agency : false
+                            );
+                } else {
+                    cost = receiver.getBuyInfraCost(infra_level,
+                            urbanization != null ? urbanization : false,
+                            advanced_engineering_corps != null ? advanced_engineering_corps : false,
+                            center_for_civil_engineering != null ? center_for_civil_engineering : false,
+                            gov_support_agency != null ? gov_support_agency : false);
+                }
                 if (cost <= 0) {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has infra level: " + infra_level);
                 }
-                grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.INFRA.withAmount(infra_level));
+                if (single_new_city) {
+                    grant.setInstructions("Go to your NEW city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
+                } else {
+                    grant.setInstructions("Go to EACH city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
+                }
+                grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.INFRA.withValue(infra_level, single_new_city ? 1 : receiver.getCities()));
                 return null;
             }, DepositType.INFRA, receiver -> {
-                return InfraTemplate.getRequirements(me, receiver, null, (double) infra_level);
+                return InfraTemplate.getRequirements(db, me, receiver, null, (double) infra_level);
             });
     }
 
@@ -208,6 +222,7 @@ public class GrantCommands {
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             @Range(min=1, max=10000) int to_land,
+            @Switch("new") @Arg("If the grant is for a new city") boolean single_new_city,
             @Switch("o") boolean onlySendMissingFunds,
             @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
             @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
@@ -238,10 +253,15 @@ public class GrantCommands {
                     if (cost <= 0) {
                         return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + to_land + " land");
                     }
-                    grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.LAND.withAmount(to_land));
+                    if (single_new_city) {
+                        grant.setInstructions("Go to your NEW city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
+                    } else {
+                        grant.setInstructions("Go to EACH city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
+                    }
+                    grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.LAND.withValue(to_land, single_new_city ? 1 : receiver.getCities()));
                     return null;
                 }, DepositType.LAND, receiver -> {
-                    return LandTemplate.getRequirements(me, receiver, null, (double) to_land);
+                    return LandTemplate.getRequirements(db, me, receiver, null, (double) to_land);
                 });
     }
 
@@ -289,6 +309,7 @@ public class GrantCommands {
                 unitsToGrant.forEach((unit, amount) -> {
                     cost.add(unit.getCost(amount.intValue()));
                 });
+                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
                 return null;
             },
@@ -342,6 +363,7 @@ public class GrantCommands {
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount)));
+                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
                 return null;
             }, DepositType.WARCHEST, receiver -> {
@@ -379,14 +401,15 @@ public class GrantCommands {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
                 (receiver, grant) -> {
                     int cities = receiver.getCities();
-                    Map<MilitaryUnit, Integer> numAttacks = Map.of(
+                    Map<MilitaryUnit, Integer> numAttacks = new LinkedHashMap<>(Map.of(
                             MilitaryUnit.SOLDIER, soldier_attacks,
                             MilitaryUnit.TANK, tank_attacks,
                             MilitaryUnit.AIRCRAFT, airstrikes,
                             MilitaryUnit.SHIP, naval_attacks,
                             MilitaryUnit.MISSILE, missiles == null ? 0 : missiles,
                             MilitaryUnit.NUKE, nukes == null ? 0 : nukes
-                    );
+                    ));
+                    numAttacks.entrySet().removeIf(e -> e.getValue() <= 0);
                     ResourceType.ResourcesBuilder cost = ResourceType.builder();
                     numAttacks.forEach((unit, amount) -> {
                         if (amount <= 0) return;
@@ -405,6 +428,7 @@ public class GrantCommands {
                         double factor = 1 + bonus_percent * 0.01;
                         PW.multiply(costArr, factor);
                     }
+                    grant.setInstructions("You have been granted the resources for the following number of attacks:\n`" + numAttacks + "`");
                     grant.setCost(f -> costArr).setType(DepositType.WARCHEST.withValue());
                     return null;
                 }, DepositType.WARCHEST, receiver -> {
@@ -478,7 +502,6 @@ public class GrantCommands {
                         empty.setInfra(grantInfra ? 10d : grantTo.getInfra());
                         cost = grantTo.calculateCost(empty);
                         grant.setInstructions(grantTo.instructions(-1, empty, ResourceType.getBuffer()));
-                        grant.setInstructions("Import the build in your NEW city:\n```json\n" + build + "\n```\n");
                     } else {
                         boolean hasDiffBuildings = true;
                         Map<Integer, JavaCity> grantFrom = new LinkedHashMap<>();
@@ -516,7 +539,7 @@ public class GrantCommands {
                     grant.setCost(f -> finalCost).setType(DepositType.BUILD.withValue(pair, citiesGranted));
                     return null;
                 }, DepositType.BUILD, receiver -> {
-                    return null;
+                    return BuildTemplate.getRequirements(db, me, receiver, null, Map.of(-1, build));
                 });
     }
 
@@ -554,7 +577,6 @@ public class GrantCommands {
                 return null;
             });
     }
-
 
     // Template commands
 
@@ -1579,7 +1601,7 @@ public class GrantCommands {
             note = note.ignore(true);
         }
         double[] cost = template.getCost(db, me, receiver, parsed);
-        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, parsed);
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(db, me, receiver, parsed);
         String instructions = template.getInstructions(me, receiver, parsed);
 
         for (int i = 0; i < cost.length; i++) {

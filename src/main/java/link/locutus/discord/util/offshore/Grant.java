@@ -19,7 +19,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -552,10 +551,16 @@ public class Grant {
             }
 
             try {
-                List<Grant.Requirement> requirements = new ArrayList<>();
-                requirements.addAll(AGrantTemplate.getRequirements(me, receiver, null));
-                requirements.addAll(getRequirements.apply(receiver));
-                // todo fixme warnings
+                if (!force) {
+                    List<Grant.Requirement> requirements = new ArrayList<>();
+                    requirements.addAll(AGrantTemplate.getBaseRequirements(db, me, receiver, null));
+                    requirements.addAll(getRequirements.apply(receiver));
+                    for (Requirement requirement : requirements) {
+                        if (!requirement.apply(receiver)) {
+                            errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), requirement.getMessage()));
+                        }
+                    }
+                }
 
                 Grant grant = new Grant(receiver, DepositType.GRANT.withValue());
 

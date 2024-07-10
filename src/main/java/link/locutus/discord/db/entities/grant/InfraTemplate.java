@@ -121,13 +121,13 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
-        list.addAll(getRequirements(sender, receiver, this, parsed));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+        list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, InfraTemplate template, Double parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, InfraTemplate template, Double parsed) {
         if (parsed == null && template != null) parsed = (double) template.level;
         List<Grant.Requirement> list = new ArrayList<>();
 
@@ -135,6 +135,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Infra granted must NOT exceed: " + (template == null ? "`{level}`" : MathMan.format(template.level)), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
+                if (template == null) return true;
                 return finalParsed == null || finalParsed.longValue() <= template.level;
             }
         }));
@@ -143,7 +144,6 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Requires 0 wars against nations stronger or with NRF/MLP", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 Set<DBWar> wars = receiver.getActiveWars();
 
                 for(DBWar war : wars) {
@@ -174,7 +174,6 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Requires the project: `" + Projects.CENTER_FOR_CIVIL_ENGINEERING.name() + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 return receiver.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
             }
         }));
@@ -199,8 +198,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Nation must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
-                if(template.onlyNewCities)
+                if(template != null && template.onlyNewCities)
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
                 else
                     return true;

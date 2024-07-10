@@ -62,13 +62,13 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
-        list.addAll(getRequirements(sender, receiver, this, parsed));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+        list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, RawsTemplate template, Integer parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, RawsTemplate template, Integer parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
         list.add(new Grant.Requirement("Days granted must NOT exceed: " + (template == null ? "`{days}`" : template.days), false, new Function<DBNation, Boolean>() {
             @Override

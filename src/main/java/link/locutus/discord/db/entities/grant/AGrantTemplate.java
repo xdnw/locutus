@@ -19,7 +19,6 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
@@ -223,7 +222,7 @@ public abstract class AGrantTemplate<T> {
                 data.append("Cost: `").append(ResourceType.resourcesToString(cost)).append("`\n");
             }
             System.out.println(6.9);
-            List<Grant.Requirement> requirements = getDefaultRequirements(sender, receiver, parsed);
+            List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed);
             Set<Grant.Requirement> failedFinal = new HashSet<>();
             Set<Grant.Requirement> failedOverride = new HashSet<>();
             for (Grant.Requirement requirement : requirements) {
@@ -258,7 +257,7 @@ public abstract class AGrantTemplate<T> {
             System.out.println(6.14);
         } else {
             System.out.println(6.15);
-            List<Grant.Requirement> requirements = getDefaultRequirements(sender, receiver, parsed);
+            List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed);
             System.out.println(6.16);
             if (!requirements.isEmpty()) {
                 data.append("\n**Template Checks:**\n");
@@ -338,12 +337,11 @@ public abstract class AGrantTemplate<T> {
 
     public abstract TemplateTypes getType();
 
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, T parsed) {
-        return getRequirements(sender, receiver, this);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, T parsed) {
+        return getBaseRequirements(db, sender, receiver, this);
     }
 
-    public static List<Grant.Requirement> getRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, @Nullable AGrantTemplate template) {
-        GuildDB db = template == null ? null : template.getDb();
+    public static List<Grant.Requirement> getBaseRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, @Nullable AGrantTemplate template) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         NationFilter filter = template == null ? null : template.getNationFilter();
@@ -352,7 +350,7 @@ public abstract class AGrantTemplate<T> {
             list.add(new Grant.Requirement("Nation must match: `" + (template == null ? "`{filter}`" : filter.getFilter()) + "`", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return cached.test(nation);
+                    return cached == null || cached.test(nation);
                 }
             }));
         }
@@ -361,7 +359,7 @@ public abstract class AGrantTemplate<T> {
         list.add(new Grant.Requirement("Grant template must NOT be disabled: " + CM.grant_template.enable.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return template.isEnabled();
+                return template == null || template.isEnabled();
             }
         }));
 
@@ -375,7 +373,7 @@ public abstract class AGrantTemplate<T> {
             list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_total}`" : maxTotal) + " total grants for this template", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return template.getGrantedTotal().size() < maxTotal;
+                    return template == null || template.getGrantedTotal().size() < maxTotal;
                 }
             }));
         }
@@ -383,6 +381,7 @@ public abstract class AGrantTemplate<T> {
             list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_day}`" : maxDay) + " grants per day for this template", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
+                    if (template == null) return true;
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);
                     return template.getGranted(oneDayMs).size() < maxDay;
                 }
@@ -392,6 +391,7 @@ public abstract class AGrantTemplate<T> {
             list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_granter_total}`" : maxGranterTotal) + " total grants sent from " + (sender == null ? "sender" : sender.getName() + " for this template"), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
+                    if (template == null) return true;
                     return template.getGrantedTotal(sender).size() < maxGranterTotal;
                 }
             }));
@@ -400,6 +400,7 @@ public abstract class AGrantTemplate<T> {
             list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_granter_day}`" : maxGranterDay) + " grants per day sent from " + (sender == null ? "sender" : sender.getName() + " for this template"), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
+                    if (template == null) return true;
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);
                     return template.getGranted(oneDayMs, sender).size() < maxGranterDay;
                 }
@@ -411,6 +412,7 @@ public abstract class AGrantTemplate<T> {
             list.add(new Grant.Requirement("Nation must NOT receive a grant template twice (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
+                    if (template == null) return true;
                     return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), template.getName()).isEmpty();
                 }
             }));
@@ -643,7 +645,7 @@ public abstract class AGrantTemplate<T> {
     public Grant createGrant(DBNation sender, DBNation receiver, T customValue) {
         Grant grant = new Grant(receiver, getDepositType(receiver, customValue));
         grant.setCost(f -> this.getCost(db, sender, receiver, customValue));
-        grant.addRequirement(getDefaultRequirements(sender, receiver, customValue));
+        grant.addRequirement(getDefaultRequirements(db, sender, receiver, customValue));
         // grant.addNote()
         grant.setInstructions(getInstructions(sender, receiver, customValue));
 

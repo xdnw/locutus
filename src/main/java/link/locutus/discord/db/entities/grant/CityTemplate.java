@@ -97,13 +97,13 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     //add flags to the template database
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer amount) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
-        list.addAll(getRequirements(sender, receiver, this, amount));
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Integer amount) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, amount);
+        list.addAll(getRequirements(db, sender, receiver, this, amount));
         return list;
     }
 
-    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, CityTemplate template, Integer parsed) {
+    public static List<Grant.Requirement> getRequirements(GuildDB db, DBNation sender, DBNation receiver, CityTemplate template, Integer parsed) {
         if (parsed == null) parsed = 1;
         List<Grant.Requirement> list = new ArrayList<>();
 
@@ -126,6 +126,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
         list.add(new Grant.Requirement("Nation must have at least " + (template == null ? "`{min_city}`" : template.min_city) + " cities (inclusive)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
+                if (template == null) return true;
                 return receiver.getCities() >= template.min_city;
             }
         }));
@@ -133,6 +134,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
         list.add(new Grant.Requirement("Nation must have below " + (template == null ? "`{max_city}`" : template.max_city) + " cities", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
+                if (template == null) return true;
                 return receiver.getCities() < template.max_city;
             }
         }));
@@ -149,7 +151,6 @@ public class CityTemplate extends AGrantTemplate<Integer> {
         list.add(new Grant.Requirement("Must have the project: `" + Projects.URBAN_PLANNING + "` (when c" + Projects.URBAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 if(receiver.getCities() < Projects.URBAN_PLANNING.requiredCities())
                     return true;
 
@@ -161,7 +162,6 @@ public class CityTemplate extends AGrantTemplate<Integer> {
         list.add(new Grant.Requirement("Must have the project: `" + Projects.ADVANCED_URBAN_PLANNING + "` (when c" + Projects.ADVANCED_URBAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 if(receiver.getCities() < Projects.ADVANCED_URBAN_PLANNING.requiredCities())
                     return true;
 
@@ -173,7 +173,6 @@ public class CityTemplate extends AGrantTemplate<Integer> {
         list.add(new Grant.Requirement("Must have the project: `" + Projects.METROPOLITAN_PLANNING + "` (when c" + Projects.METROPOLITAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 if(receiver.getCities() < Projects.METROPOLITAN_PLANNING.requiredCities())
                     return true;
 
@@ -194,7 +193,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
             @Override
             public Boolean apply(DBNation receiver) {
                 long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
-                List<GrantTemplateManager.GrantSendRecord> recordedGrants = template.getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+                List<GrantTemplateManager.GrantSendRecord> recordedGrants = db.getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
                 List<GrantTemplateManager.GrantSendRecord> cityGrants = recordedGrants.stream().filter(f -> f.grant_type == TemplateTypes.CITY && f.date > cutoff).toList();
                 return cityGrants.isEmpty();
             }

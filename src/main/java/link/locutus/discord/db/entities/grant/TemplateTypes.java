@@ -5,10 +5,8 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.util.offshore.Grant;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -25,7 +23,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return CityTemplate.getRequirements(null, null, null, null);
+            return CityTemplate.getBaseRequirements(null, null, null, null);
         }
     },
     PROJECT(DepositType.PROJECT, ProjectTemplate.class) {
@@ -36,7 +34,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return ProjectTemplate.getRequirements(null, null, null, null);
+            return ProjectTemplate.getRequirements(null, null, null, null, null);
         }
     },
     INFRA(DepositType.INFRA, InfraTemplate.class) {
@@ -47,7 +45,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return InfraTemplate.getRequirements(null, null, null, null);
+            return InfraTemplate.getRequirements(null, null, null, null, null);
         }
 
     },
@@ -59,7 +57,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return LandTemplate.getRequirements(null, null, null, null);
+            return LandTemplate.getRequirements(null, null, null, null, null);
         }
     },
     BUILD(DepositType.BUILD, BuildTemplate.class) {
@@ -70,7 +68,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return BuildTemplate.getRequirements(null, null, null, null);
+            return BuildTemplate.getRequirements(null, null, null, null, null);
         }
     },
     WARCHEST(DepositType.WARCHEST, WarchestTemplate.class) {
@@ -81,7 +79,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return WarchestTemplate.getRequirements(null, null, null, null);
+            return WarchestTemplate.getRequirements(null, null, null, null, null);
         }
     },
     RAWS(DepositType.RAWS, RawsTemplate.class) {
@@ -92,7 +90,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements() {
-            return RawsTemplate.getRequirements(null, null, null, null);
+            return RawsTemplate.getRequirements(null, null, null, null, null);
         }
     },
 
@@ -158,6 +156,6 @@ public enum TemplateTypes {
     public abstract List<Grant.Requirement> getRequirements();
 
     public static List<Grant.Requirement> getDefaultRequirements() {
-        return AGrantTemplate.getRequirements(null, null, null);
+        return AGrantTemplate.getBaseRequirements(null, null, null, null);
     }
 }
