@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.enums.city;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -129,5 +130,26 @@ public interface ICity {
             "Each digit is the number of buildings (barracks, factory, hangar, drydock)")
     default String getMMR() {
         return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + "" + getBuilding(Buildings.HANGAR) + "" + getBuilding(Buildings.DRYDOCK);
+    }
+
+    default boolean canBuild(Continent continent, Predicate<Project> hasProject, boolean throwError) {
+        // check the building can exist in the continent and that the cap for that building is sufficient
+        for (Building building : Buildings.values()) {
+            int amt = getBuilding(building);
+            if (amt <= 0) continue;
+            if (!building.canBuild(continent)) {
+                if (throwError) {
+                    throw new IllegalArgumentException("Building " + building.name() + " cannot be built in " + continent);
+                }
+                return false;
+            }
+            if (amt > building.getCap(hasProject)) {
+                if (throwError) {
+                    throw new IllegalArgumentException("Building " + building.name() + " has a cap of " + building.getCap(hasProject));
+                }
+                return false;
+            }
+        }
+        return true;
     }
 }

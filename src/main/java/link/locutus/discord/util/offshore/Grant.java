@@ -28,6 +28,7 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class Grant {
@@ -451,6 +452,10 @@ public class Grant {
         return instructions;
     }
 
+    public boolean hasInstructions() {
+        return instructions != null && !instructions.isEmpty();
+    }
+
     public Grant addRequirement(Collection<Requirement> requirements) {
         return addRequirement(requirements.toArray(new Requirement[0]));
     }
@@ -478,6 +483,11 @@ public class Grant {
         return cost.apply(nation);
     }
 
+    // TransferResult
+    // Cost
+    // Instructions
+    // DepositType
+
     public static String generateCommandLogic(
             IMessageIO io, GuildDB db, DBNation me, User author,
             Set<DBNation> receivers,
@@ -494,7 +504,7 @@ public class Grant {
             EscrowMode escrow_mode,
             boolean bypass_checks,
             boolean force,
-            Function<DBNation, Triple<double[], DepositType.DepositTypeInfo, TransferResult>> getCostInfo,
+            BiFunction<DBNation, Grant, TransferResult> getCostInfo,
             DepositType baseNote,
             Function<DBNation, List<Grant.Requirement>> getRequirements
     ) throws GeneralSecurityException, IOException {
@@ -547,21 +557,24 @@ public class Grant {
                 requirements.addAll(getRequirements.apply(receiver));
                 // todo fixme warnings
 
-                DepositType.DepositTypeInfo note;
-                DepositType type = baseNote;
+                Grant grant = new Grant(receiver, DepositType.GRANT.withValue());
 
-                Triple<double[], DepositType.DepositTypeInfo, TransferResult> costInfo = getCostInfo.apply(receiver);
-                TransferResult error = costInfo.getRight();
+                TransferResult error = getCostInfo.apply(receiver, grant);
                 if (error != null) {
                     errors.add(error);
                     continue;
                 }
-                double[] resources = costInfo.getLeft();
-                note = costInfo.getMiddle();
+                DepositType.DepositTypeInfo note = grant.getType();
+                DepositType type = note.getType();
+                double[] resources = grant.cost();
+                if (ResourceType.isZero(resources)) {
+                    errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
+                    continue;
+                }
 
-                Grant grant = new Grant(receiver, note);
-                grant.setCost(f -> resources);
-                grant.setInstructions(type.getDescription() + "\nFor `" + ResourceType.resourcesToString(resources) + "`");
+                if (!grant.hasInstructions()) {
+                    grant.setInstructions(type.getDescription() + "\nFor `" + ResourceType.resourcesToString(resources) + "`");
+                }
                 grantByReceiver.put(receiver, grant);
 
                 if (sheet != null) {
@@ -581,6 +594,10 @@ public class Grant {
                                 }
                             }
                         }
+                    }
+                    if (ResourceType.isZero(costApplyMissing)) {
+                        errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
+                        continue;
                     }
                     row.add(grant.getInstructions());
                     row.add(ResourceType.convertedTotal(costApplyMissing));

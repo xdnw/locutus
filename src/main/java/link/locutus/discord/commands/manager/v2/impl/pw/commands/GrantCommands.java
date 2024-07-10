@@ -93,12 +93,11 @@ public class GrantCommands {
             return Math.max(upTo ? amount - currentCity : amount, 0);
         };
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-                receiver -> {
+                (receiver, grant) -> {
                     int currentCity = receiver.getCities();
                     int numBuy = getNumBuy.apply(receiver);
                     if (numBuy <= 0) {
-                        TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + amount + " cities");
-                        return Triple.of(null, null, error);
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + amount + " cities");
                     }
                     DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
                     double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
@@ -107,7 +106,8 @@ public class GrantCommands {
                             metropolitan_planning != null ? metropolitan_planning : receiver.hasProject(Projects.METROPOLITAN_PLANNING),
                             gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
                     double[] resources = ResourceType.MONEY.toArray(cost);
-                    return Triple.of(resources, note, null);
+                    grant.setCost(f -> resources).setType(note);
+                    return null;
         }, DepositType.CITY, receiver -> {
             int numBuy = getNumBuy.apply(receiver);
             return CityTemplate.getRequirements(me, receiver, null, numBuy);
@@ -140,15 +140,15 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-            receiver -> {
+            (receiver, grant) -> {
                 if (receiver.hasProject(project)) {
-                    TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has project: " + project.name());
-                    return Triple.of(null, null, error);
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has project: " + project.name());
                 }
                 boolean ta = technological_advancement != null ? technological_advancement : receiver.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
                 boolean gsa = gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 double[] cost = project.cost(ta, gsa);
-                return Triple.of(cost, DepositType.PROJECT.withAmount(project.ordinal()), null);
+                grant.setCost(f -> cost).setType(DepositType.PROJECT.withAmount(project.ordinal()));
+                return null;
             }, DepositType.PROJECT, receiver -> {
                 return ProjectTemplate.getRequirementsProject(me, receiver, null, project);
             });
@@ -184,17 +184,17 @@ public class GrantCommands {
 
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-            receiver -> {
+            (receiver, grant) -> {
                 double cost = receiver.getBuyInfraCost(infra_level,
                         urbanization != null ? urbanization : false,
                         advanced_engineering_corps != null ? advanced_engineering_corps : false,
                         center_for_civil_engineering != null ? center_for_civil_engineering : false,
                         gov_support_agency != null ? gov_support_agency : false);
                 if (cost <= 0) {
-                    TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has infra level: " + infra_level);
-                    return Triple.of(null, null, error);
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has infra level: " + infra_level);
                 }
-                return Triple.of(ResourceType.MONEY.toArray(cost), DepositType.INFRA.withAmount(infra_level), null);
+                grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.INFRA.withAmount(infra_level));
+                return null;
             }, DepositType.INFRA, receiver -> {
                 return InfraTemplate.getRequirements(me, receiver, null, (double) infra_level);
             });
@@ -229,17 +229,17 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-                receiver -> {
+                (receiver, grant) -> {
                     double cost = receiver.getBuyLandCost(to_land,
                             rapid_expansion != null ? rapid_expansion : false,
                             advanced_engineering_corps != null ? advanced_engineering_corps : false,
                             arable_land_agency != null ? arable_land_agency : false,
                             gov_support_agency != null ? gov_support_agency : false);
                     if (cost <= 0) {
-                        TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + to_land + " land");
-                        return Triple.of(null, null, error);
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + to_land + " land");
                     }
-                    return Triple.of(ResourceType.MONEY.toArray(cost), DepositType.LAND.withAmount(to_land), null);
+                    grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.LAND.withAmount(to_land));
+                    return null;
                 }, DepositType.LAND, receiver -> {
                     return LandTemplate.getRequirements(me, receiver, null, (double) to_land);
                 });
@@ -272,7 +272,7 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-            receiver -> {
+            (receiver, grant) -> {
                 Map<MilitaryUnit, Long> unitsToGrant = new HashMap<>();
                 units.forEach((unit, amount) -> {
                     long scaledAmount = scale_per_city ? amount * receiver.getCities() : amount;
@@ -283,14 +283,14 @@ public class GrantCommands {
                     }
                 });
                 if (unitsToGrant.isEmpty()) {
-                    TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the units");
-                    return Triple.of(null, null, error);
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> {
                     cost.add(unit.getCost(amount.intValue()));
                 });
-                return Triple.of(cost.build(), DepositType.WARCHEST.withValue(), null);
+                grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
+                return null;
             },
             DepositType.WARCHEST, receiver -> {
                 return null;
@@ -305,7 +305,7 @@ public class GrantCommands {
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             MMRDouble mmr,
-            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("n") boolean is_additional,
+            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("n") boolean is_additional_units,
             @Switch("o") boolean onlySendMissingFunds,
             @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
             @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
@@ -322,7 +322,7 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-            receiver -> {
+            (receiver, grant) -> {
                 int cities = receiver.getCities();
                 Map<MilitaryUnit, Integer> unitsToGrant = new HashMap<>();
                 for (Building building : Buildings.MILITARY_BUILDINGS) {
@@ -331,25 +331,24 @@ public class GrantCommands {
                     double pctGrant = mmr.getPercent(unit);
                     int unitCap = militaryBuilding.cap(receiver::hasProject) * militaryBuilding.getUnitCap() * cities;
                     double currPct = receiver.getUnits(unit) / (double) unitCap;
-                    if (!is_additional) {
+                    if (!is_additional_units) {
                         pctGrant -= currPct;
                     }
                     int numUnits = (int) Math.ceil(pctGrant * unitCap);
                     if (numUnits > 0) unitsToGrant.put(unit, numUnits);
                 }
                 if (unitsToGrant.isEmpty()) {
-                    TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the units");
-                    return Triple.of(null, null, error);
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount)));
-                return Triple.of(cost.build(), DepositType.WARCHEST.withValue(), null);
-
+                grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
+                return null;
             }, DepositType.WARCHEST, receiver -> {
                 return null;
             });
     }
-    // consumption
+
     @Command(desc = "Grant consumptions resources for a specified number of attacks at max MMR (military units)")
     @RolePermission(Roles.ECON)
     @IsAlliance
@@ -363,7 +362,6 @@ public class GrantCommands {
             @Range(min=0, max=10000) @Default Integer missiles,
             @Range(min=0, max=10000) @Default Integer nukes,
             @Arg("Attach a bonus percent, to account for loot losses") @Switch("d") Integer bonus_percent,
-            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("n") boolean is_additional,
             @Switch("o") boolean onlySendMissingFunds,
             @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
             @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
@@ -379,7 +377,7 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
-                receiver -> {
+                (receiver, grant) -> {
                     int cities = receiver.getCities();
                     Map<MilitaryUnit, Integer> numAttacks = Map.of(
                             MilitaryUnit.SOLDIER, soldier_attacks,
@@ -400,21 +398,162 @@ public class GrantCommands {
                         cost.add(PW.multiply(unit.getConsumption(), amount * maxUnits));
                     });
                     if (cost.isEmpty()) {
-                        TransferResult error = new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "No attacks specified");
-                        return Triple.of(null, null, error);
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "No attacks specified");
                     }
-                    double[] costFinal = cost.build();;
+                    double[] costArr = cost.build();;
                     if (bonus_percent != null && bonus_percent != 0) {
                         double factor = 1 + bonus_percent * 0.01;
-                        costFinal = PW.multiply(costFinal, factor);
+                        PW.multiply(costArr, factor);
                     }
-                    return Triple.of(costFinal, DepositType.WARCHEST.withValue(), null);
+                    grant.setCost(f -> costArr).setType(DepositType.WARCHEST.withValue());
+                    return null;
                 }, DepositType.WARCHEST, receiver -> {
                     return null;
                 });
     }
     // build
-    // warchest_ratio
+
+    @Command(desc = "Grant consumptions resources for a specified number of attacks at max MMR (military units)")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantBuild(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            CityBuild build,
+            @Arg("Grant only for a single new city") boolean is_new_city,
+            @Arg("Grant for a specific city ids") Set<Integer> city_ids,
+            @Switch("infra") Boolean grant_infra,
+            @Switch("land") Boolean grant_land,
+            @Arg("Attach a bonus percent, to account for loot losses") @Switch("d") Integer bonus_percent,
+            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("n") boolean is_additional,
+            @Switch("o") boolean onlySendMissingFunds,
+            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+            @Switch("i") boolean ignore,
+            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+    ) throws IOException, GeneralSecurityException {
+        if (city_ids != null) {
+            if (receivers.size() > 1) {
+                throw new IllegalArgumentException("Cannot specify `city_ids` and multiple receivers (max 1)");
+            }
+            if (is_new_city) {
+                throw new IllegalArgumentException("Cannot specify both `is_new_city` and `city_ids`");
+            }
+        }
+        List<String> notes = new ArrayList<>();
+        if (build.getAge() == null) {
+            notes.add("Specify the age of the build using `age: 1234` in the build json");
+        }
+        if (build.getLand() == null) {
+            notes.add("Specify the land of the build using `land: 1234` in the build json");
+        }
+        if (!notes.isEmpty()) {
+            notes.add("You can append partial city json to a city url to modify an existing build");
+        }
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+                (receiver, grant) -> {
+                    JavaCity grantTo = new JavaCity(build);
+                    try {
+                        grantTo.canBuild(receiver.getContinent(), receiver::hasProject, true);
+                    } catch (IllegalArgumentException e) {
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), e.getMessage());
+                    }
+                    boolean grantLand = build.getLand() != null && (grant_land != null ? grant_land : false);
+                    boolean grantInfra = (grant_infra != null ? grant_infra : false);
+
+                    double[] cost = ResourceType.getBuffer();
+                    int citiesGranted;
+                    if (is_new_city) {
+                        citiesGranted = 1;
+                        JavaCity empty = new JavaCity();
+                        empty.setLand(grantLand ? 250d : grantTo.getLand());
+                        empty.setInfra(grantInfra ? 10d : grantTo.getInfra());
+                        cost = grantTo.calculateCost(empty);
+                        grant.setInstructions(grantTo.instructions(-1, empty, ResourceType.getBuffer()));
+                        grant.setInstructions("Import the build in your NEW city:\n```json\n" + build + "\n```\n");
+                    } else {
+                        boolean hasDiffBuildings = true;
+                        Map<Integer, JavaCity> grantFrom = new LinkedHashMap<>();
+                        for (Map.Entry<Integer, JavaCity> entry : receiver.getCityMap(receivers.size() == 1).entrySet()) {
+                            JavaCity city = entry.getValue();
+                            if (city_ids != null && !city_ids.contains(entry.getKey())) {
+                                continue;
+                            }
+                            if (city.equals(grantTo)) {
+                                continue;
+                            }
+                            hasDiffBuildings = false;
+                            double[] buffer = grantTo.calculateCost(city, ResourceType.getBuffer(), grantInfra, grantLand);
+                            ResourceType.add(cost, buffer);
+                            for (ResourceType type : ResourceType.values) {
+                                cost[type.ordinal()] = Math.max(0, cost[type.ordinal()]);
+                            }
+                            grantFrom.put(entry.getKey(), city);
+                        }
+                        if (!hasDiffBuildings) {
+                            return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the build");
+                        }
+                        grant.setInstructions(grantTo.instructions(grantFrom, ResourceType.getBuffer(), city_ids == null, true));
+                        citiesGranted = grantFrom.size();
+                    }
+                    if (ResourceType.isZero(cost)) {
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "No resources are needed to import this build");
+                    }
+                    if (bonus_percent != null && bonus_percent != 0) {
+                        double factor = 1 + bonus_percent * 0.01;
+                        cost = PW.multiply(cost, factor);
+                    }
+                    double[] finalCost = cost;
+                    long pair = MathMan.pairInt(grantInfra ? (int) grantTo.getInfra() : 0, grantLand ? (int) grantTo.getLand() : 0);
+                    grant.setCost(f -> finalCost).setType(DepositType.BUILD.withValue(pair, citiesGranted));
+                    return null;
+                }, DepositType.BUILD, receiver -> {
+                    return null;
+                });
+    }
+
+    @Command(desc = "Grant a multiple of the warchest requirements to a set of nations\n" +
+            "Use 1 for the default warchest\n" +
+            "If no warchest is configured, a default will be used, see setting `WARCHEST_PER_CITY`")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantWarchest(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            @Range(min=0.01, max=50) double ratio,
+            @Switch("o") boolean onlySendMissingFunds,
+            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
+            @Switch("i") boolean ignore,
+            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+    ) throws IOException, GeneralSecurityException {
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+            (receiver, grant) -> {
+                int cities = receiver.getCities();
+                Map<ResourceType, Double> perCity = db.getPerCityWarchest(receiver);
+                Map<ResourceType, Double> wc = PW.multiply(perCity, (double) cities * ratio);
+                grant.setCost(f -> ResourceType.resourcesToArray(wc)).setType(DepositType.WARCHEST.withValue());
+                return null;
+            }, DepositType.WARCHEST, receiver -> {
+                return null;
+            });
+    }
 
 
     // Template commands

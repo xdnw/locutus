@@ -317,18 +317,16 @@ public class JavaCity implements ICity {
     public String instructions(int cityId, JavaCity from, double[] total) {
         HashMap<Integer, JavaCity> map = new HashMap<>();
         map.put(cityId, from);
-        return instructions(map, total);
+        return instructions(map, total, false);
     }
 
-    public String instructions(Map<Integer, JavaCity> fromMap, double[] total) {
-
+    public String instructions(Map<Integer, JavaCity> fromMap, double[] total, boolean isBulk, boolean dontSellInfra) {
         Map<Integer, Double> landPurchases = new HashMap<>();
         Map<Integer, Double> infraPurchases = new HashMap<>();
 
         for (Map.Entry<Integer, JavaCity> entry : fromMap.entrySet()) {
             JavaCity from = entry.getValue();
             total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, this.calculateCost(from));
-            // remove negatives
             for (int i = 0; i < total.length; i++) {
                 total[i] = Math.max(0, total[i]);
             }
@@ -340,6 +338,8 @@ public class JavaCity implements ICity {
             }
         }
 
+        Function<Integer, String> cityName = id -> id > 0 ? "<" + Settings.INSTANCE.PNW_URL() + "/city/id=" + id + ">" : "your new city";
+
         StringBuilder response = new StringBuilder();
         int i = 0;
         response.append(++i+". Ensure you have the following resources:");
@@ -348,7 +348,7 @@ public class JavaCity implements ICity {
         if (!infraPurchases.isEmpty()) {
             for (Map.Entry<Integer, Double> entry : infraPurchases.entrySet()) {
                 if (entry.getValue() > 0) {
-                    response.append('\n').append(++i + ". (to buy) Enter @" + getInfra() + " infra in <" + Settings.INSTANCE.PNW_URL() + "/city/id=" + entry.getKey() + ">");
+                    response.append('\n').append(++i + ". (to buy) Enter @" + getInfra() + " infra in " + cityName.apply(entry.getKey()));
                 }
             }
         }
@@ -356,19 +356,31 @@ public class JavaCity implements ICity {
         if (!landPurchases.isEmpty()) {
             for (Map.Entry<Integer, Double> entry : landPurchases.entrySet()) {
                 if (entry.getValue() > 0) {
-                    response.append('\n').append(++i + ". (to buy) Enter @" + getLand() + " land in <" + Settings.INSTANCE.PNW_URL() + "/city/id=" + entry.getKey() + ">");
+                    response.append('\n').append(++i + ". (to buy) Enter @" + getLand() + " land in " + cityName.apply(entry.getKey()));
                 }
             }
         }
-        response.append('\n').append(++i+". Go to <" + Settings.INSTANCE.PNW_URL() + "/city/improvements/bulk-import/>");
+        String importUrl;
+        if (fromMap.size() == 1) {
+            int cityId = fromMap.keySet().iterator().next();
+            String cityIdStr = String.valueOf(cityId);
+            if (cityId <= 0) {
+                cityIdStr = "CITY_ID> (replace CITY_ID with the city id)";
+            }
+            importUrl = "<" + Settings.INSTANCE.PNW_URL() + "/city/improvements/import/id=" + cityId + (cityId > 0 ? ">" : "");
+        } else if (isBulk) {
+            importUrl = "<" + Settings.INSTANCE.PNW_URL() + "/city/improvements/bulk-import/>";
+        } else {
+            importUrl = "<" + Settings.INSTANCE.PNW_URL() + "/city/improvements/import/=CITY_ID> for each city in " + fromMap.keySet();
+        }
+        response.append('\n').append(++i+". Go to " + importUrl);
         response.append('\n').append(++i+". Copy the following build:\n");
         response.append("```json\n").append(toCityBuild().toString()).append("\n```");
         response.append('\n').append(++i+". Check the checkbox and click the submit import button");
         response.append('\n').append(++i+". If you are missing any resources or money, obtain them and try again");
-
         if (!infraPurchases.isEmpty()) {
             for (Map.Entry<Integer, Double> entry : infraPurchases.entrySet()) {
-                if (entry.getValue() < 0) {
+                if (entry.getValue() < 0 && !dontSellInfra) {
                     response.append('\n').append(++i + ". (to sell) Enter @" + getInfra() + " infra in <" + Settings.INSTANCE.PNW_URL() + "/city/id=" + entry.getKey() + ">");
                 }
             }
@@ -450,6 +462,24 @@ public class JavaCity implements ICity {
         JavaCity javaCity = (JavaCity) o;
 //        return javaCity.hashCode() == hashCode();
         return Arrays.equals(buildings, javaCity.buildings) && javaCity.infra == infra;
+    }
+
+    public boolean equals(JavaCity other, boolean checkInfra, boolean checkLand, boolean checkAge) {
+        for (Building building : Buildings.values()) {
+            if (getBuilding(building) != other.getBuilding(building)) {
+                return false;
+            }
+        }
+        if (checkInfra && Math.round(getInfra() * 100) != Math.round(other.getInfra() * 100)) {
+            return false;
+        }
+        if (checkLand && Math.round(getLand() * 100) != Math.round(other.getLand() * 100)) {
+            return false;
+        }
+        if (checkAge && getAgeDays() != other.getAgeDays()) {
+            return false;
+        }
+        return true;
     }
 
     @Override
