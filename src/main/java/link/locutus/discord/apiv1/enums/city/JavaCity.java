@@ -317,7 +317,7 @@ public class JavaCity implements ICity {
     public String instructions(int cityId, JavaCity from, double[] total) {
         HashMap<Integer, JavaCity> map = new HashMap<>();
         map.put(cityId, from);
-        return instructions(map, total, false);
+        return instructions(map, total, false, false);
     }
 
     public String instructions(Map<Integer, JavaCity> fromMap, double[] total, boolean isBulk, boolean dontSellInfra) {

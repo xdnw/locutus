@@ -397,7 +397,7 @@ public class GrantCmd extends Command {
                 if (!noInfra) grant.addNote("#infra=" + city.getInfra());
                 if (!noLand) grant.addNote("#land=" + city.getLand());
                 double[] buffer = new double[ResourceType.values.length];
-                grant.setInstructions(city.instructions(from, buffer));
+                grant.setInstructions(city.instructions(from, buffer, true, true));
                 resources = ResourceType.resourcesToMap(buffer);
             } else {
                 grant = new Grant(me, DepositType.GRANT.withValue().ignore(ignore));
