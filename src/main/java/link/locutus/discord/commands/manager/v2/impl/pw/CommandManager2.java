@@ -308,6 +308,17 @@ public class CommandManager2 {
         getCommands().registerMethod(new UtilityCommands(), List.of("announcement"), "addWatermark", "watermark");
         getCommands().registerMethod(new WarCommands(), List.of("war", "sheet"), "raidSheet", "raid");
 
+        GrantCommands grants = new GrantCommands();
+        getCommands().registerMethod(grants, List.of("grant"), "grantCity", "city");
+        getCommands().registerMethod(grants, List.of("grant"), "grantProject", "project");
+        getCommands().registerMethod(grants, List.of("grant"), "grantInfra", "infra");
+        getCommands().registerMethod(grants, List.of("grant"), "grantLand", "land");
+        getCommands().registerMethod(grants, List.of("grant"), "grantUnit", "unit");
+        getCommands().registerMethod(grants, List.of("grant"), "grantMMR", "mmr");
+        getCommands().registerMethod(grants, List.of("grant"), "grantConsumption", "consumption");
+        getCommands().registerMethod(grants, List.of("grant"), "grantBuild", "build");
+        getCommands().registerMethod(grants, List.of("grant"), "grantWarchest", "warchest");
+
         NewsletterCommands newsletter = new NewsletterCommands();
         getCommands().registerMethod(newsletter, List.of("newsletter"), "create", "create");
         getCommands().registerMethod(newsletter, List.of("newsletter", "channel"), "channelAdd", "add");
