@@ -2743,4 +2743,40 @@ public class StatCommands {
         sheet.updateWrite();
         sheet.attach(io.create(), "merges").send();
     }
+
+    @Command(desc = "Get the largest alliance bank loot per score")
+    public String allianceByLoot(@Me User author, @Me IMessageIO channel, @Me JSONObject command,
+        @Timestamp long time,
+        @Arg("Display the estimated bank size instead of per score") @Switch("t") boolean show_total,
+        @Switch("f") boolean attach_file,
+         @Arg("Ignore alliances without nations above a certain score") @Switch("min") Double min_score,
+         @Arg("Ignore alliances without nations below a certain score") @Switch("max") Double max_score
+            ) {
+        String title = "AA loot/score";
+        if (show_total) title = "AA bank total";
+
+        Map<Integer, Double> lootPerScore = new HashMap<>();
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            double score = alliance.getScore();
+            if (score <= 0) continue;
+            if (min_score != null || max_score != null) {
+                Set<DBNation> nations = alliance.getNations(true, 0, true);
+                if (min_score != null) nations.removeIf(f -> f.getScore() < min_score);
+                if (max_score != null) nations.removeIf(f -> f.getScore() > max_score);
+                if (nations.isEmpty()) continue;
+            }
+            LootEntry loot = alliance.getLoot();
+            if (loot != null && loot.getDate() >= time) {
+                double perScore = loot.convertedTotal();
+                if (!show_total) perScore /= score;
+                lootPerScore.put(alliance.getAlliance_id(), perScore);
+            }
+        }
+
+        SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
+        sorted.nameKeys(i -> PW.getName(i, true)).build(author, channel, command, title, attach_file);
+
+
+        return null;
+    }
 }

@@ -90,6 +90,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -2255,5 +2257,45 @@ public class UnsortedCommands {
         return "Done. See " + CM.announcement.find.cmd.toSlashMention() + "\n" + author.getAsMention();
     }
 
+    @Command(desc = "List potential offshore alliances by the value of their bank transfers to nations over a period of time")
+    public String prolificOffshores(@Me IMessageIO io, @Me User author, @Me JSONObject command,
+            @Range(min=1, max=365) int days,
+                                    @Switch("f") boolean upload_file
+                                    ) {
+        long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
+
+        Map<Integer, Long> aaCount = new HashMap<>();
+        Map<Integer, Long> aaCount1City = new HashMap<>();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
+            int aaId = entry.getValue().getAlliance_id();
+            aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));
+            if (entry.getValue().getCities() == 1) {
+                aaCount1City.put(aaId, 1 + aaCount1City.getOrDefault(aaId, 0L));
+            }
+        }
+        aaCount.entrySet().removeIf(e -> e.getValue() > 2);
+        for (Map.Entry<Integer, Long> entry : aaCount.entrySet()) {
+            List<Transaction2> transfers = Locutus.imp().getBankDB().getAllianceTransfers(entry.getKey(), cutoffMs);
+            long sum = 0;
+            for (Transaction2 value : transfers) {
+                if (value.banker_nation == value.getReceiver()) continue;
+                DBNation nation = nations.get((int) value.getReceiver());
+                if (nation == null) continue;
+                if (nation.getAlliance_id() == value.getSender()) continue;
+                sum += (long) Math.abs(ResourceType.convertedTotal(value.resources));
+            }
+            entry.setValue(sum);
+        }
+
+
+        new SummedMapRankBuilder<>(aaCount)
+                .sort()
+                .nameKeys(f -> PW.getName(f, true))
+                .limit(10)
+                .build(author, io, command, "Prolific Offshores (" + days + " days)", upload_file);
+
+        return null;
+    }
 
 }

@@ -129,7 +129,7 @@ public class SyncTaxes extends Command {
         return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
-    public String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet, int aaId) throws GeneralSecurityException, IOException {
+    public static String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet, int aaId) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(guildDb, SheetKey.TAX_SHEET);
         }
@@ -220,7 +220,7 @@ public class SyncTaxes extends Command {
         return null;
     }
 
-    public String updateTurnGraph(GuildDB db, int aaId) throws GeneralSecurityException, IOException {
+    public static String updateTurnGraph(GuildDB db, int aaId) throws GeneralSecurityException, IOException {
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TAX_GRAPH_SHEET);
 
         List<Object> header = new ArrayList<>();

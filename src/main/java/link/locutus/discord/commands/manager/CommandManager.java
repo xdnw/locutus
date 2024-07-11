@@ -568,42 +568,14 @@ public class CommandManager {
         }
         this.register(new RaidCommand());
         /// not useful
-        this.register(new Kev());
-        this.register(new Nev());
-        this.register(new SriCommand());
+//        this.register(new Kev());
+//        this.register(new Nev());
+//        this.register(new SriCommand());
 //        this.register(new TagCommand(this));
-        this.register(new Lury());
-
-
-        // unknown
-        this.register(new TradeId());
-        this.register(new WarCitySheet());
-        this.register(new StrengthCitySheet());
-        this.register(new GuildInfo());
-        this.register(new ForumScrape());
-        this.register(new KickLocutus());
-        this.register(new Sudo());
-        this.register(new MsgInfo());
-        this.register(new Runall());
-        this.register(new RunAllNations());
-        this.register(new SyncBounties());
-        this.register(new SyncWarRooms());
-        this.register(new SyncTreaties());
-        this.register(new SyncCommand());
-        this.register(new SyncAttacks());
-        this.register(new SyncWars());
-        this.register(new SyncTrade());
-        this.register(new SyncUid());
-        this.register(new SyncTaxes());
-        this.register(new SyncMail());
-        this.register(new SyncBanks());
-        this.register(new SafekeepCommand());
-        this.register(new Permission());
-        this.register(new CheckPermission());
-        this.register(new Meta());
-        this.register(new CheckMail());
+//        this.register(new Lury());
 
         ///////// Added
+        this.register(new ProlificOffshores());
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
         this.register(new Interview());
@@ -702,6 +674,7 @@ public class CommandManager {
         this.register(new ChannelCount());
         this.register(new TransferResources(bankWith));
         this.register(bankWith);
+        this.register(new GrantCmd(bankWith));
         this.register(new Offshore());
         this.register(new Bank());
         this.register(new Inflows());
@@ -732,49 +705,82 @@ public class CommandManager {
         this.register(new AssignBuild());
         this.register(new DeleteBuild());
         this.register(new GetBuild());
+        this.register(new TopAABeigeLoot());
+        this.register(new LargestBanks());
+        this.register(new IASheet());
+        this.register(new MilitaryRanking());
+        this.register(new MsgInfo());
+        this.register(new CheckMail());
+
+        this.register(new ForumScrape());
+        this.register(new SyncBounties());
+        this.register(new SyncWarRooms());
+        this.register(new SyncTreaties());
+        this.register(new SyncCommand());
+        this.register(new SyncAttacks());
+        this.register(new SyncWars());
+        this.register(new SyncTrade());
+        this.register(new SyncUid());
+        this.register(new SyncTaxes());
+        this.register(new SyncMail());
+        this.register(new SyncBanks());
+
         //
         this.register(new HelpCommand(this));
-        this.register(new GrantCmd(bankWith));
 
-        this.register(new ProlificOffshores());
-        this.register(new LargestBanks());
-        this.register(new InactiveAlliances());
-
-        this.register(new WarCostByDay());
-        this.register(new WarCostRankingByDay());
-
-        this.register(new IASheet());
-        this.register(new NoteSheet());
-        this.register(new CoalitionSheet());
-        this.register(new InterviewSheet());
-        this.register(new FASheet());
-
-        this.register(new MilitaryRanking());
-        this.register(new AllianceLootRanking());
-        this.register(new NationLootRanking());
-        this.register(new WarLossesPerCity());
-        this.register(new NetProfitPerWar());
-        this.register(new UnitRanking());
-        this.register(new TopAABeigeLoot());
-        this.register(new AllianceLootLosses());
+        this.register(new WarCostByDay()); // Stats between two coalitions
+        this.register(new WarCostRankingByDay()); // Stats of coalitions vs *
         this.register(new AllianceAttackTypeRanking());
-        this.register(new WarsByTier());
         this.register(new AttackTypeBreakdownAB());
 
-        this.register(new ROI());
+        this.register(new CoalitionSheet());
+        this.register(new InterviewSheet());
 
-        this.register(new Simulate());
-
-        // unfinished
         this.register(new AlertTrades());
-        this.register(new Commend("commend", true));
-        this.register(new Commend("denounce", false));
-//        this.register(new Setup());
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
         this.register(new BankAlerts());
         this.register(new BankSubscriptions());
         this.register(new UnsubBank());
+
+        // Admin commands, dont include?
+        this.register(new Sudo());
+        this.register(new Runall());
+        this.register(new RunAllNations());
+        this.register(new Meta());
+        this.register(new KickLocutus());
+
+        this.register(new TradeId());
+        this.register(new GuildInfo());
+
+        // TODO get rid of legacy perm system and just use coalitions
+        this.register(new Permission());
+        this.register(new CheckPermission());
+
+        // needs testing / fixing
+        this.register(new ROI());
+        this.register(new Simulate());
+
+        // deprecated
+        this.register(new SafekeepCommand()); // TODO include example to /bank deposit
+        this.register(new WarCitySheet()); // CityTierGraph
+        this.register(new StrengthCitySheet()); // StrengthTierGraph
+        this.register(new UnitRanking()); // /alliance stats ranking alliances:* metric:aircraft
+        this.register(new AllianceLootRanking()); // warcostranking TODO example
+        this.register(new WarLossesPerCity()); // warcostranking TODO example
+        this.register(new AllianceLootLosses()); // /stats_war warcostranking type:LOSSES allowedattacks:A_LOOT groupbyalliance:True
+        this.register(new WarsByTier()); // Attribute tier graph -> TODO add an example
+        this.register(new NationLootRanking()); // warcostranking -> TODO add an example
+        this.register(new InactiveAlliances()); // Maybe do an `/alliance list` instead?
+        this.register(new NetProfitPerWar()); // warcostranking todo example
+
+//        this.register(new Commend("commend", true));
+//        this.register(new Commend("denounce", false));
+//        this.register(new Setup());
+
+        // useless
+//        this.register(new FASheet());
+//        this.register(new NoteSheet());
     }
 
     public String getPrefix() {

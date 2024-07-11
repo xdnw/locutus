@@ -53,9 +53,12 @@ public class TopAABeigeLoot extends Command {
 
         Map<Integer, Double> lootPerScore = new HashMap<>();
         for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            double score = alliance.getScore();
+            if (score <= 0) continue;
             LootEntry loot = alliance.getLoot();
             if (loot != null && loot.getDate() >= cutOff) {
-                double perScore = loot.convertedTotal() / alliance.getScore();
+                double perScore = loot.convertedTotal();
+                if (!total) perScore /= score;
                 lootPerScore.put(alliance.getAlliance_id(), perScore);
             }
         }
