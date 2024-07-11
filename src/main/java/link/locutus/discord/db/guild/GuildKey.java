@@ -2545,6 +2545,9 @@ public class GuildKey {
         public String DEFAULT_OFFSHORE_ACCOUNT(@Me GuildDB db, @Me User user, GuildOrAlliance natOrAA) {
             OffshoreInstance offshore = db.getOffshore();
             if (offshore == null) throw new IllegalArgumentException("No offshore is setup. See: " + CM.offshore.add.cmd.toSlashMention());
+            if (natOrAA.isAlliance() && natOrAA.getId() == offshore.getAllianceId() && db.isAllianceId(offshore.getAllianceId())) {
+                return "You cannot set the default offshore account to the offshore alliance";
+            }
 
             OffshoreInstance otherOffshore;
             GuildDB otherDB;

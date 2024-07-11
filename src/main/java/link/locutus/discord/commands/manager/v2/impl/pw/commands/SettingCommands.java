@@ -99,7 +99,7 @@ public class SettingCommands {
                     Object valueObj = key.getOrNull(db, false);
                     if (valueObj == null) {
                         response.append("**current value**: `" + valueStr + "`\n\n");
-                        response.append("`A value is set but it is invalid`\n");
+                        response.append("`!! A value is set but it is invalid`\n");
                     } else {
                         response.append("**current value**: `" + key.toReadableString(db, valueObj) + "`\n\n");
                     }

@@ -86,13 +86,16 @@ public class MailListener {
         if (role != null) {
             builder.append("^ " + role.getAsMention());
         }
-
-        builder.embed(event.getTitle(), body.toString());
+        int authId = event.getAuth().getNationId();
         DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(event.getMail().leader);
-        int authId = event.getAuthNationId();
-
-        CM.mail.reply mailCmd = CM.mail.reply.cmd.receiver(receiver.getId() + "").url(event.getUrl()).message("").sender(event.getAuth().getNationId() + "");
-        builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
+        if (receiver.getId() == authId) {
+            body += "\n\nUse " + CM.mail.reply.cmd.toSlashMention() + " (with `sender:" + authId + "` and then the recipient) to reply to this message.";
+        }
+        builder.embed(event.getTitle(), body.toString());
+        if (receiver.getId() != authId) {
+            CM.mail.reply mailCmd = CM.mail.reply.cmd.receiver(receiver.getId() + "").url(event.getUrl()).message("").sender(event.getAuth().getNationId() + "");
+            builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
+        }
 
         builder.commandButton(CommandBehavior.UNPRESS, CM.mail.read.cmd.messageId(event.getMail().id + "").account(authId + ""), "Read");
         builder.send();

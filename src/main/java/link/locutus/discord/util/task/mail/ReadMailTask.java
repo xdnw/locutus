@@ -36,16 +36,17 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
     @Override
     public List<MailMessage> call() throws Exception {
         return PW.withLogin(() -> {
-            String url = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + id;
-            Document msgDom = Jsoup.parse(auth.readStringFromURL(PagePriority.MAIL_READ, url, Collections.emptyMap()));
-            Elements messages = msgDom.select(".red-msg, .blue-msg");
-
             List<MailMessage> messagesColor = new ArrayList<>();
-
-            for (Element message : messages) {
-                messagesColor.add(new MailMessage(message));
+            try {
+                String url = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + id;
+                Document msgDom = Jsoup.parse(auth.readStringFromURL(PagePriority.MAIL_READ, url, Collections.emptyMap()));
+                Elements messages = msgDom.select(".blue-msg, .red-msg");
+                for (Element message : messages) {
+                    messagesColor.add(new MailMessage(message));
+                }
+            } catch (RuntimeException e) {
+                e.printStackTrace();
             }
-
             return messagesColor;
         }, auth);
     }
@@ -57,17 +58,9 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
         private final int nationId;
 
         public MailMessage(Element message) {
-
-
             this.isReceived = message.hasClass("red-msg");
             Element secondChild = message.child(1);
-            // html to markdown
             this.content = MarkupUtil.htmlToMarkdown(secondChild.text());
-
-            // first child has header, get it and then parse it to get the date, nationId
-            // the nationId is from the first a link within the child (not a direct descendent, use a selector to get the first)
-            // the date string is the only text not in a span tag, parse it, it's in the form `06/20/2024 Thursday 9:48 am`
-            // i assume the day name e.g. `Thursday` can be ignored and just the month/day/year and time is needed
             Element header = message.child(0);
             // get the nation id
             Element nationLink = header.selectFirst("a");

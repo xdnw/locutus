@@ -600,11 +600,11 @@ public class PWBindings extends BindingHelper {
     }
 
     public static NationOrAlliance nationOrAlliance(String input) {
-        return nationOrAlliance(null, input);
+        return nationOrAlliance(input, null);
     }
 
     @Binding(value = "A nation or alliance name, url or id. Prefix with `AA:` or `nation:` to avoid ambiguity if there exists both by the same name or id", examples = {"Borg", "https://politicsandwar.com/alliance/id=1234", "aa:1234"})
-    public static NationOrAlliance nationOrAlliance(ParameterData data, String input) {
+    public static NationOrAlliance nationOrAlliance(String input, @Default ParameterData data) {
         return nationOrAlliance(data, input, false);
     }
 
@@ -671,15 +671,15 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972", "tax_id=1234"}, value = "A nation or alliance name, url or id, or a guild id, or a tax id or url")
     public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(ParameterData data, String input) {
-        return nationOrAllianceOrGuildOrTaxId(data, input, true);
+        return nationOrAllianceOrGuildOrTaxId(input, true, data);
     }
 
     public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, boolean includeTaxId) {
-        return nationOrAllianceOrGuildOrTaxId(null, input, includeTaxId);
+        return nationOrAllianceOrGuildOrTaxId(input, includeTaxId, null);
     }
-    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(ParameterData data, String input, boolean includeTaxId) {
+    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, boolean includeTaxId, @Default ParameterData data) {
         try {
-            return nationOrAlliance(data, input);
+            return nationOrAlliance(input, data);
         } catch (IllegalArgumentException ignore) {
             if (includeTaxId && !input.startsWith("#") && input.contains("tax_id")) {
                 int taxId = PW.parseTaxId(input);
@@ -718,12 +718,12 @@ public class PWBindings extends BindingHelper {
     }
 
     public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input) {
-        return nationOrAllianceOrGuild(null, input);
+        return nationOrAllianceOrGuild(input, null);
     }
 
     @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972"}, value = "A nation or alliance name, url or id, or a guild id")
-    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(ParameterData data, String input) {
-        return (NationOrAllianceOrGuild) nationOrAllianceOrGuildOrTaxId(data, input, false);
+    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input, @Default ParameterData data) {
+        return (NationOrAllianceOrGuild) nationOrAllianceOrGuildOrTaxId(input, false, data);
     }
 
     public static DBAlliance alliance(String input) {

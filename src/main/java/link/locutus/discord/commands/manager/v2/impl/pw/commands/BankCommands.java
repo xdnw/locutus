@@ -3743,7 +3743,7 @@ public class BankCommands {
                 buttons.put("withdraw",
                         Map.entry(
                                 CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.IGNORE.name())
-                                        .nationAccount(nationOrAllianceOrGuild.getQualifiedId()),
+                                        .allianceAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
             }
