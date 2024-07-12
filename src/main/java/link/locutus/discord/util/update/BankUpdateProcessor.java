@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.db.guild.GuildKey.BANK_ALERT_CHANNEL;
 import static link.locutus.discord.db.guild.GuildKey.DEPOSIT_ALERT_CHANNEL;
 import static link.locutus.discord.db.guild.GuildKey.LARGE_TRANSFERS_CHANNEL;
 import static link.locutus.discord.db.guild.GuildKey.WITHDRAW_ALERT_CHANNEL;

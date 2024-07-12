@@ -94,8 +94,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static com.oracle.graal.compiler.enterprise.EnterpriseHighTier.a.aa;
-
 public class AdminCommands {
 
     @Command(desc = "Sync and debug war rooms")
@@ -1198,27 +1196,6 @@ public class AdminCommands {
         return aliasRole(user, guild, db, locutusRole, null, alliance, true);
     }
 
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String listGuildPerms() {
-        StringBuilder response = new StringBuilder();
-        for (Map.Entry<Long, GuildDB> entry : Locutus.imp().getGuildDatabases().entrySet()) {
-            Long id = entry.getKey();
-            GuildDB db = entry.getValue();
-            Map<Class, Integer> perms = db.getPermissions();
-            if (perms.isEmpty()) continue;
-
-            response.append("**" + id + "**:\n");
-            for (Map.Entry<Class, Integer> permEntry : perms.entrySet()) {
-                response.append("- " + permEntry.getKey().getSimpleName() + "=" + permEntry.getValue() + "\n");
-            }
-            response.append("\n");
-        }
-
-        if (response.length() == 0) return "No permissions are set";
-        return response.toString();
-    }
-
     private static String mappingToString(Map<Long, Role> mapping) {
         List<String> response = new ArrayList<>();
         for (Map.Entry<Long, Role> entry : mapping.entrySet()) {
@@ -1679,26 +1656,6 @@ public class AdminCommands {
             response.append("\n\n");
         }
 
-        return response.toString();
-    }
-
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String displayGuildPerms() {
-        StringBuilder response = new StringBuilder();
-        for (Map.Entry<Long, GuildDB> longGuildDBEntry : Locutus.imp().getGuildDatabases().entrySet()) {
-            GuildDB db = longGuildDBEntry.getValue();
-            Map<Class, Integer> perms = new HashMap<>(db.getPermissions());
-            perms.entrySet().removeIf(f -> f.getValue() <= 0);
-            if (perms.isEmpty()) continue;
-
-            response.append(db.getName() + " | " + db.getIdLong() + "\n");
-            for (Map.Entry<Class, Integer> entry : perms.entrySet()) {
-                response.append("- " + entry.getKey() + "=" + entry.getValue() + "\n");
-            }
-            response.append("\n");
-
-        }
         return response.toString();
     }
 
@@ -2276,9 +2233,9 @@ public class AdminCommands {
         if (legacy_deprecated) {
             DBAlliance aa = DBAlliance.get(aaId);
             if (aa == null) {
-                throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
+                throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + aaId);
             }
-            CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
+            CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Syncing taxes for " + aaId + ". Please wait..."));
 
             int taxesCount = aa.updateTaxesLegacy(timestamp);
 
@@ -2295,13 +2252,13 @@ public class AdminCommands {
         }
         List<BankDB.TaxDeposit> taxes = aaList.updateTaxes(timestamp);
         return "Updated " + taxes.size() + " records.";
-
     }
+
 //    SyncMail /mail check
     @Command(desc = "Force a fetch and update of mail for a nation")
     @RolePermission(value = Roles.MAIL)
     public String syncMail(@Me User user, @Me IMessageIO io, @Me DBNation nation, @Default DBNation account) throws IOException {
-        if (account != null) {
+        if (account != null && account.getId() != nation.getId()) {
             GuildDB db = account.getGuildDB();
             if (db != null) {
                 if (!Roles.MAIL.has(user, db.getGuild())) {
@@ -2326,5 +2283,31 @@ public class AdminCommands {
         if (bank == null) throw new IllegalArgumentException("No bank found for " + alliance + ". Set one with " + CM.offshore.add.cmd.toSlashMention());
         bank.sync(0L, false);
         return "Done!";
+    }
+
+    @Command(desc = "View info about trades with a given id")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String tradeId(Set<Integer> ids) {
+        List<DBTrade> offers = new ArrayList<>();
+        for (int id : ids) {
+            DBTrade trade = Locutus.imp().getTradeManager().getTradeDb().getTradeById(id);
+            if (trade != null) offers.add(trade);
+        }
+        return "- " + StringMan.join(offers, "\n- ");
+    }
+
+    @Command(desc = "View info about a guild with a given id")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String guildInfo(Guild guild) {
+        return guild.getName() + "/" + guild.getIdLong() + "\n" +
+                "Owner: " + guild.getOwner() + "\n" +
+                "Members: " + StringMan.getString(guild.getMembers());
+    }
+
+    @Command(desc = "Remove locutus from the current guild for debugging purposes")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String leaveGuild(@Me Guild guild) {
+        RateLimitUtil.queue(guild.leave());
+        return "Leaving " + guild.getName() + ". See the wiki or click the bot user to get the application invite link";
     }
 }

@@ -43,11 +43,6 @@ import link.locutus.discord.commands.external.guild.Mask;
 import link.locutus.discord.commands.sync.SyncMail;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.fun.Borgomas;
-import link.locutus.discord.commands.fun.Commend;
-import link.locutus.discord.commands.fun.Kev;
-import link.locutus.discord.commands.fun.Lury;
-import link.locutus.discord.commands.fun.Nev;
-import link.locutus.discord.commands.fun.SriCommand;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
 import link.locutus.discord.commands.info.InfraCost;
@@ -77,20 +72,16 @@ import link.locutus.discord.commands.sheets.CoalitionSheet;
 import link.locutus.discord.commands.sheets.CounterSheet;
 import link.locutus.discord.commands.sheets.DepositsSheet;
 import link.locutus.discord.commands.sheets.DeserterSheet;
-import link.locutus.discord.commands.sheets.FASheet;
 import link.locutus.discord.commands.sheets.IASheet;
 import link.locutus.discord.commands.sheets.IntelOpSheet;
 import link.locutus.discord.commands.sheets.InterviewSheet;
 import link.locutus.discord.commands.sheets.MMRSheet;
 import link.locutus.discord.commands.sheets.MailTargets;
 import link.locutus.discord.commands.sheets.NationSheet;
-import link.locutus.discord.commands.sheets.NoteSheet;
 import link.locutus.discord.commands.sheets.ProjectSheet;
 import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.commands.war.WarInfo;
-import link.locutus.discord.commands.external.guild.CheckPermission;
 import link.locutus.discord.commands.external.guild.KeyStore;
-import link.locutus.discord.commands.external.guild.Permission;
 import link.locutus.discord.commands.external.account.ForumScrape;
 import link.locutus.discord.commands.account.Say;
 import link.locutus.discord.commands.fun.Jokes;
@@ -724,17 +715,25 @@ public class CommandManager {
         this.register(new SyncTaxes());
         this.register(new SyncMail());
         this.register(new SyncBanks());
-
-        //
+        this.register(new TradeId());
+        this.register(new GuildInfo());
         this.register(new HelpCommand(this));
+        this.register(new KickLocutus());
+        //
 
-        this.register(new WarCostByDay()); // Stats between two coalitions
-        this.register(new WarCostRankingByDay()); // Stats of coalitions vs *
+
+        this.register(new Meta());
+        this.register(new CoalitionSheet());
+        this.register(new InterviewSheet());
         this.register(new AllianceAttackTypeRanking());
         this.register(new AttackTypeBreakdownAB());
 
-        this.register(new CoalitionSheet());
-        this.register(new InterviewSheet());
+        this.register(new Sudo());
+        this.register(new Runall());
+        this.register(new RunAllNations());
+
+        this.register(new WarCostByDay()); // Stats between two coalitions
+        this.register(new WarCostRankingByDay()); // Stats of coalitions vs *
 
         this.register(new AlertTrades());
         this.register(new UnsubTrade());
@@ -742,20 +741,6 @@ public class CommandManager {
         this.register(new BankAlerts());
         this.register(new BankSubscriptions());
         this.register(new UnsubBank());
-
-        // Admin commands, dont include?
-        this.register(new Sudo());
-        this.register(new Runall());
-        this.register(new RunAllNations());
-        this.register(new Meta());
-        this.register(new KickLocutus());
-
-        this.register(new TradeId());
-        this.register(new GuildInfo());
-
-        // TODO get rid of legacy perm system and just use coalitions
-        this.register(new Permission());
-        this.register(new CheckPermission());
 
         // needs testing / fixing
         this.register(new ROI());

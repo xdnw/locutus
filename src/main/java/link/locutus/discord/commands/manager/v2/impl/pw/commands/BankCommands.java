@@ -4196,7 +4196,6 @@ public class BankCommands {
                 if (channel == null) channel = db.getOrNull(GuildKey.ADDBALANCE_ALERT_CHANNEL);
                 if (channel == null) channel = db.getOrNull(GuildKey.DEPOSIT_ALERT_CHANNEL);
                 if (channel == null) channel = db.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
-                if (channel == null) channel = db.getOrNull(GuildKey.BANK_ALERT_CHANNEL);
                 if (channel == null) {
                     List<NewsChannel> newsChannels = db.getGuild().getNewsChannels();
                     if (!newsChannels.isEmpty()) channel = newsChannels.get(0);

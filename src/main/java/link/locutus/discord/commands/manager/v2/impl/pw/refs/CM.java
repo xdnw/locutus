@@ -33,11 +33,6 @@ public class CM {
 
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="displayGuildPerms")
-            public static class displayGuildPerms extends CommandRef {
-                public static final displayGuildPerms cmd = new displayGuildPerms();
-
-            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dm")
             public static class dm extends CommandRef {
                 public static final dm cmd = new dm();
@@ -114,11 +109,6 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listGuildOwners")
             public static class listGuildOwners extends CommandRef {
                 public static final listGuildOwners cmd = new listGuildOwners();
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listGuildPerms")
-            public static class listGuildPerms extends CommandRef {
-                public static final listGuildPerms cmd = new listGuildPerms();
 
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="loginTimes")

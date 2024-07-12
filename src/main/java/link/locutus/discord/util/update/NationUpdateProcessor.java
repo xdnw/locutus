@@ -902,9 +902,7 @@ public class NationUpdateProcessor {
             try {
                 for (Map.Entry<Long, GuildDB> entry : Locutus.imp().getGuildDatabases().entrySet()) {
                     GuildDB guildDB = entry.getValue();
-                    Integer perm = guildDB.getPermission(BankAlerts.class);
-                    if (perm == null || perm <= 0) continue;
-                    MessageChannel channel = guildDB.getOrNull(GuildKey.BANK_ALERT_CHANNEL, false);
+                    MessageChannel channel = guildDB.getOrNull(GuildKey.VM_ALERT_CHANNEL, false);
                     if (channel == null) {
                         continue;
                     }
@@ -952,7 +950,7 @@ public class NationUpdateProcessor {
             String finalType = type;
             String finalBody = body.toString();
             String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
-            AlertUtil.forEachChannel(BankAlerts.class, GuildKey.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+            AlertUtil.forEachChannel(f -> true, GuildKey.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB db) {
                     AlertUtil.displayChannel(title, finalBody, channel.getIdLong());

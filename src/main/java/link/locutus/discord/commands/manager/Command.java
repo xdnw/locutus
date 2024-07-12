@@ -125,12 +125,10 @@ public abstract class Command {
 
     public boolean checkGuildPermission(Guild server) {
         if (server == null) {
-            return true;
+            return false;
         }
         GuildDB guild = Locutus.imp().getGuildDB(server);
-        if (guild.isWhitelisted()) return true;
-        int perm = guild.getPermission(getClass());
-        return perm > 0;
+        return guild.isWhitelisted();
     }
 
     public boolean checkPermission(Guild server, User user) {

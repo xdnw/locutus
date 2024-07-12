@@ -43,10 +43,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class AlertUtil {
-    public static void forEachChannel(Class permission, GuildSetting<MessageChannel> key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
-        forEachChannel(f -> f.getPermission(permission) > 0, key, channelConsumer);
-    }
-
     public static void forEachChannel(Function<GuildDB, Boolean> hasPerm, GuildSetting<MessageChannel> key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
         for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
             try {
@@ -110,10 +106,6 @@ public class AlertUtil {
         RateLimitUtil.queueWhenFree(channel.sendMessage(message));
     }
 
-    public static void alertNation(Class permission, GuildSetting channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
-        alertNation(f -> f.getPermission(permission) > 0, channelKey, nation, channelConsumer);
-    }
-
     public static void alertNation(Function<GuildDB, Boolean> hasPerm, GuildSetting<MessageChannel> channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
         if (nation.getAlliance_id() == 0 || nation.getPosition() <= 1) return;
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
@@ -133,27 +125,6 @@ public class AlertUtil {
                 }
             }
         }
-    }
-
-    public static void forEachChannel(Class permission,GuildSetting key, Set<Long> mentions, BiConsumer<Map.Entry<Guild, MessageChannel>, Set<Member>> channelConsumer) {
-        forEachChannel(permission, key, new BiConsumer<MessageChannel, GuildDB>() {
-            @Override
-            public void accept(MessageChannel channel, GuildDB guildDb) {
-                Guild guild = guildDb.getGuild();
-                if (guild == null) return;
-                Set<Member> thisChannelMentions = null;
-                for (long user : mentions) {
-                    Member member = guild.getMemberById(user);
-                    if (member == null) continue;
-                    if (thisChannelMentions == null) thisChannelMentions = new LinkedHashSet<>();
-                    thisChannelMentions.add(member);
-                }
-                if (thisChannelMentions != null) {
-                    AbstractMap.SimpleEntry<Guild, MessageChannel> entry = new AbstractMap.SimpleEntry<>(guild, channel);
-                    channelConsumer.accept(entry, thisChannelMentions);
-                }
-            }
-        });
     }
 
     public static void openDesktop(String url) {

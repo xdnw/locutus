@@ -1197,19 +1197,6 @@ public class GuildKey {
             return "The #channel to receive alerts when there is a large tranfer in the game or a nation VMs with resources";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> BANK_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String BANK_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
-            return BANK_ALERT_CHANNEL.setAndValidate(db, user, channel);
-        }
-
-        @Override
-        public String help() {
-            return "The #channel to receive alerts for transfers when a nation goes into VM";
-        }
-    }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted());
     public static GuildSetting<MessageChannel> LARGE_TRANSFERS_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2771,6 +2758,20 @@ public class GuildKey {
             return "If the " + Roles.MILCOM.name() + " role is pinged for defensive wars that are counters";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
+
+    public static GuildSetting<MessageChannel> VM_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String VM_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return VM_ALERT_CHANNEL.setAndValidate(db, user, channel);
+        }
+
+        @Override
+        public String help() {
+            return "The #channel to receive alerts when a nation goes into VM";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).nonPublic());
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
