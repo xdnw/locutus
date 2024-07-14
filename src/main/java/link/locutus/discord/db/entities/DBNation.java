@@ -4672,6 +4672,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
+        JsonObject lastResult = null;
         while (true) {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
@@ -4693,10 +4694,12 @@ public class DBNation implements NationOrAlliance {
                         return JsonParser.parseString(result).getAsJsonObject();
                     }
                 }
+                System.out.println("Invalid response " + result);
             }
             try {
                 JsonObject obj = JsonParser.parseString(result).getAsJsonObject();
                 String generalMessage = obj.get("general_message").getAsString();
+                lastResult = obj;
             } catch (JsonSyntaxException e) {
                 System.out.println("Error sending mail to " + getNation_id() + " with key " + pair.getKey());
                 System.out.println(result);
@@ -4704,7 +4707,7 @@ public class DBNation implements NationOrAlliance {
             System.out.println("Mail response " + result);
             break;
         }
-        return null;
+        return lastResult;
     }
 
     public int estimateBeigeTime() {
@@ -5417,7 +5420,7 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getNationDB().getMilitary(this, unit, date);
     }
 
-    @Command(desc = "If there is remaining purchase for a unit today")
+    @Command(desc = "If a unit was bought today")
     public boolean hasUnitBuyToday(MilitaryUnit unit) {
         long turnDayStart;
         if (getSnapshot() != null) {

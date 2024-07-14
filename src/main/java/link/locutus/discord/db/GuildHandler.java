@@ -671,7 +671,7 @@ public class GuildHandler {
         String subject = pair.getKey();
         String message = pair.getValue();
         ApiKeyPool keys = getDb().getMailKey();
-        if (keys == null) {
+        if (keys == null || keys.size() == 0) {
             boolean hasKey = getDb().getOrNull(GuildKey.API_KEY) != null;
             if (!hasKey) {
                 throw new IllegalArgumentException("Please set `API_KEY` with " + CM.settings.info.cmd.toSlashMention());
