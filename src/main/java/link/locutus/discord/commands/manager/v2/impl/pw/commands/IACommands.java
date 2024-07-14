@@ -8,6 +8,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
@@ -2436,12 +2437,98 @@ public class IACommands {
     }
 
     @Command(desc = "View the interview message")
-    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     public String viewInterview(@Me GuildDB db, IACategory category) {
         String message = db.getCopyPasta("interview", true);
         if (message == null) {
             return "No message set. Set one with " + "" +  CM.interview.questions.set.cmd.toSlashMention();
         }
         return "Interview questions:\n" + message + "";
+    }
+
+    @Command(desc = "List nations and their interview progress")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
+    @IsAlliance
+    public String interviewSheet(@Me GuildDB db, @Me Guild guild, @Me IMessageIO io,
+                                 @Default Set<DBNation> nations,
+                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.INTERVIEW_SHEET);
+        }
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "Nation",
+                "Alliance",
+                "Cities",
+                "AvgInfra",
+                "MMR",
+                "offensives",
+                "policy",
+                "interview",
+                "roles"
+        ));
+
+        sheet.setHeader(header);
+        if (nations == null) {
+            nations = new LinkedHashSet<>();
+            IACategory iaCat = db.getIACategory();
+            if (iaCat != null) {
+                nations.addAll(iaCat.load().getChannelMap().keySet());
+            }
+            Set<DBNation> aaNations = db.getAllianceList().getNations(true, 14400, false);
+            // add all applicants that are <10d active
+            nations.addAll(aaNations
+                    .stream().filter(f -> f.getPositionEnum() == Rank.APPLICANT).toList());
+            // add all nations without member role but in server
+            Role memberRole = Roles.MEMBER.toRole(guild);
+            if (memberRole != null) {
+                for (DBNation nation : aaNations) {
+                    User user = nation.getUser();
+                    if (user == null) continue;
+                    Member member = guild.getMember(user);
+                    if (member == null) continue;
+                    if (!member.getRoles().contains(memberRole)) {
+                        nations.add(nation);
+                    }
+                }
+            }
+        }
+
+        for (DBNation nation : nations) {
+            User user = nation.getUser();
+            if (user == null) continue;
+            Member member = guild.getMember(user);
+            if (member == null) continue;
+
+            List<Object> row = new ArrayList<>();
+            row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
+            String aaModifier = "";
+            if (nation.getPositionEnum() == Rank.APPLICANT) {
+                aaModifier = " (applicant)";
+            }
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PW.getUrl(nation.getAlliance_id(), true)) + aaModifier);
+            row.add(nation.getCities());
+            row.add(nation.getAvg_infra());
+            row.add("=\"" + nation.getMMR() + "\"");
+            row.add(nation.getOff());
+            row.add(nation.getWarPolicy());
+
+            ByteBuffer interviewMeta = nation.getMeta(NationMeta.INTERVIEW_INDEX);
+            if (interviewMeta == null) row.add("");
+            else row.add(InterviewQuestion.values()[interviewMeta.getInt()].name());
+
+            List<Role> roles = member.getRoles();
+            List<String> rolesStr = new ArrayList<>();
+            for (Role role : roles) rolesStr.add(role.getName());
+            row.add(StringMan.join(rolesStr, ","));
+
+
+            sheet.addRow(row);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "interview").send();
+        return null;
     }
 }

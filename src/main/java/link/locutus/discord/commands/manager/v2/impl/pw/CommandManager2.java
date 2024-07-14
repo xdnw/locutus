@@ -615,7 +615,7 @@ public class CommandManager2 {
         run(guild, channel, author, message, io, fullCmdStr, async, returnNotFound);
     }
 
-    private LocalValueStore createLocals(@Nullable LocalValueStore<Object> existingLocals, @Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, @Nullable Map<String, String> fullCmdStr) {
+    public LocalValueStore createLocals(@Nullable LocalValueStore<Object> existingLocals, @Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, @Nullable Map<String, String> fullCmdStr) {
         if (guild != null) {
             String denyReason = Settings.INSTANCE.MODERATION.BANNED_GUILDS.get(guild.getIdLong());
             if (denyReason != null) {

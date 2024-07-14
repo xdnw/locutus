@@ -715,22 +715,21 @@ public class CommandManager {
         this.register(new SyncTaxes());
         this.register(new SyncMail());
         this.register(new SyncBanks());
+
         this.register(new TradeId());
         this.register(new GuildInfo());
         this.register(new HelpCommand(this));
         this.register(new KickLocutus());
-        //
-
-
         this.register(new Meta());
         this.register(new CoalitionSheet());
         this.register(new InterviewSheet());
         this.register(new AllianceAttackTypeRanking());
         this.register(new AttackTypeBreakdownAB());
-
         this.register(new Sudo());
         this.register(new Runall());
         this.register(new RunAllNations());
+
+        //
 
         this.register(new WarCostByDay()); // Stats between two coalitions
         this.register(new WarCostRankingByDay()); // Stats of coalitions vs *

@@ -336,7 +336,7 @@ public class WarCostByDay extends Command {
         return null;
     }
 
-    private void processTotal(boolean total, TimeDualNumericTable table) {
+    public static void processTotal(boolean total, TimeDualNumericTable table) {
         if (!total) return;
         DataTable data = table.getData();
         if (data.getRowCount() <= 1) return;

@@ -37,6 +37,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlacehold
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.WarCostAB;
+import link.locutus.discord.commands.rankings.WarCostByDay;
 import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
@@ -74,6 +75,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -2778,5 +2781,348 @@ public class StatCommands {
 
 
         return null;
+    }
+
+    @Command(desc = "Rank the alliances by the % (or total) attacks by type.")
+    public String attackTypeRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
+            @Timestamp long time,
+            AttackType type,
+            Set<DBAlliance> alliances,
+            @Range(min=1, max=9999) @Switch("x") Integer only_top_x,
+            @Switch("p") boolean percent,
+            @Switch("o") boolean only_off_wars,
+            @Switch("d") boolean only_def_wars) {
+        Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> true, f -> {
+                    if (!only_def_wars && allianceIds.contains(f.getAttacker_aa())) return true;
+                    if (!only_off_wars && allianceIds.contains(f.getDefender_aa())) return true;
+                    return false;
+                }).afterDate(time).getList();
+        if (only_top_x != null) {
+            Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, only_top_x);
+            alliances.retainAll(topAlliances);
+        }
+        Map<Integer, Integer> totalAttacks = new HashMap<>();
+        Map<Integer, Integer> attackOfType = new HashMap<>();
+
+        for (AbstractCursor attack : attacks) {
+            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_id());
+            if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
+            totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
+
+            if (attack.getAttack_type() == type) {
+                attackOfType.put(nat.getAlliance_id(), attackOfType.getOrDefault(nat.getAlliance_id(), 0) + 1);
+            }
+        }
+
+        SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>();
+
+        for (Map.Entry<Integer, Integer> entry : attackOfType.entrySet()) {
+
+            if (!allianceIds.contains(entry.getKey())) continue;
+
+            int num = entry.getValue();
+            int total = totalAttacks.get(entry.getKey());
+
+            double value;
+            if (percent) {
+                value = 100d * num / total;
+            } else {
+                value = num;
+            }
+
+            builder.put(DBAlliance.getOrCreate(entry.getKey()), value);
+        }
+
+        String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
+        String title = " attacks of type: " + type.getName() + " (" + timeStr + ")";
+        title = (percent ? "Percent" : "Total") + title;
+        builder.sort().name(DBAlliance::getName, MathMan::format).build(io, command, title);
+        return null;
+    }
+
+    @Command(desc = "Display a breakdown of attacks nations performed over a timeframe, including bad attacks", groups = {
+            "The Sides Fighting",
+            "Time period",
+            "War and attack type filters"
+    })
+    public String attackTypeBreakdownAB(@Me IMessageIO channel,
+                                        @Me JSONObject command,
+                                        @Arg(value = "Nations required to be in the conflict against `coalition2`", group = 0)
+                                            Set<NationOrAlliance> coalition1,
+                                        @Arg(value = "Nations required to be in the conflicts against `coalition1`", group = 0)
+                                            Set<NationOrAlliance> coalition2,
+                                        @Arg(value = "Start time of the period to include", group = 1)
+                                            @Timestamp long timeStart,
+                                        @Arg(value = "End time of the period to rank\n" +
+                                                "Defaults to now", group = 1)
+                                            @Default @Timestamp Long timeEnd,
+
+                                        @Arg(value = "Filter the war types included", group = 2)
+                                            @Switch("w") Set<WarType> allowedWarTypes,
+                                        @Arg(value = "Filter the war statuses included", group = 2)
+                                            @Switch("s") Set<WarStatus> allowedWarStatus,
+                                        @Arg(value = "Filter the attack types included", group = 2)
+                                            @Switch("a") Set<AttackType> allowedAttackTypes,
+                                        @Arg(value = "Filter the success types included", group = 2)
+                                            @Switch("v") Set<SuccessType> allowedVictoryTypes,
+
+
+                                        @Switch("o") @Arg(value = "Only include wars declared by coalition1", group = 2)
+                                            boolean onlyOffensiveWars,
+                                        @Switch("d") @Arg(value = "Only include wars declared by coalition2", group = 2)
+                                            boolean onlyDefensiveWars,
+
+                                        @Switch("oa") @Arg(value = "Only include attacks done by coalition1", group = 2) boolean onlyOffensiveAttacks,
+                                        @Switch("da") @Arg(value = "Only include attacks done by coalition2", group = 2) boolean onlyDefensiveAttacks
+
+                                        ) {
+        if (onlyOffensiveWars && onlyDefensiveWars) throw new IllegalArgumentException("Cannot combine `onlyOffensiveWars` and `onlyDefensiveWars`");
+        if (onlyOffensiveAttacks && onlyDefensiveAttacks) throw new IllegalArgumentException("Cannot combine `onlyOffensiveAttacks` and `onlyDefensiveAttacks`");
+        if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+        if (coalition1 != null && command != null && command.getString("coalition1").equalsIgnoreCase("*")) {
+            coalition1 = null;
+        }
+        if (coalition2 != null && command != null && command.getString("coalition2").equalsIgnoreCase("*")) {
+            coalition2 = null;
+        }
+        WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
+                .allowWarStatuses(allowedWarStatus)
+                .allowedWarTypes(allowedWarTypes)
+                .allowedAttackTypes(allowedAttackTypes)
+                .allowedSuccessTypes(allowedVictoryTypes);
+        if (onlyOffensiveWars) {
+            parser.getAttacks().removeIf(f -> !parser.getIsPrimary().apply(f.getWar()));
+        }
+        if (onlyDefensiveWars) {
+            parser.getAttacks().removeIf(f -> parser.getIsPrimary().apply(f.getWar()));
+        }
+        if (onlyOffensiveAttacks) {
+            parser.getAttacks().removeIf(f -> {
+                DBWar war = f.getWar();
+                if (war == null) return true;
+                boolean warDeclarerCol1 = parser.getIsPrimary().apply(war);
+                return warDeclarerCol1 != (f.getAttacker_id() == war.getAttacker_id());
+            });
+        }
+        if (onlyDefensiveAttacks) {
+            parser.getAttacks().removeIf(f -> {
+                DBWar war = f.getWar();
+                if (war == null) return true;
+                boolean warDeclarerCol2 = parser.getIsSecondary().apply(war);
+                return warDeclarerCol2 != (f.getAttacker_id() == war.getAttacker_id());
+            });
+        }
+
+        AttackTypeBreakdown breakdown = new AttackTypeBreakdown(parser.getNameA(), parser.getNameB());
+        breakdown.addAttacks(parser.getAttacks(), parser.getAttackPrimary(), parser.getAttackSecondary());
+
+        channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send();
+
+        return null;
+    }
+
+    @Command(desc = "Get a line graph by day of the war stats between two coalitions")
+    public String warCostsByDay(@Me IMessageIO io, @Me JSONObject command,
+            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
+            WarCostByDayMode type,
+            @Timestamp long time_start,
+            @Default @Timestamp Long time_end,
+            @Switch("o") boolean running_total,
+            @Switch("s") Set<WarStatus> allowedWarStatus,
+            @Switch("w") Set<WarType> allowedWarTypes,
+            @Switch("a") Set<AttackType> allowedAttackTypes,
+            @Switch("v") Set<SuccessType> allowedVictoryTypes,
+            @Switch("j") boolean attach_json,
+            @Switch("c") boolean attach_csv
+
+            ) throws IOException {
+        if (time_end == null) time_end = Long.MAX_VALUE;
+
+        WarParser parser = WarParser.of(coalition1, coalition2, time_start, time_end)
+                .allowWarStatuses(allowedWarStatus)
+                .allowedWarTypes(allowedWarTypes)
+                .allowedAttackTypes(allowedAttackTypes)
+                .allowedSuccessTypes(allowedVictoryTypes);
+
+        List<AbstractCursor> attacks = parser.getAttacks();
+
+        Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
+
+        attacks.sort(Comparator.comparingLong(o -> o.getDate()));
+
+        String nameA = command.getString("coalition1");
+        String nameB = command.getString("coalition2");
+        Function<AbstractCursor, Boolean> isPrimary = parser.getAttackPrimary();
+        Function<AbstractCursor, Boolean> isSecondary = parser.getAttackSecondary();
+
+
+        long now = System.currentTimeMillis();
+        for (AbstractCursor attack : attacks) {
+            if (attack.getDate() > now) continue;
+            long turn = TimeUtil.getTurn(attack.getDate());
+            long day = turn / 12;
+            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB, type == WarCostByDayMode.BUILDING, false, false, false, type == WarCostByDayMode.ATTACK_TYPE));
+            cost.addCost(attack, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
+        }
+
+        long min = Collections.min(warCostByDay.keySet());
+        long max = Collections.max(warCostByDay.keySet());
+        List<TimeDualNumericTable<AttackCost>> tables = new ArrayList<>();
+        if (type == WarCostByDayMode.INFRASTRUCTURE) tables.add(new TimeDualNumericTable<>("Infra Loss", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getInfraLost(true), cost.getInfraLost(false));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.SOLDIER) tables.add(new TimeDualNumericTable<>("Soldier Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.SOLDIER, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.SOLDIER, 0));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.TANK) tables.add(new TimeDualNumericTable<>("Tank Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.TANK, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.TANK, 0));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.AIRCRAFT) tables.add(new TimeDualNumericTable<>("Plane Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.AIRCRAFT, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.AIRCRAFT, 0));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.SHIP) tables.add(new TimeDualNumericTable<>("Naval Ship Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.SHIP, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.SHIP, 0));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.MISSILE) tables.add(new TimeDualNumericTable<>("Missile Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.MISSILE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.MISSILE, 0));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.NUKE)
+            tables.add(new TimeDualNumericTable<>("Nuke Losses", "day", null, nameA, nameB) {
+                @Override
+                public void add(long day, AttackCost cost) {
+                    add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.NUKE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.NUKE, 0));
+                    WarCostByDay.processTotal(running_total, this);
+                }
+            });
+        if (type == WarCostByDayMode.UNIT) tables.add(new TimeDualNumericTable<>("Unit Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, ResourceType.convertedTotal(cost.getUnitCost(true)), ResourceType.convertedTotal(cost.getUnitCost(false)));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.GASOLINE) tables.add(new TimeDualNumericTable<>("Gasoline", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getConsumption(true).getOrDefault(ResourceType.GASOLINE, 0d), cost.getConsumption(false).getOrDefault(ResourceType.GASOLINE, 0d));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.MUNITIONS) tables.add(new TimeDualNumericTable<>("Munitions", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getConsumption(true).getOrDefault(ResourceType.MUNITIONS, 0d), cost.getConsumption(false).getOrDefault(ResourceType.MUNITIONS, 0d));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.CONSUMPTION) tables.add(new TimeDualNumericTable<>("Consumption", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, ResourceType.convertedTotal(cost.getConsumption(true)), ResourceType.convertedTotal(cost.getConsumption(false)));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.BUILDING) tables.add(new TimeDualNumericTable<>("Building Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getNumBuildingsDestroyed(true), cost.getNumBuildingsDestroyed(true));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.LOOT) tables.add(new TimeDualNumericTable<>("Looted", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, -ResourceType.convertedTotal(cost.getLoot(true)), -ResourceType.convertedTotal(cost.getLoot(false)));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.COST) tables.add(new TimeDualNumericTable<>("Full Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, ResourceType.convertedTotal(cost.getTotal(true)), ResourceType.convertedTotal(cost.getTotal(false)));
+                WarCostByDay.processTotal(running_total, this);
+            }
+        });
+        if (type == WarCostByDayMode.ATTACK_TYPE) {
+            for (AttackType attType : AttackType.values) {
+                tables.add(new TimeDualNumericTable<>("Num " + attType.getName(), "day", null, nameA, nameB) {
+                    @Override
+                    public void add(long day, AttackCost cost) {
+                        ArrayList<AbstractCursor> a = new ArrayList<>(cost.getAttacks(true));
+                        ArrayList<AbstractCursor> b = new ArrayList<>(cost.getAttacks(false));
+                        a.removeIf(f -> f.getAttack_type() != attType);
+                        b.removeIf(f -> f.getAttack_type() != attType);
+                        add(day, a.size(), b.size());
+                        WarCostByDay.processTotal(running_total, this);
+                    }
+                });
+            }
+        }
+
+        AttackCost nullCost = new AttackCost("", "", type == WarCostByDayMode.BUILDING, false, false, true, type == WarCostByDayMode.ATTACK_TYPE);
+        for (long day = min; day <= max; day++) {
+            long dayOffset = day - min;
+            AttackCost cost = warCostByDay.get(day);
+            if (cost == null) {
+                cost = nullCost;
+            }
+
+            for (TimeDualNumericTable<AttackCost> table : tables) {
+                table.add(dayOffset, cost);
+            }
+        }
+
+        for (TimeDualNumericTable<AttackCost> table : tables) {
+            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, min, attach_json, attach_csv);
+        }
+
+        return null;
+    }
+
+    @Command
+    public String warsCostRankingByDay(
+            @Me IMessageIO io, @Me JSONObject command,
+            WarCostRankingByDayMode type,
+            Set<NationOrAlliance> coalition1,
+            Set<NationOrAlliance> coalition2,
+            @Switch("c3") Set<NationOrAlliance> coalition3,
+            @Switch("c4") Set<NationOrAlliance> coalition4,
+            @Switch("c5") Set<NationOrAlliance> coalition5,
+            @Timestamp long time_start,
+            @Default @Timestamp Long time_end,
+            @Switch("o") boolean running_total,
+            @Switch("s") Set<WarStatus> allowedWarStatus,
+            @Switch("w") Set<WarType> allowedWarTypes,
+            @Switch("a") Set<AttackType> allowedAttackTypes,
+            @Switch("v") Set<SuccessType> allowedVictoryTypes,
+            @Switch("j") boolean attach_json,
+            @Switch("c") boolean attach_csv
+    ) {
+
     }
 }

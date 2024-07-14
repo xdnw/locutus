@@ -2,11 +2,18 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.commands.bank.SyncBanks;
 import link.locutus.discord.commands.external.guild.SyncBounties;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.sync.*;
 import link.locutus.discord.db.*;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.GetUid;
+import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.wiki.WikiGenHandler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.RequestTracker;
@@ -84,14 +91,18 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
@@ -2310,4 +2321,104 @@ public class AdminCommands {
         RateLimitUtil.queue(guild.leave());
         return "Leaving " + guild.getName() + ". See the wiki or click the bot user to get the application invite link";
     }
+
+    @Command(desc = "View meta information about a nation in the bot's database")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String nationMeta(DBNation nation, NationMeta meta) {
+        ByteBuffer buf = nation.getMeta(meta);
+        if (buf == null) return "No value set.";
+
+        byte[] arr = new byte[buf.remaining()];
+        buf.get(arr);
+        buf = ByteBuffer.wrap(arr);
+
+        switch (arr.length) {
+            case 0 -> {
+                return "" + (buf.get() & 0xFF);
+            }
+            case 4 -> {
+                return "" + (buf.getInt());
+            }
+            case 8 -> {
+                ByteBuffer buf2 = ByteBuffer.wrap(arr);
+                return buf.getLong() + "/" + MathMan.format(buf2.getDouble());
+            }
+            default -> {
+                return new String(arr, StandardCharsets.ISO_8859_1);
+            }
+        }
+    }
+
+    @NoFormat
+    @Command(desc = "Run a command as another user")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String sudo(@Me Guild guild, @Me IMessageIO io,
+                       @Switch("u") User user,
+                       @Switch("n") DBNation nation,
+                       String command) {
+        if (user == null && nation == null) {
+            throw new IllegalArgumentException("Specify a user or nation");
+        }
+        if (user != null && nation != null) {
+            throw new IllegalArgumentException("Specify only a user or nation");
+        }
+        CommandManager2 v2 = Locutus.cmd().getV2();
+        if (user != null) {
+            v2.run(guild, io, user, command, false, true);
+        } else {
+            MessageChannel channel = io instanceof DiscordChannelIO dio ? dio.getChannel() : null;
+            Message message = io instanceof DiscordChannelIO dio ? dio.getUserMessage() : null;
+            LocalValueStore locals = v2.createLocals(null, guild, channel, null, message, io, null);
+            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
+            v2.run(locals, io, command, false, true);
+        }
+        return "Done!";
+    }
+
+    @NoFormat
+    @Command(desc = "Run multiple commands")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String runMultiple(@Me Guild guild, @Me IMessageIO io, @Me User user, @TextArea String commands) {
+        commands = commands.replace("\\n", "\n");
+        String[] split = commands.split("\\r?\\n" + "[" + Settings.commandPrefix(false) + "|" + "/]");
+
+        for (String cmd : split) {
+            Locutus.cmd().getV2().run(guild, io, user, cmd, false, true);
+        }
+        return "Done!";
+    }
+
+    @NoFormat
+    @Command(desc = "Run a command as multiple nations")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String sudoNations(@Me GuildDB db, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
+                              Set<DBNation> nations, String command) {
+        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
+        Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);
+        StringBuilder response = new StringBuilder();
+
+        long start = System.currentTimeMillis();
+        for (DBNation nation : nations) {
+
+            String formattedCmd = formatFunc.apply(nation);
+            User nationUser = nation.getUser();
+            try {
+                Map.Entry<CommandResult, String> result = nation.runCommandInternally(db.getGuild(), nationUser, command);
+                response.append(nation.getMarkdownUrl() + ": " + result.getKey() + "\n" + result.getValue() + "\n---\n");
+            } catch (Throwable e) {
+                response.append(nation.getMarkdownUrl() + ": Error: " + e.getMessage());
+            }
+            if (-start + (start = System.currentTimeMillis()) > 5000) {
+                io.sendMessage(response.toString());
+                response.setLength(0);
+            }
+
+        }
+        if (response.length() > 0) {
+            io.sendMessage(response.toString());
+        }
+        return "Done!";
+    }
+
+
 }
