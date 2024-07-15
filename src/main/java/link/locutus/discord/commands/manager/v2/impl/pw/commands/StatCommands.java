@@ -3272,21 +3272,27 @@ public class StatCommands {
         if (type == WarCostByDayMode.CONSUMPTION) tables.add(new TimeNumericTable<>("Consumption", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, cost -> ResourceType.convertedTotal(cost.getConsumption(primary)));
+                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
+                        delegate.apply(f, (cost, primary) -> ResourceType.convertedTotal(cost.getConsumption(primary)))
+                );
                 WarCostRankingByDay.processTotal(running_total, this);
             }
         });
         if (type == WarCostByDayMode.LOOT) tables.add(new TimeNumericTable<>("Looted", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, cost -> ResourceType.convertedTotal(cost.getLoot(primary)));
+                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
+                        delegate.apply(f, (cost, primary) -> -ResourceType.convertedTotal(cost.getLoot(primary)))
+                );
                 WarCostRankingByDay.processTotal(running_total, this);
             }
         });
         if (type == WarCostByDayMode.COST) tables.add(new TimeNumericTable<>("Full Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, cost -> ResourceType.convertedTotal(cost.getTotal(primary)));
+                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
+                        delegate.apply(f, (cost, primary) -> ResourceType.convertedTotal(cost.getTotal(primary)))
+                                );
                 WarCostRankingByDay.processTotal(running_total, this);
             }
         });
