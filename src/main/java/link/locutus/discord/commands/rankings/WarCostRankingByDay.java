@@ -65,7 +65,7 @@ public class WarCostRankingByDay extends Command {
                 """;
     }
 
-    private void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
+    public static void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
         Comparable[] values = new Comparable[parserMap.size() + 1];
         values[0] = dayRelative;
 
@@ -257,7 +257,7 @@ public class WarCostRankingByDay extends Command {
         return null;
     }
 
-    private void processTotal(boolean total, TimeNumericTable table) {
+    public static void processTotal(boolean total, TimeNumericTable table) {
         if (!total) return;
         DataTable data = table.getData();
         if (data.getRowCount() <= 1) return;

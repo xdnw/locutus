@@ -728,10 +728,10 @@ public class CommandManager {
         this.register(new Sudo());
         this.register(new Runall());
         this.register(new RunAllNations());
+        this.register(new WarCostByDay()); // Stats between two coalitions
 
         //
 
-        this.register(new WarCostByDay()); // Stats between two coalitions
         this.register(new WarCostRankingByDay()); // Stats of coalitions vs *
 
         this.register(new AlertTrades());
