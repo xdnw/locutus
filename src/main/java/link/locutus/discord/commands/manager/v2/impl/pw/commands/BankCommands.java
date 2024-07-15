@@ -685,7 +685,7 @@ public class BankCommands {
                 if (Roles.ECON.has(user, db.getGuild())) {
                     TaxRate taxBase = db.getOrNull(GuildKey.TAX_BASE);
                     if (taxBase == null || ((internal.money == -1 && internal.resources == -1))) {
-                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
+                        responses.add("`note: set an internal taxrate with " + CM.nation.set.taxinternal.cmd.toSlashMention() + " or globally with " + CM.settings.info.cmd.toSlashMention() + " and key: " + GuildKey.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
                         CM.deposits.check.cmd.nationOrAllianceOrGuild("tax_id=" + bracket.taxId).showCategories("true"));

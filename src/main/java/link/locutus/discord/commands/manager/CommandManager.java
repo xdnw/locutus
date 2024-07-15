@@ -729,14 +729,13 @@ public class CommandManager {
         this.register(new Runall());
         this.register(new RunAllNations());
         this.register(new WarCostByDay()); // Stats between two coalitions
-
-        //
-
         this.register(new WarCostRankingByDay()); // Stats of coalitions vs *
 
         this.register(new AlertTrades());
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
+        //
+
         this.register(new BankAlerts());
         this.register(new BankSubscriptions());
         this.register(new UnsubBank());

@@ -3089,7 +3089,7 @@ public class StatCommands {
         table.getData().add(values);
     }
 
-    @Command
+    @Command(desc = "Graph of cost by day of each coalitions wars vs everyone")
     public String warsCostRankingByDay(@Me GuildDB db, @Me User author, @Me DBNation nation,
             @Me IMessageIO io, @Me JSONObject command,
             WarCostByDayMode type,

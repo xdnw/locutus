@@ -27,10 +27,7 @@ import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -1684,6 +1681,48 @@ public class TradeCommands {
         }
         response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
         return response.toString();
+    }
 
+    @Command(desc = "Unsubscribe from trade alerts")
+    public String unsubTrade(@Me User author, @Me DBNation me, ResourceType resource) {
+        TradeDB db = Locutus.imp().getTradeManager().getTradeDb();
+        db.unsubscribe(author, resource);
+        return "Unsubscribed from " + resource + " alerts";
+    }
+
+    @Command(desc = "View your trade alert subscriptions")
+    public String tradeSubs(@Me User author, @Me DBNation me, @Me IMessageIO io) {
+        List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(author.getIdLong());
+        if (subscriptions.isEmpty()) {
+            return "No subscriptions. Subscribe to get alerts using `TODO CM REF`";
+        }
+
+        for (ResourceType type : ResourceType.values) {
+            String title = type.name();
+            StringBuilder body = new StringBuilder();
+
+            for (TradeSubscription subscription : subscriptions) {
+                if (subscription.getResource() == type) {
+                    String buySell = subscription.isBuy() ? "Buy" : "Sell";
+                    String operator = subscription.isAbove() ? ">" : "<";
+
+                    String msg = buySell + " " + subscription.getResource().name().toLowerCase() + " " + operator + " " + subscription.getPpu();
+
+                    body.append('\n').append(msg);
+                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.getDate())) + " (UTC)";
+                    body.append(" until ").append(dateStr);
+                }
+            }
+            if (body.length() == 0) continue;
+
+            String emoji = "Unsubscribe";
+            String unsubCommand = Settings.commandPrefix(true) + "unsub-trade " + type.name();
+
+            body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
+
+            io.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send();
+        }
+
+        return null;
     }
 }
