@@ -734,7 +734,6 @@ public class CommandManager {
         this.register(new AlertTrades());
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
-        //
 
         this.register(new BankAlerts());
         this.register(new BankSubscriptions());
