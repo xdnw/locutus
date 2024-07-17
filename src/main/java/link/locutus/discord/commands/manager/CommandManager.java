@@ -31,6 +31,7 @@ import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -768,6 +769,19 @@ public class CommandManager {
         return prefix1 + "";
     }
 
+    private String header(Command legacy) {
+        CommandRef ref = legacy.getSlashReference();
+        String mention = ref.toSlashCommand();
+        String quote = ref.toSlashCommand(false);
+        return """
+                Try out the new slash commands by using {ref}
+                You can still ping Locutus with the command, e.g. `@locutus {quote}`
+                Specifying arguments is optional, here's an example:
+                `/who Borg` versus `/who nationoralliance: Borg`
+                When arguments have spaces in them you must either use quotes, or specify the argument
+                """.replace("{ref}", mention).replace("{quote}", quote);
+    }
+
     @Deprecated
     public String run(Guild guild, IMessageIO io, String content, DBNation nation, User user) throws Exception {
         return DiscordUtil.withNation(nation, () -> {
@@ -798,7 +812,9 @@ public class CommandManager {
             assert member != null;
 
             try {
-                return cmd.onCommand(guild, io, user, nation, content, args);
+                String result = cmd.onCommand(guild, io, user, nation, content, args);
+                String header = header(cmd);
+                return header + (result == null ? "" : "\n\n" + result);
             } catch (Exception e) {
                 e.printStackTrace();
                 return e.getMessage();

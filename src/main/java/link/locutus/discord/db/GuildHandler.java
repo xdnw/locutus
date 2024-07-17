@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -320,12 +321,11 @@ public class GuildHandler {
 
         body.append("The first on the trigger, react with the " + emoji + " emoji");
 
-        String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
-                "\n" +
-                "Assigned to {usermention} in {timediff}'\n" +
-                CM.interview.create.cmd.user(author.getAsMention()).toCommandArgs();
+        List<CommandRef> cmds = List.of(
+                CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}"),
+                CM.interview.create.cmd.user(author.getAsMention()));
 
-        IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(pending, emoji);
+        IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(cmds, emoji);
         if (mentionInterviewer) {
             msg.append("^ " + interviewerRole.getAsMention());
         }
