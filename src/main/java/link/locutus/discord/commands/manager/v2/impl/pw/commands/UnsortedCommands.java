@@ -1517,11 +1517,11 @@ public class UnsortedCommands {
         if (message.isEmpty() || message.equalsIgnoreCase("null")) {
             db.deleteCopyPasta(key);
             db.deleteCopyPasta(setKey);
-            return "Deleted message for `" + Settings.commandPrefix(true) + "copypasta " + key + "`";
+            return "Deleted message for " + CM.copyPasta.cmd.key(key).toString();
         } else {
             db.setCopyPasta(setKey, message);
-            return "Added message for `" + Settings.commandPrefix(true) + "copypasta " + setKey + "`\n" +
-                    "Remove using `" + Settings.commandPrefix(true) + "copypasta " + setKey + " null`";
+            return "Added message for " + CM.copyPasta.cmd.key(setKey).toString() + "\n" +
+                    "Remove using " + CM.copyPasta.cmd.key(key).message("null").toString();
         }
 
 

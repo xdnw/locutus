@@ -1593,7 +1593,7 @@ public class TradeCommands {
         db.subscribe(author, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
 
         return "Subscribed to `ABSOLUTE: " + resource + " " + buyOrSell + " PPU " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`" +
-                "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`";
+                "\nCheck your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention();
     }
 
     @Command(desc = "Create an alert when an in-game trade for a resource is past the top price point of the opposite buy or sell offer")
@@ -1616,7 +1616,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.MISTRADE);
             response.append("Subscribed to `MISTRADE: " + resource + " disparity " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1640,7 +1640,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.DISPARITY);
             response.append("Subscribed to `DISPARITY: " + resource + " ppu " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1659,7 +1659,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, true, true, 0, TradeDB.TradeAlertType.NO_OFFER);
             response.append("Subscribed to `NO_OFFER: " + resource + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1679,7 +1679,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, isBuy, true, 0, TradeDB.TradeAlertType.UNDERCUT);
             response.append("Subscribed to `UNDERCUT: " + resource + " " + buyOrSell + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1721,7 +1721,7 @@ public class TradeCommands {
             if (body.length() == 0) continue;
 
             String emoji = "Unsubscribe";
-            String unsubCommand = Settings.commandPrefix(true) + "unsub-trade " + type.name();
+            CM.alerts.trade.unsubscribe unsubCommand = CM.alerts.trade.unsubscribe.cmd.resource(type.name());
 
             body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
