@@ -409,6 +409,50 @@ public class CommandManager2 {
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addButtonRaw", "raw");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "rename"), "renameButton", "button");
 
+        // Exception in thread "main" java.lang.IllegalStateException: Missing methods for IACommands:
+        // - interviewSheet
+        //
+        //See example in CommandManager2#registerDefaultsMissing methods for UnsortedCommands:
+        // - prolificOffshores
+        //
+        //See example in CommandManager2#registerDefaultsMissing methods for TradeCommands:
+        // - unsubTrade
+        // - tradeSubs
+        //
+        //See example in CommandManager2#registerDefaultsMissing methods for AdminCommands:
+        // - syncBounties
+        // - purgeWarRooms
+        // - syncForumProfiles
+        // - syncTreaties
+        // - syncAttacks
+        // - syncOffshore
+        // - runMultiple
+        // - sudoNations
+        // - nationMeta
+        // - tradeId
+        // - sudo
+        // - syncTrade
+        // - syncUid
+        // - syncMail
+        // - syncTaxes
+        // - guildInfo
+        // - leaveGuild
+        //
+        //See example in CommandManager2#registerDefaultsMissing methods for FACommands:
+        // - generateCoalitionSheet
+        //
+        //See example in CommandManager2#registerDefaultsMissing methods for PlayerSettingCommands:
+        // - bankAlertList
+        // - bankAlertUnsubscribe
+        // - bankAlert
+        //
+        //See example in CommandManager2#registerDefaultsMissing methods for StatCommands:
+        // - allianceByLoot
+        // - warCostsByDay
+        // - attackTypeRanking
+        // - warsCostRankingByDay
+        // - attackTypeBreakdownAB
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
