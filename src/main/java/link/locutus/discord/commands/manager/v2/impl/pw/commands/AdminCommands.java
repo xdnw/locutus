@@ -1395,11 +1395,11 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "Check if current api keys are valid")
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String validateAPIKeys() {
-        // Validate v3 keys used in the guild db?
-        return "TODO";
+//    @Command(desc = "Check if current api keys are valid")
+//    @RolePermission(value = Roles.ADMIN, root = true)
+//    public String validateAPIKeys() {
+//        // Validate v3 keys used in the guild db?
+//        return "TODO";
 //        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
 //        Map<String, String> failed = new LinkedHashMap<>();
 //        Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
@@ -1432,7 +1432,7 @@ public class AdminCommands {
 //        }
 //        System.out.println(response); // keep
 //        return "Done (see console)";
-    }
+//    }
 
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
     @RolePermission(value = Roles.ADMIN)

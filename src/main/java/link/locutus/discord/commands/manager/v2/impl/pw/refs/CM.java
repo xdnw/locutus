@@ -481,11 +481,6 @@ public class CM {
 
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="validateAPIKeys")
-            public static class validateAPIKeys extends CommandRef {
-                public static final validateAPIKeys cmd = new validateAPIKeys();
-
-            }
             public static class wiki{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dumpWiki")
                 public static class save extends CommandRef {
