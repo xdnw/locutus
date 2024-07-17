@@ -222,6 +222,9 @@ public class DiscordCommands {
                           @Switch("a") boolean pingAuthor
 
     ) throws ExecutionException, InterruptedException {
+        if (category.getGuild().getIdLong() != db.getGuild().getIdLong()) {
+            throw new IllegalArgumentException("Category is not in the same guild as the command.");
+        }
         channelName = placeholders.format2(store, channelName, nation, true);
 
         Member member = guild.getMember(author);
