@@ -5722,39 +5722,6 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="findOffshores")
-            public static class find extends CommandRef {
-                public static final find cmd = new find();
-            public find cutoff(String value) {
-                return set("cutoff", value);
-            }
-
-            public find enemiesList(String value) {
-                return set("enemiesList", value);
-            }
-
-            public find alliesList(String value) {
-                return set("alliesList", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="findOffshore")
-            public static class findForCoalition extends CommandRef {
-                public static final findForCoalition cmd = new findForCoalition();
-            public findForCoalition alliance(String value) {
-                return set("alliance", value);
-            }
-
-            public findForCoalition cutoffMs(String value) {
-                return set("cutoffMs", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="listOffshores")
-            public static class listAllInOrbis extends CommandRef {
-                public static final listAllInOrbis cmd = new listAllInOrbis();
-
-            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="markAsOffshore")
             public static class markAsOffshore extends CommandRef {
                 public static final markAsOffshore cmd = new markAsOffshore();

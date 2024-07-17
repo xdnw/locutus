@@ -410,48 +410,81 @@ public class CommandManager2 {
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "rename"), "renameButton", "button");
 
         // Exception in thread "main" java.lang.IllegalStateException: Missing methods for IACommands:
-        // - interviewSheet
+        // - /interviewSheet
+        this.commands.registerMethod(new IACommands(), List.of("interview"), "interviewSheet", "sheet");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for UnsortedCommands:
         // - prolificOffshores
+        this.commands.registerMethod(new UnsortedCommands(), List.of("offshore", "list"), "prolificOffshores", "prolific");
+        this.commands.registerMethod(new UtilityCommands(), List.of("offshore", "list"), "listOffshores", "all");
+        this.commands.registerMethod(new UtilityCommands(), List.of("offshore", "find"), "findOffshore", "for_coalition");
+        this.commands.registerMethod(new UtilityCommands(), List.of("offshore", "find"), "findOffshores", "for_enemies");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for TradeCommands:
         // - unsubTrade
         // - tradeSubs
+        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "unsubTrade", "unsubscribe");
+        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeSubs", "list");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for AdminCommands:
         // - syncBounties
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBounties", "bounties");
         // - purgeWarRooms
+        this.commands.registerMethod(new AdminCommands(), List.of("war", "room"), "purgeWarRooms", "purge");
         // - syncForumProfiles
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncForumProfiles", "forum_profiles");
         // - syncTreaties
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTreaties", "treaties");
         // - syncAttacks
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncAttacks", "attacks");
         // - syncOffshore
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncOffshore", "offshore");
         // - runMultiple
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "command"), "runMultiple", "multiple");
         // - sudoNations
-        // - nationMeta
-        // - tradeId
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sudo"), "sudoNations", "nations");
         // - sudo
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sudo"), "sudo", "user");
+        // - nationMeta
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "debug"), "nationMeta", "nation_meta");
+        // - tradeId
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "debug"), "tradeId", "trade_id");
         // - syncTrade
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTrade", "trade");
         // - syncUid
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncUid", "uid");
         // - syncMail
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncMail", "mail");
         // - syncTaxes
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTaxes", "taxes");
         // - guildInfo
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "debug"), "guildInfo", "guild");
         // - leaveGuild
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveGuild", "leave");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for FACommands:
         // - generateCoalitionSheet
+        this.commands.registerMethod(new FACommands(), List.of("coalition"), "generateCoalitionSheet", "sheet");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for PlayerSettingCommands:
         // - bankAlertList
         // - bankAlertUnsubscribe
         // - bankAlert
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertList", "list");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertUnsubscribe", "unsubscribe");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlert", "subscribe");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for StatCommands:
         // - allianceByLoot
         // - warCostsByDay
-        // - attackTypeRanking
         // - warsCostRankingByDay
+        // - attackTypeRanking
         // - attackTypeBreakdownAB
+        this.commands.registerMethod(new StatCommands(), List.of("alliance", "stats"), "allianceByLoot", "loot_ranking");
+        this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warCostsByDay", "warcost_versus");
+        this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warCostsByDay", "warcost_global");
+        this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "attackTypeRanking", "attack_ranking");
+        this.commands.registerMethod(new StatCommands(), List.of("stats_war", "attack_breakdown"), "attackTypeBreakdownAB", "versus");
 
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
