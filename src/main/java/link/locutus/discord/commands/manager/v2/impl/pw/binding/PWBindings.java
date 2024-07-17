@@ -1656,4 +1656,11 @@ public class PWBindings extends BindingHelper {
         return emum(AllianceMetricMode.class, mode);
     }
 
+    @Binding NationMeta meta(String input) {
+        return emum(NationMeta.class, input);
+    }
+
+    @Binding WarCostByDayMode WarCostByDayMode(String input) {
+        return emum(WarCostByDayMode.class, input);
+    }
 }

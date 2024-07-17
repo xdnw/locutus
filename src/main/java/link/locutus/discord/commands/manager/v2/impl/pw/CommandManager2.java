@@ -452,11 +452,11 @@ public class CommandManager2 {
         // - syncTrade
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTrade", "trade");
         // - syncUid
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncUid", "uid");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncUid", "uid");
         // - syncMail
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncMail", "mail");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncMail", "mail");
         // - syncTaxes
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTaxes", "taxes");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncTaxes", "taxes");
         // - guildInfo
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "debug"), "guildInfo", "guild");
         // - leaveGuild
@@ -482,7 +482,7 @@ public class CommandManager2 {
         // - attackTypeBreakdownAB
         this.commands.registerMethod(new StatCommands(), List.of("alliance", "stats"), "allianceByLoot", "loot_ranking");
         this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warCostsByDay", "warcost_versus");
-        this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warCostsByDay", "warcost_global");
+        this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warsCostRankingByDay", "warcost_global");
         this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "attackTypeRanking", "attack_ranking");
         this.commands.registerMethod(new StatCommands(), List.of("stats_war", "attack_breakdown"), "attackTypeBreakdownAB", "versus");
 

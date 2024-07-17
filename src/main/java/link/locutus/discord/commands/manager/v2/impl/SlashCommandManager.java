@@ -394,18 +394,17 @@ public class SlashCommandManager extends ListenerAdapter {
             if (discGroup != null) fullPath += discGroup.getName() + " ";
             if (root != current) fullPath += id;
             fullPath = fullPath.trim();
-
-            if (current == null) {
-                SubcommandData discSub = new SubcommandData(id, desc);
-                current = discSub;
-
-                if (discGroup != null) {
-                    discGroup.addSubcommands(discSub);
-                } else {
-                    root.addSubcommands(discSub);
-                }
-            }
             try {
+                if (current == null) {
+                    SubcommandData discSub = new SubcommandData(id, desc);
+                    current = discSub;
+
+                    if (discGroup != null) {
+                        discGroup.addSubcommands(discSub);
+                    } else {
+                        root.addSubcommands(discSub);
+                    }
+                }
                 if (current instanceof SlashCommandData) {
                     ((SlashCommandData) current).addOptions(options);
                 } else {
