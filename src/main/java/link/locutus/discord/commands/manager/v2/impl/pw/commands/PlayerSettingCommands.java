@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.DiscordDB;
@@ -210,7 +211,7 @@ public class PlayerSettingCommands {
             Locutus.imp().getBankDB().subscribe(author, id, recType, cutoff, isReceive, amount);
         }
         return "Subscribed to `" + command + "` in " + channel.getAsMention() +
-                "\nCheck your subscriptions with: `TODO CM REF`";
+                "\nCheck your subscriptions with: " + CM.alerts.bank.list.cmd.toSlashMention();
     }
 
     @Command(desc = "List your subscriptions to large bank transfers")
@@ -221,7 +222,7 @@ public class PlayerSettingCommands {
         GuildKey.LARGE_TRANSFERS_CHANNEL.get(db);
         Set<BankDB.Subscription> subscriptions = Locutus.imp().getBankDB().getSubscriptions(author.getIdLong());
         if (subscriptions.isEmpty()) {
-            return "No subscriptions. Subscribe to get alerts using `TODO CM REF`";
+            return "No subscriptions. Subscribe to get alerts using " + CM.alerts.bank.subscribe.cmd.toSlashMention();
         }
 
         for (BankDB.Subscription sub : subscriptions) {
@@ -255,9 +256,9 @@ public class PlayerSettingCommands {
             String body = "Expires " + dateStr;
 
             String emoji = "Unsubscribe";
-            String unsubCommand = "TODO CM REF (TODO url here)";
+            CM.alerts.bank.unsubscribe unsubCommand = CM.alerts.bank.unsubscribe.cmd.nation_or_alliances(url);
 
-            io.create().embed(title, body.toString())
+            io.create().embed(title, body)
                     .commandButton(unsubCommand, emoji).send();
         }
 
@@ -299,7 +300,7 @@ public class PlayerSettingCommands {
             }
         }
         if (numUnsubscribed == 0) {
-            return "No subscriptions found matching the provided nations/alliances. See TODO CM REF";
+            return "No subscriptions found matching the provided nations/alliances. See " + CM.alerts.bank.list.cmd.toSlashMention();
         }
         return "Unsubscribed from `" + numUnsubscribed + "`" + " alerts";
     }

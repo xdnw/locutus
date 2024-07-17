@@ -1694,7 +1694,12 @@ public class TradeCommands {
     public String tradeSubs(@Me User author, @Me DBNation me, @Me IMessageIO io) {
         List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(author.getIdLong());
         if (subscriptions.isEmpty()) {
-            return "No subscriptions. Subscribe to get alerts using `TODO CM REF`";
+            return "No subscriptions. Subscribe to get alerts using:\n" +
+                    "- " + CM.alerts.trade.margin.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.price.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.mistrade.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.no_offers.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.undercut.cmd.toSlashMention();
         }
 
         for (ResourceType type : ResourceType.values) {

@@ -2627,7 +2627,8 @@ public class GuildKey {
                         .toList();
 
                 if (filteredMessages.isEmpty()) {
-                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: TODO CM REF";
+                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: " +
+                            CM.settings.info.cmd.key(GuildKey.TIMED_MESSAGES.name());
                 }
                 StringBuilder messageSignatures = new StringBuilder("No message found with delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. Did you mean?:\n");
                 for (CustomConditionMessage msg : filteredMessages) {
@@ -2667,7 +2668,8 @@ public class GuildKey {
             else {
                 for (CustomConditionMessage msg : existing) {
                     if (msg.getTrigger() == trigger && Math.abs(msg.getDelay() - timeDelay) <= 1000) {
-                        return "A message with this time (`" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`) and trigger (`" + trigger.name() + "`) already exists. Delete it with TODO CM REF, or use a different time/trigger";
+                        return "A message with this time (`" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`) and trigger (`" + trigger.name() + "`) already exists. Delete it with " +
+                                CM.settings_recruit.remove_timed_message.cmd.toSlashMention() + " or use a different time/trigger";
                     }
                 }
             }

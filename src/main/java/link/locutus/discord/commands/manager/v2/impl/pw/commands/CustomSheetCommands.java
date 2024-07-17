@@ -422,8 +422,8 @@ public class CustomSheetCommands {
 
                     if (createdSelection.get() && saveSheet) {
                         errors.add("Created and saved `" + selectionStr + "` as `" + selection.getName() + "` for type: `" + PlaceholdersMap.getClassName(selection.getType()) + "`. You may use this alias in commands and sheets\n" +
-                                "To rename: TODO CM REF\n" +
-                                "To list aliases: TODO CM REF");
+                                "To rename: " + CM.selection_alias.rename.cmd.toSlashMention() + "\n" +
+                                "To list aliases: " + CM.selection_alias.list.cmd.toSlashMention());
                     }
                 } else if (custom != null){
                     Map.Entry<SelectionAlias, SheetTemplate> tab = custom.getTab(tabName);
