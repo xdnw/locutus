@@ -1830,9 +1830,9 @@ public class UtilityCommands {
                         CM.alliance.cost.cmd.nations(alliance.getQualifiedId());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 // offshore find
-//                CM.offshore.findForCoalition findOffshore =
-//                        CM.offshore.findForCoalition.cmd.alliance(alliance.getQualifiedId()).cutoffMs("200d");
-//                msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
+                CM.offshore.find.for_coalition findOffshore =
+                        CM.offshore.find.for_coalition.cmd.alliance(alliance.getQualifiedId()).cutoffMs("200d");
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
 
                 msg.send();
             }
