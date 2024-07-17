@@ -7076,10 +7076,10 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BANK_ALERT_CHANNEL", field="BANK_ALERT_CHANNEL")
-            public static class BANK_ALERT_CHANNEL extends CommandRef {
-                public static final BANK_ALERT_CHANNEL cmd = new BANK_ALERT_CHANNEL();
-            public BANK_ALERT_CHANNEL channel(String value) {
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="VM_ALERT_CHANNEL", field="VM_ALERT_CHANNEL")
+            public static class VM_ALERT_CHANNEL extends CommandRef {
+                public static final VM_ALERT_CHANNEL cmd = new VM_ALERT_CHANNEL();
+            public VM_ALERT_CHANNEL channel(String value) {
                 return set("channel", value);
             }
 

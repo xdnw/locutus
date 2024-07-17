@@ -255,7 +255,7 @@ public class PlayerSettingCommands {
             String body = "Expires " + dateStr;
 
             String emoji = "Unsubscribe";
-            String unsubCommand = "TODO CM REF";
+            String unsubCommand = "TODO CM REF (TODO url here)";
 
             io.create().embed(title, body.toString())
                     .commandButton(unsubCommand, emoji).send();
@@ -277,7 +277,7 @@ public class PlayerSettingCommands {
         if (command.getString("nation_or_alliances").equals("*")) {
             bankDb.unsubscribe(author, 0, BankDB.BankSubType.ALL);
             bankDb.unsubscribeAll(author.getIdLong());
-            return "Unsubscribed from all bank alerts";
+            return "Unsubscribed from ALL bank alerts";
         }
         // get subscriptions
         Set<Integer> aaIds = nation_or_alliances.stream().filter(f -> f.isAlliance()).map(f -> f.getId()).collect(Collectors.toSet());

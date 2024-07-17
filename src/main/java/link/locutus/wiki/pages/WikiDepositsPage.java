@@ -95,7 +95,6 @@ public class WikiDepositsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.settings_bank_info.WITHDRAW_ALERT_CHANNEL.cmd),
                 CM.role.setAlias.cmd.locutusRole(Roles.ECON_DEPOSIT_ALERTS.name()).discordRole("@Econ Deposit Alerts").toString(),
                 commandMarkdownSpoiler(CM.settings_bank_info.DEPOSIT_ALERT_CHANNEL.cmd),
-                commandMarkdownSpoiler(CM.settings_bank_info.BANK_ALERT_CHANNEL.cmd),
                 "# Transfer command arguments",
                 commandMarkdown(CM.transfer.resources.cmd)
         );

@@ -585,11 +585,10 @@ public class CommandManager {
         this.register(new WarPin());
         this.register(new WarRoom());
 
-        SpyCommand spy;
-        this.register(spy = new SpyCommand());
-        this.register(new Who(spy));
+        this.register(new SpyCommand());
+        this.register(new Who());
         this.register(new Treaties());
-        this.register(new MeCommand(db, spy));
+        this.register(new MeCommand());
         this.register(new BeigeTurns());
 
         this.register(new Multi());

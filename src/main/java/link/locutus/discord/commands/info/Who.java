@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Who extends Command {
 
-    public Who(SpyCommand spyCmd) {
+    public Who() {
         super("pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois", CommandCategory.GAME_INFO_AND_TOOLS);
     }
 

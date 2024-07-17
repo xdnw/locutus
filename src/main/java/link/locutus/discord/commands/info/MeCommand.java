@@ -20,9 +20,9 @@ import java.util.Set;
 public class MeCommand extends Command {
     private final Who who;
 
-    public MeCommand(DiscordDB db, SpyCommand cmd) {
+    public MeCommand() {
         super("me", CommandCategory.GAME_INFO_AND_TOOLS);
-        this.who = new Who(cmd);
+        this.who = new Who();
     }
 
     @Override
