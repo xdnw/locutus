@@ -8746,6 +8746,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MENTION_MILCOM_COUNTERS", field="MENTION_MILCOM_COUNTERS")
             public static class MENTION_MILCOM_COUNTERS extends CommandRef {
                 public static final MENTION_MILCOM_COUNTERS cmd = new MENTION_MILCOM_COUNTERS();
+            public MENTION_MILCOM_COUNTERS value(String value) {
+                return set("value", value);
             }
 
             }
