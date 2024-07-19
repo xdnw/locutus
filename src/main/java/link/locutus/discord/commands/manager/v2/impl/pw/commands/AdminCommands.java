@@ -2315,13 +2315,6 @@ public class AdminCommands {
                 "Members: " + StringMan.getString(guild.getMembers());
     }
 
-    @Command(desc = "Remove locutus from the current guild for debugging purposes")
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String leaveGuild(@Me Guild guild) {
-        RateLimitUtil.queue(guild.leave());
-        return "Leaving " + guild.getName() + ". See the wiki or click the bot user to get the application invite link";
-    }
-
     @Command(desc = "View meta information about a nation in the bot's database")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String nationMeta(DBNation nation, NationMeta meta) {

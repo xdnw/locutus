@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.SettingCommands;
@@ -37,6 +38,12 @@ public class KeyStore extends Command implements Noformat {
         return "Use `" + Settings.commandPrefix(true) + "KeyStore <key>` for info about a setting\n" +
                 "Use `" + Settings.commandPrefix(true) + "KeyStore <key> null` to remove a setting\n" +
                 "Add `-a` to list all settings.";
+    }
+
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.settings.info.cmd);
     }
 
     @Override

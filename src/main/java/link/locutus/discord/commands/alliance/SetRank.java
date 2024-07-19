@@ -4,10 +4,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliancePosition;
@@ -27,6 +29,10 @@ public class SetRank extends Command {
         super("rank", "setrank", "rankup", CommandCategory.GOV, CommandCategory.INTERNAL_AFFAIRS);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.set.rank.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "setrank <user> <rank>";

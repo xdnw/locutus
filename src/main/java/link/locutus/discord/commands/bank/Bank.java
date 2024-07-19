@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -26,6 +27,10 @@ public class Bank extends Command {
         super("stockpile", "bank", CommandCategory.ECON);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.stockpile.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "bank <alliance>";

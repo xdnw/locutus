@@ -3,7 +3,9 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -17,6 +19,10 @@ public class CounterStats extends Command {
         super(CommandCategory.MILCOM);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.counterStats.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " <alliance-id>";

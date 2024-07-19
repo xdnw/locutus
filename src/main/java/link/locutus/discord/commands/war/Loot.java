@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -39,6 +40,12 @@ public class Loot extends Command {
     public Loot() {
         super("loot", CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MEMBER);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.loot.cmd);
+    }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "loot <nation|alliance>";

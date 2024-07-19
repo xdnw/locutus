@@ -5,7 +5,9 @@ import com.google.gson.JsonSyntaxException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -26,6 +28,10 @@ public class AddBuild extends Command {
         super("addbuild", "setbuild", CommandCategory.ECON, CommandCategory.GOV);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.build.add.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "addbuild [category] [city-min] [city-max] [build json...]";

@@ -5,7 +5,9 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -30,6 +32,13 @@ public class WarLossesPerCity extends Command {
     public String help() {
         return Settings.commandPrefix(true) + "WarLossesPerCity <alliance|coalition|*> <days>";
     }
+
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.warCostRanking.cmd.scalePerCity("true").groupByAlliance("true"));
+    }
+
 
     @Override
     public boolean checkPermission(Guild server, User user) {

@@ -201,7 +201,7 @@ public class NewsletterCommands {
 
             newsletter.setLastSent(now);
 
-            JSONObject confirm = CM.mail.send.cmd.nations(StringMan.join(nations, ",")).subject(title).message(body).confirm("true").toJson();
+            JSONObject confirm = CM.mail.send.cmd.nations(StringMan.join(nations, ",")).subject(title).message(body).force("true").toJson();
             return IACommands.mail(me, confirm, db, io,  author, nations, title, body, true, true, null);
         }
 

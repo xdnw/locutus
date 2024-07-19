@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -32,6 +33,11 @@ public class RegisterCommand extends Command {
     public RegisterCommand(DiscordDB db) {
         super("validate", "register", "verify", CommandCategory.USER_SETTINGS);
         this.discordDb = db;
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.register.cmd);
     }
 
     @Override

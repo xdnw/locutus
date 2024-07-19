@@ -5,8 +5,10 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -31,6 +33,10 @@ public class SendTreaty extends Command {
         return Roles.FOREIGN_AFFAIRS.has(user, server);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.treaty.send.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " <alliance> <type> <days> <message>";

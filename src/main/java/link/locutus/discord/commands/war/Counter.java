@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -42,6 +43,12 @@ public class Counter extends Command {
     public Counter() {
         super("counter", CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MEMBER);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.war.counter.nation.cmd, CM.war.counter.url.cmd);
+    }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "counter <war> [alliance|coalition|role]";

@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -31,6 +32,11 @@ import java.util.concurrent.ExecutionException;
 public class MailCommand extends Command implements Noformat {
     public MailCommand() {
         super("mail", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.INTERNAL_AFFAIRS);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.mail.send.cmd);
     }
 
     @Override
@@ -124,7 +130,7 @@ public class MailCommand extends Command implements Noformat {
                 String body = "subject: " + subject + "\n" +
                         "body: ```" + message + "```";
 
-                JSONObject json = CM.mail.send.cmd.confirm("true").message(message).subject(subject).nations(arg0).toJson();
+                JSONObject json = CM.mail.send.cmd.force("true").message(message).subject(subject).nations(arg0).toJson();
                 channel.create().embed(embedTitle, body)
                                 .confirmation(json).send();
                 return null;

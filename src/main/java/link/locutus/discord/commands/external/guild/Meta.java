@@ -2,7 +2,9 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
@@ -23,6 +25,10 @@ public class Meta extends Command {
         super("NationMeta", "Meta", CommandCategory.USER_INFO, CommandCategory.INTERNAL_AFFAIRS, CommandCategory.LOCUTUS_ADMIN);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.admin.debug.nation_meta.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " <nation> <key>";

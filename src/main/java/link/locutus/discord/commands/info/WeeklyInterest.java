@@ -2,7 +2,9 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -23,6 +25,10 @@ public class WeeklyInterest extends Command {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.ECON);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.bank.stats.weeklyInterest.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " <amount> <pct-weekly> <num-weeks>";

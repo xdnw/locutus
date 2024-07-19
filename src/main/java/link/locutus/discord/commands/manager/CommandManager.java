@@ -770,16 +770,18 @@ public class CommandManager {
     }
 
     private String header(Command legacy) {
-        CommandRef ref = legacy.getSlashReference();
-        String mention = ref.toSlashCommand();
-        String quote = ref.toSlashCommand(false);
-        return """
-                Try out the new slash commands by using {ref}
-                You can still ping Locutus with the command, e.g. `@locutus {quote}`
-                Specifying arguments is optional, here's an example:
-                `/who Borg` versus `/who nationoralliance: Borg`
-                When arguments have spaces in them you must either use quotes, or specify the argument
-                """.replace("{ref}", mention).replace("{quote}", quote);
+        List<CommandRef> ref = legacy.getSlashReference();
+        if (ref == null || ref.isEmpty()) return "";
+        return "";
+        // join by space, use toSlash
+//        String quote = ref.toSlashCommand(false);
+//        return """
+//                Try out the new slash commands by using {ref}
+//                You can still ping Locutus with the command, e.g. `@locutus {quote}`
+//                Specifying arguments is optional, here's an example:
+//                `/who Borg` versus `/who nationoralliance: Borg`
+//                When arguments have spaces in them you must either use quotes, or specify the argument
+//                """.replace("{ref}", mention).replace("{quote}", quote);
     }
 
     @Deprecated

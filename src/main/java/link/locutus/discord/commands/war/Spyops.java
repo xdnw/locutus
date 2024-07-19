@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -52,6 +53,13 @@ public class Spyops extends Command {
     public Spyops() {
         super("spyops", "spyop", CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MEMBER);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.spy.find.target.cmd);
+    }
+
+
     @Override
     public String help() {
         return super.help() + " <alliance|coaltion|*> <" + StringMan.join(SpyCount.Operation.values(), "|") + ">";

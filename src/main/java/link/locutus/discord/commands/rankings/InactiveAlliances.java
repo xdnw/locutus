@@ -3,7 +3,9 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -77,5 +79,10 @@ public class InactiveAlliances extends Command {
                 .name(e -> PW.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey())).build(author, channel, fullCommandRaw, "Active in " + group + " (" + days + " days)");
 
         return null;
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.who.cmd.list("*,#position>1,#alliance.score>0,#alliance.score(#active_m<10080)=0").listAlliances("true"));
     }
 }

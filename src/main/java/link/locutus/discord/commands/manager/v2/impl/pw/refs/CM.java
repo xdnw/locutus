@@ -102,11 +102,6 @@ public class CM {
                 public static final importGuildKeys cmd = new importGuildKeys();
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="leaveGuild")
-            public static class leave extends CommandRef {
-                public static final leave cmd = new leave();
-
-            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="leaveServer")
             public static class leaveServer extends CommandRef {
                 public static final leaveServer cmd = new leaveServer();

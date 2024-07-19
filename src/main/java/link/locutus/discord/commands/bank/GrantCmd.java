@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -56,6 +57,19 @@ import java.util.concurrent.TimeUnit;
 public class GrantCmd extends Command {
     private final TransferCommand withdrawCommand;
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(
+                CM.grant.project.cmd,
+                CM.grant.city.cmd,
+                CM.grant.land.cmd,
+                CM.grant.infra.cmd,
+                CM.grant.build.cmd,
+                CM.grant.unit.cmd,
+                CM.grant.consumption.cmd,
+                CM.grant.warchest.cmd
+        );
+    }
     public GrantCmd(TransferCommand withdrawCommand) {
         super("grant", "loan", CommandCategory.ECON);
         this.withdrawCommand = withdrawCommand;

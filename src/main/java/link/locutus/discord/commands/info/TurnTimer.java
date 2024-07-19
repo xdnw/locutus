@@ -2,7 +2,9 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -17,6 +19,10 @@ public class TurnTimer extends Command {
         super("TurnTimer", "Timer", "CityTimer", "ProjectTimer", CommandCategory.ECON);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.TurnTimer.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;

@@ -97,7 +97,7 @@ public class MailListener {
             builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
         }
 
-        builder.commandButton(CommandBehavior.UNPRESS, CM.mail.read.cmd.messageId(event.getMail().id + "").account(authId + ""), "Read");
+        builder.commandButton(CommandBehavior.UNPRESS, CM.mail.read.cmd.message_id(event.getMail().id + "").account(authId + ""), "Read");
         builder.send();
 
         processCommands(Locutus.imp().getGuildDB(guild), guild, outputBuilder, event);

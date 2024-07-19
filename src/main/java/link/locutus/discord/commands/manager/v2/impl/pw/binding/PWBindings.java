@@ -666,18 +666,23 @@ public class PWBindings extends BindingHelper {
     }
 
     public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input) {
-        return nationOrAllianceOrGuildOrTaxId(null, input);
+        return nationOrAllianceOrGuildOrTaxId(input, null, null);
     }
 
     @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972", "tax_id=1234"}, value = "A nation or alliance name, url or id, or a guild id, or a tax id or url")
-    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(ParameterData data, String input) {
-        return nationOrAllianceOrGuildOrTaxId(input, true, data);
+    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, @Default ParameterData data, @Default @Me GuildDB db) {
+        return nationOrAllianceOrGuildOrTaxId(input, true, data, db);
     }
 
     public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, boolean includeTaxId) {
-        return nationOrAllianceOrGuildOrTaxId(input, includeTaxId, null);
+        return nationOrAllianceOrGuildOrTaxId(input, includeTaxId, null, null);
     }
-    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, boolean includeTaxId, @Default ParameterData data) {
+    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, boolean includeTaxId, @Default ParameterData data, @Default @Me GuildDB selfDb) {
+        if (data != null && input.equals("*")) {
+            if (data.getAnnotation(StarIsGuild.class) != null && selfDb != null) {
+                return selfDb;
+            }
+        }
         try {
             return nationOrAlliance(input, data);
         } catch (IllegalArgumentException ignore) {
@@ -718,12 +723,12 @@ public class PWBindings extends BindingHelper {
     }
 
     public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input) {
-        return nationOrAllianceOrGuild(input, null);
+        return nationOrAllianceOrGuild(input, null, null);
     }
 
     @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972"}, value = "A nation or alliance name, url or id, or a guild id")
-    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input, @Default ParameterData data) {
-        return (NationOrAllianceOrGuild) nationOrAllianceOrGuildOrTaxId(input, false, data);
+    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input, @Default ParameterData data, @Default @Me GuildDB db) {
+        return (NationOrAllianceOrGuild) nationOrAllianceOrGuildOrTaxId(input, false, data, db);
     }
 
     public static DBAlliance alliance(String input) {

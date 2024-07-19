@@ -3,10 +3,12 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -44,6 +46,11 @@ public class ChannelCommand extends Command {
                 Add `-e` to add econ
                 Add `-a` to ping the author
                 Add `-p` to ping the users added""";
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.channel.create.cmd);
     }
 
     @Override

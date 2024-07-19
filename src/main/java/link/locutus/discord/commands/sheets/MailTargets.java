@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -38,6 +39,11 @@ import java.util.concurrent.ExecutionException;
 public class MailTargets extends Command {
     public MailTargets() {
         super(CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.GOV);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.mail.targets.cmd);
     }
 
     @Override

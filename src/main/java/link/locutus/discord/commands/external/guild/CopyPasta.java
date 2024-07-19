@@ -4,9 +4,11 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -35,6 +37,10 @@ public class CopyPasta extends Command implements Noformat {
         return super.help() + " <key> <message>";
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.copyPasta.cmd);
+    }
     @Override
     public String desc() {
         return "Use `" + Settings.commandPrefix(true) + "copypasta <key>` to post a premade response\n" +

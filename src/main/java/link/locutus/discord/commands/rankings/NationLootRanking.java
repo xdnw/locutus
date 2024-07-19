@@ -2,9 +2,12 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
@@ -26,6 +29,11 @@ import static link.locutus.discord.util.MathMan.format;
 public class NationLootRanking extends Command {
     public NationLootRanking() {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.warCostRanking.cmd.coalition1("*").type(WarCostMode.PROFIT.name()).timeStart("7d"));
     }
 
     @Override

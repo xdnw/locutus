@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -32,6 +33,10 @@ public class Revenue extends Command {
         super("revenue", "alliancerev", "income", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.ECON);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.revenue.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "revenue [json|city-link|nation-link]";

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -28,6 +29,11 @@ import java.util.concurrent.TimeUnit;
 public class SpyCommand extends Command {
     public SpyCommand() {
         super("spy", "spies", CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MEMBER);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.spies.cmd);
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
@@ -43,6 +44,11 @@ public abstract class Command {
             @Override
             public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return command.onCommand(guild, channel, author, me, fullCommandRaw, args, flags);
+            }
+
+            @Override
+            public List<CommandRef> getSlashReference() {
+                return null;
             }
         };
     }
@@ -205,4 +211,6 @@ public abstract class Command {
     public String toString() {
         return aliases.get(0);
     }
+
+    public abstract List<CommandRef> getSlashReference();
 }

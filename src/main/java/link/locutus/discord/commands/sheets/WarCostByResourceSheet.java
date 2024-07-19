@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
@@ -22,6 +23,11 @@ import java.util.Set;
 public class WarCostByResourceSheet extends Command {
     public WarCostByResourceSheet() {
         super(CommandCategory.GOV, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM, CommandCategory.ECON);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.sheets_milcom.WarCostByResourceSheet.cmd);
     }
 
     @Override

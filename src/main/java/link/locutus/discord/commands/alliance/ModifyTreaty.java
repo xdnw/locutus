@@ -3,9 +3,11 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -24,6 +26,11 @@ public class ModifyTreaty extends Command {
     public ModifyTreaty(String name, boolean value) {
         super(name, CommandCategory.GOV, CommandCategory.FOREIGN_AFFAIRS);
         this.value = value;
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(value ? CM.treaty.approve.cmd : CM.treaty.cancel.cmd);
     }
 
     @Override

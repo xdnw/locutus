@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info.optimal;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -39,6 +40,10 @@ public class OptimalBuild extends Command {
         super("OptimalBuild", "GenerateBuild", CommandCategory.ECON, CommandCategory.MEMBER);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.city.optimalBuild.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "OptimalBuild [days] <json|city-url>";

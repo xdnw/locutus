@@ -3,7 +3,9 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -26,6 +28,10 @@ public class ClearRoles extends Command {
         super(CommandCategory.GUILD_MANAGEMENT);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.role.clearAllianceRoles.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.ADMIN.has(user, server);

@@ -237,6 +237,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+
         getCommands().registerMethod(new WarCommands(), List.of("alerts", "beige"), "testBeigeAlertAuto", "test_auto");
         getCommands().registerMethod(new UtilityCommands(), List.of("nation"), "vmHistory", "vm_history");
         getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");
@@ -459,8 +461,6 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncTaxes", "taxes");
         // - guildInfo
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "debug"), "guildInfo", "guild");
-        // - leaveGuild
-        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveGuild", "leave");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for FACommands:
         // - generateCoalitionSheet

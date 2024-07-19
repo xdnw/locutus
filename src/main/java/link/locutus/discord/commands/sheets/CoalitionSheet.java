@@ -3,7 +3,9 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
@@ -24,6 +26,11 @@ import java.util.Set;
 public class CoalitionSheet extends Command {
     public CoalitionSheet() {
         super("CoalitionSheet", "CoalitionsSheet", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.GOV, CommandCategory.FOREIGN_AFFAIRS);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.coalition.sheet.cmd);
     }
 
     @Override

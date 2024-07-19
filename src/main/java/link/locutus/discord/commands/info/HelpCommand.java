@@ -3,7 +3,9 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.CommandManager;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
@@ -23,6 +25,14 @@ public class HelpCommand extends Command {
         this.manager = manager;
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(
+                CM.help.command.cmd,
+                CM.help.find_command.cmd,
+                CM.help.find_setting.cmd
+                );
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "help [command]";

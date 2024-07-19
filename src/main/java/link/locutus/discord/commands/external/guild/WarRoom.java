@@ -2,6 +2,7 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -39,6 +40,10 @@ public class WarRoom extends Command {
         super(CommandCategory.MILCOM, CommandCategory.MEMBER);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.war.room.create.cmd);
+    }
     @Override
     public String help() {
         return "" + super.help() + " [target] [att1] [att2] [att3] ...\n" +
