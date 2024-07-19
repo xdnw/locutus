@@ -347,7 +347,7 @@ public class CommandManager {
 
                 String result;
                 try {
-                    String header = header(cmd, msgUser);
+                    String header = header(cmd, msgUser, guild);
                     if (header != null && !header.isEmpty()) {
                         channel.send(header);
                     }
@@ -776,8 +776,10 @@ public class CommandManager {
 
     private Map<Long, Set<Class>> sendLegacyHeader = new ConcurrentHashMap<>();
 
-    private String header(Command legacy, User user, GuildDB db) {
-        if (user == null || db == null) return null;
+    private String header(Command legacy, User user, Guild guild) {
+        if (user == null || guild == null) return null;
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        if (db == null || GuildKey.HIDE_LEGACY_NOTICE.getOrNull(db) == Boolean.TRUE) return null;
         Set<Class> sent = sendLegacyHeader.computeIfAbsent(user.getIdLong(), k -> ConcurrentHashMap.newKeySet());
         if (sent.contains(legacy.getClass())) return null;
         sent.add(legacy.getClass());
@@ -798,7 +800,7 @@ public class CommandManager {
         response.append("Specifying arguments is optional, here's an example:\n");
         response.append("`/who Borg` versus `/who nationoralliances: Borg`\n");
         response.append("- When arguments have spaces in them you must either use quotes, or specify the argument\n");
-        if (Roles.ADMIN.has(user, db.getGuild())) {
+        if (Roles.ADMIN.has(user, guild)) {
             response.append("_To hide this message: " + CM.settings.info.cmd.key(GuildKey.HIDE_LEGACY_NOTICE.name()).value("true") + "_");
         }
         return response.toString();
