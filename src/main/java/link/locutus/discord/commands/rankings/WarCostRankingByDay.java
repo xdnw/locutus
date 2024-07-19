@@ -8,8 +8,10 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
@@ -27,6 +29,11 @@ import java.util.function.Function;
 public class WarCostRankingByDay extends Command {
     public WarCostRankingByDay() {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.by_day.warcost_global.cmd);
     }
 
     @Override
@@ -65,7 +72,7 @@ public class WarCostRankingByDay extends Command {
                 """;
     }
 
-    private void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
+    public static void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
         Comparable[] values = new Comparable[parserMap.size() + 1];
         values[0] = dayRelative;
 
@@ -257,7 +264,7 @@ public class WarCostRankingByDay extends Command {
         return null;
     }
 
-    private void processTotal(boolean total, TimeNumericTable table) {
+    public static void processTotal(boolean total, TimeNumericTable table) {
         if (!total) return;
         DataTable data = table.getData();
         if (data.getRowCount() <= 1) return;

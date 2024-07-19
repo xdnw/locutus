@@ -3,6 +3,7 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
@@ -24,6 +25,10 @@ public class Deposits extends Command {
         super("deposits", "depo", "holdings", CommandCategory.ECON);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.deposits.check.cmd);
+    }
     @Override
     public String help() {
         return "`" + Settings.commandPrefix(true) + "deposits <nation|alliance|*>` or `" + Settings.commandPrefix(true) + "deposits <nation|alliance|*> [offshores]` e.g. `" + Settings.commandPrefix(true) + "deposits @user`";

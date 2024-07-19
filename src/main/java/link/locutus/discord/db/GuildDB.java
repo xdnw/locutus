@@ -1039,16 +1039,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         };
         {
-            String create = "CREATE TABLE IF NOT EXISTS `PERMISSIONS` (`permission` VARCHAR NOT NULL PRIMARY KEY, `value` INT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
             String create = "CREATE TABLE IF NOT EXISTS `INFO` (`key` VARCHAR NOT NULL PRIMARY KEY, `value` VARCHAR NOT NULL, `date_updated` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
@@ -2028,7 +2018,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             if (warChannel == null) {
                 if (!warChannelInit || throwException) {
                     warChannelInit = true;
-                    boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
+                    boolean allowed = Boolean.TRUE.equals(enabled);
                     if (allowed) {
                         try {
                             warChannel = new WarCategory(guild, "warcat");
@@ -2621,74 +2611,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 e.printStackTrace();
             }
             this.info = tmp;
-        }
-    }
-
-    private Map<Class, Integer> permissions;
-
-    public int getPermission(Class perm) {
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            return delegate.getPermission(perm);
-        }
-        if (isWhitelisted()) {
-            return 1;
-        }
-        if (permissions == null) initPerms();
-        return permissions.getOrDefault(perm, 0);
-    }
-
-    public Map<Class, Integer> getPermissions() {
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            return delegate.getPermissions();
-        }
-        if (permissions == null) initPerms();
-        return this.permissions;
-    }
-
-    private synchronized void initPerms() {
-        if (permissions == null) {
-            ConcurrentHashMap<Class, Integer> tmp = new ConcurrentHashMap<>();
-            Map<String, Class> cmdMap = new HashMap<>();
-            for (Command cmd : Locutus.imp().getCommandManager().getCommandMap().values()) {
-                cmdMap.put(cmd.getClass().getSimpleName().toLowerCase(), cmd.getClass());
-            }
-
-            try (PreparedStatement stmt = prepareQuery("select * FROM PERMISSIONS")) {
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        String clazzName = rs.getString("permission");
-                        Class<?> clazz = cmdMap.get(clazzName.toLowerCase());
-                        if (clazz == null) {
-                            System.out.println("!!Invalid perm: " + clazzName);
-                            continue;
-                        }
-                        int value = rs.getInt("value");
-                        tmp.put(clazz, value);
-                    }
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            this.permissions = tmp;
-        }
-    }
-
-    public void setPermission(Class perm, int value) {
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            delegate.setPermission(perm, value);
-            return;
-        }
-        checkNotNull(perm);
-        initPerms();
-        synchronized (this) {
-            update("INSERT OR REPLACE INTO `PERMISSIONS`(`permission`, `value`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-                stmt.setString(1, perm.getSimpleName());
-                stmt.setInt(2, value);
-            });
-            permissions.put(perm, value);
         }
     }
 

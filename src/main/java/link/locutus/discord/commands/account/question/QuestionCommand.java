@@ -2,8 +2,10 @@ package link.locutus.discord.commands.account.question;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
@@ -27,6 +29,11 @@ public class QuestionCommand<T extends Question> extends Command {
         super(CommandCategory.INTERNAL_AFFAIRS, CommandCategory.USER_COMMANDS);
         this.questions = questions;
         this.meta = meta;
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.interview.questions.view.cmd);
     }
 
     @Override

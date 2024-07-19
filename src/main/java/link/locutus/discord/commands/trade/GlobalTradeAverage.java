@@ -3,7 +3,9 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -27,6 +29,12 @@ public class GlobalTradeAverage extends Command {
     public GlobalTradeAverage() {
         super("GlobalTradeAverage", "gta", "tradeaverage", CommandCategory.ECON, CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.trade.average.cmd);
+    }
+
     @Override
     public String help() {
         return super.help() + " <time>";

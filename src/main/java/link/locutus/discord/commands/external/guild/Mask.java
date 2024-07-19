@@ -2,7 +2,9 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -21,6 +23,10 @@ public class Mask extends Command {
         super(CommandCategory.ADMIN);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.role.mask.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.ADMIN.has(user, server);

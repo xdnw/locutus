@@ -5,7 +5,9 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -27,6 +29,10 @@ public class AllianceAttackTypeRanking extends Command {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.attack_ranking.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " <days> <type> <alliances> <topX>";

@@ -199,7 +199,6 @@ public class OffshoreInstance {
                     minDate = Math.min(minDate, tx.tx_datetime);
                 }
 
-                // add transactions
                 System.out.println("Add " + bankRecs.size());
                 Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
 

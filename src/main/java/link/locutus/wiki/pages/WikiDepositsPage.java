@@ -51,10 +51,10 @@ public class WikiDepositsPage extends BotWikiGen {
                 "Multiple notes can be used at a time",
                 "Notes with values go in the form `#expire=60d`",
                 "## Primary Notes",
-                "- " + Arrays.stream(DepositType.values()).filter(f -> f.getParent() == null).map(f -> "`#" + f.toString().toLowerCase(Locale.ROOT) + "`: " + f.getDescription()).collect(Collectors.joining("\n- ")),
+                "- " + Arrays.stream(DepositType.values()).filter(f -> f.getParent() == null).map(f -> "`#" + f.toString().toLowerCase(Locale.ROOT) + "`: " + f.getWikiDesc()).collect(Collectors.joining("\n- ")),
                 "## Modifier Notes",
                 "These notes are used in addition to a primary note, and usually have a value",
-                "- " + Arrays.stream(DepositType.values()).filter(f -> f.getParent() != null).map(f -> "`#" + f.getParent().toString().toLowerCase(Locale.ROOT) +" #" + f.toString().toLowerCase(Locale.ROOT) + "`: " + f.getDescription()).collect(Collectors.joining("\n- ")),
+                "- " + Arrays.stream(DepositType.values()).filter(f -> f.getParent() != null).map(f -> "`#" + f.getParent().toString().toLowerCase(Locale.ROOT) +" #" + f.toString().toLowerCase(Locale.ROOT) + "`: " + f.getWikiDesc()).collect(Collectors.joining("\n- ")),
                 // ensure expire is listed and explained
                 "## Tracking alliances",
                 "__This applies for guilds with a registed alliance__",
@@ -95,7 +95,6 @@ public class WikiDepositsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.settings_bank_info.WITHDRAW_ALERT_CHANNEL.cmd),
                 CM.role.setAlias.cmd.locutusRole(Roles.ECON_DEPOSIT_ALERTS.name()).discordRole("@Econ Deposit Alerts").toString(),
                 commandMarkdownSpoiler(CM.settings_bank_info.DEPOSIT_ALERT_CHANNEL.cmd),
-                commandMarkdownSpoiler(CM.settings_bank_info.BANK_ALERT_CHANNEL.cmd),
                 "# Transfer command arguments",
                 commandMarkdown(CM.transfer.resources.cmd)
         );

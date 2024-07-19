@@ -3,9 +3,12 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -30,6 +33,11 @@ import java.util.function.Predicate;
 public class NetProfitPerWar extends Command {
     public NetProfitPerWar() {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.warCostRanking.cmd.coalition1("*").type(WarCostMode.PROFIT.name()).timeStart("7d").scalePerWar("true"));
     }
 
     @Override

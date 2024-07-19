@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
@@ -28,6 +29,10 @@ public class AddBalance extends Command {
         super(CommandCategory.ECON, CommandCategory.GOV, "addbalance", "addb");
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.deposits.add.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.ECON.has(user, server);

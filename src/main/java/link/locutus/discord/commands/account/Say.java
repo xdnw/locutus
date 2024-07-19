@@ -3,8 +3,10 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
@@ -22,6 +24,10 @@ public class Say extends Command {
         super(CommandCategory.GENERAL_INFO_AND_TOOLS);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.fun.say.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;

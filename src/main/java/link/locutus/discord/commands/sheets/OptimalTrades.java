@@ -3,9 +3,11 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -21,6 +23,11 @@ import java.util.Set;
 public class OptimalTrades extends Command {
     public OptimalTrades() {
         super("optimaltrades", CommandCategory.ECON, CommandCategory.GENERAL_INFO_AND_TOOLS);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of();
     }
 
     @Override

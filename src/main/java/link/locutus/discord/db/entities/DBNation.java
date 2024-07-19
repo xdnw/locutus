@@ -2485,6 +2485,7 @@ public class DBNation implements NationOrAlliance {
         return false;
     }
 
+    @Deprecated // Not working any more since you cant do it with an api key, only login
     public String commend(boolean isCommend) throws IOException {
         ApiKeyPool.ApiKey key = getApiKey(true);
         String url = "https://politicsandwar.com/api/denouncements.php";

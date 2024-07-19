@@ -62,7 +62,7 @@ public class WarUpdateProcessor {
     @Subscribe
     public void onBountyCreate(BountyCreateEvent event) {
         DBBounty bounty = event.bounty;
-        AlertUtil.forEachChannel(SyncBounties.class, GuildKey.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> true, GuildKey.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 Guild guild = guildDB.getGuild();

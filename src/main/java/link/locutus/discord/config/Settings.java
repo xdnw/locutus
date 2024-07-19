@@ -61,8 +61,7 @@ public class Settings extends Config {
     @Comment("Your api key (generated if username/password is set)")
     public String API_KEY_PRIMARY = "";
 
-    @Comment({"A list of api keys the bot can use for general requests (optional)",
-            "To validate these keys, see: `/admin validateApiKeys`"})
+    @Comment({"A list of api keys the bot can use for general requests (optional)"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
     @Comment({"The discord id of the bot (generated)",
@@ -120,6 +119,9 @@ public class Settings extends Config {
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled (WIP)")
         public boolean SLASH_COMMANDS = true;
+        @Comment({"If bot admin only slash commands are registered with discord",
+        "If false, you can still use them by mentioning the bot"})
+        public boolean REGISTER_ADMIN_SLASH_COMMANDS = true;
         @Comment({"If the web interface is enabled",
                 "- If enabled, also configure the web section below"
         })

@@ -316,7 +316,7 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
-                this.slashCommands = new SlashCommandManager(this);
+                this.slashCommands = new SlashCommandManager(this, Settings.INSTANCE.ENABLED_COMPONENTS.REGISTER_ADMIN_SLASH_COMMANDS);
                 builder.addEventListeners(slashCommands);
             }
             if (Settings.INSTANCE.ENABLED_COMPONENTS.MESSAGE_COMMANDS) {

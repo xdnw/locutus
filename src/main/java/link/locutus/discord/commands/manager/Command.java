@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
@@ -21,7 +22,6 @@ import java.util.*;
 
 public abstract class Command {
     private static final Gson gson = new Gson();
-    private static final JsonParser parser = new JsonParser();
     public final Set<Long> WHITELIST_USERS = new HashSet<>();
     private final List<String> aliases;
     private final Set<CommandCategory> categories;
@@ -43,6 +43,11 @@ public abstract class Command {
             @Override
             public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return command.onCommand(guild, channel, author, me, fullCommandRaw, args, flags);
+            }
+
+            @Override
+            public List<CommandRef> getSlashReference() {
+                return null;
             }
         };
     }
@@ -125,12 +130,10 @@ public abstract class Command {
 
     public boolean checkGuildPermission(Guild server) {
         if (server == null) {
-            return true;
+            return false;
         }
         GuildDB guild = Locutus.imp().getGuildDB(server);
-        if (guild.isWhitelisted()) return true;
-        int perm = guild.getPermission(getClass());
-        return perm > 0;
+        return guild.isWhitelisted();
     }
 
     public boolean checkPermission(Guild server, User user) {
@@ -207,4 +210,6 @@ public abstract class Command {
     public String toString() {
         return aliases.get(0);
     }
+
+    public abstract List<CommandRef> getSlashReference();
 }

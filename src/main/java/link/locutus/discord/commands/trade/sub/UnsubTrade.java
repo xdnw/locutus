@@ -3,7 +3,9 @@ package link.locutus.discord.commands.trade.sub;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -20,6 +22,11 @@ public class UnsubTrade extends Command {
     public UnsubTrade() {
         super("UnsubTrade", "Unsub-Trade", "UnsubscribeTrade", "Unsubscribe-Trade",
                 CommandCategory.ECON, CommandCategory.MEMBER, CommandCategory.GAME_INFO_AND_TOOLS);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.alerts.trade.unsubscribe.cmd);
     }
 
     @Override

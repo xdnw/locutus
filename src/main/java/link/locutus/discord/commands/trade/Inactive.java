@@ -3,8 +3,10 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -23,6 +25,12 @@ public class Inactive extends Command {
     public Inactive() {
         super(CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.who.cmd.list("YOU_ALLIANCE,#position>1,#vm_turns=0,#active_m>7200").list("true"));
+    }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "inactive <alliance|coalition|*> [days=7] [page]";

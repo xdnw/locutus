@@ -700,20 +700,22 @@ public class UtilityCommands {
 
     public String nap(@Default("false") boolean listExpired) {
         Map<Long, String> naps = new LinkedHashMap<>();
-        naps.put(238332L, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
-        naps.put(239436L, "<https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
+        naps.put(238332L * 7200 * 1000, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
+        naps.put(239436L * 7200 * 1000, "<https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
+        naps.put(1726938000000L, "(Mid-turn, 5:00pm UTC) <https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
 
         long turn = TimeUtil.getTurn();
         int skippedExpired = 0;
 
         StringBuilder response = new StringBuilder();
         for (Map.Entry<Long, String> entry : naps.entrySet()) {
-            long turnEnd = entry.getKey();
+            long timeEnd = entry.getKey();
+            long turnEnd = TimeUtil.getTurn(timeEnd);
             if (turnEnd < turn && !listExpired) {
                 skippedExpired++;
                 continue;
             }
-            response.append("## " + DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(turnEnd), null) + ":\n");
+            response.append("## " + DiscordUtil.timestamp(timeEnd, null) + ":\n");
             response.append("- " + StringMan.join(entry.getValue().split("\n"), "\n- ") + "\n\n");
         }
 
@@ -1828,8 +1830,8 @@ public class UtilityCommands {
                         CM.alliance.cost.cmd.nations(alliance.getQualifiedId());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 // offshore find
-                CM.offshore.findForCoalition findOffshore =
-                        CM.offshore.findForCoalition.cmd.alliance(alliance.getQualifiedId()).cutoffMs("200d");
+                CM.offshore.find.for_coalition findOffshore =
+                        CM.offshore.find.for_coalition.cmd.alliance(alliance.getQualifiedId()).cutoffMs("200d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
 
                 msg.send();

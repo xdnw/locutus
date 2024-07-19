@@ -28,15 +28,6 @@ import java.util.stream.Collectors;
 
 public class PermissionBinding extends BindingHelper {
 
-    @Binding(value = "Must be used in a guild with a classpath permission set by a bot developer")
-    @ClassPermission
-    public boolean checkClass(@Me GuildDB db, ClassPermission perm) {
-        for (Class clazz : perm.value()) {
-            if (db.getPermission(clazz) < 1) throw new IllegalCallerException("Guild does not have " + clazz.getSimpleName());
-        }
-        return true;
-    }
-
     @Binding(value = "Must be used in a guild registered to a valid in-game alliance")
     @IsAlliance
     public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {

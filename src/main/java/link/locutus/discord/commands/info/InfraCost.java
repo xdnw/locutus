@@ -3,7 +3,9 @@ package link.locutus.discord.commands.info;
 import com.google.common.base.Preconditions;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -22,6 +24,10 @@ public class InfraCost extends Command {
         super("InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts", CommandCategory.ECON, CommandCategory.GAME_INFO_AND_TOOLS);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.infra.cost.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " <current-infra> <max-infra> [urbanization=false] [CCE=false] [AEC=false] [GSA=false]";

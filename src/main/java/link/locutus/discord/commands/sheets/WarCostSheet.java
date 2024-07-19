@@ -3,8 +3,10 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.GuildDB;
@@ -54,6 +56,13 @@ public class WarCostSheet extends Command {
                 "Add -u to exclude unit cost\n" +
                 "Add -n to normalize it per city";
     }
+
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.sheets_milcom.WarCostSheet.cmd);
+    }
+
 
     @Override
     public boolean checkPermission(Guild server, User user) {

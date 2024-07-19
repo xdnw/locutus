@@ -10,11 +10,13 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete.Pr
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete.DiscordCompleter;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.GPTCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.SheetCompleter;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -123,14 +125,16 @@ public class SlashCommandManager extends ListenerAdapter {
     private final CommandManager2 commands;
     private final Map<String, Long> commandIds = new HashMap<>();
     private final Set<Key> bindingKeys = new HashSet<>();
+    private final boolean registerAdminCmds;
     private Set<String> ephemeral;
 
     private Map<ParametricCallable, String> commandNames = new HashMap<>();
 
-    public SlashCommandManager(Locutus locutus) {
+    public SlashCommandManager(Locutus locutus, boolean registerAdminCmds) {
         this.root = locutus;
         this.commands = root.getCommandManager().getV2();
         this.ephemeral = generateEphemeral(commands.getCommands());
+        this.registerAdminCmds = registerAdminCmds;
     }
 
     private Set<String> generateEphemeral(CommandGroup group) {
@@ -141,6 +145,12 @@ public class SlashCommandManager extends ListenerAdapter {
             }
         }
         return ephemeral;
+    }
+
+    private boolean isAdmin(ParametricCallable cmd) {
+        RolePermission rolePerm = cmd.getAnnotation(RolePermission.class);
+        if (rolePerm == null) return false;
+        return rolePerm.root() && rolePerm.value().length == 1 && rolePerm.value()[0] == Roles.ADMIN;
     }
 
     public static Collection<ChannelType> getChannelType(Type type) {
@@ -387,6 +397,8 @@ public class SlashCommandManager extends ListenerAdapter {
                 adaptCommands(finalMappings, subCmd, subId, root, discGroup, maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
             }
         } else if (callable instanceof ParametricCallable parametric) {
+            if (!registerAdminCmds && isAdmin(parametric)) return root;
+
             List<OptionData> options = createOptions(parametric, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
 
             String fullPath = "";
@@ -394,18 +406,17 @@ public class SlashCommandManager extends ListenerAdapter {
             if (discGroup != null) fullPath += discGroup.getName() + " ";
             if (root != current) fullPath += id;
             fullPath = fullPath.trim();
-
-            if (current == null) {
-                SubcommandData discSub = new SubcommandData(id, desc);
-                current = discSub;
-
-                if (discGroup != null) {
-                    discGroup.addSubcommands(discSub);
-                } else {
-                    root.addSubcommands(discSub);
-                }
-            }
             try {
+                if (current == null) {
+                    SubcommandData discSub = new SubcommandData(id, desc);
+                    current = discSub;
+
+                    if (discGroup != null) {
+                        discGroup.addSubcommands(discSub);
+                    } else {
+                        root.addSubcommands(discSub);
+                    }
+                }
                 if (current instanceof SlashCommandData) {
                     ((SlashCommandData) current).addOptions(options);
                 } else {

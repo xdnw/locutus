@@ -3,8 +3,10 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -27,6 +29,17 @@ public class CardCommand extends Command implements Noformat {
         return super.help() + " <title> <message> <commands>";
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(
+                CM.embed.create.cmd,
+                CM.embed.update.cmd,
+                CM.embed.add.command.cmd,
+                CM.embed.add.modal.cmd,
+                CM.embed.add.raw.cmd,
+                CM.embed.rename.button.cmd
+        );
+    }
     @Override
     public String desc() {
         return "Generate a card which runs a command when users react to it.\nPut commands inside \"quotes\".\n" +

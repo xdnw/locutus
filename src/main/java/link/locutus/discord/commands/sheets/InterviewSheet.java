@@ -4,7 +4,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,6 +32,13 @@ public class InterviewSheet extends Command {
     public InterviewSheet() {
         super(CommandCategory.INTERNAL_AFFAIRS, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.GOV);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.interview.sheet.cmd);
+    }
+
+
     @Override
     public String help() {
         return super.help() + " <nations>";

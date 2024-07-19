@@ -3,8 +3,10 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.AttackTypeBreakdown;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarAttackParser;
@@ -18,6 +20,11 @@ import java.util.Set;
 public class AttackTypeBreakdownAB extends Command {
     public AttackTypeBreakdownAB() {
         super("AttackTypeBreakdown", "AttackTypes", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.stats_war.attack_breakdown.versus.cmd);
     }
 
     @Override

@@ -3,7 +3,9 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -22,6 +24,10 @@ public class Score extends Command {
         super("score", "warscore", "warrange", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.nation.score.cmd);
+    }
     @Override
     public String help() {
         return super.help() + " cities=X soldiers=X tanks=X aircraft=X ships=X missiles=X nukes=X projects=X infra=X avg_infra=X mmr=XXXX";

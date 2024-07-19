@@ -2,7 +2,9 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -18,6 +20,11 @@ public class DebugFindMMR extends Command {
     @Override
     public String help() {
         return super.help() + " <mmr> <num-cities>";
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of();
     }
 
     @Override

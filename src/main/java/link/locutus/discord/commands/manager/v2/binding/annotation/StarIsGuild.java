@@ -7,7 +7,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.METHOD})
-// only added for NationOrAllianceOrGuildOrTaxid atm
-public @interface AllowDeleted {
+public @interface StarIsGuild {
 
 }

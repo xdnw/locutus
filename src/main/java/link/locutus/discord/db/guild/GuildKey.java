@@ -1197,19 +1197,6 @@ public class GuildKey {
             return "The #channel to receive alerts when there is a large tranfer in the game or a nation VMs with resources";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> BANK_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String BANK_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
-            return BANK_ALERT_CHANNEL.setAndValidate(db, user, channel);
-        }
-
-        @Override
-        public String help() {
-            return "The #channel to receive alerts for transfers when a nation goes into VM";
-        }
-    }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted());
     public static GuildSetting<MessageChannel> LARGE_TRANSFERS_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2640,7 +2627,8 @@ public class GuildKey {
                         .toList();
 
                 if (filteredMessages.isEmpty()) {
-                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: TODO CM REF";
+                    return "No messages found for: `" + trigger.name() + "` at delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. To list all messages, use: " +
+                            CM.settings.info.cmd.key(GuildKey.TIMED_MESSAGES.name());
                 }
                 StringBuilder messageSignatures = new StringBuilder("No message found with delay: `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`. Did you mean?:\n");
                 for (CustomConditionMessage msg : filteredMessages) {
@@ -2680,7 +2668,8 @@ public class GuildKey {
             else {
                 for (CustomConditionMessage msg : existing) {
                     if (msg.getTrigger() == trigger && Math.abs(msg.getDelay() - timeDelay) <= 1000) {
-                        return "A message with this time (`" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`) and trigger (`" + trigger.name() + "`) already exists. Delete it with TODO CM REF, or use a different time/trigger";
+                        return "A message with this time (`" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDelay) + "`) and trigger (`" + trigger.name() + "`) already exists. Delete it with " +
+                                CM.settings_recruit.remove_timed_message.cmd.toSlashMention() + " or use a different time/trigger";
                     }
                 }
             }
@@ -2774,6 +2763,34 @@ public class GuildKey {
             return "If the " + Roles.MILCOM.name() + " role is pinged for defensive wars that are counters";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
+
+    public static GuildSetting<MessageChannel> VM_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String VM_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return VM_ALERT_CHANNEL.setAndValidate(db, user, channel);
+        }
+
+        @Override
+        public String help() {
+            return "The #channel to receive alerts when a nation goes into VM";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).nonPublic());
+
+    public static GuildSetting<Boolean> HIDE_LEGACY_NOTICE = new GuildBooleanSetting(GuildSettingCategory.DEFAULT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String HIDE_LEGACY_NOTICE(@Me GuildDB db, @Me User user, boolean value) {
+            return HIDE_LEGACY_NOTICE.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "If the notice about legacy message commands is hidden in the server";
+        }
+    };
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

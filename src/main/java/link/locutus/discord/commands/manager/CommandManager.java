@@ -31,6 +31,7 @@ import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -43,11 +44,6 @@ import link.locutus.discord.commands.external.guild.Mask;
 import link.locutus.discord.commands.sync.SyncMail;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.fun.Borgomas;
-import link.locutus.discord.commands.fun.Commend;
-import link.locutus.discord.commands.fun.Kev;
-import link.locutus.discord.commands.fun.Lury;
-import link.locutus.discord.commands.fun.Nev;
-import link.locutus.discord.commands.fun.SriCommand;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
 import link.locutus.discord.commands.info.InfraCost;
@@ -77,20 +73,16 @@ import link.locutus.discord.commands.sheets.CoalitionSheet;
 import link.locutus.discord.commands.sheets.CounterSheet;
 import link.locutus.discord.commands.sheets.DepositsSheet;
 import link.locutus.discord.commands.sheets.DeserterSheet;
-import link.locutus.discord.commands.sheets.FASheet;
 import link.locutus.discord.commands.sheets.IASheet;
 import link.locutus.discord.commands.sheets.IntelOpSheet;
 import link.locutus.discord.commands.sheets.InterviewSheet;
 import link.locutus.discord.commands.sheets.MMRSheet;
 import link.locutus.discord.commands.sheets.MailTargets;
 import link.locutus.discord.commands.sheets.NationSheet;
-import link.locutus.discord.commands.sheets.NoteSheet;
 import link.locutus.discord.commands.sheets.ProjectSheet;
 import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.commands.war.WarInfo;
-import link.locutus.discord.commands.external.guild.CheckPermission;
 import link.locutus.discord.commands.external.guild.KeyStore;
-import link.locutus.discord.commands.external.guild.Permission;
 import link.locutus.discord.commands.external.account.ForumScrape;
 import link.locutus.discord.commands.account.Say;
 import link.locutus.discord.commands.fun.Jokes;
@@ -142,6 +134,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -354,6 +347,10 @@ public class CommandManager {
 
                 String result;
                 try {
+                    String header = header(cmd, msgUser, guild);
+                    if (header != null && !header.isEmpty()) {
+                        channel.send(header);
+                    }
                     result = cmd.onCommand(guild, channel, msgUser, nation, content1, args);
                 } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
                     e.printStackTrace();
@@ -568,42 +565,14 @@ public class CommandManager {
         }
         this.register(new RaidCommand());
         /// not useful
-        this.register(new Kev());
-        this.register(new Nev());
-        this.register(new SriCommand());
+//        this.register(new Kev());
+//        this.register(new Nev());
+//        this.register(new SriCommand());
 //        this.register(new TagCommand(this));
-        this.register(new Lury());
-
-
-        // unknown
-        this.register(new TradeId());
-        this.register(new WarCitySheet());
-        this.register(new StrengthCitySheet());
-        this.register(new GuildInfo());
-        this.register(new ForumScrape());
-        this.register(new KickLocutus());
-        this.register(new Sudo());
-        this.register(new MsgInfo());
-        this.register(new Runall());
-        this.register(new RunAllNations());
-        this.register(new SyncBounties());
-        this.register(new SyncWarRooms());
-        this.register(new SyncTreaties());
-        this.register(new SyncCommand());
-        this.register(new SyncAttacks());
-        this.register(new SyncWars());
-        this.register(new SyncTrade());
-        this.register(new SyncUid());
-        this.register(new SyncTaxes());
-        this.register(new SyncMail());
-        this.register(new SyncBanks());
-        this.register(new SafekeepCommand());
-        this.register(new Permission());
-        this.register(new CheckPermission());
-        this.register(new Meta());
-        this.register(new CheckMail());
+//        this.register(new Lury());
 
         ///////// Added
+        this.register(new ProlificOffshores());
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
         this.register(new Interview());
@@ -622,11 +591,10 @@ public class CommandManager {
         this.register(new WarPin());
         this.register(new WarRoom());
 
-        SpyCommand spy;
-        this.register(spy = new SpyCommand());
-        this.register(new Who(spy));
+        this.register(new SpyCommand());
+        this.register(new Who());
         this.register(new Treaties());
-        this.register(new MeCommand(db, spy));
+        this.register(new MeCommand());
         this.register(new BeigeTurns());
 
         this.register(new Multi());
@@ -702,6 +670,7 @@ public class CommandManager {
         this.register(new ChannelCount());
         this.register(new TransferResources(bankWith));
         this.register(bankWith);
+        this.register(new GrantCmd(bankWith));
         this.register(new Offshore());
         this.register(new Bank());
         this.register(new Inflows());
@@ -732,53 +701,109 @@ public class CommandManager {
         this.register(new AssignBuild());
         this.register(new DeleteBuild());
         this.register(new GetBuild());
-        //
-        this.register(new HelpCommand(this));
-        this.register(new GrantCmd(bankWith));
-
-        this.register(new ProlificOffshores());
+        this.register(new TopAABeigeLoot());
         this.register(new LargestBanks());
-        this.register(new InactiveAlliances());
-
-        this.register(new WarCostByDay());
-        this.register(new WarCostRankingByDay());
-
         this.register(new IASheet());
-        this.register(new NoteSheet());
+        this.register(new MilitaryRanking());
+        this.register(new MsgInfo());
+        this.register(new CheckMail());
+
+        this.register(new ForumScrape());
+        this.register(new SyncBounties());
+        this.register(new SyncWarRooms());
+        this.register(new SyncTreaties());
+        this.register(new SyncCommand());
+        this.register(new SyncAttacks());
+        this.register(new SyncWars());
+        this.register(new SyncTrade());
+        this.register(new SyncUid());
+        this.register(new SyncTaxes());
+        this.register(new SyncMail());
+        this.register(new SyncBanks());
+
+        this.register(new TradeId());
+        this.register(new GuildInfo());
+        this.register(new HelpCommand(this));
+        this.register(new KickLocutus());
+        this.register(new Meta());
         this.register(new CoalitionSheet());
         this.register(new InterviewSheet());
-        this.register(new FASheet());
-
-        this.register(new MilitaryRanking());
-        this.register(new AllianceLootRanking());
-        this.register(new NationLootRanking());
-        this.register(new WarLossesPerCity());
-        this.register(new NetProfitPerWar());
-        this.register(new UnitRanking());
-        this.register(new TopAABeigeLoot());
-        this.register(new AllianceLootLosses());
         this.register(new AllianceAttackTypeRanking());
-        this.register(new WarsByTier());
         this.register(new AttackTypeBreakdownAB());
+        this.register(new Sudo());
+        this.register(new Runall());
+        this.register(new RunAllNations());
+        this.register(new WarCostByDay()); // Stats between two coalitions
+        this.register(new WarCostRankingByDay()); // Stats of coalitions vs *
 
-        this.register(new ROI());
-
-        this.register(new Simulate());
-
-        // unfinished
         this.register(new AlertTrades());
-        this.register(new Commend("commend", true));
-        this.register(new Commend("denounce", false));
-//        this.register(new Setup());
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
+
         this.register(new BankAlerts());
         this.register(new BankSubscriptions());
         this.register(new UnsubBank());
+
+        // needs testing / fixing
+        this.register(new ROI());
+        this.register(new Simulate());
+
+        // deprecated
+        this.register(new SafekeepCommand()); // TODO include example to /bank deposit
+        this.register(new WarCitySheet()); // CityTierGraph
+        this.register(new StrengthCitySheet()); // StrengthTierGraph
+        this.register(new UnitRanking()); // /alliance stats ranking alliances:* metric:aircraft
+        this.register(new AllianceLootRanking()); // warcostranking TODO example
+        this.register(new WarLossesPerCity()); // warcostranking TODO example
+        this.register(new AllianceLootLosses()); // /stats_war warcostranking type:LOSSES allowedattacks:A_LOOT groupbyalliance:True
+        this.register(new WarsByTier()); // Attribute tier graph -> TODO add an example
+        this.register(new NationLootRanking()); // warcostranking -> TODO add an example
+        this.register(new InactiveAlliances()); // Maybe do an `/alliance list` instead?
+        this.register(new NetProfitPerWar()); // warcostranking todo example
+
+//        this.register(new Commend("commend", true));
+//        this.register(new Commend("denounce", false));
+//        this.register(new Setup());
+
+        // useless
+//        this.register(new FASheet());
+//        this.register(new NoteSheet());
     }
 
     public String getPrefix() {
         return prefix1 + "";
+    }
+
+    private Map<Long, Set<Class>> sendLegacyHeader = new ConcurrentHashMap<>();
+
+    private String header(Command legacy, User user, Guild guild) {
+        if (user == null || guild == null) return null;
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        if (db == null || GuildKey.HIDE_LEGACY_NOTICE.getOrNull(db) == Boolean.TRUE) return null;
+        Set<Class> sent = sendLegacyHeader.computeIfAbsent(user.getIdLong(), k -> ConcurrentHashMap.newKeySet());
+        if (sent.contains(legacy.getClass())) return null;
+        sent.add(legacy.getClass());
+
+        List<CommandRef> ref = legacy.getSlashReference();
+        if (ref == null || ref.isEmpty()) return null;
+        StringBuilder response = new StringBuilder();
+        response.append("Try out the new slash commands by using:");
+        if (ref.size() == 1) {
+            response.append(" ").append(ref.get(0).toSlashMention()).append("\n");
+        } else {
+            response.append("\n");
+            for (CommandRef commandRef : ref) {
+                response.append("- ").append(commandRef.toSlashMention()).append("\n");
+            }
+        }
+        response.append("You can still message Locutus with the command, e.g. `@locutus ").append(ref.get(0).toSlashCommand(false)).append("`\n");
+        response.append("Specifying arguments is optional, here's an example:\n");
+        response.append("`/who Borg` versus `/who nationoralliances: Borg`\n");
+        response.append("- When arguments have spaces in them you must either use quotes, or specify the argument\n");
+        if (Roles.ADMIN.has(user, guild)) {
+            response.append("_To hide this message: " + CM.settings.info.cmd.key(GuildKey.HIDE_LEGACY_NOTICE.name()).value("true") + "_");
+        }
+        return response.toString();
     }
 
     @Deprecated

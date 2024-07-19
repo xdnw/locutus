@@ -2,7 +2,9 @@ package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
@@ -31,6 +33,11 @@ public class WarSheet extends Command {
     @Override
     public String help() {
         return Settings.commandPrefix(true) + getClass().getSimpleName() + " <allies> <enemies> [time]";
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.war.sheet.warSheet.cmd);
     }
 
     @Override

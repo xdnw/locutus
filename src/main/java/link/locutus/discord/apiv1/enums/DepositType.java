@@ -14,31 +14,41 @@ public enum DepositType {
     IGNORE("Excluded from deposits"),
     TRADE("Sub type of deposits, earmarked as trading funds"),
 
-    CITY(GRANT, "Go to <https://politicsandwar.com/city/create/> and purchase a new city", true),
-    PROJECT(GRANT, "Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project", true),
-    INFRA(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired infrastructure", true),
-    LAND(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired land", true),
-    BUILD(GRANT, "Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build", true),
-    WARCHEST(GRANT, "Go to <https://politicsandwar.com/nation/military/> and purchase the desired units", true),
-    RAWS(GRANT, "Raw resources for city consumption", true),
+    CITY(GRANT, "Go to <https://politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
+            "Can be applied alongside another modifier, e.g. `#land=2000 #city=-1` would be 2000 land for all cities",
+            true),
+    PROJECT(GRANT, "Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project",
+            "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true),
+    INFRA(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired infrastructure",
+            "A grant for infra level. Can be added with `#city`", true),
+    LAND(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired land", "A grant for a land level. Can be added with `#city`", true),
+    BUILD(GRANT, "Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build", "A grant for a city build. The value is optional and is equal to `infra << 32 | land` (see: <https://bit-calculator.com/bit-shift-calculator> ). Can be added with `#city` / `#infra` / `#land`", true),
+    WARCHEST(GRANT, "Go to <https://politicsandwar.com/nation/military/> and purchase the desired units", "A grant for war resources", true),
+    RAWS(GRANT, "Raw resources for city consumption", "", true),
 
-    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", false),
-    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", false),
+    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false),
+    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", "", false),
 
     ;
 
     private final String description;
     private DepositType parent;
     private boolean isClassifier;
+    private String wikiDesc;
 
     DepositType(String description) {
-        this(null, description, false);
+        this(null, description, "", false);
     }
 
-    DepositType(DepositType parent, String description, boolean isClassifier) {
+    DepositType(DepositType parent, String description, String wikiDesc, boolean isClassifier) {
         this.parent = parent;
         this.description = description;
         this.isClassifier = isClassifier;
+        this.wikiDesc = wikiDesc.isEmpty() ? description : wikiDesc;
+    }
+
+    public String getWikiDesc() {
+        return wikiDesc;
     }
 
     public boolean isClassifier() {

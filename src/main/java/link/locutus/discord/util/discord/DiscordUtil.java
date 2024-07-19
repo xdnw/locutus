@@ -508,11 +508,13 @@ public class DiscordUtil {
             id = cmd;
         }
 
-        Long channelId = null;
+        Long channelId;
         if (id.startsWith("<#")) {
             String channelIdStr = id.substring(0, id.indexOf('>') + 1);
             channelId = DiscordUtil.getChannelId(guild, channelIdStr);
             id = id.substring(id.indexOf(' ') + 1);
+        } else {
+            channelId = null;
         }
 
         CommandBehavior behavior = null;
@@ -530,11 +532,19 @@ public class DiscordUtil {
             List<String> split = Arrays.asList(id.split("\\r?\\n(?=[" + StringMan.join(Locutus.cmd().getAllPrefixes(), "|") + "|{])"));
             List<CommandInfo> infos = new ArrayList<>(split.size());
             for (String cmd : split) {
+                System.out.println("Add cmd " + cmd);
                 infos.add(new CommandInfo(channelId, behavior, cmd));
             }
             return infos;
         } else if (id.startsWith("{")){
-            return List.of(new CommandInfo(channelId, behavior, id));
+            List<String> split;
+            if (id.contains("\n{")) {
+                split = Arrays.asList(id.split("\\r?\\n(?=\\{)"));
+            } else {
+                split = List.of(id);
+            }
+            CommandBehavior finalBehavior = behavior;
+            return split.stream().map(cmd -> new CommandInfo(channelId, finalBehavior, cmd)).toList();
         } else if (!id.isEmpty()) {
             throw new IllegalArgumentException("Unknown command (5): `" + id + "`");
         } else {

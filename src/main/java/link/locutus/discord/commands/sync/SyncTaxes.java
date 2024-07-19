@@ -3,9 +3,11 @@ package link.locutus.discord.commands.sync;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -38,6 +40,11 @@ import java.util.concurrent.CompletableFuture;
 public class SyncTaxes extends Command {
     public SyncTaxes() {
         super(CommandCategory.ECON, CommandCategory.GOV);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.admin.sync2.taxes.cmd);
     }
 
     @Override
@@ -129,7 +136,7 @@ public class SyncTaxes extends Command {
         return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
-    public String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet, int aaId) throws GeneralSecurityException, IOException {
+    public static String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet, int aaId) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(guildDb, SheetKey.TAX_SHEET);
         }
@@ -220,7 +227,7 @@ public class SyncTaxes extends Command {
         return null;
     }
 
-    public String updateTurnGraph(GuildDB db, int aaId) throws GeneralSecurityException, IOException {
+    public static String updateTurnGraph(GuildDB db, int aaId) throws GeneralSecurityException, IOException {
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TAX_GRAPH_SHEET);
 
         List<Object> header = new ArrayList<>();

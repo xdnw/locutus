@@ -2,7 +2,9 @@ package link.locutus.discord.commands.fun;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.FileUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -22,6 +24,10 @@ public class Jokes extends Command {
         this.lines = Objects.requireNonNull(FileUtil.readFile("/fun/jokes.txt")).split("\\r?\\n");
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.fun.joke.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;

@@ -55,7 +55,7 @@ public class CustomSheet {
         response.append("**Name:** `" + getName() + "`\n");
         response.append("**URL:** <" + getUrl() + ">\n");
         if (tabs.isEmpty()) {
-            response.append("**Tabs:** Add one with TODO CM REF\n");
+            response.append("**Tabs:** None\n");
         } else {
             response.append("**Tabs:**\n");
             for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : tabs.entrySet()) {

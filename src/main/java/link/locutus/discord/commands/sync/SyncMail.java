@@ -2,7 +2,9 @@ package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.task.mail.AlertMailTask;
@@ -16,6 +18,11 @@ import java.util.Set;
 public class SyncMail extends Command {
     public SyncMail() {
         super(CommandCategory.LOCUTUS_ADMIN);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.admin.sync2.mail.cmd);
     }
 
     @Override

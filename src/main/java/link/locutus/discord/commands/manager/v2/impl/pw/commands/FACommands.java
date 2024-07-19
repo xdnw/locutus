@@ -17,6 +17,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
@@ -24,6 +25,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -34,14 +36,8 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.security.GeneralSecurityException;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -67,6 +63,32 @@ public class FACommands {
             db.addCoalition(alliance.getIdLong(), coalition);
         }
         return "Set Coalition: `" + coalition + "` to `" + StringMan.getString( sphere.getValue()) + "`";
+    }
+
+    @Command(desc = "Generate a sheet of this guild's coalitions")
+    @RolePermission(Roles.FOREIGN_AFFAIRS)
+    public String generateCoalitionSheet(@Me IMessageIO io, @Me GuildDB db, @Switch("s")SpreadSheet sheet) throws IOException, GeneralSecurityException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.COALITION_SHEET);
+        }
+        Map<Integer, List<String>> coalitionsInverse = new LinkedHashMap<>();
+
+        for (String coalition : db.getCoalitionNames()) {
+            for (Integer aaId : db.getCoalition(coalition)) {
+                coalitionsInverse.computeIfAbsent(aaId, f -> new ArrayList<>()).add(coalition);
+            }
+        }
+
+        sheet.setHeader("Alliance", "Coalitions");
+        for (Map.Entry<Integer, List<String>> entry : coalitionsInverse.entrySet()) {
+            String aaUrl = MarkupUtil.sheetUrl(PW.getName(entry.getKey(), true), PW.getUrl(entry.getKey(), true));
+            sheet.addRow(aaUrl, StringMan.join(entry.getValue(), ","));
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "coalition").send();
+        return null;
     }
 
     @Command(desc = "Send a treaty to an alliance")

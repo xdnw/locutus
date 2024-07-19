@@ -3,7 +3,9 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -23,6 +25,12 @@ public class TopAABeigeLoot extends Command {
     public TopAABeigeLoot() {
         super("TopAABeigeLoot", "bankbyloot", CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.alliance.stats.loot_ranking.cmd);
+    }
+
 
     @Override
     public String help() {
@@ -53,9 +61,12 @@ public class TopAABeigeLoot extends Command {
 
         Map<Integer, Double> lootPerScore = new HashMap<>();
         for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            double score = alliance.getScore();
+            if (score <= 0) continue;
             LootEntry loot = alliance.getLoot();
             if (loot != null && loot.getDate() >= cutOff) {
-                double perScore = loot.convertedTotal() / alliance.getScore();
+                double perScore = loot.convertedTotal();
+                if (!total) perScore /= score;
                 lootPerScore.put(alliance.getAlliance_id(), perScore);
             }
         }

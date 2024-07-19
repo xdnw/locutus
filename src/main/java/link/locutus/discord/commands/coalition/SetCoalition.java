@@ -3,7 +3,9 @@ package link.locutus.discord.commands.coalition;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -25,6 +27,10 @@ public class SetCoalition extends Command {
         super("setcoalition", "addcoalition", CommandCategory.FOREIGN_AFFAIRS, CommandCategory.GOV);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.coalition.add.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "setcoalition <alliance> <coalition>";

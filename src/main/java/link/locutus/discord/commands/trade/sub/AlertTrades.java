@@ -3,7 +3,9 @@ package link.locutus.discord.commands.trade.sub;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -25,6 +27,18 @@ public class AlertTrades extends Command {
         super("Alert-Trades", "AlertTrades", "SubscribeTrades", "Subscribe-Trades", "Alert-Trade", "AlertTrade", "SubscribeTrade", "Subscribe-Trade", "Subscribe-Trade", "SubscribeTrade", "Sub-Trade", "SubTrade",
                 CommandCategory.ECON, CommandCategory.MEMBER, CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(
+                CM.alerts.trade.price.cmd,
+                CM.alerts.trade.margin.cmd,
+                CM.alerts.trade.mistrade.cmd,
+                CM.alerts.trade.undercut.cmd,
+                CM.alerts.trade.no_offers.cmd
+        );
+    }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "alert-trades <resource> <buy|sell> >/< <ppu> <duration>";

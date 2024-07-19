@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.SpyCommand;
@@ -20,9 +21,14 @@ import java.util.Set;
 public class MeCommand extends Command {
     private final Who who;
 
-    public MeCommand(DiscordDB db, SpyCommand cmd) {
+    public MeCommand() {
         super("me", CommandCategory.GAME_INFO_AND_TOOLS);
-        this.who = new Who(cmd);
+        this.who = new Who();
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.me.cmd);
     }
 
     @Override

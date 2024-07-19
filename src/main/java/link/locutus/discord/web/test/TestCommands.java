@@ -8,6 +8,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -23,23 +25,32 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Message;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TestCommands {
 //    @Command
-//    public String test(@Me IMessageIO io, String arg1) throws IOException {
-////        io.create().embed("Title", "Body goes here").commandButton(CM.fun.say.cmd.create("Hello World"), "test").file("test.txt", "hello world 2").send();
+//    public String test(@Me IMessageIO io) throws IOException {
+//        List<CommandRef> refs = List.of(
+//                CM.embed.update.cmd.desc("{description}\ntest"),
+//                CM.fun.say.cmd.msg("Hello World")
+//        );
+//        String cmdsStr = refs.stream().map(CommandRef::toCommandArgs).collect(Collectors.joining("\n"));
+//        io.create().embed("Title", "Body goes here")
+//                .commandButton(CommandBehavior.UNPRESS, cmdsStr, "test").file("test.txt", "hello world 2").send();
 //////        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
 //////                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
 //////                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
-//        return "Arg " + arg1;
+//        return "Arg ";
 //    }
 
     @Command(desc = "Dummy command. No output")

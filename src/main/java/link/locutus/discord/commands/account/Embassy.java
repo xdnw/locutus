@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -30,6 +31,11 @@ public class Embassy extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.embassy.cmd);
     }
 
     @Override

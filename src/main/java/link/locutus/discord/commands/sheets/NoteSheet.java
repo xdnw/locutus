@@ -3,7 +3,9 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
@@ -25,6 +27,12 @@ public class NoteSheet extends Command {
     public NoteSheet() {
         super(CommandCategory.INTERNAL_AFFAIRS, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.GOV);
     }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of();
+    }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Locutus.imp().getGuildDB(server).isValidAlliance() && (Roles.MILCOM.has(user, server) || Roles.INTERNAL_AFFAIRS.has(user, server));

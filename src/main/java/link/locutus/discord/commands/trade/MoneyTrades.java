@@ -3,7 +3,9 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
@@ -26,6 +28,11 @@ import java.util.concurrent.TimeUnit;
 public class MoneyTrades extends Command {
     public MoneyTrades() {
         super("moneytrades", "trades", CommandCategory.ECON, CommandCategory.GAME_INFO_AND_TOOLS);
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.trade.moneyTrades.cmd);
     }
 
     @Override

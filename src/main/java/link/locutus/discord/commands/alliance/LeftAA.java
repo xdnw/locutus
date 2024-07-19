@@ -3,9 +3,11 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -24,6 +26,10 @@ public class LeftAA extends Command {
         return super.help() + " <alliance|nation> [time] [nation-filter]";
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.alliance.departures.cmd);
+    }
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;

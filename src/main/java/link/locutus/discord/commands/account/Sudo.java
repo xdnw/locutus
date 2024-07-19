@@ -4,7 +4,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -25,6 +27,10 @@ public class Sudo extends Command implements Noformat {
         super("sudo", CommandCategory.LOCUTUS_ADMIN);
     }
 
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.admin.sudo.user.cmd);
+    }
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "sudo <user> <command>";

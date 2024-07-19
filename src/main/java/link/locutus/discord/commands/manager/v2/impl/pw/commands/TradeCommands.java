@@ -27,10 +27,7 @@ import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -1596,7 +1593,7 @@ public class TradeCommands {
         db.subscribe(author, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
 
         return "Subscribed to `ABSOLUTE: " + resource + " " + buyOrSell + " PPU " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`" +
-                "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`";
+                "\nCheck your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention();
     }
 
     @Command(desc = "Create an alert when an in-game trade for a resource is past the top price point of the opposite buy or sell offer")
@@ -1619,7 +1616,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.MISTRADE);
             response.append("Subscribed to `MISTRADE: " + resource + " disparity " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1643,7 +1640,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.DISPARITY);
             response.append("Subscribed to `DISPARITY: " + resource + " ppu " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1662,7 +1659,7 @@ public class TradeCommands {
             db.subscribe(author, resource, date, true, true, 0, TradeDB.TradeAlertType.NO_OFFER);
             response.append("Subscribed to `NO_OFFER: " + resource + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1682,8 +1679,55 @@ public class TradeCommands {
             db.subscribe(author, resource, date, isBuy, true, 0, TradeDB.TradeAlertType.UNDERCUT);
             response.append("Subscribed to `UNDERCUT: " + resource + " " + buyOrSell + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: " + CM.alerts.trade.list.cmd.toSlashMention());
         return response.toString();
+    }
 
+    @Command(desc = "Unsubscribe from trade alerts")
+    public String unsubTrade(@Me User author, @Me DBNation me, ResourceType resource) {
+        TradeDB db = Locutus.imp().getTradeManager().getTradeDb();
+        db.unsubscribe(author, resource);
+        return "Unsubscribed from " + resource + " alerts";
+    }
+
+    @Command(desc = "View your trade alert subscriptions")
+    public String tradeSubs(@Me User author, @Me DBNation me, @Me IMessageIO io) {
+        List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(author.getIdLong());
+        if (subscriptions.isEmpty()) {
+            return "No subscriptions. Subscribe to get alerts using:\n" +
+                    "- " + CM.alerts.trade.margin.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.price.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.mistrade.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.no_offers.cmd.toSlashMention() + "\n" +
+                    "- " + CM.alerts.trade.undercut.cmd.toSlashMention();
+        }
+
+        for (ResourceType type : ResourceType.values) {
+            String title = type.name();
+            StringBuilder body = new StringBuilder();
+
+            for (TradeSubscription subscription : subscriptions) {
+                if (subscription.getResource() == type) {
+                    String buySell = subscription.isBuy() ? "Buy" : "Sell";
+                    String operator = subscription.isAbove() ? ">" : "<";
+
+                    String msg = buySell + " " + subscription.getResource().name().toLowerCase() + " " + operator + " " + subscription.getPpu();
+
+                    body.append('\n').append(msg);
+                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.getDate())) + " (UTC)";
+                    body.append(" until ").append(dateStr);
+                }
+            }
+            if (body.length() == 0) continue;
+
+            String emoji = "Unsubscribe";
+            CM.alerts.trade.unsubscribe unsubCommand = CM.alerts.trade.unsubscribe.cmd.resource(type.name());
+
+            body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
+
+            io.create().embed(title, body.toString()).commandButton(unsubCommand, emoji).send();
+        }
+
+        return null;
     }
 }

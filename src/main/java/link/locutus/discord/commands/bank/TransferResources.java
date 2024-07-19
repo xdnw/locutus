@@ -2,6 +2,7 @@ package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -20,6 +21,11 @@ public class TransferResources extends Command {
     public TransferResources(TransferCommand cmd) {
         super("tr", "transferresources", CommandCategory.ECON);
         this.cmd = cmd;
+    }
+
+    @Override
+    public List<CommandRef> getSlashReference() {
+        return List.of(CM.transfer.self.cmd);
     }
 
     @Override
