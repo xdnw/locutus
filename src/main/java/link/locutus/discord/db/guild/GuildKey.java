@@ -2778,6 +2778,20 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).nonPublic());
 
+    public static GuildSetting<Boolean> HIDE_LEGACY_NOTICE = new GuildBooleanSetting(GuildSettingCategory.DEFAULT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String HIDE_LEGACY_NOTICE(@Me GuildDB db, @Me User user, boolean value) {
+            return HIDE_LEGACY_NOTICE.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "If the notice about legacy message commands is hidden in the server";
+        }
+    };
+
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {

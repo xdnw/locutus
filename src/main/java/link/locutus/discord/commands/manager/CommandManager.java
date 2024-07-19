@@ -134,6 +134,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -346,6 +347,10 @@ public class CommandManager {
 
                 String result;
                 try {
+                    String header = header(cmd, msgUser);
+                    if (header != null && !header.isEmpty()) {
+                        channel.send(header);
+                    }
                     result = cmd.onCommand(guild, channel, msgUser, nation, content1, args);
                 } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
                     e.printStackTrace();
@@ -769,19 +774,34 @@ public class CommandManager {
         return prefix1 + "";
     }
 
-    private String header(Command legacy) {
+    private Map<Long, Set<Class>> sendLegacyHeader = new ConcurrentHashMap<>();
+
+    private String header(Command legacy, User user, GuildDB db) {
+        if (user == null || db == null) return null;
+        Set<Class> sent = sendLegacyHeader.computeIfAbsent(user.getIdLong(), k -> ConcurrentHashMap.newKeySet());
+        if (sent.contains(legacy.getClass())) return null;
+        sent.add(legacy.getClass());
+
         List<CommandRef> ref = legacy.getSlashReference();
-        if (ref == null || ref.isEmpty()) return "";
-        return "";
-        // join by space, use toSlash
-//        String quote = ref.toSlashCommand(false);
-//        return """
-//                Try out the new slash commands by using {ref}
-//                You can still ping Locutus with the command, e.g. `@locutus {quote}`
-//                Specifying arguments is optional, here's an example:
-//                `/who Borg` versus `/who nationoralliance: Borg`
-//                When arguments have spaces in them you must either use quotes, or specify the argument
-//                """.replace("{ref}", mention).replace("{quote}", quote);
+        if (ref == null || ref.isEmpty()) return null;
+        StringBuilder response = new StringBuilder();
+        response.append("Try out the new slash commands by using:");
+        if (ref.size() == 1) {
+            response.append(" ").append(ref.get(0).toSlashMention()).append("\n");
+        } else {
+            response.append("\n");
+            for (CommandRef commandRef : ref) {
+                response.append("- ").append(commandRef.toSlashMention()).append("\n");
+            }
+        }
+        response.append("You can still message Locutus with the command, e.g. `@locutus ").append(ref.get(0).toSlashCommand(false)).append("`\n");
+        response.append("Specifying arguments is optional, here's an example:\n");
+        response.append("`/who Borg` versus `/who nationoralliances: Borg`\n");
+        response.append("- When arguments have spaces in them you must either use quotes, or specify the argument\n");
+        if (Roles.ADMIN.has(user, db.getGuild())) {
+            response.append("_To hide this message: " + CM.settings.info.cmd.key(GuildKey.HIDE_LEGACY_NOTICE.name()).value("true") + "_");
+        }
+        return response.toString();
     }
 
     @Deprecated
@@ -814,9 +834,7 @@ public class CommandManager {
             assert member != null;
 
             try {
-                String result = cmd.onCommand(guild, io, user, nation, content, args);
-                String header = header(cmd);
-                return header + (result == null ? "" : "\n\n" + result);
+                return cmd.onCommand(guild, io, user, nation, content, args);
             } catch (Exception e) {
                 e.printStackTrace();
                 return e.getMessage();

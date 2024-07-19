@@ -22,7 +22,6 @@ import java.util.*;
 
 public abstract class Command {
     private static final Gson gson = new Gson();
-    private static final JsonParser parser = new JsonParser();
     public final Set<Long> WHITELIST_USERS = new HashSet<>();
     private final List<String> aliases;
     private final Set<CommandCategory> categories;
