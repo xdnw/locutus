@@ -51,7 +51,7 @@ public class WarCostAB extends Command {
 
     @Override
     public List<CommandRef> getSlashReference() {
-        return List.of(CM.stats_war.warsCost.cmd);
+        return List.of(CM.stats_war.warsCost.cmd, CM.stats_war.warCost.cmd);
     }
 
     @Override
