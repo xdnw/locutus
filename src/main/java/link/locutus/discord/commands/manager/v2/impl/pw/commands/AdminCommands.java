@@ -2382,9 +2382,51 @@ public class AdminCommands {
     }
 
     @NoFormat
+    @Command(desc = "Format a command for each nation, and run it as yourself")
+    @RolePermission(value = Roles.ADMIN)
+    public String runForNations(@Me GuildDB db, @Me User user, @Me DBNation me, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
+                              Set<DBNation> nations, String command) {
+        if (!db.hasAlliance()) {
+            throw new IllegalArgumentException("No alliance registered to this guild. " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+        }
+        for (DBNation nation : nations) {
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in the alliance/s " + db.getAllianceIds());
+            }
+        }
+        if (nations.size() > 300) {
+            throw new IllegalArgumentException("Too many nations to update (max: 300, provided: " + nations.size() + ")");
+        }
+
+        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
+        Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);
+        StringBuilder response = new StringBuilder();
+
+        long start = System.currentTimeMillis();
+        for (DBNation nation : nations) {
+            String formattedCmd = formatFunc.apply(nation);
+            try {
+                Map.Entry<CommandResult, String> result = me.runCommandInternally(db.getGuild(), user, formattedCmd);
+                response.append(nation.getMarkdownUrl() + ": " + result.getKey() + "\n" + result.getValue() + "\n---\n");
+            } catch (Throwable e) {
+                response.append(nation.getMarkdownUrl() + ": Error: " + e.getMessage());
+            }
+            if (-start + (start = System.currentTimeMillis()) > 5000) {
+                io.sendMessage(response.toString());
+                response.setLength(0);
+            }
+
+        }
+        if (response.length() > 0) {
+            io.sendMessage(response.toString());
+        }
+        return "Done!";
+    }
+
+    @NoFormat
     @Command(desc = "Run a command as multiple nations")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String sudoNations(@Me GuildDB db, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
+    public String sudoNations(@Me GuildDB db, @Me User user, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
                               Set<DBNation> nations, String command) {
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);
@@ -2392,11 +2434,10 @@ public class AdminCommands {
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
-
             String formattedCmd = formatFunc.apply(nation);
             User nationUser = nation.getUser();
             try {
-                Map.Entry<CommandResult, String> result = nation.runCommandInternally(db.getGuild(), nationUser, command);
+                Map.Entry<CommandResult, String> result = nation.runCommandInternally(db.getGuild(), nationUser, formattedCmd);
                 response.append(nation.getMarkdownUrl() + ": " + result.getKey() + "\n" + result.getValue() + "\n---\n");
             } catch (Throwable e) {
                 response.append(nation.getMarkdownUrl() + ": Error: " + e.getMessage());

@@ -443,6 +443,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncOffshore", "offshore");
         // - runMultiple
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "command"), "runMultiple", "multiple");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "command"), "runForNations", "format_for_nations");
         // - sudoNations
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sudo"), "sudoNations", "nations");
         // - sudo
