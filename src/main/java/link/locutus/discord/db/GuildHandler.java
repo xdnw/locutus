@@ -598,6 +598,7 @@ public class GuildHandler {
         if (user != null) {
             body.append("\nUser: " + user.getAsMention());
         }
+        body.append("\nSee: " + CM.channel.memberChannels.cmd.toSlashMention());
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
 

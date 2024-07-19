@@ -63,7 +63,7 @@ public class RaidCommand extends Command {
     public boolean checkPermission(Guild server, User user) {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) return false;
-        return Roles.MEMBER.has(user, server);
+        return Roles.APPLICANT.has(user, server) || Roles.MEMBER.has(user, server);
     }
 
     @Override
