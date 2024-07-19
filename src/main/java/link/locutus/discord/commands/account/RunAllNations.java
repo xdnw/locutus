@@ -29,7 +29,7 @@ public class RunAllNations extends Command implements Noformat {
 
     @Override
     public List<CommandRef> getSlashReference() {
-        return List.of(CM.admin.sudo.nations.cmd);
+        return List.of(CM.admin.command.format_for_nations.cmd);
     }
 
     @Override
