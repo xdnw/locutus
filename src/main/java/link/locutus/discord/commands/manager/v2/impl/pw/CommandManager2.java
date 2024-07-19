@@ -237,7 +237,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+//        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
 
         getCommands().registerMethod(new WarCommands(), List.of("alerts", "beige"), "testBeigeAlertAuto", "test_auto");
         getCommands().registerMethod(new UtilityCommands(), List.of("nation"), "vmHistory", "vm_history");
