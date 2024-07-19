@@ -27,6 +27,18 @@ public class CM {
 
             }
             public static class command{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runForNations")
+                public static class format_for_nations extends CommandRef {
+                    public static final format_for_nations cmd = new format_for_nations();
+                public format_for_nations nations(String value) {
+                    return set("nations", value);
+                }
+
+                public format_for_nations command(String value) {
+                    return set("command", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runMultiple")
                 public static class multiple extends CommandRef {
                     public static final multiple cmd = new multiple();
@@ -8201,6 +8213,14 @@ public class CM {
                 public static final DELEGATE_SERVER cmd = new DELEGATE_SERVER();
             public DELEGATE_SERVER guild(String value) {
                 return set("guild", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="HIDE_LEGACY_NOTICE", field="HIDE_LEGACY_NOTICE")
+            public static class HIDE_LEGACY_NOTICE extends CommandRef {
+                public static final HIDE_LEGACY_NOTICE cmd = new HIDE_LEGACY_NOTICE();
+            public HIDE_LEGACY_NOTICE value(String value) {
+                return set("value", value);
             }
 
             }
