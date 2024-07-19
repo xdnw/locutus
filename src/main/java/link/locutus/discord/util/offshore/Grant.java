@@ -554,7 +554,8 @@ public class Grant {
                 if (!force) {
                     List<Grant.Requirement> requirements = new ArrayList<>();
                     requirements.addAll(AGrantTemplate.getBaseRequirements(db, me, receiver, null));
-                    requirements.addAll(getRequirements.apply(receiver));
+                    List<Requirement> addReq = getRequirements.apply(receiver);
+                    if (addReq != null) requirements.addAll(addReq);
                     for (Requirement requirement : requirements) {
                         if (!requirement.apply(receiver)) {
                             errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), requirement.getMessage()));
@@ -639,6 +640,7 @@ public class Grant {
 
             JSONObject command = CM.transfer.resources.cmd
                     .receiver(me.getUrl())
+                    .depositType(typeStr)
                     .transfer(ResourceType.resourcesToString(resources))
                     .nationAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
                     .senderAlliance(useAllianceBank != null ? useAllianceBank.getQualifiedId() : null)
