@@ -559,7 +559,9 @@ public class RaidCommand extends Command {
         });
 
         if (count == 0) {
-            channel.sendMessage("No results. Try using `!raid * 15` or `!raid * 15 -beige` (and plan raids out). Ping milcom for (assistance");
+            channel.sendMessage("No results. Try using " + CM.war.find.raid.cmd.targets("*").numResults("15") + " or " +
+                    CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("10")
+                    +" (and plan raids out). Ping milcom for (assistance");
             return null;
         }
 
