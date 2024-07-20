@@ -3894,24 +3894,6 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getNationsBlockading(nation_id);
     }
 
-    public void toCard(IMessageIO channel, boolean refresh) {
-        String title = nation;
-        String counterEmoji = "Counter";
-        String counterCmd = Settings.commandPrefix(true) + "counter " + getUrl();
-//        String simEmoji = "Simulate";
-//        String simCommand = Settings.commandPrefix(true) + "simulate " + getNationUrl();
-        String refreshEmoji = "Refresh";
-        String refreshCmd = Settings.commandPrefix(true) + "who " + getUrl();
-
-        String response = toEmbedString();
-        response += "To report in-game fraud: " + CM.report.add.cmd.toSlashMention();
-        IMessageBuilder msg = channel.create().embed(title, response)
-                .commandButton(CommandBehavior.UNPRESS, CM.war.counter.nation.cmd.target(getId() + ""), "Counter");
-        if (refresh) {
-            msg = msg.commandButton(CM.who.cmd.nationOrAlliances(getId() + ""), "Refresh");
-        }
-        msg.send();
-    }
     public String toEmbedString() {
         StringBuilder response = new StringBuilder();
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(getNation_id());
@@ -4248,12 +4230,20 @@ public class DBNation implements NationOrAlliance {
         Supplier<List<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
             @Override
             public List<Auth.TradeResult> get() {
-                List<Auth.TradeResult> result = new ArrayList<>();
+                List<String> responses = new ArrayList<>();
                 for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
-                    result.add(new Auth.TradeResult(trade, Auth.TradeResultType.SUCCESS));
+                    responses.add(trade);
                 }
-                result.addAll(senderNation.acceptTrades(getNation_id(), amountMapDbl, true));
+                List<Auth.TradeResult> result = senderNation.acceptTrades(getNation_id(), amountMapDbl, true);
+                if (responses.size() > 0) {
+                    if (result.size() > 0) {
+                        Auth.TradeResult first = result.get(0);
+                        first.setMessage(StringMan.join(responses, "\n") + "\n" + first.getMessage());
+                    } else {
+                        System.out.println("No trades to accept: " + responses);
+                    }
+                }
                 return result;
             }
         };
