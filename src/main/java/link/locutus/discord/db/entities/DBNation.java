@@ -4248,12 +4248,12 @@ public class DBNation implements NationOrAlliance {
         Supplier<List<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
             @Override
             public List<Auth.TradeResult> get() {
-                List<String> responses = new ArrayList<>();
+                List<Auth.TradeResult> result = new ArrayList<>();
                 for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
-                    responses.add(trade);
+                    result.add(new Auth.TradeResult(trade, Auth.TradeResultType.SUCCESS));
                 }
-                List<Auth.TradeResult> result = senderNation.acceptTrades(getNation_id(), amountMapDbl, true);
+                result.addAll(senderNation.acceptTrades(getNation_id(), amountMapDbl, true));
                 return result;
             }
         };
