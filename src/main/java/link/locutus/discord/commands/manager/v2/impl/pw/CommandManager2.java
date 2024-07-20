@@ -466,6 +466,7 @@ public class CommandManager2 {
         //See example in CommandManager2#registerDefaultsMissing methods for FACommands:
         // - generateCoalitionSheet
         this.commands.registerMethod(new FACommands(), List.of("coalition"), "generateCoalitionSheet", "sheet");
+        this.commands.registerMethod(new WarCommands(), List.of("war"), "war", "card");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for PlayerSettingCommands:
         // - bankAlertList

@@ -4015,6 +4015,12 @@ public class WarCommands {
         return null;
     }
 
+    @Command(desc="Show war info for a nation", aliases = {"wars", "warinfo"})
+    public String war(@Me IMessageIO channel, DBWar war) {
+        new WarCard(war.warId).embed(channel, true, false);
+        return null;
+    }
+
     @Command(desc = "Calculate spies for a nation.\n" +
             "Nation argument can be nation name, id, link, or discord tag\n" +
             "If `spies-used` is provided, it will cap the odds at using that number of spies\n" +
