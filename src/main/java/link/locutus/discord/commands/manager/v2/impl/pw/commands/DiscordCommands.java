@@ -400,7 +400,8 @@ public class DiscordCommands {
 
     @Command(desc = "Return the discord invite link for the bot")
     public String invite() {
-        return "<https://github.com/xdnw/locutus/wiki/banking>";
+        return "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
+                "<https://github.com/xdnw/locutus/wiki>";
     }
 
     @Command(desc = "Unregister a nation to a discord user")
