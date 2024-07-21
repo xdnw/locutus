@@ -236,7 +236,7 @@ public class Auth {
         post.put("offeramount", "" + amount);
         post.put("wantamount", "" + ppu);
         post.put("offertype", "personal");
-        post.put("leaderpersonal", leaderUrlEscape);
+        post.put("leaderpersonal", leadername);
         post.put("submit", isBuy ? "Buy" : "Sell");
 
         return PW.withLogin(() -> {
