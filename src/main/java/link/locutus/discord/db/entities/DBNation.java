@@ -860,6 +860,11 @@ public class DBNation implements NationOrAlliance {
         return getRelativeStrength(true);
     }
 
+    public double exponentialCityStrength(@Default Double power) {
+        if (power == null) power = 3d;
+        return Math.pow(getCities(), power);
+    }
+
     public double getRelativeStrength(boolean inactiveIsLoss) {
         if (active_m() > 2440 && inactiveIsLoss) return 0;
 
@@ -6300,6 +6305,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void updateCities(boolean bulk) {
+        System.out.println("nation update cities");
         Locutus.imp().runEventsAsync(events ->
                 Locutus.imp().getNationDB().updateCitiesOfNations(Set.of(nation_id), true, bulk, events));
     }

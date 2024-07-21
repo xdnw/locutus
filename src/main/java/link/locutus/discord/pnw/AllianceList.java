@@ -165,6 +165,7 @@ public class AllianceList {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
         if (force) {
             Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            System.out.println("Aa list update cities for disburse");
             Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
         }
         for (DBAlliance alliance : getAlliances()) {
@@ -269,6 +270,7 @@ public class AllianceList {
 
     public void updateCities() {
         Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
+        System.out.println("Aa list update cities");
         Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
     }
 

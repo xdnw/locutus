@@ -1903,7 +1903,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         boolean fetchCitiesIfOutdated = true;
         boolean fetchAlliancesIfOutdated = true;
         boolean fetchPositionsIfOutdated = true;
-        boolean fetchMostActiveIfNoneOutdated = true;
+        boolean fetchMostActiveIfNoneOutdated = false;
         Set<Integer> fetchCitiesOfNations = new HashSet<>();
 
         if (!nationChanges.isEmpty()) {
@@ -1963,6 +1963,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (!fetchCitiesOfNations.isEmpty() || (fetchMostActiveIfNoneOutdated)) {
             System.out.println("Update cities " + fetchCitiesOfNations.size());
             updateCitiesOfNations(fetchCitiesOfNations, false, true, eventConsumer);
+
         }
 
         if (fetchAlliancesIfOutdated || fetchPositionsIfOutdated) {

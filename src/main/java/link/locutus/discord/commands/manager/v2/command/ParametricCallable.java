@@ -260,6 +260,25 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ParametricCallable parametric) {
+            if (method != null && parametric.method != null) {
+                return method.equals(parametric.method);
+            }
+            return getFullPath().equals(parametric.getFullPath());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        if (method != null) {
+            return method.hashCode();
+        }
+        return getFullPath().hashCode();
+    }
+
+    @Override
     public String simpleDesc() {
         String desc = descMethod.get();
         if (desc != null && desc.indexOf('{') > 0) {
