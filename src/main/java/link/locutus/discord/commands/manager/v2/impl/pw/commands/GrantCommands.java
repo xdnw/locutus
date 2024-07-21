@@ -1435,12 +1435,12 @@ public class GrantCommands {
                                                  "Defaults to the guild setting: `WARCHEST_PER_CITY`")
                                          @Switch("a") Map<ResourceType, Double> allowancePerCity,
                                          @Arg("Allow granting warchest if they have not received it in the past number of days")
-                                         @Switch("t") long trackDays,
+                                         @Switch("t") Long trackDays,
                                          @Arg("Allow granting warchest that has been consumed in war")
                                          @Switch("c") boolean subtractExpenditure,
                                          @Arg("Allow granting a certain percent above the allowance to account for unintended losses (e.g. looting)\n" +
                                                  "Defaults to 0 (percent)")
-                                         @Switch("o") long overdrawPercent,
+                                         @Switch("o") Long overdrawPercent,
                                          @Arg("The role that can grant this template to others\n" +
                                                  "Defaults to the ECON role (see `{prefix}role setalias`)")
                                              @Switch("e") Role econRole,
@@ -1483,7 +1483,7 @@ public class GrantCommands {
                                          @Switch("repeat") boolean nonRepeatable,
                                          @Switch("f") boolean force) {
         boolean repeatable = !nonRepeatable;
-        long overdrawPercentCents = overdrawPercent * 100;
+        long overdrawPercentCents = overdrawPercent == null ? 0 : overdrawPercent * 100;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
@@ -1506,7 +1506,7 @@ public class GrantCommands {
         }
 
         double[] allowancePerCityArr = allowancePerCity == null ? null : ResourceType.resourcesToArray(allowancePerCity);
-        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays == null ? 0 : trackDays, subtractExpenditure, overdrawPercentCents, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
 
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
