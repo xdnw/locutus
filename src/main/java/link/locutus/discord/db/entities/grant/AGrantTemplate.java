@@ -149,7 +149,7 @@ public abstract class AGrantTemplate<T> {
                 expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero),
                 decayOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decayOrZero),
                 allowIgnore ? "true" : null,
-                repeatable_time <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, repeatable_time));
+                repeatable_time < 0 ? null : repeatable_time == 0 ? "0" : TimeUtil.secToTime(TimeUnit.MILLISECONDS, repeatable_time));
     }
 
     public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable);
@@ -599,11 +599,11 @@ public abstract class AGrantTemplate<T> {
         stmt.setLong(13, this.getExpire());
         stmt.setLong(14, this.getDecay());
         stmt.setBoolean(15, this.allowsIgnore());
-        stmt.setBoolean(16, this.isRepeatable());
+        stmt.setLong(16, this.getRepeatable());
     }
 
-    public boolean isRepeatable() {
-        return repeatable;
+    public long getRepeatable() {
+        return repeatable_time;
     }
 
     public long getDateCreated() {
