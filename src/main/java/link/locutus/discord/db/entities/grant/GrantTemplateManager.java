@@ -272,7 +272,6 @@ public class GrantTemplateManager {
     }
 
     public void deleteTemplate(AGrantTemplate template) {
-        // remove from map
         templates.remove(template.getName());
 
         String table = template.getType().getTable();
