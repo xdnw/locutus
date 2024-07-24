@@ -2655,7 +2655,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of in-game transfers for nations")
     @RolePermission(value = Roles.ECON)
-    public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, Set<NationOrAlliance> receivers,  @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, @AllowDeleted Set<NationOrAlliance> senders, @AllowDeleted Set<NationOrAlliance> receivers,  @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
@@ -2800,7 +2800,7 @@ public class BankCommands {
     })
     @RolePermission(value = Roles.ECON)
     public String getNationsInternalTransfers(@Me IMessageIO channel, @Me GuildDB db,
-                                              Set<DBNation> nations,
+                                              @AllowDeleted Set<DBNation> nations,
                                               @Arg(value = "Only list transfers after this time", group = 0)
                                               @Timestamp @Default Long startTime,
                                               @Arg(value = "Only list transfers before this time", group = 0)
@@ -2826,7 +2826,11 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of transfers")
     @RolePermission(value = Roles.ECON, root = true)
-    public String getIngameTransactions(@Me IMessageIO channel, @Me GuildDB db, @Default NationOrAlliance sender, @Default NationOrAlliance receiver, @Default NationOrAlliance banker, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String getIngameTransactions(@Me IMessageIO channel, @Me GuildDB db,
+                                        @AllowDeleted @Default NationOrAlliance sender,
+                                        @AllowDeleted @Default NationOrAlliance receiver,
+                                        @AllowDeleted @Default NationOrAlliance banker,
+                                        @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         List<Transaction2> transactions = Locutus.imp().getBankDB().getAllTransactions(sender, receiver, banker, timeframe, null);
         if (transactions.size() > 10000) return "Timeframe is too large, please use a shorter period";
@@ -2841,7 +2845,7 @@ public class BankCommands {
     })
     @RolePermission(value = Roles.ECON)
     public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user,
-                               NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
+                               @AllowDeleted NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                                @Arg(value = "Only show transactions after this time", group = 0)
                                @Default("%epoch%") @Timestamp long timeframe,
                                @Arg(value = "Do NOT include the tax record resources below the internal tax rate\n" +

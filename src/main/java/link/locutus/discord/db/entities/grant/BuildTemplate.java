@@ -12,6 +12,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
@@ -307,16 +308,41 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         list.add(new Grant.Requirement("Nation must NOT have received a new city build grant (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-                if (template == null || template.getRepeatable() >= 0) return true;
-                if (template.allow_switch_after_offensive || template.allow_switch_after_infra || template.allow_switch_after_land_or_project) return true;
-
+                if (template == null || db == null) return true;
+//                if (template.allow_switch_after_offensive || template.allow_switch_after_infra || template.allow_switch_after_land_or_project) return true;
                 List<GrantTemplateManager.GrantSendRecord> records = db.getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+                long repeatable = template.getRepeatable();
+                if (repeatable > 0) {
+                    long cutoff = System.currentTimeMillis() - repeatable;
+                    records.removeIf(f -> f.date < cutoff);
+                }
+                long lastLand = 0;
+                long lastProject = 0;
+                long lastInfra = 0;
+                // get transfers
+                List<Map.Entry<Integer, Transaction2>> transactions = receiver.getTransactions(db, null, false, false, false, -1, 0, true);
+                for (Map.Entry<Integer, Transaction2> entry : transactions) {
+                    Transaction2 tx = entry.getValue();
+                    if (tx.receiver_id != receiver.getId()) continue;
+                    String note = tx.note;
+                    if (note == null || note.isEmpty()) continue;
+                    if (note.contains("#project")) lastProject = Math.max(lastProject, tx.tx_datetime);
+                    if (note.contains("#land")) lastLand = Math.max(lastLand, tx.tx_datetime);
+                    if (note.contains("#infra")) lastInfra = Math.max(lastInfra, tx.tx_datetime);
+                }
+                long lastLandOrProject = Math.max(lastLand, lastProject);
 
                 for(GrantTemplateManager.GrantSendRecord record : records) {
                     if (template.allow_switch_after_days > 0 && record.date < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(template.allow_switch_after_days)) {
                         continue;
                     }
                     if (receiver.getCitiesSince(record.date) == 0 && record.grant_type == TemplateTypes.BUILD) {
+                        return false;
+                    }
+                    if (template.allow_switch_after_infra && record.grant_type == TemplateTypes.INFRA && record.date > lastInfra) {
+                        return false;
+                    }
+                    if (template.allow_switch_after_land_or_project && (record.grant_type == TemplateTypes.LAND || record.grant_type == TemplateTypes.PROJECT) && record.date > lastLandOrProject) {
                         return false;
                     }
                 }

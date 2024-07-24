@@ -13,6 +13,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
@@ -1840,8 +1841,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
             if (score && Math.round(100 * (nation.estimateScore() - nation.getScore())) != 0) {
                 dirtyNations.add(nation.getNation_id());
-            } else if (cities && nation.getCities() != getCitiesV3(nation.getNation_id()).size()) {
-                dirtyNations.add(nation.getNation_id());
+            } else {
+                Map<Integer, DBCity> cityMap = getCitiesV3(nation.getNation_id());
+                if (cities && nation.getCities() != cityMap.size()) {
+                    dirtyNations.add(nation.getNation_id());
+                } else {
+                    for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP}) {
+                        MilitaryBuilding building = unit.getBuilding();
+                        int unitCap = 0;
+                        for (DBCity city : cityMap.values()) {
+                            unitCap += city.getBuilding(building) * building.getUnitCap() ;
+                        }
+                        if (nation.getUnits(unit) > unitCap) {
+                            dirtyNations.add(nation.getNation_id());
+                            break;
+                        }
+                    }
+                }
             }
         }
         int added = dirtyNations.size() - originalSize;

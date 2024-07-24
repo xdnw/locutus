@@ -103,7 +103,8 @@ public class EmbedCommands {
         return null;
     }
 
-    @Command(desc = "Set the description of an embed from this bot")
+    @Command(desc = "Set the description of an embed from this bot\n" +
+            "Use backslash n for newline and `{description}` to include the existing description")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String description(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String description) {
         checkMessagePerms(user, guild, discMessage);
@@ -113,7 +114,12 @@ public class EmbedCommands {
         MessageEmbed embed = embeds.get(0);
 
         EmbedBuilder builder = new EmbedBuilder(embed);
-        builder.setDescription(description.replace("\\n", "\n"));
+        description = description.replace("\\n", "\n");
+        String existing = embed.getDescription();
+        if (existing != null && description.contains("{description}")) {
+            description = description.replace("{description}", existing);
+        }
+        builder.setDescription(description);
 
         message.clearEmbeds();
         message.embed(builder.build());
