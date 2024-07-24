@@ -149,7 +149,7 @@ public abstract class AGrantTemplate<T> {
                 expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero),
                 decayOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decayOrZero),
                 allowIgnore ? "true" : null,
-                repeatable_time < 0 ? null : repeatable_time == 0 ? "0" : TimeUtil.secToTime(TimeUnit.MILLISECONDS, repeatable_time));
+                repeatable_time <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, repeatable_time));
     }
 
     public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable);
@@ -407,17 +407,19 @@ public abstract class AGrantTemplate<T> {
                 }
             }));
         }
-
-        if (template == null || template.repeatable_time <= 0) {
-            // check nation not received grant already
-            list.add(new Grant.Requirement("Nation must NOT receive a grant template twice (when `repeatable: 0`)", false, new Function<DBNation, Boolean>() {
-                @Override
-                public Boolean apply(DBNation nation) {
-                    if (template == null) return true;
-                    return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), template.getName()).isEmpty();
+        list.add(new Grant.Requirement("Nation must NOT receive a grant template twice (when `repeatable: false`)", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                if (template == null) return true;
+                List<GrantTemplateManager.GrantSendRecord> records = db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), template.getName());
+                if (template.repeatable_time <= 0) {
+                    return records.isEmpty();
                 }
-            }));
-        }
+                long cutoff = System.currentTimeMillis() - template.repeatable_time;
+                records.removeIf(f -> f.date <= cutoff);
+                return records.isEmpty();
+            }
+        }));
 
        // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation was not found in guild");
         list.add(new Grant.Requirement("Nation must be verified: " + CM.register.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {

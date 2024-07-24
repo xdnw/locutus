@@ -58,7 +58,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
                 allowIgnore).nonRepeatable(
-                getRepeatable() < 0 ? null : getRepeatable() == 0 ? "0" : TimeUtil.secToTime(TimeUnit.MILLISECONDS, getRepeatable())).toString();
+                getRepeatable() <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, getRepeatable())).toString();
     }
 
     @Override

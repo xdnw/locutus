@@ -128,7 +128,8 @@ public class IACommands {
             } else if (!allow_vm && nation.getVm_turns() > 0) {
                 warnings.put(channel, "Nation is a VM: " + nation.getMarkdownUrl() + " (ignore with `allow_vm: True`");
             }
-            if (channel.getTopic().isEmpty()) {
+            String topic = channel.getTopic();
+            if (topic == null || channel.getTopic().isEmpty()) {
                 String newTopic = nation.getUrl();
                 RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
             }
