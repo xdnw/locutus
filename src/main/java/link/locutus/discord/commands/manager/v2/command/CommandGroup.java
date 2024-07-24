@@ -177,13 +177,14 @@ public class CommandGroup implements ICommandGroup {
     @Override
     public Object call(ArgumentStack stack) {
         if (!stack.hasNext()) {
-            throw new CommandUsageException(this, "No subcommand specified");
+            throw new CommandUsageException(this, "No subcommand specified. Valid subcommands\n" +
+                    "- " + StringMan.join(primarySubCommandIds(), "\n- "));
         }
         String arg = stack.consumeNext();
         CommandCallable subcommand = subcommands.get(arg.toLowerCase());
         if (subcommand == null) {
             throw new CommandUsageException(this, "Invalid subcommand: `" + arg + "`\n" +
-                    "Valid subcommands: " + StringMan.join(primarySubCommandIds(), ", "));
+                    "Valid subcommands:\n- " + StringMan.join(primarySubCommandIds(), "\n- "));
         }
         return subcommand.call(stack);
     }

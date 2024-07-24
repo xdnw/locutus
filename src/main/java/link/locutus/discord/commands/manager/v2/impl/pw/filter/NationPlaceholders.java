@@ -257,11 +257,30 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         } else if (nameLower.startsWith("<@&") && guild != null) {
             Role role = DiscordUtil.getRole(guild, name);
             return getByRole(guild, name, role);
+        } else if (nameLower.startsWith("<@") || nameLower.startsWith("<!@")) {
+            User user = DiscordUtil.getUser(nameLower);
+            if (user != null) {
+                DBNation nation = DiscordUtil.getNation(user);
+                if (nation == null) {
+                    throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
+                }
+                return Set.of(nation);
+            }
         } else if (MathMan.isInteger(nameLower)) {
             long id = Long.parseLong(nameLower);
             if (id > Integer.MAX_VALUE && guild != null) {
+                User user = Locutus.imp().getDiscordApi().getUserById(id);
+                if (user != null) {
+                    DBNation nation = DiscordUtil.getNation(user);
+                    if (nation == null) {
+                        throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
+                    }
+                    return Set.of(nation);
+                }
                 Role role = DiscordUtil.getRole(guild, name);
-                return getByRole(guild, name, role);
+                if (role != null) {
+                    return getByRole(guild, name, role);
+                }
             }
             DBNation nation = DBNation.getById((int) id);
             if (nation != null) return Set.of(nation);

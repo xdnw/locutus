@@ -466,7 +466,6 @@ public class CommandManager2 {
         //See example in CommandManager2#registerDefaultsMissing methods for FACommands:
         // - generateCoalitionSheet
         this.commands.registerMethod(new FACommands(), List.of("coalition"), "generateCoalitionSheet", "sheet");
-        this.commands.registerMethod(new WarCommands(), List.of("war"), "war", "card");
         //
         //See example in CommandManager2#registerDefaultsMissing methods for PlayerSettingCommands:
         // - bankAlertList
@@ -482,6 +481,7 @@ public class CommandManager2 {
         // - warsCostRankingByDay
         // - attackTypeRanking
         // - attackTypeBreakdownAB
+        this.commands.registerMethod(new StatCommands(), List.of("alliance", "stats"), "allianceAttributeRanking", "attribute_ranking");
         this.commands.registerMethod(new StatCommands(), List.of("alliance", "stats"), "allianceByLoot", "loot_ranking");
         this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warCostsByDay", "warcost_versus");
         this.commands.registerMethod(new StatCommands(), List.of("stats_war", "by_day"), "warsCostRankingByDay", "warcost_global");

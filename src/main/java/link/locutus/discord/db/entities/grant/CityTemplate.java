@@ -35,7 +35,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     // create new constructor  with typed parameters instead of resultset
     public CityTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, int min_city, int max_city, long expiryOrZero, long decayOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, false);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, -1);
         this.min_city = min_city;
         this.max_city = max_city;
     }

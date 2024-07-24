@@ -913,7 +913,7 @@ public class GrantCommands {
                                               "Defaults to false")
                                           @Switch("ignore") boolean allowIgnore,
                                       @Arg("If the template can be sent to the same receiver multiple times")
-                                          @Switch("repeat") boolean repeatable,
+                                          @Switch("repeat") @Timediff Long repeatable_time,
                                       @Switch("f") boolean force) {
 
         name = name.toUpperCase(Locale.ROOT).trim();
@@ -940,7 +940,7 @@ public class GrantCommands {
 
         BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), buildBytes, only_new_cities, mmr == null ? -1 : mmr.toNumber(),
                 allow_after_days == null ? 0 : allow_after_days,
-                allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
+                allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable_time == null ? -1 : repeatable_time);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -1134,7 +1134,7 @@ public class GrantCommands {
                                               "Defaults to false")
                                           @Switch("ignore") boolean allowIgnore,
                                       @Arg("If the template can be sent to the same receiver multiple times")
-                                          @Switch("repeat") boolean repeatable,
+                                          @Switch("repeat") @Timediff Long repeatable_time,
                                       @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -1173,7 +1173,7 @@ public class GrantCommands {
                 level,
                 onlyNewCities,
                 requireNOffensives == null ? 0 : requireNOffensives,
-                allowRebuild, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
+                allowRebuild, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable_time == null ? -1 : repeatable_time);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -1257,7 +1257,7 @@ public class GrantCommands {
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
                                      @Arg("If the template can be sent to the same receiver multiple times")
-                                         @Switch("repeat") boolean repeatable,
+                                         @Switch("repeat") @Timediff Long repeatable_time,
                                      @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -1280,7 +1280,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
+        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable_time == null ? -1 : repeatable_time);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -1364,10 +1364,11 @@ public class GrantCommands {
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
-                                     @Arg("If the template can only sent to the same receiver once")
-                                         @Switch("repeat") boolean nonRepeatable,
+                                     @Arg("If the template can only sent to the same receiver once\n" +
+                                             "Defaults to 1d")
+                                         @Switch("repeat") @Timediff Long repeatable_time,
                                      @Switch("f") boolean force) {
-        boolean repeatable = !nonRepeatable;
+        if (repeatable_time == null) repeatable_time = TimeUnit.DAYS.toMillis(1);
         if (overdrawPercent == null) overdrawPercent = 20L;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -1390,7 +1391,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
+        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable_time == null ? -1 : repeatable_time);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -1435,12 +1436,12 @@ public class GrantCommands {
                                                  "Defaults to the guild setting: `WARCHEST_PER_CITY`")
                                          @Switch("a") Map<ResourceType, Double> allowancePerCity,
                                          @Arg("Allow granting warchest if they have not received it in the past number of days")
-                                         @Switch("t") long trackDays,
+                                         @Switch("t") Long trackDays,
                                          @Arg("Allow granting warchest that has been consumed in war")
                                          @Switch("c") boolean subtractExpenditure,
                                          @Arg("Allow granting a certain percent above the allowance to account for unintended losses (e.g. looting)\n" +
                                                  "Defaults to 0 (percent)")
-                                         @Switch("o") long overdrawPercent,
+                                         @Switch("o") Long overdrawPercent,
                                          @Arg("The role that can grant this template to others\n" +
                                                  "Defaults to the ECON role (see `{prefix}role setalias`)")
                                              @Switch("e") Role econRole,
@@ -1479,11 +1480,12 @@ public class GrantCommands {
                                          @Arg("Do not include grants in member balances by default\n" +
                                                  "Defaults to false")
                                              @Switch("ignore") boolean allowIgnore,
-                                         @Arg("If the template can be sent to the same receiver multiple times")
-                                         @Switch("repeat") boolean nonRepeatable,
+                                         @Arg("If the template can be sent to the same receiver multiple times\n" +
+                                                 "Defaults to 1d")
+                                             @Switch("repeat") @Timediff Long repeatable_time,
                                          @Switch("f") boolean force) {
-        boolean repeatable = !nonRepeatable;
-        long overdrawPercentCents = overdrawPercent * 100;
+        if (repeatable_time == null) repeatable_time = TimeUnit.DAYS.toMillis(1);
+        long overdrawPercentCents = overdrawPercent == null ? 0 : overdrawPercent * 100;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
@@ -1506,7 +1508,7 @@ public class GrantCommands {
         }
 
         double[] allowancePerCityArr = allowancePerCity == null ? null : ResourceType.resourcesToArray(allowancePerCity);
-        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays == null ? 0 : trackDays, subtractExpenditure, overdrawPercentCents, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable_time == null ? -1 : repeatable_time);
 
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {

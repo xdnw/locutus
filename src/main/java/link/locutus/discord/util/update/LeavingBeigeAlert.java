@@ -314,7 +314,7 @@ public class LeavingBeigeAlert {
         long diff = nextTurnMs - System.currentTimeMillis();
 
         String footer = "**note1**: To find specific beige targets, go to your alliance server on discord and use e.g. " +
-                "`" + Settings.commandPrefix(true) + "raid * 25 -beige` and set a reminder using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
+                CM.war.find.raid.cmd.targets("*").numResults("25").beigeTurns("84") + " or set a reminder using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
                 "**note2:** To set how you receive alerts for *any* target leaving beige automatically, update your settings:\n" +
                 "- " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
                 "- " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +

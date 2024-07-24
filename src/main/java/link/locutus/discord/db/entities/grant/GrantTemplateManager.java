@@ -105,7 +105,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
         String cities = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_CITY` " +
@@ -125,7 +125,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
         String warchest = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_WARCHEST` " +
@@ -147,7 +147,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String infra = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_INFRA` " +
                 "(`enabled` INTEGER NOT NULL, " +
@@ -168,7 +168,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String land = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_LAND` " +
                 "(`enabled` INTEGER NOT NULL, " +
@@ -187,7 +187,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String build = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_BUILD` " +
                 "(`enabled` INTEGER NOT NULL, " +
@@ -212,7 +212,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String raws = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RAWS` " +
                 "(`enabled` INTEGER NOT NULL, " +
@@ -231,7 +231,7 @@ public class GrantTemplateManager {
                 "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
-                "`repeatable` BOOLEAN NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
         // grants_sent (long sender id, long receiver id, String grant, int grant type, byte[] amount, long date)
@@ -266,13 +266,12 @@ public class GrantTemplateManager {
         // add repeatable
         for (TemplateTypes value : TemplateTypes.values()) {
             String tableName = value.getTable();
-            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `repeatable` BOOLEAN NOT NULL DEFAULT 0");
+            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `repeatable` BIGINT NOT NULL DEFAULT 0");
         }
 
     }
 
     public void deleteTemplate(AGrantTemplate template) {
-        // remove from map
         templates.remove(template.getName());
 
         String table = template.getType().getTable();

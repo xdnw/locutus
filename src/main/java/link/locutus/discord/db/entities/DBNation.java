@@ -860,6 +860,11 @@ public class DBNation implements NationOrAlliance {
         return getRelativeStrength(true);
     }
 
+    public double exponentialCityStrength(@Default Double power) {
+        if (power == null) power = 3d;
+        return Math.pow(getCities(), power);
+    }
+
     public double getRelativeStrength(boolean inactiveIsLoss) {
         if (active_m() > 2440 && inactiveIsLoss) return 0;
 
@@ -3894,24 +3899,6 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getNationsBlockading(nation_id);
     }
 
-    public void toCard(IMessageIO channel, boolean refresh) {
-        String title = nation;
-        String counterEmoji = "Counter";
-        String counterCmd = Settings.commandPrefix(true) + "counter " + getUrl();
-//        String simEmoji = "Simulate";
-//        String simCommand = Settings.commandPrefix(true) + "simulate " + getNationUrl();
-        String refreshEmoji = "Refresh";
-        String refreshCmd = Settings.commandPrefix(true) + "who " + getUrl();
-
-        String response = toEmbedString();
-        response += "To report in-game fraud: " + CM.report.add.cmd.toSlashMention();
-        IMessageBuilder msg = channel.create().embed(title, response)
-                .commandButton(CommandBehavior.UNPRESS, CM.war.counter.nation.cmd.target(getId() + ""), "Counter");
-        if (refresh) {
-            msg = msg.commandButton(CM.who.cmd.nationOrAlliances(getId() + ""), "Refresh");
-        }
-        msg.send();
-    }
     public String toEmbedString() {
         StringBuilder response = new StringBuilder();
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(getNation_id());
@@ -4254,6 +4241,14 @@ public class DBNation implements NationOrAlliance {
                     responses.add(trade);
                 }
                 List<Auth.TradeResult> result = senderNation.acceptTrades(getNation_id(), amountMapDbl, true);
+                if (responses.size() > 0) {
+                    if (result.size() > 0) {
+                        Auth.TradeResult first = result.get(0);
+                        first.setMessage(StringMan.join(responses, "\n") + "\n" + first.getMessage());
+                    } else {
+                        System.out.println("No trades to accept: " + responses);
+                    }
+                }
                 return result;
             }
         };
@@ -6310,6 +6305,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void updateCities(boolean bulk) {
+        System.out.println("nation update cities");
         Locutus.imp().runEventsAsync(events ->
                 Locutus.imp().getNationDB().updateCitiesOfNations(Set.of(nation_id), true, bulk, events));
     }

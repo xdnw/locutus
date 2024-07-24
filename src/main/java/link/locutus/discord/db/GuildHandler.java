@@ -615,12 +615,11 @@ public class GuildHandler {
                 e.printStackTrace();
             }
             String emoji = "Claim";
-            String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
-                    "\n" +
-                    "Assigned to {usermention} in {timediff}'";
+            CM.embed.update cmd = CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}");
+
 
             io.create().embed(title, body.toString())
-                    .commandButton(pending, emoji).send();
+                    .commandButton(CommandBehavior.DELETE_BUTTONS, cmd, emoji).send();
         } else {
             RateLimitUtil.queueMessage(io, new Function<IMessageBuilder, Boolean>() {
                 @Override
@@ -1471,15 +1470,13 @@ public class GuildHandler {
         AttackTypeBreakdown breakdown = parser.toBreakdown();
 
         String infoEmoji = "War Info";
-        String infoCommand = "." + Settings.commandPrefix(true) + "warinfo " + war.toUrl();
+        CommandRef infoCommand = CM.war.card.cmd.warId(war.warId + "");
 
         String costEmoji = "War Cost";
-        String costCommand = "." + Settings.commandPrefix(true) + "WarCost " + war.toUrl();
+        CommandRef costCommand = CM.stats_war.warCost.cmd.war(war.warId + "");
 
         String assignEmoji = "Claim";
-        String assignCmd = "." + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
-                "\n" +
-                "Assigned to {usermention} in {timediff}'";
+        CommandRef assignCmd = CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}");
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
         IMessageBuilder msg = io.create();
@@ -1501,9 +1498,9 @@ public class GuildHandler {
         builder.append("```\n" + attStr + "|" + defStr + "```\n");
 
         msg.writeTable(title, breakdown.toTableList(), false, builder.toString());
-        msg.commandButton(infoCommand, infoEmoji);
-        msg.commandButton(costCommand, costEmoji);
-        msg.commandButton(assignCmd, assignEmoji);
+        msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, infoCommand, infoEmoji);
+        msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, costCommand, costEmoji);
+        msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, assignCmd, assignEmoji);
         msg.cancelButton();
         msg.send();
     }
@@ -2200,18 +2197,20 @@ public class GuildHandler {
         body.append("\n\nPress 0 for war info, 1 for defender info");
 
         //
-        String warInfoEmoji = 0 + "War Info";
-        String warInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + root.getWar_id();
-        String defInfoEmoji = 1 + "Defender Info";
-        String defInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + defender.getUrl();
+        String warInfoEmoji = "War Info";
+        CommandRef warInfoCmd = CM.war.card.cmd.warId(root.getWar_id() + "");
+        String defInfoEmoji = "Defender Info";
+        CommandRef defInfoCmd = CM.war.info.cmd.nation(defender.getNation_id() + "");
 
         String emoji = "Claim";
-        String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
-                "\n" +
-                "Assigned to {usermention} in {timediff}'";
+        CommandRef pending = CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}");
         body.append("\nPress `" + emoji + "` to assign yourself");
 
-        DiscordUtil.createEmbedCommand(channel, title, body.toString(), warInfoEmoji, warInfoCmd, defInfoEmoji, defInfoCmd, emoji, pending);
+        IMessageBuilder msg = new DiscordChannelIO(channel).create();
+        msg.embed(title, body.toString())
+        .commandButton(CommandBehavior.UNPRESS, warInfoCmd, warInfoEmoji)
+        .commandButton(CommandBehavior.UNPRESS, defInfoCmd, defInfoEmoji)
+        .commandButton(CommandBehavior.UNPRESS, pending, emoji);
 
         Role milcom = Roles.ENEMY_BEIGE_ALERT_AUDITOR.toRole(db.getGuild());
         if (!allowed) {
@@ -2225,8 +2224,8 @@ public class GuildHandler {
             explanation += "\n\nSent from " + guild.toString();
 
             if (!ping.isEmpty()) {
-                RateLimitUtil.queueWhenFree(channel.sendMessage("^" + ping));
-                DiscordUtil.sendMessage(channel, explanation.toString());
+                msg.append(ping);
+                msg.append(explanation);
             }
 
             if (sendMail) {
@@ -2243,6 +2242,7 @@ public class GuildHandler {
                 }
             }
         }
+        msg.send();
 
 //            if (!allowed) {
 //                User user = attacker.getUser();

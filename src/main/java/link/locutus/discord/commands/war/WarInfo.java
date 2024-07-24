@@ -31,7 +31,7 @@ public class WarInfo extends Command {
 
     @Override
     public List<CommandRef> getSlashReference() {
-        return List.of(CM.war.info.cmd);
+        return List.of(CM.war.info.cmd, CM.war.card.cmd);
     }
 
     @Override

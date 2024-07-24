@@ -52,9 +52,9 @@ public abstract class AGrantTemplate<T> {
     private int maxGranterTotal;
     private int maxGranterDay;
     private long dateCreated;
-    private boolean repeatable;
+    private long repeatable_time;
 
-    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, long decayOrZero, boolean allowIgnore, boolean repeatable) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, long decayOrZero, boolean allowIgnore, long repeatable_time) {
         this.db = db;
         this.enabled = enabled;
         this.name = name;
@@ -71,7 +71,7 @@ public abstract class AGrantTemplate<T> {
         this.expiryOrZero = expiryOrZero;
         this.decayOrZero = decayOrZero;
         this.allowIgnore = allowIgnore;
-        this.repeatable = repeatable;
+        this.repeatable_time = repeatable_time;
     }
 
     public boolean isEnabled() {
@@ -148,7 +148,8 @@ public abstract class AGrantTemplate<T> {
                 maxGranterTotal > 0 ? "" + maxGranterTotal : null,
                 expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero),
                 decayOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decayOrZero),
-                allowIgnore ? "true" : null, repeatable ? "true" : null);
+                allowIgnore ? "true" : null,
+                repeatable_time <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, repeatable_time));
     }
 
     public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable);
@@ -406,17 +407,19 @@ public abstract class AGrantTemplate<T> {
                 }
             }));
         }
-
-        if (template == null || !template.repeatable) {
-            // check nation not received grant already
-            list.add(new Grant.Requirement("Nation must NOT receive a grant template twice (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
-                @Override
-                public Boolean apply(DBNation nation) {
-                    if (template == null) return true;
-                    return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), template.getName()).isEmpty();
+        list.add(new Grant.Requirement("Nation must NOT receive a grant template twice (when `repeatable: false`)", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                if (template == null) return true;
+                List<GrantTemplateManager.GrantSendRecord> records = db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), template.getName());
+                if (template.repeatable_time <= 0) {
+                    return records.isEmpty();
                 }
-            }));
-        }
+                long cutoff = System.currentTimeMillis() - template.repeatable_time;
+                records.removeIf(f -> f.date <= cutoff);
+                return records.isEmpty();
+            }
+        }));
 
        // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation was not found in guild");
         list.add(new Grant.Requirement("Nation must be verified: " + CM.register.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
@@ -598,11 +601,11 @@ public abstract class AGrantTemplate<T> {
         stmt.setLong(13, this.getExpire());
         stmt.setLong(14, this.getDecay());
         stmt.setBoolean(15, this.allowsIgnore());
-        stmt.setBoolean(16, this.isRepeatable());
+        stmt.setLong(16, this.getRepeatable());
     }
 
-    public boolean isRepeatable() {
-        return repeatable;
+    public long getRepeatable() {
+        return repeatable_time;
     }
 
     public long getDateCreated() {

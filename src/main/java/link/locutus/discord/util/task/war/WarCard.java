@@ -2,13 +2,17 @@ package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -422,15 +426,12 @@ public class WarCard {
 
     public IMessageBuilder embed(IMessageBuilder builder, boolean addReactions, boolean condense, boolean send) {
         String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
-        String cmd = Settings.commandPrefix(true) + "WarInfo " + warUrl;
-        String sim = "~" + Settings.commandPrefix(true) + "simulate " + warUrl;
-        String counter = "~" + Settings.commandPrefix(true) + "counter " + warUrl;
-        String counterSpy = "~" + Settings.commandPrefix(true) + "counterspy " + warUrl + " *";
+        CommandRef cmd = CM.war.card.cmd.warId(warId + "");
+        CommandRef counter = CM.war.counter.url.cmd.war(warUrl);
+        CommandRef counterSpy = CM.spy.counter.cmd.enemy(war.getAttacker_id() + "").operations("*");
 
         String pendingEmoji = "Claim";
-        String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed role:milcom 'description:{description}\n" +
-                "\n" +
-                "Assigned to {usermention} in {timediff}'";
+        CommandRef pending = CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}").requiredRole(Roles.MILCOM.name());
 
         IMessageBuilder msg;
         if (addReactions) {
@@ -438,10 +439,10 @@ public class WarCard {
             desc += "\n\nPress `" + pendingEmoji + "` to assign";
 
             msg = builder.embed(getTitle(), desc)
-                    .commandButton(pending, pendingEmoji)
-                    .commandButton(cmd, cmdEmoji)
-                    .commandButton(counter, counterEmoji)
-                    .commandButton(counterSpy, spyEmoji);
+                    .commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, pending, pendingEmoji)
+                    .commandButton(CommandBehavior.UNPRESS, cmd, cmdEmoji)
+                    .commandButton(CommandBehavior.UNPRESS, counter, counterEmoji)
+                    .commandButton(CommandBehavior.UNPRESS, counterSpy, spyEmoji);
         } else {
             msg = builder.embed(getTitle(), getDescription());
         }

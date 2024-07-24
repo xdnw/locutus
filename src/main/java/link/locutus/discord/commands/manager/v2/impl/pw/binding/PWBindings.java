@@ -683,8 +683,9 @@ public class PWBindings extends BindingHelper {
                 return selfDb;
             }
         }
+        boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
         try {
-            return nationOrAlliance(input, data);
+            return nationOrAlliance(data, input, allowDeleted);
         } catch (IllegalArgumentException ignore) {
             if (includeTaxId && !input.startsWith("#") && input.contains("tax_id")) {
                 int taxId = PW.parseTaxId(input);

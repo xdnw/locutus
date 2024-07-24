@@ -1226,6 +1226,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public void updateCities(Predicate<DBNation> fetchNation) throws IOException {
         Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
         if (nationIds.isEmpty()) return;
+        System.out.println("Aa update cities");
         Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
     }
 

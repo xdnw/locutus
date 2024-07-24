@@ -29,9 +29,11 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -544,11 +546,26 @@ public class StatCommands {
             double diff = entry.getValue().get(metric).values().iterator().next();
             metricsDiff.put(alliance, diff);
         }
-        System.out.println(metricsDiff);
-        displayAllianceRanking(channel, command, metric, metricsDiff, reverseOrder, uploadFile);
+        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile);
     }
 
-    public void displayAllianceRanking(IMessageIO channel, JSONObject command, AllianceMetric metric, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile) {
+    @Command(desc = "Rank alliances by an alliance attribute")
+    public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, TypedFunction<DBAlliance, Double> attribute, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+        long turn = TimeUtil.getTurn();
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+
+        Map<DBAlliance, Double> attributeByAlliance = new HashMap<>();
+        for (DBAlliance alliance : alliances) {
+            Double value = attribute.apply(alliance);
+            if (!Double.isFinite(value)) continue;
+            attributeByAlliance.put(alliance, value);
+        }
+
+        String title = command.getString("attribute");
+        displayAllianceRanking(channel, command, title, attributeByAlliance, reverseOrder, uploadFile);
+    }
+
+    public void displayAllianceRanking(IMessageIO channel, JSONObject command, String metricName, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile) {
 
         SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>(metricsDiff);
         if (reverseOrder) {
@@ -556,7 +573,7 @@ public class StatCommands {
         } else {
             builder = builder.sort();
         }
-        String title = "Top " + metric + " by alliance";
+        String title = "Top " + metricName + " by alliance";
 
         RankBuilder<String> named = builder.nameKeys(DBAlliance::getName);
         named.build(channel, command, title, uploadFile);
@@ -581,7 +598,7 @@ public class StatCommands {
             double dataEnd = entry.getValue().get(metric).values().iterator().next();
             metricsDiff.put(alliance, dataEnd - dataStart);
         }
-        displayAllianceRanking(channel, command, metric, metricsDiff, reverseOrder, uploadFile);
+        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile);
     }
 
     @Command(desc = "Rank nations by an attribute")

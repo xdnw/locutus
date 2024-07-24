@@ -586,10 +586,10 @@ public class Grant {
                 if (sheet != null) {
                     double[] costApplyMissing = resources.clone();
                     if (onlySendMissingFunds) {
-                        if (!db.isAllianceId(me.getAlliance_id())) {
-                            throw new IllegalArgumentException("Nation " + me.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
+                        if (!db.isAllianceId(receiver.getAlliance_id())) {
+                            throw new IllegalArgumentException("Nation " + receiver.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
                         }
-                        Map<ResourceType, Double> stockpile = me.getStockpile();
+                        Map<ResourceType, Double> stockpile = receiver.getStockpile();
                         for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
                             if (entry.getValue() > 0) {
                                 double newAmt = Math.max(0, costApplyMissing[entry.getKey().ordinal()] - entry.getValue());
@@ -639,7 +639,7 @@ public class Grant {
             double[] resources = grant.cost();
 
             JSONObject command = CM.transfer.resources.cmd
-                    .receiver(me.getUrl())
+                    .receiver(receiver.getUrl())
                     .depositType(typeStr)
                     .transfer(ResourceType.resourcesToString(resources))
                     .nationAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
@@ -657,9 +657,9 @@ public class Grant {
                     .toJson();
             StringBuilder msg = new StringBuilder();
             msg.append(ResourceType.resourcesToString(resources)).append("\n")
-                    .append("Current values for: " + me.getNation()).append('\n')
-                    .append("Cities: " + me.getCities()).append('\n')
-                    .append("Infra: " + me.getAvg_infra()).append('\n')
+                    .append("Current values for: " + receiver.getNation()).append('\n')
+                    .append("Cities: " + receiver.getCities()).append('\n')
+                    .append("Infra: " + receiver.getAvg_infra()).append('\n')
             ;
             StringBuilder body = new StringBuilder();
             body.append("**INSTRUCTIONS:** " + grant.getInstructions());

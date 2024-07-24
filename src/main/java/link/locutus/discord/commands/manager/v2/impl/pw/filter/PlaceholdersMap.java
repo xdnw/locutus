@@ -340,13 +340,25 @@ public class PlaceholdersMap {
                 if (alliance != null) return Set.of(alliance);
                 DBNation nation = DBNation.getById(idInt);
                 if (nation != null) return Set.of(nation);
-            } else if (db != null){
-                Role role = db.getGuild().getRoleById(id);
-                return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
             } else {
-                DBNation nation = DiscordUtil.getNation(id);
-                if (nation != null) {
+                User user = Locutus.imp().getDiscordApi().getUserById(id);
+                if (user != null) {
+                    DBNation nation = DiscordUtil.getNation(user);
+                    if (nation == null) {
+                        throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
+                    }
                     return Set.of(nation);
+                }
+                if (db != null) {
+                    Role role = db.getGuild().getRoleById(id);
+                    if (role != null) {
+                        return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+                    }
+                } else {
+                    DBNation nation = DiscordUtil.getNation(id);
+                    if (nation != null) {
+                        return Set.of(nation);
+                    }
                 }
             }
         }

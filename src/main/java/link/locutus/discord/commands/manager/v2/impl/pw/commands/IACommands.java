@@ -84,12 +84,13 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class IACommands {
-    @Command(desc = "Rename channels in a category to match the nation registered to the user added")
+    @Command(desc = "Rename channels and set their topic (if empty) in a category to match the nation registered to the user added")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     public String renameInterviewChannels(@Me GuildDB db, @Me Guild guild, @Me User author, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                           Set<Category> categories,
                                           @Switch("m") boolean allow_non_members,
                                           @Switch("v") boolean allow_vm,
+                                          @Switch("n") Set<DBNation> list_missing,
                                           @Switch("f") boolean force) {
         for (Category category : categories) {
             if (!category.getGuild().equals(guild)) throw new IllegalArgumentException("Category " + category.getName() + " is not in this guild");
@@ -126,6 +127,11 @@ public class IACommands {
                 warnings.put(channel, "Nation is not in the alliance: " + nation.getMarkdownUrl() + " (ignore with `allow_non_members: True`");
             } else if (!allow_vm && nation.getVm_turns() > 0) {
                 warnings.put(channel, "Nation is a VM: " + nation.getMarkdownUrl() + " (ignore with `allow_vm: True`");
+            }
+            String topic = channel.getTopic();
+            if (topic == null || channel.getTopic().isEmpty()) {
+                String newTopic = nation.getUrl();
+                RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
             }
             String newName = nation.getName() + "-" + nation.getId();
             if (channel.getName().replace(" ", "-").equalsIgnoreCase(newName.replace(" ", "-"))) continue;
@@ -167,6 +173,24 @@ public class IACommands {
         if (!warnings.isEmpty()) {
             append.append("Warnings, see attached `warnings.txt` for details");
             msg.file("warnings.txt", warningsStr.toString());
+        }
+
+        if (list_missing != null) {
+            Set<DBNation> missing = new LinkedHashSet<>();
+            for (DBNation nation : list_missing) {
+                if (!nationChannels.containsKey(nation)) {
+                    missing.add(nation);
+                }
+            }
+            if (!missing.isEmpty()) {
+                List<String> missingRows = new ArrayList<>();
+                missingRows.add("nation_id\tnation_name\tdiscord\turl");
+                for (DBNation nation : missing) {
+                    String userName = nation.getUserDiscriminator();
+                    missingRows.add(nation.getId() + "\t" + nation.getName() + "\t" + userName + "\t" + nation.getUrl());
+                }
+                msg.file("missing.txt", StringMan.join(missingRows, "\n"));
+            }
         }
 
         if (changes.isEmpty()) {

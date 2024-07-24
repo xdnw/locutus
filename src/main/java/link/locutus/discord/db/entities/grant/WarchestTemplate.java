@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
 
@@ -35,12 +36,12 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 rs.getLong("expire"),
                 rs.getLong("decay"),
                 rs.getBoolean("allow_ignore"),
-                rs.getBoolean("repeatable"));
+                rs.getLong("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents, long expiryOrZero, long decayOrZero, boolean allowIgnore, boolean repeatable) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable);
+    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents, long expiryOrZero, long decayOrZero, boolean allowIgnore, long repeatable_time) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable_time);
         this.allowancePerCity = allowancePerCity;
         this.trackDays = trackDays;
         this.subtractExpenditure = subtractExpenditure;
@@ -66,7 +67,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
                 allowIgnore).nonRepeatable(
-                isRepeatable() ? null : "true").toString();
+                getRepeatable() <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, getRepeatable())).toString();
     }
 
     @Override

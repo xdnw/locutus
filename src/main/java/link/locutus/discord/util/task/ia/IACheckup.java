@@ -466,7 +466,7 @@ public class IACheckup {
                 return stockpile == null || stockpile.isEmpty() ? null : checkWarchest(nation, stockpile, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
-                    String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("170").toString();
+                    String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("84").toString();
                     String shortDesc = "`" + cmd + "`";
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +

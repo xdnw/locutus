@@ -20,12 +20,15 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.ImageUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Webhook;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -39,7 +42,14 @@ import java.util.stream.Collectors;
 
 public class TestCommands {
 //    @Command
-//    public String test(@Me IMessageIO io) throws IOException {
+    public String test(@Me Guild guild, TextChannel channel, NewsChannel subscribe) throws IOException {
+        Webhook.WebhookReference ref = RateLimitUtil.complete(subscribe.follow(channel));
+        if (ref == null) {
+            return "Failed to subscribe to " + subscribe.getAsMention() + " in " + channel.getAsMention();
+        }
+        return "Subscribed to " + subscribe.getAsMention() + " in " + channel.getAsMention() + "\n" +
+                "Webhook: " + ref.toString();
+
 //        List<CommandRef> refs = List.of(
 //                CM.embed.update.cmd.desc("{description}\ntest"),
 //                CM.fun.say.cmd.msg("Hello World")
@@ -51,7 +61,7 @@ public class TestCommands {
 //////                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
 //////                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
 //        return "Arg ";
-//    }
+    }
 
     @Command(desc = "Dummy command. No output")
     public String dummy() {

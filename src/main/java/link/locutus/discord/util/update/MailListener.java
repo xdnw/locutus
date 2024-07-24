@@ -94,7 +94,7 @@ public class MailListener {
         builder.embed(event.getTitle(), body.toString());
         if (receiver.getId() != authId) {
             CM.mail.reply mailCmd = CM.mail.reply.cmd.receiver(receiver.getId() + "").url(event.getUrl()).message("").sender(event.getAuth().getNationId() + "");
-            builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
+            builder.modal(CommandBehavior.UNPRESS, mailCmd, "\uD83D\uDCE7 Reply");
         }
 
         builder.commandButton(CommandBehavior.UNPRESS, CM.mail.read.cmd.message_id(event.getMail().id + "").account(authId + ""), "Read");
