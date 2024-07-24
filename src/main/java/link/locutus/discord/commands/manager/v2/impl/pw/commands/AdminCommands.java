@@ -79,6 +79,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -295,16 +296,39 @@ public class AdminCommands {
         return "Done! (see console)";
     }
 
-//    @Command
-//    @RolePermission(value = Roles.ADMIN, root = true)
-//    public String unset() {
-//        // TODO list servers
-//
-//        // unset from specified servers (coalition, or NOT coalitions)
-//        // use Set<GuildDB> and have filters ig for in root coalition (or not)
-//
-//        // option 2, set to follow a channel
-//    }
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String unsetNews(@Me GuildDB db, @Me IMessageIO io,
+            GuildSetting setting, Set<GuildDB> guilds, NewsChannel subscribe,
+            @Switch("f") boolean force) {
+
+        List<String> messages = new ArrayList<>();
+        for (GuildDB otherDb : guilds) {
+            if (subscribe.getGuild().getIdLong() == otherDb.getIdLong()) continue;
+
+            String raw = setting.getRaw(db, false);
+
+        }
+
+
+        // TODO list servers
+
+        // unset from specified servers (coalition, or NOT coalitions)
+        // use Set<GuildDB> and have filters ig for in root coalition (or not)
+
+        // option 2, set to follow a channel
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String unsetCantTalk(Set<GuildSetting> keys, Set<GuildDB> guilds, @Switch("f") boolean force) {
+        for (Guild guild : guilds) {
+            GuildDB otherDb = Locutus.imp().getGuildDB(guild);
+
+            String raw = setting.getRaw(db, false);
+            Object value = setting.getOrNull(db, false);
+        }
+    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
