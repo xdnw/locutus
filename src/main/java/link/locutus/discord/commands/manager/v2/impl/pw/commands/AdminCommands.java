@@ -84,12 +84,14 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -296,39 +298,236 @@ public class AdminCommands {
         return "Done! (see console)";
     }
 
-    @Command
+    @Command(desc = "Switch a channel to a subscription channel in multiple servers")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String unsetNews(@Me GuildDB db, @Me IMessageIO io,
-            GuildSetting setting, Set<GuildDB> guilds, NewsChannel subscribe,
+    public String unsetNews(@Me IMessageIO io, @Me JSONObject command,
+            GuildSetting setting, Set<GuildDB> guilds, MessageChannel news_channel,
+            @Switch("e") boolean unset_on_error,
             @Switch("f") boolean force) {
+        if (!(news_channel instanceof NewsChannel)) {
+            throw new IllegalArgumentException("Invalid channel type: " + news_channel.getType() + ". Must be a news channel");
+        }
+        NewsChannel subscribe = (NewsChannel) news_channel;
+        GuildDB thisDb = Locutus.imp().getGuildDB(subscribe.getGuild());
+        Invite invite = thisDb.getInvite(true);
+        Type type = setting.getType().getType();
+        // ensure type is instance of Channel
+        if (!Channel.class.isAssignableFrom((Class) type)) {
+            return "Invalid setting type: " + type + ". Not a channel";
+        }
 
-        List<String> messages = new ArrayList<>();
+        String errorMessage = "Failed to subscribe to channel: " + subscribe.getAsMention() + "(#" + subscribe.getName() + ") in " + thisDb.getGuild() + " " + invite.getUrl() + "\n" +
+                "Please join the server and subscribe manually for future updates";
+
+        List<String> infoMsgs = new ArrayList<>();
+        List<String> errorMsgs = new ArrayList<>();
+
         for (GuildDB otherDb : guilds) {
             if (subscribe.getGuild().getIdLong() == otherDb.getIdLong()) continue;
+            String raw = setting.getRaw(otherDb, false);
+            if (raw == null) continue;
+            Object value = setting.getOrNull(otherDb);
+            if (value == null) {
+                String msg = otherDb.getGuild().toString() + ": Invalid value `" + raw + "`. See TODO CM REF";
+                if (unset_on_error) {
+                    otherDb.deleteInfo(setting);
+                    msg += " (deleted setting)";
+                }
+                errorMsgs.add(msg);
+                continue;
+            }
+            TextChannel channel = (TextChannel) value;
+            Member self = otherDb.getGuild().getSelfMember();
+            if (!channel.canTalk()) {
+                String msg = otherDb.getGuild().toString() + ": Bot does not have access to " + channel.getAsMention();
+                if (force && unset_on_error) {
+                    otherDb.deleteInfo(setting);
+                    msg += " (deleted setting)";
+                }
+                errorMsgs.add(msg);
+                continue;
+            }
+            if (!self.hasPermission(Permission.MANAGE_WEBHOOKS)) {
+                String msg = otherDb.getGuild().toString() + ": Bot does not have permission to manage webhooks in " + channel.getAsMention();
+                if (force && unset_on_error) {
+                    otherDb.deleteInfo(setting);
+                    msg += " (deleted setting)";
+                    RateLimitUtil.queue(channel.sendMessage(msg + "\n" + errorMessage));
+                }
+                errorMsgs.add(msg);
+                continue;
+            }
 
-            String raw = setting.getRaw(db, false);
+            String successMsg = otherDb.getGuild().toString() + ": Unset " + setting.name() + " from " + channel.getAsMention();
+            if (!force) {
+                infoMsgs.add(successMsg);
+                continue;
+            }
+            try {
+                Webhook.WebhookReference result = RateLimitUtil.complete(subscribe.follow(channel));
+                otherDb.deleteInfo(setting);
+                infoMsgs.add(successMsg + " | " + result);
+            } catch (Exception e) {
+                String msg = otherDb.getGuild().toString() + ": " + e.getMessage();
+                errorMsgs.add(msg);
+                if (unset_on_error) {
+                    otherDb.deleteInfo(setting);
+                    msg += " (deleted setting)";
+                    RateLimitUtil.queue(channel.sendMessage(msg + "\n" + errorMessage));
+                }
+                continue;
 
+            }
         }
-
-
-        // TODO list servers
-
-        // unset from specified servers (coalition, or NOT coalitions)
-        // use Set<GuildDB> and have filters ig for in root coalition (or not)
-
-        // option 2, set to follow a channel
+        if (!force) {
+            String title = "Confirm unset news";
+            StringBuilder body = new StringBuilder("Using news from " + subscribe.getAsMention() + " in " + thisDb.getGuild() + "\n");
+            body.append("Unset on error: `" + unset_on_error + "`\n");
+            body.append("Servers Subscribed: `" + infoMsgs.size() + "`\n");
+            body.append("Errors: `" + errorMsgs.size() + "`\n");
+            io.create().confirmation(title, body.toString(), command)
+                    .file("info.txt", String.join("\n", infoMsgs))
+                    .file("errors.txt", String.join("\n", errorMsgs))
+                    .send();
+            return null;
+        }
+        io.create().append("Done! " + infoMsgs.size() + " servers subscribed" +
+                " | " + errorMsgs.size() + " errors\n" +
+                        "See attached files for details")
+                .file("info.txt", String.join("\n", infoMsgs))
+                .file("errors.txt", String.join("\n", errorMsgs))
+                .send();
+        return null;
     }
 
-    @Command
+    @Command(desc = "Bulk unset a guild setting in multiple servers which are invalid based on the provided options")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String unsetCantTalk(Set<GuildSetting> keys, Set<GuildDB> guilds, @Switch("f") boolean force) {
-        for (Guild guild : guilds) {
-            GuildDB otherDb = Locutus.imp().getGuildDB(guild);
+    public String unsetKeys(@Me IMessageIO io, @Me JSONObject command,
+            Set<GuildSetting> settings, Set<GuildDB> guilds,
+                                @Switch("t") boolean unset_cant_talk,
+                                @Switch("i") boolean unset_null,
+                                @Switch("p") boolean unset_key_no_perms,
+                                @Switch("g") boolean unset_invalid_aa,
+                                @Switch("a") boolean unset_all,
+                                @Switch("v") boolean unset_validate,
+                                @Switch("f") boolean force) {
+        Map<Guild, Map<GuildSetting, Set<String>>> unsetReasons = new LinkedHashMap<>();
 
-            String raw = setting.getRaw(db, false);
-            Object value = setting.getOrNull(db, false);
+        Set<GuildSetting> channelTypes = new LinkedHashSet<>();
+        Set<GuildSetting> nonChanTypes = new LinkedHashSet<>();
+        for (GuildSetting setting : settings) {
+            Type type = setting.getType().getType();
+            if (Channel.class.isAssignableFrom((Class) type)) {
+                channelTypes.add(setting);
+            } else {
+                nonChanTypes.add(setting);
+            }
         }
+        for (GuildDB otherDb : guilds) {
+            Guild otherGuild = otherDb.getGuild();
+            Map<GuildSetting, Set<String>> byGuild = unsetReasons.computeIfAbsent(otherGuild, k -> new LinkedHashMap<>());
+            // only channel modes
+            for (GuildSetting setting : channelTypes) {
+                TextChannel channel = (TextChannel) setting.getOrNull(otherDb);
+                if (channel == null) continue;
+                if (unset_cant_talk) {
+                    if (!channel.canTalk()) {
+                        if (force) otherDb.deleteInfo(setting);
+                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Can't talk");
+                        continue;
+                    }
+                }
+            }
+//            // only non channel modes
+//            for (GuildSetting setting : nonChanTypes) {
+//
+//            }
+            // all type modes
+            for (GuildSetting setting : settings) {
+                String raw = setting.getRaw(otherDb, false);
+                if (raw == null) continue;
+                Object value = setting.getOrNull(otherDb);
+                if (unset_null) {
+                    if (value == null) {
+                        if (force) otherDb.deleteInfo(setting);
+                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Null");
+                        continue;
+                    }
+                }
+                if (unset_key_no_perms) {
+                    String notAllowedReason = "Not allowed";
+                    boolean allowed = false;
+                    try {
+                        allowed = setting.allowed(otherDb, true);
+                    } catch (IllegalArgumentException e) {
+                        notAllowedReason = e.getMessage();
+                    }
+                    if (!allowed) {
+                        if (force) otherDb.deleteInfo(setting);
+                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add(notAllowedReason);
+                        continue;
+                    }
+                }
+                if (unset_validate) {
+                    String validateReason = "Invalid";
+                    boolean valid = false;
+                    try {
+                        setting.validate(otherDb, null, value);
+                        valid = true;
+                    } catch (IllegalArgumentException e) {
+                        validateReason = e.getMessage();
+                    }
+                    if (!valid) {
+                        if (force) otherDb.deleteInfo(setting);
+                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add(validateReason);
+                        continue;
+                    }
+
+                }
+                if (unset_invalid_aa) {
+                    if (!otherDb.isValidAlliance()) {
+                        if (force) otherDb.deleteInfo(setting);
+                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Invalid AA");
+                        continue;
+                    }
+                }
+                if (unset_all) {
+                    if (force) otherDb.deleteInfo(setting);
+                    byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("All");
+                }
+            }
+        }
+        StringBuilder msg = new StringBuilder();
+        for (Map.Entry<Guild, Map<GuildSetting, Set<String>>> entry : unsetReasons.entrySet()) {
+            Guild guild = entry.getKey();
+            Map<GuildSetting, Set<String>> reasons = entry.getValue();
+            msg.append(guild.toString()).append(":\n");
+            for (Map.Entry<GuildSetting, Set<String>> reason : reasons.entrySet()) {
+                GuildSetting setting = reason.getKey();
+                Set<String> reasonSet = reason.getValue();
+                msg.append("- ").append(setting.name()).append(": ").append(String.join(", ", reasonSet)).append("\n");
+            }
+        }
+
+        if (!force) {
+            String title = "Confirm unset keys";
+            StringBuilder body = new StringBuilder("Unset " + settings.size() + " keys for " + guilds.size() + " servers\n");
+            body.append("Unset on error: `" + unset_null + "`\n");
+            body.append("Servers affected: `" + unsetReasons.size() + "`\n");
+            io.create().confirmation(title, body.toString(), command)
+                    .file("unset.txt", msg.toString())
+                    .send();
+            return null;
+        }
+        io.create().append("Done! " + settings.size() + " keys unset" +
+                " | " + unsetReasons.size() + " servers affected\n" +
+                "See attached file for details")
+                .file("unset.txt", msg.toString())
+                .send();
+        return null;
     }
+
+    // todo unset invalid
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

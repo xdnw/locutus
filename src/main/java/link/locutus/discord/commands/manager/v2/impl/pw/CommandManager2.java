@@ -238,7 +238,8 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
-
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "unset"), "unsetNews", "settings");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "unset"), "unsetKeys", "news");
         getCommands().registerMethod(new WarCommands(), List.of("alerts", "beige"), "testBeigeAlertAuto", "test_auto");
         getCommands().registerMethod(new UtilityCommands(), List.of("nation"), "vmHistory", "vm_history");
         getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");

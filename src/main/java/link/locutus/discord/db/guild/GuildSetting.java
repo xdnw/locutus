@@ -375,7 +375,7 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> nonPublic() {
-        String msg = "Please use the public channels for this <https://discord.gg/cUuskPDrB7> (this is to reduce unnecessary discord calls)";
+        String msg = "Please follow the public channels for this <https://discord.gg/cUuskPDrB7> (this is to reduce unnecessary discord calls)";
         this.requiresFunction.put(new BiPredicate<GuildDB, Boolean>() {
             @Override
             public boolean test(GuildDB db, Boolean throwError) {

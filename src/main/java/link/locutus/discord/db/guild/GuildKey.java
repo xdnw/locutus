@@ -1236,7 +1236,7 @@ public class GuildKey {
             return "The channel to receive alerts when any nation or user is reported to the bot\n" +
                     "See " + CM.report.add.cmd.toSlashMention();
         }
-    }.requireActiveGuild();
+    }.requireActiveGuild().nonPublic();
     public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1261,7 +1261,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when any nation in the game is banned)";
         }
-    }.requireActiveGuild();
+    }.requireActiveGuild().nonPublic();
 
     public static GuildSetting<GuildDB.AutoNickOption> AUTONICK = new GuildEnumSetting<GuildDB.AutoNickOption>(GuildSettingCategory.ROLE, GuildDB.AutoNickOption.class) {
         @NoFormat
@@ -2073,7 +2073,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when a nation is promoted to leader in an alliance (top 80)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
     public static GuildSetting<MessageChannel> ORBIS_OFFICER_LEAVE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2085,7 +2085,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when officers leave an alliance  (top 50)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
     public static GuildSetting<MessageChannel> ORBIS_ALLIANCE_EXODUS_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2098,7 +2098,7 @@ public class GuildKey {
             return "The #channel to receive alerts when multiple 5+ members leave an alliance\n" +
                     "See also: " + ALLIANCE_EXODUS_TOP_X.getCommandMention();
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
 
     public static GuildSetting<Integer> ALLIANCE_EXODUS_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
@@ -2125,7 +2125,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when gov members increase MMR (top 80)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
     public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2149,7 +2149,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for war escalation alerts in orbis";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
     public static GuildSetting<MessageChannel> ACTIVITY_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2161,7 +2161,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for activity (e.g. pre blitz)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
     public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2374,7 +2374,7 @@ public class GuildKey {
             return "The channel to send alerts when alliance ground units increase by more than 2.5%\n" +
                     "See also setting `" + AA_GROUND_TOP_X.name() + "` and coalition: `" + Coalition.GROUND_ALERTS.name() + "` and role alias: `" + Roles.GROUND_MILITARIZE_ALERT.name() + "`";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
     // AA_GROUND_TOP_X (min = 1, max = 80)
     public static GuildSetting<Integer> AA_GROUND_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
@@ -2396,7 +2396,7 @@ public class GuildKey {
         public String help() {
             return "Only do alliance ground unit alerts for the top X alliances (by active member score)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
 
     public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, Double.class) {
         @NoFormat

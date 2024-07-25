@@ -60,6 +60,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import javax.annotation.Nullable;
@@ -753,14 +754,25 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return null;
         }
         try {
-            List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
-            for (Invite invite : invites) {
-                if (invite.getMaxUses() == 0) {
-                    return invite.getUrl();
-                }
-            }
+            Invite invite = getInvite(false);
+            if (invite != null) return invite.getUrl();
         } catch (RuntimeException ignore) {
             ignore.printStackTrace();
+        }
+        return null;
+    }
+
+    public Invite getInvite(boolean create) {
+        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
+        for (Invite invite : invites) {
+            if (invite.getMaxUses() == 0) {
+                return invite;
+            }
+        }
+        if (create) {
+            DefaultGuildChannelUnion defChannel = guild.getDefaultChannel();
+            if (defChannel == null) return null;
+            return RateLimitUtil.complete(defChannel.createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0));
         }
         return null;
     }

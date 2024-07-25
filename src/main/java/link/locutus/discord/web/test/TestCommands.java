@@ -42,26 +42,26 @@ import java.util.stream.Collectors;
 
 public class TestCommands {
 //    @Command
-    public String test(@Me Guild guild, TextChannel channel, NewsChannel subscribe) throws IOException {
-        Webhook.WebhookReference ref = RateLimitUtil.complete(subscribe.follow(channel));
-        if (ref == null) {
-            return "Failed to subscribe to " + subscribe.getAsMention() + " in " + channel.getAsMention();
-        }
-        return "Subscribed to " + subscribe.getAsMention() + " in " + channel.getAsMention() + "\n" +
-                "Webhook: " + ref.toString();
-
-//        List<CommandRef> refs = List.of(
-//                CM.embed.update.cmd.desc("{description}\ntest"),
-//                CM.fun.say.cmd.msg("Hello World")
-//        );
-//        String cmdsStr = refs.stream().map(CommandRef::toCommandArgs).collect(Collectors.joining("\n"));
-//        io.create().embed("Title", "Body goes here")
-//                .commandButton(CommandBehavior.UNPRESS, cmdsStr, "test").file("test.txt", "hello world 2").send();
-//////        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
-//////                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
-//////                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
-//        return "Arg ";
-    }
+//    public String test(@Me Guild guild, TextChannel channel, NewsChannel subscribe) throws IOException {
+//        Webhook.WebhookReference ref = RateLimitUtil.complete(subscribe.follow(channel));
+//        if (ref == null) {
+//            return "Failed to subscribe to " + subscribe.getAsMention() + " in " + channel.getAsMention();
+//        }
+//        return "Subscribed to " + subscribe.getAsMention() + " in " + channel.getAsMention() + "\n" +
+//                "Webhook: " + ref.toString();
+//
+////        List<CommandRef> refs = List.of(
+////                CM.embed.update.cmd.desc("{description}\ntest"),
+////                CM.fun.say.cmd.msg("Hello World")
+////        );
+////        String cmdsStr = refs.stream().map(CommandRef::toCommandArgs).collect(Collectors.joining("\n"));
+////        io.create().embed("Title", "Body goes here")
+////                .commandButton(CommandBehavior.UNPRESS, cmdsStr, "test").file("test.txt", "hello world 2").send();
+////////        return "<https://www.google.com> test <https://www.google.com> <script>alert(1)</script> **message bold** [test](https://www.google.com)\n" +
+////////                "- " + CM.fun.borg.cmd.toSlashMention() + "\n" +
+////////                "- " + CM.fun.borg.cmd.create("Hello World").toSlashCommand(true);
+////        return "Arg ";
+//    }
 
     @Command(desc = "Dummy command. No output")
     public String dummy() {

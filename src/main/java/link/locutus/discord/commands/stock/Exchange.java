@@ -88,13 +88,7 @@ public class Exchange {
         if (isResource()) return null;
         Guild guild = getGuild();
         if (guild == null) return null;
-        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
-        for (Invite invite : invites) {
-            if (invite.getMaxUses() == 0) {
-                return invite;
-            }
-        }
-         return RateLimitUtil.complete(getChannel().createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0));
+        return Locutus.imp().getGuildDB(guild).getInvite(true);
     }
 
     public boolean isResource() {
