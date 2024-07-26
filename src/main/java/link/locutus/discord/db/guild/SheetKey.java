@@ -58,6 +58,7 @@ public enum SheetKey {
     MERGES_SHEET,
     MILITARY_RANKING,
     FORUM_PROFILES,
+    INACTIVITY_STREAK,
 
 
 }

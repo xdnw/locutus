@@ -2223,6 +2223,91 @@ public class UtilityCommands {
         return response.toString();
     }
 
+    // Helper function to check and update inactivity streaks
+    private void checkAndUpdateStreak(Map<Integer, Long> lastActive, Map<Integer, Long> lastNotGray, Map<Integer, Long> lastStreak, Map<Integer, Integer> countMap, int nationId, long day, int daysInactive) {
+        long lastActiveDay = lastActive.getOrDefault(nationId, day);
+        long lastNotGrayDay = lastNotGray.getOrDefault(nationId, day);
+        long lastActiveAdded = lastStreak.getOrDefault(nationId, 0L);
+        if (lastActiveAdded == lastActiveDay) return;
+
+        if (day - lastNotGrayDay >= daysInactive) {
+            countMap.put(nationId, countMap.getOrDefault(nationId, 0) + 1);
+            lastStreak.put(nationId, lastActiveAdded);
+        }
+    }
+
+    @Command(desc = "Get the inactivity streak of a set of nations over a specified timeframe")
+    public String grayStreak(@Me GuildDB db, @Me IMessageIO io,
+                                    Set<DBNation> nations,
+                                    int daysInactive,
+                                    @Timestamp long timeframe,
+                                    @Switch("s") SpreadSheet sheet) throws IOException, ParseException, GeneralSecurityException {
+        long minNationAge = Long.MAX_VALUE;
+        for (DBNation nation : nations) {
+            minNationAge = Math.min(minNationAge, nation.getDate());
+        }
+        minNationAge = Math.max(minNationAge, timeframe);
+        Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet()));
+
+        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        List<Long> validDays = parser.getDays(true, false);
+        long today = TimeUtil.getDay();
+        long finalMinDay = TimeUtil.getDay(minNationAge);
+
+        Map<Integer, Long> lastActive = new Int2LongOpenHashMap();
+        Map<Integer, Long> lastNotGray = new Int2LongOpenHashMap();
+        Map<Integer, Long> lastStreak = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Integer> countMap = new Int2ObjectOpenHashMap<>();
+
+        parser.iterateAll(f -> f >= finalMinDay, (h, r) -> r.required(h.nation_id).optional(h.vm_turns).required(h.color), null, new BiConsumer<Long, NationHeader>() {
+            @Override
+            public void accept(Long day, NationHeader header) {
+                int nationId = header.nation_id.get();
+                if (!nationIds.contains(nationId)) return;
+
+                NationColor color = header.color.get();
+                if (color != NationColor.GRAY) {
+                    lastNotGray.put(nationId, day);
+                    if (color != NationColor.BEIGE) {
+                        lastActive.put(nationId, day);
+                    }
+                    checkAndUpdateStreak(lastActive, lastNotGray, lastStreak, countMap, nationId, day, daysInactive);
+                }
+            }
+        }, null, new Consumer<Long>() {
+            @Override
+            public void accept(Long day) {
+                // Called when all nations have been processed for a day
+            }
+        });
+        for (int nationId : nationIds) {
+            checkAndUpdateStreak(lastActive, lastNotGray, lastStreak, countMap, nationId, today, daysInactive);
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.INACTIVITY_STREAK);
+        }
+
+        List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "streak"));
+        sheet.setHeader(header);
+        for (DBNation nation : nations) {
+            int nationId = nation.getNation_id();
+            int streak = countMap.getOrDefault(nationId, 0);
+            if (streak > 0) {
+                ArrayList<Object> row = new ArrayList<>();
+                row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+                row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+                row.add(streak);
+                sheet.addRow(row);
+            }
+        }
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "inactivity").send();
+        return null;
+    }
+
+
     @Command(desc = "Get the VM history of a set of nations")
     public static String vmHistory(@Me IMessageIO io, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException {
         if (nations.size() > 1000) {

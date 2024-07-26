@@ -1854,6 +1854,26 @@ public class DBNation implements NationOrAlliance {
         return Long.MAX_VALUE;
     }
 
+    @Command(desc = "Number of times since this nation's creation that they have been inactive for a specified number of days")
+    public int inactivity_streak(int daysInactive, long checkPastXDays) {
+        long turns = checkPastXDays * 12 + 11;
+        List<Long> logins = new ArrayList<>(Locutus.imp().getNationDB().getActivityByDay(nation_id, TimeUtil.getTurn(getSnapshot()) - turns));
+        Collections.reverse(logins);
+
+        int inactivityCount = 0;
+        long last = 0;
+
+        for (long day : logins) {
+            long diff = last - day;
+            if (diff > daysInactive) {
+                inactivityCount++;
+            }
+            last = day;
+        }
+
+        return inactivityCount;
+    }
+
     @Command(desc = "Days since last bank deposit")
     public double daysSinceLastBankDeposit() {
         return (System.currentTimeMillis() - lastBankDeposit()) / (double) TimeUnit.DAYS.toMillis(1);

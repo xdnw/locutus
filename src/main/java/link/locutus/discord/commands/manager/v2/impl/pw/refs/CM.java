@@ -6465,18 +6465,6 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="vmHistory")
-            public static class vm_history extends CommandRef {
-                public static final vm_history cmd = new vm_history();
-            public vm_history nations(String value) {
-                return set("nations", value);
-            }
-
-            public vm_history sheet(String value) {
-                return set("sheet", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="wars")
             public static class wars extends CommandRef {
                 public static final wars cmd = new wars();

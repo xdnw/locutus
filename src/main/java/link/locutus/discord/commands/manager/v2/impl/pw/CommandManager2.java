@@ -241,7 +241,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "unset"), "unsetNews", "settings");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "unset"), "unsetKeys", "news");
         getCommands().registerMethod(new WarCommands(), List.of("alerts", "beige"), "testBeigeAlertAuto", "test_auto");
-        getCommands().registerMethod(new UtilityCommands(), List.of("nation"), "vmHistory", "vm_history");
+        getCommands().registerMethod(new UtilityCommands(), List.of("nation", "history"), "vmHistory", "vm");
+        getCommands().registerMethod(new UtilityCommands(), List.of("nation", "history"), "gray_streak", "gray_streak");
         getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");
         getCommands().registerMethod(new StatCommands(), List.of("stats_other", "global_metrics"), "orbisStatByDay", "by_time");
 

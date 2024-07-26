@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -23,6 +24,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -516,6 +518,7 @@ public abstract class GuildSetting<T> {
         return db.getInfoRaw(this, allowDelegate);
     }
 
+    @Command(desc = "The setting category")
     public GuildSettingCategory getCategory() {
         return category;
     }
@@ -564,4 +567,32 @@ public abstract class GuildSetting<T> {
         }, msg);
         return this;
     }
+
+    @Command(desc = "Is this a channel setting")
+    public boolean isChannelType() {
+        return Channel.class.isAssignableFrom((Class) getType().getType());
+    }
+
+    @Command(desc = "The simple name of the setting class type")
+    public String getTypeName() {
+        return getType().getType().getTypeName();
+    }
+
+    @Command(desc = "The name of the setting type key")
+    public String getKeyName() {
+        return getType().toSimpleString();
+    }
+
+    @Command(desc = "The name of the setting")
+    public String getName() {
+        return name;
+    }
+
+    @Command
+    public String getValueString(@Me GuildDB db) {
+        T value = getOrNull(db);
+        if (value == null) return null;
+        return toReadableString(db, value);
+    }
+
 }
