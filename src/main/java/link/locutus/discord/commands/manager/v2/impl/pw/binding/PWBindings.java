@@ -50,6 +50,7 @@ import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
@@ -227,6 +228,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "The status of a nation's loan")
     public DBLoan.Status LoanStatus(String input) {
         return emum(DBLoan.Status.class, input);
+    }
+
+    @Binding(value = "The guild setting category")
+    public GuildSettingCategory GuildSettingCategory(String input) {
+        return emum(GuildSettingCategory.class, input);
     }
 
     @Binding(value = "The success type of an attack")

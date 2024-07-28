@@ -96,13 +96,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command(desc = "Number of treasures in the alliance")
     public int getNumTreasures() {
-        int num = 0;
-        for (DBNation nation : getNations()) {
-            if (nation.getVm_turns() == 0) {
-                num += nation.getTreasures().size();
-            }
-        }
-        return num;
+        if (allianceId == 0) return 0;
+        return Locutus.imp().getNationDB().countTreasures(allianceId);
     }
 
     @Command(desc = "Treasure bonus (decimal percent between 0-1)")

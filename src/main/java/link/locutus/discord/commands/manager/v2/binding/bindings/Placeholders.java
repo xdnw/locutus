@@ -36,6 +36,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -689,7 +690,16 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             Placeholders<T> placeholders = this;
             if (previousFunc != null) {
-                placeholders = Locutus.cmd().getV2().getPlaceholders().get((Class) previousFunc.getType());
+                Type type = previousFunc.getType();
+                if (type instanceof Class) {
+                    placeholders = Locutus.cmd().getV2().getPlaceholders().get((Class) type);
+                } else {
+                    TypedFunction<T, ?> result = handleParameterized(store, functionName, argumentString, previousFunc, depth, throwError);
+                    if (result != null) {
+                        previousFunc = result;
+                        continue;
+                    }
+                }
                 if (placeholders == null) {
                     throw new IllegalArgumentException("Cannot call `" + arg + "` on function: `" + previousFunc.getName() + "` as return type is not public: `" + ((Class<?>) previousFunc.getType()).getSimpleName() + "`");
                 }
@@ -728,6 +738,34 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
         }
         return previousFunc;
+    }
+
+    private TypedFunction<T, ?> handleParameterized(ValueStore store, String functionName, String argumentString, TypedFunction<T, ?> previousFunc, int depth, boolean throwError) {
+        if (argumentString != null && !argumentString.isEmpty()) return null;
+        Type type = previousFunc.getType();
+        if (!(type instanceof ParameterizedType pt)) return null;
+        Type rawType = pt.getRawType();
+        if (!(rawType instanceof Class rawClass)) return null;
+//            if (Map.class.isAssignableFrom(rawClass)) {
+        if (!rawClass.isAssignableFrom(Map.class)) return null;
+        Type[] args = pt.getActualTypeArguments();
+        Type keyType = args[0];
+        Type valueType = args[1];
+        if (!(keyType instanceof Class keyClass && keyClass.isEnum())) return null;
+        // get enum options
+        Enum<?>[] enumConstants = (Enum<?>[]) keyClass.getEnumConstants();
+        // if any enum constant equals ignore case
+        for (Enum<?> enumConstant : enumConstants) {
+            if (enumConstant.name().equalsIgnoreCase(functionName)) {
+                Function<T, Object> getValue = f -> {
+                    Object key = enumConstant;
+                    Map<T, ?> map = (Map<T, ?>) previousFunc.applyCached(f);
+                    return map.get(key);
+                };
+                return TypedFunction.createParent(valueType, getValue, functionName, previousFunc);
+            }
+        }
+        return null;
     }
 
     private TypedFunction<T, ?> format(ValueStore store, ParametricCallable command, Map<String, TypedFunction<T, ?>> arguments) {

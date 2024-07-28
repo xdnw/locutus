@@ -3425,13 +3425,14 @@ public class DBNation implements NationOrAlliance {
     public double[] getRevenue() {
         return getRevenue(12);
     }
+
     public double[] getRevenue(int turns) {
         return getRevenue(turns, true, true, true, true, false, false, getTreasureBonusPct(), false);
     }
 
     @Command(desc = "Treasure bonus decimal percent")
     public double getTreasureBonusPct() {
-        if (alliance_id == 0 || getVm_turns() > 0) return 0;
+        if (alliance_id == 0 || getPositionEnum().id < Rank.APPLICANT.id || getVm_turns() > 0) return 0;
         DBAlliance aa = getAlliance();
         int treasures = aa.getNumTreasures();
         Set<DBTreasure> natTreasures = getTreasures();
@@ -6526,5 +6527,21 @@ public class DBNation implements NationOrAlliance {
             }
         }
         return null;
+    }
+
+    @Command(desc = "Daily revenue of a nation")
+    public Map<ResourceType, Double> revenue(@Default Integer turns,
+                                             @Switch("c") boolean no_cities,
+                                             @Switch("m") boolean no_military,
+                                            @Switch("t") boolean no_trade_bonus,
+                                            @Switch("b") boolean no_new_bonus,
+                                            @Switch("f") boolean no_food,
+                                            @Switch("p") boolean no_power,
+                                            @Switch("r") Double treasure_bonus) {
+        if (turns == null) turns = 12;
+        if (treasure_bonus == null) treasure_bonus = getTreasureBonusPct();
+        double[] rss = getRevenue(turns, !no_cities, !no_military, !no_trade_bonus, !no_new_bonus, no_food, no_power, treasure_bonus, false);
+        System.out.println(ResourceType.toString(rss));
+        return ResourceType.resourcesToMap(rss);
     }
 }

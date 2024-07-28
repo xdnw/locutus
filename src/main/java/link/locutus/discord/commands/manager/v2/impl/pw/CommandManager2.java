@@ -238,11 +238,13 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
-        getCommands().registerMethod(new AdminCommands(), List.of("admin", "unset"), "unsetNews", "settings");
-        getCommands().registerMethod(new AdminCommands(), List.of("admin", "unset"), "unsetKeys", "news");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "unsetNews", "subscribe");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "unsetKeys", "unset");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "infoBulk", "info_servers");
+
         getCommands().registerMethod(new WarCommands(), List.of("alerts", "beige"), "testBeigeAlertAuto", "test_auto");
         getCommands().registerMethod(new UtilityCommands(), List.of("nation", "history"), "vmHistory", "vm");
-        getCommands().registerMethod(new UtilityCommands(), List.of("nation", "history"), "gray_streak", "gray_streak");
+        getCommands().registerMethod(new UtilityCommands(), List.of("nation", "history"), "grayStreak", "gray_streak");
         getCommands().registerMethod(new UtilityCommands(), List.of("tax"), "setBracketBulk", "set_from_sheet");
         getCommands().registerMethod(new StatCommands(), List.of("stats_other", "global_metrics"), "orbisStatByDay", "by_time");
 

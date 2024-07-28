@@ -59,6 +59,7 @@ public enum SheetKey {
     MILITARY_RANKING,
     FORUM_PROFILES,
     INACTIVITY_STREAK,
+    SETTINGS_SERVERS,
 
 
 }

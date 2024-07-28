@@ -169,6 +169,11 @@ public enum ResourceType {
         if (MathMan.isInteger(arg)) {
             throw new IllegalArgumentException("Please use `$" + arg + "` or `money=" + arg + "` for money, not `" + arg + "`");
         }
+        if (arg.contains(" AM ") || arg.contains(" PM ")) {
+            arg = arg.replaceAll("([0-9]{1,2}:[0-9]{2})[ ](AM|PM)", "")
+                    .replace("\n", " ")
+                    .replaceAll("[ ]+", " ");
+        }
         if (arg.contains("---+") && arg.contains("-+-")) {
             arg = arg.replace("-+-", "---");
             int start = arg.indexOf("---+");

@@ -8,10 +8,13 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -114,6 +117,7 @@ public abstract class GuildSetting<T> {
     }
 
 
+    @Command(desc = "The setting usage instructions")
     public abstract String help();
 
     public abstract String toString(T value);
@@ -197,6 +201,7 @@ public abstract class GuildSetting<T> {
         return getCommandMention();
     }
 
+    @Command(desc = "The setting command mention")
     public String getCommandMention() {
         if (Locutus.imp() == null || Locutus.imp().getSlashCommands() == null) {
             return CM.settings.info.cmd.key(name).toSlashCommand();
@@ -236,10 +241,12 @@ public abstract class GuildSetting<T> {
         }
     }
 
+    @Command(desc = "The setting name and help instructions")
     public String toString() {
         return name() + "\n> " + help() + "\n";
     }
 
+    @Command(desc = "The setting name")
     public String name() {
         if (name == null) {
             throw new IllegalStateException("Name is null for " + getClass().getSimpleName());
@@ -588,11 +595,32 @@ public abstract class GuildSetting<T> {
         return name;
     }
 
-    @Command
+    @Command(desc = "The human readable representation of the value")
+    @RolePermission(Roles.ADMIN)
     public String getValueString(@Me GuildDB db) {
         T value = getOrNull(db);
         if (value == null) return null;
         return toReadableString(db, value);
+    }
+
+    @Command(desc = "Does the setting have a value (even if invalid)")
+    @RolePermission(Roles.ADMIN)
+    public boolean hasValue(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+        return getOrNull(db, checkDelegate) != null;
+    }
+
+    @Command(desc = "The setting value")
+    @RolePermission(Roles.ADMIN)
+    public T getValue(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+        return getOrNull(db, checkDelegate);
+    }
+
+    @Command(desc = "If the value is invalid")
+    @RolePermission(Roles.ADMIN)
+    public boolean hasInvalidValue(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+        String raw = getRaw(db, checkDelegate);
+        if (raw == null) return false;
+        return getOrNull(db, checkDelegate) == null;
     }
 
 }

@@ -7,11 +7,12 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
@@ -58,6 +59,7 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
@@ -3158,5 +3160,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return guild.getRoleById(mapping);
         }
         return null;
+    }
+
+    ///
+
+    @Command
+    public TextChannel getNotifcationChannel() {
+        TextChannel sendTo = guild.getSystemChannel();
+        if (sendTo != null && !sendTo.canTalk()) sendTo = null;
+        if (sendTo == null) sendTo = guild.getCommunityUpdatesChannel();
+        if (sendTo != null && !sendTo.canTalk()) sendTo = null;
+        if (sendTo == null) sendTo = guild.getRulesChannel();
+        if (sendTo != null && !sendTo.canTalk()) sendTo = null;
+        if (sendTo == null) {
+            DefaultGuildChannelUnion df = guild.getDefaultChannel();
+            if (df != null && df instanceof TextChannel tc && tc.canTalk()) {
+                sendTo = tc;
+            }
+        }
+        return sendTo;
     }
 }

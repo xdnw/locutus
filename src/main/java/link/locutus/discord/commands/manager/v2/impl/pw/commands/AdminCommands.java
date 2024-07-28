@@ -84,6 +84,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -104,6 +105,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -410,6 +412,7 @@ public class AdminCommands {
                                 @Switch("g") boolean unset_invalid_aa,
                                 @Switch("a") boolean unset_all,
                                 @Switch("v") boolean unset_validate,
+                                @Switch("m") String unsetMessage,
                                 @Switch("f") boolean force) {
         Map<Guild, Map<GuildSetting, Set<String>>> unsetReasons = new LinkedHashMap<>();
 
@@ -424,6 +427,29 @@ public class AdminCommands {
             }
         }
         for (GuildDB otherDb : guilds) {
+            Map<GuildSetting, Boolean> isUnset = new LinkedHashMap<>();
+            BiConsumer<GuildSetting, String> unset = (setting, reason) -> {
+                if (force) {
+                    if (isUnset.getOrDefault(setting, false)) return;
+                    isUnset.put(setting, true);
+                    String previousValue = setting.getRaw(otherDb, false);
+                    Object value = setting.getOrNull(otherDb, false);
+
+                    otherDb.deleteInfo(setting);
+
+                    String message = reason + ": " + (unsetMessage == null ? "" : unsetMessage) + "\nPrevious value: `" + previousValue + "`";
+                    TextChannel sendTo = null;
+                    if (value instanceof TextChannel tc && tc.canTalk()) sendTo = tc;
+                    if (sendTo == null) sendTo = otherDb.getNotifcationChannel();
+                    if (sendTo != null) {
+                        try {
+                            RateLimitUtil.queue(sendTo.sendMessage(message));
+                        } catch (Exception ignore) {
+                        }
+                    }
+                }
+            };
+
             Guild otherGuild = otherDb.getGuild();
             Map<GuildSetting, Set<String>> byGuild = unsetReasons.computeIfAbsent(otherGuild, k -> new LinkedHashMap<>());
             // only channel modes
@@ -432,7 +458,7 @@ public class AdminCommands {
                 if (channel == null) continue;
                 if (unset_cant_talk) {
                     if (!channel.canTalk()) {
-                        if (force) otherDb.deleteInfo(setting);
+                        if (force) unset.accept(setting, "No Talk Permissions in " + channel.getAsMention());
                         byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Can't talk");
                         continue;
                     }
@@ -449,7 +475,7 @@ public class AdminCommands {
                 Object value = setting.getOrNull(otherDb);
                 if (unset_null) {
                     if (value == null) {
-                        if (force) otherDb.deleteInfo(setting);
+                        if (force) unset.accept(setting, "Invalid value (null)");
                         byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Null");
                         continue;
                     }
@@ -463,13 +489,13 @@ public class AdminCommands {
                         notAllowedReason = e.getMessage();
                     }
                     if (!allowed) {
-                        if (force) otherDb.deleteInfo(setting);
+                        if (force) unset.accept(setting, notAllowedReason);
                         byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add(notAllowedReason);
                         continue;
                     }
                 }
                 if (unset_validate) {
-                    String validateReason = "Invalid";
+                    String validateReason = "Invalid Value (validation error)";
                     boolean valid = false;
                     try {
                         setting.validate(otherDb, null, value);
@@ -478,7 +504,7 @@ public class AdminCommands {
                         validateReason = e.getMessage();
                     }
                     if (!valid) {
-                        if (force) otherDb.deleteInfo(setting);
+                        if (force) unset.accept(setting, validateReason);
                         byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add(validateReason);
                         continue;
                     }
@@ -486,13 +512,15 @@ public class AdminCommands {
                 }
                 if (unset_invalid_aa) {
                     if (!otherDb.isValidAlliance()) {
-                        if (force) otherDb.deleteInfo(setting);
+//                        if (force) otherDb.deleteInfo(setting);
+                        if (force) unset.accept(setting, "No valid Alliance registered");
                         byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Invalid AA");
                         continue;
                     }
                 }
                 if (unset_all) {
-                    if (force) otherDb.deleteInfo(setting);
+//                    if (force) otherDb.deleteInfo(setting);
+                    if (force) unset.accept(setting, "Setting removed by administrator.");
                     byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("All");
                 }
             }
@@ -527,7 +555,75 @@ public class AdminCommands {
         return null;
     }
 
-    // todo unset invalid
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.SETTINGS_SERVERS);
+        }
+
+        // admin bulk_setting key
+        //- include alliances registered column (alliance ids)
+        //- have column for coalitions guild is in
+        //- have column for isValidAlliance
+        //- have column for number of active members 7200 in the alliance
+
+        List<String> header = new ArrayList<>(Arrays.asList(
+            "guild",
+            "guild_id",
+            "owner",
+            "owner_id",
+            "setting",
+            "raw",
+            "readable",
+            "is_invalid",
+            "lack_perms",
+            "root_col",
+            "alliances",
+            "aa_valid",
+            "active_aa_members"
+        ));
+
+        sheet.setHeader(header);
+
+        GuildDB root = Locutus.imp().getRootDb();
+
+
+        for (GuildDB otherDb : guilds) {
+            String raw = setting.getRaw(otherDb, false);
+            if (raw == null) continue;
+            Object value = setting.getOrNull(otherDb, false);
+            String readable = value == null ? "![NULL]" : setting.toReadableString(db, value);
+            boolean noPerms = !setting.allowed(db);
+
+            header.set(0, otherDb.getGuild().getName());
+            header.set(1, otherDb.getIdLong() + "");
+            long ownerId = otherDb.getGuild().getOwnerIdLong();
+            header.set(2, DiscordUtil.getUserName(ownerId));
+            header.set(3, ownerId + "");
+            header.set(4, setting.name());
+            header.set(5, raw);
+            header.set(6, readable);
+            header.set(7, value == null ? "true" : "false");
+            header.set(8, noPerms ? "true" : "false");
+            Set<Coalition> hasOnRoot = Arrays.stream(Coalition.values()).filter(otherDb::hasCoalitionPermsOnRoot).collect(Collectors.toSet());
+            header.set(9, hasOnRoot.stream().map(Coalition::name).collect(Collectors.joining(",")));
+            Set<Integer> aaIds = otherDb.getAllianceIds();
+            header.set(10, aaIds == null ? "" : aaIds.toString());
+            header.set(11, otherDb.isValidAlliance() ? "true" : "false");
+            AllianceList aaList = otherDb.getAllianceList();
+            int activeMembers = aaList == null ? -1 : aaList.getNations(true, 7200, true).size();
+            header.set(12, activeMembers + "");
+
+            sheet.addRow(header);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "setting_servers").send();
+        return null;
+    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

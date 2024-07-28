@@ -2704,6 +2704,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
+    public int countTreasures(int allianceId) {
+        synchronized (nationsByAlliance) {
+            Map<Integer, DBNation> nations = nationsByAlliance.get(allianceId);
+            if (nations == null || nations.isEmpty()) return 0;
+            int count = 0;
+            for (DBNation nation : nations.values()) {
+                if (nation.getPositionEnum().id <= Rank.APPLICANT.id || nation.getVm_turns() == 0) continue;
+                synchronized (treasuresByNation) {
+                    Set<DBTreasure> treasures = treasuresByNation.get(nation.getId());
+                    if (treasures == null) continue;
+                    count += treasures.size();
+                }
+            }
+            return count;
+        }
+    }
+
     public Set<DBTreasure> getTreasure(int nationId) {
         synchronized (treasuresByNation) {
             Set<DBTreasure> treasures = treasuresByNation.get(nationId);
