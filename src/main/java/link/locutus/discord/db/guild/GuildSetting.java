@@ -578,7 +578,7 @@ public abstract class GuildSetting<T> {
     @Command(desc = "Is this a channel setting")
     public boolean isChannelType() {
         Type clazzType = getType().getType();
-        return clazzType instanceof Class clazz && Channel.class.isAssignableFrom(clazz);
+        return clazzType instanceof Class clazz && Channel.class.isAssignableFrom(clazz) && !Category.class.isAssignableFrom(clazz);
     }
 
     @Command(desc = "The simple name of the setting class type")
