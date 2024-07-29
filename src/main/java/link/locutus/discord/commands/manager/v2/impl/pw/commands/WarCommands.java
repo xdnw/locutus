@@ -3639,13 +3639,13 @@ public class WarCommands {
                            Set<DBNation> allies,
                            Set<DBNation> enemies,
                            @Arg(value = "Cutoff date for wars (default 5 days ago)", group = 0)
-                           @Default("5d") @Timestamp long cutoff,
+                           @Default("5d") @Timestamp long startTime,
+                           @Switch("e") @Timestamp Long endTime,
                            @Arg(value = "If concluded wars within the timeframe should be included", group = 0)
                            @Switch("i") boolean includeConcludedWars,
                            @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        long now = System.currentTimeMillis();
-
-        WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, cutoff, now);
+        if (endTime == null) endTime = System.currentTimeMillis();
+        WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, startTime, endTime);
 
         Set<DBWar> allWars = new HashSet<>();
         allWars.addAll(parser1.getWars().values());

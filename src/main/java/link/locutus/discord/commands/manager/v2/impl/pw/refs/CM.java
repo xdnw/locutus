@@ -11987,7 +11987,11 @@ public class CM {
             }
 
             public ActivitySheet startTime(String value) {
-                return set("trackTime", value);
+                return set("startTime", value);
+            }
+
+            public ActivitySheet endTime(String value) {
+                return set("endTime", value);
             }
 
             public ActivitySheet sheet(String value) {
@@ -12468,8 +12472,12 @@ public class CM {
                 return set("enemies", value);
             }
 
-            public warSheet cutoff(String value) {
-                return set("cutoff", value);
+            public warSheet startTime(String value) {
+                return set("startTime", value);
+            }
+
+            public warSheet endTime(String value) {
+                return set("endTime", value);
             }
 
             public warSheet includeConcludedWars(String value) {
