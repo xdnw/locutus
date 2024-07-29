@@ -1632,7 +1632,7 @@ public class GrantCommands {
                                DBNation receiver,
                                @Switch("e") @Timediff Long expire,
                                @Switch("d") @Timediff Long decay,
-                               @Switch("i") boolean ignore,
+                               @Switch("i") Boolean ignore,
                                @Switch("p") String customValue,
                                @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
