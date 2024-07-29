@@ -2776,7 +2776,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when a nation goes into VM";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).nonPublic());
+    }.setupRequirements(f -> f.nonPublic());
 
     public static GuildSetting<Boolean> HIDE_LEGACY_NOTICE = new GuildBooleanSetting(GuildSettingCategory.DEFAULT) {
         @NoFormat

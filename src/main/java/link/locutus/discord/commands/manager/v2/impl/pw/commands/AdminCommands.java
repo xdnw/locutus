@@ -451,7 +451,7 @@ public class AdminCommands {
 
                     otherDb.deleteInfo(setting);
 
-                    String message = reason + ": " + (unsetMessage == null ? "" : unsetMessage) + "\nPrevious value: `" + previousValue + "`";
+                    String message = setting.name() + ": " + reason + ": " + (unsetMessage == null ? "" : unsetMessage) + "\nPrevious value: `" + previousValue + "`";
                     TextChannel sendTo = null;
                     if (value instanceof TextChannel tc && tc.canTalk()) sendTo = tc;
                     if (sendTo == null) sendTo = otherDb.getNotifcationChannel();
