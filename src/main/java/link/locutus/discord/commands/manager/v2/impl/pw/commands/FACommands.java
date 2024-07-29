@@ -229,8 +229,12 @@ public class FACommands {
         ) {
             return "You do not have permission to set this coalition";
         }
+        Set<Long> previousValue = db.getCoalitionRaw(coalitionName);
+        if (previousValue == null || previousValue.isEmpty()) {
+            return "Coalition `" + coalitionName + "` is empty";
+        }
         db.removeCoalition(coalitionName);
-        return "Deleted coalition " + coalitionName;
+        return "Deleted coalition `" + coalitionName + "`. Previous value: `" + StringMan.join(previousValue, ",") + "`";
     }
 
     @Command(desc = "Remove alliances to a coalition\n" +
