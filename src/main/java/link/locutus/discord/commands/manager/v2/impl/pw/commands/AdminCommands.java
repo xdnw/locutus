@@ -529,6 +529,7 @@ public class AdminCommands {
             }
         }
         StringBuilder msg = new StringBuilder();
+        unsetReasons.entrySet().removeIf(e -> e.getValue().isEmpty());
         for (Map.Entry<Guild, Map<GuildSetting, Set<String>>> entry : unsetReasons.entrySet()) {
             Guild guild = entry.getKey();
             Map<GuildSetting, Set<String>> reasons = entry.getValue();
