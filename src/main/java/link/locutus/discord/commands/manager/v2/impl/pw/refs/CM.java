@@ -221,6 +221,92 @@ public class CM {
 
                 }
             }
+            public static class settings{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="infoBulk")
+                public static class info_servers extends CommandRef {
+                    public static final info_servers cmd = new info_servers();
+                public info_servers setting(String value) {
+                    return set("setting", value);
+                }
+
+                public info_servers guilds(String value) {
+                    return set("guilds", value);
+                }
+
+                public info_servers sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="unsetNews")
+                public static class subscribe extends CommandRef {
+                    public static final subscribe cmd = new subscribe();
+                public subscribe setting(String value) {
+                    return set("setting", value);
+                }
+
+                public subscribe guilds(String value) {
+                    return set("guilds", value);
+                }
+
+                public subscribe news_channel(String value) {
+                    return set("news_channel", value);
+                }
+
+                public subscribe unset_on_error(String value) {
+                    return set("unset_on_error", value);
+                }
+
+                public subscribe force(String value) {
+                    return set("force", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="unsetKeys")
+                public static class unset extends CommandRef {
+                    public static final unset cmd = new unset();
+                public unset settings(String value) {
+                    return set("settings", value);
+                }
+
+                public unset guilds(String value) {
+                    return set("guilds", value);
+                }
+
+                public unset unset_cant_talk(String value) {
+                    return set("unset_cant_talk", value);
+                }
+
+                public unset unset_null(String value) {
+                    return set("unset_null", value);
+                }
+
+                public unset unset_key_no_perms(String value) {
+                    return set("unset_key_no_perms", value);
+                }
+
+                public unset unset_invalid_aa(String value) {
+                    return set("unset_invalid_aa", value);
+                }
+
+                public unset unset_all(String value) {
+                    return set("unset_all", value);
+                }
+
+                public unset unset_validate(String value) {
+                    return set("unset_validate", value);
+                }
+
+                public unset unsetMessage(String value) {
+                    return set("unsetMessage", value);
+                }
+
+                public unset force(String value) {
+                    return set("force", value);
+                }
+
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="stop")
             public static class stop extends CommandRef {
                 public static final stop cmd = new stop();
@@ -245,16 +331,16 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="sudo")
                 public static class user extends CommandRef {
                     public static final user cmd = new user();
+                public user command(String value) {
+                    return set("command", value);
+                }
+
                 public user user(String value) {
                     return set("user", value);
                 }
 
                 public user nation(String value) {
                     return set("nation", value);
-                }
-
-                public user command(String value) {
-                    return set("command", value);
                 }
 
                 }
@@ -1027,6 +1113,26 @@ public class CM {
 
                 public allianceNationsSheet includeApplicants(String value) {
                     return set("includeApplicants", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceAttributeRanking")
+                public static class attribute_ranking extends CommandRef {
+                    public static final attribute_ranking cmd = new attribute_ranking();
+                public attribute_ranking alliances(String value) {
+                    return set("alliances", value);
+                }
+
+                public attribute_ranking attribute(String value) {
+                    return set("attribute", value);
+                }
+
+                public attribute_ranking reverseOrder(String value) {
+                    return set("reverseOrder", value);
+                }
+
+                public attribute_ranking uploadFile(String value) {
+                    return set("uploadFile", value);
                 }
 
                 }
@@ -3946,10 +4052,6 @@ public class CM {
                 return set("bonus_percent", value);
             }
 
-            public build is_additional(String value) {
-                return set("is_additional", value);
-            }
-
             public build onlySendMissingFunds(String value) {
                 return set("onlySendMissingFunds", value);
             }
@@ -4713,8 +4815,8 @@ public class CM {
                     return set("allowIgnore", value);
                 }
 
-                public build repeatable(String value) {
-                    return set("repeatable", value);
+                public build repeatable_time(String value) {
+                    return set("repeatable_time", value);
                 }
 
                 public build force(String value) {
@@ -4861,8 +4963,8 @@ public class CM {
                     return set("allowIgnore", value);
                 }
 
-                public infra repeatable(String value) {
-                    return set("repeatable", value);
+                public infra repeatable_time(String value) {
+                    return set("repeatable_time", value);
                 }
 
                 public infra force(String value) {
@@ -4933,8 +5035,8 @@ public class CM {
                     return set("allowIgnore", value);
                 }
 
-                public land repeatable(String value) {
-                    return set("repeatable", value);
+                public land repeatable_time(String value) {
+                    return set("repeatable_time", value);
                 }
 
                 public land force(String value) {
@@ -5069,8 +5171,8 @@ public class CM {
                     return set("allowIgnore", value);
                 }
 
-                public raws nonRepeatable(String value) {
-                    return set("nonRepeatable", value);
+                public raws repeatable_time(String value) {
+                    return set("repeatable_time", value);
                 }
 
                 public raws force(String value) {
@@ -5149,8 +5251,8 @@ public class CM {
                     return set("allowIgnore", value);
                 }
 
-                public warchest nonRepeatable(String value) {
-                    return set("nonRepeatable", value);
+                public warchest repeatable_time(String value) {
+                    return set("repeatable_time", value);
                 }
 
                 public warchest force(String value) {
@@ -5471,6 +5573,10 @@ public class CM {
 
                 public auto_rename allow_vm(String value) {
                     return set("allow_vm", value);
+                }
+
+                public auto_rename list_missing(String value) {
+                    return set("list_missing", value);
                 }
 
                 public auto_rename force(String value) {
@@ -6032,6 +6138,40 @@ public class CM {
                 return set("sheet", value);
             }
 
+            }
+            public static class history{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="grayStreak")
+                public static class gray_streak extends CommandRef {
+                    public static final gray_streak cmd = new gray_streak();
+                public gray_streak nations(String value) {
+                    return set("nations", value);
+                }
+
+                public gray_streak daysInactive(String value) {
+                    return set("daysInactive", value);
+                }
+
+                public gray_streak timeframe(String value) {
+                    return set("timeframe", value);
+                }
+
+                public gray_streak sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="vmHistory")
+                public static class vm extends CommandRef {
+                    public static final vm cmd = new vm();
+                public vm nations(String value) {
+                    return set("nations", value);
+                }
+
+                public vm sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                }
             }
             public static class list{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="viewBans")
@@ -8928,100 +9068,100 @@ public class CM {
                     return set("sheet", value);
                 }
 
-                public alliance column1(String value) {
-                    return set("column1", value);
+                public alliance a(String value) {
+                    return set("a", value);
                 }
 
-                public alliance column2(String value) {
-                    return set("column2", value);
+                public alliance b(String value) {
+                    return set("b", value);
                 }
 
-                public alliance column3(String value) {
-                    return set("column3", value);
+                public alliance c(String value) {
+                    return set("c", value);
                 }
 
-                public alliance column4(String value) {
-                    return set("column4", value);
+                public alliance d(String value) {
+                    return set("d", value);
                 }
 
-                public alliance column5(String value) {
-                    return set("column5", value);
+                public alliance e(String value) {
+                    return set("e", value);
                 }
 
-                public alliance column6(String value) {
-                    return set("column6", value);
+                public alliance f(String value) {
+                    return set("f", value);
                 }
 
-                public alliance column7(String value) {
-                    return set("column7", value);
+                public alliance g(String value) {
+                    return set("g", value);
                 }
 
-                public alliance column8(String value) {
-                    return set("column8", value);
+                public alliance h(String value) {
+                    return set("h", value);
                 }
 
-                public alliance column9(String value) {
-                    return set("column9", value);
+                public alliance i(String value) {
+                    return set("i", value);
                 }
 
-                public alliance column10(String value) {
-                    return set("column10", value);
+                public alliance j(String value) {
+                    return set("j", value);
                 }
 
-                public alliance column11(String value) {
-                    return set("column11", value);
+                public alliance k(String value) {
+                    return set("k", value);
                 }
 
-                public alliance column12(String value) {
-                    return set("column12", value);
+                public alliance l(String value) {
+                    return set("l", value);
                 }
 
-                public alliance column13(String value) {
-                    return set("column13", value);
+                public alliance m(String value) {
+                    return set("m", value);
                 }
 
-                public alliance column14(String value) {
-                    return set("column14", value);
+                public alliance n(String value) {
+                    return set("n", value);
                 }
 
-                public alliance column15(String value) {
-                    return set("column15", value);
+                public alliance o(String value) {
+                    return set("o", value);
                 }
 
-                public alliance column16(String value) {
-                    return set("column16", value);
+                public alliance p(String value) {
+                    return set("p", value);
                 }
 
-                public alliance column17(String value) {
-                    return set("column17", value);
+                public alliance q(String value) {
+                    return set("q", value);
                 }
 
-                public alliance column18(String value) {
-                    return set("column18", value);
+                public alliance r(String value) {
+                    return set("r", value);
                 }
 
-                public alliance column19(String value) {
-                    return set("column19", value);
+                public alliance s(String value) {
+                    return set("s", value);
                 }
 
-                public alliance column20(String value) {
-                    return set("column20", value);
+                public alliance t(String value) {
+                    return set("t", value);
                 }
 
-                public alliance column21(String value) {
-                    return set("column21", value);
+                public alliance u(String value) {
+                    return set("u", value);
                 }
 
-                public alliance column22(String value) {
-                    return set("column22", value);
+                public alliance v(String value) {
+                    return set("v", value);
                 }
 
-                public alliance column23(String value) {
-                    return set("column23", value);
+                public alliance w(String value) {
+                    return set("w", value);
                 }
 
-                public alliance column24(String value) {
-                    return set("column24", value);
+                public alliance x(String value) {
+                    return set("x", value);
                 }
 
                 }
@@ -10176,100 +10316,100 @@ public class CM {
                     return set("sheet", value);
                 }
 
-                public nation column1(String value) {
-                    return set("column1", value);
+                public nation a(String value) {
+                    return set("a", value);
                 }
 
-                public nation column2(String value) {
-                    return set("column2", value);
+                public nation b(String value) {
+                    return set("b", value);
                 }
 
-                public nation column3(String value) {
-                    return set("column3", value);
+                public nation c(String value) {
+                    return set("c", value);
                 }
 
-                public nation column4(String value) {
-                    return set("column4", value);
+                public nation d(String value) {
+                    return set("d", value);
                 }
 
-                public nation column5(String value) {
-                    return set("column5", value);
+                public nation e(String value) {
+                    return set("e", value);
                 }
 
-                public nation column6(String value) {
-                    return set("column6", value);
+                public nation f(String value) {
+                    return set("f", value);
                 }
 
-                public nation column7(String value) {
-                    return set("column7", value);
+                public nation g(String value) {
+                    return set("g", value);
                 }
 
-                public nation column8(String value) {
-                    return set("column8", value);
+                public nation h(String value) {
+                    return set("h", value);
                 }
 
-                public nation column9(String value) {
-                    return set("column9", value);
+                public nation i(String value) {
+                    return set("i", value);
                 }
 
-                public nation column10(String value) {
-                    return set("column10", value);
+                public nation j(String value) {
+                    return set("j", value);
                 }
 
-                public nation column11(String value) {
-                    return set("column11", value);
+                public nation k(String value) {
+                    return set("k", value);
                 }
 
-                public nation column12(String value) {
-                    return set("column12", value);
+                public nation l(String value) {
+                    return set("l", value);
                 }
 
-                public nation column13(String value) {
-                    return set("column13", value);
+                public nation m(String value) {
+                    return set("m", value);
                 }
 
-                public nation column14(String value) {
-                    return set("column14", value);
+                public nation n(String value) {
+                    return set("n", value);
                 }
 
-                public nation column15(String value) {
-                    return set("column15", value);
+                public nation o(String value) {
+                    return set("o", value);
                 }
 
-                public nation column16(String value) {
-                    return set("column16", value);
+                public nation p(String value) {
+                    return set("p", value);
                 }
 
-                public nation column17(String value) {
-                    return set("column17", value);
+                public nation q(String value) {
+                    return set("q", value);
                 }
 
-                public nation column18(String value) {
-                    return set("column18", value);
+                public nation r(String value) {
+                    return set("r", value);
                 }
 
-                public nation column19(String value) {
-                    return set("column19", value);
+                public nation s(String value) {
+                    return set("s", value);
                 }
 
-                public nation column20(String value) {
-                    return set("column20", value);
+                public nation t(String value) {
+                    return set("t", value);
                 }
 
-                public nation column21(String value) {
-                    return set("column21", value);
+                public nation u(String value) {
+                    return set("u", value);
                 }
 
-                public nation column22(String value) {
-                    return set("column22", value);
+                public nation v(String value) {
+                    return set("v", value);
                 }
 
-                public nation column23(String value) {
-                    return set("column23", value);
+                public nation w(String value) {
+                    return set("w", value);
                 }
 
-                public nation column24(String value) {
-                    return set("column24", value);
+                public nation x(String value) {
+                    return set("x", value);
                 }
 
                 }

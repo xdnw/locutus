@@ -1392,6 +1392,18 @@ public class NationCommands {
             public static final hasWarBounty cmd = new hasWarBounty();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="inactivity_streak")
+        public static class inactivity_streak extends CommandRef {
+            public static final inactivity_streak cmd = new inactivity_streak();
+        public inactivity_streak daysInactive(String value) {
+            return set("daysInactive", value);
+        }
+
+        public inactivity_streak checkPastXDays(String value) {
+            return set("checkPastXDays", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="infraAttackModifier")
         public static class infraAttackModifier extends CommandRef {
             public static final infraAttackModifier cmd = new infraAttackModifier();
@@ -1673,6 +1685,42 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="raidBountyValue")
         public static class raidBountyValue extends CommandRef {
             public static final raidBountyValue cmd = new raidBountyValue();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="revenue")
+        public static class revenue extends CommandRef {
+            public static final revenue cmd = new revenue();
+        public revenue turns(String value) {
+            return set("turns", value);
+        }
+
+        public revenue no_cities(String value) {
+            return set("no_cities", value);
+        }
+
+        public revenue no_military(String value) {
+            return set("no_military", value);
+        }
+
+        public revenue no_trade_bonus(String value) {
+            return set("no_trade_bonus", value);
+        }
+
+        public revenue no_new_bonus(String value) {
+            return set("no_new_bonus", value);
+        }
+
+        public revenue no_food(String value) {
+            return set("no_food", value);
+        }
+
+        public revenue no_power(String value) {
+            return set("no_power", value);
+        }
+
+        public revenue treasure_bonus(String value) {
+            return set("treasure_bonus", value);
+        }
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="totalBountyValue")
