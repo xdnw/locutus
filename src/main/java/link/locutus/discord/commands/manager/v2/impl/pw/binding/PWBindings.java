@@ -1341,7 +1341,9 @@ public class PWBindings extends BindingHelper {
         return emum(Rank.class, rank);
     }
 
-    @Binding(value = "An in-game position")
+    @Binding(value = "An in-game position\n" +
+            "When there is overlap from multiple alliances registered to the guild, the alliance id must be specified\n" +
+    "In the form: `<alliance>:<position>` such as `1234:Member`")
     public static DBAlliancePosition position(@Me GuildDB db, @Default @Me DBNation nation, String name) {
         AllianceList alliances = db.getAllianceList();
         if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
