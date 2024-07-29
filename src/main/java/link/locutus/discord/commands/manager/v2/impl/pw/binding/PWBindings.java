@@ -167,7 +167,7 @@ public class PWBindings extends BindingHelper {
         if (command == null) throw new IllegalArgumentException("No command found for `" + input + "`");
         if (command instanceof ICommandGroup group) {
             String prefix = "/" + group.getFullPath();
-            String optionsStr = "- `" + prefix + String.join("\n- `" + prefix, group.primarySubCommandIds() + "`");
+            String optionsStr = "- `" + prefix + String.join("\n- `" + prefix, group.primarySubCommandIds()) + "`";
             throw new IllegalArgumentException("Command `" + input + "` is a group, not an endpoint. Please specify a sub command. Options:\n" + optionsStr);
         }
         if (!(command instanceof ICommand)) throw new IllegalArgumentException("Command `" + input + "` is not a command endpoint");
