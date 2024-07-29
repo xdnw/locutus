@@ -3178,6 +3178,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 sendTo = tc;
             }
         }
-        return sendTo;
+        return sendTo == null || !sendTo.canTalk() ? null : sendTo;
     }
 }

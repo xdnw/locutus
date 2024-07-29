@@ -333,6 +333,8 @@ public class AdminCommands {
                 if (unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
+                    TextChannel backupChannel = otherDb.getNotifcationChannel();
+                    if (backupChannel != null) RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -344,6 +346,8 @@ public class AdminCommands {
                 if (force && unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
+                    TextChannel backupChannel = otherDb.getNotifcationChannel();
+                    if (backupChannel != null) RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
                 }
                 errorMsgs.add(msg);
                 continue;
