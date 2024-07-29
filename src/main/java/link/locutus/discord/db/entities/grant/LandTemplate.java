@@ -99,7 +99,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
                 maxGranterTotal).expireTime(
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
-                allowIgnore).repeatable(
+                allowIgnore).repeatable_time(
                 repeatable).toString();
     }
 

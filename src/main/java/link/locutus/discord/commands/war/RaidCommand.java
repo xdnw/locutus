@@ -450,7 +450,8 @@ public class RaidCommand extends Command {
             long start5 = System.nanoTime();
             if (enemy.active_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id())) {
                 int turns = 2 * 12;
-                Activity activity = new Activity(enemy.getNation_id(), 70 * 12);
+                long startTurn = TimeUtil.getTurn() - 70 * 12;
+                Activity activity = new Activity(enemy.getNation_id(), startTurn, Long.MAX_VALUE);
                 activeChance = activity.loginChance(turns, true);
                 if (me.getShips() <= enemy.getShips()) {
                     value -= Math.max(0, value - bankLootEst) * 0.75 * activeChance;

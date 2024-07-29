@@ -3693,7 +3693,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Set<Long> getActivity(int nationId) {
-        return getActivity(nationId, 0);
+        return getActivity(nationId, 0, Long.MAX_VALUE);
     }
 
     public Map<Integer, Long> getLastActiveTurns(Set<Integer> nationIds, long turn) {
@@ -3746,7 +3746,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public Set<Long> getActivityByDay(int nationId, long minTurn) {
         Set<Long> result = new LinkedHashSet<>();
-        for (long turn : getActivity(nationId, minTurn)) {
+        for (long turn : getActivity(nationId, minTurn, Long.MAX_VALUE)) {
             result.add(turn / 12);
         }
         return result;
@@ -3808,10 +3808,16 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Set<Long> getActivity(int nationId, long minTurn) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM ACTIVITY WHERE nation = ? AND turn > ? ORDER BY turn ASC")) {
+    public Set<Long> getActivity(int nationId, long minTurn, long maxTurn) {
+        String query = "SELECT * FROM ACTIVITY WHERE nation = ? AND turn > ?";
+        if (maxTurn != Long.MAX_VALUE) {
+            query += " AND turn <= ?";
+        }
+        query += " ORDER BY turn ASC";
+        try (PreparedStatement stmt = prepareQuery(query)) {
             stmt.setInt(1, nationId);
             stmt.setLong(2, minTurn);
+            if (maxTurn != Long.MAX_VALUE) stmt.setLong(3, maxTurn);
 
             Set<Long> set = new LinkedHashSet<>();
 

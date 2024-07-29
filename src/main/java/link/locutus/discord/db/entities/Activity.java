@@ -118,8 +118,9 @@ public class Activity {
         return total;
     }
 
-    private void load(Set<Long> activity) {
+    private void load(Set<Long> activity, long minTurnAbs, long maxTurnAbs) {
         if (activity.isEmpty()) return;
+        if (maxTurnAbs == Long.MAX_VALUE) maxTurnAbs = TimeUtil.getTurn();
 
         int[] byDayTotal = new int[7];
         int[] byDayTurnTotal = new int[12];
@@ -127,11 +128,11 @@ public class Activity {
 
         long currentTurn = TimeUtil.getTurn();
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+        minTurnAbs = Math.max(minTurnAbs, activity.iterator().next());
 
-        long minTurn = activity.iterator().next();
         DayOfWeek lastDay = null;
         DayOfWeek lastDayTotal = null;
-        for (long turn = minTurn; turn <= currentTurn; turn++) {
+        for (long turn = minTurnAbs; turn <= maxTurnAbs; turn++) {
             boolean active = activity.contains(turn);
             long turnDiff = currentTurn - turn;
             ZonedDateTime other = now.minusHours(turnDiff * 2);
@@ -170,18 +171,18 @@ public class Activity {
         }
     }
 
-    public Activity(int nationId, long inactiveTurns) {
-        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, TimeUtil.getTurn() - inactiveTurns);
+    public Activity(int nationId, long turnStartAbs, long turnEndAbs) {
+        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, turnStartAbs, turnEndAbs);
         if (activity.isEmpty()) return;
-
-        load(activity);
+        load(activity, turnStartAbs, turnEndAbs);
     }
 
     public Activity(int nationId) {
-        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, 0);
+        long turnStartAbs = 0;
+        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, turnStartAbs, Long.MAX_VALUE);
         if (activity.isEmpty()) return;
 
-        load(activity);
+        load(activity, turnStartAbs, Long.MAX_VALUE);
     }
 
     public double getAverageByDay() {

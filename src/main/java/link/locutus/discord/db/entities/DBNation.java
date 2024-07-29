@@ -5079,7 +5079,12 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Activity getActivity(long turns) {
-        return new Activity(getNation_id(), turns);
+        long now = TimeUtil.getTurn();
+        return new Activity(getNation_id(), now - turns, Long.MAX_VALUE);
+    }
+
+    public Activity getActivity(long turnStart, long turnEnd) {
+        return new Activity(getNation_id(), turnStart, turnEnd);
     }
 
     public JsonObject sendMail(Auth auth, boolean priority, String subject, String body) throws IOException {

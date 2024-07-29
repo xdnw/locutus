@@ -57,7 +57,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
                 maxGranterTotal).expireTime(
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
-                allowIgnore).nonRepeatable(
+                allowIgnore).repeatable_time(
                 getRepeatable() <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, getRepeatable())).toString();
     }
 

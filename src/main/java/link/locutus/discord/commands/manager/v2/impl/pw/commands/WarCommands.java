@@ -2474,10 +2474,12 @@ public class WarCommands {
             "Numbers represent the % of that turn a nation logs in")
     public String ActivitySheetFromId(@Me IMessageIO io, @Me GuildDB db, int nationId,
                                       @Arg("Date to start from")
-                                      @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+                                      @Default("2w") @Timestamp long startTime,
+                                      @Switch("e") @Timestamp Long endTime,
+                                      @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         DBNation nation = new DBNation();
         nation.setNation_id(nationId);
-        return ActivitySheet(io, db, Collections.singleton(nation), trackTime, sheet);
+        return ActivitySheet(io, db, Collections.singleton(nation), startTime, endTime, sheet);
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
@@ -2486,7 +2488,9 @@ public class WarCommands {
             "Numbers represent the % of that turn a nation logs in")
     public String ActivitySheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
                                 @Arg("Date to start from")
-                                @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+                                @Default("2w") @Timestamp long startTime,
+                                @Switch("e") @Timestamp Long endTime,
+                                @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.ACTIVITY_SHEET);
         }
@@ -2519,13 +2523,12 @@ public class WarCommands {
             header.set(4, nation.getScore());
 
             Activity activity;
-            if (trackTime == 0) {
-                System.out.println("Track time = 0");
+            if (startTime == 0) {
                 activity = nation.getActivity();
             } else {
-                long diff = System.currentTimeMillis() - trackTime;
-                System.out.println("Check turns " + diff + " | " + TimeUnit.MILLISECONDS.toHours(diff) / 2 + " | " + trackTime);
-                activity = nation.getActivity(TimeUnit.MILLISECONDS.toHours(diff) / 2);
+                long startTurn = TimeUnit.MILLISECONDS.toHours(startTime) / 2;
+                long endTurn = endTime == null ? Long.MAX_VALUE : TimeUnit.MILLISECONDS.toHours(endTime) / 2;
+                activity = nation.getActivity(startTurn, endTurn);
             }
             double[] byDay = activity.getByDay();
             double[] byDayTurn = activity.getByDayTurn();

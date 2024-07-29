@@ -1085,7 +1085,8 @@ public class DiscordUtil {
             if (nation.getVm_turns() != 0 || nation.isBeige()) return true;
             if (nation.active_m() < 10000) {
                 int twoWeeks = 14 * 12;
-                Activity activity = new Activity(nation.getNation_id(), twoWeeks);
+                long turnNow = TimeUtil.getTurn();
+                Activity activity = new Activity(nation.getNation_id(), turnNow - twoWeeks, Long.MAX_VALUE);
                 double chance = activity.loginChance(finalInactiveTurns, true);
                 return chance > activeProbability;
             }

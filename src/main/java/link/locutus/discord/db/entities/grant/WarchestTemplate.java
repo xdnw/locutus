@@ -66,7 +66,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 maxGranterTotal).expireTime(
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
-                allowIgnore).nonRepeatable(
+                allowIgnore).repeatable_time(
                 getRepeatable() <= 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, getRepeatable())).toString();
     }
 

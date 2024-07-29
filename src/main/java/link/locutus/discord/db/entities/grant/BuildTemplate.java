@@ -117,7 +117,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 maxGranterTotal).expireTime(
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
-                allowIgnore).repeatable(
+                allowIgnore).repeatable_time(
                 repeatable).toString();
     }
 
