@@ -66,7 +66,6 @@ public interface CommandCallable {
             remainder.append(fullCommand);
             return this;
         }
-        String original = fullCommand;
         CommandGroup root = (CommandGroup) this;
         while (!fullCommand.isEmpty()) {
             String rootRemaining = fullCommand;
@@ -88,7 +87,7 @@ public interface CommandCallable {
                 return subCommand;
             }
         }
-        return this;
+        return root;
     }
 
     default CommandCallable getCallable(List<String> args, boolean allowRemainder) {

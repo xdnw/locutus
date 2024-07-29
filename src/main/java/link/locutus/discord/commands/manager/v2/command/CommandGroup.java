@@ -177,8 +177,9 @@ public class CommandGroup implements ICommandGroup {
     @Override
     public Object call(ArgumentStack stack) {
         if (!stack.hasNext()) {
-            throw new CommandUsageException(this, "No subcommand specified. Valid subcommands\n" +
-                    "- " + StringMan.join(primarySubCommandIds(), "\n- "));
+            String prefix = "/" + getFullPath();
+            throw new CommandUsageException(this, "No subcommand specified (2). Valid subcommands\n" +
+                    "- `" + prefix + StringMan.join(primarySubCommandIds(), "`\n- `" + prefix) + "`");
         }
         String arg = stack.consumeNext();
         CommandCallable subcommand = subcommands.get(arg.toLowerCase());

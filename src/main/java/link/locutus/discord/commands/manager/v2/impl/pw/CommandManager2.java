@@ -801,22 +801,25 @@ public class CommandManager2 {
                 }
                 StringBuilder remaining = new StringBuilder();
                 CommandCallable callable = commands.getCallable(fullCmdStr, remaining);
-                if (callable instanceof CommandGroup group && !remaining.isEmpty()) {
+                if (callable instanceof CommandGroup group) {
                     if (returnNotFound) {
-                        String commandId = fullCmdStr.replace(remaining.toString(), "");
-                        if (commandId.isEmpty()) {
-                            commandId = fullCmdStr.split(" ")[0];
-                        }
-                        // last string in split by space
-                        String[] lastCommandIdSplit = commandId.split(" ");
-                        String lastCommandId = lastCommandIdSplit[lastCommandIdSplit.length - 1];
-                        List<String> validIds = new ArrayList<>(group.primarySubCommandIds());
-                        List<String> closest = StringMan.getClosest(lastCommandId, validIds, false);
-                        if (closest.size() > 5) closest = closest.subList(0, 5);
+                        String prefix = group.getFullPath();
+                        prefix = "/" + prefix + (prefix.isEmpty() ? "" : " ");
+                        if (!remaining.isEmpty()) {
+                            String[] lastCommandIdSplit = remaining.toString().split(" ");
+                            String lastCommandId = lastCommandIdSplit[0];
+                            List<String> validIds = new ArrayList<>(group.primarySubCommandIds());
+                            List<String> closest = StringMan.getClosest(lastCommandId, validIds, false);
+                            if (closest.size() > 5) closest = closest.subList(0, 5);
 
-                        io.send("No command found for `" + commandId + "`\n" +
-                                "Did you mean:\n- " + group.getFullPath() + StringMan.join(closest, "\n- " + group.getFullPath()) +
-                                "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                            io.send("No subcommand found for `" + lastCommandId + "`\n" +
+                                    "Did you mean:\n- `" + prefix + StringMan.join(closest, "`\n- `" + prefix) +
+                                    "`\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                        } else {
+                            Set<String> options = group.primarySubCommandIds();
+                            io.send("No subcommand found for `" + prefix.trim() + "`. Options:\n" +
+                                    "`" + prefix + StringMan.join(options, "`\n`" + prefix) + "`");
+                        }
                     }
                     return;
                 }
