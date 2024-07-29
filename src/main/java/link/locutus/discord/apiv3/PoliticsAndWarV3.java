@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.reflect.TypeToken;
@@ -80,6 +81,7 @@ public class PoliticsAndWarV3 {
         this.pool = pool;
 
         this.jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().simpleDateFormat("yyyy-MM-dd").build();
+        jacksonObjectMapper.configure(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS,true);
     }
 
     public PoliticsAndWarV3(ApiKeyPool pool) {
