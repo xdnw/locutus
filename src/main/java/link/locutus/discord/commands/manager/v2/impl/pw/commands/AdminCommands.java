@@ -339,10 +339,21 @@ public class AdminCommands {
                 errorMsgs.add(msg);
                 continue;
             }
-            TextChannel channel = (TextChannel) value;
+            Channel channel = (Channel) value;
             Member self = otherDb.getGuild().getSelfMember();
-            if (!channel.canTalk()) {
+            if (!(channel instanceof GuildMessageChannel gmc) || !gmc.canTalk()) {
                 String msg = otherDb.getGuild().toString() + ": Bot does not have access to " + channel.getAsMention();
+                if (force && unset_on_error) {
+                    otherDb.deleteInfo(setting);
+                    msg += " (deleted setting)";
+                    TextChannel backupChannel = otherDb.getNotifcationChannel();
+                    if (backupChannel != null) RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
+                }
+                errorMsgs.add(msg);
+                continue;
+            }
+            if (!(gmc instanceof TextChannel tc)) {
+                String msg = otherDb.getGuild().toString() + ": Not set to a Text Channel " + channel.getAsMention();
                 if (force && unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
@@ -357,7 +368,7 @@ public class AdminCommands {
                 if (force && unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
-                    RateLimitUtil.queue(channel.sendMessage(msg + "\n" + errorMessage));
+                    RateLimitUtil.queue(gmc.sendMessage(msg + "\n" + errorMessage));
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -369,7 +380,7 @@ public class AdminCommands {
                 continue;
             }
             try {
-                Webhook.WebhookReference result = RateLimitUtil.complete(subscribe.follow(channel));
+                Webhook.WebhookReference result = RateLimitUtil.complete(subscribe.follow(tc));
                 otherDb.deleteInfo(setting);
                 infoMsgs.add(successMsg + " | " + result);
             } catch (Exception e) {
@@ -378,7 +389,7 @@ public class AdminCommands {
                 if (unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
-                    RateLimitUtil.queue(channel.sendMessage(msg + "\n" + errorMessage));
+                    RateLimitUtil.queue(gmc.sendMessage(msg + "\n" + errorMessage));
                 }
                 continue;
 
@@ -457,10 +468,10 @@ public class AdminCommands {
             Map<GuildSetting, Set<String>> byGuild = unsetReasons.computeIfAbsent(otherGuild, k -> new LinkedHashMap<>());
             // only channel modes
             for (GuildSetting setting : channelTypes) {
-                TextChannel channel = (TextChannel) setting.getOrNull(otherDb);
+                Channel channel = (Channel) setting.getOrNull(otherDb);
                 if (channel == null) continue;
                 if (unset_cant_talk) {
-                    if (!channel.canTalk()) {
+                    if (!(channel instanceof GuildMessageChannel gmc) || !gmc.canTalk()) {
                         if (force) unset.accept(setting, "No Talk Permissions in " + channel.getAsMention());
                         byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Can't talk");
                         continue;
