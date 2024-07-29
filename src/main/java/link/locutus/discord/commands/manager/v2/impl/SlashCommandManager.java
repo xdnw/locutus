@@ -423,7 +423,7 @@ public class SlashCommandManager extends ListenerAdapter {
                     ((SubcommandData) current).addOptions(options);
                 }
             } catch (Throwable e) {
-                System.out.println("Error creating command: " + id);
+                System.out.println("Error creating command: " + fullPath);
                 for (OptionData option : options) {
                     System.out.println("- option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
                 }

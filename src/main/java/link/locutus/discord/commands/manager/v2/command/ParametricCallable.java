@@ -516,9 +516,10 @@ public class ParametricCallable implements ICommand {
         if (commandIndex != null) {
             Map<String, String> commandArgs = new LinkedHashMap<>();
             commandArgs.put("", getFullPath());
-            for (Map.Entry<ParameterData, Map.Entry<String, Object>> entry : argumentMap.entrySet()) {
-                if (entry.getValue().getKey() != null) {
-                    commandArgs.put(entry.getKey().getName(), entry.getValue().getKey());
+            for (ParameterData param : userParameters) {
+                Map.Entry<String, Object> inputData = argumentMap.get(param);
+                if (inputData != null) {
+                    commandArgs.put(param.getName(), inputData.getKey());
                 }
             }
             argumentMap.put(commandIndex, new AbstractMap.SimpleEntry<>(null, new JSONObject(commandArgs)));

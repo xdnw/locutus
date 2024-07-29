@@ -312,10 +312,9 @@ public class AdminCommands {
         NewsChannel subscribe = (NewsChannel) news_channel;
         GuildDB thisDb = Locutus.imp().getGuildDB(subscribe.getGuild());
         Invite invite = thisDb.getInvite(true);
-        Type type = setting.getType().getType();
         // ensure type is instance of Channel
-        if (!Channel.class.isAssignableFrom((Class) type)) {
-            return "Invalid setting type: " + type + ". Not a channel";
+        if (!setting.isChannelType()) {
+            return "Invalid setting type: " + setting.getType() + ". Not a channel";
         }
 
         String errorMessage = "Failed to subscribe to channel: " + subscribe.getAsMention() + "(#" + subscribe.getName() + ") in " + thisDb.getGuild() + " " + invite.getUrl() + "\n" +
@@ -420,7 +419,7 @@ public class AdminCommands {
         Set<GuildSetting> nonChanTypes = new LinkedHashSet<>();
         for (GuildSetting setting : settings) {
             Type type = setting.getType().getType();
-            if (Channel.class.isAssignableFrom((Class) type)) {
+            if (setting.isChannelType()) {
                 channelTypes.add(setting);
             } else {
                 nonChanTypes.add(setting);
@@ -542,6 +541,7 @@ public class AdminCommands {
             StringBuilder body = new StringBuilder("Unset " + settings.size() + " keys for " + guilds.size() + " servers\n");
             body.append("Unset on error: `" + unset_null + "`\n");
             body.append("Servers affected: `" + unsetReasons.size() + "`\n");
+            System.out.println("Create confirm " + command);
             io.create().confirmation(title, body.toString(), command)
                     .file("unset.txt", msg.toString())
                     .send();
@@ -570,7 +570,7 @@ public class AdminCommands {
 
         List<String> header = new ArrayList<>(Arrays.asList(
             "guild",
-            "guild_id",
+            "guild_name",
             "owner",
             "owner_id",
             "setting",
@@ -596,8 +596,8 @@ public class AdminCommands {
             String readable = value == null ? "![NULL]" : setting.toReadableString(db, value);
             boolean noPerms = !setting.allowed(db);
 
-            header.set(0, otherDb.getGuild().getName());
-            header.set(1, otherDb.getIdLong() + "");
+            header.set(0, otherDb.getIdLong() + "");
+            header.set(1, otherDb.getGuild().getName());
             long ownerId = otherDb.getGuild().getOwnerIdLong();
             header.set(2, DiscordUtil.getUserName(ownerId));
             header.set(3, ownerId + "");
@@ -2664,10 +2664,9 @@ public class AdminCommands {
     @NoFormat
     @Command(desc = "Run a command as another user")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String sudo(@Me Guild guild, @Me IMessageIO io,
+    public String sudo(@Me Guild guild, @Me IMessageIO io, String command,
                        @Switch("u") User user,
-                       @Switch("n") DBNation nation,
-                       String command) {
+                       @Switch("n") DBNation nation) {
         if (user == null && nation == null) {
             throw new IllegalArgumentException("Specify a user or nation");
         }
