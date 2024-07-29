@@ -166,9 +166,10 @@ public class PWBindings extends BindingHelper {
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
         if (command == null) throw new IllegalArgumentException("No command found for `" + input + "`");
         if (command instanceof ICommandGroup group) {
-            String prefix = "/" + group.getFullPath();
-            String optionsStr = "- `" + prefix + String.join("\n- `" + prefix, group.primarySubCommandIds()) + "`";
-            throw new IllegalArgumentException("Command `" + input + "` is a group, not an endpoint. Please specify a sub command. Options:\n" + optionsStr);
+            String prefix = group.getFullPath();
+            if (!prefix.isEmpty()) prefix += " ";
+            String optionsStr = "- `" + prefix + String.join("`\n- `" + prefix, group.primarySubCommandIds()) + "`";
+            throw new IllegalArgumentException("Command `" + input + "` is a group, not an endpoint. Please specify a sub command:\n" + optionsStr);
         }
         if (!(command instanceof ICommand)) throw new IllegalArgumentException("Command `" + input + "` is not a command endpoint");
         return (ICommand) command;
