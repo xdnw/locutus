@@ -53,37 +53,45 @@ import java.util.function.Function;
 
 public class GrantCommands {
 
-    // Standard grant commands
-
-    @Command(desc = "Grant cities to a set of nations")
+    @Command(desc = "Grant cities to a set of nations", groups = {
+            "Amount options",
+            "Account options",
+            "Note options",
+            "Escrow",
+            "Policy/Project cost reduction"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantCity(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
-            Set<DBNation> receivers,
-            @Range(min=1, max=100) int amount,
-            @Switch("u") @Arg("If buying up to a city count, instead of additional cities") boolean upTo,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
 
-            @Switch("md") Boolean manifest_destiny,
-            @Switch("up") Boolean urban_planning,
-            @Switch("aup") Boolean advanced_urban_planning,
-            @Switch("mp") Boolean metropolitan_planning,
-            @Switch("gsa") Boolean gov_support_agency,
+            Set<DBNation> receivers,
+
+            @Arg(value = "Number of cities to grant") @Range(min=1, max=100) int amount,
+            @Switch("u") @Arg(value = "If buying up to a city count, instead of additional cities", group = 0) boolean upTo,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
+
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("md") Boolean manifest_destiny,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("up") Boolean urban_planning,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aup") Boolean advanced_urban_planning,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("mp") Boolean metropolitan_planning,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
-            ) throws IOException, GeneralSecurityException {
+    ) throws IOException, GeneralSecurityException {
         Function<DBNation, Integer> getNumBuy = receiver -> {
             int currentCity = receiver.getCities();
             return Math.max(upTo ? amount - currentCity : amount, 0);
@@ -105,33 +113,44 @@ public class GrantCommands {
                     grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
                     grant.setCost(f -> resources).setType(note);
                     return null;
-        }, DepositType.CITY, receiver -> {
-            int numBuy = getNumBuy.apply(receiver);
-            return CityTemplate.getRequirements(db, me, receiver, null, numBuy);
-        });
+                }, DepositType.CITY, receiver -> {
+                    int numBuy = getNumBuy.apply(receiver);
+                    return CityTemplate.getRequirements(db, me, receiver, null, numBuy);
+                });
     }
 
-    @Command(desc = "Grant a project to a set of nations")
+    // Standard grant commands
+
+    @Command(desc = "Grant a project to a set of nations", groups = {
+            "Project options",
+            "Account options",
+            "Note options",
+            "Escrow",
+            "Policy/Project cost reduction"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantProject(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             Project project,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
 
-            @Switch("dpta") Boolean technological_advancement,
-            @Switch("gsa") Boolean gov_support_agency,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("dpta") Boolean technological_advancement,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -153,30 +172,41 @@ public class GrantCommands {
     }
 
     // infra
-    @Command(desc = "Grant infra to a set of nations")
+    @Command(desc = "Grant infra to a set of nations", groups = {
+            "Infra options",
+            "Account options",
+            "Note options",
+            "Escrow",
+            "Policy/Project cost reduction"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantInfra(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
-            @Range(min=50, max=10000) int infra_level,
-            @Switch("new") @Arg("If the grant is for a new city") boolean single_new_city,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
 
-            @Switch("u") Boolean urbanization,
-            @Switch("aec") Boolean advanced_engineering_corps,
-            @Switch("cfce") Boolean center_for_civil_engineering,
-            @Switch("gsa") Boolean gov_support_agency,
+            @Range(min=50, max=10000) int infra_level,
+
+            @Switch("new") @Arg(value = "If the grant is for a new city", group = 0) boolean single_new_city,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
+
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("u") Boolean urbanization,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aec") Boolean advanced_engineering_corps,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("cfce") Boolean center_for_civil_engineering,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -215,30 +245,39 @@ public class GrantCommands {
     }
 
     // land
-    @Command(desc = "Grant land to a set of nations")
+    @Command(desc = "Grant land to a set of nations", groups = {
+            "Amount options",
+            "Account options",
+            "Note options",
+            "Escrow",
+            "Policy/Project cost reduction"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantLand(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             @Range(min=1, max=10000) int to_land,
-            @Switch("new") @Arg("If the grant is for a new city") boolean single_new_city,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
 
-            @Switch("ra") Boolean rapid_expansion,
-            @Switch("aec") Boolean advanced_engineering_corps,
-            @Switch("ala") Boolean arable_land_agency,
-            @Switch("gsa") Boolean gov_support_agency,
+            @Switch("new") @Arg(value = "If the grant is for a new city", group = 0) boolean single_new_city,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
+
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("ra") Boolean rapid_expansion,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aec") Boolean advanced_engineering_corps,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("ala") Boolean arable_land_agency,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -266,27 +305,34 @@ public class GrantCommands {
     }
 
     // unit
-    @Command(desc = "Grant units to a set of nations")
+    @Command(desc = "Grant units to a set of nations", groups = {
+            "Unit options",
+            "Account options",
+            "Note options",
+            "Escrow"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantUnit(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             Map<MilitaryUnit, Long> units,
-            boolean scale_per_city,
-            boolean only_missing_units,
 
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+            @Arg(value = "Multiple the units specified by the receivers cities", group = 0) boolean scale_per_city,
+            @Arg(value = "Only send funds for units the receiver is lacking", group = 0) boolean only_missing_units,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
+
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -319,25 +365,32 @@ public class GrantCommands {
     }
 
     // mmr
-    @Command(desc = "Grant units equivalent to an MMR value to a set of nations")
+    @Command(desc = "Grant units equivalent to an MMR value to a set of nations", groups = {
+            "MMR options",
+            "Account options",
+            "Note options",
+            "Escrow",
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantMMR(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             MMRDouble mmr,
-            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("u") boolean is_additional_units,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "If the mmr being granted is for new units, rather than only the difference from current units", group = 0) @Switch("u") boolean is_additional_units,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
+
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -371,30 +424,41 @@ public class GrantCommands {
             });
     }
 
-    @Command(desc = "Grant consumptions resources for a specified number of attacks at max MMR (military units)")
+    @Command(desc = "Grant consumptions resources for a specified number of attacks\n" +
+            "Consumption assumes at max MMR (military units) for the receivers city count", groups = {
+            "Number of Attacks",
+            "Send Amount Modes",
+            "Account options",
+            "Note options",
+            "Escrow"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantConsumption(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
-            @Range(min=0, max=10000) Integer soldier_attacks,
-            @Range(min=0, max=10000) Integer tank_attacks,
-            @Range(min=0, max=10000) Integer airstrikes,
-            @Range(min=0, max=10000) Integer naval_attacks,
-            @Range(min=0, max=10000) @Default Integer missiles,
-            @Range(min=0, max=10000) @Default Integer nukes,
-            @Arg("Attach a bonus percent, to account for loot losses") @Switch("p") Integer bonus_percent,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Number of Soldier attacks with munitions", group = 0) @Range(min=0, max=10000) Integer soldier_attacks,
+            @Arg(value = "Number of Tank attacks", group = 0) @Range(min=0, max=10000) Integer tank_attacks,
+            @Arg(value = "Number of Airstrikes", group = 0) @Range(min=0, max=10000) Integer airstrikes,
+            @Arg(value = "Number of Naval Attacks", group = 0) @Range(min=0, max=10000) Integer naval_attacks,
+            @Arg(value = "Number of Missiles", group = 0) @Range(min=0, max=10000) @Default Integer missiles,
+            @Arg(value = "Number of Nukes", group = 0) @Range(min=0, max=10000) @Default Integer nukes,
+
+            @Arg(value = "Attach a bonus percent, to account for loot losses", group = 1) @Switch("p") Integer bonus_percent,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 1) @Switch("m") boolean onlySendMissingFunds,
+
+            @Arg(value = "The nation account to deduct from", group = 2) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 2) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 2) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 3) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 3) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 3) @Switch("i") boolean ignore,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3)@Switch("c") boolean convertToMoney,
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
+
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
@@ -437,30 +501,40 @@ public class GrantCommands {
     }
     // build
 
-    @Command(desc = "Grant consumptions resources for a specified number of attacks at max MMR (military units)")
+    @Command(desc = "Grant consumptions resources for a specified number of attacks at max MMR (military units)",
+    groups = {
+            "Specify Cities",
+            "Send Modes (Infra/Land/Bonus/Missing)",
+            "Account options",
+            "Note options",
+            "Escrow"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantBuild(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             CityBuild build,
-            @Arg("Grant only for a single new city") boolean is_new_city,
-            @Arg("Grant for a specific city ids") Set<Integer> city_ids,
-            @Switch("infra") Boolean grant_infra,
-            @Switch("land") Boolean grant_land,
-            @Arg("Attach a bonus percent, to account for loot losses") @Switch("p") Integer bonus_percent,
-            @Arg("If the mmr being granted is for new units, rather than only the difference from current units") @Switch("u") boolean is_additional,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Grant only for a single new city", group = 0) boolean is_new_city,
+            @Arg(value = "Grant for a specific city ids", group = 0) Set<Integer> city_ids,
+
+            @Arg(value = "Send funds for infrastructure (if specified in build)\nDefault: False", group = 1) @Switch("infra") Boolean grant_infra,
+            @Arg(value = "Send funds for land (if specified in build)\nDefault: False", group = 1) @Switch("land") Boolean grant_land,
+            @Arg(value = "Attach a bonus percent, to account for loot losses", group = 1) @Switch("p") Integer bonus_percent,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 1) @Switch("m") boolean onlySendMissingFunds,
+
+            @Arg(value = "The nation account to deduct from", group = 2) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 2) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 2) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 3) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 3) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 3) @Switch("i") boolean ignore,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3) @Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
@@ -545,24 +619,31 @@ public class GrantCommands {
 
     @Command(desc = "Grant a multiple of the warchest requirements to a set of nations\n" +
             "Use 1 for the default warchest\n" +
-            "If no warchest is configured, a default will be used, see setting `WARCHEST_PER_CITY`")
+            "If no warchest is configured, a default will be used, see setting `WARCHEST_PER_CITY`", groups = {
+            "Amount option",
+            "Account options",
+            "Note options",
+            "Escrow"
+    })
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantWarchest(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             @Range(min=0.01, max=50) double ratio,
-            @Switch("m") boolean onlySendMissingFunds,
-            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-            @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
-            @Switch("i") boolean ignore,
-            @Arg("Have the transfer valued as cash in nation holdings")@Switch("c") boolean convertToMoney,
-            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
@@ -1551,7 +1632,7 @@ public class GrantCommands {
                                DBNation receiver,
                                @Switch("e") @Timediff Long expire,
                                @Switch("d") @Timediff Long decay,
-                               @Switch("i") Boolean ignore,
+                               @Switch("i") boolean ignore,
                                @Switch("p") String customValue,
                                @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
