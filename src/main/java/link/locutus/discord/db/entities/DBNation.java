@@ -6543,7 +6543,6 @@ public class DBNation implements NationOrAlliance {
         if (turns == null) turns = 12;
         if (treasure_bonus == null) treasure_bonus = getTreasureBonusPct();
         double[] rss = getRevenue(turns, !no_cities, !no_military, !no_trade_bonus, !no_new_bonus, no_food, no_power, treasure_bonus, false);
-        System.out.println(ResourceType.toString(rss));
         return ResourceType.resourcesToMap(rss);
     }
 }
