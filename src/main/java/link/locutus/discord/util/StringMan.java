@@ -1,5 +1,9 @@
 package link.locutus.discord.util;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonPrimitive;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
@@ -18,20 +22,7 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.text.Normalizer;
 import java.time.Duration;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Formatter;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -666,6 +657,70 @@ public class StringMan {
 
     public static String padLeft(String s, int n) {
         return String.format("%1$" + n + "s", s);
+    }
+
+    public static boolean areEqual(Object obj1, Object obj2) {
+        if (obj1 == obj2) {
+            return true;
+        }
+        if (obj1 == null || obj2 == null) {
+            return false;
+        }
+        if (obj1.getClass().isArray() && obj2.getClass().isArray()) {
+            if (obj1 instanceof int[] && obj2 instanceof int[]) {
+                return Arrays.equals((int[]) obj1, (int[]) obj2);
+            } else if (obj1 instanceof long[] && obj2 instanceof long[]) {
+                return Arrays.equals((long[]) obj1, (long[]) obj2);
+            } else if (obj1 instanceof short[] && obj2 instanceof short[]) {
+                return Arrays.equals((short[]) obj1, (short[]) obj2);
+            } else if (obj1 instanceof byte[] && obj2 instanceof byte[]) {
+                return Arrays.equals((byte[]) obj1, (byte[]) obj2);
+            } else if (obj1 instanceof char[] && obj2 instanceof char[]) {
+                return Arrays.equals((char[]) obj1, (char[]) obj2);
+            } else if (obj1 instanceof float[] && obj2 instanceof float[]) {
+                return Arrays.equals((float[]) obj1, (float[]) obj2);
+            } else if (obj1 instanceof double[] && obj2 instanceof double[]) {
+                return Arrays.equals((double[]) obj1, (double[]) obj2);
+            } else if (obj1 instanceof boolean[] && obj2 instanceof boolean[]) {
+                return Arrays.equals((boolean[]) obj1, (boolean[]) obj2);
+            } else {
+                return Arrays.equals((Object[]) obj1, (Object[]) obj2);
+            }
+        }
+        return Objects.equals(obj1, obj2);
+    }
+
+    public static JsonElement toJson(Object obj) {
+        if (obj == null) {
+            return JsonNull.INSTANCE;
+        }
+        if (obj.getClass() == String.class) {
+            return new JsonPrimitive((String) obj);
+        }
+        if (obj instanceof Enum<?>) {
+            return new JsonPrimitive(((Enum<?>) obj).name());
+        }
+        if (obj.getClass().isArray()) {
+            JsonArray arr = new JsonArray();
+            for (int i = 0; i < Array.getLength(obj); i++) {
+                arr.add(toJson(Array.get(obj, i)));
+            }
+            return arr;
+        } else if (obj instanceof Collection<?>) {
+            JsonArray arr = new JsonArray();
+            for (Object element : (Collection<?>) obj) {
+                arr.add(toJson(element));
+            }
+            return arr;
+        } else if (obj instanceof Class) {
+            return new JsonPrimitive(((Class<?>) obj).getSimpleName());
+        } else if (obj instanceof Number) {
+            return new JsonPrimitive((Number) obj);
+        } else if (obj instanceof Boolean) {
+            return new JsonPrimitive((Boolean) obj);
+        } else {
+            return new JsonPrimitive(obj.toString());
+        }
     }
 
     public static String getString(Object obj) {
