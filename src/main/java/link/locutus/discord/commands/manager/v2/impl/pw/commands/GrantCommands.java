@@ -31,6 +31,8 @@ import link.locutus.discord.db.entities.grant.RawsTemplate;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.grant.WarchestTemplate;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -38,6 +40,8 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.sheet.SheetUtil;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -216,7 +220,7 @@ public class GrantCommands {
             (receiver, grant) -> {
                 double cost;
                 if (single_new_city) {
-                    cost = PW.City.Infra.calculateInfra(10, infra_level,
+                    cost = PW.City.Infra.calculateInfra(PW.City.Infra.NEW_CITY_BASE, infra_level,
                             advanced_engineering_corps != null ? advanced_engineering_corps : false,
                             center_for_civil_engineering != null ? center_for_civil_engineering : false,
                             urbanization != null ? urbanization : false,
@@ -2590,10 +2594,10 @@ public class GrantCommands {
 //                }
 //            }
 //            if (includeInfraGrant != null && includeInfraGrant > 10) {
-//                funds[0] += PW.calculateInfra(10, includeInfraGrant) * numCities;
+//                funds[0] += PW.calculateInfra(PW.City.Infra.NEW_CITY_BASE, includeInfraGrant) * numCities;
 //            }
 //            if (includeLandGrant != null && includeLandGrant > 250) {
-//                funds[0] += PW.calculateLand(250, includeLandGrant) * numCities;
+//                funds[0] += PW.calculateLand(PW.City.Land.NEW_CITY_BASE, includeLandGrant) * numCities;
 //            }
 //
 //            if (includeNewUnitCost != null) {
@@ -3016,4 +3020,161 @@ public class GrantCommands {
 //            throw e;
 //        }
 //    }
+
+    @Command(desc = "Generate a sheet and summary of the cost of purchasing cities, infra, land, and projects for a set of nations")
+    public String costBulk(@Me GuildDB db, @Me IMessageIO io,
+                            Set<DBNation> receivers,
+                           @Switch("c") @Range(min=1, max=100) Integer cities,
+                           @Switch("u") boolean cities_up_to,
+                           @Switch("p") Set<Project> buy_projects,
+                           @Switch("i") Integer infra_level,
+                           @Switch("l") Integer land_level,
+                           @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
+                           @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
+                           @Switch("s") SpreadSheet sheet
+                           ) throws GeneralSecurityException, IOException {
+        if (cities_up_to && cities == null) {
+            throw new IllegalArgumentException("Please specify the number of cities when `cities_up_to: True`");
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.PURCHASE_BULK);
+        }
+        List<String> headers = new ArrayList<>(Arrays.asList(
+                "nation",
+                "alliance",
+                "cities",
+                "avg_infra",
+                "avg_land",
+                "cities_bought",
+                "city_cost",
+                "infra_cost",
+                "land_cost",
+                "projects_bought",
+                "project_cost",
+                "project_converted",
+                "cost_raw",
+                "total_converted"
+        ));
+        sheet.setHeader(headers);
+
+        double[] allNationCost = ResourceType.getBuffer();
+        double allNationInfra = 0;
+        double allNationLand = 0;
+        double allNationCity = 0;
+        double[] allNationProjectCost = ResourceType.getBuffer();
+
+        for (DBNation nation : receivers) {
+            int citiesPurchased = 0;
+            double cityCost = 0;
+
+            if (cities != null) {
+                citiesPurchased = cities_up_to ? Math.max(0, cities - nation.getCities()) : cities;
+                if (citiesPurchased > 0) {
+                    int from = nation.getCities();
+                    int to = from + citiesPurchased;
+                    for (int city = from; city < to; city++) {
+                        boolean manifestDestiny = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY || force_policy.contains(DomesticPolicy.MANIFEST_DESTINY);
+                        boolean cityPlanning = nation.hasProject(Projects.URBAN_PLANNING) || (force_projects.contains(Projects.URBAN_PLANNING) && city >= Projects.URBAN_PLANNING.requiredCities());
+                        boolean advCityPlanning = nation.hasProject(Projects.ADVANCED_URBAN_PLANNING) || (force_projects.contains(Projects.ADVANCED_URBAN_PLANNING) && city >= Projects.ADVANCED_URBAN_PLANNING.requiredCities());
+                        boolean metPlanning = nation.hasProject(Projects.METROPOLITAN_PLANNING) || (force_projects.contains(Projects.METROPOLITAN_PLANNING) && city >= Projects.METROPOLITAN_PLANNING.requiredCities());
+                        boolean govSupportAgency = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                        cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency);
+                    }
+                }
+            }
+
+            double infraCost = 0;
+            if (infra_level != null) {
+                Function<Double, Double> calcInfraCost = (Double infra) -> {
+                    // boolean aec, boolean cfce, boolean urbanization, boolean gsa
+                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || force_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
+                    boolean cfce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || force_projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING);
+                    boolean urbanization = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION || force_policy.contains(DomesticPolicy.URBANIZATION);
+                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                    return PW.City.Infra.calculateInfra(infra, infra_level, aec, cfce, urbanization, gsa);
+                };
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    if (city.getInfra() >= infra_level) continue;
+                    infraCost += calcInfraCost.apply(city.getInfra());
+                }
+
+                if (citiesPurchased != 0) {
+                    infraCost += calcInfraCost.apply(PW.City.Infra.NEW_CITY_BASE) * citiesPurchased;
+                }
+            }
+
+            double landCost = 0;
+            if (land_level != null) {
+                Function<Double, Double> calcLandCost = (Double land) -> {
+                    boolean ra = nation.getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || force_policy.contains(DomesticPolicy.RAPID_EXPANSION);
+                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || force_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
+                    boolean ala = nation.hasProject(Projects.ARABLE_LAND_AGENCY) || force_projects.contains(Projects.ARABLE_LAND_AGENCY);
+                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                    return PW.City.Land.calculateLand(land, land_level, ra, aec, ala, gsa);
+                };
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    if (city.getLand() >= land_level) continue;
+                    landCost += calcLandCost.apply(city.getLand());
+                }
+
+                if (citiesPurchased != 0) {
+                    landCost += calcLandCost.apply(PW.City.Land.NEW_CITY_BASE) * citiesPurchased;
+                }
+            }
+
+            Set<Project> projectsBought = new LinkedHashSet<>();
+            double[] projectCost = ResourceType.getBuffer();
+            if (buy_projects != null) {
+                for (Project project : buy_projects) {
+                    if (nation.hasProject(project)) continue;
+                    projectsBought.add(project);
+                    boolean ta = nation.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT || force_policy.contains(DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT);
+                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                    projectCost = ResourceType.add(projectCost, project.cost(ta, gsa));
+                }
+            }
+
+            headers.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+            headers.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+            headers.set(2, nation.getCities() + "");
+            headers.set(3, MathMan.format(nation.getAvg_infra()));
+            headers.set(4, MathMan.format(nation.getAvgLand()));
+            headers.set(5, citiesPurchased + "");
+            headers.set(6, MathMan.format(cityCost));
+            headers.set(7, MathMan.format(infraCost));
+            headers.set(8, MathMan.format(landCost));
+            headers.set(9, StringMan.join(projectsBought, ","));
+            headers.set(10, ResourceType.resourcesToString(projectCost));
+            headers.set(11, MathMan.format(ResourceType.convertedTotal(projectCost)));
+            double[] total = projectCost.clone();
+            total[0] += cityCost + infraCost + landCost;
+            headers.set(12, ResourceType.resourcesToString(total));
+            headers.set(13, MathMan.format(ResourceType.convertedTotal(total)));
+
+            sheet.addRow(headers);
+
+            ResourceType.add(allNationCost, total);
+            ResourceType.add(allNationProjectCost, projectCost);
+            allNationInfra += infraCost;
+            allNationLand += landCost;
+            allNationCity += cityCost;
+        }
+
+        double totalConverted = ResourceType.convertedTotal(allNationCost);
+
+        StringBuilder body = new StringBuilder();
+        int numAlliances = new SimpleNationList(receivers).getAllianceIds().size();
+        body.append("Nations: `").append(receivers.size()).append("` in `").append(numAlliances).append("` alliances\n");
+        body.append("Total: `~$").append(MathMan.format(totalConverted)).append("`\n").append("```\n" + ResourceType.resourcesToString(allNationCost) + "\n```\n");
+        body.append("Projects: `~$").append(MathMan.format(ResourceType.convertedTotal(allNationProjectCost))).append("`\n");
+        body.append("Infra: `~$").append(MathMan.format(allNationInfra)).append("`\n");
+        body.append("Land: `~$").append(MathMan.format(allNationLand)).append("`\n");
+        body.append("Cities: `~$").append(MathMan.format(allNationCity)).append("`\n");
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "purchases").append(body.toString()).send();
+        return null;
+    }
 }

@@ -5687,18 +5687,15 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Cost of buying up to a certain land level")
     public double getBuyLandCost(double toLand, @Switch("ra") boolean forceRAPolicy, @Switch("aec") boolean forceAEC, @Switch("ala") boolean forceALA, @Switch("gsa") boolean forceGSA) {
-        double factor = 1;
-        if (hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC) factor -= 0.05;
-        if (hasProject(Projects.ARABLE_LAND_AGENCY) || forceALA) factor -= 0.05;
-        if (getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || forceRAPolicy) {
-            factor -= 0.05;
-            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA) factor -= 0.025;
-        }
+        boolean ra = getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || forceRAPolicy;
+        boolean aec = hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC;
+        boolean ala = hasProject(Projects.ARABLE_LAND_AGENCY) || forceALA;
+        boolean gsa = hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA;
         double total = 0;
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             double cityLand = entry.getValue().getLand();
             if (cityLand < toLand) {
-                total += PW.City.Land.calculateLand(cityLand, toLand) * factor;
+                total += PW.City.Land.calculateLand(cityLand, toLand, ra, aec, ala, gsa);
             }
         }
         return total;

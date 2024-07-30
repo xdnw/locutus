@@ -22,6 +22,9 @@ public class BindingHelper {
     }
 
     public static <T extends Enum> List<T> emumList(Class<T> emum, String input) {
+        if (input.equalsIgnoreCase("*")) {
+            return new ArrayList<>(Arrays.asList(emum.getEnumConstants()));
+        }
         List<T> result = new ArrayList<>();
         for (String s : StringMan.split(input, ',')) {
             result.add(emum(emum, s));

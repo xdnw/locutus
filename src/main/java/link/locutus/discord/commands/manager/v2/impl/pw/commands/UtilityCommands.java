@@ -2481,8 +2481,8 @@ public class UtilityCommands {
                     double infraFactor = 0.95;
                     if (projects.contains(Projects.ARABLE_LAND_AGENCY)) landFactor *= 0.95;
                     if (projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING)) infraFactor *= 0.95;
-                    landCost += PW.City.Land.calculateLand(250, city.getLand()) * landFactor;
-                    infraCost += PW.City.Infra.calculateInfra(10, city.getInfra()) * infraFactor;
+                    landCost += PW.City.Land.calculateLand(PW.City.Land.NEW_CITY_BASE, city.getLand()) * landFactor;
+                    infraCost += PW.City.Infra.calculateInfra(PW.City.Infra.NEW_CITY_BASE, city.getInfra()) * infraFactor;
                 }
                 city = cityEntry.getValue();
                 JavaCity empty = new JavaCity();

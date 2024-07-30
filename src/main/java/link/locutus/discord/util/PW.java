@@ -23,6 +23,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
@@ -89,6 +90,8 @@ public class PW {
         }
 
         public static class Land {
+            public static final double NEW_CITY_BASE = 250;
+
             public static double calculateLand(double from, double to) {
                 if (from < 0 || from == to) return 0;
                 if (to <= from) return (from - to) * -50;
@@ -108,9 +111,22 @@ public class PW {
 
                 return total;
             }
+
+            public static double calculateLand(double from, double to, boolean ra, boolean aec, boolean ala, boolean gsa) {
+                double factor = 1;
+                if (aec) factor -= 0.05;
+                if (ala) factor -= 0.05;
+                if (ra) {
+                    factor -= 0.05;
+                    if (gsa) factor -= 0.025;
+                }
+                return PW.City.Land.calculateLand(from, to) * factor;
+            }
         }
 
         public static class Infra {
+            public static final double NEW_CITY_BASE = 10;
+
             private static int getInfraCostCents(double infra) {
                 if (infra <= 4000) {
                     int index = Math.max(0, (int) (infra * 100) - 3000);

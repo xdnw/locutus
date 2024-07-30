@@ -202,6 +202,11 @@ public class PWBindings extends BindingHelper {
         return emumSet(BeigeReason.class, input);
     }
 
+    @Binding(value = "A comma separated list of domestic policies")
+    public Set<DomesticPolicy> DomesticPolicies(String input) {
+        return emumSet(DomesticPolicy.class, input);
+    }
+
     @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
     public Set<OrbisMetric> OrbisMetrics(String input) {
         return emumSet(OrbisMetric.class, input);

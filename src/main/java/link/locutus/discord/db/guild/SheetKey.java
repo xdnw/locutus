@@ -60,6 +60,7 @@ public enum SheetKey {
     FORUM_PROFILES,
     INACTIVITY_STREAK,
     SETTINGS_SERVERS,
+    PURCHASE_BULK,
 
 
 }
