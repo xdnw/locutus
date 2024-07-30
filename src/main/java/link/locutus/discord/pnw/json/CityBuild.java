@@ -267,6 +267,8 @@ public class CityBuild {
         impFactory = other.impFactory;
         impHangars = other.impHangars;
         impDrydock = other.impDrydock;
+        land = other.land;
+        age = other.age;
     }
 
     public CityBuild(CityBuild from, CityBuild to) {
