@@ -3029,8 +3029,8 @@ public class GrantCommands {
                            @Switch("p") Set<Project> buy_projects,
                            @Switch("i") Integer infra_level,
                            @Switch("l") Integer land_level,
-                           @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
-                           @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
+                           @Switch("d") @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
+                           @Switch("fp") @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
         if (cities_up_to && cities == null) {
