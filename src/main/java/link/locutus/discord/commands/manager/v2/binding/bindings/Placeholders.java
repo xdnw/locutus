@@ -409,8 +409,6 @@ public abstract class Placeholders<T> extends BindingHelper {
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
         input = wrapHashLegacy(input);
-        System.out.println("Parsing 1");
-        new Exception().printStackTrace();
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f),
                 s -> getSingleFilter(store2, s));
