@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -46,13 +47,13 @@ public class UserWrapper {
     }
 
     @Command(desc = "If this member has all roles")
-    public boolean hasAllRoles(Set<Role> roles) {
+    public boolean hasAllRoles(@NoFormat Set<Role> roles) {
         Member member = getMember();
         return member != null && new ObjectArraySet<>(member.getRoles()).containsAll(roles);
     }
 
     @Command(desc = "If this member has any roles")
-    public boolean hasAnyRoles(Set<Role> roles) {
+    public boolean hasAnyRoles(@NoFormat Set<Role> roles) {
         Member member = getMember();
         return member != null && member.getRoles().stream().anyMatch(roles::contains);
     }
@@ -74,7 +75,7 @@ public class UserWrapper {
 
     @Command(desc = "Matches a nation filter\n" +
             "If no nation is found, returns false")
-    public boolean matches(NationFilter filter) {
+    public boolean matches(@NoFormat NationFilter filter) {
         DBNation nation = getNation();
         if (nation == null) return false;
         return filter.test(nation);

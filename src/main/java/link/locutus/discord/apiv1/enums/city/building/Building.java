@@ -10,6 +10,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.db.entities.DBNation;
 
 
@@ -70,12 +71,12 @@ public interface Building {
     }
 
     @Command(desc = "Get the upkeep of this building for a specific resource")
-    default double getUpkeep(ResourceType type, @Default Predicate<Project> hasProject) {
+    default double getUpkeep(ResourceType type, @NoFormat @Default Predicate<Project> hasProject) {
         return upkeep(type, hasProject == null ? f -> false : hasProject);
     }
 
     @Command(desc = "Get the upkeep resources of this building")
-    default Map<ResourceType, Double> getUpkeepMap(@Default Predicate<Project> hasProject) {
+    default Map<ResourceType, Double> getUpkeepMap(@NoFormat @Default Predicate<Project> hasProject) {
         Predicate<Project> hasProject1 = hasProject == null ? f -> false : hasProject;
         return Arrays.stream(ResourceType.values).collect(Collectors.toMap(type -> type, type -> getUpkeep(type, hasProject1)));
     }
@@ -84,7 +85,7 @@ public interface Building {
 
 
     @Command(desc = "Get max number of this building that can be built (per city)")
-    default int getCap(@Default Predicate<Project> hasProject) {
+    default int getCap(@NoFormat @Default Predicate<Project> hasProject) {
         return cap(hasProject == null ? f -> false : hasProject);
     }
 
@@ -96,7 +97,7 @@ public interface Building {
     int cap(Predicate<Project> hasProject);
 
     @Command(desc = "Get the pollution created by this building")
-    default int getPollution(@Default Predicate<Project> hasProject) {
+    default int getPollution(@NoFormat @Default Predicate<Project> hasProject) {
         return pollution(hasProject == null ? f -> false : hasProject);
     }
 
@@ -120,7 +121,7 @@ public interface Building {
     }
 
     @Command(desc = "Get the average number of this building across the specified nations")
-    default int getAverage(Set<DBNation> nations) {
+    default int getAverage(@NoFormat Set<DBNation> nations) {
         int sum = 0;
         Set<Building> buildings = Set.of(this);
         for (DBNation nation : nations) {
@@ -130,7 +131,7 @@ public interface Building {
     }
 
     @Command(desc = "Get the total number of this building across the specified nations")
-    default int getTotal(Set<DBNation> nations) {
+    default int getTotal(@NoFormat Set<DBNation> nations) {
         int sum = 0;
         Set<Building> buildings = Set.of(this);
         for (DBNation nation : nations) {
@@ -140,7 +141,7 @@ public interface Building {
     }
 
     @Command(desc = "Get the number of nations that can build this building")
-    default int countCanBuild(Set<DBNation> nations) {
+    default int countCanBuild(@NoFormat Set<DBNation> nations) {
         int sum = 0;
         for (DBNation nation : nations) {
             if (canBuild(nation.getContinent())) sum++;

@@ -13,6 +13,7 @@ import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -1110,7 +1111,7 @@ public enum ResourceType {
     }
 
     @Command(desc = "If this resource is on the given continent")
-    public boolean canProduceInAny(Set<Continent> continents) {
+    public boolean canProduceInAny(@NoFormat Set<Continent> continents) {
         Building building = getBuilding();
         if (building == null) return false;
         for (Continent continent : continents) {
@@ -1120,7 +1121,7 @@ public enum ResourceType {
     }
 
     @Command(desc = "The total production of resources for nations")
-    public Map<ResourceType, Double> getProduction(Set<DBNation> nations, boolean includeNegatives) {
+    public Map<ResourceType, Double> getProduction(@NoFormat Set<DBNation> nations, boolean includeNegatives) {
         double[] total = ResourceType.getBuffer();
         for (DBNation nation : nations) {
             double[] revenue = nation.getRevenue();

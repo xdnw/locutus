@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.pnw.NationList;
@@ -65,7 +66,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     }
 
     @Command(desc = "Count the number of nations in this tax bracket")
-    public int countNations(@Default NationFilter filter) {
+    public int countNations(@NoFormat @Default NationFilter filter) {
         return getNationList(filter).getNations().size();
     }
 

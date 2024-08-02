@@ -20,11 +20,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.ApiKeyPermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
@@ -549,7 +545,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "If the nation has all of the specified projects")
-    public boolean hasProjects(Set<Project> projects, @Default("false") boolean any) {
+    public boolean hasProjects(@NoFormat Set<Project> projects, @Default("false") boolean any) {
         if (any) {
             for (Project p : projects) {
                 if (hasProject(p)) {
@@ -2452,7 +2448,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get nation deposits")
     @RolePermission(Roles.ECON)
-    public Map<ResourceType, Double> getDeposits(ValueStore store, @Me GuildDB db, @Default @Timestamp Long start, @Default @Timestamp Long end, @Default Predicate<Transaction2> filter,
+    public Map<ResourceType, Double> getDeposits(ValueStore store, @Me GuildDB db, @Default @Timestamp Long start, @Default @Timestamp Long end, @NoFormat @Default Predicate<Transaction2> filter,
                                                  @Arg("use 0/0 as the tax base\ni.e. All taxes included in deposits\n" +
                                                          "The default internal taxrate is 100/100 (all taxes excluded)") @Switch("b") boolean ignoreBaseTaxrate,
                                                  @Arg("Do NOT include any manual deposit offesets") @Switch("o") boolean ignoreOffsets,
@@ -3458,7 +3454,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the number of wars with nations matching a filter")
-    public int getActiveWarsWith(NationFilter filter) {
+    public int getActiveWarsWith(@NoFormat NationFilter filter) {
         int count = 0;
         for (DBWar war : getActiveWars()) {
             DBNation other = war.getNation(!war.isAttacker(this));
@@ -3858,7 +3854,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the average value of a city attribute for this nation's cities")
-    public double getCityAvg(TypedFunction<DBCity, Double> attribute) {
+    public double getCityAvg(@NoFormat TypedFunction<DBCity, Double> attribute) {
         Map<Integer, DBCity> cities = _getCitiesV3();
         double total = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
@@ -3869,7 +3865,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the summed total of a city attribute for this nation's cities")
-    public double getCityTotal(TypedFunction<DBCity, Double> attribute) {
+    public double getCityTotal(@NoFormat TypedFunction<DBCity, Double> attribute) {
         Map<Integer, DBCity> cities = _getCitiesV3();
         double total = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
@@ -3880,7 +3876,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the maximum value of a city attribute for this nation's cities")
-    public double getCityMax(TypedFunction<DBCity, Double> attribute) {
+    public double getCityMax(@NoFormat TypedFunction<DBCity, Double> attribute) {
         Map<Integer, DBCity> cities = _getCitiesV3();
         double max = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
@@ -4934,7 +4930,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Alliance rank by score")
-    public int getAllianceRank(@Default NationFilter filter) {
+    public int getAllianceRank(@NoFormat @Default NationFilter filter) {
         if (alliance_id == 0) return Integer.MAX_VALUE;
         return getAlliance().getRank(filter);
     }
@@ -4949,7 +4945,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Number of buildings total")
-    public int getBuildings(@Default Set<Building> buildings) {
+    public int getBuildings(@NoFormat @Default Set<Building> buildings) {
         int total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
         if (buildings != null) {
@@ -4971,7 +4967,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Number of buildings per city")
-    public double getAvgBuildings(@Default Set<Building> buildings) {
+    public double getAvgBuildings(@NoFormat @Default Set<Building> buildings) {
         int total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
         if (buildings != null) {
@@ -5121,7 +5117,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get resource quantity for this nation")
-    public long getTradeQuantity(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter, @Switch("n") boolean net) {
+    public long getTradeQuantity(ValueStore store, long dateStart, @Default Long dateEnd, @NoFormat @Default Set<ResourceType> types, @NoFormat @Default Predicate<DBTrade> filter, @Switch("n") boolean net) {
         String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
@@ -5159,7 +5155,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get resource quantity for this nation")
-    public long getTradeAvgPpu(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
+    public long getTradeAvgPpu(ValueStore store, long dateStart, @Default Long dateEnd, @NoFormat @Default Set<ResourceType> types, @NoFormat @Default Predicate<DBTrade> filter) {
         String funcStr = "getTradeAvgPpu(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
@@ -5199,7 +5195,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get resource quantity for this nation")
-    public double getTradeValue(ValueStore store, long dateStart, @Default Long dateEnd, @Default Set<ResourceType> types, @Default Predicate<DBTrade> filter) {
+    public double getTradeValue(ValueStore store, long dateStart, @Default Long dateEnd, @NoFormat @Default Set<ResourceType> types, @NoFormat @Default Predicate<DBTrade> filter) {
         String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
 
@@ -5657,7 +5653,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the number of active wars with a list of nations")
-    public int getFighting(Set<DBNation> nations) {
+    public int getFighting(@NoFormat Set<DBNation> nations) {
         if (nations == null) return getNumWars();
         int count = 0;
         for (DBWar war : getActiveWars()) {
@@ -5702,7 +5698,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the number of active offensive wars with a list of nations")
-    public int getAttacking(Set<DBNation> nations) {
+    public int getAttacking(@NoFormat Set<DBNation> nations) {
         if (nations == null) return getNumWars();
         int count = 0;
         for (DBWar war : getActiveOffensiveWars()) {
@@ -5715,7 +5711,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the number of active defensive wars with a list of nations")
-        public int getDefending(Set<DBNation> nations) {
+        public int getDefending(@NoFormat Set<DBNation> nations) {
         if (nations == null) return getNumWars();
         int count = 0;
         for (DBWar war : getActiveDefensiveWars()) {
@@ -5756,7 +5752,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "If this nation is in a nation list")
-    public boolean isIn(Set<DBNation> nations) {
+    public boolean isIn(@NoFormat Set<DBNation> nations) {
         return nations.contains(this);
     }
 
@@ -6010,7 +6006,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Number of wars matching a filter")
-    public int countWars(Predicate<DBWar> warFilter) {
+    public int countWars(@NoFormat Predicate<DBWar> warFilter) {
         return (int) getWars().stream().filter(warFilter).count();
     }
 

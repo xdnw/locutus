@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
@@ -353,7 +354,7 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     private Predicate<T> getSingleFilter(ValueStore store, String input) {
-        TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, true);
+        TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, false, true);
         if (placeholder == null) {
             throw throwUnknownCommand(input);
         }
@@ -408,70 +409,74 @@ public abstract class Placeholders<T> extends BindingHelper {
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
         input = wrapHashLegacy(input);
+        System.out.println("Parsing 1");
+        new Exception().printStackTrace();
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f),
                 s -> getSingleFilter(store2, s));
     }
 
-    public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth, boolean throwError) {
+    public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth, boolean skipFormat, boolean throwError) {
         input = input.trim();
         int currentIndex = 0;
 
         List<String> sections = new ArrayList<>();
         Map<String, TypedFunction<T, ?>> functions = new LinkedHashMap<>();
 
+        boolean check = !skipFormat && (param == null || param.getAnnotation(NoFormat.class) == null);
         boolean hasMath = false;
         boolean hasNonMath = false;
         boolean hasCurlyBracket = false;
         boolean hasPlaceholder = false;
         boolean hasNonPlaceholder = false;
 
-        while (currentIndex < input.length()) {
-            char currentChar = input.charAt(currentIndex);
-            if (currentChar != '{') {
-                sections.add("" +currentChar);
-                currentIndex++;
-                switch (currentChar) {
-                    case '+', '-', '*', '/', '^', '%', '=', '>', '<', '?' -> {
-                        hasMath = true;
-                    }
-                    case '(', ')', ' ', '!', 'e', 'E', '.', ':' -> {
-
-                    }
-                    default -> {
-                        if (!Character.isDigit(currentChar)) {
-                            hasNonMath = true;
-                        }
-                    }
-                };
-            } else {
-                hasCurlyBracket = true;
-                // Find the matching closing curly brace
-                int closingBraceIndex = StringMan.findMatchingBracket(input, currentIndex);
-                if (closingBraceIndex != -1) {
-                    String fullContent = input.substring(currentIndex, closingBraceIndex + 1);
-                    String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
-                    sections.add(fullContent);
-                    if (!functions.containsKey(fullContent)) {
-                        TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth, throwError);
-                        if (functionResult != null) {
-                            functions.put(fullContent, functionResult);
-                            hasPlaceholder = true;
-                        } else {
-                            hasNonPlaceholder = true;
-                        }
-                    }
-                    currentIndex = closingBraceIndex + 1;
-                } else {
-                    if (throwError) {
-                        throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
-                    }
+        if (check) {
+            while (currentIndex < input.length()) {
+                char currentChar = input.charAt(currentIndex);
+                if (currentChar != '{') {
+                    sections.add("" + currentChar);
                     currentIndex++;
+                    switch (currentChar) {
+                        case '+', '-', '*', '/', '^', '%', '=', '>', '<', '?' -> {
+                            hasMath = true;
+                        }
+                        case '(', ')', ' ', '!', 'e', 'E', '.', ':' -> {
+
+                        }
+                        default -> {
+                            if (!Character.isDigit(currentChar)) {
+                                hasNonMath = true;
+                            }
+                        }
+                    }
+                    ;
+                } else {
+                    hasCurlyBracket = true;
+                    // Find the matching closing curly brace
+                    int closingBraceIndex = StringMan.findMatchingBracket(input, currentIndex);
+                    if (closingBraceIndex != -1) {
+                        String fullContent = input.substring(currentIndex, closingBraceIndex + 1);
+                        String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
+                        sections.add(fullContent);
+                        if (!functions.containsKey(fullContent)) {
+                            TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth, throwError);
+                            if (functionResult != null) {
+                                functions.put(fullContent, functionResult);
+                                hasPlaceholder = true;
+                            } else {
+                                hasNonPlaceholder = true;
+                            }
+                        }
+                        currentIndex = closingBraceIndex + 1;
+                    } else {
+                        if (throwError) {
+                            throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
+                        }
+                        currentIndex++;
+                    }
                 }
             }
         }
-
-        System.out.println("Input " + input + " | " + hasMath + " | " + hasNonMath);
 
         String errorMsg = null;
         if (hasMath) {
@@ -720,7 +725,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                     ParameterData param = entry.getValue();
                     String argumentName = entry.getKey();
                     if (explodedArguments.containsKey(argumentName)) {
-                        TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1, throwError);
+                        TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1, false, throwError);
                         actualArguments.put(argumentName, argumentValue);
                     }
                 }
@@ -774,20 +779,21 @@ public abstract class Placeholders<T> extends BindingHelper {
         boolean isResolved = true;
         for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
             TypedFunction<T, ?> func = entry.getValue();
-            if (func instanceof ResolvedFunction f) {
-                resolvedArgs.put(entry.getKey(), f.get());
+            if (func.isResolved()) {
+                resolvedArgs.put(entry.getKey(), func.get(null));
                 continue;
             }
             isResolved = false;
         }
 
         boolean finalIsResolved = isResolved;
+        System.out.println("Pre parse 2");
         Function<T, Object[]> resolved = f -> {
             Map<String, Object> finalArgs;
             if (!finalIsResolved) {
                 finalArgs = resolvedByEntity.get(f);
                 if (finalArgs == null) {
-                    finalArgs = new Object2ObjectLinkedOpenHashMap<>();
+                    finalArgs = new Object2ObjectLinkedOpenHashMap<>(resolvedArgs);
                     resolvedByEntity.put(f, finalArgs);
                     for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
                         String argName = entry.getKey();
