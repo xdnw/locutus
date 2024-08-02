@@ -142,7 +142,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             try {
                 String id = cmd.aliases().get(0);
                 try {
-                    TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false);
+                    TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false, false);
                     if (typeFunction == null) continue;
                     NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
                     result.add(metric);
@@ -159,13 +159,13 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, true);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, false,true);
         if (typeFunction == null) return null;
         return new NationAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, true);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, false, true);
         if (typeFunction == null) return null;
 
         TypedFunction<DBNation, ?> genericFunc = typeFunction;
@@ -290,6 +290,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
         Set<DBNation> nations = new LinkedHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
+        System.out.println("Parse4 " + name);
         DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
         if (nation == null || containsAA) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);

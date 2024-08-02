@@ -918,7 +918,7 @@ public abstract class Placeholders<T> extends BindingHelper {
     @Binding(value = "Format text containing placeholders")
     public TypedFunction<T, Double> getDoubleFunction(ValueStore store, String arg) {
         arg = wrapHashLegacy(arg);
-        TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, true);
+        TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, false, true);
         Class type = (Class) result.getType();
         if (type == boolean.class || type == Boolean.class) {
             return TypedFunction.createParent(Double.class, t -> {
@@ -945,7 +945,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             arg = arg.substring(1);
         }
         if (cache != null) store.addProvider(cache);
-        TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, throwError);
+        TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, false, throwError);
         if (result.isResolved()) {
             Object value = result.applyCached(null);
             String valueStr = value == null ? null : value.toString();
