@@ -1838,8 +1838,6 @@ public class UnsortedCommands {
                                @Arg(value = "Return a result on discord in plain text", group = 3)
                                @Switch("w") boolean writePlaintext,
                                @Switch("calc") @Timediff Long calc_time
-
-
     ) throws Exception {
         List<String> cmd = new ArrayList<>();
         if (days != null) cmd.add(days + "");
@@ -1848,21 +1846,23 @@ public class UnsortedCommands {
             int originalCityId = build.getCity_id();
             JavaCity jc = new JavaCity(build);
             jc.zeroNonMilitary();
+            Integer originalInfra = build.getInfraNeeded();
             build = jc.toCityBuild();
+            if (infra == null && originalInfra != null) {
+                build.setInfraNeeded(originalInfra);
+            }
             if (geographicContinent == null) {
                 DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(originalCityId);
                 if (city != null) {
                     DBNation nation = city.getNation();
                     if (nation != null) {
-                        cmd.add("continent=" + nation.getContinent().name());
+                        geographicContinent = nation.getContinent();
                     }
                 }
             }
         }
 
         cmd.add(build.toString());
-        if (buildMMR != null) cmd.add("mmr=" + buildMMR);
-
         if (calc_time != null && calc_time > 9000) cmd.add("timeout=" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, calc_time));
         if (buildMMR != null) cmd.add("mmr=" + buildMMR);
         if (age != null) cmd.add("age=" + age);
@@ -1884,9 +1884,7 @@ public class UnsortedCommands {
 
         if (moneyPositive) cmd.add("cash=" + moneyPositive);
         if (geographicContinent != null) cmd.add("continent=" + geographicContinent);
-
-
-
+        System.out.println(cmd);
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
 
