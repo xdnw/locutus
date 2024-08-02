@@ -330,7 +330,7 @@ public class GrantCmd extends Command {
             Guild guild = guildDb.getGuild();
             Member member = guild.getMemberById(user.getDiscordId());
             if (member == null) {
-                throw new IllegalArgumentException("Not on this discord");
+                throw new IllegalArgumentException("The user `" + DiscordUtil.getUserName(user.getDiscordId()) + "` is not in this server");
             }
         }
 
