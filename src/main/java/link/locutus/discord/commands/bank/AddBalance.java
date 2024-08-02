@@ -65,6 +65,9 @@ public class AddBalance extends Command {
         if (note == null) {
             return "Please use a note e.g. #deposit";
         }
+        if (note.equalsIgnoreCase("#ignore") && !flags.contains('f')) {
+            throw new IllegalArgumentException("Using `#ignore` will not affect the user's balance, but will add an entry to their bank log. Please use `-f` to confirm");
+        }
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (guildDb == null) return "No guild.";
 

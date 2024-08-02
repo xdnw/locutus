@@ -897,7 +897,9 @@ public class UnsortedCommands {
     @RolePermission(Roles.ECON)
     public String addBalance(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                              @AllowDeleted Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, String note, @Switch("f") boolean force) throws Exception {
-
+        if (note.equalsIgnoreCase("#ignore")) {
+            channel.sendMessage("Note: Using `#ignore` will not affect the balance");
+        }
         AddBalanceBuilder builder = db.addBalanceBuilder().add(accounts, amount, note);
         if (!force) {
             builder.buildWithConfirmation(channel, command);

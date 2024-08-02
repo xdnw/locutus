@@ -315,7 +315,7 @@ public class NationUpdateProcessor {
         }
         body.append("\n" + ban.reason + "\nDays Left: `" + ban.days_left + "`\n");
 
-        String title = "Nation Banned: " + PW.getName(ban.nation_id, true) + "/" + ban.nation_id;
+        String title = "Nation Banned: " + PW.getName(ban.nation_id, false) + "/" + ban.nation_id;
 
         if (ban.discord_id != 0) {
             User user = DiscordUtil.getUser(ban.discord_id);
