@@ -805,7 +805,8 @@ public class DiscordUtil {
     }
 
     public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader) {
-        if (arg.toLowerCase().contains("/alliance/") || arg.toLowerCase().startsWith("aa:") || arg.toLowerCase().startsWith("alliance:")) return null;
+        String argLower = arg.toLowerCase();
+        if (argLower.contains("/alliance/") || argLower.startsWith("aa:") || argLower.startsWith("alliance:")) return null;
         if (arg.startsWith("leader:")) {
             arg = arg.substring(7);
             useLeader = true;
@@ -837,6 +838,7 @@ public class DiscordUtil {
 
     public static Integer parseNationId(String arg) {
         if (arg.isEmpty()) return null;
+        boolean checkUser = false;
         if (arg.charAt(0) == '"' && arg.charAt(arg.length() - 1) == '"') {
             arg = arg.substring(1, arg.length() - 1);
         }
@@ -844,12 +846,14 @@ public class DiscordUtil {
             arg = arg.substring(1, arg.length() - 1);
         }
         if (arg.toLowerCase().startsWith("nation:")) arg = arg.substring(7);
+
         if (arg.contains("/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=") || arg.contains("politicsandwar.com/nation/espionage/eid=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");
             }
         } else if (arg.charAt(0) == '@') {
+            checkUser = true;
             String idStr = arg.substring(1);
             if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
             if (MathMan.isInteger(idStr)) {
@@ -881,8 +885,8 @@ public class DiscordUtil {
         if (user != null) {
             return user.getNationId();
         }
-        List<User> discordUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
-        User discordUser = !discordUsers.isEmpty() ? discordUsers.get(0) : null;
+        List<User> discordUsers = checkUser ? Locutus.imp().getDiscordApi().getUsersByName(arg, true) : null;
+        User discordUser = discordUsers != null && !discordUsers.isEmpty() ? discordUsers.get(0) : null;
         if (discordUser != null) {
             nation = DiscordUtil.getNation(discordUser);
             if (nation != null) return nation.getId();

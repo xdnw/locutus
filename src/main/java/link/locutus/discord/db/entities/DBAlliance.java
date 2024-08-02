@@ -14,6 +14,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -581,19 +582,19 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = "Sum of nation attribute for specific nations in alliance")
-    public double getTotal(NationAttributeDouble attribute, @Default NationFilter filter) {
+    public double getTotal(@NoFormat NationAttributeDouble attribute, @NoFormat @Default NationFilter filter) {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).sum();
     }
 
     @Command(desc = "Average of nation attribute for specific nations in alliance")
-    public double getAverage(NationAttributeDouble attribute, @Default NationFilter filter) {
+    public double getAverage(@NoFormat NationAttributeDouble attribute, @NoFormat @Default NationFilter filter) {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
     }
 
     @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
-    public double getAveragePer(NationAttributeDouble attribute, NationAttributeDouble per, @Default NationFilter filter) {
+    public double getAveragePer(@NoFormat NationAttributeDouble attribute, @NoFormat NationAttributeDouble per, @Default NationFilter filter) {
         double total = 0;
         double perTotal = 0;
         for (DBNation nation : getNations(filter.toCached(Long.MAX_VALUE))) {
@@ -605,13 +606,13 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
 
     @Command(desc = "Count of nations in alliance matching a filter")
-    public int countNations(@Default NationFilter filter) {
+    public int countNations(@NoFormat @Default NationFilter filter) {
         if (filter == null) return getNations().size();
         return getNations(filter.toCached(Long.MAX_VALUE)).size();
     }
 
     @Command(desc = "Is allied with another alliance")
-    public boolean hasDefensiveTreaty(Set<DBAlliance> alliances) {
+    public boolean hasDefensiveTreaty(@NoFormat Set<DBAlliance> alliances) {
         for (DBAlliance alliance : alliances) {
             Treaty treaty = getDefenseTreaties().get(alliance.getId());
             if (treaty != null) return true;
@@ -864,7 +865,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command
-    public double getScore(@Default NationFilter filter) {
+    public double getScore(@NoFormat @Default NationFilter filter) {
         if (filter != null) {
             return new SimpleNationList(getNations(filter.toCached(Long.MAX_VALUE))).getScore();
         }
@@ -881,7 +882,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = "Rank by score")
-    public int getRank(@Default NationFilter filter) {
+    public int getRank(@NoFormat @Default NationFilter filter) {
         if (filter != null) {
             Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(filter.toCached(Long.MAX_VALUE), true);
             int rankTmp = 0;

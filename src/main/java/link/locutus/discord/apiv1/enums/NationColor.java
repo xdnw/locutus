@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.Color;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
@@ -52,7 +53,7 @@ public enum  NationColor implements NationList {
     }
 
     @Command(desc = "Get the number of nations on this color.")
-    public int getNumNations(@Default NationFilter filter) {
+    public int getNumNations(@NoFormat @Default NationFilter filter) {
         if (filter != null) {
             return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this && filter.test(f)).size();
         }
