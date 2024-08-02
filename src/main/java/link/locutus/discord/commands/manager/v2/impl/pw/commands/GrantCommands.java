@@ -521,7 +521,7 @@ public class GrantCommands {
             CityBuild build,
 
             @Arg(value = "Grant only for a single new city", group = 0) boolean is_new_city,
-            @Arg(value = "Grant for a specific city ids", group = 0) Set<Integer> city_ids,
+            @Switch("id") @Arg(value = "Grant for a specific city ids", group = 0) Set<Integer> city_ids,
 
             @Arg(value = "Send funds for infrastructure (if specified in build)\nDefault: False", group = 1) @Switch("infra") Boolean grant_infra,
             @Arg(value = "Send funds for land (if specified in build)\nDefault: False", group = 1) @Switch("land") Boolean grant_land,

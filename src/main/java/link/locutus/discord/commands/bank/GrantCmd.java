@@ -264,9 +264,9 @@ public class GrantCmd extends Command {
             PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
             if (user != null) {
                 member = guild.getMemberById(user.getDiscordId());
-                if (member == null) {
-                    throw new IllegalArgumentException("Not on this discord");
-                }
+//                if (member == null) {
+//                    throw new IllegalArgumentException("Not on this discord");
+//                }
             }
             if (noGrants != null && member != null && member.getRoles().contains(noGrants)) {
                 throw new IllegalArgumentException("The member has been marked (with discord role) as to not receive grants");
