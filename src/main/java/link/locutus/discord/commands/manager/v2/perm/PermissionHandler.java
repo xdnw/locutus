@@ -20,6 +20,6 @@ public class PermissionHandler extends SimpleValueStore {
     }
 
     public boolean isPermission(Annotation annotation) {
-        return Key.of(boolean.class, annotation) != null;
+        return get(Key.of(boolean.class, annotation)) != null;
     }
 }

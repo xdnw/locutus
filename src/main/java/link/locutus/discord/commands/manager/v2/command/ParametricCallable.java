@@ -919,14 +919,6 @@ public class ParametricCallable implements ICommand {
     @Override
     public JsonObject toJson(PermissionHandler permHandler) {
         JsonObject command = new JsonObject();
-        //simpleHelp
-        //simpleDesc
-        //groups
-        //groupDescs
-        //valueFlags
-        //provideFlags
-        //annotations
-        //userParameters
         command.addProperty("help", simpleHelp());
         command.addProperty("desc", simpleDesc());
         if (groups != null && groups.length != 0) {
@@ -950,21 +942,23 @@ public class ParametricCallable implements ICommand {
         JsonObject annotationsObj = new JsonObject();
         for (Annotation annotation : annotations) {
             if (annotation instanceof Command) continue;
-            if (permHandler != null && permHandler.isPermission(annotation)) continue;
+
+            if (permHandler != null && !permHandler.isPermission(annotation)) continue;
             JsonObject annJson = new JsonObject();
             for (Method method : annotation.annotationType().getDeclaredMethods()) {
                 try {
                     Object value = method.invoke(annotation);
-                    if (value != null) {
-                        annJson.addProperty(method.getName(), value.toString());
+                    Object defaultValue = method.getDefaultValue();
+                    if (value != null && !StringMan.areEqual(value, defaultValue)) {
+                        annJson.add(method.getName(), StringMan.toJson(value));
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new RuntimeException(e);
                 }
             }
-            String key = annotation.annotationType().getSimpleName();
+            String key = annotation.annotationType().getSimpleName().replace("Permission", "").toLowerCase(Locale.ROOT);
             if (annJson.isEmpty()) {
-                command.addProperty(key, true);
+                annotationsObj.addProperty(key, true);
             } else {
                 annotationsObj.add(key, annJson);
             }
