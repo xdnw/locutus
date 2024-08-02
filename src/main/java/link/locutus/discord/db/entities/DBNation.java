@@ -5434,7 +5434,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get units at a specific date")
     @RolePermission(Roles.MILCOM)
-    public int getUnitsAt(MilitaryUnit unit, long date) {
+    public int getUnitsAt(MilitaryUnit unit, @Timestamp long date) {
         long now = System.currentTimeMillis();
         if (date > now - TimeUnit.MILLISECONDS.toMillis(15)) {
             return getUnits(unit);
@@ -5445,12 +5445,14 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "If a unit was bought today")
     public boolean hasUnitBuyToday(MilitaryUnit unit) {
         long turnDayStart;
+        long turn;
         if (getSnapshot() != null) {
-            long turn = TimeUtil.getTurn(getSnapshot());
+            turn = TimeUtil.getTurn(getSnapshot());
             turnDayStart = TimeUtil.getTimeFromTurn(turn - turn % 12);
         } else {
-            turnDayStart = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - TimeUtil.getDayTurn());
+            turn = TimeUtil.getTurn();
         }
+        turnDayStart = TimeUtil.getTimeFromTurn(turn - turn % 12);
         return Locutus.imp().getNationDB().hasBought(this, unit, turnDayStart, getSnapshot());
     }
 
