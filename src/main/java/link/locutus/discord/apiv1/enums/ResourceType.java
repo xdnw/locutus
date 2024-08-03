@@ -162,6 +162,9 @@ public enum ResourceType {
     }
 
     public static Map<ResourceType, Double> parseResources(String arg) {
+        if (arg.endsWith("},")) {
+            arg = arg.substring(0, arg.length() - 1);
+        }
         boolean allowBodmas = arg.contains("{") && StringMan.containsAny("+-*/^%", arg.replaceAll("\\{[^}]+}", ""));
         return parseResources(arg, allowBodmas);
     }
