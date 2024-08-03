@@ -85,6 +85,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -2514,9 +2515,9 @@ public class WarCommands {
         NationDB natDb = Locutus.imp().getNationDB();
         Map<Integer, Set<Long>> activityByTime;
         if (by_turn) {
-            activityByTime = Locutus.imp().getNationDB().getActivityByTurn(startTurn, endTurn, allowNation);
+            activityByTime = natDb.getActivityByTurn(startTurn, endTurn, allowNation);
         } else {
-            activityByTime = Locutus.imp().getNationDB().getActivityByDay(TimeUtil.getTimeFromTurn(startTurn), TimeUtil.getTimeFromTurn(endTurn), allowNation);
+            activityByTime = natDb.getActivityByDay(TimeUtil.getTimeFromTurn(startTurn), TimeUtil.getTimeFromTurn(endTurn + 11), allowNation);
         }
 
         if (sheet == null) {
@@ -2529,7 +2530,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            header.add(TimeUtil.DD_MM_YYYY.format(new Date(time)));
+            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(format.format(new Date(time)));
         }
 
         sheet.setHeader(header);
@@ -2540,8 +2542,7 @@ public class WarCommands {
             header.set(2, nation.getCities() + "");
             int index = 3;
             for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
-                long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-                header.set(index, activity.contains(time) ? "✅" : "");
+                header.set(index, activity != null && activity.contains(timeUnit) ? "1" : "");
                 index++;
             }
             sheet.addRow(header);
