@@ -57,9 +57,7 @@ public class AllianceListener {
         Locutus.imp().addTaskSeconds(new CaughtTask() {
             @Override
             public void runUnsafe() throws Exception {
-                System.out.println("Running militarization alerts");
                 runMilitarizationAlerts();
-                System.out.println("Finished militarization alerts");
             }
         }, 15);
     }
@@ -199,7 +197,13 @@ public class AllianceListener {
             long previousMilDate = milDateBuf.remaining() == 4 ? milDateBuf.getInt() : milDateBuf.getLong();
 
             double milGain = groundPctAvg - previousMil;
-            if (milGain < thresholdFivedays) continue;
+            if (milGain < thresholdFivedays) {
+                if (milGain < 0 && now - previousMilDate > TimeUnit.DAYS.toMillis(14)) {
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now - TimeUnit.DAYS.toMillis(5));
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
+                }
+                continue;
+            }
 
             long timeSinceLastAlert = now - previousMilDate;
 
@@ -254,7 +258,6 @@ public class AllianceListener {
             graphData = null;
         }
         byte[] finalGraphData = graphData;
-        System.out.println("Send aa militarize message " + alertAlliances.size() + " | " + alertAlliances.keySet());
 
         AlertUtil.forEachChannel(f -> true, GuildKey.AA_GROUND_UNIT_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
@@ -303,7 +306,6 @@ public class AllianceListener {
                     msg.append(role.getAsMention());
                 }
 
-                System.out.println("Send aa militarize message " + title + " | " + body);
                 msg.send();
             }
         });
