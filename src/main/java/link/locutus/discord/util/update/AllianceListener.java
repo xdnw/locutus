@@ -57,7 +57,9 @@ public class AllianceListener {
         Locutus.imp().addTaskSeconds(new CaughtTask() {
             @Override
             public void runUnsafe() throws Exception {
+                System.out.println("Running militarization alerts");
                 runMilitarizationAlerts();
+                System.out.println("Finished militarization alerts");
             }
         }, 15);
     }
