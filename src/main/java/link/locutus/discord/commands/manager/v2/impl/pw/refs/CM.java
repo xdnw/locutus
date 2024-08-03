@@ -4281,6 +4281,46 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="costBulk")
+            public static class cost extends CommandRef {
+                public static final cost cmd = new cost();
+            public cost receivers(String value) {
+                return set("receivers", value);
+            }
+
+            public cost cities(String value) {
+                return set("cities", value);
+            }
+
+            public cost cities_up_to(String value) {
+                return set("cities_up_to", value);
+            }
+
+            public cost buy_projects(String value) {
+                return set("buy_projects", value);
+            }
+
+            public cost infra_level(String value) {
+                return set("infra_level", value);
+            }
+
+            public cost land_level(String value) {
+                return set("land_level", value);
+            }
+
+            public cost force_policy(String value) {
+                return set("force_policy", value);
+            }
+
+            public cost force_projects(String value) {
+                return set("force_projects", value);
+            }
+
+            public cost sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantInfra")
             public static class infra extends CommandRef {
                 public static final infra cmd = new infra();
@@ -12006,8 +12046,12 @@ public class CM {
                 return set("nationId", value);
             }
 
-            public ActivitySheetFromId trackTime(String value) {
-                return set("trackTime", value);
+            public ActivitySheetFromId startTime(String value) {
+                return set("startTime", value);
+            }
+
+            public ActivitySheetFromId endTime(String value) {
+                return set("endTime", value);
             }
 
             public ActivitySheetFromId sheet(String value) {
@@ -16141,8 +16185,12 @@ public class CM {
                     return set("enemies", value);
                 }
 
-                public warSheet cutoff(String value) {
-                    return set("cutoff", value);
+                public warSheet startTime(String value) {
+                    return set("startTime", value);
+                }
+
+                public warSheet endTime(String value) {
+                    return set("endTime", value);
                 }
 
                 public warSheet includeConcludedWars(String value) {
