@@ -252,6 +252,7 @@ public class AllianceListener {
             graphData = null;
         }
         byte[] finalGraphData = graphData;
+        System.out.println("Send aa militarize message " + alertAlliances.size() + " | " + alertAlliances.keySet());
 
         AlertUtil.forEachChannel(f -> true, GuildKey.AA_GROUND_UNIT_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
@@ -300,6 +301,7 @@ public class AllianceListener {
                     msg.append(role.getAsMention());
                 }
 
+                System.out.println("Send aa militarize message " + title + " | " + body);
                 msg.send();
             }
         });
