@@ -1846,10 +1846,10 @@ public class UnsortedCommands {
             int originalCityId = build.getCity_id();
             JavaCity jc = new JavaCity(build);
             jc.zeroNonMilitary();
-            Integer originalInfra = build.getInfraNeeded();
+            double cityInfra = jc.getInfra();
             build = jc.toCityBuild();
-            if (infra == null && originalInfra != null) {
-                build.setInfraNeeded(originalInfra);
+            if (infra == null && cityInfra > build.getInfraNeeded()) {
+                build.setInfraNeeded((int) cityInfra);
             }
             if (geographicContinent == null) {
                 DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(originalCityId);
