@@ -25,10 +25,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -6285,8 +6282,8 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getGuildDBByAA(alliance_id);
     }
 
-    public Map.Entry<CommandResult, String> runCommandInternally(Guild guild, User user, String command) {
-        if (user == null) return new AbstractMap.SimpleEntry<>(CommandResult.ERROR, "No user for: " + getNation());
+    public Map.Entry<CommandResult, List<StringMessageBuilder>> runCommandInternally(Guild guild, User user, String command) {
+        if (user == null) return new AbstractMap.SimpleEntry<>(CommandResult.ERROR, StringMessageBuilder.list(null, "No user for: " + getMarkdownUrl()));
 
         StringMessageIO output = new StringMessageIO(user, guild);
         CommandResult type;
@@ -6294,12 +6291,12 @@ public class DBNation implements NationOrAlliance {
         try {
             Locutus.imp().getCommandManager().run(guild, output, user, command, false, true);
             type = CommandResult.SUCCESS;
-            result = output.getOutput();
+            return new AbstractMap.SimpleEntry<>(type, output.getMessages());
         } catch (Throwable e) {
             result = StringMan.stripApiKey(e.getMessage());
             type = CommandResult.ERROR;
+            return new AbstractMap.SimpleEntry<>(type, StringMessageBuilder.list(user, result));
         }
-        return new AbstractMap.SimpleEntry<>(type, result);
     }
 
     public long lastActiveMs(long timestamp) {

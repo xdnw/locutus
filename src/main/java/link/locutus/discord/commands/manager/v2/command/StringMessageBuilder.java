@@ -3,14 +3,13 @@ package link.locutus.discord.commands.manager.v2.command;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.util.MarkupUtil;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONArray;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class StringMessageBuilder implements IMessageBuilder {
@@ -32,6 +31,40 @@ public class StringMessageBuilder implements IMessageBuilder {
         this.author = author;
     }
 
+    public static List<StringMessageBuilder> list(User author, String... message) {
+        List<StringMessageBuilder> result = new ArrayList<>();
+        for (String s : message) {
+            result.add(of(author, s));
+        }
+        return result;
+    }
+
+    public static StringMessageBuilder of(User author, String message) {
+        StringMessageBuilder builder = new StringMessageBuilder(null, 0, System.currentTimeMillis(), author);
+        builder.append(message);
+        return builder;
+    }
+
+    public static String toHtml(List<StringMessageBuilder> messages, boolean includeFiles) {
+        StringBuilder response = new StringBuilder();
+        if (messages != null) {
+            for (StringMessageBuilder message : messages) {
+                response.append(message.toSimpleHtml(includeFiles));
+            }
+        }
+        return response.toString();
+    }
+
+    public static JSONArray toJsonArray(String bodyFormat, List<StringMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
+        JSONArray array = new JSONArray();
+        if (messages != null) {
+            for (StringMessageBuilder message : messages) {
+                array.put(message.toJson(bodyFormat, includeFiles, includeButtons));
+            }
+        }
+        return array;
+    }
+
     @Override
     public IMessageBuilder removeButtonByLabel(String label) {
         buttons.entrySet().removeIf(entry -> entry.getValue().equals(label));
@@ -43,20 +76,63 @@ public class StringMessageBuilder implements IMessageBuilder {
         this.toString();
     }
 
-    public String build() {
+    @Override
+    public String toString() {
+        return build(false);
+    }
+
+    public String build(boolean includeButtons) {
         StringBuilder result = new StringBuilder(content);
 
         if (!embeds.isEmpty()) {
             for (Map.Entry<String, String> entry : embeds.entrySet()) {
-                result.append("> # ").append(entry.getKey()).append("\n").append(">>> " + entry.getValue()).append("\n\n");
+                result.append("## ").append(entry.getKey()).append("\n").append(">>> " + entry.getValue()).append("\n\n");
             }
         }
-        for (Map.Entry<String, String> entry : buttons.entrySet()) {
-            result.append("\n").append(entry.getKey()).append(": ").append(entry.getValue());
+        if (includeButtons) {
+            for (Map.Entry<String, String> entry : buttons.entrySet()) {
+                result.append("\n").append(MarkupUtil.markdownUrl("button:" + entry.getValue(), entry.getKey()));
+            }
         }
-
-
         return result.toString();
+    }
+
+    public String toSimpleHtml(boolean includeFiles) {
+        StringBuilder html = new StringBuilder(build(false));
+        for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+            String name = entry.getKey();
+            String base64String = Base64.getEncoder().encodeToString(entry.getValue());
+            html.append("<img src=\"data:image/png;base64,").append(base64String).append("\" alt=\"").append(name).append("\">");
+        }
+        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+            String name = entry.getKey();
+            // use <pre>
+            html.append("### `").append(name).append("`\n");
+            html.append("<pre>").append(new String(entry.getValue())).append("</pre>\n");
+        }
+        return html.toString();
+    }
+
+    /**
+     * Write the content of this message to the output
+     * @param output
+     * @return the output
+     */
+    public IMessageBuilder writeTo(IMessageBuilder output) {
+        if (!content.isEmpty()) output.append(content.toString());
+        for (Map.Entry<String, String> entry : embeds.entrySet()) {
+            output.embed(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+            output.commandButton(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+            output.image(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+            output.file(entry.getKey(), entry.getValue());
+        }
+        return output;
     }
 
     @Override
@@ -174,5 +250,9 @@ public class StringMessageBuilder implements IMessageBuilder {
             throw new RuntimeException(e);
         }
         return this;
+    }
+
+    public boolean isEmpty() {
+        return content.isEmpty() && embeds.isEmpty() && buttons.isEmpty() && images.isEmpty() && files.isEmpty();
     }
 }

@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
@@ -1842,7 +1843,8 @@ public class IACommands {
                 "alliance",
                 "mail-id",
                 "subject",
-                "body"
+                "body",
+                "body_json"
         ));
 
         sheet.setHeader(header);
@@ -1884,31 +1886,32 @@ public class IACommands {
             String subjectFormat = subjectF.apply(nation);
             String bodyFormat = bodyF.apply(nation);
 
-            Map.Entry<CommandResult, String> response = nation.runCommandInternally(guild, nationUser, command);
+            Map.Entry<CommandResult, List<StringMessageBuilder>> response = nation.runCommandInternally(guild, nationUser, command);
             CommandResult respType = response.getKey();
-            String cmdMsg = response.getValue();
+            List<StringMessageBuilder> messages = response.getValue();
 
             if (respType == CommandResult.SUCCESS) {
                 if (!bodyFormat.isEmpty()) {
                     bodyFormat = MarkupUtil.markdownToHTML(bodyFormat) + "<br>";
                 }
-                bodyFormat += cmdMsg;
+                bodyFormat += StringMessageBuilder.toHtml(messages, true);
 
                 header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, "");
                 header.set(3, subjectFormat);
                 header.set(4, bodyFormat);
+                header.set(5, StringMessageBuilder.toJson(bodyFormat, messages, true));
 
                 sheet.addRow(header);
                 success++;
             } else{
-                if (cmdMsg == null) {
+                if (messages == null) {
                     respType = CommandResult.NO_RESPONSE;
-                } else if (cmdMsg.isEmpty()) {
+                } else if (messages.isEmpty()) {
                     respType = CommandResult.EMPTY_RESPONSE;
                 }
-                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, cmdMsg));
+                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, StringMessageBuilder.toHtml(messages, false)));
             }
         }
 

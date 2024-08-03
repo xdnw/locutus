@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.sync.*;
 import link.locutus.discord.db.*;
@@ -27,9 +27,6 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
@@ -2734,13 +2731,13 @@ public class AdminCommands {
 
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);
-        StringBuilder response = new StringBuilder();
+        List<StringMessageBuilder> condensed = new ArrayList<>();
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
             String formattedCmd = formatFunc.apply(nation);
             try {
-                Map.Entry<CommandResult, String> result = me.runCommandInternally(db.getGuild(), user, formattedCmd);
+                Map.Entry<CommandResult, List<StringMessageBuilder>> response = me.runCommandInternally(db.getGuild(), user, formattedCmd);
                 response.append(nation.getMarkdownUrl() + ": " + result.getKey() + "\n" + result.getValue() + "\n---\n");
             } catch (Throwable e) {
                 response.append(nation.getMarkdownUrl() + ": Error: " + e.getMessage());
@@ -2771,7 +2768,7 @@ public class AdminCommands {
             String formattedCmd = formatFunc.apply(nation);
             User nationUser = nation.getUser();
             try {
-                Map.Entry<CommandResult, String> result = nation.runCommandInternally(db.getGuild(), nationUser, formattedCmd);
+                Map.Entry<CommandResult, List<StringMessageBuilder>> response = nation.runCommandInternally(db.getGuild(), nationUser, formattedCmd);
                 response.append(nation.getMarkdownUrl() + ": " + result.getKey() + "\n" + result.getValue() + "\n---\n");
             } catch (Throwable e) {
                 response.append(nation.getMarkdownUrl() + ": Error: " + e.getMessage());
