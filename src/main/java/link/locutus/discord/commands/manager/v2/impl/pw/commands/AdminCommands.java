@@ -329,7 +329,7 @@ public class AdminCommands {
             if (raw == null) continue;
             Object value = setting.getOrNull(otherDb);
             if (value == null) {
-                String msg = otherDb.getGuild().toString() + ": Invalid value `" + raw + "`. See TODO CM REF";
+                String msg = otherDb.getGuild().toString() + ": Invalid value `" + raw + "`. See " + CM.admin.settings.unset.cmd.toSlashMention();
                 if (unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
