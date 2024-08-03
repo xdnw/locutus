@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -30,6 +31,7 @@ import link.locutus.discord.commands.sheets.SpySheet;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
@@ -83,6 +85,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -105,10 +108,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class WarCommands {
@@ -2469,6 +2469,7 @@ public class WarCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
+            "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Note: use the other activity sheet need info of a deleted nation\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in")
@@ -2484,6 +2485,79 @@ public class WarCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
+            "The sheet columns are the dates with the values being either 1 or 0 for logging in or not")
+    public String ActivitySheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+                                    @Arg("Date to start from")
+                                    @Timestamp long start_time,
+                                    @Timestamp long end_time,
+                                    @Switch("t") boolean by_turn,
+                                    @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        long startTurn = TimeUtil.getTurn(start_time);
+        long endTurn = TimeUtil.getTurn(end_time);
+
+        long endDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(TimeUtil.getTurn(end_time) + 11));
+        long startDay = TimeUtil.getDay(start_time);
+
+        long numDays = endDay - startDay + 1;
+        if (numDays > 365) {
+            throw new IllegalArgumentException("Too many days: `" + numDays + " (max 365)");
+        }
+        if (endTurn <= startTurn) {
+            throw new IllegalArgumentException("End time must be after start time (2h)");
+        }
+        if (by_turn && endTurn - startTurn > 365) {
+            throw new IllegalArgumentException("Too many turns: `" + (endTurn - startTurn + 1) + " (max 365)");
+        }
+
+        Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet()));
+        Predicate<Integer> allowNation = nationIds::contains;
+
+        NationDB natDb = Locutus.imp().getNationDB();
+        Map<Integer, Set<Long>> activityByTime;
+        if (by_turn) {
+            activityByTime = natDb.getActivityByTurn(startTurn, endTurn, allowNation);
+        } else {
+            activityByTime = natDb.getActivityByDay(TimeUtil.getTimeFromTurn(startTurn), TimeUtil.getTimeFromTurn(endTurn + 11), allowNation);
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, by_turn ? SheetKey.ACTIVITY_SHEET_TURN : SheetKey.ACTIVITY_SHEET_DAY);
+        }
+
+        long startUnit = by_turn ? startTurn : startDay;
+        long endUnit = by_turn ? endTurn : endDay;
+
+        List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
+        for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
+            long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
+            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(format.format(new Date(time)));
+        }
+
+        sheet.setHeader(header);
+        for (DBNation nation : nations) {
+            Set<Long> activity = activityByTime.get(nation.getNation_id());
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+            header.set(2, nation.getCities() + "");
+            int index = 3;
+            for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
+                header.set(index, activity != null && activity.contains(timeUnit) ? "1" : "");
+                index++;
+            }
+            sheet.addRow(header);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "activity").send();
+        return null;
+    }
+
+    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
+    @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
+            "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in")
     public String ActivitySheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,

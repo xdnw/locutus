@@ -3786,6 +3786,33 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
+    public Map<Integer, Set<Long>> getActivityByTurn(long minTurn, long maxTurn, Predicate<Integer> includeNation) {
+        try (PreparedStatement stmt = prepareQuery("select nation, `turn` FROM ACTIVITY WHERE turn >= ? AND turn <= ?")) {
+            stmt.setLong(1, minTurn);
+            stmt.setLong(2, maxTurn);
+
+            Map<Integer, Set<Long>> result = new Int2ObjectOpenHashMap<>();
+            BiConsumer<Integer, Long> applyNation = includeNation == null ?
+                    (nation, turn) -> result.computeIfAbsent(nation, f -> new LongOpenHashSet()).add(turn) : (nation, turn) -> {
+                if (includeNation.test(nation)) {
+                    result.computeIfAbsent(nation, f -> new LongOpenHashSet()).add(turn);
+                }
+            };
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    long turn = rs.getLong(2);
+                    applyNation.accept(id, turn);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public Map<Long, Set<Integer>> getActivityByDay(long minDate, Predicate<Integer> allowNation) {
         long minTurn = TimeUtil.getTurn(minDate);
         try (PreparedStatement stmt = prepareQuery("select nation, (`turn`/12) FROM ACTIVITY WHERE turn > ?")) {

@@ -240,6 +240,8 @@ public class CommandManager2 {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "costBulk", "cost");
 
+        getCommands().registerMethod(new WarCommands(), List.of("sheets_ia"), "ActivitySheetDate", "activity_date");
+
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "unsetNews", "subscribe");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "unsetKeys", "unset");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "infoBulk", "info_servers");
