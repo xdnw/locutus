@@ -105,7 +105,7 @@ public class GrantCommands {
                     int currentCity = receiver.getCities();
                     int numBuy = getNumBuy.apply(receiver);
                     if (numBuy <= 0) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + amount + " cities");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.CITY.withValue().toString()).addMessage("Nation already has " + amount + " cities");
                     }
                     DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
                     double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
@@ -162,7 +162,7 @@ public class GrantCommands {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
             (receiver, grant) -> {
                 if (receiver.hasProject(project)) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has project: " + project.name());
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.PROJECT.withValue().toString()).addMessage("Nation already has project: " + project.name());
                 }
                 boolean ta = technological_advancement != null ? technological_advancement : receiver.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
                 boolean gsa = gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
@@ -234,7 +234,7 @@ public class GrantCommands {
                             gov_support_agency != null ? gov_support_agency : false);
                 }
                 if (cost <= 0) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has infra level: " + infra_level);
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.INFRA.withValue().toString()).addMessage( "Nation already has infra level: " + infra_level);
                 }
                 if (single_new_city) {
                     grant.setInstructions("Go to your NEW city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
@@ -294,7 +294,7 @@ public class GrantCommands {
                             arable_land_agency != null ? arable_land_agency : false,
                             gov_support_agency != null ? gov_support_agency : false);
                     if (cost <= 0) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has " + to_land + " land");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.LAND.withValue().toString()).addMessage( "Nation already has " + to_land + " land");
                     }
                     if (single_new_city) {
                         grant.setInstructions("Go to your NEW city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
@@ -353,7 +353,7 @@ public class GrantCommands {
                     }
                 });
                 if (unitsToGrant.isEmpty()) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the units");
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage( "Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> {
@@ -416,7 +416,7 @@ public class GrantCommands {
                     if (numUnits > 0) unitsToGrant.put(unit, numUnits);
                 }
                 if (unitsToGrant.isEmpty()) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the units");
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage("Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount)));
@@ -489,7 +489,7 @@ public class GrantCommands {
                         cost.add(PW.multiply(unit.getConsumption(), amount * maxUnits));
                     });
                     if (cost.isEmpty()) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "No attacks specified");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage( "No attacks specified");
                     }
                     double[] costArr = cost.build();;
                     if (bonus_percent != null && bonus_percent != 0) {
@@ -566,7 +566,7 @@ public class GrantCommands {
                     try {
                         grantTo.canBuild(receiver.getContinent(), receiver::hasProject, true);
                     } catch (IllegalArgumentException e) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), e.getMessage());
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( e.getMessage());
                     }
                     boolean grantLand = build.getLand() != null && (grant_land != null ? grant_land : false);
                     boolean grantInfra = (grant_infra != null ? grant_infra : false);
@@ -600,13 +600,13 @@ public class GrantCommands {
                             grantFrom.put(entry.getKey(), city);
                         }
                         if (!hasDiffBuildings) {
-                            return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "Nation already has the build");
+                            return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( "Nation already has the build");
                         }
                         grant.setInstructions(grantTo.instructions(grantFrom, ResourceType.getBuffer(), city_ids == null, true));
                         citiesGranted = grantFrom.size();
                     }
                     if (ResourceType.isZero(cost)) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), "No resources are needed to import this build");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( "No resources are needed to import this build");
                     }
                     if (bonus_percent != null && bonus_percent != 0) {
                         double factor = 1 + bonus_percent * 0.01;

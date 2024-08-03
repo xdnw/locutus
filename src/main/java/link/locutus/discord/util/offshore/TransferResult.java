@@ -30,7 +30,13 @@ public class TransferResult {
     }
 
     public static String toFileString(Collection<TransferResult> list) {
-        return list.stream().map(f -> f.getReceiver().getName() + "\t" + f.getStatus().name() + "\t" + f.getStatus().getMessage()).collect(Collectors.joining("\n"));
+        return "Receiver\tStatus\nNote\nMessage" +
+                list.stream().map(f ->
+                        f.getReceiver().getName() + "\t" +
+                        f.getStatus().name() + "\t" +
+                        f.getNote() + "\t" +
+                        f.getStatus().getMessage()
+                ).collect(Collectors.joining("\n"));
     }
 
     public static Map.Entry<String, String> toEmbed(List<TransferResult> results) {

@@ -527,7 +527,7 @@ public class Grant {
         Map<DBNation, Grant> grantByReceiver = new LinkedHashMap<>();
         for (DBNation receiver : receivers) {
             if (!db.isAllianceId(receiver.getAlliance_id())) {
-                errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, receiver, new HashMap<>(), "Nation is not in an alliance registered to this guild"));
+                errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage( "Nation is not in an alliance registered to this guild"));
                 if (!force) {
                     continue;
                 }
@@ -536,7 +536,7 @@ public class Grant {
             if (noGrants != null) {
                 net.dv8tion.jda.api.entities.Member member = receiver.getMember(db);
                 if (member != null && Roles.TEMP.has(member)) {
-                    errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), "Nation has the @" + noGrants.getName() + " role"));
+                    errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage("Nation has the @" + noGrants.getName() + " role"));
                     if (!force) {
                         continue;
                     }
@@ -558,7 +558,7 @@ public class Grant {
                     if (addReq != null) requirements.addAll(addReq);
                     for (Requirement requirement : requirements) {
                         if (!requirement.apply(receiver)) {
-                            errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), requirement.getMessage()));
+                            errors.add(new TransferResult(OffshoreInstance.TransferStatus.GRANT_REQUIREMENT, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(requirement.getMessage()));
                         }
                     }
                 }
@@ -574,7 +574,7 @@ public class Grant {
                 DepositType type = note.getType();
                 double[] resources = grant.cost();
                 if (ResourceType.isZero(resources)) {
-                    errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
+                    errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
                     continue;
                 }
 
@@ -602,7 +602,7 @@ public class Grant {
                         }
                     }
                     if (ResourceType.isZero(costApplyMissing)) {
-                        errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
+                        errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
                         continue;
                     }
                     row.add(grant.getInstructions());
@@ -613,7 +613,7 @@ public class Grant {
 
                 total.add(resources);
             } catch (IllegalArgumentException e) {
-                errors.add(new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, new HashMap<>(), e.getMessage()));
+                errors.add(new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(e.getMessage()));
                 if (sheet != null) {
                     row.add(e.getMessage());
                     row.add(0);

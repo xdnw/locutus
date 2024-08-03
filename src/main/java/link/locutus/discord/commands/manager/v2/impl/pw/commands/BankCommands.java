@@ -1360,7 +1360,7 @@ public class BankCommands {
                 }
                 if (!status.isSuccess()) {
                     iter.remove();
-                    allStatuses.add(new TransferResult(status, nation, new HashMap<>(), status.getMessage() + debug));
+                    allStatuses.add(new TransferResult(status, nation, new HashMap<>(), bank_note.toString()).addMessage(status.getMessage() + debug));
                 }
             }
             int removed = originalSize - nations.size();
@@ -1391,7 +1391,7 @@ public class BankCommands {
             if (status == OffshoreInstance.TransferStatus.SUCCESS) {
                 fundsToSendNations.put(nation, ResourceType.resourcesToMap(amount));
             } else {
-                allStatuses.add(new TransferResult(status, nation, ResourceType.resourcesToMap(amount), status.getMessage()));
+                allStatuses.add(new TransferResult(status, nation, ResourceType.resourcesToMap(amount), bank_note.toString()).addMessage(status.getMessage()));
             }
         }
 
