@@ -33,6 +33,10 @@ public class AttackQuery {
 
     }
 
+    public Set<DBWar> getWars() {
+        return wars;
+    }
+
     public WarDB getDb() {
         return Locutus.imp().getWarDb();
     }
