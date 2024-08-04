@@ -1,7 +1,11 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -2481,6 +2485,108 @@ public class WarCommands {
         DBNation nation = new DBNation();
         nation.setNation_id(nationId);
         return ActivitySheet(io, db, Collections.singleton(nation), startTime, endTime, sheet);
+    }
+
+    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
+    @Command(desc = "Generate a sheet of nation war declare activity from a nation id over a timeframe")
+    public String WarDecSheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+                                    boolean off,
+                                    boolean def,
+                                    @Arg("Date to start from")
+                                    @Timestamp long start_time,
+                                    @Timestamp long end_time,
+                                  @Switch("d") boolean split_off_def,
+                                    @Switch("t") boolean by_turn,
+                                    @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (split_off_def && (!off || !def)) {
+            throw new IllegalArgumentException("Splitting off and def requires both `off` and `def` to be true");
+        }
+        if (!off && !def) {
+            throw new IllegalArgumentException("At least one of `off` or `def` must be true");
+        }
+        long startTurn = TimeUtil.getTurn(start_time);
+        long endTurn = TimeUtil.getTurn(end_time);
+
+        long endDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(TimeUtil.getTurn(end_time) + 11));
+        long startDay = TimeUtil.getDay(start_time);
+
+        long numDays = endDay - startDay + 1;
+        if (numDays > 365) {
+            throw new IllegalArgumentException("Too many days: `" + numDays + " (max 365)");
+        }
+        if (endTurn <= startTurn) {
+            throw new IllegalArgumentException("End time must be after start time (2h)");
+        }
+        if (by_turn && endTurn - startTurn > 365) {
+            throw new IllegalArgumentException("Too many turns: `" + (endTurn - startTurn + 1) + " (max 365)");
+        }
+
+        Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet()));
+        Set<DBWar> wars = Locutus.imp().getWarDb().queryAttacks().withWarsForNationOrAlliance(nationIds::contains, null, null).between(start_time, end_time).getWars();
+        Predicate<Integer> allowNation = nationIds::contains;
+
+        NationDB natDb = Locutus.imp().getNationDB();
+        Map<Integer, Map<Long, Integer>> offWarsByTime = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Map<Long, Integer>> defWarsByTime = new Int2ObjectOpenHashMap<>();
+        Function<DBWar, Long> toTime = by_turn ? war -> TimeUtil.getTurn(war.getDate()) : war -> TimeUtil.getDay(war.getDate());
+        for (DBWar war : wars) {
+            long time = toTime.apply(war);
+            if (allowNation.test(war.getAttacker_id()) && off) {
+                offWarsByTime.computeIfAbsent(war.getAttacker_id(), f -> new Long2IntOpenHashMap()).merge(time, 1, Integer::sum);
+            }
+            if (allowNation.test(war.getDefender_id()) && def) {
+                defWarsByTime.computeIfAbsent(war.getDefender_id(), f -> new Long2IntOpenHashMap()).merge(time, 1, Integer::sum);
+            }
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, by_turn ? SheetKey.ACTIVITY_SHEET_TURN : SheetKey.ACTIVITY_SHEET_DAY);
+        }
+
+        long startUnit = by_turn ? startTurn : startDay;
+        long endUnit = by_turn ? endTurn : endDay;
+
+        List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
+        for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
+            long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
+            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(format.format(new Date(time)));
+        }
+
+        sheet.setHeader(header);
+        for (DBNation nation : nations) {
+            Map<Long, Integer> offActivity = offWarsByTime.getOrDefault(nation.getNation_id(), new Long2IntOpenHashMap());
+            Map<Long, Integer> defActivity = defWarsByTime.getOrDefault(nation.getNation_id(), new Long2IntOpenHashMap());
+            Function<Long, String> formatFunc;
+            if (split_off_def) {
+                formatFunc = f -> {
+                    int offAmt = offActivity.getOrDefault(f, 0);
+                    int defAmt = defActivity.getOrDefault(f, 0);
+                    if (offAmt == 0 && defAmt == 0) return "";
+                    return offAmt + "/" + defAmt;
+                };
+            } else {
+                formatFunc = f -> {
+                    int amt = (offActivity.getOrDefault(f, 0) + defActivity.getOrDefault(f, 0));
+                    return amt == 0 ? "" : amt + "";
+                };
+            }
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+            header.set(2, nation.getCities() + "");
+            int index = 3;
+            for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
+                header.set(index, formatFunc.apply(timeUnit));
+                index++;
+            }
+            sheet.addRow(header);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "activity").send();
+        return null;
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
