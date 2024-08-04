@@ -1,9 +1,6 @@
 package link.locutus.discord.util;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
@@ -712,6 +709,12 @@ public class StringMan {
                 arr.add(toJson(element));
             }
             return arr;
+        } else if (obj instanceof Map) {
+            JsonObject result = new JsonObject();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
+                result.add(entry.getKey().toString(), toJson(entry.getValue()));
+            }
+            return result;
         } else if (obj instanceof Class) {
             return new JsonPrimitive(((Class<?>) obj).getSimpleName());
         } else if (obj instanceof Number) {

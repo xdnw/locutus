@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.Locutus;
@@ -11,24 +12,33 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.annotation.CheckReturnValue;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public interface IMessageBuilder {
+    static JsonElement toJson(String appendText, List<IMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
+        Map<String, Object> root = new HashMap<>();
+        if (appendText != null && !appendText.isEmpty()) root.put("content", appendText);
+        if (messages != null) {
+            for (IMessageBuilder message : messages) {
+                message.addJson(root, includeFiles, includeButtons);
+            }
+        }
+        return StringMan.toJson(root);
+    }
+
+    public abstract void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons);
+
     long getId();
 
     IMessageBuilder clear();

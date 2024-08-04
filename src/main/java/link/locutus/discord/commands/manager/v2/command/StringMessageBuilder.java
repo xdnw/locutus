@@ -7,6 +7,7 @@ import link.locutus.discord.util.MarkupUtil;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
@@ -55,14 +56,12 @@ public class StringMessageBuilder implements IMessageBuilder {
         return response.toString();
     }
 
-    public static JSONArray toJsonArray(String bodyFormat, List<StringMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
-        JSONArray array = new JSONArray();
-        if (messages != null) {
-            for (StringMessageBuilder message : messages) {
-                array.put(message.toJson(bodyFormat, includeFiles, includeButtons));
-            }
+    @Override
+    public void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons) {
+        if (!content.isEmpty()) {
+            String existing = root.computeIfAbsent("content", k -> "").toString();
+            root.put("content", existing + content.toString());
         }
-        return array;
     }
 
     @Override

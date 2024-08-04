@@ -1900,8 +1900,7 @@ public class IACommands {
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, "");
                 header.set(3, subjectFormat);
-                header.set(4, bodyFormat);
-                header.set(5, StringMessageBuilder.toJson(bodyFormat, messages, true));
+                header.set(4, IMessageBuilder.toJson(bodyFormat, messages, true));
 
                 sheet.addRow(header);
                 success++;
