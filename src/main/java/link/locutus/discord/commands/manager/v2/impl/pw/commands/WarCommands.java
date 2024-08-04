@@ -2559,9 +2559,18 @@ public class WarCommands {
             Map<Long, Integer> defActivity = defWarsByTime.getOrDefault(nation.getNation_id(), new Long2IntOpenHashMap());
             Function<Long, String> formatFunc;
             if (split_off_def) {
-                formatFunc = f -> offActivity.getOrDefault(f, 0) + "/" + defActivity.getOrDefault(f, 0);
+                formatFunc = f -> {
+//                    offActivity.getOrDefault(f, 0) + "/" + defActivity.getOrDefault(f, 0);
+                    int offAmt = offActivity.getOrDefault(f, 0);
+                    int defAmt = defActivity.getOrDefault(f, 0);
+                    if (offAmt == 0 && defAmt == 0) return "";
+                    return offAmt + "/" + defAmt;
+                };
             } else {
-                formatFunc = f -> (offActivity.getOrDefault(f, 0) + defActivity.getOrDefault(f, 0)) + "";
+                formatFunc = f -> {
+                    int amt = (offActivity.getOrDefault(f, 0) + defActivity.getOrDefault(f, 0));
+                    return amt == 0 ? "" : amt + "";
+                };
             }
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
