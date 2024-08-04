@@ -5011,9 +5011,13 @@ public class DBNation implements NationOrAlliance {
         return db.hasRequiredMMR(this);
     }
 
-    @Command(desc = "Array of the average military buildings (building mmr) in all cities as a decimal\n" +
-            "[barracks, factories, hangars, drydocks]\n" +
-            "e.g. [5.0,5.0,5.0,3.0]")
+    @Command(desc = "The average military buildings (building mmr) in all cities as a decimal\n" +
+            "barracks/factories/hangars/drydocks]\n" +
+            "e.g. 4.9/4.8/4.3/2.5")
+    public String getMMRBuildingDecimal() {
+        double[] arr = getMMRBuildingArr();
+        return Arrays.stream(arr).mapToObj(MathMan::format).collect(Collectors.joining("/"));
+    }
     public double[] getMMRBuildingArr() {
         double barracks = 0; // for rounding
         double factories = 0;
