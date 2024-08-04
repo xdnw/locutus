@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import de.erichseifert.gral.data.DataTable;
@@ -76,6 +77,7 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.time.ZoneOffset;
@@ -718,6 +720,8 @@ public class StatCommands {
                                      @Switch("a") boolean includeApplicants,
                                      @Arg("Compare the sum of each nation's attribute in the coalition instead of average")
                                          @Switch("t") boolean total,
+                                     @Switch("j") boolean attachJson,
+                                     @Switch("v") boolean attachCsv,
                                      @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
@@ -838,6 +842,16 @@ public class StatCommands {
                 > **BLUE** = {coalition2}
                 """.replace("{coalition1}", coalition1.getFilter())
                 .replace("{coalition2}", coalition2.getFilter());
+
+        if (attachJson) {
+            JsonObject json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), "Cities", metric.getName());
+            msg.file("data.json", json.toString());
+        }
+        if (attachCsv) {
+            List<List<String>> rows = TimeNumericTable.toSheetRows(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, plot.getTitle().getText(), "Cities", metric.getName());
+            msg.file("data.csv", StringMan.toCsv(rows));
+        }
+
         msg.append(response);
         msg.send();
         return null;

@@ -265,6 +265,7 @@ public class NationHeader extends DataHeader<DBNation> {
         }
         nation.setAlliance_id(aaId);
         this.nation_id.set(nation);
+        this.nation_name.set(nation);
         this.continent.set(nation);
         this.color.set(nation);
         this.alliance_position.set(nation);
