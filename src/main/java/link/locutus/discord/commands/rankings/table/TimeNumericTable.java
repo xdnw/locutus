@@ -40,6 +40,8 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
 import link.locutus.discord.web.commands.WebMessage;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -54,10 +56,11 @@ import java.util.stream.Collectors;
 public abstract class TimeNumericTable<T> {
 
     protected final DataTable data;
-    private final String name;
+    private String name;
     private final int amt;
-    private final String[] labels;
-    private final String labelX, labelY;
+    private String[] labels;
+    private String labelX;
+    private String labelY;
     private boolean isBar;
 
     public TimeNumericTable(String title, String labelX, String labelY, String... seriesLabels) {
@@ -372,6 +375,29 @@ public abstract class TimeNumericTable<T> {
         return obj;
     }
 
+    public TimeNumericTable loadFromJson(JsonObject json) {
+        this.name = json.get("title").getAsString();
+        this.labelX = json.get("x").getAsString();
+        this.labelY = json.get("y").getAsString();
+
+        JsonArray labelsArr = json.getAsJsonArray("labels");
+        this.labels = new String[labelsArr.size()];
+        for (int i = 0; i < labelsArr.size(); i++) {
+            this.labels[i] = labelsArr.get(i).getAsString();
+        }
+
+        JsonArray dataJson = json.getAsJsonArray("data");
+        for (int i = 0; i < dataJson.size(); i++) {
+            JsonArray rowArr = dataJson.get(i).getAsJsonArray();
+            Comparable<?>[] row = new Comparable<?>[rowArr.size()];
+            for (int j = 0; j < rowArr.size(); j++) {
+                row[j] = (Comparable<?>) rowArr.get(j).getAsNumber();
+            }
+            this.data.add(row);
+        }
+        return this;
+    }
+
     public List<List<String>> toSheetRows() {
         List<List<String>> rows = new ArrayList<>();
         List<String> header = new ArrayList<>();
@@ -606,6 +632,24 @@ public abstract class TimeNumericTable<T> {
 
 
         return plot;
+    }
+
+    public String toHtml(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+        String html;
+        if (origin > 0) {
+            if (timeFormat == TimeFormat.TURN_TO_DATE) {
+                convertTurnsToEpochSeconds(origin);
+            } else if (timeFormat == TimeFormat.DAYS_TO_DATE) {
+                convertDaysToEpochSeconds(origin);
+            }
+        }
+        if (isBar()) {
+            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(), false));
+        } else {
+            boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE;
+            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(), isTime));
+        }
+        return html;
     }
 
     public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat) throws IOException {

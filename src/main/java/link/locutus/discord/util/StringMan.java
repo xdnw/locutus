@@ -691,6 +691,9 @@ public class StringMan {
         if (obj == null) {
             return JsonNull.INSTANCE;
         }
+        if (obj instanceof JsonElement) {
+            return (JsonElement) obj;
+        }
         if (obj.getClass() == String.class) {
             return new JsonPrimitive((String) obj);
         }

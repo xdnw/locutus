@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
@@ -14,47 +14,65 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-public class StringMessageBuilder implements IMessageBuilder {
+public abstract class AMessageBuilder implements IMessageBuilder {
 
     public final StringBuilder content = new StringBuilder();
     public final Map<String, String> buttons = new LinkedHashMap<>();
+    public final Map<String, String> links = new LinkedHashMap<>();
+    public final List<GraphMessageInfo> tables = new ArrayList<>();
     public final Map<String, String> embeds = new LinkedHashMap<>();
     public final Map<String, byte[]> images = new HashMap<>();
     public final Map<String, byte[]> files = new HashMap<>();
-    private final StringMessageIO parent;
+    private final IMessageIO parent;
     public long id;
     public long timeCreated;
     public User author;
 
-    public StringMessageBuilder(StringMessageIO parent, long id, long timeCreated, User author) {
+    public record GraphMessageInfo(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) { }
+
+    public AMessageBuilder(IMessageIO parent, long id, long timeCreated, User author) {
         this.parent = parent;
         this.id = id;
         this.timeCreated = timeCreated;
         this.author = author;
     }
 
-    public static List<StringMessageBuilder> list(User author, String... message) {
-        List<StringMessageBuilder> result = new ArrayList<>();
-        for (String s : message) {
-            result.add(of(author, s));
-        }
-        return result;
+    public String getContent() {
+        return content.toString();
     }
 
-    public static StringMessageBuilder of(User author, String message) {
-        StringMessageBuilder builder = new StringMessageBuilder(null, 0, System.currentTimeMillis(), author);
-        builder.append(message);
-        return builder;
+    public Map<String, String> getButtons() {
+        return buttons;
     }
 
-    public static String toHtml(List<StringMessageBuilder> messages, boolean includeFiles) {
-        StringBuilder response = new StringBuilder();
-        if (messages != null) {
-            for (StringMessageBuilder message : messages) {
-                response.append(message.toSimpleHtml(includeFiles));
-            }
-        }
-        return response.toString();
+    public Map<String, String> getLinks() {
+        return links;
+    }
+
+    public List<GraphMessageInfo> getTables() {
+        return tables;
+    }
+
+    public Map<String, String> getEmbedDescriptions() {
+        return embeds;
+    }
+
+    public Map<String, byte[]> getImages() {
+        return images;
+    }
+
+    public Map<String, byte[]> getFiles() {
+        return files;
+    }
+
+    public IMessageIO getParent() {
+        return parent;
+    }
+
+    @Override
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate) {
+        tables.add(new GraphMessageInfo(table, timeFormat, numberFormat, originDate));
+        return this;
     }
 
     @Override
@@ -64,26 +82,63 @@ public class StringMessageBuilder implements IMessageBuilder {
             root.put("content", existing + content.toString());
         }
         if (!embeds.isEmpty()) {
-            JSONArray embedArray = new JSONArray();
+            List<Map<String, String>> embedArray = (List<Map<String, String>>) root.computeIfAbsent("embeds", k -> new ArrayList<>());
             for (Map.Entry<String, String> entry : embeds.entrySet()) {
-                JSONObject embed = new JSONObject();
+                Map<String, String> embed = new LinkedHashMap<>();
                 embed.put("title", entry.getKey());
                 embed.put("description", entry.getValue());
-                embedArray.put(embed);
+                embedArray.add(embed);
             }
             root.put("embeds", embedArray);
         }
+        if (includeButtons) {
+            List<Map<String, String>> buttonInfo = (List<Map<String, String>>) root.computeIfAbsent("buttons", k -> new ArrayList<>());
+            if (!buttons.isEmpty()) {
+                for (Map.Entry<String, String> entry : buttons.entrySet()) {
+                    buttonInfo.add(Map.of("cmd", entry.getKey(), "label", entry.getValue()));
+                }
+            }
+            if (!links.isEmpty()) {
+                for (Map.Entry<String, String> entry : links.entrySet()) {
+                    buttonInfo.add(Map.of("href", entry.getKey(), "label", entry.getValue()));
+                }
+            }
+            if (!buttonInfo.isEmpty()) {
+                root.put("buttons", buttonInfo);
+            }
+        }
+        if (!tables.isEmpty()) {
+            List<JsonObject> tableArray = (List<JsonObject>) root.computeIfAbsent("tables", k -> new ArrayList<>());
+            for (GraphMessageInfo tableInfo : tables) {
+                tableArray.add(tableInfo.table.toHtmlJson());
+            }
+            root.put("tables", tableArray);
+        }
+        if (includeFiles) {
+            Map<String, String> attachments = root.computeIfAbsent("attachments", k -> new LinkedHashMap<>());
+            for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+                String name = entry.getKey();
+                String base64String = Base64.getEncoder().encodeToString(entry.getValue());
+                attachments.put(name, base64String);
+            }
+            for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+                String name = entry.getKey();
+                String base64String = Base64.getEncoder().encodeToString(entry.getValue());
+                attachments.put(name, base64String);
+            }
+            if (!attachments.isEmpty()) {
+                root.put("attachments", attachments);
+            }
+        }
+        root.put("id", id);
+        root.put("timestamp", timeCreated);
+        root.put("author", author.getId());
     }
 
     @Override
     public IMessageBuilder removeButtonByLabel(String label) {
         buttons.entrySet().removeIf(entry -> entry.getValue().equals(label));
         return this;
-    }
-
-    @Override
-    public void sendWhenFree() {
-        this.toString();
     }
 
     @Override
@@ -104,6 +159,9 @@ public class StringMessageBuilder implements IMessageBuilder {
                 result.append("\n").append(MarkupUtil.markdownUrl("button:" + entry.getValue(), entry.getKey()));
             }
         }
+
+        todo;
+
         return result.toString();
     }
 
@@ -114,11 +172,13 @@ public class StringMessageBuilder implements IMessageBuilder {
             String base64String = Base64.getEncoder().encodeToString(entry.getValue());
             html.append("<img src=\"data:image/png;base64,").append(base64String).append("\" alt=\"").append(name).append("\">");
         }
-        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
-            String name = entry.getKey();
-            // use <pre>
-            html.append("### `").append(name).append("`\n");
-            html.append("<pre>").append(new String(entry.getValue())).append("</pre>\n");
+        if (includeFiles) {
+            for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+                String name = entry.getKey();
+                // use <pre>
+                html.append("### `").append(name).append("`\n");
+                html.append("<pre>").append(new String(entry.getValue())).append("</pre>\n");
+            }
         }
         return html.toString();
     }
@@ -142,6 +202,7 @@ public class StringMessageBuilder implements IMessageBuilder {
         for (Map.Entry<String, byte[]> entry : files.entrySet()) {
             output.file(entry.getKey(), entry.getValue());
         }
+        todo;
         return output;
     }
 
@@ -177,6 +238,7 @@ public class StringMessageBuilder implements IMessageBuilder {
         embeds.clear();
         images.clear();
         files.clear();
+        todo;
         return this;
     }
 
@@ -189,6 +251,7 @@ public class StringMessageBuilder implements IMessageBuilder {
     @Override
     public IMessageBuilder clearButtons() {
         this.buttons.clear();
+        this.links.clear();
         return this;
     }
 
@@ -252,17 +315,7 @@ public class StringMessageBuilder implements IMessageBuilder {
         return this;
     }
 
-    @Override
-    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
-        try {
-            images.put(table.getName(), table.write(timeFormat, numberFormat));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return this;
-    }
-
     public boolean isEmpty() {
-        return content.isEmpty() && embeds.isEmpty() && buttons.isEmpty() && images.isEmpty() && files.isEmpty();
+        return content.isEmpty() && embeds.isEmpty() && buttons.isEmpty() && images.isEmpty() && files.isEmpty() && links.isEmpty() && tables.isEmpty();
     }
 }

@@ -1843,8 +1843,7 @@ public class IACommands {
                 "alliance",
                 "mail-id",
                 "subject",
-                "body",
-                "body_json"
+                "body"
         ));
 
         sheet.setHeader(header);
@@ -1900,7 +1899,7 @@ public class IACommands {
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, "");
                 header.set(3, subjectFormat);
-                header.set(4, IMessageBuilder.toJson(bodyFormat, messages, true));
+                header.set(4, IMessageBuilder.toJson(bodyFormat, messages, true, true).toString());
 
                 sheet.addRow(header);
                 success++;
@@ -2033,6 +2032,8 @@ public class IACommands {
             Map.Entry<String, String> msgEntry = entry.getValue();
             String subject = msgEntry.getKey();
             String body = msgEntry.getValue();
+
+            todo check if body is json;
 
             List<String> result = new ArrayList<>();
             if (!skipMail) {

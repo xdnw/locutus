@@ -5,6 +5,7 @@ import gg.jte.generated.precompiled.data.JtebarchartdatasrcGenerated;
 import gg.jte.generated.precompiled.data.JtetimechartdatasrcGenerated;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -40,50 +41,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class WebMessage implements IMessageBuilder {
-    private final IMessageIO parent;
-    public long id;
-
-    public final StringBuilder content = new StringBuilder();
-    public final Map<String, String> buttons = new LinkedHashMap<>();
-    public final Map<String, String> links = new LinkedHashMap<>();
-    public final List<String> htmlData = new ArrayList<>();
-    public final List<MessageEmbed> embeds = new ArrayList<>();
-    public final Map<String, byte[]> attachments = new HashMap<>();
-    public User author;
-    private long timeCreated;
+public class WebMessage extends AMessageBuilder {
 
     public WebMessage(IMessageIO parent) {
-        this.parent = parent;
-        this.id = UUID.randomUUID().getMostSignificantBits();
+        super(parent, UUID.randomUUID().getMostSignificantBits(), System.currentTimeMillis(), null);
     }
 
     @Override
     public IMessageBuilder removeButtonByLabel(String label) {
         buttons.entrySet().removeIf(entry -> entry.getValue().equals(label));
-        return this;
-    }
-
-    @Override
-    public long getId() {
-        return id;
-    }
-
-    @Override
-    public IMessageBuilder clear() {
-        content.setLength(0);
-        buttons.clear();
-        links.clear();
-        embeds.clear();
-        attachments.clear();
-        files = null;
-        this.htmlData.clear();
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder append(String content) {
-        this.content.append(content);
         return this;
     }
 
@@ -144,21 +110,7 @@ public class WebMessage implements IMessageBuilder {
 
     @Override
     public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
-        String html;
-        if (origin > 0) {
-            if (timeFormat == TimeFormat.TURN_TO_DATE) {
-                table.convertTurnsToEpochSeconds(origin);
-            } else if (timeFormat == TimeFormat.DAYS_TO_DATE) {
-                table.convertDaysToEpochSeconds(origin);
-            }
-        }
-        if (table.isBar()) {
-            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, table.getName(), table.toHtmlJson(), false));
-        } else {
-            boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE;
-            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, table.getName(), table.toHtmlJson(), isTime));
-        }
-        addHtml(html);
+        addHtml(table.toHtml(timeFormat, numberFormat, origin));
         return this;
     }
 

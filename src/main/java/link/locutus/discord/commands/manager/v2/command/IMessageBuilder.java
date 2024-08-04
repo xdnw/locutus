@@ -26,8 +26,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public interface IMessageBuilder {
-    static JsonElement toJson(String appendText, List<IMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
-        Map<String, Object> root = new HashMap<>();
+    static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
+        Map<String, Object> root = new LinkedHashMap<>();
         if (appendText != null && !appendText.isEmpty()) root.put("content", appendText);
         if (messages != null) {
             for (IMessageBuilder message : messages) {
@@ -38,6 +38,12 @@ public interface IMessageBuilder {
     }
 
     public abstract void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons);
+
+    default JsonElement toJson() {
+        Map<String, Object> root = new LinkedHashMap<>();
+        addJson(root, true, true);
+        return StringMan.toJson(root);
+    }
 
     long getId();
 
