@@ -2560,7 +2560,6 @@ public class WarCommands {
             Function<Long, String> formatFunc;
             if (split_off_def) {
                 formatFunc = f -> {
-//                    offActivity.getOrDefault(f, 0) + "/" + defActivity.getOrDefault(f, 0);
                     int offAmt = offActivity.getOrDefault(f, 0);
                     int defAmt = defActivity.getOrDefault(f, 0);
                     if (offAmt == 0 && defAmt == 0) return "";

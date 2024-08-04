@@ -37,6 +37,7 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
 import link.locutus.discord.web.commands.WebMessage;
@@ -333,10 +334,14 @@ public abstract class TimeNumericTable<T> {
     }
 
     public JsonObject toHtmlJson() {
+        return toHtmlJson(labels, data, amt, name, labelX, labelY);
+    }
+
+    public static JsonObject toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY) {
         JsonObject obj = new JsonObject();
         JsonArray labelsArr = new JsonArray();
 
-        for (String label : this.labels) labelsArr.add(label);
+        for (String label : labels) labelsArr.add(label);
 
         Column col1 = data.getColumn(0);
         double minX = col1.getStatistics(Statistics.MIN);
@@ -371,8 +376,10 @@ public abstract class TimeNumericTable<T> {
         obj.add("data", dataJson);
         return obj;
     }
-
     public List<List<String>> toSheetRows() {
+        return toSheetRows(labels, data, name, labelX, labelY);
+    }
+    public static List<List<String>> toSheetRows(String[] labels, DataTable data, String name, String labelX, String labelY) {
         List<List<String>> rows = new ArrayList<>();
         List<String> header = new ArrayList<>();
         header.add(labelX);
@@ -394,13 +401,8 @@ public abstract class TimeNumericTable<T> {
     }
 
     public String toCsv() {
-        StringWriter stringWriter = new StringWriter();
-        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
         List<List<String>> rows = toSheetRows();
-        for (List<String> row : rows) {
-            csvWriter.writeNext(row.toArray(new String[0]));
-        }
-        return stringWriter.toString();
+        return StringMan.toCsv(rows);
     }
 
 

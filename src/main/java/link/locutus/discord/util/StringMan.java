@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonPrimitive;
+import com.opencsv.CSVWriter;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
@@ -37,6 +38,16 @@ public class StringMan {
         return msg
                 .replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-Fa-f]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX")
                 .replaceAll("(key=)(?i)([0-9A-Fa-f]{14,})", "$1XXX");
+    }
+
+    public static String toCsv(List<List<String>> rows) {
+        StringWriter stringWriter = new StringWriter();
+        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+
+        for (List<String> row : rows) {
+            csvWriter.writeNext(row.toArray(new String[0]));
+        }
+        return stringWriter.toString();
     }
 
     public static class ConsoleColors {
