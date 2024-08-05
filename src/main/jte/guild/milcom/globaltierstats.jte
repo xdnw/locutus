@@ -1,6 +1,8 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble
 @import link.locutus.discord.commands.rankings.SphereGenerator
+@import link.locutus.discord.commands.rankings.table.TableNumberFormat
+@import link.locutus.discord.commands.rankings.table.TimeFormat
 @import link.locutus.discord.db.entities.DBAlliance
 @import java.io.IOException
 @import java.util.Collections
@@ -33,7 +35,7 @@
                         @template.data.barchartdatasrc(ws = ws, title = spheres.getSphereName(sphereId) + " total",
                         data = TimeNumericTable.create(spheres.getSphereName(sphereId) + ": ", metrics,
                         spheres.getAlliances(sphereId), groupBy, total, removeVM, removeActiveM, removeApps
-                        ).toHtmlJson(),
+                        ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0),
                         stacked = false)
                     </div>
                     <hr>
@@ -43,7 +45,7 @@
                             @template.data.barchartdatasrc(ws = ws, title = alliance.getName(),
                             data = TimeNumericTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance),
                             groupBy, total, removeVM, removeActiveM, removeApps
-                            ).toHtmlJson(),
+                            ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0),
                             stacked = false)
                         </div>
                     @endfor
