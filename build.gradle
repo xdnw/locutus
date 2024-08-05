@@ -177,7 +177,7 @@ dependencies {
 
     implementation "org.mapstruct:mapstruct:1.4.2.Final"
     annotationProcessor "org.mapstruct:mapstruct-processor:1.4.2.Final"
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.0-rc1'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.17.2'
 
     // https://mvnrepository.com/artifact/de.siegmar/fastcsv
     implementation group: 'de.siegmar', name: 'fastcsv', version: '2.2.0'
