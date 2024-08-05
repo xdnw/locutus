@@ -2033,7 +2033,7 @@ public class IACommands {
             Map.Entry<String, String> msgEntry = entry.getValue();
             String subject = msgEntry.getKey();
             String body = msgEntry.getValue();
-            StringMessageBuilder richBody = StringMessageBuilder.fromText(body, true);
+            StringMessageBuilder richBody = StringMessageBuilder.fromText(body, true, db.getGuild());
 
             List<String> result = new ArrayList<>();
             if (!skipMail) {

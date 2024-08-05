@@ -844,7 +844,8 @@ public class StatCommands {
                 .replace("{coalition2}", coalition2.getFilter());
 
         if (attachJson) {
-            JsonObject json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), "Cities", metric.getName());
+            JsonObject json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), "Cities", metric.getName(),
+                    TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0L);
             msg.file("data.json", json.toString());
         }
         if (attachCsv) {
