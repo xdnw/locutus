@@ -364,6 +364,7 @@ public class MarkupUtil {
 
     public static String markdownToHTML(String source) {
         source = source.replaceAll("``` ", "\n```\n");
+        source = source.replaceAll("\n\n```", "\n```");
         Node document = MARKDOWN_PARSER.parse(source);
         String html = MARKDOWN_RENDERER.render(document).trim();
         if (html.startsWith("<p>") && html.endsWith("</p>")) {
