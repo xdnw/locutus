@@ -40,13 +40,7 @@ import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AutoAuditType;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -78,6 +72,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class GuildKey {
@@ -650,10 +645,18 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance());
     public static GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
+
+        private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<\\s*([a-z]+)\\s*[^>]*>.*?<\\s*/\\s*\\1\\s*>", Pattern.DOTALL);
+
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, String message) {
+            boolean containsHtml = HTML_TAG_PATTERN.matcher(message).find();
+            if (!containsHtml) {
+                message = MarkupUtil.markdownToHTML(MarkupUtil.formatDiscordMarkdown(message, db == null ? null : db.getGuild()));
+            }
+
             return RECRUIT_MESSAGE_CONTENT.setAndValidate(db, user, message);
         }
         @Override
