@@ -1910,7 +1910,7 @@ public class IACommands {
                 } else if (messages.isEmpty()) {
                     respType = CommandResult.EMPTY_RESPONSE;
                 }
-                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, StringMessageBuilder.toHtml(messages, false)));
+                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, IMessageBuilder.toJson("", messages, false, false).toString()));
             }
         }
 

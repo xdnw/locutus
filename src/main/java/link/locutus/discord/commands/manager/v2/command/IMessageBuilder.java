@@ -43,9 +43,15 @@ public interface IMessageBuilder {
 
     public abstract String getContent();
 
-    public abstract List<Map.Entry<String, String>> getEmbedDescriptions();
-
     public abstract Map<String, String> getButtons();
+
+    public Map<String, String> getLinks();
+
+    public List<GraphMessageInfo> getTables();
+
+    public Map<String, byte[]> getImages();
+
+    public Map<String, byte[]> getFiles();
 
     static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
         Map<String, Object> root = new LinkedHashMap<>();

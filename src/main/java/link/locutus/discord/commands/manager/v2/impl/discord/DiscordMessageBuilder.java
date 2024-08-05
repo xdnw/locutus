@@ -116,16 +116,17 @@ public class DiscordMessageBuilder extends AMessageBuilder {
 
     public MessageEditData buildEdit(boolean includeContent) {
         MessageEditBuilder discBuilder = new MessageEditBuilder();
-        if (!buttons.isEmpty()) {
-            if (buttons.size() > 5) {
+        List<Button> buttonObjs = toButtonObjs();
+        if (!buttonObjs.isEmpty()) {
+            if (buttonObjs.size() > 5) {
                 List<LayoutComponent> rows = new ArrayList<>();
-                for (int i = 0; i < buttons.size(); i += 5) {
-                    List<Button> group = buttons.subList(i, Math.min(i + 5, buttons.size()));
+                for (int i = 0; i < buttonObjs.size(); i += 5) {
+                    List<Button> group = buttonObjs.subList(i, Math.min(i + 5, buttonObjs.size()));
                     rows.add(ActionRow.of(group));
                 }
                 discBuilder.setComponents(rows);
             } else {
-                discBuilder.setActionRow(buttons);
+                discBuilder.setActionRow(buttonObjs);
             }
         }
         if (!embeds.isEmpty()) {
@@ -153,10 +154,29 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         return discBuilder.build();
     }
 
+    private List<Button> toButtonObjs() {
+        List<Button> buttonObjs = new ArrayList<>();
+        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+            String id = entry.getKey();
+            String label = entry.getValue();
+            if (id.startsWith("http://") || id.startsWith("https://")) {
+                buttonObjs.add(Button.link(id, label));
+            } else {
+                buttonObjs.add(Button.primary(id, label));
+            }
+        }
+        for (Map.Entry<String, String> entry : links.entrySet()) {
+            String url = entry.getKey();
+            String label = entry.getValue();
+            buttonObjs.add(Button.link(url, label));
+        }
+        return buttonObjs;
+    }
+
     public MessageCreateData build(boolean includeContent) {
         MessageCreateBuilder discBuilder = new MessageCreateBuilder();
+        List<Button> buttons = toButtonObjs();
         if (!buttons.isEmpty()) {
-            List<Button> buttons = new ArrayList<>(this.buttons);
             while (!buttons.isEmpty()) {
                 List<Button> group = buttons.subList(0, Math.min(5, buttons.size()));
                 buttons = buttons.subList(group.size(), buttons.size());
@@ -165,10 +185,17 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         }
 
         if (!embeds.isEmpty()) {
-            if (embeds.size() == 1 && images.size() == 1) {
+            if (embeds.size() == 1 && ((images.size() == 1 && tables.size() == 0) || (images.size() == 0 && tables.size() == 1))) {
                 MessageEmbed embed = embeds.get(0);
                 EmbedBuilder builder = new EmbedBuilder(embed);
-                String name = "attachment://" + images.keySet().iterator().next();
+                String imgName;
+                if (images.size() == 1) {
+                    Map.Entry<String, byte[]> entry = images.entrySet().iterator().next();
+                    imgName = entry.getKey();
+                } else {
+                    imgName = "img.png";
+                }
+                String name = "attachment://" + imgName;
                 builder.setImage(name);
                 embeds.set(0, builder.build());
             }
@@ -188,8 +215,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         } else if (!remapLongCommands.isEmpty()) {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
-
-        if (includeContent && (!files.isEmpty() || !images.isEmpty())) {
+        if (includeContent && (!files.isEmpty() || !images.isEmpty() || !tables.isEmpty())) {
             List<FileUpload> upload = new ArrayList<>();
             for (Map.Entry<String, byte[]> entry : files.entrySet()) {
                 upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
@@ -197,7 +223,18 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             for (Map.Entry<String, byte[]> entry : images.entrySet()) {
                 upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
             }
-            discBuilder.setFiles(upload);
+            for (GraphMessageInfo gmi : tables) {
+                try {
+                    byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat());
+//                    String name = gmi.table().getName();
+                    upload.add(FileUpload.fromData(imgData, "img.png"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (!upload.isEmpty()) {
+                discBuilder.setFiles(upload);
+            }
         }
         if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
 
@@ -205,62 +242,10 @@ public class DiscordMessageBuilder extends AMessageBuilder {
     }
 
     @Override
-    public User getAuthor() {
-        return author;
-    }
-
-    @Override
-    public List<MessageEmbed> getEmbeds() {
-        return embeds;
-    }
-
-    @Override
-    public long getTimeCreated() {
-        return timeCreated;
-    }
-
-    @Override
-    public CompletableFuture<IMessageBuilder> send() {
-        return parent.send(this);
-    }
-
-    @Override
-    public long getId() {
-        return id;
-    }
-
-    @Override
-    public IMessageBuilder clear() {
-        content.setLength(0);
-        buttons.clear();
-        embeds.clear();
-        images.clear();
-        files.clear();
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder clearEmbeds() {
-        embeds.clear();
-        return this;
-    }
-
-    @Override
     public IMessageBuilder clearButtons() {
         this.buttons.clear();
         this.remapLongCommands.clear();
         return this;
-    }
-
-    @Override
-    public IMessageBuilder append(String content) {
-        this.content.append(content);
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder embed(String title, String body) {
-        return embed(title, body, null);
     }
 
     @Override
@@ -277,24 +262,6 @@ public class DiscordMessageBuilder extends AMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder embed(MessageEmbed embed) {
-        this.embeds.add(embed);
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder commandInline(CommandRef ref) {
-        content.append(ref.toSlashCommand());
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder commandLinkInline(CommandRef ref) {
-        content.append(ref.toSlashMention());
-        return this;
-    }
-
-    @Override
     public IMessageBuilder commandButton(String command, String message) {
         if (command.length() > ID_MAX_LENGTH) {
             int id = remapLongCommands.size();
@@ -304,37 +271,9 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             remapLongCommands.put(command, cmdLong);
         }
         if (message.equalsIgnoreCase("cancel") || message.equalsIgnoreCase("dismiss")) {
-            buttons.add(Button.danger(command, message));
+            buttons.put(command, message);
         } else {
-            buttons.add(Button.primary(command, message));
-        }
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder linkButton(String url, String message) {
-        buttons.add(Button.link(url, message));
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder image(String name, byte[] data) {
-        images.put(name, data);
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder file(String name, byte[] data) {
-        files.put(name, data);
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
-        try {
-            images.put("img.png", table.write(timeFormat, numberFormat));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            buttons.put(command, message);
         }
         return this;
     }

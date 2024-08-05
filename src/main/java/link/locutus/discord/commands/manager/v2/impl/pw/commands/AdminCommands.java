@@ -2731,26 +2731,37 @@ public class AdminCommands {
 
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);
-        List<StringMessageBuilder> condensed = new ArrayList<>();
+        StringMessageBuilder condensed = new StringMessageBuilder(db.getGuild());
+        Runnable sendTask = new Runnable() {
+            @Override
+            public void run() {
+                if (!condensed.isEmpty()) {
+                    IMessageBuilder msg = io.create();
+                    condensed.flatten();
+                    condensed.writeTo(msg);
+                    msg.send();
+                    condensed.clear();
+                }
+            }
+        };
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
             String formattedCmd = formatFunc.apply(nation);
             try {
                 Map.Entry<CommandResult, List<StringMessageBuilder>> response = me.runCommandInternally(db.getGuild(), user, formattedCmd);
-                response.append(nation.getMarkdownUrl() + ": " + result.getKey() + "\n" + result.getValue() + "\n---\n");
+                condensed.append("# " + nation.getMarkdownUrl() + ": " + response.getKey() + "\n");
+                for (StringMessageBuilder msg : response.getValue()) {
+                    msg.writeTo(condensed);
+                }
             } catch (Throwable e) {
-                response.append(nation.getMarkdownUrl() + ": Error: " + e.getMessage());
+                condensed.append("# " + nation.getMarkdownUrl() + ": " + StringMan.stripApiKey(e.getMessage()) + "\n");
             }
             if (-start + (start = System.currentTimeMillis()) > 5000) {
-                io.sendMessage(response.toString());
-                response.setLength(0);
+                sendTask.run();
             }
-
         }
-        if (response.length() > 0) {
-            io.sendMessage(response.toString());
-        }
+        sendTask.run();
         return "Done!";
     }
 

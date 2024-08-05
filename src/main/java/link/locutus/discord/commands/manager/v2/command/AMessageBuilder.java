@@ -8,6 +8,7 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONArray;
@@ -29,6 +30,31 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     public long id;
     public long timeCreated;
     public User author;
+
+    public void flatten() {
+        for (MessageEmbed embed : embeds) {
+            content.append("## " + embed.getTitle() + "\n");
+            content.append(">>> " + embed.getDescription() + "\n");
+            MessageEmbed.Footer embedFooter = embed.getFooter();
+            String footerText = embedFooter != null ? embedFooter.getText() : null;
+            List<MessageEmbed.Field> fields = embed.getFields();
+            if (fields != null) {
+                for (MessageEmbed.Field field : fields) {
+                    content.append("> **" + field.getName() + "**: " + field.getValue() + "\n");
+                }
+            }
+            if (footerText != null && footerText.isEmpty()) {
+                content.append("> _" + footerText + "_\n");
+            }
+            embeds.clear();
+            buttons.clear();
+            for (Map.Entry<String, String> entry : links.entrySet()) {
+                content.append("> [" + entry.getValue() + "](" + entry.getKey() + ")\n");
+            }
+            links.clear();
+        }
+
+    }
 
     public AMessageBuilder(IMessageIO parent, long id, long timeCreated, User author) {
         this.parent = parent;
@@ -103,7 +129,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         if (!tables.isEmpty()) {
             List<JsonObject> tableArray = (List<JsonObject>) root.computeIfAbsent("tables", k -> new ArrayList<>());
             for (GraphMessageInfo tableInfo : tables) {
-                tableArray.add(tableInfo.table.toHtmlJson(tableInfo.timeFormat, tableInfo.numberFormat, tableInfo.origin));
+                tableArray.add(tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.origin()));
             }
             root.put("tables", tableArray);
         }
@@ -217,16 +243,20 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         return this;
     }
 
+    private Guild getGuildOrNull() {
+        return parent != null ? parent.getGuildOrNull() : null;
+    }
+
     public String toSimpleHtml(boolean includeFiles, boolean includeButtons) {
         StringBuilder html = new StringBuilder();
-        html.append("<p>").append(MarkupUtil.markdownToHTML(content.toString())).append("</p>");
+        html.append("<p>").append(MarkupUtil.formatDiscordMarkdown(content.toString(), getGuildOrNull())).append("</p>");
         for (MessageEmbed embed : embeds) {
             String title = embed.getTitle();
-            String description = MarkupUtil.markdownToHTML(embed.getDescription());
+            String description = MarkupUtil.formatDiscordMarkdown(embed.getDescription(), getGuildOrNull());
             String footerText = null;
             MessageEmbed.Footer footer = embed.getFooter();
             if (footer != null) {
-                footerText = MarkupUtil.markdownToHTML(footer.getText());
+                footerText = MarkupUtil.formatDiscordMarkdown(footer.getText(), getGuildOrNull());
             }
             List<MessageEmbed.Field> fields = embed.getFields();
             StringBuilder embedHtml = new StringBuilder();
@@ -275,9 +305,9 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
         for (GraphMessageInfo gi : tables) {
             try {
-                byte[] imgData = gi.table.write(gi.timeFormat, gi.numberFormat);
+                byte[] imgData = gi.table().write(gi.timeFormat(), gi.numberFormat());
                 String base64String = Base64.getEncoder().encodeToString(imgData);
-                html.append("<img class=\"img-rounded\" src=\"data:image/png;base64,").append(base64String).append("\" alt=\"").append(gi.table.getName()).append("\">");
+                html.append("<img class=\"img-rounded\" src=\"data:image/png;base64,").append(base64String).append("\" alt=\"").append(gi.table().getName()).append("\">");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -308,7 +338,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             output.file(entry.getKey(), entry.getValue());
         }
         for (GraphMessageInfo table : tables) {
-            output.graph(table.table, table.timeFormat, table.numberFormat, table.origin);
+            output.graph(table.table(), table.timeFormat(), table.numberFormat(), table.origin());
         }
         return output;
     }

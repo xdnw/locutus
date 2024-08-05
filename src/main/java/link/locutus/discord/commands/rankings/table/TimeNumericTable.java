@@ -655,10 +655,10 @@ public abstract class TimeNumericTable<T> {
             }
         }
         if (isBar()) {
-            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(), false));
+            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(timeFormat, numberFormat, origin), false));
         } else {
             boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE;
-            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(), isTime));
+            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(timeFormat, numberFormat, origin), isTime));
         }
         return html;
     }
@@ -680,7 +680,7 @@ public abstract class TimeNumericTable<T> {
             msg = msg.graph(this, timeFormat, numberFormat, originDate);
             String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
             if (attachJson) {
-                msg = msg.file(name + ".json", toHtmlJson().toString());
+                msg = msg.file(name + ".json", toHtmlJson(timeFormat, numberFormat, originDate).toString());
             }
             if (attachCsv) {
                 msg = msg.file(name + ".csv", toCsv());
