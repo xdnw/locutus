@@ -1,10 +1,20 @@
 package link.locutus.discord.util;
 
 import com.overzealous.remark.Remark;
+import com.vladsch.flexmark.ast.FencedCodeBlock;
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.html.HtmlWriter;
+import com.vladsch.flexmark.html.renderer.NodeRenderer;
+import com.vladsch.flexmark.html.renderer.NodeRendererContext;
+import com.vladsch.flexmark.html.renderer.NodeRendererFactory;
+import com.vladsch.flexmark.html.renderer.NodeRenderingHandler;
+import com.vladsch.flexmark.html2md.converter.HtmlNodeRenderer;
+import com.vladsch.flexmark.html2md.converter.HtmlNodeRendererFactory;
+import com.vladsch.flexmark.html2md.converter.HtmlNodeRendererHandler;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.data.DataHolder;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.external.guild.KeyStore;
@@ -321,18 +331,39 @@ public class MarkupUtil {
         return sb.toString();
     }
 
+    public static class CustomCodeBlockRenderer implements NodeRenderer {
+
+        @Override
+        public Set<NodeRenderingHandler<?>> getNodeRenderingHandlers() {
+            Set<NodeRenderingHandler<?>> set = new HashSet<>();
+            set.add(new NodeRenderingHandler<>(FencedCodeBlock.class, (node, context, html) -> {
+                String content = node.getContentChars().toString().replace("\n", "<br>");
+                html.line().rawPre("<pre>" + content + "</pre>").line();
+            }));
+            return set;
+        }
+
+        public static class Factory implements NodeRendererFactory {
+            @Override
+            public NodeRenderer apply(DataHolder options) {
+                return new CustomCodeBlockRenderer();
+            }
+        }
+    }
+
     private static final MutableDataSet MARKDOWN_TO_HTML = new MutableDataSet();
     private static final Parser MARKDOWN_PARSER;
     private static final HtmlRenderer MARKDOWN_RENDERER;
     static {
         MARKDOWN_TO_HTML.set(Parser.EXTENSIONS, Arrays.asList(StrikethroughExtension.create()));
         MARKDOWN_TO_HTML.set(HtmlRenderer.SOFT_BREAK, "<br />");
+        MARKDOWN_TO_HTML.set(HtmlRenderer.HARD_BREAK, "<br />");
         MARKDOWN_PARSER = Parser.builder(MARKDOWN_TO_HTML).build();
-        MARKDOWN_RENDERER = HtmlRenderer.builder(MARKDOWN_TO_HTML).build();
+        MARKDOWN_RENDERER = HtmlRenderer.builder(MARKDOWN_TO_HTML).nodeRendererFactory(new CustomCodeBlockRenderer.Factory()).build();
     }
 
     public static String markdownToHTML(String source) {
-        source = source.replaceAll("``` ", "```\n");
+        source = source.replaceAll("``` ", "\n```\n");
         Node document = MARKDOWN_PARSER.parse(source);
         String html = MARKDOWN_RENDERER.render(document).trim();
         if (html.startsWith("<p>") && html.endsWith("</p>")) {
