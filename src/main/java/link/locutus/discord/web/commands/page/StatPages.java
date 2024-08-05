@@ -13,6 +13,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.SphereGenerator;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -81,7 +83,7 @@ public class StatPages {
     public Object radiationStats(WebStore ws, Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, start, end);
-        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
+        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, startTurn);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
     }
 
@@ -96,8 +98,11 @@ public class StatPages {
         if (startTurn < endTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
         if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
 
+        Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
+        TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
+
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
-        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
+        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, format, startTurn);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
     }
 
@@ -163,7 +168,7 @@ public class StatPages {
 
         TimeNumericTable table = TimeNumericTable.create(title, metric, nations, coalitionNames, groupBy, total);
 
-        JsonObject data = table.toHtmlJson();
+        JsonObject data = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0);
         title = table.getName();
 
         String finalTitle = title;
@@ -219,7 +224,7 @@ public class StatPages {
 
 
         TimeNumericTable table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
-        JsonObject json = table.toHtmlJson();
+        JsonObject json = table.toHtmlJson(TimeFormat.TURN_TO_DATE, metric.getFormat(), startTurn);
         title = table.getName();
         String finalTitle = title;
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, json, true));
