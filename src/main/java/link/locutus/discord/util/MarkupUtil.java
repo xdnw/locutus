@@ -342,7 +342,6 @@ public class MarkupUtil {
             }
             html = transformURLIntoLinks(html);
         }
-        System.out.println("HTML " + html);
         return html.replaceAll("\n", "");
 //
 //        source = source.replace("_", "\u200B\t").replace(" * ", "\u200B\r");
