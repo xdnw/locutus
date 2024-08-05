@@ -363,8 +363,10 @@ public class MarkupUtil {
     }
 
     public static String markdownToHTML(String source) {
-        source = source.replaceAll("``` ", "\n```\n");
+        source = source.replaceAll("```(?:csv|json|ansi|md|diff)?", "\n```$0\n");
         source = source.replaceAll("\n\n```", "\n```");
+        source = source.replaceAll("(```(?:csv|json|ansi|md|diff)?)\n\n", "$1\n");
+
         Node document = MARKDOWN_PARSER.parse(source);
         String html = MARKDOWN_RENDERER.render(document).trim();
         if (html.startsWith("<p>") && html.endsWith("</p>")) {
