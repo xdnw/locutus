@@ -53,22 +53,22 @@ public interface IMessageBuilder {
 
     public Map<String, byte[]> getFiles();
 
-    static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
+    static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons, boolean includeTables) {
         Map<String, Object> root = new LinkedHashMap<>();
         if (appendText != null && !appendText.isEmpty()) root.put("content", appendText);
         if (messages != null) {
             for (IMessageBuilder message : messages) {
-                message.addJson(root, includeFiles, includeButtons);
+                message.addJson(root, includeFiles, includeButtons, includeTables);
             }
         }
         return StringMan.toJson(root);
     }
 
-    public abstract void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons);
+    public abstract void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables);
 
     default JsonElement toJson() {
         Map<String, Object> root = new LinkedHashMap<>();
-        addJson(root, true, true);
+        addJson(root, true, true, true);
         return StringMan.toJson(root);
     }
 

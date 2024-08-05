@@ -124,7 +124,7 @@ public class StatPages {
     @Command()
     public Object metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
-        JsonObject json = table.toHtmlJson();
+        JsonObject json = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0);
         return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, table.getName(), json, false));
     }
 

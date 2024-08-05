@@ -98,7 +98,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons) {
+    public void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables) {
         if (!content.isEmpty()) {
             String existing = root.computeIfAbsent("content", k -> "").toString();
             root.put("content", existing + content.toString());
@@ -126,12 +126,14 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                 root.put("buttons", buttonInfo);
             }
         }
-        if (!tables.isEmpty()) {
-            List<JsonObject> tableArray = (List<JsonObject>) root.computeIfAbsent("tables", k -> new ArrayList<>());
-            for (GraphMessageInfo tableInfo : tables) {
-                tableArray.add(tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.origin()));
+        if (includeTables) {
+            if (!tables.isEmpty()) {
+                List<JsonObject> tableArray = (List<JsonObject>) root.computeIfAbsent("tables", k -> new ArrayList<>());
+                for (GraphMessageInfo tableInfo : tables) {
+                    tableArray.add(tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.origin()));
+                }
+                root.put("tables", tableArray);
             }
-            root.put("tables", tableArray);
         }
         if (includeFiles) {
             Map<String, String> attachments = (Map<String, String>) root.computeIfAbsent("attachments", k -> new LinkedHashMap<>());
@@ -446,6 +448,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     @Override
     public IMessageBuilder image(String name, byte[] data) {
+        if (!name.endsWith(".png") || !name.endsWith(".jpg")) throw new IllegalArgumentException("Invalid image extension (only png jpg supported): `" + name + "`");
         images.put(name, data);
         return this;
     }
