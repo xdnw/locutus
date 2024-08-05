@@ -1,6 +1,11 @@
 package link.locutus.discord.util;
 
 import com.overzealous.remark.Remark;
+import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension;
+import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.data.MutableDataSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.external.guild.KeyStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -26,11 +31,8 @@ import org.primeframework.transformer.service.BBCodeParser;
 import org.primeframework.transformer.service.BBCodeToHTMLTransformer;
 import org.primeframework.transformer.service.Transformer;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,6 +46,25 @@ public class MarkupUtil {
     private static final Pattern MENTIONED_ROLE = Pattern.compile("<@&([0-9]{11,21})>");
     private static final Pattern MENTIONED_CHANNEL = Pattern.compile("<#([0-9]{11,21})>");
     private static final Pattern MENTIONED_USER = Pattern.compile("<@!?([0-9]{11,21})>");
+    private static final Pattern MENTIONED_TIMESTAMP = Pattern.compile("<t:([0-9]+)(?::[a-zA-Z])?>");
+
+    public static String formatQuotedTimestamps(String input) {
+        Matcher m = MENTIONED_TIMESTAMP.matcher(input);
+            StringBuffer sb = new StringBuffer();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'");
+            dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+            String url = "https://www.epochconverter.com/countdown?q="; // Plus the time in either millis or seconds
+
+            while (m.find()) {
+                long timestamp = Long.parseLong(m.group(1)) * 1000; // Convert seconds to milliseconds
+                Date date = new Date(timestamp);
+                String formattedDate = dateFormat.format(date);
+                String urlDate = "<a href=\"" + url + timestamp + "\">" + formattedDate + "</a>";
+                m.appendReplacement(sb, formattedDate);
+            }
+            m.appendTail(sb);
+            return sb.toString();
+        }
 
     public static String formatQuotedCommands(String input) {
         Matcher m = QUOTED_COMMAND.matcher(input);
@@ -139,6 +160,7 @@ public class MarkupUtil {
         input = formatQuotedCommands(input);
         input = formatMentionedCommands(input);
         input = formatMentionedUsers(input);
+        input = formatQuotedTimestamps(input);
         if (guild != null) {
             input = formatMentionedRoles(input, guild);
             input = formatMentionedChannels(input, guild);
@@ -299,15 +321,36 @@ public class MarkupUtil {
         return sb.toString();
     }
 
+    private static final MutableDataSet MARKDOWN_TO_HTML = new MutableDataSet();
+    private static final Parser MARKDOWN_PARSER;
+    private static final HtmlRenderer MARKDOWN_RENDERER;
+    static {
+        MARKDOWN_TO_HTML.set(Parser.EXTENSIONS, Arrays.asList(StrikethroughExtension.create()));
+        MARKDOWN_PARSER = Parser.builder(MARKDOWN_TO_HTML).build();
+        MARKDOWN_RENDERER = HtmlRenderer.builder(MARKDOWN_TO_HTML).build();
+    }
+
     public static String markdownToHTML(String source) {
-        source = source.replace("_", "\u200B\t").replace(" * ", "\u200B\r");
-        source = source.replaceAll("```", "`");
-        TextProcessor processor = BBProcessorFactory.getInstance()
-                .createFromResource(ConfigurationFactory.MARKDOWN_CONFIGURATION_FILE);
-        source = processor.process(source);
-        source = source.replace("\n", "<br>").replace("\u200B\r", " * ").replace("\u200B\t", "_");
-        source = transformURLIntoLinks(source);
-        return source;
+        source = source.replaceAll("``` ", "```\n");
+        Node document = MARKDOWN_PARSER.parse(source);
+        String html = MARKDOWN_RENDERER.render(document).trim();
+        if (html.startsWith("<p>") && html.endsWith("</p>")) {
+            int lastIndex = html.lastIndexOf("<p>");
+            if (lastIndex == 0) {
+                html = html.substring(3, html.length() - 4);
+            }
+            html = transformURLIntoLinks(html);
+        }
+        return html.replaceAll("\n", "");
+//
+//        source = source.replace("_", "\u200B\t").replace(" * ", "\u200B\r");
+//        source = source.replaceAll("```", "`");
+//        TextProcessor processor = BBProcessorFactory.getInstance()
+//                .createFromResource(ConfigurationFactory.MARKDOWN_CONFIGURATION_FILE);
+//        source = processor.process(source);
+//        source = source.replace("\n", "<br>").replace("\u200B\r", " * ").replace("\u200B\t", "_");
+//        source = transformURLIntoLinks(source);
+//        return source;
     }
 
     public static String htmlToBBCode(String source) {

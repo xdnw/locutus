@@ -18,6 +18,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import static link.locutus.discord.util.MarkupUtil.formatDiscordMarkdown;
+import static link.locutus.discord.util.MarkupUtil.markdownToHTML;
+
 public abstract class AMessageBuilder implements IMessageBuilder {
     public final StringBuilder content = new StringBuilder();
     public final Map<String, String> buttons = new LinkedHashMap<>();
@@ -194,9 +197,9 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             for (var buttonJson : json.getAsJsonArray("buttons")) {
                 JsonObject buttonObj = buttonJson.getAsJsonObject();
                 if (buttonObj.has("cmd")) {
-                    this.buttons.put(buttonObj.get("cmd").getAsString(), buttonObj.get("label").getAsString());
+                    commandButton(buttonObj.get("cmd").getAsString(), buttonObj.get("label").getAsString());
                 } else if (buttonObj.has("href")) {
-                    this.links.put(buttonObj.get("href").getAsString(), buttonObj.get("label").getAsString());
+                    linkButton(buttonObj.get("href").getAsString(), buttonObj.get("label").getAsString());
                 }
             }
         }
@@ -251,14 +254,14 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     public String toSimpleHtml(boolean includeFiles, boolean includeButtons) {
         StringBuilder html = new StringBuilder();
-        html.append("<p>").append(MarkupUtil.formatDiscordMarkdown(content.toString(), getGuildOrNull())).append("</p>");
+        html.append("<p>").append(markdownToHTML(formatDiscordMarkdown(content.toString(), getGuildOrNull()))).append("</p>");
         for (MessageEmbed embed : embeds) {
             String title = embed.getTitle();
-            String description = MarkupUtil.formatDiscordMarkdown(embed.getDescription(), getGuildOrNull());
+            String description = markdownToHTML(formatDiscordMarkdown(embed.getDescription(), getGuildOrNull()));
             String footerText = null;
             MessageEmbed.Footer footer = embed.getFooter();
             if (footer != null) {
-                footerText = MarkupUtil.formatDiscordMarkdown(footer.getText(), getGuildOrNull());
+                footerText = markdownToHTML(formatDiscordMarkdown(footer.getText(), getGuildOrNull()));
             }
             List<MessageEmbed.Field> fields = embed.getFields();
             StringBuilder embedHtml = new StringBuilder();
@@ -278,6 +281,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                 embedHtml.append("<sub>").append(footerText).append("</sub>");
             }
             embedHtml.append("</div>");
+            html.append(embedHtml);
         }
 
 
@@ -292,7 +296,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                 String name = entry.getKey();
                 // use <pre>
                 html.append("<h3>").append(name).append("</h3>");
-                html.append("<pre>").append(new String(entry.getValue())).append("</pre>\n");
+                html.append("<pre>").append(new String(entry.getValue())).append("</pre><br />");
             }
         }
         if (includeButtons) {
@@ -325,13 +329,13 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     public IMessageBuilder writeTo(IMessageBuilder output) {
         if (!content.isEmpty()) output.append(content.toString());
         for (MessageEmbed embed : embeds) {
-            embed(embed);
+            output.embed(embed);
         }
         for (Map.Entry<String, String> entry : buttons.entrySet()) {
-            output.commandButton(entry.getValue(), entry.getKey());
+            output.commandButton(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, String> entry : links.entrySet()) {
-            output.linkButton(entry.getValue(), entry.getKey());
+            output.linkButton(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, byte[]> entry : images.entrySet()) {
             output.image(entry.getKey(), entry.getValue());

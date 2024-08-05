@@ -90,7 +90,7 @@ def currentArchitecture = DefaultNativePlatform.getCurrentArchitecture()
 
 dependencies {
     implementation 'org.lz4:lz4-java:1.8.0'
-
+    implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
     implementation 'org.jgrapht:jgrapht-core:1.5.2'
     implementation 'org.jgrapht:jgrapht-ext:1.5.2'
     implementation 'com.amazonaws:aws-java-sdk-bom:1.12.649'

@@ -1834,11 +1834,10 @@ public class IACommands {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.MAIL_RESPONSES_SHEET);
         }
-        if (body != null) {
-            GPTUtil.checkThrowModeration(body + "\n" + command);
-        } else {
-            GPTUtil.checkThrowModeration(command);
-        }
+        String checkModMsg = command;
+        if (subject != null) checkModMsg += subject;
+        if (body != null) checkModMsg += body;
+        GPTUtil.checkThrowModeration(checkModMsg);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -1893,7 +1892,7 @@ public class IACommands {
 
             if (respType == CommandResult.SUCCESS) {
                 if (!bodyFormat.isEmpty()) {
-                    bodyFormat = MarkupUtil.markdownToHTML(bodyFormat) + "<br>";
+                    bodyFormat = bodyFormat + "\n";
                 }
 
                 header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
@@ -2069,6 +2068,7 @@ public class IACommands {
                         msg.send();
                         result.add("\n- **dm**: Sent dm");
                     } catch (Throwable e) {
+                        e.printStackTrace();
                         result.add("\n- **dm**: Failed to send dm (`" + e.getMessage() + "`)");
                     }
                 }

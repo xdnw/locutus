@@ -92,9 +92,6 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             });
             resortList(rssSorted);
         }
-        for (Building building : rssSorted) {
-            System.out.println("rmv:|| " + building.name() + " " + rssBuildings.get(building) + " profit");
-        }
 
         List<Building> allBuildings = new ArrayList<>(rssSorted);
         for (Building building : Buildings.values()) {
@@ -104,9 +101,6 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             if (building instanceof ServiceBuilding) allBuildings.add(building);
         }
         this.buildings = allBuildings.toArray(new Building[0]);
-        for (Building building : buildings) {
-            System.out.println("rmv:|| All " + building.name());
-        }
     }
 
     private static void resortList(List<Building> rssSorted) {
