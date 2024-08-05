@@ -70,7 +70,7 @@ public class MarkupUtil {
                 Date date = new Date(timestamp);
                 String formattedDate = dateFormat.format(date);
                 String urlDate = "<a href=\"" + url + timestamp + "\">" + formattedDate + "</a>";
-                m.appendReplacement(sb, formattedDate);
+                m.appendReplacement(sb, urlDate);
             }
             m.appendTail(sb);
             return sb.toString();
