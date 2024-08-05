@@ -377,15 +377,6 @@ public class MarkupUtil {
             html = transformURLIntoLinks(html);
         }
         return html.replaceAll("\n", "");
-//
-//        source = source.replace("_", "\u200B\t").replace(" * ", "\u200B\r");
-//        source = source.replaceAll("```", "`");
-//        TextProcessor processor = BBProcessorFactory.getInstance()
-//                .createFromResource(ConfigurationFactory.MARKDOWN_CONFIGURATION_FILE);
-//        source = processor.process(source);
-//        source = source.replace("\n", "<br>").replace("\u200B\r", " * ").replace("\u200B\t", "_");
-//        source = transformURLIntoLinks(source);
-//        return source;
     }
 
     public static String htmlToBBCode(String source) {
