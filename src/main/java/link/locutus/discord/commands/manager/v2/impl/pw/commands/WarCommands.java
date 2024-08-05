@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -41,12 +42,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.BeigeReason;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationScoreMap;
-import link.locutus.discord.pnw.SimpleNationList;
-import link.locutus.discord.pnw.Spyop;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -2472,6 +2468,111 @@ public class WarCommands {
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
+    @Command(desc = """
+            Generate a sheet of per nation bank deposit/withdraw activity over a timeframe
+            The columns represent the time unit (either turns or days) when bank transfers occur for each nation
+            A positive value represents a deposit, a negative value represents a withdrawal
+            When both are specified, the net deposit/withdrawal is shown""")
+    public String DepositSheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+                                  boolean deposit,
+                                  boolean withdraw,
+                                  @Arg("Date to start from")
+                                  @Timestamp long start_time,
+                                  @Timestamp long end_time,
+                                  @Switch("d") boolean split_deposit_withdraw,
+                                  @Switch("t") boolean by_turn,
+                                  @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (split_deposit_withdraw && (!deposit || !withdraw)) {
+            throw new IllegalArgumentException("Splitting off and def requires both `off` and `def` to be true");
+        }
+        if (!deposit && !withdraw) {
+            throw new IllegalArgumentException("At least one of `off` or `def` must be true");
+        }
+        long startTurn = TimeUtil.getTurn(start_time);
+        long endTurn = TimeUtil.getTurn(end_time);
+
+        long endDay = TimeUtil.getDay(TimeUtil.getTimeFromTurn(TimeUtil.getTurn(end_time) + 11));
+        long startDay = TimeUtil.getDay(start_time);
+
+        long numDays = endDay - startDay + 1;
+        if (numDays > 365) {
+            throw new IllegalArgumentException("Too many days: `" + numDays + " (max 365)");
+        }
+        if (endTurn <= startTurn) {
+            throw new IllegalArgumentException("End time must be after start time (2h)");
+        }
+        if (by_turn && endTurn - startTurn > 365) {
+            throw new IllegalArgumentException("Too many turns: `" + (endTurn - startTurn + 1) + " (max 365)");
+        }
+
+        Set<Long> nationIds = new LongOpenHashSet(nations.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet()));
+        List<Transaction2> records = Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver(nationIds, nationIds, start_time, end_time);
+        Predicate<Integer> allowNation = f -> nationIds.contains((long) f);
+
+        NationDB natDb = Locutus.imp().getNationDB();
+        Map<Integer, Map<Long, Double>> deposited = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Map<Long, Double>> withdrawn = new Int2ObjectOpenHashMap<>();
+        Function<Transaction2, Long> toTime = by_turn ? f -> TimeUtil.getTurn(f.getDate()) : f -> TimeUtil.getDay(f.getDate());
+        for (Transaction2 tx : records) {
+            long time = toTime.apply(tx);
+            if (tx.isSenderNation() && allowNation.test((int) tx.sender_id)) {
+                deposited.computeIfAbsent((int) tx.sender_id, f -> new Long2DoubleOpenHashMap()).merge(time, tx.convertedTotal(), Double::sum);
+            } else if (tx.isReceiverNation() && allowNation.test((int) tx.receiver_id)) {
+                withdrawn.computeIfAbsent((int) tx.receiver_id, f -> new Long2DoubleOpenHashMap()).merge(time, tx.convertedTotal(), Double::sum);
+            }
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, by_turn ? SheetKey.ACTIVITY_SHEET_TURN : SheetKey.ACTIVITY_SHEET_DAY);
+        }
+
+        long startUnit = by_turn ? startTurn : startDay;
+        long endUnit = by_turn ? endTurn : endDay;
+
+        List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
+        for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
+            long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
+            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(format.format(new Date(time)));
+        }
+
+        sheet.setHeader(header);
+        for (DBNation nation : nations) {
+            Map<Long, Double> depActivity = deposited.getOrDefault(nation.getNation_id(), new Long2DoubleOpenHashMap());
+            Map<Long, Double> withActivity = withdrawn.getOrDefault(nation.getNation_id(), new Long2DoubleOpenHashMap());
+            Function<Long, String> formatFunc;
+            if (split_deposit_withdraw) {
+                formatFunc = f -> {
+                    double depAmt = depActivity.getOrDefault(f, 0d);
+                    double withAmt = withActivity.getOrDefault(f, 0d);
+                    if (depAmt == 0 && withAmt == 0) return "";
+                    return MathMan.format(depAmt) + "/" + MathMan.format(withAmt);
+                };
+            } else {
+                formatFunc = f -> {
+                    double amt = (depActivity.getOrDefault(f, 0d) - withActivity.getOrDefault(f, 0d));
+                    return amt == 0 ? "" : MathMan.format(amt);
+                };
+            }
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+            header.set(2, nation.getCities() + "");
+            int index = 3;
+            for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
+                header.set(index, formatFunc.apply(timeUnit));
+                index++;
+            }
+            sheet.addRow(header);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "activity").send();
+        return null;
+    }
+
+    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Note: use the other activity sheet need info of a deleted nation\n" +
@@ -2488,7 +2589,8 @@ public class WarCommands {
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
-    @Command(desc = "Generate a sheet of nation war declare activity from a nation id over a timeframe")
+    @Command(desc = "Generate a sheet of per nation war declare activity over a timeframe\n" +
+            "The columns represent the time unit (either turns or days) when wars are declared for each nation")
     public String WarDecSheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
                                     boolean off,
                                     boolean def,

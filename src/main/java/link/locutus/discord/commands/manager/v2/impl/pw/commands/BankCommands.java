@@ -2655,11 +2655,15 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of in-game transfers for nations")
     @RolePermission(value = Roles.ECON)
-    public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, @AllowDeleted Set<NationOrAlliance> senders, @AllowDeleted Set<NationOrAlliance> receivers,  @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, @AllowDeleted Set<NationOrAlliance> senders, @AllowDeleted Set<NationOrAlliance> receivers,
+                                           @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long start_time,
+                                           @Switch("e") @Timestamp Long end_time,
+                                           @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+        if (end_time == null) end_time = Long.MAX_VALUE;
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
-        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver(senderIds, receiverIds, timeframe);
+        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver(senderIds, receiverIds, start_time, end_time);
         transactions.removeIf(transaction2 -> {
             NationOrAllianceOrGuild sender = transaction2.getSenderObj();
             NationOrAllianceOrGuild receiver = transaction2.getReceiverObj();

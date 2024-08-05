@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.*;
+import com.politicsandwar.graphql.model.SortOrder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -30,14 +31,8 @@ import org.example.jooq.bank.tables.records.TaxDepositsDateRecord;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jooq.Condition;
-import org.jooq.GroupField;
-import org.jooq.Index;
-import org.jooq.InsertSetMoreStep;
-import org.jooq.Query;
+import org.jooq.*;
 import org.jooq.Record;
-import org.jooq.Result;
-import org.jooq.SortField;
 import org.jooq.exception.InvalidResultException;
 import org.jooq.impl.DSL;
 
@@ -723,8 +718,29 @@ public class BankDB extends DBMainV3 {
         return getTransactions(TRANSACTIONS_2.TX_ID.in(idsSorted), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
-    public List<Transaction2> getTransactionsByBySenderOrReceiver(Set<Long> senders, Set<Long> receivers, long minDateMs) {
-        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.SENDER_ID.in(senders).and(TRANSACTIONS_2.RECEIVER_ID.in(receivers))), TRANSACTIONS_2.TX_ID.desc(), null);
+    public List<Transaction2> getTransactionsByBySenderOrReceiver(Set<Long> senders, Set<Long> receivers, long minDateMs, long maxDateMs) {
+        List<Condition> addConditions = new ArrayList<>();
+        if (minDateMs > 0) {
+            addConditions.add(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs));
+        }
+        if (maxDateMs != Long.MAX_VALUE) {
+            addConditions.add(TRANSACTIONS_2.TX_DATETIME.le(maxDateMs));
+        }
+        if (senders.size() > 0) {
+            if (senders.size() == 1) {
+                addConditions.add(TRANSACTIONS_2.SENDER_ID.eq(senders.iterator().next()));
+            } else {
+                addConditions.add(TRANSACTIONS_2.SENDER_ID.in(senders));
+            }
+        }
+        if (receivers.size() > 0) {
+            if (receivers.size() == 1) {
+                addConditions.add(TRANSACTIONS_2.RECEIVER_ID.eq(receivers.iterator().next()));
+            } else {
+                addConditions.add(TRANSACTIONS_2.RECEIVER_ID.in(receivers));
+            }
+        }
+        return getTransactions(DSL.and(addConditions), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public List<Transaction2> getTransactionsByBySender(Set<Long> senders, long minDateMs) {

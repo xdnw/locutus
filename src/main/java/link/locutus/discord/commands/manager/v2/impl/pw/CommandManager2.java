@@ -242,6 +242,7 @@ public class CommandManager2 {
 
         getCommands().registerMethod(new WarCommands(), List.of("sheets_ia"), "ActivitySheetDate", "activity_date");
         getCommands().registerMethod(new WarCommands(), List.of("sheets_ia"), "WarDecSheetDate", "declares_date");
+        getCommands().registerMethod(new WarCommands(), List.of("sheets_ia"), "DepositSheetDate", "deposits_date");
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "unsetNews", "subscribe");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "settings"), "unsetKeys", "unset");
