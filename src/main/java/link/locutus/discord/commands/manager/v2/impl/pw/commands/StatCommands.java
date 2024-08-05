@@ -1529,6 +1529,24 @@ public class StatCommands {
         return "Done!";
     }
 
+    @Command(desc = "Compare the metric over time between multiple alliances")
+    public String militarizationTime(@Me IMessageIO channel, DBAlliance alliance, @Default("7d") @Timediff long start_time,
+                                     @Switch("e") @Timestamp Long end_time,
+                                     @Switch("j") boolean attach_json,
+                                     @Switch("c") boolean attach_csv) throws IOException {
+        if (end_time == null) end_time = System.currentTimeMillis();
+        end_time = Math.max(end_time, System.currentTimeMillis());
+        start_time = end_time - start_time;
+
+        long endTurn = Math.min(TimeUtil.getTurn(), TimeUtil.getTurn(end_time));
+        long startTurn = TimeUtil.getTurn(start_time);
+
+        List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
+        TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
+        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, start_time, attach_json, attach_csv);
+        return "Done!";
+    }
+
     @Command(desc = "Graph an alliance metric over time for two coalitions")
     public String allianceMetricsAB(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")

@@ -239,6 +239,7 @@ public class CommandManager2 {
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "costBulk", "cost");
+        getCommands().registerMethod(new GrantCommands(), List.of("alliance", "stats"), "militarizationTime", "militarization_time");
 
         getCommands().registerMethod(new WarCommands(), List.of("sheets_ia"), "ActivitySheetDate", "activity_date");
         getCommands().registerMethod(new WarCommands(), List.of("sheets_ia"), "WarDecSheetDate", "declares_date");
