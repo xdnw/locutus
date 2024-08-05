@@ -6,8 +6,11 @@
 @import java.util.Set
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.rankings.SphereGenerator
+@import link.locutus.discord.commands.rankings.table.TableNumberFormat
+@import link.locutus.discord.commands.rankings.table.TimeFormat
 @import link.locutus.discord.db.entities.metric.AllianceMetric
 @import link.locutus.discord.db.entities.DBAlliance
+@import link.locutus.discord.util.TimeUtil
 @import java.util.Collections
 @param WebStore ws
 @param SphereGenerator spheres
@@ -39,7 +42,7 @@
                         data = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn,
                         spheres.getSphereName(sphereId),
                         new HashSet<>(spheres.getAlliances(sphereId))
-                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(),
+                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L),
                         time = true)
                     </div>
                     <hr>
@@ -50,7 +53,7 @@
                         @template.data.timechartdatasrc(ws = ws, title = alliance.getName(),
                         data = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(),
                         Collections.singleton(alliance)
-                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(),
+                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L),
                         time = true)
                     </div>
                     @endif

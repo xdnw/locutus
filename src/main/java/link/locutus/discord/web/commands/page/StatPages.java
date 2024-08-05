@@ -83,7 +83,7 @@ public class StatPages {
     public Object radiationStats(WebStore ws, Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, start, end);
-        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, startTurn);
+        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
     }
 
@@ -102,7 +102,7 @@ public class StatPages {
         TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
 
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
-        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, format, startTurn);
+        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, format, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
     }
 

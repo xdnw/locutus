@@ -7,6 +7,8 @@
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
+@import link.locutus.discord.commands.rankings.table.TableNumberFormat
+@import link.locutus.discord.commands.rankings.table.TimeFormat
 @import link.locutus.discord.db.BankDB
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Coalition
@@ -53,7 +55,7 @@
         </p>
     @endif
     @template.data.timechartdatasrc(ws = ws, title = "",
-        data = categorized.createTable("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(),
+        data = categorized.createTable("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, TimeUtil.getTimeFromTurn(start) / 1000L),
     time = true)
 
     @if(entry.getKey() == -1)
@@ -71,7 +73,7 @@
                             <div class="bg-light border border-3 border-secondary rounded">
                                 @template.data.timechartdatasrc(ws = ws, title = type.name(),
                                 data = categorized.createTable(type.name(), entry.getValue(),
-                                type).convertTurnsToEpochSeconds(start).toHtmlJson(),
+                                type).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, start),
                                 time = true)
                             </div>
                             <hr>
