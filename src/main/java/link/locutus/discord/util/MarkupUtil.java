@@ -326,6 +326,7 @@ public class MarkupUtil {
     private static final HtmlRenderer MARKDOWN_RENDERER;
     static {
         MARKDOWN_TO_HTML.set(Parser.EXTENSIONS, Arrays.asList(StrikethroughExtension.create()));
+        MARKDOWN_TO_HTML.set(HtmlRenderer.SOFT_BREAK, "<br />");
         MARKDOWN_PARSER = Parser.builder(MARKDOWN_TO_HTML).build();
         MARKDOWN_RENDERER = HtmlRenderer.builder(MARKDOWN_TO_HTML).build();
     }
@@ -341,6 +342,7 @@ public class MarkupUtil {
             }
             html = transformURLIntoLinks(html);
         }
+        System.out.println("HTML " + html);
         return html.replaceAll("\n", "");
 //
 //        source = source.replace("_", "\u200B\t").replace(" * ", "\u200B\r");
