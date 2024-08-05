@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
+import com.google.gson.JsonObject;
+import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -36,18 +38,9 @@ import java.util.stream.Collectors;
 
 import static net.dv8tion.jda.api.interactions.components.buttons.Button.ID_MAX_LENGTH;
 
-public class DiscordMessageBuilder implements IMessageBuilder {
+public class DiscordMessageBuilder extends AMessageBuilder {
 
-    public final StringBuilder content = new StringBuilder();
-    public final List<Button> buttons = new ArrayList<>();
-    public final List<MessageEmbed> embeds = new ArrayList<>();
-    public final Map<String, byte[]> images = new HashMap<>();
-    public final Map<String, byte[]> files = new HashMap<>();
     public final Map<String, String> remapLongCommands = new HashMap<>();
-    private final IMessageIO parent;
-    public long id;
-    public long timeCreated;
-    public User author;
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
@@ -55,67 +48,70 @@ public class DiscordMessageBuilder implements IMessageBuilder {
 
     @Override
     public IMessageBuilder removeButtonByLabel(String label) {
-        Set<Button> removed = buttons.stream().filter(b -> b.getLabel().equals(label)).collect(Collectors.toSet());
-        buttons.removeIf(b -> b.getLabel().equals(label));
-        for (Button button : removed) {
-            String id = button.getId();
-            if (MathMan.isInteger(id)) {
-                remapLongCommands.remove(id);
-            }
+        Set<Map.Entry<String, String>> removed = buttons.entrySet().stream().filter(b -> b.getValue().equals(label)).collect(Collectors.toSet());
+        for (Map.Entry<String, String> button : removed) {
+            buttons.remove(button.getKey());
+            remapLongCommands.remove(button.getKey());
         }
         return this;
     }
 
     @Override
+    public IMessageBuilder writeTo(IMessageBuilder output) {
+        if (output instanceof DiscordMessageBuilder discMsg) {
+            discMsg.remapLongCommands.putAll(remapLongCommands);
+        }
+        return super.writeTo(output);
+    }
+
+    private void loadCommandsFromEmbeds() {
+        for (MessageEmbed embed : embeds) {
+            Map<String, String> reactions = DiscordUtil.getReactions(embed);
+            if (reactions != null && !reactions.isEmpty()) {
+                remapLongCommands.putAll(reactions);
+            }
+        }
+    }
+
+    @Override
+    public void appendJson(JsonObject json) {
+        super.appendJson(json);
+        loadCommandsFromEmbeds();
+    }
+
+    @Override
     public void sendWhenFree() {
-        RateLimitUtil.queueMessage(parent, new Function<IMessageBuilder, Boolean>() {
+        RateLimitUtil.queueMessage(getParent(), new Function<IMessageBuilder, Boolean>() {
             @Override
             public Boolean apply(IMessageBuilder msg) {
-                if (embeds.isEmpty() && images.isEmpty() && files.isEmpty() && buttons.isEmpty() && content.length() == 0) return false;
-                if (msg instanceof DiscordMessageBuilder discMsg) {
-                    discMsg.content.append(content);
-                    discMsg.buttons.addAll(buttons);
-                    discMsg.embeds.addAll(embeds);
-                    discMsg.images.putAll(images);
-                    discMsg.files.putAll(files);
-                    discMsg.remapLongCommands.putAll(remapLongCommands);
-                    return true;
-                }
-                else {
-                    System.out.println(":||Remove Cannot send a DiscordMessageBuilder to a non-Discord channel");
-                    throw new IllegalStateException("Cannot send a DiscordMessageBuilder to a non-Discord channel");
-                }
+                if (embeds.isEmpty() && images.isEmpty() && files.isEmpty() && buttons.isEmpty() && content.isEmpty()) return false;
+                writeTo(msg);
+                return true;
             }
         }, true, null);
     }
 
     public DiscordMessageBuilder(IMessageIO parent, @Nullable Message message) {
+        super(parent, 0, 0, null);
         if (message != null) {
             id = message.getIdLong();
             content.append(message.getContentRaw());
-            buttons.addAll(message.getButtons());
-            embeds.addAll(message.getEmbeds());
-            if (!this.embeds.isEmpty()) {
-                Map<String, String> reactions = DiscordUtil.getReactions(embeds.get(0));
-                if (reactions != null && !reactions.isEmpty()) {
-                    remapLongCommands.putAll(reactions);
-                    Set<String> buttonIds = buttons.stream().map(Button::getId).collect(Collectors.toSet());
-                    for (Map.Entry<String, String> entry : reactions.entrySet()) {
-                        String label = entry.getKey();
-                        if (!buttonIds.contains(label)) {
-                            String cmd = entry.getValue();
-                            buttons.add(Button.primary(label, label));
-                        }
-                    }
+            message.getButtons().forEach(b -> {
+                String url = b.getUrl();
+                if (url != null && !url.isEmpty()) {
+                    links.put(b.getUrl(), b.getLabel());
+                } else {
+                    buttons.put(b.getId(), b.getLabel());
                 }
-            }
+            });
+            embeds.addAll(message.getEmbeds());
+            loadCommandsFromEmbeds();
             try {
                 this.timeCreated = message.getTimeCreated().toInstant().toEpochMilli();
                 this.author = message.getAuthor();
             } catch (UnsupportedOperationException ignore) {
             }
         }
-        this.parent = parent;
     }
 
     public MessageEditData buildEdit(boolean includeContent) {

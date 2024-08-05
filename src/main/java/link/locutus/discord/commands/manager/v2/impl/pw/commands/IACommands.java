@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
@@ -16,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCach
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
@@ -1893,7 +1895,6 @@ public class IACommands {
                 if (!bodyFormat.isEmpty()) {
                     bodyFormat = MarkupUtil.markdownToHTML(bodyFormat) + "<br>";
                 }
-                bodyFormat += StringMessageBuilder.toHtml(messages, true);
 
                 header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
@@ -2032,13 +2033,18 @@ public class IACommands {
             Map.Entry<String, String> msgEntry = entry.getValue();
             String subject = msgEntry.getKey();
             String body = msgEntry.getValue();
-
-            todo check if body is json;
+            StringMessageBuilder richBody = StringMessageBuilder.fromText(body, true);
 
             List<String> result = new ArrayList<>();
             if (!skipMail) {
                 try {
-                    JsonObject json = nation.sendMail(keys, subject, body, false);
+                    String html;
+                    if (richBody != null) {
+                        html = richBody.toSimpleHtml(true, false);
+                    } else {
+                        html = MarkupUtil.markdownToHTML(body);
+                    }
+                    JsonObject json = nation.sendMail(keys, subject, html, false);
                     result.add(json + "");
                 } catch (IOException e) {
                     errors++;
@@ -2056,7 +2062,11 @@ public class IACommands {
                 } else {
                     try {
                         PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
-                        RateLimitUtil.queue(channel.sendMessage(body));
+                        DiscordChannelIO dmIo = new DiscordChannelIO(channel);
+                        IMessageBuilder msg = dmIo.create();
+                        if (richBody != null) richBody.writeTo(msg);
+                        else msg.append(body);
+                        msg.send();
                         result.add("\n- **dm**: Sent dm");
                     } catch (Throwable e) {
                         result.add("\n- **dm**: Failed to send dm (`" + e.getMessage() + "`)");

@@ -336,12 +336,16 @@ public abstract class TimeNumericTable<T> {
         return data;
     }
 
-    public JsonObject toHtmlJson() {
-        return toHtmlJson(labels, data, amt, name, labelX, labelY);
+    public JsonObject toHtmlJson(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+        return toHtmlJson(labels, data, amt, name, labelX, labelY, timeFormat, numberFormat, origin);
     }
 
-    public static JsonObject toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY) {
+    public static JsonObject toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
         JsonObject obj = new JsonObject();
+        obj.addProperty("time_format", timeFormat.name());
+        obj.addProperty("number_format", numberFormat.name());
+        obj.addProperty("origin", origin);
+
         JsonArray labelsArr = new JsonArray();
 
         for (String label : labels) labelsArr.add(label);
@@ -380,7 +384,7 @@ public abstract class TimeNumericTable<T> {
         return obj;
     }
 
-    public TimeNumericTable loadFromJson(JsonObject json) {
+    public TimeNumericTable(JsonObject json) {
         this.name = json.get("title").getAsString();
         this.labelX = json.get("x").getAsString();
         this.labelY = json.get("y").getAsString();
@@ -390,6 +394,11 @@ public abstract class TimeNumericTable<T> {
         for (int i = 0; i < labelsArr.size(); i++) {
             this.labels[i] = labelsArr.get(i).getAsString();
         }
+        this.amt = labels.length;
+        List<Class<? extends Comparable<?>>> types = new ArrayList<>();
+        types.add(Long.class);
+        for (int i = 0; i < amt; i++) types.add(Double.class);
+        this.data = new DataTable(types.toArray(new Class[0]));
 
         JsonArray dataJson = json.getAsJsonArray("data");
         for (int i = 0; i < dataJson.size(); i++) {
@@ -400,7 +409,6 @@ public abstract class TimeNumericTable<T> {
             }
             this.data.add(row);
         }
-        return this;
     }
 
     public List<List<String>> toSheetRows() {

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.Locutus;
@@ -26,6 +27,26 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public interface IMessageBuilder {
+    public record GraphMessageInfo(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+        public static GraphMessageInfo fromJson(JsonObject tableObj) {
+            TimeNumericTable<?> table = new TimeNumericTable<>(tableObj) {
+                @Override
+                public void add(long day, Object ignore) {
+                }
+            };
+            TimeFormat timeFormat = TimeFormat.valueOf(tableObj.get("timeFormat").getAsString());
+            TableNumberFormat numberFormat = TableNumberFormat.valueOf(tableObj.get("numberFormat").getAsString());
+            long origin = tableObj.get("origin").getAsLong();
+            return new GraphMessageInfo(table, timeFormat, numberFormat, origin);
+        }
+    }
+
+    public abstract String getContent();
+
+    public abstract List<Map.Entry<String, String>> getEmbedDescriptions();
+
+    public abstract Map<String, String> getButtons();
+
     static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons) {
         Map<String, Object> root = new LinkedHashMap<>();
         if (appendText != null && !appendText.isEmpty()) root.put("content", appendText);
