@@ -32,11 +32,19 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     private final boolean subtractExpenditure;
     private final long overdrawPercentCents;
     public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), ArrayUtil.toDoubleArray(rs.getBytes("allowance_per_city")), rs.getLong("track_days"), rs.getBoolean("subtract_expenditure"), rs.getLong("overdraw_percent_cents"),
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), getBytesOrNull("allowance_per_city", rs), rs.getLong("track_days"), rs.getBoolean("subtract_expenditure"), rs.getLong("overdraw_percent_cents"),
                 rs.getLong("expire"),
                 rs.getLong("decay"),
                 rs.getBoolean("allow_ignore"),
                 rs.getLong("repeatable"));
+    }
+
+    private static double[] getBytesOrNull(String name, ResultSet rs) throws SQLException {
+        byte[] bytes = rs.getBytes(name);
+        if (bytes == null) {
+            return null;
+        }
+        return ArrayUtil.toDoubleArray(bytes);
     }
 
     // create new constructor  with typed parameters instead of resultset
@@ -156,7 +164,11 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
+        if (allowancePerCity == null) {
+            stmt.setNull(17, java.sql.Types.BINARY);
+        } else {
         stmt.setBytes(17, ArrayUtil.toByteArray(allowancePerCity));
+        }
         stmt.setLong(18, trackDays);
         stmt.setBoolean(19, subtractExpenditure);
         stmt.setLong(20, overdrawPercentCents);
