@@ -315,33 +315,12 @@ public class CoalitionSide {
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, boolean isAttacker, AttackTypeSubCategory subCategory) {
-        int attackerAA, attackerId, cities;
-        long day = TimeUtil.getDay(attack.getDate());
-        if (isAttacker) {
-            attackerId = attack.getAttacker_id();
-            if (attack.getAttacker_id() == war.getAttacker_id()) {
-                attackerAA = war.getAttacker_aa();
-                cities = war.getAttCities();
-            } else {
-                attackerAA = war.getDefender_aa();
-                cities = war.getDefCities();
-            }
-        } else {
-            attackerId = attack.getDefender_id();
-            if (attack.getDefender_id() == war.getDefender_id()) {
-                attackerAA = war.getDefender_aa();
-                cities = war.getDefCities();
-            } else {
-                attackerAA = war.getAttacker_aa();
-                cities = war.getAttCities();
-            }
-        }
-        allianceIdByNation.putIfAbsent(attackerId, attackerAA);
+    public void updateAttack(DBWar war, AbstractCursor attack, int attackerAA, int nationId, int cities, long day, boolean isAttacker, AttackTypeSubCategory subCategory) {
+        allianceIdByNation.putIfAbsent(nationId, attackerAA);
 
         Map.Entry<DamageStatGroup, DamageStatGroup> aaDamage = damageByAlliance.computeIfAbsent(attackerAA,
                 k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
-        Map.Entry<DamageStatGroup, DamageStatGroup> nationDamage = damageByNation.computeIfAbsent(attackerId,
+        Map.Entry<DamageStatGroup, DamageStatGroup> nationDamage = damageByNation.computeIfAbsent(nationId,
                 k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
 
         Map.Entry<DamageStatGroup, DamageStatGroup> tierDamage = getAllianceDamageStatsByDayPair(attackerAA, cities, day);
@@ -351,14 +330,17 @@ public class CoalitionSide {
 
             lossesAndDefensiveStats.apply(attack, true);
             inflictedAndOffensiveStats.apply(attack, false);
+
             aaDamage.getKey().apply(attack, true);
             aaDamage.getValue().apply(attack, false);
+
             nationDamage.getKey().apply(attack, true);
             nationDamage.getValue().apply(attack, false);
+
             tierDamage.getKey().apply(attack, true);
             tierDamage.getValue().apply(attack, false);
 
-            applyAttackerStats(attackerAA, attackerId, cities, day, p -> p.newAttack(war, attack, subCategory));
+            applyAttackerStats(attackerAA, nationId, cities, day, p -> p.newAttack(war, attack, subCategory));
         } else {
             lossesAndDefensiveStats.newAttack(war, attack, subCategory);
 
@@ -367,12 +349,14 @@ public class CoalitionSide {
 
             aaDamage.getKey().apply(attack, false);
             aaDamage.getValue().apply(attack, true);
+
             nationDamage.getKey().apply(attack, false);
             nationDamage.getValue().apply(attack, true);
+
             tierDamage.getKey().apply(attack, false);
             tierDamage.getValue().apply(attack, true);
 
-            applyDefenderStats(attackerAA, attackerId, cities, day, p -> p.newAttack(war, attack, subCategory));
+            applyDefenderStats(attackerAA, nationId, cities, day, p -> p.newAttack(war, attack, subCategory));
         }
     }
 

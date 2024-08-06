@@ -84,7 +84,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         RateLimitUtil.queueMessage(getParent(), new Function<IMessageBuilder, Boolean>() {
             @Override
             public Boolean apply(IMessageBuilder msg) {
-                if (embeds.isEmpty() && images.isEmpty() && files.isEmpty() && buttons.isEmpty() && content.isEmpty()) return false;
+                if (embeds.isEmpty() && images.isEmpty() && tables.isEmpty() && files.isEmpty() && buttons.isEmpty() && content.isEmpty()) return false;
                 writeTo(msg);
                 return true;
             }
@@ -223,14 +223,9 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             for (Map.Entry<String, byte[]> entry : images.entrySet()) {
                 upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
             }
-            for (GraphMessageInfo gmi : tables) {
-                try {
-                    byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat());
-//                    String name = gmi.table().getName();
-                    upload.add(FileUpload.fromData(imgData, "img.png"));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            List<Map.Entry<String, byte[]>> tableData = buildTables();
+            for (Map.Entry<String, byte[]> entry : tableData) {
+                upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
             }
             if (!upload.isEmpty()) {
                 discBuilder.setFiles(upload);
@@ -239,6 +234,20 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
 
         return discBuilder.build();
+    }
+
+    public List<Map.Entry<String, byte[]>> buildTables() {
+        List<Map.Entry<String, byte[]>> tables = new ArrayList<>();
+        for (GraphMessageInfo gmi : this.tables) {
+            try {
+                byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat());
+                String fileName = gmi.table().getName().replaceAll("[^a-zA-Z0-9.-]", "") + ".png";
+                tables.add(new AbstractMap.SimpleEntry<>(fileName, imgData));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return tables;
     }
 
     @Override
