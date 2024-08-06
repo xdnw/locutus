@@ -136,7 +136,7 @@ public abstract class AbstractCursor implements IAttack {
     @Override
     public double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
         if (units) {
-            double[] unitLosses = getUnitLossCost(buffer, attacker);
+            getUnitLossCost(buffer, attacker);
         }
         if (includeLoot) {
             double[] loot = getLoot();
@@ -148,11 +148,10 @@ public abstract class AbstractCursor implements IAttack {
                 }
             }
             else if (getMoney_looted() != 0) {
-                int sign = (getVictor() == (attacker ? getAttacker_id() : getDefender_id())) ? -1 : 1;
-                buffer[ResourceType.MONEY.ordinal()] += getMoney_looted() * sign;
+                buffer[ResourceType.MONEY.ordinal()] += attacker ? -getMoney_looted() : getMoney_looted();
             }
         }
-        if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
+        if (attacker) {
             if (infra && getInfra_destroyed_value() != 0) {
                 buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
             }

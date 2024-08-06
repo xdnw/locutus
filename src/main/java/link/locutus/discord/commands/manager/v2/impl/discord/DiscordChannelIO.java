@@ -128,14 +128,14 @@ public class DiscordChannelIO implements IMessageIO {
                     CompletableFuture<Message> future = RateLimitUtil.queue(channel.sendMessage(message));
                     msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
-
-
             }
-            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty())) {
-                Map<String, byte[]> allFiles = new HashMap<>(discMsg.files);
-                allFiles.putAll(discMsg.images);
+            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty() || !discMsg.tables.isEmpty())) {
+                List<Map.Entry<String, byte[]>> allFiles = new ArrayList<>();
+                allFiles.addAll(discMsg.files.entrySet());
+                allFiles.addAll(discMsg.images.entrySet());
+                allFiles.addAll(discMsg.buildTables());
                 Message result = null;
-                for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
+                for (Map.Entry<String, byte[]> entry : allFiles) {
                     result = RateLimitUtil.complete(channel.sendFiles(FileUpload.fromData(entry.getValue(), entry.getKey())));
                 }
                 if (result != null && msgFuture == null)

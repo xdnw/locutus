@@ -22,10 +22,7 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class DiscordHookIO implements IMessageIO {
@@ -120,11 +117,13 @@ public class DiscordHookIO implements IMessageIO {
                     msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
             }
-            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty())) {
-                Map<String, byte[]> allFiles = new HashMap<>(discMsg.files);
-                allFiles.putAll(discMsg.images);
+            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty() || !discMsg.tables.isEmpty())) {
+                List<Map.Entry<String, byte[]>> allFiles = new ArrayList<>();
+                allFiles.addAll(discMsg.files.entrySet());
+                allFiles.addAll(discMsg.images.entrySet());
+                allFiles.addAll(discMsg.buildTables());
                 Message result = null;
-                for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
+                for (Map.Entry<String, byte[]> entry : allFiles) {
                     result = RateLimitUtil.complete(hook.sendFiles(FileUpload.fromData(entry.getValue(), entry.getKey())));
                 }
                 if (result != null && msgFuture == null)

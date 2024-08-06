@@ -1541,7 +1541,7 @@ public class StatCommands {
         List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
         table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, start_time, attach_json, attach_csv);
-        return "Done!";
+        return null;
     }
 
     @Command(desc = "Graph an alliance metric over time for two coalitions")

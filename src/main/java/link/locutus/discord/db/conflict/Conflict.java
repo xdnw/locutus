@@ -507,20 +507,29 @@ public class Conflict {
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack, long turn, Function<IAttack, AttackTypeSubCategory> getCached) {
-        int attackerAA, defenderAA;
+        int attackerAA, defenderAA, attCities, defCities;
         if (attack.getAttacker_id() == war.getAttacker_id()) {
             attackerAA = war.getAttacker_aa();
             defenderAA = war.getDefender_aa();
+            attCities = war.getAttCities();
+            defCities = war.getDefCities();
         } else {
             attackerAA = war.getDefender_aa();
             defenderAA = war.getAttacker_aa();
+            attCities = war.getDefCities();
+            defCities = war.getAttCities();
         }
         CoalitionSide side = getCoalition(attackerAA, defenderAA, turn);
         if (side == null) return;
+
+        long day = TimeUtil.getDay(attack.getDate());
+
         CoalitionSide otherSide = side.getOther();
         AttackTypeSubCategory subCategory = getCached.apply(attack);
-        side.updateAttack(war, attack, true, subCategory);
-        otherSide.updateAttack(war, attack, false, subCategory);
+
+        side.updateAttack(war, attack, attackerAA, attack.getAttacker_id(), attCities, day, true, subCategory);
+        otherSide.updateAttack(war, attack, defenderAA, attack.getDefender_id(), defCities, day, false, subCategory);
+
         getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
         getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
         getWarWebEntry(defenderAA, attackerAA).apply(attack, false);
