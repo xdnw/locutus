@@ -80,7 +80,7 @@ public class NationHeader extends DataHeader<DBNation> {
 //    public int alliance_id; // int
     public final IntColumn<DBNation> alliance_id = new IntColumn<>(this, DBNation::setAlliance_id);
 //    public int alliance_position; // int
-    public final EnumColumn<DBNation, Rank> alliance_position = new EnumColumn<>(this, Rank.class, DBNation::setPosition, f -> Rank.values[Integer.parseInt(f)]);
+    public final EnumColumn<DBNation, Rank> alliance_position = new EnumColumn<>(this, Rank.class, DBNation::setPosition, f -> Rank.byId(Integer.parseInt(f)));
 //    public int soldiers; // int
     public final IntColumn<DBNation> soldiers = new IntColumn<>(this, DBNation::setSoldiers);
 //    public int tanks; // int
