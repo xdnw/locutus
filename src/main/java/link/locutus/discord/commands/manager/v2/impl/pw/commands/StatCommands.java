@@ -1530,14 +1530,11 @@ public class StatCommands {
     }
 
     @Command(desc = "Compare the metric over time between multiple alliances")
-    public String militarizationTime(@Me IMessageIO channel, DBAlliance alliance, @Default("7d") @Timediff long start_time,
+    public String militarizationTime(@Me IMessageIO channel, DBAlliance alliance, @Default("7d") @Timestamp long start_time,
                                      @Switch("e") @Timestamp Long end_time,
                                      @Switch("j") boolean attach_json,
                                      @Switch("c") boolean attach_csv) throws IOException {
         if (end_time == null) end_time = System.currentTimeMillis();
-        end_time = Math.max(end_time, System.currentTimeMillis());
-        start_time = end_time - start_time;
-
         long endTurn = Math.min(TimeUtil.getTurn(), TimeUtil.getTurn(end_time));
         long startTurn = TimeUtil.getTurn(start_time);
 
