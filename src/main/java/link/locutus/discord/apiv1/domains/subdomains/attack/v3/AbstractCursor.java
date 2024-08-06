@@ -151,7 +151,7 @@ public abstract class AbstractCursor implements IAttack {
                 buffer[ResourceType.MONEY.ordinal()] += attacker ? -getMoney_looted() : getMoney_looted();
             }
         }
-        if (attacker) {
+        if (!attacker) {
             if (infra && getInfra_destroyed_value() != 0) {
                 buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
             }

@@ -813,7 +813,7 @@ public class ConflictCommands {
                 continue;
             }
             String key = object.getKey();
-            boolean matches = key.matches("conflict/graphs/[0-9]+\\.gzip") || key.matches("conflict/[0-9]+\\.gzip");
+            boolean matches = key.matches("conflicts/graphs/[0-9]+\\.gzip") || key.matches("conflicts/[0-9]+\\.gzip");
             if (!matches) continue;
             int id = Integer.parseInt(key.replaceAll("[^0-9]", ""));
             Conflict conflict = manager.getConflictById(id);
@@ -882,8 +882,9 @@ public class ConflictCommands {
         List<String> kept = new ArrayList<>();
         for (S3ObjectSummary object : manager.getAws().getObjects()) {
             String key = object.getKey();
-            boolean matches = key.matches("conflicts/n/[0-9]+/[a-z0-9]+\\.gzip") || key.matches("conflicts/graphs/n/[0-9]+/[a-z0-9]+\\.gzip");
+            boolean matches = key.matches("conflicts/n/[0-9]+/[a-z0-9-]+\\.gzip") || key.matches("conflicts/graphs/n/[0-9]+/[a-z0-9-]+\\.gzip");
             if (!matches) continue;
+
             int nationId = Integer.parseInt(key.replaceAll("[^0-9]", ""));
             String uuidStr = key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf("."));
             String nameStr = PW.getMarkdownUrl(nationId, false) + "/" + uuidStr;
