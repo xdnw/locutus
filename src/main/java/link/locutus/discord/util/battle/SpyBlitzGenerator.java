@@ -432,7 +432,7 @@ public class SpyBlitzGenerator {
     }
 
     public static Map<DBNation, List<Spyop>> getTargetsDTC(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
-        List<List<Object>> rows = sheet.fetchRange(null,"A:Z", f -> f.setValueRenderOption("FORMULA"));
+        List<List<Object>> rows = sheet.fetchRange(null,"A:Z", f -> f.setValueRenderOption("UNFORMATTED_VALUE"));
 
         List<Spyop> allOps = new ArrayList<>();
         Set<DBNation> update = forceUpdate ? new HashSet<>() : null;

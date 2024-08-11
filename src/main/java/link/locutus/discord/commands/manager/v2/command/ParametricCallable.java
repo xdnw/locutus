@@ -917,10 +917,13 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public JsonObject toJson(PermissionHandler permHandler) {
+    public JsonObject toJson(PermissionHandler permHandler, boolean includeReturnType) {
         JsonObject command = new JsonObject();
         command.addProperty("help", simpleHelp());
         command.addProperty("desc", simpleDesc());
+        if (includeReturnType) {
+            command.addProperty("return_type", StringMan.classNameToSimple(returnType.getTypeName()));
+        }
         if (groups != null && groups.length != 0) {
             JsonArray groupsList = new JsonArray();
             for (String g : groups) groupsList.add(g);

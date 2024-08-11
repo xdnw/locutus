@@ -61,7 +61,7 @@ public class CommandManager2 {
     private PWGPTHandler pwgptHandler;
 
     public JsonObject toJson(ValueStore htmlOptionsStore, PermissionHandler permHandler) {
-        JsonObject cmdJson = commands.toJson(permHandler);
+        JsonObject cmdJson = commands.toJson(permHandler, false);
 
         Map<String, JsonObject> keysData = new LinkedHashMap<>();
         Set<String> checkedOptions = new HashSet<>();
@@ -120,7 +120,7 @@ public class CommandManager2 {
         JsonObject phJson = new JsonObject();
         for (Class t : placeholders.getTypes()) {
             Placeholders ph = placeholders.get(t);
-            phJson.add(t.getSimpleName(), ph.getCommands().toJson(permHandler));
+            phJson.add(t.getSimpleName(), ph.getCommands().toJson(permHandler, true));
         }
 
         Gson gson = new Gson();

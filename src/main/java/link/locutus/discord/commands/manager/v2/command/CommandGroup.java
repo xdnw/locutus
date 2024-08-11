@@ -37,10 +37,10 @@ public class CommandGroup implements ICommandGroup {
     }
 
     @Override
-    public JsonObject toJson(PermissionHandler permHandler) {
+    public JsonObject toJson(PermissionHandler permHandler, boolean includeReturnType) {
         JsonObject root = new JsonObject();
         for (Map.Entry<String, CommandCallable> entry : subcommands.entrySet()) {
-            root.add(entry.getKey(), entry.getValue().toJson(permHandler));
+            root.add(entry.getKey(), entry.getValue().toJson(permHandler, includeReturnType));
         }
         return root;
     }
