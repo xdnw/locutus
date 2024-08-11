@@ -997,7 +997,8 @@ public class AdminCommands {
                            @Arg("The subject used for sending an in-game mail if a discord direct message fails") String subject,
                            @Arg("The message you want to send") @TextArea String announcement,
                            @Arg("Lines of replacement words or phrases, separated by `|` for each variation\n" +
-                                   "Add multiple lines for each replacement you want") @TextArea String replacements,
+                                   "Add multiple lines for each replacement you want\n" +
+                                   "You can use \\n for newline for discord slash commands") @TextArea String replacements,
                            @Arg("The channel to post the announcement to (must be same server)") @Switch("c") MessageChannel channel,
                            @Arg("The text to post in the channel below the hidden announcement (e.g. mentions)") @Switch("b") String bottomText,
                            @Arg("The required number of differences between each message") @Switch("v") @Default("0") Integer requiredVariation,

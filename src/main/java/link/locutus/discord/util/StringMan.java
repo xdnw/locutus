@@ -640,10 +640,9 @@ public class StringMan {
                                 toAdd = toAdd.substring(1, toAdd.length() - 1);
                         }
                         if (!toAdd.trim().isEmpty()) result.add(toAdd);
-                    } else if (inQuotes) {
-                        result.add("");
                     }
                     start = current + foundLen;
+                    current = start - 1;
                     if (--limit <= 1) {
                         startsWith = null;
                     }

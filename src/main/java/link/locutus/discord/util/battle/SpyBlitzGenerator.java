@@ -452,8 +452,10 @@ public class SpyBlitzGenerator {
         // Att Safety
         int AttSafety2Index = -1;
 
+        int rowsWithValues = 0;
         int nationIndex = 0;
         int headerIndex = -1;
+        String lastRowValue = "";
         outer:
         for (int i = 0; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
@@ -461,15 +463,20 @@ public class SpyBlitzGenerator {
             if (row.isEmpty()) continue;
             // Leader / Nation
             for (int column = 0; column < row.size(); column++) {
-                if (row.get(column) != null && row.get(column).toString().toLowerCase(Locale.ROOT).equalsIgnoreCase("Leader / Nation")) {
-                    nationIndex = column;
-                    headerIndex = i;
-                    break outer;
+                Object value = row.get(column);
+                if (value != null && !value.toString().isEmpty()) {
+                    rowsWithValues++;
+                    lastRowValue = value.toString();
+                    if (lastRowValue.toLowerCase(Locale.ROOT).equalsIgnoreCase("Leader / Nation")) {
+                        nationIndex = column;
+                        headerIndex = i;
+                        break outer;
+                    }
                 }
             }
         }
         if (headerIndex == -1) {
-            throw new IllegalArgumentException("No header found containing `Leader / Nation`");
+            throw new IllegalArgumentException("No header found containing `Leader / Nation`. Found " + rowsWithValues + " rows with values (out of " + rows.size() + ") / " + lastRowValue);
         }
 
         List<Object> header = rows.get(headerIndex);

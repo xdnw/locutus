@@ -516,7 +516,8 @@ public class UtilityCommands {
         return response.toString();
     }
 
-    @Command(desc = "Mark an alliance as the offshore of another")
+    @Command(desc = "Mark an alliance as the offshore of another\n" +
+            "This is solely for informational purposes such as when displaying an alliance's info or militarization")
     public String markAsOffshore(@Me User author, @Me DBNation me, DBAlliance offshore, DBAlliance parent) {
         if (!Roles.ADMIN.hasOnRoot(author)) {
             DBAlliance expectedParent = offshore.findParentOfThisOffshore();
