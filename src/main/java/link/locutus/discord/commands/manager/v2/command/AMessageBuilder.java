@@ -452,7 +452,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     @Override
     public IMessageBuilder image(String name, byte[] data) {
-        if (!name.endsWith(".png") || !name.endsWith(".jpg")) throw new IllegalArgumentException("Invalid image extension (only png jpg supported): `" + name + "`");
+        if (!name.endsWith(".png") && !name.endsWith(".jpg")) throw new IllegalArgumentException("Invalid image extension (only png jpg supported): `" + name + "`");
         images.put(name, data);
         return this;
     }

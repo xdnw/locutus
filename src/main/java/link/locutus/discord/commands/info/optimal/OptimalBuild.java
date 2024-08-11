@@ -125,6 +125,7 @@ public class OptimalBuild extends Command {
         Integer days = null;
         if (args.size() >= 2 && MathMan.isInteger(args.get(0))) {
             days = Integer.parseInt(args.get(0));
+            args.remove(0);
         }
         JavaCity origin;
 

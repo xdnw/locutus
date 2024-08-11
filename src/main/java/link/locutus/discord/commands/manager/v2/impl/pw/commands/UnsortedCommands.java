@@ -1401,12 +1401,12 @@ public class UnsortedCommands {
                 if (r.getFromId() != 0) {
                     fromStr = PW.getMarkdownUrl(r.getFromId(), true) + "\t" + r.getFromRank().name();
                 } else {
-                    fromStr = "0";
+                    fromStr = "0\tNONE";
                 }
                 if (r.getToId() != 0) {
                     toStr = PW.getMarkdownUrl(r.getToId(), true) + "\t" + r.getToRank().name();
                 } else {
-                    toStr = "0";
+                    toStr = "0\tNONE";
                 }
                 String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
                 response.append(diffStr + "\t" + natStr + "\t" + fromStr + "\t" + toStr + "\n");
