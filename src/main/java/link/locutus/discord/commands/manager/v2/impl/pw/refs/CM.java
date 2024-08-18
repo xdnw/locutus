@@ -1215,8 +1215,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="militaryRanking")
                 public static class militarization extends CommandRef {
                     public static final militarization cmd = new militarization();
-                public militarization nations2(String value) {
-                    return set("nations2", value);
+                public militarization nations(String value) {
+                    return set("nations", value);
                 }
 
                 public militarization top_n_alliances(String value) {

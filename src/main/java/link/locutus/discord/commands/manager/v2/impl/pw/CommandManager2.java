@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.*;
@@ -10,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -35,6 +37,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.jooby.JteUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -117,16 +120,27 @@ public class CommandManager2 {
             }
         }
 
-        JsonObject phJson = new JsonObject();
-        for (Class t : placeholders.getTypes()) {
-            Placeholders ph = placeholders.get(t);
-            phJson.add(t.getSimpleName(), ph.getCommands().toJson(permHandler, true));
-        }
+        JsonObject phRoot = new JsonObject();
+        for (Class<?> t : placeholders.getTypes()) {
+            Placeholders<?> ph = placeholders.get(t);
+            JsonObject json = new JsonObject();
 
+            JsonObject bindings = ph.getCommands().toJson(permHandler, true);
+            json.add("commands", bindings);
+
+            Set<SelectorInfo> selectors = ph.getSelectorInfo();
+            JsonArray arr = JteUtil.createArrayObj(selectors.stream().map(f -> JteUtil.createArrayObj(f.format(), f.example(), f.desc())));
+            json.add("selectors", arr);
+            Set<String> columns = ph.getSheetColumns();
+            if (!columns.isEmpty()) {
+                json.add("columns", JteUtil.createArrayCol(columns));
+            }
+            phRoot.add(t.getSimpleName(), json);
+        }
         Gson gson = new Gson();
         JsonObject result = new JsonObject();
         result.add("commands", cmdJson);
-        result.add("placeholders", phJson);
+        result.add("placeholders", phRoot);
         result.add("keys", gson.toJsonTree(keysData));
         result.add("options", gson.toJsonTree(optionsData));
         return result;

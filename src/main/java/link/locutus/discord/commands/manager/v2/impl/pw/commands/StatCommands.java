@@ -2160,7 +2160,7 @@ public class StatCommands {
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
                 Each alliance is grouped by sphere and color coded.""")
     public static String militaryRanking(@Me GuildDB db, @Me IMessageIO channel,
-                                         @Default NationList nations2,
+                                         @Default NationList nations,
                                          @Switch("n") Integer top_n_alliances,
                                          @Switch("s") SpreadSheet sheet,
                                          @Switch("t") boolean removeUntaxable,
@@ -2172,14 +2172,14 @@ public class StatCommands {
         }
         if (top_n_alliances == null) top_n_alliances = 80;
         Map<Integer, List<DBNation>> byAA;
-        if (nations2 == null) {
+        if (nations == null) {
             byAA = Locutus.imp().getNationDB().getNationsByAlliance(removeUntaxable, removeInactive, !includeApplicants, true, true);
         } else {
             Set<DBNation> tmp;
             if (snapshotDate != null) {
-                tmp = PW.getNationsSnapshot(nations2.getNations(), nations2.getFilter(), snapshotDate, db.getGuild(), false);
+                tmp = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
             } else {
-                tmp = nations2.getNations();
+                tmp = nations.getNations();
             }
             tmp.removeIf(f -> f.getVm_turns() > 0);
             byAA = Locutus.imp().getNationDB().getNationsByAlliance(tmp, removeUntaxable, removeInactive, !includeApplicants, true);
@@ -2204,14 +2204,14 @@ public class StatCommands {
             }
 
             if (!sphereScore.containsKey(sphereId)) {
-                List<DBNation> nations = new ArrayList<>();
+                List<DBNation> tmp = new ArrayList<>();
                 for (DBAlliance other : sphere) {
                     List<DBNation> otherNations = byAA.get(other.getAlliance_id());
                     if (otherNations != null) {
-                        nations.addAll(otherNations);
+                        tmp.addAll(otherNations);
                     }
                 }
-                SimpleNationList nationList = new SimpleNationList(nations);
+                SimpleNationList nationList = new SimpleNationList(tmp);
 
                 sphereScore.put(sphereId, nationList.getScore());
                 if (sphere.size() > 1) {
@@ -2259,9 +2259,9 @@ public class StatCommands {
             sphereAAs.sort((o1, o2) -> Double.compare(o2.getValue().getScore(), o1.getValue().getScore()));
             for (Map.Entry<Integer, NationList> aaEntry : sphereAAs) {
                 int aaId = aaEntry.getKey();
-                NationList nations = aaEntry.getValue();
+                NationList tmp = aaEntry.getValue();
 
-                DBNation total = nations.getTotal();
+                DBNation total = tmp.getTotal();
 
                 ArrayList<Object> row = new ArrayList<>();
                 if (aaId != 0) {
@@ -2271,7 +2271,7 @@ public class StatCommands {
                     row.add("");
                 }
                 row.add(colorStr);
-                row.add(nations.getScore());
+                row.add(tmp.getScore());
                 row.add(total.getCities());
 
                 row.add(total.getSoldiers());
@@ -2289,13 +2289,13 @@ public class StatCommands {
                 row.add(airPct);
                 row.add(navyPct);
 
-                double[] mmr = nations.getAverageMMR(false);
+                double[] mmr = tmp.getAverageMMR(false);
                 row.add(mmr[0] * 100 / Buildings.BARRACKS.cap(total::hasProject));
                 row.add(mmr[1] * 100 / Buildings.FACTORY.cap(total::hasProject));
                 row.add(mmr[2] * 100 / Buildings.HANGAR.cap(total::hasProject));
                 row.add(mmr[3] * 100 / Buildings.DRYDOCK.cap(total::hasProject));
 
-                double[] buy = nations.getMilitaryBuyPct(false);
+                double[] buy = tmp.getMilitaryBuyPct(false);
                 row.add(buy[0]);
                 row.add(buy[1]);
                 row.add(buy[2]);

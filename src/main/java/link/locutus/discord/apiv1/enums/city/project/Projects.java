@@ -424,6 +424,10 @@ public class Projects {
         return p -> hasProject[p.ordinal()];
     }
 
+    public static Project[] values() {
+        return values;
+    }
+
 
     // Recycling Initiative
 

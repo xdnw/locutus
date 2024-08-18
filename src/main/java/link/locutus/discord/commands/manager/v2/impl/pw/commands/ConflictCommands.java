@@ -555,8 +555,8 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importWikiPage(@Me GuildDB db, ConflictManager manager,
-                                 String name,
-                                 @Default String url,
+                                 @Arg("The name of the wiki page") String name,
+                                 @Arg("The url of the wiki page") @Default String url,
                                  @Default("true") boolean useCache,
                                  @Switch("p") boolean skipPushToSite) throws IOException, ParseException {
         if (name.contains("http")) return "Please specify the name of the wiki page, not the URL for `name`";

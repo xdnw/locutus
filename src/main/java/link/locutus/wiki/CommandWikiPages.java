@@ -7,9 +7,11 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.Config;
@@ -17,6 +19,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import retrofit2.http.HEAD;
 
@@ -26,34 +29,72 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class CommandWikiPages {
 
     public static String PLACEHOLDER_HEADER = """
-## Placeholder Syntax
+This page contains a list of functions that can be used as PLACEHOLDERS and FILTERS
 
+### About Arguments
+Some functions here may accept an argument. The brackets imply argument type, you do NOT include them when using the function. 
  - `<arg>` - A required parameter
- 
  - `[arg]` - An optional parameter
- 
  - `<arg1|arg2>` - Multiple parameters options
- 
  - `<arg=value>` - Default or suggested value
- 
  - `[-f flag]` - A optional command argument flag
- 
- 
-## Example discord usage
 
-For placeholders `{getLand}`
+### About Placeholders
+Placeholders in a text, such as in a spreadsheet or message, are replaced with actual values.
 
-For filters `#getLand>30`
+#### Examples:
+- `{myFunction}`
+- `{functionWithArgs(123)}`
+- `{withNamedArgs(myArg: 123 otherArg: 456)}`
+- `({conditional}?{ifTrue}:{ifFalse})`
+- `9-({numericalFunction}+5)*3`
 
-Use round brackets for arguments `#myFunction(123)`
+### About filters
+Filters are used to modify a selection. i.e. When you are choosing which things to act upon or display, you use filters to narrow down the selection to ones that meet a certain requirement.
+When the return type is a string, the filter can be compared using regex to the value.
+When the return type is boolean (true/false), it will be resolved to either 1 or 0
+
+#### Examples:
+- `#myBoolean,#myOtherTrueFalseFunction`
+- `(#myFunction=5||#myOtherFunction<10)`
+- `#textFunction=abc123,#regexFunction=efg.*`
+- `(#myFunction<(#myOtherFunction+5)`
 """;
 
-    public static String printPlaceholders(Placeholders placeholders, ValueStore store) {
-        String header = PLACEHOLDER_HEADER + """
+    public static String printPlaceholders(Placeholders<?> placeholders, ValueStore store) {
+        String operators = Arrays.stream(ArrayUtil.MathOperator.values()).map(f -> f.name() + ": `"+ f.getSymbol() + "`").reduce((a, b) -> a + "\n- " + b).orElse("");
+
+        Set<SelectorInfo> selectors = placeholders.getSelectorInfo();
+        Set<String> sheetColumns = placeholders.getSheetColumns(); // or null
+
+        StringBuilder header = new StringBuilder(PLACEHOLDER_HEADER + "\n\n### Operators\n- " + operators + "\n\n");
+        if (!selectors.isEmpty()) {
+            header.append("### " + PlaceholdersMap.getClassName(placeholders.getType()) + " Selectors\n");
+            for (SelectorInfo selector : selectors) {
+                header.append("- `").append(selector.format()).append("`: " + selector.desc());
+                if (selector.example() != null) {
+                    header.append("\nExample: ");
+                    if (selector.example().contains("`")) {
+                        header.append(selector.example());
+                    } else {
+                        header.append("`").append(selector.example()).append("`");
+                    }
+                }
+                header.append("\n");
+            }
+        }
+        if (sheetColumns != null && !sheetColumns.isEmpty()) {
+            header.append("\n\n### Sheet Columns\n");
+            // join sheetColumn with ` wrapped
+            header.append("A google sheet url with one of the following columns is accepted: " +
+                    sheetColumns.stream().collect(Collectors.joining("`, `", "`", "`")) + "\n");
+        }
+        header.append("""
 
 ---
 
@@ -62,8 +103,8 @@ Use round brackets for arguments `#myFunction(123)`
 ---
 
 
-""";
-        return printCommands(placeholders.getCommands(), store, placeholders.getPermisser(), "\\#", header, true);
+""");
+        return printCommands(placeholders.getCommands(), store, placeholders.getPermisser(), "\\#", header.toString(), true);
     }
 
     public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser) {
