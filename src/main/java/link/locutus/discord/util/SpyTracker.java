@@ -14,6 +14,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -325,9 +326,11 @@ public class SpyTracker {
                         if (Math.abs(offensive.timestamp - defensive.timestamp) > maxActivitySpiesDiffMs) continue;
                         if (!SpyCount.isInScoreRange(offensive.score, defensive.score)) continue;
                         if (offensive.nationId == defensive.nationId) continue;
+                        if (Settings.INSTANCE.LEGACY_SETTINGS.ESPIONAGE_ALWAYS_ONLINE.contains(offensive.nationId)) continue;
 
                         DBNation attacker = DBNation.getById(offensive.nationId);
                         if (attacker != null && (attacker.getAlliance_id() == defender.getAlliance_id() || treaties.contains(attacker.getAlliance_id()))) continue;
+                        if (attacker != null && Settings.INSTANCE.LEGACY_SETTINGS.ESPIONAGE_ALWAYS_ONLINE_AA.contains(attacker.getAlliance_id())) continue;
 
                         if (offensive.change == defensive.change) {
                             alert.exact.add(offensive);

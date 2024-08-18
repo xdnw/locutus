@@ -1295,7 +1295,7 @@ public class BankCommands {
 
                                   @Arg("The nations to send to")
                                   NationList nationList,
-                                  @Arg(value = "Days of operation to send", group = 0, aliases = "daysdefault") @Range(min=0, max=7) double days,
+                                  @Arg(value = "Days of operation to send", group = 0, aliases = "daysdefault") @Range(min=0, max=20) double days,
                                   @Arg(value = "Do not send money below the daily login bonus", group = 0) @Switch("dc") boolean no_daily_cash,
                                   @Arg(value = "Do not send ANY money", group = 0) @Switch("c") boolean no_cash,
 
