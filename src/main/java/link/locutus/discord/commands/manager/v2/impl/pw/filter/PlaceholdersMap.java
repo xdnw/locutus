@@ -19,11 +19,7 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.binding.bindings.SimplePlaceholders;
-import link.locutus.discord.commands.manager.v2.binding.bindings.StaticPlaceholders;
-import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
+import link.locutus.discord.commands.manager.v2.binding.bindings.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
@@ -91,6 +87,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emumSet;
@@ -272,8 +269,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Continent> createContinents() {
-        return new StaticPlaceholders<Continent>(Continent.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<Continent>(Continent.class, Continent::values, store, validators, permisser,
+                "One of the game continents",
                 (ThrowingTriFunction<Placeholders<Continent>, ValueStore, String, Set<Continent>>) (inst, store, input) -> {
                     Set<Continent> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -283,6 +280,12 @@ public class PlaceholdersMap {
                     }
                     return emumSet(Continent.class, input);
                 }) {
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("continent");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of continents")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -440,8 +443,20 @@ public class PlaceholdersMap {
         AlliancePlaceholders alliancePlaceholders = (AlliancePlaceholders) get(DBAlliance.class);
         return new Placeholders<NationOrAlliance>(NationOrAlliance.class, store, validators, permisser) {
             @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("nation", "alliance"));
+            }
+
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                Set<SelectorInfo> selectors = new LinkedHashSet<>(NATIONS.getSelectorInfo());
+                selectors.addAll(ALLIANCES.getSelectorInfo());
+                return selectors;
+            }
+
+            @Override
             public String getDescription() {
-                return "TODO";
+                return "A nation or alliance";
             }
 
             @Override
@@ -542,7 +557,7 @@ public class PlaceholdersMap {
 
     private Placeholders<GuildDB> createGuildDB() {
         return new SimplePlaceholders<GuildDB>(GuildDB.class, store, validators, permisser,
-                "TODO CM Ref",
+                "A discord guild",
                 (ThrowingTriFunction<Placeholders<GuildDB>, ValueStore, String, Set<GuildDB>>) (inst, store, input) -> {
                     Set<GuildDB> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -589,6 +604,19 @@ public class PlaceholdersMap {
                 return guildDB.getGuild().toString();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("GUILD", "123456789012345678", "Guild ID"),
+                        new SelectorInfo("*", null, "All shared guilds")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("guild");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of guilds")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -634,7 +662,7 @@ public class PlaceholdersMap {
 
     private Placeholders<DBBan> createBans() {
         return new SimplePlaceholders<DBBan>(DBBan.class,  store, validators, permisser,
-                "TODO CM REF",
+                "A game ban",
                 (ThrowingTriFunction<Placeholders<DBBan>, ValueStore, String, Set<DBBan>>) (inst, store, input) -> {
                     Set<DBBan> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -648,7 +676,7 @@ public class PlaceholdersMap {
                 }, (ThrowingTriFunction<Placeholders<DBBan>, ValueStore, String, Predicate<DBBan>>) (inst, store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
+                        Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
                                 (type, str) -> DiscordUtil.parseNationId(str));
                         return f -> sheet.contains(f.getNation_id());
                     }
@@ -672,6 +700,20 @@ public class PlaceholdersMap {
                         return dbBan.getNation_id() + "";
                     }
                 }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("BAN", "1234", "Ban ID"),
+                        new SelectorInfo("NATION", "189573", "Nation id, name, leader, url, user id or mention (see nation type)"),
+                        new SelectorInfo("*", null, "All bans")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("bans");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of bans")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -717,7 +759,7 @@ public class PlaceholdersMap {
 
     private Placeholders<NationList> createNationList() {
         return new SimplePlaceholders<NationList>(NationList.class, store, validators, permisser,
-                "TODO CM REF",
+                "One or more groups of nations",
                 (ThrowingTriFunction<Placeholders<NationList>, ValueStore, String, Set<NationList>>) (inst, store, input) -> {
                     Set<NationList> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -788,6 +830,23 @@ public class PlaceholdersMap {
                 return nationList.getFilter();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("*", null, "A single list with all nations"),
+                        new SelectorInfo("~", null, "A set of nation lists for each coalition in the server"),
+                        new SelectorInfo("coalition:COALITION_NAME", "coalition:allies", "A single list with the nations in the coalition"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)"),
+                        new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type)"),
+                        new SelectorInfo("SELECTOR[FILTER]", "`*[#cities>10]`, `AA:Rose[#position>1,#vm_turns=0]`", "A single nation list based on a selector with an optional filter")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("nations");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of nationlists")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -958,7 +1017,7 @@ public class PlaceholdersMap {
 
     private Placeholders<UserWrapper> createUsers() {
         return new SimplePlaceholders<UserWrapper>(UserWrapper.class, store, validators, permisser,
-                "TODO CM REF",
+                "A discord user",
                 (ThrowingTriFunction<Placeholders<UserWrapper>, ValueStore, String, Set<UserWrapper>>) (inst, store, input) -> {
                     Set<UserWrapper> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -987,6 +1046,24 @@ public class PlaceholdersMap {
                 return userWrapper.getUserName();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("USER", "Borg", "Discord user name"),
+                        new SelectorInfo("USER_ID", "123456789012345678", "Discord user id"),
+                        new SelectorInfo("@ROLE", "@Member", "All users with a discord role by a given name or mention"),
+                        new SelectorInfo("ROLE_ID", "123456789012345678", "All users with the discord role by a given id"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type) - only if registered with Locutus"),
+                        new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type), resolves to the users registered with Locutus"),
+                        new SelectorInfo("*", null, "All shared users")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("user");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of users")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1033,7 +1110,7 @@ public class PlaceholdersMap {
 
     private Placeholders<DBCity> createCities() {
         return new SimplePlaceholders<DBCity>(DBCity.class, store, validators, permisser,
-                "TODO CM REF",
+                "A city",
                 (ThrowingTriFunction<Placeholders<DBCity>, ValueStore, String, Set<DBCity>>) (inst, store, input) -> {
                     Set<DBCity> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1041,7 +1118,7 @@ public class PlaceholdersMap {
                         Locutus.imp().getNationDB().getCities();
                     }
                     if (SpreadSheet.isSheet(input)) {
-                        Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("cities"), true, (type, str) -> parseCitiesSingle(store, str));
+                        Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("city", "cities"), true, (type, str) -> parseCitiesSingle(store, str));
                         Set<DBCity> cities = new LinkedHashSet<>();
                         for (Set<DBCity> set : result) {
                             cities.addAll(set);
@@ -1056,7 +1133,7 @@ public class PlaceholdersMap {
                 return f -> f.id == city.id;
             }
             if (SpreadSheet.isSheet(input)) {
-                Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("cities"), true, (type, str) -> parseCitiesSingle(store, str));
+                Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("city", "cities"), true, (type, str) -> parseCitiesSingle(store, str));
                 Set<Integer> cityIds = new IntOpenHashSet();
                 for (Set<DBCity> set : result) {
                     for (DBCity city : set) {
@@ -1078,6 +1155,21 @@ public class PlaceholdersMap {
                 return dbCity.id + "";
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("CITY_ID", "12345", "City ID"),
+                        new SelectorInfo("CITY_URL", "/city/id=12345", "City URL"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)"),
+                        new SelectorInfo("*", null, "All cities")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("city", "cities"));
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of cities")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1214,7 +1306,7 @@ public class PlaceholdersMap {
 
     public Placeholders<BankDB.TaxDeposit> createTaxDeposit() {
         return new SimplePlaceholders<BankDB.TaxDeposit>(BankDB.TaxDeposit.class, store, validators, permisser,
-                "TODO CM REF",
+                "A tax record",
                 (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Set<BankDB.TaxDeposit>>) (inst, store, input) -> {
                     Set<BankDB.TaxDeposit> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1294,6 +1386,21 @@ public class PlaceholdersMap {
                 return taxDeposit.toString();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("TAX_ID", "12345", "Tax record ID"),
+                        new SelectorInfo("TAX_URL", "/tax/id=12345", "Tax URL"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type) - if in this guild's alliance"),
+                        new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type) - if in this guild"),
+                        new SelectorInfo("*", null, "All tax records with the guild")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("id", "tax_id", "nation"));
+            }
 
             @NoFormat
             @Command(desc = "Add an alias for a selection of tax records")
@@ -1340,7 +1447,8 @@ public class PlaceholdersMap {
 
     public Placeholders<Conflict> createConflicts() {
         return new SimplePlaceholders<Conflict>(Conflict.class, store, validators, permisser,
-                "TODO CM REF",
+                "Public and registered alliance conflicts added to the bot\n" +
+                        "Unlisted conflicts are not supported by conflict selectors",
                 (ThrowingTriFunction<Placeholders<Conflict>, ValueStore, String, Set<Conflict>>) (inst, store, input) -> {
                     Set<Conflict> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1348,10 +1456,19 @@ public class PlaceholdersMap {
                     if (input.equalsIgnoreCase("*")) {
                         return new LinkedHashSet<>(manager.getConflictMap().values());
                     }
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("conflict"), true, (type, str) -> PWBindings.conflict(manager, str));
+                    }
                     return Set.of(PWBindings.conflict(manager, input));
                 }, (ThrowingTriFunction<Placeholders<Conflict>, ValueStore, String, Predicate<Conflict>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
-            Conflict setting = PWBindings.conflict(Locutus.imp().getWarDb().getConflicts(), input);
+            ConflictManager cMan = Locutus.imp().getWarDb().getConflicts();
+            if (SpreadSheet.isSheet(input)) {
+                Set<Conflict> conflicts = SpreadSheet.parseSheet(input, List.of("conflict"), true, (type, str) -> PWBindings.conflict(cMan, str));
+                Set<Integer> ids = conflicts.stream().map(Conflict::getId).collect(Collectors.toSet());
+                return f -> ids.contains(f.getId());
+            }
+            Conflict setting = PWBindings.conflict(cMan, input);
             return f -> f == setting;
         }, new Function<Conflict, String>() {
             @Override
@@ -1359,7 +1476,21 @@ public class PlaceholdersMap {
                 return conflict.getId() + "";
             }
         }) {
-//            @NoFormat
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("CONFLICT_ID", "12345", "Public Conflict ID"),
+                        new SelectorInfo("CONFLICT_NAME", "Duck Hunt", "Public Conflict name, as stored by the bot"),
+                        new SelectorInfo("*", null, "All public conflicts")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("conflict");
+            }
+
+            //            @NoFormat
 //            @Command(desc = "Add an alias for a selection of conflicts")
 //            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
 //            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Conflict> conflicts) {
@@ -1404,16 +1535,24 @@ public class PlaceholdersMap {
 
     public Placeholders<GuildSetting> createGuildSettings() {
         return new SimplePlaceholders<GuildSetting>(GuildSetting.class, store, validators, permisser,
-                "TODO CM REF",
+                "A bot setting in a guild",
                 (ThrowingTriFunction<Placeholders<GuildSetting>, ValueStore, String, Set<GuildSetting>>) (inst, store, input) -> {
                     Set<GuildSetting> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         return new LinkedHashSet<>(Arrays.asList(GuildKey.values()));
                     }
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("setting"), true, (type, str) -> PWBindings.key(str));
+                    }
                     return Set.of(PWBindings.key(input));
                 }, (ThrowingTriFunction<Placeholders<GuildSetting>, ValueStore, String, Predicate<GuildSetting>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
+            if (SpreadSheet.isSheet(input)) {
+                Set<GuildSetting> settings = SpreadSheet.parseSheet(input, List.of("setting"), true, (type, str) -> PWBindings.key(str));
+                Set<GuildSetting> ids = new ObjectOpenHashSet<>(settings);
+                return ids::contains;
+            }
             GuildSetting setting = PWBindings.key(input);
             return f -> f == setting;
         }, new Function<GuildSetting, String>() {
@@ -1422,6 +1561,18 @@ public class PlaceholdersMap {
                 return setting.name();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("SETTING", GuildKey.ALLIANCE_ID.name(), "Guild setting name"),
+                        new SelectorInfo("*", null, "All guild settings")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("setting");
+            }
 
             @NoFormat
             @Command(desc = "Add an alias for a selection of guild settings")
@@ -1494,7 +1645,7 @@ public class PlaceholdersMap {
 
     public Placeholders<IAttack> createAttacks() {
         return new SimplePlaceholders<IAttack>(IAttack.class, store, validators, permisser,
-                "TODO CM REF",
+                "An attack in a war",
                 (ThrowingTriFunction<Placeholders<IAttack>, ValueStore, String, Set<IAttack>>) (inst, store, input) -> {
                     Set<IAttack> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1625,6 +1776,18 @@ public class PlaceholdersMap {
             }
         }
         ) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                Set<SelectorInfo> mySet = new LinkedHashSet<>(List.of(new SelectorInfo("ATTACK_ID", "123456", "Attack ID")));
+                mySet.addAll(WARS.getSelectorInfo());
+                return mySet;
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("id", "war_id", "nation", "leader", "alliance"));
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of attacks")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1670,7 +1833,7 @@ public class PlaceholdersMap {
 
     public Placeholders<DBWar> createWars() {
         return new SimplePlaceholders<DBWar>(DBWar.class, store, validators, permisser,
-                "TODO CM REF",
+                "A war",
                 (ThrowingTriFunction<Placeholders<DBWar>, ValueStore, String, Set<DBWar>>) (inst, store, input) -> {
                     Set<DBWar> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1757,6 +1920,21 @@ public class PlaceholdersMap {
                 return dbWar.getWarId() + "";
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("WAR_ID", "12345", "War ID"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)"),
+                        new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type)"),
+                        new SelectorInfo("*", null, "All wars")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("id", "war_id", "nation", "leader", "alliance"));
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of wars")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1801,7 +1979,7 @@ public class PlaceholdersMap {
 
     public Placeholders<TaxBracket> createBrackets() {
         return new SimplePlaceholders<TaxBracket>(TaxBracket.class, store, validators, permisser,
-                "TODO CM REF",
+                "A tax bracket",
                 (ThrowingTriFunction<Placeholders<TaxBracket>, ValueStore, String, Set<TaxBracket>>) (inst, store2, input) -> {
                     Set<TaxBracket> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1853,6 +2031,20 @@ public class PlaceholdersMap {
             }
         }
         ) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("id"));
+            }
+
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("TAX_ID", "tx_id=12345", "Tax Bracket ID"),
+                        new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type)"),
+                        new SelectorInfo("*", null, "All tax brackets in this guilds alliances, else all tax brackets")
+                ));
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of tax brackets")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1898,7 +2090,7 @@ public class PlaceholdersMap {
 
     private Placeholders<DBTrade> createTrades() {
         return new SimplePlaceholders<DBTrade>(DBTrade.class, store, validators, permisser,
-                "TODO CM REF",
+                "A completed trade",
                 (ThrowingTriFunction<Placeholders<DBTrade>, ValueStore, String, Set<DBTrade>>) (inst, store, input) -> {
                     Set<DBTrade> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -1942,6 +2134,19 @@ public class PlaceholdersMap {
             }
         }
         ){
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("TRADE_ID", "12345", "Trade ID"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("id"));
+            }
+
             @NoFormat
             @Command(desc = "Add columns to a Trade sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1982,7 +2187,7 @@ public class PlaceholdersMap {
 
     private Placeholders<Transaction2> createTransactions() {
         return new SimplePlaceholders<Transaction2>(Transaction2.class, store, validators, permisser,
-                "TODO CM REF",
+                "A bank transaction",
                 (ThrowingTriFunction<Placeholders<Transaction2>, ValueStore, String, Set<Transaction2>>) (inst, store, input) -> {
                     Set<Transaction2> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2027,6 +2232,18 @@ public class PlaceholdersMap {
                 return transaction2.toString();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("TX_ID", "12345", "Bank Transaction ID"),
+                        new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return new LinkedHashSet<>(List.of("id"));
+            }
 
             @Override
             public Set<Transaction2> deserializeSelection(ValueStore store, String input) {
@@ -2038,7 +2255,6 @@ public class PlaceholdersMap {
                 Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                 User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
                 DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-
 
                 switch (type) {
                     case "all" -> {
@@ -2202,7 +2418,7 @@ public class PlaceholdersMap {
 
     private Placeholders<DBBounty> createBounties() {
         return new SimplePlaceholders<DBBounty>(DBBounty.class, store, validators, permisser,
-                "TODO CM REF",
+                "A bounty",
                 (ThrowingTriFunction<Placeholders<DBBounty>, ValueStore, String, Set<DBBounty>>) (inst, store, input) -> {
                     Set<DBBounty> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2254,6 +2470,21 @@ public class PlaceholdersMap {
                 return dbBounty.toString() + "";
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                Set<SelectorInfo> result = new LinkedHashSet<>(List.of(
+                        new SelectorInfo("BOUNTY_ID", "12345", "Bounty ID"),
+                        new SelectorInfo("*", null, "All bounties")
+                ));
+                result.addAll(NATIONS.getSelectorInfo());
+                return result;
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("bounty");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of bounties")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2299,7 +2530,7 @@ public class PlaceholdersMap {
 
     private Placeholders<Treaty> createTreaty() {
         return new SimplePlaceholders<Treaty>(Treaty.class, store, validators, permisser,
-                "TODO CM REF",
+                "A treaty between two alliances",
                 (ThrowingTriFunction<Placeholders<Treaty>, ValueStore, String, Set<Treaty>>) (inst, store, input) -> {
                     Set<Treaty> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2384,6 +2615,21 @@ public class PlaceholdersMap {
                 return treaty.toString();
             }
         }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("ALLIANCES:ALLIANCES", "`Rose:Eclipse`, `Rose,Eclipse:~allies`", "A treaty between two sets of alliances or coalitions (direction agnostic)"),
+                        new SelectorInfo("ALLIANCES>ALLIANCES", "Rose>Eclipse", "A treaty from one alliance or coalition to another"),
+                        new SelectorInfo("ALLIANCES<ALLIANCES", "Rose<Eclipse", "A treaty from one alliance or coalition to another"),
+                        new SelectorInfo("*", null, "All treaties")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("treaty");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of treaties")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2428,8 +2674,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Project> createProjects() {
-        return new StaticPlaceholders<Project>(Project.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<Project>(Project.class, Projects::values, store, validators, permisser,
+                "A project",
                 (ThrowingTriFunction<Placeholders<Project>, ValueStore, String, Set<Project>>) (inst, store, input) -> {
                     Set<Project> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2445,6 +2691,11 @@ public class PlaceholdersMap {
                     }
                     return result;
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("project");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Projects")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2489,8 +2740,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<ResourceType> createResourceType() {
-        return new StaticPlaceholders<ResourceType>(ResourceType.class, store, validators, permisser,
-        "TODO CM REF",
+        return new StaticPlaceholders<ResourceType>(ResourceType.class, ResourceType::values, store, validators, permisser,
+        "A game resource",
         (ThrowingTriFunction<Placeholders<ResourceType>, ValueStore, String, Set<ResourceType>>) (inst, store, input) -> {
             Set<ResourceType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2500,6 +2751,11 @@ public class PlaceholdersMap {
             }
             return Set.of(PWBindings.resource(input));
         }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("resource");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of resources")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2544,8 +2800,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<AttackType> createAttackTypes() {
-        return new StaticPlaceholders<AttackType>(AttackType.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<AttackType>(AttackType.class, AttackType::values, store, validators, permisser,
+                "A war attack type",
                 (ThrowingTriFunction<Placeholders<AttackType>, ValueStore, String, Set<AttackType>>) (inst, store, input) -> {
                     Set<AttackType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2555,6 +2811,11 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.attackType(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("attack_type");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of attack types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2599,8 +2860,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<MilitaryUnit> createMilitaryUnit() {
-        return new StaticPlaceholders<MilitaryUnit>(MilitaryUnit.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<MilitaryUnit>(MilitaryUnit.class, MilitaryUnit::values, store, validators, permisser,
+                "A military unit type",
                 (ThrowingTriFunction<Placeholders<MilitaryUnit>, ValueStore, String, Set<MilitaryUnit>>) (inst, store, input) -> {
                     Set<MilitaryUnit> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2610,6 +2871,11 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.unit(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("unit");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Military Units")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2654,8 +2920,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<TreatyType> createTreatyType() {
-        return new StaticPlaceholders<TreatyType>(TreatyType.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<TreatyType>(TreatyType.class, TreatyType::values, store, validators, permisser,
+                "A treaty type",
                 (ThrowingTriFunction<Placeholders<TreatyType>, ValueStore, String, Set<TreatyType>>) (inst, store, input) -> {
                     Set<TreatyType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2665,6 +2931,11 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.TreatyType(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("treaty_type");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Treaty Types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2709,8 +2980,9 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBTreasure> createTreasure() {
-        return new StaticPlaceholders<DBTreasure>(DBTreasure.class, store, validators, permisser,
-                "TODO CM REF",
+        Supplier<DBTreasure[]> treasures = () -> Locutus.imp().getNationDB().getTreasuresByName().values().toArray(new DBTreasure[0]);
+        return new StaticPlaceholders<DBTreasure>(DBTreasure.class, treasures, store, validators, permisser,
+                "A treasure",
                 (ThrowingTriFunction<Placeholders<DBTreasure>, ValueStore, String, Set<DBTreasure>>) (inst, store, input) -> {
                     Set<DBTreasure> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2720,6 +2992,11 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.treasure(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("treasure");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Treasures")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2764,8 +3041,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<IACheckup.AuditType> createAuditType() {
-        return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, IACheckup.AuditType::values, store, validators, permisser,
+                "A bot audit type for a nation",
                 (ThrowingTriFunction<Placeholders<IACheckup.AuditType>, ValueStore, String, Set<IACheckup.AuditType>>) (inst, store, input) -> {
                     Set<IACheckup.AuditType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2775,6 +3052,11 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.auditType(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("audit");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Audit Types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2819,8 +3101,8 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<NationColor> createNationColor() {
-        return new StaticPlaceholders<NationColor>(NationColor.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<NationColor>(NationColor.class, NationColor::values, store, validators, permisser,
+                "A nation color",
                 (ThrowingTriFunction<Placeholders<NationColor>, ValueStore, String, Set<NationColor>>) (inst, store, input) -> {
                     Set<NationColor> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
@@ -2830,6 +3112,11 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.NationColor(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("color");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Nation Colors")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -2874,17 +3161,22 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Building> createBuilding() {
-        return new StaticPlaceholders<Building>(Building.class, store, validators, permisser,
-                "TODO CM REF",
+        return new StaticPlaceholders<Building>(Building.class, Buildings::values, store, validators, permisser,
+                "A city building type",
                 (ThrowingTriFunction<Placeholders<Building>, ValueStore, String, Set<Building>>) (inst, store, input) -> {
                     Set<Building> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Buildings.values()));
                     if (SpreadSheet.isSheet(input)) {
-                        return SpreadSheet.parseSheet(input, List.of("attack_type"), true, (type, str) -> PWBindings.getBuilding(str));
+                        return SpreadSheet.parseSheet(input, List.of("building"), true, (type, str) -> PWBindings.getBuilding(str));
                     }
                     return Set.of(PWBindings.getBuilding(input));
                 }) {
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("building");
+            }
+
             @NoFormat
             @Command(desc = "Add an alias for a selection of Buildings")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)

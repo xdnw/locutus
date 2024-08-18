@@ -81,6 +81,10 @@ public abstract class Placeholders<T> extends BindingHelper {
         return this;
     }
 
+    public abstract Set<String> getSheetColumns();
+
+    public abstract Set<SelectorInfo> getSelectorInfo();
+
     public Class<T> getType() {
         return instanceType;
     }

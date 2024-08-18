@@ -9,6 +9,7 @@ import com.vladsch.flexmark.html.renderer.NodeRenderer;
 import com.vladsch.flexmark.html.renderer.NodeRendererContext;
 import com.vladsch.flexmark.html.renderer.NodeRendererFactory;
 import com.vladsch.flexmark.html.renderer.NodeRenderingHandler;
+import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import com.vladsch.flexmark.html2md.converter.HtmlNodeRenderer;
 import com.vladsch.flexmark.html2md.converter.HtmlNodeRendererFactory;
 import com.vladsch.flexmark.html2md.converter.HtmlNodeRendererHandler;
@@ -290,9 +291,8 @@ public class MarkupUtil {
         return html;
     }
 
-    public static String htmlToMarkdown(String source) {
-        Remark remark = new Remark();
-        return remark.convert(source);
+    public static String htmlToMarkdown(String html) {
+        return FlexmarkHtmlConverter.builder().build().convert(html);
     }
 
     public static String transformURLIntoLinks(String text){
@@ -354,6 +354,7 @@ public class MarkupUtil {
     private static final MutableDataSet MARKDOWN_TO_HTML = new MutableDataSet();
     private static final Parser MARKDOWN_PARSER;
     private static final HtmlRenderer MARKDOWN_RENDERER;
+
     static {
         MARKDOWN_TO_HTML.set(Parser.EXTENSIONS, Arrays.asList(StrikethroughExtension.create()));
         MARKDOWN_TO_HTML.set(HtmlRenderer.SOFT_BREAK, "<br />");

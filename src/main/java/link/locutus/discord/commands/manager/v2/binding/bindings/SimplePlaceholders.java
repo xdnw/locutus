@@ -10,7 +10,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class SimplePlaceholders<T> extends Placeholders<T> {
+public abstract class SimplePlaceholders<T> extends Placeholders<T> {
 
     private final String help;
     private final TriFunction<Placeholders<T>, ValueStore, String, Set<T>> parse;

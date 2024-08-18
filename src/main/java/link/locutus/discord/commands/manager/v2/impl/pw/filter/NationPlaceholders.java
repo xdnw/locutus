@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -61,6 +62,36 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBNation.class, store, validators, permisser);
+    }
+
+    @Override
+    public Set<SelectorInfo> getSelectorInfo() {
+        return new LinkedHashSet<>(List.of(
+                new SelectorInfo("nation:NATION_NAME", "nation:Borg", "A qualified nation name"),
+                new SelectorInfo("leader:NATION_NAME", "leader:Danzek", "A qualified leader name"),
+                new SelectorInfo("aa:ALLIANCE_NAME", "aa:Rose", "A qualified alliance name"),
+                new SelectorInfo("alliance:ALLIANCE_NAME", "alliance:Eclipse", "A qualified alliance name"),
+                new SelectorInfo("nation/id=NATION_ID", "nation/id=6", "A nation url"),
+                new SelectorInfo("alliance/id=ALLIANCE_ID", "alliance/id=790", "An alliance url"),
+                new SelectorInfo("coalition:COALITION", "coalition:allies", "A qualified coalition name"),
+                new SelectorInfo("~COALITION", "~enemies", "A coalition name"),
+                new SelectorInfo("NATION_NAME", "Borg", "An unqualified nation name"),
+                new SelectorInfo("LEADER_NAME", "Danzek", "An unqualified leader name"),
+                new SelectorInfo("NATION_ID", "189573", "A nation id"),
+                new SelectorInfo("ALLIANCE_ID", "790", "An alliance id"),
+                new SelectorInfo("@ROLE_MENTION", "@Member", "A discord role mention or name"),
+                new SelectorInfo("ROLE_ID", "123456789012345678", "A discord role id"),
+                new SelectorInfo("@USER_MENTION", "@xdnw", "A discord user mention or name"),
+                new SelectorInfo("USER_ID", "123456789012345678", "A discord user id"),
+                new SelectorInfo("https://politicsandwar.com/index.php?id=15&tax_id=TAX_ID", "https://politicsandwar.com/index.php?id=15&tax_id=1234", "A full tax url"),
+                new SelectorInfo("TAX_ID", "tax_id=1234", "A tax bracket id or url"),
+                new SelectorInfo("*", null, "All nations")
+        ));
+    }
+
+    @Override
+    public Set<String> getSheetColumns() {
+        return new LinkedHashSet<>(List.of("nation", "leader"));
     }
 
     @Override

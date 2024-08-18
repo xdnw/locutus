@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -35,13 +36,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -69,6 +64,24 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
             result.add(metric);
         }
         return result;
+    }
+
+    @Override
+    public Set<SelectorInfo> getSelectorInfo() {
+        return new LinkedHashSet<>(List.of(
+                new SelectorInfo("aa:ALLIANCE_NAME", "aa:Rose", "A qualified alliance name"),
+                new SelectorInfo("alliance:ALLIANCE_NAME", "alliance:Eclipse", "A qualified alliance name"),
+                new SelectorInfo("alliance/id=ALLIANCE_ID", "alliance/id=790", "An alliance url"),
+                new SelectorInfo("ALLIANCE_ID", "790", "An alliance id"),
+                new SelectorInfo("coalition:COALITION", "coalition:allies", "A qualified coalition name"),
+                new SelectorInfo("~COALITION", "~enemies", "A coalition name"),
+                new SelectorInfo("*", null, "All alliances")
+        ));
+    }
+
+    @Override
+    public Set<String> getSheetColumns() {
+        return Set.of("alliance");
     }
 
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id) {

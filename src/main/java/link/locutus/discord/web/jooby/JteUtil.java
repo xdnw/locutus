@@ -122,51 +122,51 @@ public class JteUtil {
         return parent;
     }
 //
-//    public static JsonArray createArrayColNum(Collection<Number> myCollection) {
-//        JsonArray array = new JsonArray();
-//        for (Number value : myCollection) {
-//            array.add(value);
-//        }
-//        return array;
-//    }
-//
-//    public static JsonArray createArrayCol(Collection<String> myCollection) {
-//        JsonArray array = new JsonArray();
-//        for (String value : myCollection) {
-//            array.add(value);
-//        }
-//        return array;
-//    }
-//
-//    public static JsonArray createArrayColObj(Collection<Object> myCollection) {
-//        JsonArray array = new JsonArray();
-//        for (Object value : myCollection) {
-//            add(array, value);
-//        }
-//        return array;
-//    }
-//
-//
-//    public static JsonArray createArrayObj(Object... values) {
-//        JsonArray array = new JsonArray();
-//        for (Object value : values) {
-//            add(array, value);
-//        }
-//        return array;
-//    }
-//
-//    public static JsonArray add(JsonArray array, Object value) {
-//        if (value instanceof Number num) {
-//            array.add(num);
-//        } else if (value instanceof Boolean bool) {
-//            array.add(bool);
-//        } else if (value instanceof String str) {
-//            array.add(str);
-//        } else if (value instanceof JsonElement elem) {
-//            array.add(elem);
-//        } else {
-//            array.add(value == null ? "" : value.toString());
-//        }
-//        return array;
-//    }
+    public static JsonArray createArrayColNum(Collection<Number> myCollection) {
+        JsonArray array = new JsonArray();
+        for (Number value : myCollection) {
+            array.add(value);
+        }
+        return array;
+    }
+
+    public static JsonArray createArrayCol(Collection<String> myCollection) {
+        JsonArray array = new JsonArray();
+        for (String value : myCollection) {
+            array.add(value);
+        }
+        return array;
+    }
+
+    public static JsonArray createArrayColObj(Collection<Object> myCollection) {
+        JsonArray array = new JsonArray();
+        for (Object value : myCollection) {
+            add(array, value);
+        }
+        return array;
+    }
+
+
+    public static JsonArray createArrayObj(Object... values) {
+        JsonArray array = new JsonArray();
+        for (Object value : values) {
+            add(array, value);
+        }
+        return array;
+    }
+
+    public static JsonArray add(JsonArray array, Object value) {
+        if (value instanceof Number num) {
+            array.add(num);
+        } else if (value instanceof Boolean bool) {
+            array.add(bool);
+        } else if (value instanceof String str) {
+            array.add(str);
+        } else if (value instanceof JsonElement elem) {
+            array.add(elem);
+        } else {
+            array.add(value == null ? "" : value.toString());
+        }
+        return array;
+    }
 }

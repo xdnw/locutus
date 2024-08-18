@@ -1111,6 +1111,8 @@ public class DiscordUtil {
 
             if (aaName.startsWith("~") && allowCoalitions) {
                 aaName = aaName.substring(1);
+            } else if (aaName.startsWith("coalition:") && allowCoalitions) {
+                aaName = aaName.substring(10);
             } else {
                 aaId = PW.parseAllianceId(aaName);
             }
