@@ -381,6 +381,14 @@ public class Settings extends Config {
         @Deprecated
         @Comment("Can bypass the normal transfer cap")
         public List<Long> WHITELISTED_BANK_USERS = Arrays.asList();
+
+        @Deprecated
+        @Comment("Reduce the appearance of these always online nations for espionage alerts (if causing false positives)")
+        public List<Integer> ESPIONAGE_ALWAYS_ONLINE = Arrays.asList();
+
+        @Deprecated
+        @Comment("Reduce the appearance of these always online nations for espionage alerts (if causing false positives)")
+        public List<Integer> ESPIONAGE_ALWAYS_ONLINE_AA = Arrays.asList();
     }
 
 
