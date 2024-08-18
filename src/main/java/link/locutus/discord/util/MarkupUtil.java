@@ -1,6 +1,5 @@
 package link.locutus.discord.util;
 
-import com.overzealous.remark.Remark;
 import com.vladsch.flexmark.ast.FencedCodeBlock;
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
