@@ -48,15 +48,7 @@ import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -749,7 +741,10 @@ public class NationUpdateProcessor {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(1);
         List<AllianceChange> removes = new ArrayList<>(alliance.getRankChanges(cutoff));
-        Map<Integer, AllianceChange> changesByNation = removes.stream().collect(Collectors.toMap(AllianceChange::getNationId, f -> f));
+        Map<Integer, AllianceChange> changesByNation = new LinkedHashMap<>();
+        for (AllianceChange change : removes) {
+            changesByNation.put(change.getNationId(), change);
+        }
         changesByNation.put(current.getNation_id(), new AllianceChange(previous, current, now));
 
         for (Map.Entry<Integer, AllianceChange> entry : changesByNation.entrySet()) {
