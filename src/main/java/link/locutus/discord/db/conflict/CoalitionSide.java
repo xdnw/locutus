@@ -584,7 +584,7 @@ public class CoalitionSide {
                         metricCitiesTable.add(new ObjectArrayList<>());
                         continue;
                     }
-                    List<Long> values = cities.stream().map(f -> metricData.getOrDefault(f, 0L)).collect(Collectors.toList());
+                    List<Long> values = cities.stream().map(f -> metricData.getOrDefault(f, null)).collect(Collectors.toList());
                     metricCitiesTable.add(values);
                 }
                 metricCitiesTableByAA.add(metricCitiesTable);
