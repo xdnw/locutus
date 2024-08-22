@@ -87,6 +87,7 @@ import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.async.AsyncLoggerContextSelector;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.jetbrains.annotations.NotNull;
@@ -147,20 +148,8 @@ public final class Locutus extends ListenerAdapter {
         }
     }
 
-    private void setInfoLogging() {
-//        org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
-//        Configurator.setRootLevel(org.apache.logging.log4j.Level.INFO);
-        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        Configuration config = ctx.getConfiguration();
-        LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
-        loggerConfig.setLevel(Level.INFO);
-        ctx.updateLoggers();
-//        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-//        root.setLevel(ch.qos.logback.classic.Level.INFO);
-    }
-
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {
-        setInfoLogging();
+        Logg.setInfoLogging();
 
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;

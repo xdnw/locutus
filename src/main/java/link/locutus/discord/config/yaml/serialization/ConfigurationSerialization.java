@@ -1,8 +1,8 @@
 package link.locutus.discord.config.yaml.serialization;
 
 import link.locutus.discord.config.yaml.Configuration;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -16,7 +16,7 @@ import java.util.Map;
  */
 public class ConfigurationSerialization {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigurationSerialization.class.getSimpleName());
+    private static final Logger LOGGER = LogManager.getLogger(ConfigurationSerialization.class.getSimpleName());
 
     public static final String SERIALIZED_TYPE_KEY = "==";
     private static final Map<String, Class<? extends ConfigurationSerializable>> aliases =

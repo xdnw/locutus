@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -60,8 +61,6 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
 import org.apache.commons.lang3.tuple.Triple;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -81,7 +80,6 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class NationDB extends DBMainV2 implements SyncableDatabase {
-    private static final Logger LOGGER = LoggerFactory.getLogger(NationDB.class.getSimpleName());
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, DBAlliance> alliancesById = new Int2ObjectOpenHashMap<>();
@@ -128,7 +126,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public void load() throws SQLException {
         { // Legacy
             if (tableExists("NATIONS")) {
-                LOGGER.info("Updating legacy nations");
+                Logg.text("Updating legacy nations");
                 updateLegacyNations();
             }
             if (tableExists("TREATIES")) getDb().drop("TREATIES");
@@ -136,15 +134,15 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
 
         loadPositions();
-        LOGGER.info("Loaded " + positionsById.size() + " positions");
+        Logg.text("Loaded " + positionsById.size() + " positions");
         loadAlliances();
-        LOGGER.info("Loaded " + alliancesById.size() + " alliances");
+        Logg.text("Loaded " + alliancesById.size() + " alliances");
         loadNations();
-        LOGGER.info("Loaded " + nationsById.size() + " nations");
+        Logg.text("Loaded " + nationsById.size() + " nations");
         int cities = loadCities();
-        LOGGER.info("Loaded " + cities + " cities");
+        Logg.text("Loaded " + cities + " cities");
         int treaties = loadTreaties();
-        LOGGER.info("Loaded " + treaties + " treaties");
+        Logg.text("Loaded " + treaties + " treaties");
 
         try {
             if (tableExists("KICKS")) {

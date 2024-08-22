@@ -1,5 +1,9 @@
 package link.locutus.discord.config.yaml.file;
 
+import it.unimi.dsi.fastutil.io.BinIO;
+import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
+import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Configuration;
 import link.locutus.discord.config.yaml.InvalidConfigurationException;
 import link.locutus.discord.config.yaml.MemoryConfiguration;
@@ -118,9 +122,19 @@ public abstract class FileConfiguration extends MemoryConfiguration {
         if (file == null) {
             throw new NullPointerException("File cannot be null");
         }
+        long start = System.currentTimeMillis();
+        try (FileInputStream stream = new FileInputStream(file);
+            InputStreamReader reader = new InputStreamReader(new FastBufferedInputStream(stream), StandardCharsets.UTF_8);
+            BufferedReader input = new BufferedReader(reader);
+            FastByteArrayOutputStream builder = new FastByteArrayOutputStream()) {
 
-        try (FileInputStream stream = new FileInputStream(file)) {
-            load(new InputStreamReader(stream, StandardCharsets.UTF_8));
+            String line;
+            while ((line = input.readLine()) != null) {
+                builder.write(line.getBytes(StandardCharsets.UTF_8));
+                builder.write('\n');
+            }
+            String myStr = new String(builder.array, 0, builder.length, StandardCharsets.UTF_8);
+            loadFromString(myStr);
         }
     }
 
@@ -138,9 +152,7 @@ public abstract class FileConfiguration extends MemoryConfiguration {
      * @throws IllegalArgumentException      thrown when reader is null
      */
     public void load(Reader reader) throws IOException, InvalidConfigurationException {
-
         StringBuilder builder = new StringBuilder();
-
         try (BufferedReader input = reader instanceof BufferedReader ? (BufferedReader) reader : new BufferedReader(reader)) {
             String line;
 

@@ -1,13 +1,15 @@
 package link.locutus.discord.config.yaml.file;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Configuration;
 import link.locutus.discord.config.yaml.ConfigurationSection;
 import link.locutus.discord.config.yaml.InvalidConfigurationException;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
+import org.yaml.snakeyaml.introspector.PropertyUtils;
 import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.File;
@@ -23,11 +25,21 @@ import java.util.Map;
  */
 public class YamlConfiguration extends FileConfiguration {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(YamlConfiguration.class.getSimpleName());
+    private static final Logger LOGGER = LogManager.getLogger(YamlConfiguration.class.getSimpleName());
     protected static final String COMMENT_PREFIX = "# ";
     protected static final String BLANK_CONFIG = "{}\n";
+
     private final DumperOptions yamlOptions = new DumperOptions();
     private final Representer yamlRepresenter = new YamlRepresenter();
+    {
+        yamlRepresenter.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        yamlRepresenter.setPropertyUtils(new CustomPropertyUtils());
+    }
+    public static class CustomPropertyUtils extends PropertyUtils {
+        public CustomPropertyUtils() {
+            this.setSkipMissingProperties(true);
+        }
+    }
     private final Yaml yaml = new Yaml(new YamlConstructor(), yamlRepresenter, yamlOptions);
 
     /**
@@ -139,9 +151,13 @@ public class YamlConfiguration extends FileConfiguration {
             options().header(header);
         }
 
+        Logg.text("remove:||PERF set header " + (-start + (start = System.currentTimeMillis())) + "ms");
+
         if (input != null) {
             convertMapsToSections(input, this);
         }
+
+        Logg.text("remove:||PERF convert maps to sections " + (-start + (start = System.currentTimeMillis())) + "ms");
     }
 
     protected void convertMapsToSections(final Map<?, ?> input, final ConfigurationSection section) {
