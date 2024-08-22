@@ -1148,7 +1148,7 @@ public class PWBindings extends BindingHelper {
             throw new IllegalStateException("No user provided in command locals");
         }
         DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
+        if (nation == null) throw new IllegalStateException("Please use " + CM.register.cmd.toSlashMention());
         return nation;
     }
 
@@ -1295,7 +1295,7 @@ public class PWBindings extends BindingHelper {
     @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
     public static GuildDB guild(long guildId) {
         GuildDB guild = Locutus.imp().getGuildDB(guildId);
-        if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
+        if (guild == null) throw new IllegalStateException("No guild found for: " + guildId);
         return guild;
     }
 
