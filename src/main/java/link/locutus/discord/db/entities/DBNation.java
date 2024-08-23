@@ -5369,7 +5369,7 @@ public class DBNation implements NationOrAlliance {
             }
             Locutus.imp().getWarDb().getAttacksByWar(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE, f -> {
                 if (f.getDate() <= end) {
-                    wars.remove(new ArrayUtil.IntKey(f.getWar_id()));
+                    wars.remove(new DBWar.DBWarKey(f.getWar_id()));
                 }
                 return false;
             }, f -> false);

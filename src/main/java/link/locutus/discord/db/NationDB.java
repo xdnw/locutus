@@ -123,7 +123,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     }
 
-    public void load() throws SQLException {
+    public NationDB load() throws SQLException {
         { // Legacy
             if (tableExists("NATIONS")) {
                 Logg.text("Updating legacy nations");

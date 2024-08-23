@@ -288,7 +288,7 @@ public class ActiveWarHandler {
 
             for (AbstractCursor attack : attacks) {
                 if (attack.getAttack_type() != AttackType.NAVAL) continue;
-                boolean isWarActive = activeWars2.contains(new ArrayUtil.IntKey(attack.getWar_id()));
+                boolean isWarActive = activeWars2.contains(new DBWar.DBWarKey(attack.getWar_id()));
 
                 if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
                     if (isWarActive) {

@@ -211,8 +211,8 @@ public class TradeManager {
         updateLowHighCache();
     }
 
-    public synchronized void load() {
-        if (lowAvg != null) return;
+    public synchronized TradeManager load() {
+        if (lowAvg != null) return this;
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<DBTrade> trades = getTradeDb().getTrades(cutOff);
         if (trades.isEmpty() && Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
@@ -229,6 +229,7 @@ public class TradeManager {
         highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
 
         loadActiveTrades();
+        return this;
     }
 
     public Collection<Transfer> toTransfers(Collection<DBTrade> offers, boolean onlyMoneyTrades) {

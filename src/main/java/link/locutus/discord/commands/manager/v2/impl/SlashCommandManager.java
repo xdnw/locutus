@@ -59,6 +59,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public class SlashCommandManager extends ListenerAdapter {
     private static final Map<Type, Collection<ChannelType>> CHANNEL_TYPES = new ConcurrentHashMap<>();
@@ -121,20 +122,31 @@ public class SlashCommandManager extends ListenerAdapter {
         OPTION_TYPES.put(Object.class, OptionType.STRING);
     }
 
-    private final Locutus root;
-    private final CommandManager2 commands;
+    private final Supplier<CommandManager2> provider;
+
+    private CommandManager2 commandsOrNull;
+    private Set<String> ephemeralOrNull;
     private final Map<String, Long> commandIds = new HashMap<>();
     private final Set<Key> bindingKeys = new HashSet<>();
     private final boolean registerAdminCmds;
-    private Set<String> ephemeral;
 
     private Map<ParametricCallable, String> commandNames = new HashMap<>();
 
-    public SlashCommandManager(Locutus locutus, boolean registerAdminCmds) {
-        this.root = locutus;
-        this.commands = root.getCommandManager().getV2();
-        this.ephemeral = generateEphemeral(commands.getCommands());
+    public SlashCommandManager(boolean registerAdminCmds, Supplier<CommandManager2> provider) {
         this.registerAdminCmds = registerAdminCmds;
+        this.provider = provider;
+    }
+
+    private CommandManager2 getCommands() {
+        if (commandsOrNull == null) {
+            synchronized (this) {
+                if (commandsOrNull == null) {
+                    commandsOrNull = provider.get();
+                    this.ephemeralOrNull = generateEphemeral(commandsOrNull.getCommands());
+                }
+            }
+        }
+        return commandsOrNull;
     }
 
     private Set<String> generateEphemeral(CommandGroup group) {
@@ -239,6 +251,7 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     public List<SlashCommandData>  generateCommandData() {
+        CommandManager2 commands = getCommands();
         new PrimitiveCompleter().register(commands.getStore());
         new DiscordCompleter().register(commands.getStore());
         new PWCompleter().register(commands.getStore());
@@ -515,12 +528,12 @@ public class SlashCommandManager extends ListenerAdapter {
                     Key<Object> emptyKey = Key.of(String.class);
                     if (!binding.getKey().equals(emptyKey)) {
                         Key parserKey = binding.getKey().append(Autoparse.class);
-                        Parser parser = commands.getStore().get(parserKey);
+                        Parser parser = getCommands().getStore().get(parserKey);
                         if (parser != null && !parser.getKey().equals(emptyKey)) {
                             option.setAutoComplete(true);
                         } else {
                             Key completerKey = binding.getKey().append(Autocomplete.class);
-                            parser = commands.getStore().get(completerKey);
+                            parser = getCommands().getStore().get(completerKey);
                             if (parser != null && !parser.getKey().equals(emptyKey)) {
                                 option.setAutoComplete(true);
                             } else {
@@ -589,6 +602,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onCommandAutoCompleteInteraction(@Nonnull CommandAutoCompleteInteractionEvent event) {
+        CommandManager2 commands = getCommands();
         long startNanos = System.nanoTime();
         User user = event.getUser();
         userIdToAutoCompleteTimeNs.put(user.getIdLong(), startNanos);
@@ -706,6 +720,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
+        CommandManager2 commands = getCommands();
         try {
             long start = System.currentTimeMillis();
             userIdToAutoCompleteTimeNs.put(event.getUser().getIdLong(), System.nanoTime());
@@ -719,7 +734,7 @@ public class SlashCommandManager extends ListenerAdapter {
             if (!path.contains("modal")) {
                 isModal = false;
                 System.out.println("Path " + path);
-                if (ephemeral.contains(path)) {
+                if (ephemeralOrNull.contains(path)) {
                     RateLimitUtil.complete(event.deferReply(true));
                     hook.setEphemeral(true);
                 } else {

@@ -136,7 +136,6 @@ public class YamlConfiguration extends FileConfiguration {
         if (contents == null) {
             throw new NullPointerException("Contents cannot be null");
         }
-
         Map<?, ?> input;
         try {
             input = yaml.load(contents);
@@ -145,19 +144,13 @@ public class YamlConfiguration extends FileConfiguration {
         } catch (final ClassCastException e) {
             throw new InvalidConfigurationException("Top level is not a Map.");
         }
-
         final String header = parseHeader(contents);
         if (!header.isEmpty()) {
             options().header(header);
         }
-
-        Logg.text("remove:||PERF set header " + (-start + (start = System.currentTimeMillis())) + "ms");
-
         if (input != null) {
             convertMapsToSections(input, this);
         }
-
-        Logg.text("remove:||PERF convert maps to sections " + (-start + (start = System.currentTimeMillis())) + "ms");
     }
 
     protected void convertMapsToSections(final Map<?, ?> input, final ConfigurationSection section) {

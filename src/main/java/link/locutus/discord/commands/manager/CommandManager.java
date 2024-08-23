@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager;
 
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.account.*;
@@ -154,8 +155,9 @@ public class CommandManager {
         }
         this.commandMap = new LinkedHashMap<>();
         this.executor = new ScheduledThreadPoolExecutor(256);
-
+        Logg.text("remove:||PERF commandmanager executor " + (-start + (start = System.currentTimeMillis())) + "ms");
         modernized = new CommandManager2();
+        Logg.text("remove:||PERF commandmanager modernized " + (-start + (start = System.currentTimeMillis())) + "ms");
     }
 
     public boolean isModernPrefix(char prefix) {
@@ -560,9 +562,6 @@ public class CommandManager {
     }
 
     public void registerCommands(DiscordDB db) {
-        if (modernized != null) {
-            modernized.registerDefaults();
-        }
         this.register(new RaidCommand());
         /// not useful
 //        this.register(new Kev());

@@ -6,6 +6,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -52,14 +53,20 @@ public class PWGPTHandler {
     private final WikiManager wikiManager;
 
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+        long start = System.currentTimeMillis();
         this.database = new GptDatabase();
-
+        Logg.text("remove:||PERF gpt db" + (-start + (start = System.currentTimeMillis())));
         this.cmdManager = manager;
         this.handler = new GptHandler(database);
+        Logg.text("remove:||PERF gpt new handler " + (-start + (start = System.currentTimeMillis())));
         this.providerManager = new ProviderManager(handler);
+        Logg.text("remove:||PERF gpt provider manager " + (-start + (start = System.currentTimeMillis())));
         this.PlayerGPTConfig = new PlayerGPTConfig();
+        Logg.text("remove:||PERF gpt player gpt config " + (-start + (start = System.currentTimeMillis())));
         this.converter = new DocumentConverter(getEmbeddings(), providerManager, handler.getModerator(), handler);
+        Logg.text("remove:||PERF gpt document converter " + (-start + (start = System.currentTimeMillis())));
         this.wikiManager = new WikiManager(database, handler.getEmbeddings(), handler);
+        Logg.text("remove:||PERF gpt wiki manager " + (-start + (start = System.currentTimeMillis())));
     }
 
     public WikiManager getWikiManager() {

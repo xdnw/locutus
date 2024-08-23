@@ -1,7 +1,6 @@
-package link.locutus.discord;
+package link.locutus.discord.apiv3;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.util.FileUtil;
@@ -13,8 +12,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;

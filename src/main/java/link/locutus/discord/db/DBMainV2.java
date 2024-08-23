@@ -199,17 +199,15 @@ public class DBMainV2 implements Closeable {
     }
 
     public boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
-        {
-            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
-                stmt.setFetchSize(10000);
-                withStmt.accept(stmt);
-                ResultSet rs = stmt.executeQuery();
-                rsq.accept(rs);
-                return rs != null;
-            } catch (SQLException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setFetchSize(10000);
+            withStmt.accept(stmt);
+            ResultSet rs = stmt.executeQuery();
+            rsq.accept(rs);
+            return rs != null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 

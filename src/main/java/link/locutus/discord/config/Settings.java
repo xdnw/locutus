@@ -1,6 +1,7 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Config;
 
 import java.io.File;

@@ -1,0 +1,1 @@
+This directory contains classes relating to Locutus bot configuration files (on disk)

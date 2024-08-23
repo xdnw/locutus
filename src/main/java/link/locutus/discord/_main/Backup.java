@@ -1,4 +1,4 @@
-package link.locutus.discord;
+package link.locutus.discord._main;
 
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.TimeUtil;
@@ -11,8 +11,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.util.Scanner;
 
 public class Backup {
 

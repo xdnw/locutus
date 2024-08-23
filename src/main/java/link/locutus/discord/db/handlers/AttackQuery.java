@@ -202,7 +202,7 @@ public class AttackQuery {
                 if (!attackFilterFinal.test(attack)) {
                     return;
                 }
-                DBWar war = wars.get(new ArrayUtil.IntKey(attack.getWar_id()));
+                DBWar war = wars.get(new DBWar.DBWarKey(attack.getWar_id()));
                 cost.addCost(attack, isPrimary.test(war, attack));
             }
         });

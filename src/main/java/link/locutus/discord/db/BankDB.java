@@ -74,8 +74,8 @@ import static org.jooq.impl.DSL.lower;
 public class BankDB extends DBMainV3 {
     private final Map<Long, Set<Transaction2>> transactionCache = new ConcurrentHashMap<>();
 
-    public BankDB(String name) throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, name, false);
+    public BankDB() throws SQLException, ClassNotFoundException {
+        super(Settings.INSTANCE.DATABASE, "bank", false);
     }
 
     public List<Transaction2> getTransactions(Condition condition) {

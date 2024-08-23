@@ -34,6 +34,23 @@ public class DBWar {
     private final long date;
     private char attDefCities;
 
+    public static final class DBWarKey {
+        public final int id;
+        public DBWarKey(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return ((DBWar) o).warId == id;
+        }
+
+        @Override
+        public int hashCode() {
+            return id;
+        }
+    }
+
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }

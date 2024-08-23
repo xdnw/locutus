@@ -10,6 +10,7 @@ import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
@@ -40,23 +41,25 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    private final EncodingRegistry registry;
     private final OpenAiService service;
-    private final Platform platform;
     public final IEmbeddingDatabase embeddingDatabase;
     private final IModerator moderator;
     private final ProcessText2Text processT2;
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        this.registry = Encodings.newDefaultEncodingRegistry();
+        long start = System.currentTimeMillis();
+        Logg.text("remove:|| gpthandler1 new registry " + (-start + (start = System.currentTimeMillis())));
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
-
-        this.platform = Platform.detectPlatform("pytorch");
+        Logg.text("remove:|| gpthandler1 new service " + (-start + (start = System.currentTimeMillis())));
+        Logg.text("remove:|| gpthandler1 new platform " + (-start + (start = System.currentTimeMillis())));
 
         this.moderator = new GPTModerator(service);
+        Logg.text("remove:|| gpthandler1 new moderator " + (-start + (start = System.currentTimeMillis())));
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
-        this.embeddingDatabase = new MiniEmbedding(platform, database);
+        this.embeddingDatabase = new MiniEmbedding(database);
+        Logg.text("remove:|| gpthandler1 new embeddingDatabase " + (-start + (start = System.currentTimeMillis())));
+
 
         File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
@@ -70,8 +73,10 @@ public class GptHandler {
             }
 //        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
             this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
+            Logg.text("remove:|| gpthandler1 new processT2 " + (-start + (start = System.currentTimeMillis())));
         } else {
             processT2 = null;
+            Logg.text("remove:|| gpthandler1 new processT2 null " + (-start + (start = System.currentTimeMillis())));
         }
     }
 

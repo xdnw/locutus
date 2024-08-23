@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -1932,7 +1931,7 @@ public class PoliticsAndWarV3 {
         if (api != null && bot != null && !bot.isEmpty()) {
             headers.set("X-Api-Key", api);
         } else {
-            headers.set("X-Api-Key", Settings.INSTANCE.API_KEY_PRIMARY);
+            headers.set("X-Api-Key", Locutus.loader().getApiKey());
         }
         if (bot != null && !bot.isEmpty()) {
             headers.set("X-Bot-Key", bot);
