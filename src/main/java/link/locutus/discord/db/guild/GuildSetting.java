@@ -46,6 +46,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 
@@ -54,7 +55,7 @@ public abstract class GuildSetting<T> {
     private final Set<String> requiresCoalitionStr = new LinkedHashSet<>();
     private final Set<String> requiresCoalitionRootStr = new LinkedHashSet<>();
 
-    private final Map<BiPredicate<GuildDB, Boolean>, String> requiresFunction = new LinkedHashMap<>();
+    private final Map<BiPredicate<GuildDB, Boolean>, Supplier<String>> requiresFunction = new LinkedHashMap<>();
     private final Map<Roles, Boolean> requiresRole = new LinkedHashMap<>();
 
     private final Key type;
@@ -77,7 +78,8 @@ public abstract class GuildSetting<T> {
         for (Roles role : requiresRole.keySet()) {
             reqListStr.add("role:" + role.name());
         }
-        for (String value : requiresFunction.values()) {
+        for (Supplier<String> valueSup : requiresFunction.values()) {
+            String value = valueSup.get();
             if (value.isEmpty()) continue;
             reqListStr.add("function:" + value);
         }
@@ -348,10 +350,10 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requiresOffshore() {
-        String msg = "No bank is setup (see: " + CM.offshore.add.cmd.toSlashCommand() + ")";
+        Supplier<String> msg = () -> "No bank is setup (see: " + CM.offshore.add.cmd.toSlashCommand() + ")";
         this.requiresFunction.put((db, throwError) -> {
             if (db.getOffshoreDB() == null) {
-                throw new IllegalArgumentException(msg);
+                throw new IllegalArgumentException(msg.get());
             }
             return true;
         }, msg);
@@ -379,7 +381,7 @@ public abstract class GuildSetting<T> {
                 }
                 return true;
             }
-        }, msg);
+        }, () -> msg);
         return this;
     }
 
@@ -392,7 +394,7 @@ public abstract class GuildSetting<T> {
                 if (db.hasCoalitionPermsOnRoot(Coalition.WHITELISTED)) return true;
                 throw new IllegalArgumentException(msg);
             }
-        }, msg);
+        }, () -> msg);
         return this;
     }
 
@@ -424,10 +426,10 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requireValidAlliance() {
-        String msg = "No valid alliance is setup (see: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")";
+        Supplier<String> msg = () -> "No valid alliance is setup (see: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")";
         requiresFunction.put((db, throwError) -> {
             if (!db.isValidAlliance()) {
-                throw new IllegalArgumentException(msg);
+                throw new IllegalArgumentException(msg.get());
             }
             return true;
         }, msg);
@@ -439,10 +441,10 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requiresNot(GuildSetting setting, boolean checkDelegate) {
-        String msg = "Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention();
+        Supplier<String> msg = () -> "Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention();
         requiresFunction.put((db, throwError) -> {
             if (setting.getOrNull(db, checkDelegate) != null) {
-                throw new IllegalArgumentException(msg);
+                throw new IllegalArgumentException(msg.get());
             }
             return true;
         }, msg);
@@ -458,7 +460,7 @@ public abstract class GuildSetting<T> {
                 return false;
             }
             return true;
-        }, msg);
+        }, () -> msg);
         return this;
     }
 

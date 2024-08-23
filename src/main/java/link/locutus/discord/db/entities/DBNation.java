@@ -2707,27 +2707,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double estimateScore(MMRDouble mmr, Double infra, Integer projects, Integer cities) {
-        if (projects == null) projects = getNumProjects();
-        if (infra == null) infra = getInfra();
-        if (cities == null) cities = this.cities;
-
-        double base = 10;
-        base += projects * Projects.getScore();
-        base += (cities - 1) * 100;
-        base += infra / 40d;
-        for (MilitaryUnit unit : MilitaryUnit.values) {
-            if (unit == MilitaryUnit.INFRASTRUCTURE) continue;
-            int amt;
-            if (mmr != null && unit.getBuilding() != null) {
-                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(f -> false) * cities);
-            } else {
-                amt = getUnits(unit);
-            }
-            if (amt > 0) {
-                base += unit.getScore(amt);
-            }
-        }
-        return base;
+        return PW.estimateScore(Locutus.imp().getNationDB(), this, mmr, infra, projects, cities);
     }
 
     public void setScore(double score) {

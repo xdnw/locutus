@@ -29,12 +29,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -1200,6 +1197,39 @@ public class PW {
                 return maxVal - minVal;
             }
         };
+    }
+
+    public static double estimateScore(NationDB db, DBNation nation) {
+        return estimateScore(db, nation, null, null, null, null);
+    }
+
+    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities) {
+        if (projects == null) projects = nation.getNumProjects();
+        if (infra == null) {
+            infra = 0d;
+            for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
+                infra += city.getInfra();
+            }
+        }
+        if (cities == null) cities = nation.getCities();
+
+        double base = 10;
+        base += projects * Projects.getScore();
+        base += (cities - 1) * 100;
+        base += infra / 40d;
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            if (unit == MilitaryUnit.INFRASTRUCTURE) continue;
+            int amt;
+            if (mmr != null && unit.getBuilding() != null) {
+                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(f -> false) * cities);
+            } else {
+                amt = nation.getUnits(unit);
+            }
+            if (amt > 0) {
+                base += unit.getScore(amt);
+            }
+        }
+        return base;
     }
 
     public static BiFunction<Double, Double, Integer> getIsNationsInScoreRange(Collection<DBNation> attackers) {

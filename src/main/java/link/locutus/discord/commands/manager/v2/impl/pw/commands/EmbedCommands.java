@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -983,7 +984,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @HasOffshore
     @RolePermission(Roles.ADMIN)
     public void depositsPanel(@Me GuildDB db, @Me IMessageIO io, @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation") @Default DBNation bankerNation, @Switch("c") MessageChannel outputChannel) {
-        int nationId = Settings.INSTANCE.NATION_ID;
+        int nationId = Locutus.loader().getNationId();
         if (bankerNation != null) {
             nationId = bankerNation.getId();
         }

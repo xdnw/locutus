@@ -11,7 +11,8 @@ import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 
 public interface ILoader {
-    ILoader resolveFully();
+    ILoader resolveFully(long timeout);
+    void initialize();
 
     default String getApiKey() {
         return Settings.INSTANCE.API_KEY_PRIMARY;
@@ -39,4 +40,8 @@ public interface ILoader {
 
     PoliticsAndWarV3 getApiV3();
     PoliticsAndWarV2 getApiV2();
+
+    default String printStacktrace() {
+        return "";
+    }
 }

@@ -1,6 +1,7 @@
 package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
+import link.locutus.discord._main.Backup;
 import link.locutus.discord._main.FinalizedLoader;
 import link.locutus.discord._main.ILoader;
 import link.locutus.discord._main.PreLoader;
@@ -82,6 +83,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
@@ -94,7 +96,7 @@ public final class Locutus extends ListenerAdapter {
     private static Locutus INSTANCE;
     private ILoader loader;
 
-    private final ExecutorService executor;
+    private final ThreadPoolExecutor executor;
 
     private final EventBus eventBus;
 
@@ -122,7 +124,7 @@ public final class Locutus extends ListenerAdapter {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         long start = System.currentTimeMillis();
-        this.executor = Executors.newCachedThreadPool();
+        this.executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.ROOT_COALITION_SERVER <= 0) Settings.INSTANCE.ROOT_COALITION_SERVER = Settings.INSTANCE.ROOT_SERVER;
@@ -149,6 +151,7 @@ public final class Locutus extends ListenerAdapter {
         this.eventBus = new AsyncEventBus("locutus", Runnable::run);
         Logg.text("remove:||PERF eventbus " + (((-start)) + (start = System.currentTimeMillis())));
         this.loader = new PreLoader(this, executor);
+        this.loader.initialize();
         Logg.text("remove:||PERF new preloader " + (((-start)) + (start = System.currentTimeMillis())));
     }
 
@@ -161,18 +164,31 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public void registerEvents() {
+        System.out.println("Registering events");
         eventBus.register(new TreatyUpdateProcessor());
+        System.out.println("Registered TreatyUpdateProcessor");
         eventBus.register(new NationUpdateProcessor());
+        System.out.println("Registered NationUpdateProcessor");
         eventBus.register(new TradeListener());
+        System.out.println("Registered TradeListener");
         eventBus.register(new CityUpdateProcessor());
+        System.out.println("Registered CityUpdateProcessor");
         eventBus.register(new BankUpdateProcessor());
+        System.out.println("Registered BankUpdateProcessor");
         eventBus.register(new WarUpdateProcessor());
+        System.out.println("Registered WarUpdateProcessor");
         eventBus.register(new AllianceListener());
+        System.out.println("Registered AllianceListener");
         CommandManager cmdManager = loader.getCommandManager();
+        System.out.println("Get CommandManager");
         eventBus.register(new MailListener(cmdManager.getV2().getStore(), cmdManager.getV2().getValidators(), cmdManager.getV2().getPermisser()));
+        System.out.println("Registered MailListener");
         WarDB warDb = loader.getWarDB();
+        System.out.println("Get WarDB");
         ConflictManager conflictManager = warDb == null ? null : warDb.getConflicts();
+        System.out.println("Get ConflictManager");
         if (conflictManager != null) eventBus.register(conflictManager);
+        System.out.println("Registered ConflictManager");
     }
 
     public EventBus getEventBus() {
@@ -200,8 +216,10 @@ public final class Locutus extends ListenerAdapter {
         Logg.text("remove:||PERF backup " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDA jda = loader.getJda();
+            Logg.text("remove:||PERF get jda " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
+                Logg.text("remove:||PERF get slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
                 if (slashCommands != null) slashCommands.registerCommandData(jda);
             } catch (Throwable e) {
                 // sometimes happen when discord api is spotty / timeout
@@ -215,6 +233,7 @@ public final class Locutus extends ListenerAdapter {
             jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
             Logg.text("remove:||PERF subsystems " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             jda.awaitReady();
+            Logg.text("remove:||PERF awaitready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             setSelfUser(jda);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
@@ -296,7 +315,12 @@ public final class Locutus extends ListenerAdapter {
             }, 5 * 60);
             Logg.text("remove:||PERF setup message handler " + (((-start)) + (start = System.currentTimeMillis())));
         }
-        loader.resolveFully();
+        System.out.println("Start resolve fully");
+        try {
+            loader.resolveFully(TimeUnit.MINUTES.toMillis(15));
+        } catch (Throwable e) {
+            throw new IllegalStateException("Failed to start locutus in 15 minutes.\n\n" + loader.printStacktrace());
+        }
         Logg.text("remove:||PERF resolve loader fully " + (((-start)) + (start = System.currentTimeMillis())));
         return this;
     }
@@ -332,7 +356,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Auth getRootAuth() {
-        Auth auth = getNationDB().getNation(Settings.INSTANCE.NATION_ID).getAuth(true);
+        Auth auth = getNationDB().getNation(loader.getNationId()).getAuth(true);
         if (auth != null) auth.setApiKey(loader.getApiKey());
         return auth;
     }
@@ -1268,6 +1292,16 @@ public final class Locutus extends ListenerAdapter {
             }
 
             System.exit(1);
+        }
+    }
+
+    private void backup() {
+        int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
+        String script = Settings.INSTANCE.BACKUP.SCRIPT;
+        try {
+            Backup.backup(script, turnsCheck);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

@@ -170,6 +170,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         System.out.println("Done loading nations/meta");
 
         loadTreasures();
+        return this;
     }
 
     public void deleteExpiredTreaties(Consumer<Event> eventConsumer) {
@@ -1837,7 +1838,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public void markDirtyIncorrectNations(boolean score, boolean cities) {
         int originalSize = dirtyNations.size();
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
-            if (score && Math.round(100 * (nation.estimateScore() - nation.getScore())) != 0) {
+            if (score && Math.round(100 * (PW.estimateScore(this, nation) - nation.getScore())) != 0) {
                 dirtyNations.add(nation.getNation_id());
             } else {
                 Map<Integer, DBCity> cityMap = getCitiesV3(nation.getNation_id());
@@ -1958,11 +1959,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             System.out.println("Contains " + allNations.contains(DBNation.getById(10251)));
             for (DBNation nation : allNations) {
                 if (nation.getId() == 10251) {
-                    System.out.println("Score " + nation.getScore() + " | " + nation.estimateScore());
+                    System.out.println("Score " + nation.getScore() + " | " + PW.estimateScore(this, nation));
                 } else if (allNations.size() == 1) {
                     System.out.println("Updated " + nation.getId());
                 }
-                if (Math.round(100 * (nation.getScore() - nation.estimateScore())) != 0) {
+                if (Math.round(100 * (nation.getScore() - PW.estimateScore(this, nation))) != 0) {
                     fetchCitiesOfNations.add(nation.getId());
                 }
             }

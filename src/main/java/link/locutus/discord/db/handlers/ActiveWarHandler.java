@@ -7,6 +7,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
@@ -20,7 +21,12 @@ import java.util.function.Predicate;
 
 public class ActiveWarHandler {
     private final Map<Integer, DBWar[]> activeWars = new Int2ObjectOpenHashMap<>();
+    private final WarDB warDB;
     private volatile int numActiveWars = 0;
+
+    public ActiveWarHandler(WarDB warDB) {
+        this.warDB = warDB;
+    }
 
     private void makeWarInactive(int nationId, int warId) {
         synchronized (activeWars) {
@@ -276,11 +282,16 @@ public class ActiveWarHandler {
     public void syncBlockades() {
         long now = System.currentTimeMillis();
 
-        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
+        System.out.println("Get wars");
+        Map<Integer, DBWar> wars = warDB.getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
+        System.out.println("Get attacks");
+        List<AbstractCursor> attacks = warDB.queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
+        System.out.println("query attacks size " + attacks.size());
         attacks.sort(Comparator.comparingLong(AbstractCursor::getDate));
+        System.out.println("Sort " + attacks.size());
 
         ObjectOpenHashSet<DBWar> activeWars2 = getActiveWarsById();
+        System.out.println("Get active wars " + activeWars2.size());
 
         synchronized (blockadeLock) {
             defenderToBlockader.clear();
@@ -301,5 +312,6 @@ public class ActiveWarHandler {
                 }
             }
         }
+        System.out.println("Done fetch");
     }
 }

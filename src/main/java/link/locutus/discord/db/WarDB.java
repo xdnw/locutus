@@ -67,7 +67,7 @@ import java.util.stream.Stream;
 public class WarDB extends DBMainV2 {
 
 
-    private final  ActiveWarHandler activeWars = new ActiveWarHandler();
+    private final  ActiveWarHandler activeWars = new ActiveWarHandler(this);
     private final ObjectOpenHashSet<DBWar> warsById;
     private final Int2ObjectOpenHashMap<Object> warsByAllianceId;
     private final Int2ObjectOpenHashMap<Object> warsByNationId;
@@ -532,8 +532,6 @@ public class WarDB extends DBMainV2 {
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
             Logg.text("remove:||PERF Loaded wardb attacks in " + (-start + (start = System.currentTimeMillis())));
 
-            Logg.text("remove:||PERF Updating attacks " + (-start + (start = System.currentTimeMillis())));
-
             {
                 // get attacks by id 20071530
 //                Map<Integer, DBWar> wars = getWars(f -> f.date > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(20));
@@ -550,12 +548,14 @@ public class WarDB extends DBMainV2 {
             }
         }
 
+        System.out.println("Sync blockades??? " + activeWars.getActiveWars().size());
         activeWars.syncBlockades();
         Logg.text("remove:||PERF Loaded wars and attacks " + (-start + (start = System.currentTimeMillis())));
         if (conflictManager != null) {
             conflictManager.loadConflicts();
             Logg.text("remove:||PERF Loaded conflicts " + (-start + (start = System.currentTimeMillis())));
         }
+        return this;
     }
 
     public Set<Integer> getNationsBlockadedBy(int nationId) {
@@ -2919,7 +2919,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public AttackQuery queryAttacks() {
-        return new AttackQuery();
+        return new AttackQuery(this);
     }
 
     public void syncBlockades() {

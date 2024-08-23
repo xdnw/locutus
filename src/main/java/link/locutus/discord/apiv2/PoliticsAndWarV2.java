@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.core.CacheClient;
@@ -116,7 +117,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     public ApiRecord getApiRecord() {
-        String json = read(PagePriority.API_KEY_STATS, QueryURLV2.BANK_RECORDS, Settings.INSTANCE.NATION_ID + "", null, false);
+        String json = read(PagePriority.API_KEY_STATS, QueryURLV2.BANK_RECORDS, Locutus.loader().getNationId() + "", null, false);
         Type type = new TypeToken<ApiRecord>() {
         }.getType();
         return getGson().fromJson(json, type);

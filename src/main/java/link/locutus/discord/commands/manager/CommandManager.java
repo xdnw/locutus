@@ -146,7 +146,7 @@ public class CommandManager {
     private final CommandManager2 modernized;
     private final CharOpenHashSet modernPrefixes;
 
-    public CommandManager(Locutus locutus) {
+    public CommandManager() {
         long start = System.currentTimeMillis();
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         Logg.text("remove:||PERF commandmanager prefix " + (-start + (start = System.currentTimeMillis())) + "ms");

@@ -109,7 +109,7 @@ public class Settings extends Config {
         return "https://" + (TEST ? "test." : "") + "politicsandwar.com";
     }
     public int ALLIANCE_ID() {
-        return Locutus.imp().getNationDB().getNation(NATION_ID).getAlliance_id();
+        return Locutus.imp().getNationDB().getNation(Locutus.loader().getNationId()).getAlliance_id();
     }
 
     public static class ENABLED_COMPONENTS {

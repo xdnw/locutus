@@ -31,16 +31,24 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 public class PreLoader implements ILoader {
-    private final ExecutorService executor;
+    private final ThreadPoolExecutor executor;
+    private final Semaphore semaphore;
     private final Locutus locutus;
+    // futures
+    private final Map<String, Future<?>> resolvers;
+    private final Map<String, Thread> resolverThreads;
+
+    private volatile FinalizedLoader finalized;
+    // fields
+    private final Future<SlashCommandManager> slashCommandManager;
+    private final Future<JDA> jda;
+
     private final Future<ForumDB> forumDb;
     private final Future<DiscordDB> discordDB;
     private final Future<NationDB> nationDB;
@@ -54,19 +62,14 @@ public class PreLoader implements ILoader {
     private final Future<Supplier<Long>> adminUserId;
     private final Future<PoliticsAndWarV2> apiV2;
     private final Future<PoliticsAndWarV3> apiV3;
-    // futures
-    private List<Future<?>> resolvers;
-    private volatile FinalizedLoader finalized;
-    // fields
-    private final Future<SlashCommandManager> slashCommandManager;
-    private final Future<JDA> jda;
 
-    public PreLoader(Locutus locutus, ExecutorService executor) {
+    public PreLoader(Locutus locutus, ThreadPoolExecutor executor) {
         this.executor = executor;
-        this.resolvers = new ArrayList<>();
-        this.locutus = locutus;
+        this.semaphore = new Semaphore(0);
 
-        // todo fixme remove calls of Locutus.imp()
+        this.resolvers = new ConcurrentHashMap<>();
+        this.resolverThreads = new ConcurrentHashMap<>();
+        this.locutus = locutus;
 
         this.slashCommandManager = add("Slash Command Manager", new ThrowingSupplier<SlashCommandManager>() {
             @Override
@@ -86,7 +89,7 @@ public class PreLoader implements ILoader {
         } else {
             forumDb = CompletableFuture.completedFuture(null);
         }
-        this.commandManager = add("Command Handler", () -> new CommandManager(locutus));
+        this.commandManager = add("Command Handler", () -> new CommandManager());
 
         if (Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
             Auth auth = new Auth(0, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
@@ -171,21 +174,24 @@ public class PreLoader implements ILoader {
     }
 
     @Override
-    public ILoader resolveFully() {
-        List<Future<?>> tmp = resolvers;
+    public ILoader resolveFully(long timeout) {
+        Set<Map.Entry<String, Future<?>>> tmp = resolvers.entrySet();
         if (finalized != null) return finalized;
         synchronized (this) {
             if (finalized != null) {
                 return  finalized;
             }
-            for (Future<?> resolver : tmp) {
+            for (Map.Entry<String, Future<?>> resolver : tmp) {
+                String taskName = resolver.getKey();
+                Future<?> future = resolver.getValue();
                 try {
-                    resolver.get();
+                    future.get(timeout, TimeUnit.MILLISECONDS);
                 } catch (Exception e) {
+                    Logg.text("Failed to resolve `TASK:" + taskName + "`: " + e.getMessage());
                     throw new RuntimeException(e);
                 }
             }
-            resolvers = null;
+            resolvers.clear();
             this.finalized = new FinalizedLoader(this);
             locutus.setLoader(finalized);
             return finalized;
@@ -193,36 +199,63 @@ public class PreLoader implements ILoader {
     }
 
     private <T> Future<T> add(String taskName, ThrowingSupplier<T> supplier) {
-        Future<T> future = executor.submit(new Callable<T>() {
-            @Override
-            public T call() throws Exception {
-                try {
-                    Logg.text("Loading `TASK:" + taskName + "`");
-                    long start = System.currentTimeMillis();
-                    T result = supplier.get();
-                    long end = System.currentTimeMillis();
-                    if (end - start > 15 || true) {
-                        Logg.text("Completed `TASK:" + taskName + "` in " + MathMan.format((end - start) / 1000d) + "s");
-                    }
-
-                    return result;
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    throw e;
+        if (resolvers.containsKey(taskName)) {
+            throw new IllegalArgumentException("Duplicate task: " + taskName);
+        }
+        Future<T> future = executor.submit(() -> {
+            try {
+                Thread thread = Thread.currentThread();
+                thread.setName("Load-" + taskName);
+                resolverThreads.put(taskName, thread);
+                semaphore.acquire();
+                Logg.text("Loading `TASK:" + taskName + "`");
+                long start = System.currentTimeMillis();
+                T result = supplier.get();
+                long end = System.currentTimeMillis();
+                if (end - start > 15 || true) {
+                    Logg.text("Completed `TASK:" + taskName + "` in " + MathMan.format((end - start) / 1000d) + "s");
                 }
+                return result;
+            } catch (Throwable e) {
+                e.printStackTrace();
+                Logg.text("Failed to load `TASK:" + taskName + "`: " + e.getMessage());
+                throw e;
+            } finally {
+                resolverThreads.remove(taskName);
             }
         });
-        resolvers.add(future);
+        resolvers.put(taskName, future);
         return future;
+    }
+
+    @Override
+    public void initialize() {
+        semaphore.release(Integer.MAX_VALUE);
+    }
+
+    @Override
+    public String printStacktrace() {
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<String, Thread> entry : resolverThreads.entrySet()) {
+            Thread thread = entry.getValue();
+            builder.append("Thread ").append(thread.getName()).append("/").append(thread.getState()).append("\n");
+            for (StackTraceElement element : thread.getStackTrace()) {
+                builder.append("\tat ").append(element).append("\n");
+            }
+        }
+        return builder.toString();
     }
 
     private JDA buildJDA() throws ExecutionException, InterruptedException {
         JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
-            builder.addEventListeners(slashCommandManager.get());
+            SlashCommandManager slash = getSlashCommandManager();
+            if (slash != null) {
+                builder.addEventListeners(slash);
+            }
         }
         if (Settings.INSTANCE.ENABLED_COMPONENTS.MESSAGE_COMMANDS) {
-            builder.addEventListeners(this);
+            builder.addEventListeners(locutus);
         }
         builder
                 .setChunkingFilter(ChunkingFilter.NONE)
@@ -263,13 +296,68 @@ public class PreLoader implements ILoader {
         return builder.build();
     }
 
-    private void backup() {
-        int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
-        String script = Settings.INSTANCE.BACKUP.SCRIPT;
-        try {
-            Backup.backup(script, turnsCheck);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public SlashCommandManager getSlashCommandManager() {
+        return FileUtil.get(slashCommandManager);
+    }
+
+    @Override
+    public JDA getJda() {
+        return FileUtil.get(jda);
+    }
+
+    @Override
+    public ForumDB getForumDB() {
+        return FileUtil.get(forumDb);
+    }
+
+    @Override
+    public DiscordDB getDiscordDB() {
+        return FileUtil.get(discordDB);
+    }
+
+    @Override
+    public NationDB getNationDB() {
+        return FileUtil.get(nationDB);
+    }
+
+    @Override
+    public WarDB getWarDB() {
+        return FileUtil.get(warDb);
+    }
+
+    @Override
+    public BaseballDB getBaseballDB() {
+        return resolveFully(Long.MAX_VALUE).getBaseballDB();
+    }
+
+    @Override
+    public StockDB getStockDB() {
+        return FileUtil.get(stockDB);
+    }
+
+    @Override
+    public BankDB getBankDB() {
+        return FileUtil.get(bankDb);
+    }
+
+    @Override
+    public TradeManager getTradeManager() {
+        return FileUtil.get(tradeManager);
+    }
+
+    @Override
+    public CommandManager getCommandManager() {
+        return FileUtil.get(commandManager);
+    }
+
+    @Override
+    public PoliticsAndWarV2 getApiV2() {
+        return FileUtil.get(apiV2);
+    }
+
+    @Override
+    public PoliticsAndWarV3 getApiV3() {
+        return FileUtil.get(apiV3);
     }
 }

@@ -1763,7 +1763,7 @@ public class AdminCommands {
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
-        JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNation(Settings.INSTANCE.NATION_ID));
+        JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNation(Locutus.loader().getNationId()));
         return response.toString();
     }
 

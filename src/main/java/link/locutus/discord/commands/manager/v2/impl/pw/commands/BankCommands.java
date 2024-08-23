@@ -4133,7 +4133,7 @@ public class BankCommands {
 
             Set<Long> announceChannels = new HashSet<>();
             Set<Long> serverIds = new HashSet<>();
-            if (nation.getNation_id() == Settings.INSTANCE.NATION_ID) {
+            if (nation.getNation_id() == Locutus.loader().getNationId()) {
                 announceChannels.add(Settings.INSTANCE.DISCORD.CHANNEL.ADMIN_ALERTS);
             }
 
