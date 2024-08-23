@@ -147,13 +147,17 @@ public class CommandManager {
     private final CharOpenHashSet modernPrefixes;
 
     public CommandManager(Locutus locutus) {
+        long start = System.currentTimeMillis();
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
+        Logg.text("remove:||PERF commandmanager prefix " + (-start + (start = System.currentTimeMillis())) + "ms");
         this.modernPrefixes = new CharOpenHashSet();
         modernPrefixes.add(Settings.commandPrefix(false).charAt(0));
         for (String prefix : Settings.INSTANCE.DISCORD.COMMAND.ALTERNATE_COMMAND_PREFIX) {
             modernPrefixes.add(prefix.charAt(0));
         }
+        Logg.text("remove:||PERF commandmanager prefixes " + (-start + (start = System.currentTimeMillis())) + "ms");
         this.commandMap = new LinkedHashMap<>();
+        Logg.text("remove:||PERF commandmanager commandMap " + (-start + (start = System.currentTimeMillis())) + "ms");
         this.executor = new ScheduledThreadPoolExecutor(256);
         Logg.text("remove:||PERF commandmanager executor " + (-start + (start = System.currentTimeMillis())) + "ms");
         modernized = new CommandManager2();
