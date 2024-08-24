@@ -107,20 +107,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     private void condenseCities() {
-        ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
-        for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-            ArrayUtil.iterateElements(DBCity.class, entry.getValue(), dbCity -> {
-                ByteArrayList currBytes = new ByteArrayList(dbCity.buildings3);
-                ByteArrayList existing = cityBytes.get(currBytes);
-                if (existing != null) {
-                    dbCity.buildings3 = existing.elements();
-                } else {
-                    cityBytes.add(currBytes);
-                    dbCity.buildings3 = currBytes.elements();
-                }
-            });
+        synchronized (citiesByNation) {
+            ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
+            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
+                ArrayUtil.iterateElements(DBCity.class, entry.getValue(), dbCity -> {
+                    ByteArrayList currBytes = new ByteArrayList(dbCity.buildings3);
+                    ByteArrayList existing = cityBytes.get(currBytes);
+                    if (existing != null) {
+                        dbCity.buildings3 = existing.elements();
+                    } else {
+                        cityBytes.add(currBytes);
+                        dbCity.buildings3 = currBytes.elements();
+                    }
+                });
+            }
         }
-
     }
 
     public NationDB load() throws SQLException {
@@ -154,8 +155,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             throw new RuntimeException(e);
         }
 //        importLegacyNationLoot(true);
-
-        markDirtyIncorrectNations(true, true);
 
         // Update nuke dates if missing
         query("SELECT COUNT(*) FROM CITY_BUILDS WHERE nuke_date > 0", f -> {

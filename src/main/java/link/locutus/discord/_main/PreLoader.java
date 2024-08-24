@@ -31,13 +31,18 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class PreLoader implements ILoader {
     private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor scheduler;
     private final Semaphore semaphore;
     private final Locutus locutus;
     // futures
@@ -63,8 +68,9 @@ public class PreLoader implements ILoader {
     private final Future<PoliticsAndWarV2> apiV2;
     private final Future<PoliticsAndWarV3> apiV3;
 
-    public PreLoader(Locutus locutus, ThreadPoolExecutor executor) {
+    public PreLoader(Locutus locutus, ThreadPoolExecutor executor, ScheduledThreadPoolExecutor scheduler) {
         this.executor = executor;
+        this.scheduler = scheduler;
         this.semaphore = new Semaphore(0);
 
         this.resolvers = new ConcurrentHashMap<>();
@@ -84,6 +90,12 @@ public class PreLoader implements ILoader {
             Thread.sleep(9099999);
             return result;
         });
+        add("Flag Outdated Cities", () -> {
+            NationDB db = getNationDB();
+            db.markDirtyIncorrectNations(true, true);
+            return null;
+        });
+
         this.warDb = add("War Database", () -> new WarDB().load());
         this.stockDB = add("Stock Database", () -> new StockDB());
         this.bankDb = add("Bank Database", () -> new BankDB());
@@ -93,7 +105,7 @@ public class PreLoader implements ILoader {
         } else {
             forumDb = CompletableFuture.completedFuture(null);
         }
-        this.commandManager = add("Command Handler", () -> new CommandManager());
+        this.commandManager = add("Command Handler", () -> new CommandManager(scheduler));
 
         if (Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
             Auth auth = new Auth(0, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
@@ -168,8 +180,44 @@ public class PreLoader implements ILoader {
     }
 
     private void setupMonitor() {
-        // run a task 30s later
+        scheduler.schedule(() -> {
+            List<String> deadlocks = detectDeadlock(resolverThreads.values().stream().map(Thread::getId).collect(Collectors.toSet()));
+            if (!deadlocks.isEmpty()) {
+                Logg.text("# " + deadlocks.size() + " Deadlocks detected\n" + deadlocks);
+            } else {
+                String stacktrace = printStacktrace();
+                if (!stacktrace.isEmpty()) {
+                    Logg.text("Initializing Locutus taking longer than expected (30s):\n" + stacktrace);
+                }
+            }
+        }, 30, TimeUnit.SECONDS);
+    }
 
+    public static List<String> detectDeadlock(Set<Long> threadIds) {
+        List<String> results = new ArrayList<>();
+        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        long[] deadlockedThreadIds = threadMXBean.findDeadlockedThreads();
+        if (deadlockedThreadIds != null) {
+            ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(deadlockedThreadIds, true, true);
+            List<ThreadInfo> filteredThreadInfos = filterThreadInfos(threadInfos, threadIds);
+            for (ThreadInfo threadInfo : filteredThreadInfos) {
+                StringBuilder info = new StringBuilder("Deadlocked thread: " + threadInfo.getThreadName() + ": " + threadInfo.getThreadState() + "\n");
+                info.append("Blocked: ").append(threadInfo.getBlockedTime()).append("/").append(threadInfo.getBlockedCount()).append("\n");
+                info.append("Waited: ").append(threadInfo.getWaitedTime()).append("/").append(threadInfo.getWaitedCount()).append("\n");
+                info.append("Lock: ").append(threadInfo.getLockName()).append("/").append(threadInfo.getLockOwnerId()).append("/").append(threadInfo.getLockOwnerName()).append("\n");
+                for (StackTraceElement ste : threadInfo.getStackTrace()) {
+                    info.append("\t").append(ste).append("\n");
+                }
+                results.add(info.toString());
+            }
+        }
+        return results;
+    }
+
+    private static List<ThreadInfo> filterThreadInfos(ThreadInfo[] threadInfos, Set<Long> threadIds) {
+        return List.of(threadInfos).stream()
+                .filter(threadInfo -> threadIds.contains(threadInfo.getThreadId()))
+                .collect(Collectors.toList());
     }
 
     @Override

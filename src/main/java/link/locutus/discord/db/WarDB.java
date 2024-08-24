@@ -2632,7 +2632,7 @@ public class WarDB extends DBMainV2 {
             byte[] data = attacks.get(i);
             int warId = warIds.getInt(i);
             int size = numAttacksByWarId.get(warId);
-            attacksByWarId2.computeIfAbsent(warId, _ -> new ObjectArrayList<>(size)).add(data);
+            attacksByWarId2.computeIfAbsent(warId, f -> new ObjectArrayList<>(size)).add(data);
         }
 
         Logg.text("remove:||PERF loadAttacks3: " + (-start + (start = System.currentTimeMillis())));

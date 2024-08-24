@@ -144,9 +144,9 @@ public class CommandManager {
     private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
     private final CharOpenHashSet modernPrefixes;
-    private final ScheduledExecutorService executor;
+    private final ScheduledThreadPoolExecutor executor;
 
-    public CommandManager(ScheduledExecutorService executor) {
+    public CommandManager(ScheduledThreadPoolExecutor executor) {
         this.executor = executor;
         long start = System.currentTimeMillis();
         this.prefix1 = Settings.commandPrefix(true).charAt(0);

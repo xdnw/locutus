@@ -17,6 +17,8 @@ import link.locutus.discord.util.PW;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class AttackCommands {
     @Command(aliases = "groundsim", desc = "Simulate a ground attack with the given attacker and defender troops\n" +
@@ -136,6 +138,21 @@ public class AttackCommands {
         StringBuilder response = new StringBuilder();
         response.append("**" + attack.name() + "**: ");
 
+        BiFunction<MilitaryUnit, Integer, Double> getCost = (unit, amount) -> {
+            if (unit == MilitaryUnit.INFRASTRUCTURE) {
+                double start = defender.maxCityInfra();
+                double end = Math.max(start - amount, 0);
+                return PW.City.Infra.calculateInfra(end, start);
+            }
+            return unit.getConvertedCost() * amount;
+        };
+        Function<Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>>, String> getAvgStr = (entry) -> {
+            long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
+            MilitaryUnit unit = entry.getKey();
+            String avgValue = MathMan.format(getCost.apply(unit, (int) avg));
+            String avgStr = avg + " worth $" + avgValue;
+            return ("- " + entry.getKey().name()) + ("=") + ("`[" + entry.getValue().getKey()) + ("- ") + (entry.getValue().getValue()) + ("] (avg:" + avgStr + ")`\n");
+        };
         switch (attack) {
             case MISSILE, NUKE: {
                 response.append("\n");
@@ -147,11 +164,11 @@ public class AttackCommands {
                         = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
                 response.append("Attacker losses: ");
                 for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
-                    response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("]`\n");
+                    response.append(getAvgStr.apply(entry));
                 }
                 response.append("Defender losses: ");
                 for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
-                    response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("]`\n");
+                    response.append(getAvgStr.apply(entry));
                 }
                 break;
             }
@@ -188,13 +205,11 @@ public class AttackCommands {
                             = attack.getCasualties(attacker, defender, success, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
                     response.append("Attacker losses: ");
                     for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
-                        long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
-                        response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
+                        response.append(getAvgStr.apply(entry));
                     }
                     response.append("Defender losses: ");
                     for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
-                        long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
-                        response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
+                        response.append(getAvgStr.apply(entry));
                     }
                     response.append("\n");
                 }

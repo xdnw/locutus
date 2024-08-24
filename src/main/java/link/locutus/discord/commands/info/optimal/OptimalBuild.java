@@ -478,7 +478,7 @@ public class OptimalBuild extends Command {
             int max = Buildings.POLICE_STATION.cap(hasProject);
             Double finalCrimeLimit = crimeLimit;
 
-            int maxIndex = Buildings.size() - 1;
+            int maxIndex = PW.City.Building.SIZE - 1;
             int policeIndex = Buildings.POLICE_STATION.ordinal();
             int diff = maxIndex - policeIndex;
 

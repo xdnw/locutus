@@ -153,7 +153,7 @@ public final class Locutus extends ListenerAdapter {
 
         this.eventBus = new AsyncEventBus("locutus", Runnable::run);
         Logg.text("remove:||PERF eventbus " + (((-start)) + (start = System.currentTimeMillis())));
-        this.loader = new PreLoader(this, executor);
+        this.loader = new PreLoader(this, executor, scheduler);
         this.loader.initialize();
         Logg.text("remove:||PERF new preloader " + (((-start)) + (start = System.currentTimeMillis())));
     }

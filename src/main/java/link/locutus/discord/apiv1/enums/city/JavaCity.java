@@ -230,7 +230,7 @@ public class JavaCity implements ICity {
     }
 
     public JavaCity(CityBuild city) {
-        this.buildings = new byte[Buildings.size()];
+        this.buildings = new byte[PW.City.Building.SIZE];
         this.infra = city.getInfraNeeded();
         set(Buildings.COAL_POWER, city.getImpCoalpower());
         set(Buildings.OIL_POWER, city.getImpOilpower());
@@ -274,7 +274,7 @@ public class JavaCity implements ICity {
     }
 
     public JavaCity() {
-        this.buildings = new byte[Buildings.size()];
+        this.buildings = new byte[PW.City.Building.SIZE];
         dateCreated = Long.MAX_VALUE;
         land_ = 0d;
         this.numBuildings = 0;
@@ -396,7 +396,7 @@ public class JavaCity implements ICity {
     }
 
     public JavaCity(City city) {
-        this.buildings = new byte[Buildings.size()];
+        this.buildings = new byte[PW.City.Building.SIZE];
         this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAge());
         this.land_ = Double.parseDouble(city.getLand());
 

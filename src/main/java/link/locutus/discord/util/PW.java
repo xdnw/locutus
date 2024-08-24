@@ -69,9 +69,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class PW {
+public final class PW {
 
-    public static class City {
+    public static final class City {
+        public static final class Building {
+            public static int SIZE = 27;
+        }
         public static int getNukePollution(int nukeTurn) {
             int pollution = 0;
             double pollutionMax = 400d;
@@ -185,8 +188,8 @@ public class PW {
             }
         }
 
-        public static int getPollution(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, int pollution) {
-            for (Building building : Buildings.POLLUTION_BUILDINGS) {
+        public static int getPollution(Predicate<Project> hasProject, Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings, int pollution) {
+            for (link.locutus.discord.apiv1.enums.city.building.Building building : Buildings.POLLUTION_BUILDINGS) {
                 int amt = getBuildings.apply(building);
                 if (amt == 0) continue;
                 int buildPoll = building.pollution(hasProject);
@@ -197,8 +200,8 @@ public class PW {
             return Math.max(0, pollution);
         }
 
-        public static int getCommerce(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, int maxCommerce, int commerce) {
-            for (Building building : Buildings.COMMERCE_BUILDINGS) {
+        public static int getCommerce(Predicate<Project> hasProject, Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings, int maxCommerce, int commerce) {
+            for (link.locutus.discord.apiv1.enums.city.building.Building building : Buildings.COMMERCE_BUILDINGS) {
                 int amt = getBuildings.apply(building);
                 if (amt == 0) continue;
                 commerce += amt * building.getCommerce();
@@ -210,7 +213,7 @@ public class PW {
             return commerce;
         }
 
-        public static int getCommerce(Predicate<Project> hasProject, Function<Building, Integer> getBuildings) {
+        public static int getCommerce(Predicate<Project> hasProject, Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings) {
             int commerce = 0;
             int maxCommerce;
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
@@ -226,7 +229,7 @@ public class PW {
             return getCommerce(hasProject, getBuildings, maxCommerce, commerce);
         }
 
-        public static double getCrime(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, long infra_cents, int commerce) {
+        public static double getCrime(Predicate<Project> hasProject, Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings, long infra_cents, int commerce) {
             int police = getBuildings.apply(Buildings.POLICE_STATION);
             double policeMod;
             if (police > 0) {
@@ -248,7 +251,7 @@ public class PW {
                 for (int ordinal = 0; ordinal < 4; ordinal++) {
                     int amt = city.getBuildingOrdinal(ordinal);
                     if (amt == 0) continue;
-                    Building building = Buildings.get(ordinal);
+                    link.locutus.discord.apiv1.enums.city.building.Building building = Buildings.get(ordinal);
                     for (int i = 0; i < amt; i++) {
                         if (unpoweredInfra > 0) {
                             profit += ((APowerBuilding) building).consumptionConverted(unpoweredInfra);
@@ -257,10 +260,10 @@ public class PW {
                     }
                     profit += building.profitConverted(continent, rads, hasProject, city, amt);
                 }
-                for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < Buildings.size(); ordinal++) {
+                for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < PW.City.Building.SIZE; ordinal++) {
                     int amt = city.getBuildingOrdinal(ordinal);
                     if (amt == 0) continue;
-                    Building building = Buildings.get(ordinal);
+                    link.locutus.discord.apiv1.enums.city.building.Building building = Buildings.get(ordinal);
                     profit += building.profitConverted(continent, rads, hasProject, city, amt);
                 }
             }
@@ -269,7 +272,7 @@ public class PW {
                 int amt = city.getBuildingOrdinal(ordinal);
                 if (amt == 0) continue;
 
-                Building building = Buildings.get(ordinal);
+                link.locutus.discord.apiv1.enums.city.building.Building building = Buildings.get(ordinal);
                 profit += building.profitConverted(continent, rads, hasProject, city, amt);
             }
 
@@ -313,7 +316,7 @@ public class PW {
             }
 
             int unpoweredInfra = (int) Math.ceil(city.getInfra());
-            for (Building building : Buildings.values()) {
+            for (link.locutus.discord.apiv1.enums.city.building.Building building : Buildings.values()) {
                 int amt = city.getBuilding(building);
                 if (amt == 0) continue;
                 if (!powered) {
@@ -345,7 +348,7 @@ public class PW {
             return profitBuffer;
         }
 
-        public static double getDisease(Predicate<Project> hasProject, Function<Building, Integer> getBuildings, long infra_cents, long land_cents, double pollution) {
+        public static double getDisease(Predicate<Project> hasProject, Function<link.locutus.discord.apiv1.enums.city.building.Building, Integer> getBuildings, long infra_cents, long land_cents, double pollution) {
             int hospitals = getBuildings.apply(Buildings.HOSPITAL);
             double hospitalModifier;
             if (hospitals > 0) {
