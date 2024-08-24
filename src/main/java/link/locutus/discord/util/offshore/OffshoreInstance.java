@@ -1111,7 +1111,7 @@ public class OffshoreInstance {
             return new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, amount, note).addMessage("You did not withdraw anything.");
         }
 
-        if (DISABLE_TRANSFERS && (banker == null || banker.getNation_id() != Settings.INSTANCE.NATION_ID)) {
+        if (DISABLE_TRANSFERS && (banker == null || banker.getNation_id() != Locutus.loader().getNationId())) {
 //            return Map.entry(TransferStatus.AUTHORIZATION, "Error: Maintenance. Transfers are currently disabled");
             return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Error: Maintenance. Transfers are currently disabled");
         }
@@ -1281,7 +1281,7 @@ public class OffshoreInstance {
                 case CONFIRMATION:
                 default:
                 case OTHER:
-                    log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                    log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Locutus.loader().getAdminUserId() + ">");
                 case SUCCESS:
                 case SENT_TO_ALLIANCE_BANK: {
                     {
@@ -1321,7 +1321,7 @@ public class OffshoreInstance {
                                 NationOrAllianceOrGuild account = entry.getKey();
                                 body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + ResourceType.resourcesToString(entry.getValue()) + " #deposit");
                             }
-                            body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                            body.append("\n<@" + Locutus.loader().getAdminUserId() + ">");
                             log(senderDB, banker, receiver, title + ": " + body.toString());
                         }
                     }
@@ -1572,7 +1572,7 @@ public class OffshoreInstance {
             WebRoot web = WebRoot.getInstance();
 
             BankRequestHandler handler = web.getLegacyBankHandler();
-            if (auth.getNationId() != Settings.INSTANCE.NATION_ID || auth.getAllianceId() != allianceId) {
+            if (auth.getNationId() != Locutus.loader().getNationId() || auth.getAllianceId() != allianceId) {
                 throw new IllegalArgumentException("Game API is down currently");
             }
 

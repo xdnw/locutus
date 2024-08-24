@@ -2131,7 +2131,7 @@ public class BankCommands {
         // transfer limit
         long userId = author.getIdLong();
         if (ResourceType.convertedTotal(transfer) > 5000000000L
-                && userId != Settings.INSTANCE.ADMIN_USER_ID
+                && userId != Locutus.loader().getAdminUserId()
                 && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BANK_USERS.contains(userId)
                 && !isGrant && offshore.getAllianceId() == Settings.INSTANCE.ALLIANCE_ID()
         ) {
@@ -2458,7 +2458,7 @@ public class BankCommands {
 
         boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
         if (updateBulk) {
-            Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
+            Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
         }
 
         String noteFlowStr = useFlowNote == null ? null : "#" + useFlowNote.name().toLowerCase(Locale.ROOT);
@@ -3501,7 +3501,7 @@ public class BankCommands {
                        @Default DBAlliance sender_alliance,
 
                        @Switch("f") boolean force) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) throw new IllegalArgumentException("Error: Maintenance");
+        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException("Error: Maintenance");
         return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
     }
 
@@ -3533,8 +3533,8 @@ public class BankCommands {
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
                          @Switch("f") boolean force) throws IOException {
-        if (user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return "WIP";
-        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) throw new IllegalArgumentException("Error: Maintenance");
+        if (user.getIdLong() != Locutus.loader().getAdminUserId()) return "WIP";
+        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException("Error: Maintenance");
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
         }

@@ -811,9 +811,9 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             PoliticsAndWarV3 api = getApi(AlliancePermission.MANAGE_TREATIES);
             if (api != null) {
                 List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(allianceId);
-                Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, f -> {
-                    return f.getFromId() == allianceId || f.getToId() == allianceId;
-                });
+                Locutus.imp().runEventsAsync(events ->
+                    Locutus.imp().getNationDB().
+                        updateTreaties(treaties, events, f -> f.getFromId() == allianceId || f.getToId() == allianceId));
                 Map<Integer, Treaty> result = new HashMap<>();
                 for (com.politicsandwar.graphql.model.Treaty v3 : treaties) {
                     Treaty treaty = new Treaty(v3);
@@ -1222,8 +1222,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public void updateCities(Predicate<DBNation> fetchNation) throws IOException {
         Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
         if (nationIds.isEmpty()) return;
-        System.out.println("Aa update cities");
-        Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
+        Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, events));
     }
 
     public DBAlliance getCachedParentOfThisOffshore() {
@@ -1636,34 +1635,28 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         Map<DBNation, Integer> ops = new HashMap<>();
         // get api
         PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.SEE_SPIES);
-        for (Nation nation : api.fetchNations(true, new Consumer<NationsQueryRequest>() {
-            @Override
-            public void accept(NationsQueryRequest request) {
+        Locutus.imp().runEventsAsync(events -> {
+            for (Nation nation : api.fetchNations(true, request -> {
                 request.setAlliance_id(List.of(allianceId));
                 request.setVmode(false);
-            }
-        }, new Consumer<NationResponseProjection>() {
-            @Override
-            public void accept(NationResponseProjection proj) {
+            }, proj -> {
                 proj.id();
                 proj.spies();
                 proj.spy_attacks();
                 proj.espionage_available();
+            })) {
+                DBNation dbNation = DBNation.getById(nation.getId());
+                if (dbNation == null) continue;
+                dbNation.setSpies(nation.getSpies(), events);
+                if (nation.getEspionage_available() != (dbNation.isEspionageAvailable())) {
+                    dbNation.setEspionageFull(!nation.getEspionage_available());
+                }
+                if (nation.getSpy_attacks() != null) {
+                    nation.setSpy_attacks(nation.getSpy_attacks());
+                    ops.put(dbNation, nation.getSpy_attacks());
+                }
             }
-        })) {
-            DBNation dbNation = DBNation.getById(nation.getId());
-            if (dbNation == null) continue;
-            DBNation copy = new DBNation(dbNation);
-
-            dbNation.setSpies(nation.getSpies(), false);
-            if (nation.getEspionage_available() != (dbNation.isEspionageAvailable())) {
-                dbNation.setEspionageFull(!nation.getEspionage_available());
-            }
-            if (nation.getSpy_attacks() != null) {
-                nation.setSpy_attacks(nation.getSpy_attacks());
-                ops.put(dbNation, nation.getSpy_attacks());
-            }
-        }
+        });
         return ops;
     }
 

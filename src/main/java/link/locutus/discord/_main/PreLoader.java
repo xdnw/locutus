@@ -106,7 +106,8 @@ public class PreLoader implements ILoader {
             this.getNationId = add("Fetch Nation ID", new ThrowingSupplier<Supplier<Integer>>() {
                 @Override
                 public Supplier<Integer> getThrows() throws Exception {
-                    Integer nationIdFromKey = getDiscordDB().getNationFromApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
+                    String apiKey = getApiKey();
+                    Integer nationIdFromKey = getDiscordDB().getNationFromApiKey(apiKey);
                     if (nationIdFromKey == null) {
                         Settings.INSTANCE.NATION_ID = -1;
                     } else {
@@ -122,7 +123,8 @@ public class PreLoader implements ILoader {
             this.adminUserId = add("Discord Admin User ID", new ThrowingSupplier<Supplier<Long>>() {
                 @Override
                 public Supplier<Long> getThrows() throws Exception {
-                    PNWUser adminPnwUser = getDiscordDB().getUserFromNationId(Settings.INSTANCE.NATION_ID);
+                    int nationId = getNationId();
+                    PNWUser adminPnwUser = getDiscordDB().getUserFromNationId(nationId);
                     if (adminPnwUser != null) {
                         Settings.INSTANCE.ADMIN_USER_ID = adminPnwUser.getDiscordId();
                     }

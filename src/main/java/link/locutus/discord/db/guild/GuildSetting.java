@@ -500,7 +500,7 @@ public abstract class GuildSetting<T> {
         }
 
         Member owner = db.getGuild().getOwner();
-        if (owner != null && owner.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+        if (owner != null && owner.getIdLong() != Locutus.loader().getAdminUserId()) {
             DBNation ownerNation = DiscordUtil.getNation(owner.getUser());
             if (ownerNation == null) {
                 throw new IllegalArgumentException("The owner of this server (" + owner.getEffectiveName() + ") is not registered with the bot (see: " + CM.register.cmd.toSlashMention() + ")");
@@ -539,7 +539,7 @@ public abstract class GuildSetting<T> {
 
     public T allowedAndValidate(GuildDB db, User user, T value) {
         DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+        if (nation == null && user.getIdLong() != Locutus.loader().getAdminUserId()) {
             throw new IllegalArgumentException("You are not registered with the bot (see: " + CM.register.cmd.toSlashMention() + ")");
         }
         if (!allowed(db, true)) {

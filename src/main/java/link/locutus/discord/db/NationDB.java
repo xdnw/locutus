@@ -1488,9 +1488,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     private int loadTreaties() throws SQLException {
+        System.out.println("Load treaties");
         int total = 0;
         Set<Integer> treatiesToDelete = new LinkedHashSet<>();
         long currentTurn = TimeUtil.getTurn();
+        List<Event> postAsync = null;
 
         SelectBuilder builder = getDb().selectBuilder("TREATIES2").select("*");
         try (ResultSet rs = builder.executeRaw()) {
@@ -1504,7 +1506,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 }
                 if (currentTurn > treaty.getTurnEnds()) {
                     if (Locutus.imp() != null) {
-                        new TreatyExpireEvent(treaty).post();
+                        ((postAsync == null) ? postAsync = new ArrayList<>() : postAsync).add(new TreatyExpireEvent(treaty));
                     }
                     treatiesToDelete.add(treaty.getId());
                     continue;
@@ -1515,8 +1517,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 total++;
             }
         }
-
+        if (postAsync != null && Locutus.imp() != null) Locutus.imp().runEventsAsync(postAsync);
+        System.out.println("Del treaties");
         deleteTreatiesInDB(treatiesToDelete);
+        System.out.println("DOne del treaties");
         return total;
     }
 
@@ -3563,9 +3567,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     .putColumn("type", Col
          */
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        List<Event> events = null;
         for (LootEntry entry : entries) {
             if (entry.getDate() < cutoff) continue;
-            new LootInfoEvent(entry).post();
+            (events == null ? events = new ArrayList<>() : events).add(new LootInfoEvent(entry));
+        }
+        if (events != null && Locutus.imp() != null) {
+            Locutus.imp().runEventsAsync(events);
         }
 
         String query = "INSERT OR REPLACE INTO `NATION_LOOT3` (`id`, `total_rss`, `date`, `type`) VALUES(?,?,?,?)";

@@ -1005,7 +1005,7 @@ public class TradeCommands {
                               @Arg("Return a deposits add command for each grouping")
                               @Switch("a") boolean addBalance) throws IOException {
         if (forceUpdate) {
-            manager.updateTradeList(Event::post);
+            Locutus.imp().runEventsAsync(events -> manager.updateTradeList(events));
         }
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();

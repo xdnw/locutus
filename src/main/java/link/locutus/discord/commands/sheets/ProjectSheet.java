@@ -76,7 +76,7 @@ public class ProjectSheet extends Command {
 
         if (flags.contains('f')) {
             List<Integer> ids = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toList());
-            Locutus.imp().getNationDB().updateNations(ids, Event::post);
+            Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().updateNations(ids, events));
         }
 
         sheet.setHeader(header);

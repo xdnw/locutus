@@ -267,7 +267,7 @@ public class OptimalBuild extends Command {
             cityId = Integer.parseInt(cityArg.split("=")[1]);
 
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            if (cityEntry == null) Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, f -> f.post());
+            if (cityEntry == null) Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events));
             cityEntry.update(true);
             me = Locutus.imp().getNationDB().getNation(cityEntry.getNationId());
             origin = cityEntry.toJavaCity(me);

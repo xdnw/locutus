@@ -467,15 +467,20 @@ public class WarDB extends DBMainV2 {
     private void setWar(DBWar war, int id, int remaining, Int2ObjectOpenHashMap<Object> map) {
         map.merge(id, war, (o, o2) -> {
             if (o == null) {
-                return remaining > 1 ? new Object[remaining] : o2;
+                if (remaining <= 1) {
+                    return o2;
+                }
+                ObjectOpenHashSet<Object> result = new ObjectOpenHashSet<>();
+                result.add(o2);
+                return result;
             } else if (o instanceof DBWar oldWar) {
-                Object[] array = new Object[remaining + 1];
-                array[0] = oldWar;
-                array[1] = o2;
+                ObjectOpenHashSet<Object> array = new ObjectOpenHashSet<>(remaining + 1);
+                array.add(oldWar);
+                array.add(o2);
                 return array;
             } else {
-                Object[] array = (Object[]) o;
-                array[array.length - remaining] = o2;
+                ObjectOpenHashSet<Object> array = (ObjectOpenHashSet<Object>) o;
+                array.add(o2);
                 return array;
             }
         });
@@ -1594,6 +1599,7 @@ public class WarDB extends DBMainV2 {
     private Object bountyLock = new Object();
 
     public void updateBountiesV3() throws IOException {
+        List<Event> events = null;
         synchronized (bountyLock) {
             Set<DBBounty> removedBounties = getBounties();
             Set<DBBounty> newBounties = new LinkedHashSet<>();
@@ -1626,15 +1632,22 @@ public class WarDB extends DBMainV2 {
 
             for (DBBounty bounty : removedBounties) {
                 removeBounty(bounty);
-                if (callEvents) new BountyRemoveEvent(bounty).post();
+                if (callEvents) {
+                    (events == null ? (events = new ArrayList<>()) : events).add(new BountyRemoveEvent(bounty));
+                }
             }
             for (DBBounty bounty : newBounties) {
                 addBounty(bounty);
                 if (Settings.INSTANCE.LEGACY_SETTINGS.DEANONYMIZE_BOUNTIES) {
                     // TODO remove this
                 }
-                if (callEvents) new BountyCreateEvent(bounty).post();
+                if (callEvents) {
+                    (events == null ? (events = new ArrayList<>()) : events).add(new BountyCreateEvent(bounty));
+                }
             }
+        }
+        if (events != null) {
+            Locutus.imp().runEventsAsync(events);
         }
     }
 

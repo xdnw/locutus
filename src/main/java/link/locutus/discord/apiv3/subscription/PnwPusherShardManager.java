@@ -120,14 +120,14 @@ public class PnwPusherShardManager {
 //            root.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
 //                Locutus.imp().runEventsAsync(events -> nationDB.deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
 //            });
-            root.subscribeBuilder(Settings.INSTANCE.API_KEY_PRIMARY, Bounty.class, PnwPusherEvent.CREATE).build(bounties -> {
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Bounty.class, PnwPusherEvent.CREATE).build(bounties -> {
                 try {
                     spyTracker.checkBounties(bounties);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             });
-            root.subscribeBuilder(Settings.INSTANCE.API_KEY_PRIMARY, Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
                     spyTracker.updateCasualties(nations);
                     Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(nations, f, -1));

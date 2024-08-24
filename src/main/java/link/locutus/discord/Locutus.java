@@ -43,6 +43,7 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
@@ -164,31 +165,31 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public void registerEvents() {
-        System.out.println("Registering events");
+        long start = System.currentTimeMillis();
         eventBus.register(new TreatyUpdateProcessor());
-        System.out.println("Registered TreatyUpdateProcessor");
+        System.out.println("remove:||PERF treaty update processor " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new NationUpdateProcessor());
-        System.out.println("Registered NationUpdateProcessor");
+        System.out.println("Registered NationUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new TradeListener());
-        System.out.println("Registered TradeListener");
+        System.out.println("Registered TradeListener " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new CityUpdateProcessor());
-        System.out.println("Registered CityUpdateProcessor");
+        System.out.println("Registered CityUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new BankUpdateProcessor());
-        System.out.println("Registered BankUpdateProcessor");
+        System.out.println("Registered BankUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new WarUpdateProcessor());
-        System.out.println("Registered WarUpdateProcessor");
+        System.out.println("Registered WarUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new AllianceListener());
-        System.out.println("Registered AllianceListener");
+        System.out.println("Registered AllianceListener " + (((-start)) + (start = System.currentTimeMillis())));
         CommandManager cmdManager = loader.getCommandManager();
-        System.out.println("Get CommandManager");
+        System.out.println("Get CommandManager " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new MailListener(cmdManager.getV2().getStore(), cmdManager.getV2().getValidators(), cmdManager.getV2().getPermisser()));
-        System.out.println("Registered MailListener");
+        System.out.println("Registered MailListener " + (((-start)) + (start = System.currentTimeMillis())));
         WarDB warDb = loader.getWarDB();
-        System.out.println("Get WarDB");
+        System.out.println("Get WarDB " + (((-start)) + (start = System.currentTimeMillis())));
         ConflictManager conflictManager = warDb == null ? null : warDb.getConflicts();
-        System.out.println("Get ConflictManager");
+        System.out.println("Get ConflictManager " + (((-start)) + (start = System.currentTimeMillis())));
         if (conflictManager != null) eventBus.register(conflictManager);
-        System.out.println("Registered ConflictManager");
+        System.out.println("Registered ConflictManager " + (((-start)) + (start = System.currentTimeMillis())));
     }
 
     public EventBus getEventBus() {
@@ -511,9 +512,16 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
-        ArrayDeque<Event> events = new ArrayDeque<>();
+        ArrayDeque<Event> events = new ArrayDeque<>(0);
         eventHandler.accept(events::add);
         runEventsAsync(events);
+    }
+
+    public <T> T returnEventsAsync(ThrowingFunction<Consumer<Event>, T> eventHandler) {
+        Collection<Event> events = new ArrayDeque<>(0);
+        T result = eventHandler.apply(events::add);
+        runEventsAsync(events);
+        return result;
     }
 
     public void runEventsAsync(Collection<Event> events) {
@@ -1127,7 +1135,7 @@ public final class Locutus extends ListenerAdapter {
         Message message = isMessageLocutus(event.getMessageIdLong(), event.getGuildChannel());
         if (message == null) return;
         EmojiUnion emote;
-        if (event.getUser().getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) {
+        if (event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
             emote = event.getEmoji();
             if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
                 link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));

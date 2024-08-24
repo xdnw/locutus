@@ -2,15 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.FlowType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarCostMode;
-import link.locutus.discord.apiv1.enums.WarCostStat;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -27,10 +19,15 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.conflict.Conflict;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
@@ -62,14 +59,95 @@ import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
+import java.awt.*;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWCompleter extends BindingHelper {
+    @Autocomplete
+    @PlaceholderType
+    @Binding(types={Class.class})
+    public List<String> PlaceholderType(String input) {
+        PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
+        List<String> options = phMap.getTypes().stream().map(f -> PlaceholdersMap.getClassName(f)).collect(Collectors.toList());
+        return StringMan.getClosest(input, options, true);
+    }
+    @Autocomplete
+    @Binding(types={NationMeta.class})
+    public List<String> NationMeta(String input) {
+        return StringMan.completeEnum(input, NationMeta.class);
+    }
+    @Autocomplete
+    @Binding(types={Font.class})
+    public List<String> Font(String input) {
+        String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        return StringMan.getClosest(input, Arrays.asList(fonts), true);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, TreatyType.class}, multiple = true)
+    public List<Map.Entry<String, String>> TreatyType(String input) {
+        return StringMan.autocompleteCommaEnum(TreatyType.class, input, OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, NationColor.class}, multiple = true)
+    public List<Map.Entry<String, String>> NationColor(String input) {
+        return StringMan.autocompleteCommaEnum(NationColor.class, input, OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, Conflict.class}, multiple = true)
+    public List<Map.Entry<String, String>> Conflict(ConflictManager manager, String input) {
+        List<Conflict> options = new ArrayList<>(manager.getConflictMap().values());
+        return StringMan.autocompleteComma(input, options,
+                f -> PWBindings.conflict(manager, f),
+                Conflict::getName,
+                f -> f.getId() + "",
+                OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, SuccessType.class}, multiple = true)
+    public List<Map.Entry<String, String>> SuccessType(String input) {
+        return StringMan.autocompleteCommaEnum(SuccessType.class, input, OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, ResourceType.class}, multiple = true)
+    public List<Map.Entry<String, String>> ResourceType(String input) {
+        return StringMan.autocompleteCommaEnum(ResourceType.class, input, OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, GuildDB.class}, multiple = true)
+    public List<Map.Entry<String, String>> GuildDB(@Me User user, String input) {
+        List<GuildDB> options = user.getMutualGuilds().stream().map(Locutus.imp()::getGuildDB).toList();
+        Map<String, GuildDB> byMap = new HashMap<>();
+        for (GuildDB db : options) {
+            byMap.put(db.getGuild().getName().toLowerCase(), db);
+        }
+        return StringMan.autocompleteComma(input, options,
+                f -> f.isEmpty() ? null : byMap.get(f.split("/")[0].toLowerCase()),
+                GuildDB::getName,
+                f -> f.getGuild().getId(),
+                OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, GuildSetting.class}, multiple = true)
+    public List<String> GuildSetting(String input) {
+        List<String> options = Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList();
+        return StringMan.autocompleteComma(input, options, OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, AllianceMetric.class}, multiple = true)
+    public List<Map.Entry<String, String>> AllianceMetrics(String input) {
+        return StringMan.autocompleteCommaEnum(AllianceMetric.class, input, OptionData.MAX_CHOICES);
+    }
+    @Autocomplete
+    @Binding(types={Set.class, DomesticPolicy.class}, multiple = true)
+    public List<Map.Entry<String, String>> DomesticPolicy(String input) {
+        return StringMan.autocompleteCommaEnum(DomesticPolicy.class, input, OptionData.MAX_CHOICES);
+    }
     @Autocomplete
     @Binding(types={CommandCallable.class})
     public List<String> command(String input) {

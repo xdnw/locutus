@@ -633,7 +633,7 @@ public class SlashCommandManager extends ListenerAdapter {
             return;
         }
 
-        if (event.getUser().getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) {
+        if (event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
             System.out.println("remove:||Admin runs complete " + path + " | " + option.getValue());
         }
 

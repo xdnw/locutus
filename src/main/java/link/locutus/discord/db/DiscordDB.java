@@ -416,7 +416,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Map.Entry<String, String> getUserPass2(long nationId, String table, EncryptionUtil.Algorithm algorithm) {
-        if ((nationId == Settings.INSTANCE.ADMIN_USER_ID || nationId == Settings.INSTANCE.NATION_ID) && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
+        if ((nationId == Settings.INSTANCE.ADMIN_USER_ID || nationId == Settings.INSTANCE.NATION_ID) && nationId > 0 && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
             return Map.entry(Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
         }
         try (PreparedStatement stmt = prepareQuery("select * FROM " + table + " WHERE `discordid` = ?")) {
@@ -662,13 +662,14 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     public int updateUserIdsSince(int minutes, boolean overrideExisting) {
         List<Integer> toFetch = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < minutes).stream().map(DBNation::getNation_id).collect(Collectors.toList());
 
-        int updated = 0;
-
-        for (int i = 0; i < toFetch.size(); i += 500) {
-            List<Integer> subList = toFetch.subList(i, Math.min(i + 500, toFetch.size()));
-            updated += updateUserIds(overrideExisting, f -> f.setId(subList), Event::post);
-        }
-        return updated;
+        return Locutus.imp().returnEventsAsync(events -> {
+            int updated = 0;
+            for (int i = 0; i < toFetch.size(); i += 500) {
+                List<Integer> subList = toFetch.subList(i, Math.min(i + 500, toFetch.size()));
+                updated += updateUserIds(overrideExisting, f -> f.setId(subList), events);
+            }
+            return updated;
+        });
     }
 
     public int updateUserIds(boolean overrideExisting, Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
@@ -749,7 +750,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public PNWUser getUserFromNationId(int nationId) {
-        if (nationId == Settings.INSTANCE.NATION_ID && nationId > 0) {
+        if (nationId == Settings.INSTANCE.NATION_ID && nationId > 0 && Settings.INSTANCE.ADMIN_USER_ID > 0) {
             long userId = Settings.INSTANCE.ADMIN_USER_ID;
             User user = Locutus.imp().getDiscordApi().getUserById(userId);
             return new PNWUser(nationId, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
@@ -759,7 +760,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public PNWUser getUserFromDiscordId(long discordId) {
-        if (discordId == Settings.INSTANCE.ADMIN_USER_ID) {
+        if (discordId == Settings.INSTANCE.ADMIN_USER_ID && Settings.INSTANCE.NATION_ID > 0 && discordId > 0) {
             User user = Locutus.imp().getDiscordApi().getUserById(discordId);
             return new PNWUser(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
         }

@@ -153,25 +153,25 @@ public class DBNation implements NationOrAlliance {
 
     public void processTurnChange(long lastTurn, long turn, Consumer<Event> eventConsumer) {
         if (leaving_vm == turn) {
-            if (eventConsumer != null) new NationLeaveVacationEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationLeaveVacationEvent(this, this));
         }
         if (beigeTimer == turn) {
-            if (eventConsumer != null) new NationLeaveBeigeEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationLeaveBeigeEvent(this, this));
         }
         if (colorTimer == turn) {
-            if (eventConsumer != null) new NationColorTimerEndEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationColorTimerEndEvent(this, this));
         }
         if (warPolicyTimer == turn) {
-            if (eventConsumer != null) new NationWarPolicyTimerEndEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationWarPolicyTimerEndEvent(this, this));
         }
         if (domesticPolicyTimer == turn) {
-            if (eventConsumer != null) new NationDomesticPolicyTimerEndEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationDomesticPolicyTimerEndEvent(this, this));
         }
         if (cityTimer == turn) {
-            if (eventConsumer != null) new NationCityTimerEndEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationCityTimerEndEvent(this, this));
         }
         if (projectTimer == turn) {
-            if (eventConsumer != null) new NationProjectTimerEndEvent(this, this).post();
+            if (eventConsumer != null) eventConsumer.accept(new NationProjectTimerEndEvent(this, this));
         }
     }
 
@@ -360,7 +360,7 @@ public class DBNation implements NationOrAlliance {
         if (nation_id == Settings.INSTANCE.NATION_ID) {
             if (Settings.INSTANCE.ADMIN_USER_ID != user.getIdLong()) {
                 if (Settings.INSTANCE.ADMIN_USER_ID > 0) {
-                    throw new IllegalArgumentException("Invalid admin user id in `config.yaml`. Tried to register `" + user.getIdLong() + "` but config has is `" + Settings.INSTANCE.ADMIN_USER_ID + "`");
+                    throw new IllegalArgumentException("Invalid admin user id in `config.yaml`. Tried to register `" + user.getIdLong() + "` but config has `" + Settings.INSTANCE.ADMIN_USER_ID + "`");
                 }
                 Settings.INSTANCE.ADMIN_USER_ID = user.getIdLong();
                 Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
@@ -1024,7 +1024,7 @@ public class DBNation implements NationOrAlliance {
         if (this.auth != null) return auth;
         synchronized (this) {
             if (auth == null) {
-                if (this.nation_id == Settings.INSTANCE.NATION_ID) {
+                if (this.nation_id == Locutus.loader().getNationId()) {
                     if (!Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
                         return auth = new Auth(nation_id, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
                     }
@@ -1395,7 +1395,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (nation.getSpies() != null) {
-            this.setSpies(nation.getSpies(), false);
+            this.setSpies(nation.getSpies(), eventConsumer);
             if (copyOriginal != null && copyOriginal.getSpies() != (nation.getSpies())) {
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
                 dirty = true;
@@ -1728,15 +1728,13 @@ public class DBNation implements NationOrAlliance {
         return Math.max(spies, 0);
     }
 
-    public void setSpies(int spies, boolean events) {
+    public void setSpies(int spies, Consumer<Event> eventConsumer) {
         getCache().processUnitChange(this, MilitaryUnit.SPIES, this.spies, spies);
-        if (events && this.spies != spies) {
+        if (eventConsumer != null && this.spies != spies) {
             DBNation copyOriginal = new DBNation(this);
             this.spies = spies;
-
             Locutus.imp().getNationDB().saveNation(this);
-
-            new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES).post();
+            eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
         }
         this.spies = spies;
     }
@@ -2514,7 +2512,7 @@ public class DBNation implements NationOrAlliance {
         } else {
             post.put("action", "denouncement");
         }
-        post.put("account_id", Settings.INSTANCE.NATION_ID + "");
+        post.put("account_id", Locutus.loader().getNationId() + "");
         post.put("target_id", getNation_id() + "");
         post.put("api_key", key.getKey());
         Locutus.imp().getRootAuth().readStringFromURL(PagePriority.COMMEND, url, post);
@@ -3121,7 +3119,7 @@ public class DBNation implements NationOrAlliance {
                 setNukes(amt);
                 break;
             case SPIES:
-                setSpies(amt, false);
+                setSpies(amt, null);
                 break;
             default:
                 throw new UnsupportedOperationException("Unit type not implemented");
@@ -3314,7 +3312,7 @@ public class DBNation implements NationOrAlliance {
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
                 System.out.println("Fetch cities for " + getNation() + " | " + getNation_id());
-                Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true,true, Event::post);
+                Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true,true, events));
                 cityObj = _getCitiesV3();
             }
         }
@@ -4652,7 +4650,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public JsonObject sendMail(ApiKeyPool pool, String subject, String message, boolean priority) throws IOException {
-        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
+        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Locutus.loader().getApiKey())) {
             Auth auth = Locutus.imp().getRootAuth();
             if (auth != null) {
                 String result = new MailTask(auth, priority, this, subject, message, null).call();

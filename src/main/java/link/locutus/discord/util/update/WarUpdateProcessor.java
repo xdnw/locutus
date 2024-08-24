@@ -927,7 +927,7 @@ public class WarUpdateProcessor {
                 }
             }
 
-            if (current.getDefender_id() == Settings.INSTANCE.NATION_ID) {
+            if (current.getDefender_id() == Locutus.loader().getNationId()) {
                 String body = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
                 AlertUtil.displayTray("" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {

@@ -490,7 +490,7 @@ public class AuthBindings extends WebBindingHelper {
                     String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
                             MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
 
-                    ApiKeyPool pool = ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY);
+                    ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
                     JsonObject result = nation.sendMail(pool, title, body, true);
                     JsonElement success = result.get("success");
                     if (success != null && success.getAsBoolean()) {

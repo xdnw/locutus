@@ -144,7 +144,7 @@ public abstract class Command {
         if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
             return true;
         }
-        if (user.getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) {
+        if (user.getIdLong() == Locutus.loader().getAdminUserId()) {
             return true;
         }
         if (checkGuild && !checkGuildPermission(server)) {

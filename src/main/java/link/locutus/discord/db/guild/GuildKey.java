@@ -127,7 +127,7 @@ public class GuildKey {
                 DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                 GuildDB otherDb = alliance.getGuildDB();
                 Member owner = db.getGuild().getOwner();
-                if (user == null || user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+                if (user == null || user.getIdLong() != Locutus.loader().getAdminUserId()) {
                     DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
                     if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
                         Set<String> inviteCodes = new HashSet<>();
