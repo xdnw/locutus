@@ -141,12 +141,13 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class CommandManager {
     private final char prefix1;
-    private final ScheduledThreadPoolExecutor executor;
     private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
     private final CharOpenHashSet modernPrefixes;
+    private final ScheduledExecutorService executor;
 
-    public CommandManager() {
+    public CommandManager(ScheduledExecutorService executor) {
+        this.executor = executor;
         long start = System.currentTimeMillis();
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         Logg.text("remove:||PERF commandmanager prefix " + (-start + (start = System.currentTimeMillis())) + "ms");
@@ -157,8 +158,6 @@ public class CommandManager {
         }
         Logg.text("remove:||PERF commandmanager prefixes " + (-start + (start = System.currentTimeMillis())) + "ms");
         this.commandMap = new LinkedHashMap<>();
-        Logg.text("remove:||PERF commandmanager commandMap " + (-start + (start = System.currentTimeMillis())) + "ms");
-        this.executor = new ScheduledThreadPoolExecutor(256);
         Logg.text("remove:||PERF commandmanager executor " + (-start + (start = System.currentTimeMillis())) + "ms");
         modernized = new CommandManager2();
         Logg.text("remove:||PERF commandmanager modernized " + (-start + (start = System.currentTimeMillis())) + "ms");

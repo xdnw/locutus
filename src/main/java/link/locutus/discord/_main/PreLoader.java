@@ -79,7 +79,11 @@ public class PreLoader implements ILoader {
         });
         this.jda = add("Discord Hook", this::buildJDA);
         this.discordDB = add("Discord Database", () -> new DiscordDB());
-        this.nationDB = add("Nation Database", () -> new NationDB().load());
+        this.nationDB = add("Nation Database", () -> {
+            NationDB result = new NationDB().load();
+            Thread.sleep(9099999);
+            return result;
+        });
         this.warDb = add("War Database", () -> new WarDB().load());
         this.stockDB = add("Stock Database", () -> new StockDB());
         this.bankDb = add("Bank Database", () -> new BankDB());
@@ -159,6 +163,13 @@ public class PreLoader implements ILoader {
             cmdMan.registerCommands(db);
             return null;
         });
+
+        setupMonitor();
+    }
+
+    private void setupMonitor() {
+        // run a task 30s later
+
     }
 
     @Override
@@ -237,13 +248,19 @@ public class PreLoader implements ILoader {
 
     @Override
     public String printStacktrace() {
+        if (resolverThreads.isEmpty()) return "";
         StringBuilder builder = new StringBuilder();
         for (Map.Entry<String, Thread> entry : resolverThreads.entrySet()) {
-            Thread thread = entry.getValue();
-            builder.append("Thread ").append(thread.getName()).append("/").append(thread.getState()).append("\n");
-            for (StackTraceElement element : thread.getStackTrace()) {
-                builder.append("\tat ").append(element).append("\n");
-            }
+            builder.append(printStacktrace(entry.getValue()));
+        }
+        return builder.toString();
+    }
+
+    private String printStacktrace(Thread thread) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Thread ").append(thread.getName()).append("/").append(thread.getState()).append("\n");
+        for (StackTraceElement element : thread.getStackTrace()) {
+            builder.append("\tat ").append(element).append("\n");
         }
         return builder.toString();
     }

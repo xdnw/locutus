@@ -98,6 +98,7 @@ public final class Locutus extends ListenerAdapter {
     private ILoader loader;
 
     private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor scheduler;
 
     private final EventBus eventBus;
 
@@ -125,7 +126,8 @@ public final class Locutus extends ListenerAdapter {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         long start = System.currentTimeMillis();
-        this.executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+        this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        this.scheduler = new ScheduledThreadPoolExecutor(0, Executors.defaultThreadFactory());
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.ROOT_COALITION_SERVER <= 0) Settings.INSTANCE.ROOT_COALITION_SERVER = Settings.INSTANCE.ROOT_SERVER;
