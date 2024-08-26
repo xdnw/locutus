@@ -1,9 +1,10 @@
 package link.locutus.discord.config.yaml;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -26,8 +27,6 @@ import java.util.Map;
 
 public class Config {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Config.class.getSimpleName());
-
     public Config() {
     save(new PrintWriter(new ByteArrayOutputStream(0)), getClass(), this, 0);
     }
@@ -48,7 +47,7 @@ public class Config {
                 }
             }
         }
-        LOGGER.error("Failed to get config option: {}", key);
+        Logg.text("Failed to get config option: {}", key);
         return null;
     }
 
@@ -115,7 +114,7 @@ public class Config {
             }
         }
         System.out.println("Failed to set config option: " + key + ": " + value + " | " + instance + " | " + root.getSimpleName() + ".yml");
-        LOGGER.error("Failed to set config option: {}: {} | {} | {}.yml", key, value, instance, root.getSimpleName());
+        Logg.text("Failed to set config option: {}: {} | {} | {}.yml", key, value, instance, root.getSimpleName());
     }
 
     public boolean load(File file) {
@@ -356,7 +355,7 @@ public class Config {
             setAccessible(field);
             return field;
         } catch (Throwable ignored) {
-            LOGGER.warn(
+            Logg.text(
                     "Invalid config field: {} for {}",
                     StringMan.join(split, "."),
                     toNodeName(instance.getClass().getSimpleName())

@@ -177,7 +177,7 @@ public class StatCommands {
             "City, war scaling, and enable ranking by alliance (instead of nation)",
             "Specify the kind of wars to include"
     })
-    public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
+    public String warCostRanking(@Me IMessageIO io, @Me JSONObject command,
                                  @Arg(value = "Start time of the period to rank\n" +
                                  "Defaults to 7d", group = 0)
                                  @Default("7d") @Timestamp long timeStart,
