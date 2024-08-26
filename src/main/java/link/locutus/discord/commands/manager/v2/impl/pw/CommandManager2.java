@@ -152,12 +152,13 @@ public class CommandManager2 {
         this.store = new SimpleValueStore<>();
         Logg.text("remove:||PERF CM2 store" + (-start + (start = System.currentTimeMillis())));
         new PrimitiveBindings().register(store);
-        Logg.text("remove:||PERF CM2 primtive bindings" + (-start + (start = System.currentTimeMillis())));
+        Logg.text("remove:||PERF CM2 primtive bindings " + (-start + (start = System.currentTimeMillis())));
         new DiscordBindings().register(store);
-        Logg.text("remove:||PERF CM2 discord bindings" + (-start + (start = System.currentTimeMillis())));
-        
-        new PWBindings().register(store);
-        Logg.text("remove:||PERF CM2 pw bindings" + (-start + (start = System.currentTimeMillis())));
+        Logg.text("remove:||PERF CM2 discord bindings " + (-start + (start = System.currentTimeMillis())));
+        PWBindings pwBindings = new PWBindings();
+        Logg.text("remove:||PERF CM2 pw bindings (1) " + (-start + (start = System.currentTimeMillis())));
+        pwBindings.register(store);
+        Logg.text("remove:||PERF CM2 pw bindings " + (-start + (start = System.currentTimeMillis())));
         new GPTBindings().register(store);
         Logg.text("remove:||PERF CM2 gpt bindings" + (-start + (start = System.currentTimeMillis())));
         new SheetBindings().register(store);
@@ -175,11 +176,10 @@ public class CommandManager2 {
         Logg.text("remove:||PERF CM2 permission binding" + (-start + (start = System.currentTimeMillis())));
 
         this.placeholders = new PlaceholdersMap(store, validators, permisser);
-        Logg.text("remove:||PERF CM2 placeholders" + (-start + (start = System.currentTimeMillis())));
+        Logg.text("remove:||PERF CM2 placeholders " + (-start + (start = System.currentTimeMillis())));
         // Register bindings
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?> ph = placeholders.get(type);
-            System.out.println("Type " + type);
             ph.register(store);
         }
         Logg.text("remove:||PERF CM2 register placeholders" + (-start + (start = System.currentTimeMillis())));
@@ -533,9 +533,11 @@ public class CommandManager2 {
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
-            Method[] methods = setting.getClass().getDeclaredMethods();
+            Class<? extends GuildSetting> settingClass = setting.getClass();
+            Method[] methods = settingClass.getMethods();
             Map<String, String> methodNameToCommandName = new HashMap<>();
             for (Method method : methods) {
+                if (method.getDeclaringClass() != settingClass) continue;
                 if (method.getAnnotation(Command.class) != null) {
                     Command command = method.getAnnotation(Command.class);
 
@@ -629,7 +631,9 @@ public class CommandManager2 {
 
             Method methodAlias = null;
             Method methodColumns = null;
-            for (Method method : ph.getClass().getDeclaredMethods()) {
+            Class<? extends Placeholders> phClass = ph.getClass();
+            for (Method method : phClass.getMethods()) {
+                if (method.getDeclaringClass() != phClass) continue;
                 if (method.getName().equals("addSelectionAlias")) {
                     methodAlias = method;
                 } else if (method.getName().equals("addColumns")) {
@@ -645,7 +649,6 @@ public class CommandManager2 {
                 continue;
             }
             String typeName = PlaceholdersMap.getClassName(ph.getType());
-            System.out.println("Registering " + typeName);
             this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
             this.commands.registerMethod(ph, List.of("sheet_template", "add"), methodColumns.getName(), typeName);
 //            for (Method method : ph.getClass().getDeclaredMethods()) {

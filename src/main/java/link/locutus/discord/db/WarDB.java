@@ -106,15 +106,6 @@ public class WarDB extends DBMainV2 {
         int num_attacks = 0;
         int numErrors = 0;
 
-        /**
-         * Took 41748ms to load 0 attacks
-         *
-         * Took 42044ms to load 12695101 attacks
-         * (serializing)
-         *
-         * Total bytes: 61,750,087
-         */
-
         AttackCursorFactory cursorManager = new AttackCursorFactory();
 
         FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
@@ -2432,7 +2423,6 @@ public class WarDB extends DBMainV2 {
             v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
                 @Override
                 public boolean test(WarAttack v3Attack) {
-
                     AbstractCursor attack = factory.load(v3Attack, true);
                     synchronized (attackList) {
                         attackList.add(attack);

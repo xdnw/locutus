@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -30,6 +31,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -60,12 +62,14 @@ public class PoliticsAndWarV3 {
     public static int BANS_PER_PAGE = 500;
 
     private final String endpoint;
+    private final String snapshotUrl;
     private final RestTemplate restTemplate;
     private final ObjectMapper jacksonObjectMapper;
     private final ApiKeyPool pool;
 
     public PoliticsAndWarV3(String url, ApiKeyPool pool) {
-        this.endpoint = url;
+        this.endpoint = url + "/graphql";
+        this.snapshotUrl = url + "/subscriptions/v1/snapshot/";
         this.restTemplate = new RestTemplate();
         this.pool = pool;
 
@@ -74,7 +78,7 @@ public class PoliticsAndWarV3 {
     }
 
     public PoliticsAndWarV3(ApiKeyPool pool) {
-        this("https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com/graphql", pool);
+        this("https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com", pool);
     }
 
     public ApiKeyPool getPool() {
@@ -83,6 +87,10 @@ public class PoliticsAndWarV3 {
 
     public String getUrl(String key) {
         return endpoint + "?api_key=" + key;
+    }
+
+    public String getSnapshotUrl(Class<?> type, String key) {
+        return snapshotUrl + type.getSimpleName().toLowerCase() + "?api_key=" + key;
     }
 
     public void throwInvalid(AlliancePermission alliancePermission, String message) {
@@ -128,6 +136,20 @@ public class PoliticsAndWarV3 {
 
     public static RequestTracker getRequestTracker() {
         return requestTracker;
+    }
+
+    public <T> List<T> readSnapshot(PagePriority priority, Class<T> type) {
+        while (true) {
+            ApiKeyPool.ApiKey pair = pool.getNextApiKey();
+            String url = getSnapshotUrl(type, pair.getKey());
+            try {
+                String body = FileUtil.readStringFromURL(priority, url);
+                return jacksonObjectMapper.readerForListOf(type).readValue(body);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
@@ -176,7 +198,6 @@ public class PoliticsAndWarV3 {
             String url = getUrl(pair.getKey());
             try {
                 restTemplate.acceptHeaderRequestCallback(String.class);
-//
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
                 URI uri = URI.create(url);

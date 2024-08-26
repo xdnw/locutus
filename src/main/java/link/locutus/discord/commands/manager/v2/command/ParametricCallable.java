@@ -227,7 +227,8 @@ public class ParametricCallable implements ICommand {
 
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Class clazz, Object object, ValueStore store) {
         List<ParametricCallable> cmds = new ArrayList<>();
-        for (Method method : clazz.getDeclaredMethods()) {
+        for (Method method : clazz.getMethods()) {
+            if (method.getDeclaringClass() != clazz) continue;
             ParametricCallable parametric = generateFromMethod(parent, object, method, store);
             if (parametric != null) cmds.add(parametric);
         }

@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -262,26 +264,27 @@ public class SlashCommandManager extends ListenerAdapter {
         for (Map.Entry<String, CommandCallable> entry : commands.getCommands().getSubcommands().entrySet()) {
             CommandCallable callable = entry.getValue();
             String id = entry.getKey();
-            AtomicInteger size = new AtomicInteger();
             try {
-                SlashCommandData cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, true, true, true);
+                List<UpdateCommandDesc> updaters = new ObjectArrayList<>();
+                SlashCommandData cmd = adaptCommands(commandNames, callable, id, null, null, updaters);
+                UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, true, true, true, true);
                 if (getSize(cmd) > 4000) {
-                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, true, true);
+                    UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, true, false, true, true);
                 }
                 if (getSize(cmd) > 4000) {
-                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, false, true);
+                    UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, true, false, false, true);
                 }
                 if (getSize(cmd) > 4000) {
-                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, false, false, false, true);
+                    UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, false, false, false, true);
                 }
                 if (getSize(cmd) > 4000) {
-                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, true);
+                    UpdateCommandDesc.updateAll(updaters, 100, 100, true, true, false, false, false, true);
                 }
                 if (getSize(cmd) > 4000) {
-                    cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, false);
+                    UpdateCommandDesc.updateAll(updaters, 100, 100, true, true, false, false, false, false);
                 }
                 if (getSize(cmd) > 4000) {
-                    cmd = adaptCommands(commandNames, callable, id, null, null, 0, 0, true, true, false, false, false, false);
+                    UpdateCommandDesc.updateAll(updaters, 0, 0, true, true, false, false, false, false);
                 }
                 toRegister.add(cmd);
             } catch (Throwable e) {
@@ -294,7 +297,6 @@ public class SlashCommandManager extends ListenerAdapter {
                 throw e;
             }
         }
-
         for (SlashCommandData cmd : toRegister) {
             int size = getSize(cmd);
             if (size > 4000) {
@@ -304,12 +306,12 @@ public class SlashCommandManager extends ListenerAdapter {
                 throw new IllegalArgumentException("Command " + cmd.getName() + "too large: " + size + "");
             }
         }
-
         return toRegister;
     }
 
     public void registerCommandData(JDA jda) {
-        registerCommandData(jda, generateCommandData());
+        List<SlashCommandData> generate = generateCommandData();
+        registerCommandData(jda, generate);
     }
 
     public void registerCommandData(JDA jda, List<SlashCommandData> toRegister) {
@@ -376,26 +378,92 @@ public class SlashCommandManager extends ListenerAdapter {
         return id;
     }
 
-    public SlashCommandData adaptCommands(Map<ParametricCallable, String> finalMappings, CommandCallable callable, String id, SlashCommandData root, SubcommandGroupData discGroup, int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
-        String desc = callable.simpleDesc();
-        if (desc.length() >= maxDescription) {
-            desc = desc.split("\n")[0];
+    // int maxDescription,
+    // int maxOption,
+    // boolean breakNewlines,
+    // boolean includeTypes,
+    // boolean includeExample,
+    // boolean includeRepeatedTypes,
+    // boolean includeDescForChoices,
+    // boolean includeOptionDesc
+
+    private static abstract class UpdateCommandDesc {
+        public static void updateAll(List<UpdateCommandDesc> updaters, int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
+            for (UpdateCommandDesc updater : updaters) {
+                updater.update(maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
+            }
         }
-        if (desc.length() >= maxDescription) {
-            desc = desc.substring(0, maxDescription);
+        protected final ConcurrentHashMap<Long, String> cache;
+        private List<SerializableData> data;
+
+        public UpdateCommandDesc() {
+            this.cache = new ConcurrentHashMap<>();
+            this.data = new ObjectArrayList<>();
         }
-        if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
-        if (desc.isEmpty()) desc = "_";
+
+        public UpdateCommandDesc addCommandData(SerializableData data) {
+            this.data.add(data);
+            return this;
+        }
+
+        public void update(int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
+            setDesc(generate(maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc));
+        }
+
+        public UpdateCommandDesc setDesc(String desc) {
+            if (desc.isEmpty()) desc = "_";
+            for (SerializableData data : this.data) {
+                if (data instanceof  SlashCommandData slash) {
+                    slash.setDescription(desc);
+                } else if (data instanceof SubcommandData sub) {
+                    sub.setDescription(desc);
+                } else if (data instanceof SubcommandGroupData group) {
+                    group.setDescription(desc);
+                } else if (data instanceof OptionData optionData) {
+                    optionData.setDescription(desc);
+                } else {
+                    throw new IllegalArgumentException("Unknown data type: " + data);
+                }
+            }
+            return this;
+        }
+
+        protected abstract String generate(int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc);
+    }
+
+    private SlashCommandData adaptCommands(Map<ParametricCallable, String> finalMappings, CommandCallable callable, String id, SlashCommandData root, SubcommandGroupData discGroup, List<UpdateCommandDesc> updaters) {
+        String finalDesc = callable.simpleDesc();
+        UpdateCommandDesc descUpdater = new UpdateCommandDesc() {
+            @Override
+            public String generate(int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
+                if (finalDesc.isEmpty()) return finalDesc;
+                long hash = (breakNewlines ? 1 : 0) + ((long) maxDescription << 1);
+                return cache.computeIfAbsent(hash, f -> {
+                    String desc = finalDesc;
+                    if (desc.length() >= maxDescription) {
+                        desc = desc.split("\n")[0];
+                    }
+                    if (desc.length() >= maxDescription) {
+                        desc = desc.substring(0, maxDescription);
+                    }
+                    if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
+                    if (desc.isEmpty()) desc = "_";
+                    return desc;
+                });
+            }
+        };
 
         SerializableData current = null;
         if (root == null) {
-            root = Commands.slash(id.toLowerCase(Locale.ROOT), desc);
+            root = Commands.slash(id.toLowerCase(Locale.ROOT), "_");
+            updaters.add(descUpdater.addCommandData(root));
             current = root;
         }
         if (callable instanceof ICommandGroup group) {
             if (current == null) {
                 if (discGroup == null) {
-                    discGroup = new SubcommandGroupData(id, desc);
+                    discGroup = new SubcommandGroupData(id, "_");
+                    updaters.add(descUpdater.addCommandData(discGroup));
                     current = discGroup;
                     root.addSubcommandGroups(discGroup);
                 } else {
@@ -407,13 +475,11 @@ public class SlashCommandManager extends ListenerAdapter {
             for (Map.Entry<String, CommandCallable> entry : group.getSubcommands().entrySet()) {
                 String subId = entry.getKey();
                 CommandCallable subCmd = entry.getValue();
-                adaptCommands(finalMappings, subCmd, subId, root, discGroup, maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
+                adaptCommands(finalMappings, subCmd, subId, root, discGroup, updaters);
             }
         } else if (callable instanceof ParametricCallable parametric) {
             if (!registerAdminCmds && isAdmin(parametric)) return root;
-
-            List<OptionData> options = createOptions(parametric, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
-
+            List<OptionData> options = createOptions(parametric, updaters);
             String fullPath = "";
             fullPath += root.getName() + " ";
             if (discGroup != null) fullPath += discGroup.getName() + " ";
@@ -421,7 +487,8 @@ public class SlashCommandManager extends ListenerAdapter {
             fullPath = fullPath.trim();
             try {
                 if (current == null) {
-                    SubcommandData discSub = new SubcommandData(id, desc);
+                    SubcommandData discSub = new SubcommandData(id, "_");
+                    updaters.add(descUpdater.addCommandData(discSub));
                     current = discSub;
 
                     if (discGroup != null) {
@@ -449,40 +516,14 @@ public class SlashCommandManager extends ListenerAdapter {
         return root;
     }
 
-    public List<OptionData> createOptions(ParametricCallable cmd, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeDesc) {
-        List<OptionData> result = new ArrayList<>();
-        Set<Type> paramTypes = new HashSet<>();
-        List<ParameterData> params = cmd.getUserParameters();
+    private List<OptionData> createOptions(ParametricCallable cmd, List<UpdateCommandDesc> updaters) {
+        final List<OptionData> result = new ArrayList<>();
+        final Set<Type> paramTypes = new HashSet<>();
+        final List<ParameterData> params = cmd.getUserParameters();
         for (int l = 0; l < params.size(); l++) {
-            ParameterData param = params.get(l);
-            Type type = param.getType();
-            String paramName = param.getName();
-            String desc;
-            if (paramName.length() == 1 && l > 0 && params.get(l - 1).getType().equals(type) && params.size() > 20) {
-                desc = "_";
-            } else {
-                desc = !includeDesc ? "" : param.getExpandedDescription(false, includeExample, includeDesc);
-                String simpleDesc = includeDesc ? param.getDescription() : "";
-                if (desc.length() > maxOption && simpleDesc != null) {
-                    desc = simpleDesc;
-                }
-                if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
-                if (desc.length() > maxOption) {
-                    desc = desc.substring(0, maxOption);
-                }
-                if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
-                if (desc.trim().isEmpty() && includeTypes) {
-                    desc = param.getType().getTypeName().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");
-                }
-                if (!includeRepeatedTypes) {
-                    if (!paramTypes.add(param.getType())) {
-                        desc = "";
-                    }
-                }
-                if (desc.isEmpty()) {
-                    desc = "_";
-                }
-            }
+            final ParameterData param = params.get(l);
+            final Type type = param.getType();
+            final String paramName = param.getName();
 
             Range range = param.getAnnotation(Range.class);
             Step step = param.getAnnotation(Step.class);
@@ -491,7 +532,7 @@ public class SlashCommandManager extends ListenerAdapter {
             ArgChoice choiceAnn = param.getAnnotation(ArgChoice.class);
 
             OptionType optionType = (timestamp != null || timediff != null) ? OptionType.STRING : createType(type);
-            OptionData option = new OptionData(optionType, paramName.toLowerCase(Locale.ROOT), desc);
+            OptionData option = new OptionData(optionType, paramName.toLowerCase(Locale.ROOT), "_");
 
             option.setAutoComplete(false);
             if (optionType == OptionType.CHANNEL) {
@@ -576,10 +617,69 @@ public class SlashCommandManager extends ListenerAdapter {
                     }
                 }
             }
-            if (!includeDescForChoices && !option.getChoices().isEmpty()) {
+            boolean isRepeatedType = (!paramTypes.add(param.getType()));
+            if ((paramName.length() == 1 && l > 0 && params.get(l - 1).getType().equals(type) && params.size() > 20)) {
                 option.setDescription("_");
-            }
+            } else {
+                UpdateCommandDesc update = new UpdateCommandDesc() {
+                    private String expandedNoExample;
+                    private String expandedExample;
+                    private String simpleDesc;
+                    private boolean hasSimpleDesc;
+                    private String typeStr;
 
+                    @Override
+                    public String generate(int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
+                        if (isRepeatedType && !includeRepeatedTypes) {
+                            return "";
+                        }
+                        if (!includeDescForChoices && !option.getChoices().isEmpty()) {
+                            return "";
+                        }
+                        String desc = includeExample ?
+                                (expandedExample == null ? (expandedExample = param.getExpandedDescription(false, true, true)) : expandedExample) :
+                                (expandedNoExample == null ? (expandedNoExample = param.getExpandedDescription(false, false, true)) : expandedNoExample);
+                        if (desc.length() > maxOption) {
+                            if (!hasSimpleDesc) {
+                                hasSimpleDesc = true;
+                                simpleDesc = param.getDescription();
+                            }
+                            if (simpleDesc != null) {
+                                desc = simpleDesc;
+                            }
+                        }
+                        if (breakNewlines) {
+                            long hash = ((includeExample ? 1 : 0)) + ((long) maxOption << 1);
+                            String finalDesc = desc;
+                            desc = cache.computeIfAbsent(hash, f -> {
+                                if (finalDesc.contains("\n")) {
+                                    return finalDesc.split("\n")[0];
+                                }
+                                return finalDesc;
+                            });
+                        }
+                        if (desc.length() > maxOption) {
+                            long hash = (breakNewlines ? 1 : 0) + ((includeExample ? 1 : 0) << 1) + ((long) maxOption << 2);
+                            String finalDesc = desc;
+                            desc = cache.computeIfAbsent(hash, f -> {
+                                String tmp = finalDesc;
+                                if (tmp.contains("\n")) {
+                                    tmp = finalDesc.split("\n")[0];
+                                }
+                                if (tmp.length() > maxOption) {
+                                    tmp = tmp.substring(0, maxOption);
+                                }
+                                return tmp;
+                            });
+                        }
+                        if (desc.trim().isEmpty() && includeTypes) {
+                            desc = typeStr == null ? (typeStr = param.getType().getTypeName().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1")) : typeStr;
+                        }
+                        return desc;
+                    }
+                };
+                updaters.add(update.addCommandData(option));
+            }
             option.setRequired(!param.isOptional() && !param.isFlag());
 
             result.add(option);
@@ -616,7 +716,6 @@ public class SlashCommandManager extends ListenerAdapter {
         CommandCallable cmd = cmdAndPath.getKey();
 
         if (cmd == null) {
-            // No command found
             System.out.println("remove:||No command found: " + path);
             return;
         }
@@ -757,7 +856,7 @@ public class SlashCommandManager extends ListenerAdapter {
             Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path, combined, true);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
-                System.out.println("remove:||Slash command took " + (end - start) + "ms");
+                System.out.println("remove:||Slash command interaction took " + (end - start) + "ms");
             }
         } catch (Throwable e) {
             e.printStackTrace();

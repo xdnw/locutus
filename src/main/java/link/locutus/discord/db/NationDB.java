@@ -46,6 +46,7 @@ import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.*;
@@ -388,7 +389,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public void updateAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<Event> eventConsumer) {
         Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new HashSet<>();
-
         List<Alliance> alliances = Locutus.imp().getV3().fetchAlliances(false, filter, true, true);
         if (alliances.isEmpty()) return;
         if (!toDelete.isEmpty()) {
@@ -1100,7 +1100,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 int cityId = entry.getKey();
                 int nationId = entry.getValue();
                 synchronized (citiesByNation) {
-                   ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
+                    ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
                 }
             }
             System.out.println("Delete cities 1 " + citiesToDeleteToNationId.size());
@@ -1110,7 +1110,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public void updateAllCities(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-        List<City> cities = v3.fetchCitiesWithInfo(false,null, true);
+        List<City> cities = v3.readSnapshot(PagePriority.API_CITIES_AUTO_ALL, City.class);
         Map<Integer, Map<Integer, City>> nationIdCityIdCityMap = new Int2ObjectOpenHashMap<>();
         for (City city : cities) {
             nationIdCityIdCityMap.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
@@ -1652,6 +1652,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public void updateNationsV2(boolean includeVM, Consumer<Event> eventConsumer) {
         try {
+
             List<SNationContainer> nations = Locutus.imp().getPnwApiV2().getNationsByScore(includeVM, 999999, -1).getNationsContainer();
 
             List<DBNation> toSave = new ArrayList<>();
@@ -1827,7 +1828,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             currentNations = new HashSet<>(nationsById.keySet());
         }
         Set<Integer> deleted = new HashSet<>();
-        Set<Integer> fetched = updateNations(f -> {}, eventConsumer);
+        Set<Integer> fetched = updateNationsCustom(onEachNation -> {
+            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            List<Nation> nations = v3.readSnapshot(PagePriority.API_NATIONS_AUTO, Nation.class);
+            for (Nation nation : nations) {
+                onEachNation.test(nation);
+            }
+        }, eventConsumer);
         for (int id : currentNations) {
             if (!fetched.contains(id)) deleted.add(id);
         }
@@ -1891,10 +1898,15 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter, Consumer<Event> eventConsumer) {
+        return updateNationsCustom(onEachNation -> {
+            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            v3.fetchNationsWithInfo(false, filter, onEachNation);
+        }, eventConsumer);
+    }
 
+    public Set<Integer> updateNationsCustom(Consumer<Predicate<Nation>> fetchNationTask, Consumer<Event> eventConsumer) {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
         Set<Integer> nationsFetched = new HashSet<>();
-
         long timestamp = System.currentTimeMillis();
         Set<DBNation> nations = new HashSet<>();
         Predicate<Nation> onEachNation = nation -> {
@@ -1909,8 +1921,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             if (dbNat != null) nations.add(dbNat);
             return false;
         };
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-        v3.fetchNationsWithInfo(false, filter, onEachNation);
+        fetchNationTask.accept(onEachNation);
         updateNationCitiesAndPositions(nations, nationChanges, eventConsumer);
         return nationsFetched;
     }

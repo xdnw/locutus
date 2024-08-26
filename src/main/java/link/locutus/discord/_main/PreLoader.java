@@ -48,6 +48,8 @@ public class PreLoader implements ILoader {
     // futures
     private final Map<String, Future<?>> resolvers;
     private final Map<String, Thread> resolverThreads;
+    private final AtomicInteger numTasks = new AtomicInteger(0);
+    private final boolean awaitBackup;
 
     private volatile FinalizedLoader finalized;
     // fields
@@ -67,6 +69,7 @@ public class PreLoader implements ILoader {
     private final Future<Supplier<Long>> adminUserId;
     private final Future<PoliticsAndWarV2> apiV2;
     private final Future<PoliticsAndWarV3> apiV3;
+    private final Future<Boolean> backup;
 
     public PreLoader(Locutus locutus, ThreadPoolExecutor executor, ScheduledThreadPoolExecutor scheduler) {
         this.executor = executor;
@@ -82,14 +85,20 @@ public class PreLoader implements ILoader {
             public SlashCommandManager getThrows() throws Exception {
                 return new SlashCommandManager(Settings.INSTANCE.ENABLED_COMPONENTS.REGISTER_ADMIN_SLASH_COMMANDS, () -> Locutus.cmd().getV2());
             }
-        });
-        this.jda = add("Discord Hook", this::buildJDA);
+        }, false);
+        this.jda = add("Discord Hook", this::buildJDA, false);
+        this.awaitBackup = !Settings.INSTANCE.BACKUP.SCRIPT.isEmpty();
+        if (awaitBackup) {
+            backup = add("Backup", () -> {
+                Backup.backup();
+                return true;
+            }, false);
+        } else {
+            backup = CompletableFuture.completedFuture(false);
+        }
+
         this.discordDB = add("Discord Database", () -> new DiscordDB());
-        this.nationDB = add("Nation Database", () -> {
-            NationDB result = new NationDB().load();
-            Thread.sleep(9099999);
-            return result;
-        });
+        this.nationDB = add("Nation Database", () -> new NationDB().load());
         add("Flag Outdated Cities", () -> {
             NationDB db = getNationDB();
             db.markDirtyIncorrectNations(true, true);
@@ -176,6 +185,7 @@ public class PreLoader implements ILoader {
             return null;
         });
 
+        System.out.println("Setup monitor");
         setupMonitor();
     }
 
@@ -188,6 +198,8 @@ public class PreLoader implements ILoader {
                 String stacktrace = printStacktrace();
                 if (!stacktrace.isEmpty()) {
                     Logg.text("Initializing Locutus taking longer than expected (30s):\n" + stacktrace);
+                } else {
+                    Logg.text("Locutus initialized successfully");
                 }
             }
         }, 30, TimeUnit.SECONDS);
@@ -260,6 +272,10 @@ public class PreLoader implements ILoader {
     }
 
     private <T> Future<T> add(String taskName, ThrowingSupplier<T> supplier) {
+        return add(taskName, supplier, true);
+    }
+
+    private <T> Future<T> add(String taskName, ThrowingSupplier<T> supplier, boolean wait) {
         if (resolvers.containsKey(taskName)) {
             throw new IllegalArgumentException("Duplicate task: " + taskName);
         }
@@ -268,13 +284,16 @@ public class PreLoader implements ILoader {
                 Thread thread = Thread.currentThread();
                 thread.setName("Load-" + taskName);
                 resolverThreads.put(taskName, thread);
-                semaphore.acquire();
-                Logg.text("Loading `TASK:" + taskName + "`");
+                numTasks.incrementAndGet();
+
+                if (wait) semaphore.acquire();
+                Logg.text("Loading `" + taskName + "`");
                 long start = System.currentTimeMillis();
                 T result = supplier.get();
                 long end = System.currentTimeMillis();
                 if (end - start > 15 || true) {
-                    Logg.text("Completed `TASK:" + taskName + "` in " + MathMan.format((end - start) / 1000d) + "s");
+                    int completed = numTasks.get() - resolverThreads.size() + 1;
+                    Logg.text("Completed " + completed + "/" + numTasks + ": `" + taskName + "` in " + MathMan.format((end - start) / 1000d) + "s");
                 }
                 return result;
             } catch (Throwable e) {
@@ -291,6 +310,9 @@ public class PreLoader implements ILoader {
 
     @Override
     public void initialize() {
+        if (awaitBackup) {
+            FileUtil.get(backup);
+        }
         semaphore.release(Integer.MAX_VALUE);
     }
 

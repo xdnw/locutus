@@ -138,7 +138,9 @@ public class CommandGroup implements ICommandGroup {
 
     public void registerMethod(Object object, List<String> path, String methodName, String commandName) {
         Method found = null;
-        for (Method method : object.getClass().getDeclaredMethods()) {
+        Class<?> clazz = object.getClass();
+        for (Method method : clazz.getMethods()) {
+            if (method.getDeclaringClass() != clazz) continue;
             if (method.getName().equals(methodName)) {
                 if (found != null) throw new IllegalStateException("Duplicate method found for: " + methodName);
                 found = method;
@@ -358,7 +360,9 @@ public class CommandGroup implements ICommandGroup {
                 });
             }
             Method found = null;
-            for (Method method : instance.getClass().getDeclaredMethods()) {
+            Class<? extends Object> methClazz = instance.getClass();
+            for (Method method : methClazz.getMethods()) {
+                if (method.getDeclaringClass() != methClazz) continue;
                 if (method.getName().equalsIgnoreCase(methodInfo.method()) && method.getAnnotation(Command.class) != null) {
                     if (found != null)
                         throw new IllegalStateException("Duplicate method found in " + methodInfo.clazz().getName() + " for " + methodInfo.method());
@@ -386,7 +390,9 @@ public class CommandGroup implements ICommandGroup {
             try {
                 CommandRef ref = (CommandRef) clazz.getDeclaredField("cmd").get(null);
                 Set<String> argsPresent = new LinkedHashSet<>();
-                for (Method method : ref.getClass().getDeclaredMethods()) {
+                Class<? extends CommandRef> refClazz = ref.getClass();
+                for (Method method : refClazz.getMethods()) {
+                    if (method.getDeclaringClass() != refClazz) continue;
                     if (method.getReturnType().equals(ref.getClass()) && method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(String.class)) {
                         argsPresent.add(method.getName().toLowerCase(Locale.ROOT));
                     }
@@ -431,7 +437,8 @@ public class CommandGroup implements ICommandGroup {
         for (Class clazz : classes) {
             // get methods with @Command annotation
             // Add any missing methods to missing methods
-            for (Method declaredMethod : clazz.getDeclaredMethods()) {
+            for (Method declaredMethod : clazz.getMethods()) {
+                if (declaredMethod.getDeclaringClass() != clazz) continue;
                 if (declaredMethod.getAnnotation(Command.class) == null) continue;
                 if (!methods.contains(declaredMethod)) {
                     missingMethods.computeIfAbsent(clazz, f -> new ArrayList<>()).add(declaredMethod);

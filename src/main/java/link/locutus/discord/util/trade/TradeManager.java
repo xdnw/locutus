@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -68,8 +69,11 @@ public class TradeManager {
     private Map<ResourceType, Queue<TradeDB.BulkTradeOffer>> offersByResource = new ConcurrentHashMap<>();
 
     public TradeManager() throws SQLException, ClassNotFoundException {
+        long start = System.currentTimeMillis();
         this.tradeDb = new TradeDB();
+        Logg.text("remove:||PERF tm1 " + (-start + (start = System.currentTimeMillis())) + "ms");
         loadBulkOffers();
+        Logg.text("remove:||PERF tm2 " + (-start + (start = System.currentTimeMillis())) + "ms");
     }
 
     private void loadBulkOffers() {

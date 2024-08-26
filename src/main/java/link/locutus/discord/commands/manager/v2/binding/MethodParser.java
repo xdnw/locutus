@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.internal.Primitives;
 import io.javalin.http.RedirectResponse;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.db.entities.DBNation;
@@ -38,7 +39,6 @@ public class MethodParser<T> implements Parser<T> {
         this.method = method;
         Annotation[] annotations = method.getAnnotations();
         if (ret == null) ret = method.getGenericReturnType();
-
         if (annotations.length == 1) {
             key = Key.of(binding, ret);
         } else if (annotations.length == 2) {
@@ -46,14 +46,12 @@ public class MethodParser<T> implements Parser<T> {
             key = Key.of(binding, ret, annotation);
         } else {
             key = Key.of(binding, ret, annotations);
-//            throw new IllegalArgumentException("Cannot annotate " + method + " with " + StringMan.getString(annotations));
         }
 
-        // Get the provided parameters
         Type[] paramTypes = method.getGenericParameterTypes();
         Annotation[][] paramAnns = method.getParameterAnnotations();
 
-        this.params = new ArrayList<>();
+        this.params = new ObjectArrayList<>(paramTypes.length);
 
         this.isConsumer = false;
         for (int i = 0; i < paramTypes.length; i++) {
@@ -74,9 +72,7 @@ public class MethodParser<T> implements Parser<T> {
                 isConsumer = true;
             }
         }
-
         this.primaryClass = params.stream().map(f -> f == null ? null : ReflectionUtil.getClassType(f.getType())).collect(Collectors.toList());
-
         this.isConsumerInit = isConsumer;
         this.desc = desc == null && binding != null ? binding.value() : desc;
     }

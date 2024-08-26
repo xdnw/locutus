@@ -244,7 +244,6 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             return;
         }
-        System.out.println("Registering: " + key);
         store.addParser(key, parser);
     }
 

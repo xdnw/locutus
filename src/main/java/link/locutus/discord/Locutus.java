@@ -126,8 +126,8 @@ public final class Locutus extends ListenerAdapter {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         long start = System.currentTimeMillis();
-        this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
-        this.scheduler = new ScheduledThreadPoolExecutor(0, Executors.defaultThreadFactory());
+        this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
+        this.scheduler = new ScheduledThreadPoolExecutor(256, Executors.defaultThreadFactory());
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.ROOT_COALITION_SERVER <= 0) Settings.INSTANCE.ROOT_COALITION_SERVER = Settings.INSTANCE.ROOT_SERVER;
@@ -215,7 +215,6 @@ public final class Locutus extends ListenerAdapter {
             this.registerEvents();
         }
         Logg.text("remove:||PERF register events " + (((-start)) + (start = System.currentTimeMillis())));
-        // TODO fixme backup
         Logg.text("remove:||PERF backup " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDA jda = loader.getJda();
@@ -223,7 +222,9 @@ public final class Locutus extends ListenerAdapter {
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
                 Logg.text("remove:||PERF get slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
-                if (slashCommands != null) slashCommands.registerCommandData(jda);
+                if (slashCommands != null) {
+                    executor.submit(() -> slashCommands.registerCommandData(jda));
+                }
             } catch (Throwable e) {
                 // sometimes happen when discord api is spotty / timeout
                 e.printStackTrace();
@@ -322,6 +323,7 @@ public final class Locutus extends ListenerAdapter {
         try {
             loader.resolveFully(TimeUnit.MINUTES.toMillis(15));
         } catch (Throwable e) {
+            e.printStackTrace();
             throw new IllegalStateException("Failed to start locutus in 15 minutes.\n\n" + loader.printStacktrace());
         }
         Logg.text("remove:||PERF resolve loader fully " + (((-start)) + (start = System.currentTimeMillis())));

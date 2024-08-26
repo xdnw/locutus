@@ -38,7 +38,6 @@ public abstract class DBMain implements Closeable {
             file.getParentFile().mkdirs();
         }
         this.dbLocation = file;
-
         connection = openConnection();
         createTables();
     }
@@ -152,7 +151,6 @@ public abstract class DBMain implements Closeable {
     private Connection forceConnection() throws SQLException, ClassNotFoundException {
         Class.forName("org.sqlite.JDBC");
         String connectStr = "jdbc:sqlite:";
-//        if (inMemory) connectStr += ":memory:";
         connectStr += dbLocation;
         connection = DriverManager.getConnection(connectStr);
         if (inMemory) {

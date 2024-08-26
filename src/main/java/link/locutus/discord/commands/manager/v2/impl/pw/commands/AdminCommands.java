@@ -2019,7 +2019,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncInfraLand() throws IOException, ParseException {
         List<Event> events = new ArrayList<>();
-        Locutus.imp().getNationDB().updateCitiesV2(events::add);
+        Locutus.imp().getNationDB().updateAllCities(events::add);
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {
                 for (Event event : events) event.post();;
@@ -2061,7 +2061,7 @@ public class AdminCommands {
         result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
 
         List<Event> events = new ArrayList<>();
-        db.updateCitiesV2(events::add);
+        db.updateAllCities(events::add);
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {
                 for (Event event : events) event.post();;
@@ -2081,7 +2081,7 @@ public class AdminCommands {
 //        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
 //
 //        List<Event> events = new ArrayList<>();
-//        db.updateCitiesV2(events::add);
+//        db.updateAllCities(events::add);
 //        if (events.size() > 0) {
 //            Locutus.imp().getExecutor().submit(() -> {
 //                for (Event event : events) event.post();;
