@@ -405,8 +405,8 @@ public class WarCategory {
                 message += " and looted $" + MathMan.format(attack.getMoney_looted());
             }
             if (showInfra && attack.getInfra_destroyed() != 0) {
-                double worth = PW.City.Infra.calculateInfra(attack.getCity_infra_before() - attack.getInfra_destroyed(), attack.getCity_infra_before());
-                message += ". " + MathMan.format(attack.getInfra_destroyed()) + " infra worth $" + MathMan.format(worth) + " was destroyed";
+                double worth = PW.City.Infra.calculateInfra(Math.max(0, attack.getCity_infra_before() - attack.getInfra_destroyed()), attack.getCity_infra_before());
+                message += ". " + MathMan.format(attack.getInfra_destroyed()) + " infra worth $" + MathMan.format(worth) + " was destroyed (previously " + attack.getCity_infra_before() + ")";
             }
             if (showCasualties) {
                 Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses2(true);

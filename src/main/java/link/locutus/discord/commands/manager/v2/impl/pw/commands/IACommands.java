@@ -799,8 +799,13 @@ public class IACommands {
         if (role == null) {
             return WarCommands.beigeAlertMode(member.getUser(), me, NationMeta.BeigeAlertMode.NO_ALERTS);
         }
-        RateLimitUtil.queue(guild.addRoleToMember(member, role));
-        return "Opted out of beige alerts (remove the " + role.getName() + " role to opt in)";
+        if (member.getRoles().contains(role)) {
+            // remove role
+            RateLimitUtil.complete(guild.removeRoleFromMember(member, role));
+            return "Opted in to beige alerts (@" + role.getName() + " role removed). Use the command again to opt out";
+        }
+        RateLimitUtil.complete(guild.addRoleToMember(member, role));
+        return "Opted out of beige alerts (@" + role.getName() + " role added). Use the command again to opt in";
     }
 
     @Command(desc = "Unassign a mentee from all mentors")

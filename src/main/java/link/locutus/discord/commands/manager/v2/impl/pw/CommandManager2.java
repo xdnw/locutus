@@ -496,6 +496,7 @@ public class CommandManager2 {
         // - bankAlertList
         // - bankAlertUnsubscribe
         // - bankAlert
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bounty"), "bountyAlertOptOut", "opt_out");
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertList", "list");
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlertUnsubscribe", "unsubscribe");
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "bank"), "bankAlert", "subscribe");

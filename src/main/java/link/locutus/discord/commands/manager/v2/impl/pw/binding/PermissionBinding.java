@@ -154,7 +154,7 @@ public class PermissionBinding extends BindingHelper {
         for (int aaId : aaIds) {
             if (coalitionMembers.contains((long) aaId)) return true;
         }
-        return false;
+        throw new IllegalCallerException("Guild " + db.getGuild() + " is not in coalition " + requiredCoalition.name());
     }
 
     @Binding("Must be registered to a nation with an in-game rank equal to or above the provided rank\n" +

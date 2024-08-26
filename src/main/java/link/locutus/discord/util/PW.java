@@ -156,7 +156,7 @@ public class PW {
 
             // precompute the cost for first 4k infra
             public static double calculateInfra(double from, double to) {
-                if (from < 0) return 0;
+                if (from < 0) from = 0;
                 if (to <= from) return (from - to) * -150;
                 if (to > 20000) throw new IllegalArgumentException("Infra cannot exceed 10,000 (" + to + ")");
                 long total_cents = 0;

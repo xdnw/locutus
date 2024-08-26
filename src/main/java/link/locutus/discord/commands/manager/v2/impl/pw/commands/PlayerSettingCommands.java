@@ -129,37 +129,48 @@ public class PlayerSettingCommands {
         return "Set " + DiscordMeta.OPT_OUT + " to " + optOut;
     }
 
-    @Command(desc = "Opt out of audit alerts")
-    @RolePermission(Roles.MEMBER)
-    public String auditAlertOptOut(@Me Member member, @Me DBNation me, @Me Guild guild, @Me GuildDB db) {
-        Role role = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
+    public static String handleOptOut(Member member, GuildDB db, Roles lcRole, Boolean forceOptOut) {
+        Guild guild = db.getGuild();
+        Role role = lcRole.toRole(guild);
         if (role == null) {
             // find role by name
-            List<Role> roles = db.getGuild().getRolesByName(Roles.AUDIT_ALERT_OPT_OUT.name(), true);
+            List<Role> roles = db.getGuild().getRolesByName(lcRole.name(), true);
             if (!roles.isEmpty()) {
                 role = roles.get(0);
-                db.addRole(Roles.AUDIT_ALERT_OPT_OUT, role, 0);
+                db.addRole(lcRole, role, 0);
             } else {
-                role = RateLimitUtil.complete(guild.createRole().setName(Roles.AUDIT_ALERT_OPT_OUT.name()));
-                db.addRole(Roles.AUDIT_ALERT_OPT_OUT, role, 0);
+                role = RateLimitUtil.complete(guild.createRole().setName(lcRole.name()));
+                db.addRole(lcRole, role, 0);
             }
         }
-        RateLimitUtil.queue(guild.addRoleToMember(member, role));
-        return "Opted out of audit alerts";
-    }
-
-    @Command
-    public String enemyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
-        Role role = Roles.WAR_ALERT_OPT_OUT.toRole(guild);
-        if (role == null) {
-            role = RateLimitUtil.complete(guild.createRole().setName(Roles.WAR_ALERT_OPT_OUT.name()));
-            db.addRole(Roles.WAR_ALERT_OPT_OUT, role, 0);
-        }
         if (member.getRoles().contains(role)) {
-            return "You are already opted out with the role for " + Roles.WAR_ALERT_OPT_OUT.name();
+            if (forceOptOut == Boolean.TRUE) {
+                return "You are already opted out of " + lcRole.name() + " alerts";
+            }
+            RateLimitUtil.complete(guild.removeRoleFromMember(member, role));
+            return "Opted back in to " + lcRole.name() + " alerts (@" + role.getName() + " removed from your user). Use the command again to opt out";
+        }
+        if (forceOptOut == Boolean.FALSE) {
+            return "You are already opted in to " + lcRole.name() + " alerts";
         }
         RateLimitUtil.complete(guild.addRoleToMember(member, role));
-        return "You have been opted out of " + Roles.WAR_ALERT_OPT_OUT.name() + " alerts";
+        return "Opted out of " + lcRole.name() + " alerts (@" + role.getName() + " added to your user). Use the command again to opt back in";
+    }
+
+    @Command(desc = "Toggle your opt out of audit alerts")
+    @RolePermission(Roles.MEMBER)
+    public String auditAlertOptOut(@Me Member member, @Me DBNation me, @Me Guild guild, @Me GuildDB db) {
+        return PlayerSettingCommands.handleOptOut(member, db, Roles.AUDIT_ALERT_OPT_OUT, null);
+    }
+
+    @Command(desc = "Toggle your opt out of enemy alerts")
+    public String enemyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
+        return PlayerSettingCommands.handleOptOut(member, db, Roles.WAR_ALERT_OPT_OUT, null);
+    }
+
+    @Command(desc = "Toggle your opt out of bounty alerts")
+    public String bountyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
+        return PlayerSettingCommands.handleOptOut(member, db, Roles.WAR_ALERT_OPT_OUT, null);
     }
 
     @Command(desc = "Set the required transfer market value required for automatic bank alerts\n" +

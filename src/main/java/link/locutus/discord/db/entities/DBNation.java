@@ -1467,7 +1467,7 @@ public class DBNation implements NationOrAlliance {
                 this.setEspionageFull(!nation.getEspionage_available());
                 if (eventConsumer != null && this.getVm_turns() > 0) eventConsumer.accept(new NationChangeSpyFullEvent(copyOriginal, this));
             } else {
-                this.setEspionageFull(this.isEspionageFull());
+                this.setEspionageFull(!nation.getEspionage_available());
             }
         }
         // DC can be changed by unit changes
