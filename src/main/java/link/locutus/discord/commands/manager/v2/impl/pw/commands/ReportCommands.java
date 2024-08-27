@@ -514,7 +514,7 @@ public class ReportCommands {
 
     @Command(desc = "Delete all loan information")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
-    public String purgeLoans(LoanManager loanManager, @Me JSONObject command, @Me User author, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Arg("Purge all loans created by this guild or alliance id") @Default Long guildOrAllianceId, @Switch("f") boolean force) {
+    public String purgeLoans(LoanManager loanManager, @Me JSONObject command, @Me User author, @Me IMessageIO io, @Me GuildDB db, @Arg("Purge all loans created by this guild or alliance id") @Default Long guildOrAllianceId, @Switch("f") boolean force) {
         if (guildOrAllianceId != null && !Roles.ADMIN.hasOnRoot(author)) {
             // check permission
             if (guildOrAllianceId != db.getIdLong() && (guildOrAllianceId > Integer.MAX_VALUE || !db.isAllianceId(guildOrAllianceId.intValue()))) {
@@ -555,7 +555,7 @@ public class ReportCommands {
     @Command(desc = "Mark all active loans by this guild as up to date\n" +
             "It is useful for loan reporting to remain accurate")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
-    public String markAllLoansAsUpdated(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Default Set<DBLoan.Status> loanStatus, @Switch("f") boolean force) {
+    public String markAllLoansAsUpdated(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Default Set<DBLoan.Status> loanStatus, @Switch("f") boolean force) {
         List<DBLoan> loans = loanManager.getLoansByGuildDB(db);
         if (loanStatus != null) {
             loans.removeIf(f -> !loanStatus.contains(f.status));
@@ -1028,7 +1028,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Remove a comment on a report")
-    public String removeComment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Default DBNation nationCommenting, @Switch("f") boolean force) {
+    public String removeComment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @ReportPerms ReportManager.Report report, @Default DBNation nationCommenting, @Switch("f") boolean force) {
         if (nationCommenting == null) nationCommenting = me;
         if (nationCommenting.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author)) {
             return "You do not have permission to remove another nation's comment on report: `#" + report.reportId +
@@ -1054,7 +1054,7 @@ public class ReportCommands {
 
     @Command(desc = "Approv a report for a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
-    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
+    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (report.approved) {
             return "Report #" + report.reportId + " is already approved.";
         }
@@ -1070,7 +1070,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Add a short comment to a report")
-    public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, String comment, @Switch("f") boolean force) {
+    public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, ReportManager.Report report, String comment, @Switch("f") boolean force) {
         Map.Entry<String, Long> ban = reportManager.getBan(me);
         if (ban != null) {
             return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
@@ -1260,7 +1260,7 @@ public class ReportCommands {
 
     // report search
     @Command(desc = "List all reports about or submitted by a nation or user")
-    public String searchReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser) {
+    public String searchReports(ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         // list reports matching
         if (reports.isEmpty()) {
@@ -1276,7 +1276,7 @@ public class ReportCommands {
 
     // report show, incl comments
     @Command(desc = "View a report and its comments")
-    public String showReport(@Me IMessageIO io, ReportManager.Report report) {
+    public String showReport(ReportManager.Report report) {
         return "### " + report.toMarkdown(true);
     }
 

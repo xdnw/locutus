@@ -1009,7 +1009,7 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions\n" +
             "Nations which are applicants, in vacation mode or inactive (2 days) are excluded")
-    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+    public String spyTierGraph(@Me IMessageIO channel,
                                NationList coalition1,
                                NationList coalition2,
                                @Switch("i") boolean includeInactives,
@@ -1287,7 +1287,7 @@ public class StatCommands {
         warStatusRankingBy(false, db, channel, command, attackers, defenders, time);
     }
 
-    public void warStatusRankingBy(boolean isAA, @Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
+    public void warStatusRankingBy(boolean isAA, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
         BiFunction<Boolean, DBWar, Integer> getId;
         if (isAA) getId = (primary, war) -> primary ? war.getAttacker_aa() : war.getDefender_aa();
         else getId = (primary, war) -> primary ? war.getAttacker_id() : war.getDefender_id();
@@ -1516,7 +1516,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Compare the metric over time between multiple alliances")
-    public String allianceMetricsCompareByTurn(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> alliances,
+    public String allianceMetricsCompareByTurn(@Me IMessageIO channel, AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
                                                @Timestamp long time, @Switch("j") boolean attachJson,
                                                @Switch("c") boolean attachCsv) throws IOException {
@@ -1545,7 +1545,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph an alliance metric over time for two coalitions")
-    public String allianceMetricsAB(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
+    public String allianceMetricsAB(@Me IMessageIO channel, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
                                     @Timestamp long time, @Switch("j") boolean attachJson,
                                     @Switch("c") boolean attachCsv) throws IOException {
@@ -1645,7 +1645,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph the metric over time for a coalition")
-    public String allianceMetricsByTurn(@Me IMessageIO channel, @Me User user, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition,
+    public String allianceMetricsByTurn(@Me IMessageIO channel, @Me User user, AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
                                         @Timestamp long time, @Switch("j") boolean attachJson,
                                         @Switch("c") boolean attachCsv) throws IOException {
@@ -1951,7 +1951,7 @@ public class StatCommands {
             "- Offenses: Attacking a nation which fights back\n" +
             "- Wars: Combination of defensive and offensive wars (not raids)")
     @RolePermission(Roles.MILCOM)
-    public String WarCostSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
+    public String WarCostSheet(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
                                @Switch("i") boolean excludeInfra,
                                @Switch("l") boolean excludeLoot,
@@ -1993,7 +1993,6 @@ public class StatCommands {
         sheet.updateClearCurrentTab();
 
         sheet.setHeader(header);
-        long start = System.currentTimeMillis();
 
         Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());
 
@@ -2796,7 +2795,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank the alliances by the % (or total) attacks by type.")
-    public String attackTypeRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
+    public String attackTypeRanking(@Me IMessageIO io, @Me JSONObject command,
             @Timestamp long time,
             AttackType type,
             Set<DBAlliance> alliances,
@@ -3137,8 +3136,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph of cost by day of each coalitions wars vs everyone")
-    public String warsCostRankingByDay(@Me GuildDB db, @Me User author, @Me DBNation nation,
-            @Me IMessageIO io, @Me JSONObject command,
+    public String warsCostRankingByDay(@Me IMessageIO io, @Me JSONObject command,
             WarCostByDayMode type,
             WarCostMode mode,
             @Timestamp long time_start,

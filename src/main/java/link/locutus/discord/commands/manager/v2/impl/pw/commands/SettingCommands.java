@@ -68,7 +68,7 @@ public class SettingCommands {
     @Command(desc = "Configure any alliance or guild settings")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
     @NoFormat
-    public static String info(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+    public static String info(@Me Guild guild, @Me User author,
                            @Arg("The setting to change or view")
                            @Default GuildSetting key,
                            @Arg("The value to set the setting to")
@@ -178,7 +178,7 @@ public class SettingCommands {
 
     @Command(desc = "View set or delete alliance or guild google sheets")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String sheets(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me) throws Exception {
+    public String sheets(@Me GuildDB db) throws Exception {
         Map<SheetKey, String> sheets = getSheets(db);
         if (sheets.isEmpty()) {
             return "No sheets are configured (sheets are created when you use a sheet command)";
