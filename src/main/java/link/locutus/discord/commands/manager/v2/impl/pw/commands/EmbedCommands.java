@@ -131,7 +131,7 @@ public class EmbedCommands {
 
     @Command(desc = "Remove a button from an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String renameButton(@Me User user, @Me IMessageIO io, @Me Guild guild, @Me JSONObject cmdJson, Message message, String label, String rename_to) {
+    public String renameButton(@Me User user, @Me IMessageIO io, @Me Guild guild, Message message, String label, String rename_to) {
         checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
@@ -184,7 +184,6 @@ public class EmbedCommands {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }
         Set<String> labelSet = Set.copyOf(labels);
-        List<Button> buttons = message.getButtons();
 
         Set<String> invalidLabels = new HashSet<>(labels);
         Set<String> validLabels = new LinkedHashSet<>();
@@ -423,7 +422,7 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
      */
     @Command(desc="Makes a raid panel, which is a discord embed with buttons for different options for finding raid targets")
     @RolePermission(Roles.ADMIN)
-    public void raid(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
+    public void raid(@Me IMessageIO io, @Default MessageChannel outputChannel) {
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
         String title = "Find Raid Targets";
         String body = """
@@ -486,7 +485,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
      */
         @Command(desc="Blockader Target & Requests discord embed template")
         @RolePermission(Roles.ADMIN)
-        public void unblockadeRequests(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
+        public void unblockadeRequests(@Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
             if (behavior == null) behavior = CommandBehavior.UNPRESS;
             if (db.getCoalition(Coalition.ALLIES).isEmpty()) {
                 throw new IllegalArgumentException("No `" + Coalition.ALLIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
@@ -532,7 +531,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         @Command(desc="Econ panel for members")
         @RolePermission(Roles.ADMIN)
-        public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean showDepositsInDms) {
+        public void memberEconPanel(@Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean showDepositsInDms) {
             if (behavior == null) behavior = CommandBehavior.UNPRESS;
             Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
             String title = "Econ Panel";
@@ -611,7 +610,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @Command(desc="High infra targets where you are losing\n" +
             "To find contestable range, see: strengthTierGraph")
     @RolePermission(Roles.ADMIN)
-    public void warGuerilla(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
+    public void warGuerilla(@Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
         if (behavior == null) behavior = CommandBehavior.UNPRESS;
         if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
             throw new IllegalArgumentException("No `" + Coalition.ENEMIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
@@ -671,7 +670,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @Command(desc="Enemy war targets where a score range is not contestable\n" +
             "To find contestable range, see: strengthTierGraph")
     @RolePermission(Roles.ADMIN)
-    public void warContestedRange(@Me User user, @Me GuildDB db, @Me IMessageIO io,
+    public void warContestedRange(@Me GuildDB db, @Me IMessageIO io,
                                   @Arg("If the cutoff is greater or less than the score") MathOperation greaterOrLess,
                                   @Arg("The score at which the conflict is not contestable")
                                   double score, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean resultsInDm) {
@@ -745,7 +744,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     // Spy embed with spy - airplane - tank - ship spying - auto
   @Command(desc="Enemy espionage finder discord embed template")
   @RolePermission(Roles.ADMIN)
-  public void spyEnemy(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default @GuildCoalition String coalition, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
+  public void spyEnemy(@Me GuildDB db, @Me IMessageIO io, @Default @GuildCoalition String coalition, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
       if (behavior == null) behavior = CommandBehavior.UNPRESS;
         if (coalition == null) coalition = Coalition.ENEMIES.name();
         if (db.getCoalition(coalition).isEmpty()) {
@@ -816,7 +815,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             "Prioritizes down declares\n" +
             "To find contestable range, see: strengthTierGraph")
     @RolePermission(Roles.ADMIN)
-    public void warWinning(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean resultsInDm) {
+    public void warWinning(@Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean resultsInDm) {
         if (behavior == null) behavior = CommandBehavior.UNPRESS;
         if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
             throw new IllegalArgumentException("No " + Coalition.ENEMIES.name() + " coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
@@ -1078,8 +1077,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             "- All allies\n" +
             "- Underutilized allies")
     @RolePermission(Roles.ADMIN)
-    public void allyEnemySheets(ValueStore store, NationPlaceholders placeholders,
-            @Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
+    public void allyEnemySheets(@Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
                                 @Default SpreadSheet allEnemiesSheet,
                                 @Default SpreadSheet priorityEnemiesSheet,
                                 @Default SpreadSheet allAlliesSheet,
@@ -1358,7 +1356,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
     @Command(desc = "Create an embed to view a google document for multiple nations, with random variations for each receiver")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public void announceDocument(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO io,
+    public void announceDocument(@Me GuildDB db, @Me IMessageIO io,
                                 @Me User author,
                                 GoogleDoc original,
                                 NationList sendTo,

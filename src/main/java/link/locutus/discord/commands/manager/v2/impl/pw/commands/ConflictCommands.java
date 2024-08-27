@@ -118,7 +118,7 @@ public class ConflictCommands {
     @Command(desc = "Sets the wiki page for a conflict")
     @RolePermission(value = Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String setWiki(@Me GuildDB db, ConflictManager manager, Conflict conflict, String url) throws IOException {
+    public String setWiki(ConflictManager manager, Conflict conflict, String url) throws IOException {
         if (url.startsWith("http")) {
             if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
             url = url.substring(url.lastIndexOf("/") + 1);

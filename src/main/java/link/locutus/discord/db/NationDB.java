@@ -170,6 +170,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         System.out.println("Done loading nations/meta");
 
         loadTreasures();
+
+
+
         return this;
     }
 

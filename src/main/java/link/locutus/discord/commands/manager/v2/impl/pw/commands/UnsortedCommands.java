@@ -110,7 +110,7 @@ public class UnsortedCommands {
     @HasApi
     public void freeSpyOpsSheet(
             @Me GuildDB db,
-            ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel,
+            ValueStore store, @Me IMessageIO channel,
             @Arg("Nations to list in the sheet\n" +
                     "Defaults to the guild alliance")
             @Default NationList nations,
@@ -366,7 +366,7 @@ public class UnsortedCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String stockpile(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, NationOrAlliance nationOrAlliance) throws IOException {
-        Map<ResourceType, Double> totals = new HashMap<>();
+        Map<ResourceType, Double> totals;
 
         if (nationOrAlliance.isAlliance()) {
             DBAlliance alliance = nationOrAlliance.asAlliance();
@@ -1101,7 +1101,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Get the military unit count history (dates/times) for a nation")
-    public String unitHistory(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
+    public String unitHistory(@Me IMessageIO channel,
                               DBNation nation, MilitaryUnit unit, @Switch("p") Integer page) throws Exception {
         List<Map.Entry<Long, Integer>> history = nation.getUnitHistory(unit);
 

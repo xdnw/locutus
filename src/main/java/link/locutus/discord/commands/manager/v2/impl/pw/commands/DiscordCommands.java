@@ -125,7 +125,7 @@ public class DiscordCommands {
 
     @Command(desc = "Have the bot say the provided message, with placeholders replaced.")
     @NoFormat
-    public String say(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me, @TextArea String msg) {
+    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me DBNation me, @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
@@ -212,7 +212,7 @@ public class DiscordCommands {
 
     @Command(desc = "Create a channel with name in a specified category and ping the specified roles upon creation.")
     @NoFormat
-    public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me JSONObject command, @Me User author, @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
+    public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me User author, @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
                           String channelName, Category category, @Default String copypasta,
                           @Switch("i") boolean addInternalAffairsRole,
                           @Switch("m") boolean addMilcom,
@@ -567,7 +567,7 @@ public class DiscordCommands {
 
     @Command(desc = "Set the category for a discord channel")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String channelCategory(@Me Guild guild, @Me Member member, @Me TextChannel channel, Category category) {
+    public String channelCategory(@Me Member member, @Me TextChannel channel, Category category) {
         if (channel.getParentCategory() != null && channel.getParentCategory().getIdLong() == category.getIdLong()) {
             return "Channel is already in category: " + category;
         }

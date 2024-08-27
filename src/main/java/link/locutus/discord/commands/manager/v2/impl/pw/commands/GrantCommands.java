@@ -667,7 +667,7 @@ public class GrantCommands {
 
     @Command(desc = "List all grant templates for the specified category")
     @RolePermission(Roles.MEMBER)
-    public void templateList(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io,
+    public void templateList(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me Member member, @Me IMessageIO io,
                              @Arg("The category of templates to list\n" +
                                      "Defaults to all categories")@Default TemplateTypes category,
                              @Arg("List the disabled grant templates") @Switch("d") boolean listDisabled) {
@@ -752,7 +752,7 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template,
+    public String templateInfo(@Me JSONObject command, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template,
                                @Arg("View additional info related to granting the template to this nation\n" +
                                        "Such as cost/eligability")
                                @Default DBNation receiver,
@@ -791,7 +791,7 @@ public class GrantCommands {
     // grant_template disable
     @Command(desc = "Set an active grant template as disabled")
     @RolePermission(Roles.ECON)
-    public String templateDisable(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
+    public String templateDisable(@Me GuildDB db, AGrantTemplate template) {
         if (!template.isEnabled()) {
             return "The template: `" + template.getName() + "` is already disabled.";
         }
@@ -802,7 +802,7 @@ public class GrantCommands {
 
     @Command(desc = "Set a disabled grant template as enabled")
     @RolePermission(Roles.ECON)
-    public String templateEnabled(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template) {
+    public String templateEnabled(@Me GuildDB db, AGrantTemplate template) {
         if (template.isEnabled()) {
             return "The template: `" + template.getName() + "` is already enabled.";
         }

@@ -145,7 +145,7 @@ public class BankCommands {
     )
     @RolePermission(Roles.MEMBER)
     @IsAlliance
-    public String depositResources(@Me User author, @Me DBNation me, @Me Member member, @Me GuildDB db, @Me JSONObject command, @Me IMessageIO io,
+    public String depositResources(@Me User author, @Me DBNation me, @Me GuildDB db, @Me JSONObject command, @Me IMessageIO io,
                                    Set<DBNation> nations,
 
                                    @Arg(value = "A spreadsheet of nations and amounts to deposit\n" +
@@ -891,7 +891,7 @@ public class BankCommands {
     @RolePermission(Roles.ECON)
     @IsAlliance
     @HasOffshore
-    public String setEscrowSheet(@Me GuildDB db, @Me User author, @Me DBNation me,
+    public String setEscrowSheet(@Me GuildDB db,
                                  @Me IMessageIO io,
                                  @Me JSONObject command,
                                     TransferSheet sheet,
@@ -1145,7 +1145,7 @@ public class BankCommands {
     }
 
     public String addOrSetEscrow(boolean isAdd,
-                            @Me GuildDB db, @Me User author, @Me DBNation me,
+                            @Me GuildDB db,
                             @Me IMessageIO io,
                             @Me JSONObject command,
                             NationList nations,
@@ -2714,7 +2714,7 @@ public class BankCommands {
             "Defaults to all types, except grants"
     })
     @RolePermission(value = Roles.ECON)
-    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBNation me,
+    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db,
                                           Set<DBNation> nations,
 
                                           @Arg(value = "The resources to convert", group = 0)
@@ -3134,7 +3134,7 @@ public class BankCommands {
             "Accounts are automatically locked if there is an error accessing the api, a game captcha, or if an admin of the account is banned in-game\n" +
             "Only locks from game bans persist across restarts")
     @RolePermission(value = Roles.ADMIN)
-    public String unlockTransfers(@Me IMessageIO io, @Me GuildDB db, @Default NationOrAllianceOrGuild nationOrAllianceOrGuild, @Switch("a") boolean unlockAll) {
+    public String unlockTransfers(@Me GuildDB db, @Default NationOrAllianceOrGuild nationOrAllianceOrGuild, @Switch("a") boolean unlockAll) {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set";
         if (unlockAll) {
@@ -3197,7 +3197,7 @@ public class BankCommands {
     @Command(desc = "Bulk set nation internal taxrates as configured in the guild setting: `REQUIRED_INTERNAL_TAXRATE`")
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
-    public String setNationInternalTaxRates(@Me IMessageIO channel, @Me GuildDB db, @Arg("The nations to set internal taxrates for\nIf not specified, all nations in the alliance will be used")
+    public String setNationInternalTaxRates(@Me GuildDB db, @Arg("The nations to set internal taxrates for\nIf not specified, all nations in the alliance will be used")
     @Default() Set<DBNation> nations, @Arg("Ping users if their rates are modified") @Switch("p") boolean ping) throws Exception {
         if (nations == null) {
             nations = db.getAllianceList().getNations();;
@@ -3291,7 +3291,7 @@ public class BankCommands {
     @Command(desc = "Bulk set nation tax brackets as configured in the guild setting: `REQUIRED_TAX_BRACKET`")
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
-    public String setNationTaxBrackets(@Me IMessageIO channel, @Me GuildDB db, @Arg("The nations to set tax brackets for\nIf not specified, all nations in the alliance will be used")
+    public String setNationTaxBrackets(@Me GuildDB db, @Arg("The nations to set tax brackets for\nIf not specified, all nations in the alliance will be used")
                                        @Default() Set<DBNation> nations, @Arg("Ping users if their brackets are modified")
                                        @Switch("p") boolean ping) throws Exception {
         if (nations == null) {
@@ -3582,7 +3582,7 @@ public class BankCommands {
     @Command(desc="Displays the account balance for a nation, alliance or guild\n" +
             "Balance info includes deposits, loans, grants, taxes and escrow")
     @RolePermission(Roles.MEMBER)
-    public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler,
+    public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author,
                            @AllowDeleted
                            @StarIsGuild
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
@@ -3730,7 +3730,6 @@ public class BankCommands {
                                 true));
                 footers.add("To withdraw: " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.resources.cmd.toSlashMention() + " ");
             }
-            boolean canEscrow = escrowed != null && !ResourceType.isZero(escrowed) && Roles.ECON_WITHDRAW_SELF.has(author, guild);
             if (escrowed != null && !ResourceType.isZero(escrowed)) {
                 if (Roles.ECON_WITHDRAW_SELF.has(author, guild)) {
                     // add button, add note

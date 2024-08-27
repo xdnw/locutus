@@ -1498,7 +1498,7 @@ public class AdminCommands {
             "Run the command without arguments to get a list of attributes"
     )
     @RolePermission(Roles.ADMIN)
-    public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
+    public String editAlliance(@Me GuildDB db, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
@@ -1529,8 +1529,8 @@ public class AdminCommands {
 
     @Command(desc = "Remove a discord role the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
-    public String unregisterRole(@Me User user, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Arg("Only remove a role mapping for this alliance") @Default DBAlliance alliance) {
-        return aliasRole(user, guild, db, locutusRole, null, alliance, true);
+    public String unregisterRole(@Me GuildDB db, Roles locutusRole, @Arg("Only remove a role mapping for this alliance") @Default DBAlliance alliance) {
+        return aliasRole(db, locutusRole, null, alliance, true);
     }
 
     private static String mappingToString(Map<Long, Role> mapping) {
@@ -1550,7 +1550,7 @@ public class AdminCommands {
 
     @Command(desc = "Set the discord roles the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
-    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
+    public static String aliasRole(@Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
@@ -1694,7 +1694,7 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String apiUsageStats(@Me DBAlliance alliance, boolean cached) {
+    public String apiUsageStats(@Me DBAlliance alliance) {
         ApiKeyPool keys = alliance.getApiKeys();
         System.out.println(printApiStats(keys));
         return "Done! (see console)";
@@ -1770,7 +1770,6 @@ public class AdminCommands {
     @Command(desc = "Purge a category's channels older than the time specified")
     @RolePermission(value = Roles.ADMIN)
     public String debugPurgeChannels(Category category, @Range(min=60) @Timestamp long cutoff) {
-        long now = System.currentTimeMillis();
         int deleted = 0;
         for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
             if (GuildMessageChannel.getLatestMessageIdLong() > 0) {
@@ -2133,14 +2132,14 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncBlockades(@Me IMessageIO channel) throws IOException, ParseException {
+    public String syncBlockades() throws IOException, ParseException {
         Locutus.imp().getWarDb().syncBlockades();
         return "Done!";
     }
 
     @Command(aliases = {"syncforum", "syncforums"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncForum(@Me IMessageIO channel, @Default Integer sectionId, @Default String sectionName) throws IOException, ParseException, SQLException {
+    public String syncForum(@Default Integer sectionId, @Default String sectionName) throws IOException, ParseException, SQLException {
         ForumDB forumDB = Locutus.imp().getForumDb();
         if (sectionId != null) {
             if (sectionName == null) sectionName = forumDB.getSectionName(sectionId);
@@ -2380,8 +2379,6 @@ public class AdminCommands {
                 "nation_id"
         ));
         sheet.setHeader(header);
-
-        DiscordDB discordDB = Locutus.imp().getDiscordDB();
 
         for (int i = 0; i < 15000; i++) {
             String url = String.format(urlRaw, i);
@@ -2759,7 +2756,7 @@ public class AdminCommands {
     @NoFormat
     @Command(desc = "Run a command as multiple nations")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String sudoNations(@Me GuildDB db, @Me User user, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
+    public String sudoNations(@Me GuildDB db, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
                               Set<DBNation> nations, String command) {
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);

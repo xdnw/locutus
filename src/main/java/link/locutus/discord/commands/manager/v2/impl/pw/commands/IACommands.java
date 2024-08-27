@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
@@ -932,12 +931,12 @@ public class IACommands {
     @Command(desc = "List mentees, grouped by their respective mentors", aliases = {"mymentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
     public String myMentees(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentees, @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff) throws InterruptedException, ExecutionException, IOException {
-        return listMentors(guild, db, me,Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
+        return listMentors(guild, db, Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
     }
 
     @Command(desc = "List mentors, grouped by their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
-    public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
+    public String listMentors(@Me Guild guild, @Me GuildDB db, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
                               @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff,
                               @Arg("Include an audit summary with the list") @Switch("a") boolean includeAudit,
                               @Arg("Do NOT list members without a mentor") @Switch("u") boolean ignoreUnallocatedMembers,
@@ -1193,7 +1192,6 @@ public class IACommands {
             if (transaction.note == null || !transaction.note.contains("#incentive")) continue;
             Map<String, String> notes = PW.parseTransferHashNotes(transaction.note);
             String incentive = notes.get("#incentive");
-            DBNation member = DBNation.getById(transaction.banker_nation);
             DBNation gov = DBNation.getById((int) transaction.sender_id);
 
             if (gov != null) {

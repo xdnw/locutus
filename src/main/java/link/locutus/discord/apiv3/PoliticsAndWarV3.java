@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -20,6 +21,7 @@ import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.web.jooby.JteUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.HttpEntity;
@@ -113,11 +115,11 @@ public class PoliticsAndWarV3 {
     }
 
     private static class RateLimit {
-        public int limit;
-        public int intervalMs;
-        public long resetAfterMs;
-        public int remaining;
-        public long resetMs;
+        public volatile int limit;
+        public volatile int intervalMs;
+        public volatile long resetAfterMs;
+        public volatile int remaining;
+        public volatile long resetMs;
 
         public void reset(long now) {
             if (now > resetMs) {
@@ -138,27 +140,54 @@ public class PoliticsAndWarV3 {
         return requestTracker;
     }
 
+    private long parseDuration(JsonElement elem) {
+        // either string, number, or object
+
+        // if string
+        if (elem.isJsonPrimitive()) {
+            JsonPrimitive primitive = elem.getAsJsonPrimitive();
+            if (primitive.isString()) {
+                return
+            }
+        }
+    }
+
     public <T> List<T> readSnapshot(PagePriority priority, Class<T> type) {
+        handleRateLimit();
+        String errorMsg = null;
         while (true) {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getSnapshotUrl(type, pair.getKey());
             try {
                 String body = FileUtil.readStringFromURL(priority, url);
+                // parse json
+                if (body.contains("\"error\":")) {
+                    JsonObject obj = JsonParser.parseString(body).getAsJsonObject();
+                    String errorRaw = obj.get("error").getAsString();
+                    if (errorRaw.equalsIgnoreCase("rate-limited")) {
+                        Thread.sleep(30500);
+                        continue;
+                    } else {
+                        errorMsg = errorRaw;
+                        break;
+                    }
+                }
                 return jacksonObjectMapper.readerForListOf(type).readValue(body);
             } catch (IOException e) {
-                e.printStackTrace();
+                String msg = e.getMessage();
+                msg = msg == null ? "" : StringMan.stripApiKey(msg);
+                rethrow(new IllegalArgumentException(msg.replace(pair.getKey(), "XXX")), pair, true);
+            } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
-        int priorityId = priority.ordinal() + (pagination ? 1 : 0);
+    private void handleRateLimit() {
         if (rateLimitGlobal.intervalMs != 0) {
             synchronized (rateLimitGlobal) {
                 long now = System.currentTimeMillis();
                 rateLimitGlobal.reset(now);
-
                 if (rateLimitGlobal.remaining <= 0) {
                     long sleepMs = rateLimitGlobal.resetMs - now;
                     if (sleepMs > 0) {
@@ -175,7 +204,11 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.remaining--;
             }
         }
+    }
 
+    public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
+        int priorityId = priority.ordinal() + (pagination ? 1 : 0);
+        handleRateLimit();
         {
             String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
             String queryFull = graphQLRequest.toQueryString();
