@@ -175,7 +175,7 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     @Me
     public Guild guild() {
-        throw new IllegalStateException("No guild set in command locals.");
+        throw new IllegalStateException("No guild set in command locals. Make sure you are doing this activity in a discord guild.");
     }
 
     @Binding(examples = "#channel", value = "A discord channel name or mention",

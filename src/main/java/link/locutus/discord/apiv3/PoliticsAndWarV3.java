@@ -140,22 +140,11 @@ public class PoliticsAndWarV3 {
         return requestTracker;
     }
 
-    private long parseDuration(JsonElement elem) {
-        // either string, number, or object
-
-        // if string
-        if (elem.isJsonPrimitive()) {
-            JsonPrimitive primitive = elem.getAsJsonPrimitive();
-            if (primitive.isString()) {
-                return
-            }
-        }
-    }
-
     public <T> List<T> readSnapshot(PagePriority priority, Class<T> type) {
         handleRateLimit();
-        String errorMsg = null;
+        String errorMsg;
         while (true) {
+            errorMsg = null;
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getSnapshotUrl(type, pair.getKey());
             try {
@@ -169,17 +158,18 @@ public class PoliticsAndWarV3 {
                         continue;
                     } else {
                         errorMsg = errorRaw;
-                        break;
                     }
                 }
-                return jacksonObjectMapper.readerForListOf(type).readValue(body);
+                if (errorMsg == null) {
+                    return jacksonObjectMapper.readerForListOf(type).readValue(body);
+                }
             } catch (IOException e) {
-                String msg = e.getMessage();
-                msg = msg == null ? "" : StringMan.stripApiKey(msg);
-                rethrow(new IllegalArgumentException(msg.replace(pair.getKey(), "XXX")), pair, true);
+                errorMsg = e.getMessage();
+                errorMsg = errorMsg == null ? "" : StringMan.stripApiKey(errorMsg);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+            rethrow(new IllegalArgumentException(errorMsg.replace(pair.getKey(), "XXX")), pair, true);
         }
     }
 
