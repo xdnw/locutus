@@ -3619,24 +3619,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    private int[] saveNationLoot(List<LootEntry> entries) {
+    public int[] saveLoot(List<LootEntry> entries, Consumer<Event> eventConsumer) {
         if (entries.isEmpty()) return new int[0];
-        /*
-         .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("total_rss", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("type", Col
-         */
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
-        List<Event> events = null;
         for (LootEntry entry : entries) {
             if (entry.getDate() < cutoff) continue;
-            (events == null ? events = new ArrayList<>() : events).add(new LootInfoEvent(entry));
+            int id = entry.getId();
+            if (id < 0) {
+                DBAlliance aa = DBAlliance.get(-id);
+                if (aa != null) {
+                    aa.setLoot(entry);
+                }
+            }
+            if (eventConsumer != null) eventConsumer.accept(new LootInfoEvent(entry));
         }
-        if (events != null && Locutus.imp() != null) {
-            Locutus.imp().runEventsAsync(events);
-        }
-
         String query = "INSERT OR REPLACE INTO `NATION_LOOT3` (`id`, `total_rss`, `date`, `type`) VALUES(?,?,?,?)";
         ThrowingBiConsumer<LootEntry, PreparedStatement> setLoot = new ThrowingBiConsumer<LootEntry, PreparedStatement>() {
             @Override
@@ -3655,7 +3651,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    private void importLegacyNationLoot(boolean fromAttacks) throws SQLException {
+    private void importLegacyNationLoot(boolean fromAttacks, Consumer<Event> eventConsumer) throws SQLException {
         List<LootEntry> lootInfoList = new ArrayList<>();
         if (tableExists("NATION_LOOT")) {
 
@@ -3693,22 +3689,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
 
             if (!lootInfoList.isEmpty()) {
-                saveNationLoot(lootInfoList);
+                saveLoot(lootInfoList, eventConsumer);
             }
         }
-    }
-
-    public void saveAllianceLoot(int allianceId, long date, double[] loot, NationLootType type) {
-        LootEntry entry = new LootEntry(-allianceId, loot, date, type);
-        DBAlliance aa = DBAlliance.get(allianceId);
-        if (aa != null) {
-            aa.setLoot(entry);
-        }
-        saveNationLoot(List.of(entry));
-    }
-    public void saveLoot(int nationId, long date, double[] loot, NationLootType type) {
-        LootEntry entry = new LootEntry(nationId, loot, date, type);
-        saveNationLoot(List.of(entry));
     }
 
     public LootEntry getAllianceLoot(int allianceId) {

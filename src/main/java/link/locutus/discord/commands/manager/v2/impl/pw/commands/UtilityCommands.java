@@ -2128,7 +2128,10 @@ public class UtilityCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setLoot(DBNation nation, Map<ResourceType, Double> resources, @Default("ESPIONAGE") NationLootType type, @Default("1") double fraction) {
         resources = PW.multiply(resources, 1d / fraction);
-        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), ResourceType.resourcesToArray(resources), type);
+        double[] rssArr = ResourceType.resourcesToArray(resources);
+        Locutus.imp().runEventsAsync(events ->
+                LootEntry.forNation(nation.getNation_id(), System.currentTimeMillis(), rssArr, type)
+                        .save(events));
         return "Set " + nation.getNation() + " to " + ResourceType.resourcesToString(resources) + " worth: ~$" + ResourceType.convertedTotal(resources);
     }
 

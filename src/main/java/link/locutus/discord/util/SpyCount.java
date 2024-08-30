@@ -379,8 +379,7 @@ public class SpyCount {
         }
 
         if (nation != null) {
-            long turn = TimeUtil.getTurn();
-            Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), turn, entry.getValue(), NationLootType.ESPIONAGE);
+            Locutus.imp().runEventsAsync(events -> LootEntry.forNation(nation.getNation_id(), System.currentTimeMillis(), entry.getValue(), NationLootType.ESPIONAGE).save(events));
         }
         return entry;
     }

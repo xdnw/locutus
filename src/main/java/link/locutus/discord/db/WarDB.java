@@ -540,12 +540,13 @@ public class WarDB extends DBMainV2 {
                 Logg.text("No attacks loaded, fetching all");
                 AttackCursorFactory factory = new AttackCursorFactory(this);
                 List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
-                System.out.println("Done fetching attacks, now adapting them");
+                Logg.text("remove:||PERF Done fetching attacks, now adapting them");
                 List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
                 for (WarAttack v3Attack : attacks) {
                     attackList.add(factory.load(v3Attack, true));
                 }
-                saveAttacks(attackList);
+                Logg.text("remove:||PERF Done adapting attacks, now saving them");
+                saveAttacks(attackList, null);
                 Logg.text("Done fetching attacks");
             }
 
@@ -2296,7 +2297,8 @@ public class WarDB extends DBMainV2 {
 
     private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
     private long lastUnloadAttacks = 0;
-    public void saveAttacks(Collection<AbstractCursor> values) {
+
+    public void saveAttacks(Collection<AbstractCursor> values, Consumer<Event> eventConsumer) {
         if (values.isEmpty()) return;
 
         // sort attacks
@@ -2304,6 +2306,7 @@ public class WarDB extends DBMainV2 {
         valuesList.sort(Comparator.comparingInt(AbstractCursor::getWar_attack_id));
         values = valuesList;
 
+        List<LootEntry> lootList = null;
         for (AbstractCursor attack : values) {
             if (attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT) continue;
 
@@ -2327,14 +2330,25 @@ public class WarDB extends DBMainV2 {
                 lootCopy = ResourceType.getBuffer();
             }
             if (attack.getAttack_type() == AttackType.VICTORY) {
-                Locutus.imp().getNationDB().saveLoot(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
+                (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
+                    LootEntry.forNation(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
             } else if (attack.getAttack_type() == AttackType.A_LOOT) {
                 int allianceId = attack.getAllianceIdLooted();
                 if (allianceId > 0) {
-                    Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
+                    (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
+                            LootEntry.forAlliance(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
                 }
             }
         }
+
+        Logg.text("remove:||PERF Done generating loot");
+
+        if (lootList != null) {
+            Locutus.imp().getNationDB().saveLoot(lootList, eventConsumer);
+        }
+
+        Logg.text("remove:||PERF Done saving loot");
+
         List<AttackEntry> toSave = new ArrayList<>();
         Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
 
@@ -2385,6 +2399,8 @@ public class WarDB extends DBMainV2 {
             }
         }
 
+        Logg.text("remove:||PERF Done adding to map");
+
         // String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
         String query = "INSERT OR REPLACE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
         executeBatch(toSave, query, new ThrowingBiConsumer<AttackEntry, PreparedStatement>() {
@@ -2398,6 +2414,8 @@ public class WarDB extends DBMainV2 {
                 stmt.setBytes(6, attack.data());
             }
         });
+
+        Logg.text("remove:||PERF Done saving to db");
     }
 
     public boolean updateAttacks(Consumer<Event> eventConsumer) {
@@ -2448,14 +2466,14 @@ public class WarDB extends DBMainV2 {
                     synchronized (attackList) {
                         attackList.add(attack);
                         if (attackList.size() > 1000) {
-                            saveAttacks(attackList);
+                            saveAttacks(attackList, eventConsumer);
                             attackList.clear();
                         }
                     }
                     return false;
                 }
             });
-            saveAttacks(attackList);
+            saveAttacks(attackList, eventConsumer);
             return true;
         }
         List<AbstractCursor> dbAttacks = new ArrayList<>();
@@ -2571,7 +2589,7 @@ public class WarDB extends DBMainV2 {
         }
 
         { // add to db
-            saveAttacks(newAttacks);
+            saveAttacks(newAttacks, eventConsumer);
         }
 
         if (runAlerts && eventConsumer != null) {

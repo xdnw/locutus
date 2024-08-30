@@ -1,12 +1,16 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.function.Consumer;
 
 public class LootEntry {
     private final int id;
@@ -14,6 +18,13 @@ public class LootEntry {
     private final long date;
     private final NationLootType type;
 
+    public static LootEntry forAlliance(int allianceId, long date, double[] loot, NationLootType type) {
+        return new LootEntry(-allianceId, loot, date, type);
+    }
+
+    public static LootEntry forNation(int nationId, long date, double[] loot, NationLootType type) {
+        return new LootEntry(nationId, loot, date, type);
+    }
 
     public LootEntry(int id, double[] resources, long date, NationLootType type) {
         this.id = id;
@@ -65,5 +76,9 @@ public class LootEntry {
 
     public double convertedTotal() {
         return ResourceType.convertedTotal(getTotal_rss());
+    }
+
+    public void save(Consumer<Event> events) {
+        Locutus.imp().getNationDB().saveLoot(List.of(this), events);
     }
 }

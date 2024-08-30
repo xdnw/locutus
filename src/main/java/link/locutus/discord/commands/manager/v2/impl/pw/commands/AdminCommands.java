@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -2328,6 +2329,7 @@ public class AdminCommands {
         int found = 0;
         int added = 0;
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
+        List<LootEntry> loots = new ObjectArrayList<>();
         for (AbstractCursor attack : attacks) {
             if (attack.getAllianceIdLooted() > 0) {
                 LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getAllianceIdLooted());
@@ -2342,10 +2344,12 @@ public class AdminCommands {
                         lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                     }
 
-                    Locutus.imp().getNationDB().saveAllianceLoot(attack.getAllianceIdLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
+                    loots.add(LootEntry.forAlliance(attack.getAllianceIdLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
                 }
             }
         }
+        if (loots.isEmpty()) return "No new loot found";
+        Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().saveLoot(loots, events));
         return "Done!";
     }
 

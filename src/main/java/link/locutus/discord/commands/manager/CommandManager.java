@@ -121,6 +121,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
@@ -539,7 +540,7 @@ public class CommandManager {
                     DBNation nation = entry.getKey();
                     if (nation != null) {
                         long now = System.currentTimeMillis();
-                        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE);
+                        Locutus.imp().runEventsAsync(events -> LootEntry.forNation(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE).save(events));
                         GuildDB db = Locutus.imp().getGuildDB(guild);
                         if (db != null) {
                             assert value != null;
