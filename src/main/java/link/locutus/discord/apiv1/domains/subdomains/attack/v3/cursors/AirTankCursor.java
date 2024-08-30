@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
@@ -28,8 +29,8 @@ public class AirTankCursor extends UnitCursor {
     }
 
     @Override
-    public void load(WarAttack attack) {
-        super.load(attack);
+    public void load(WarAttack attack, WarDB db) {
+        super.load(attack, db);
         this.attcas1 = attack.getAtt_aircraft_lost();
         this.defcas1 = attack.getDef_aircraft_lost();
         this.defcas2 = attack.getDef_tanks_lost();

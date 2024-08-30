@@ -1,9 +1,15 @@
 package link.locutus.discord.apiv3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.type.CollectionType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -34,6 +40,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -77,6 +84,11 @@ public class PoliticsAndWarV3 {
 
         this.jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().simpleDateFormat("yyyy-MM-dd").build();
         jacksonObjectMapper.configure(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS,true);
+        jacksonObjectMapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
+        SimpleModule module = new SimpleModule();
+        // Fix for snapshots returning Object instead of Array of CityInfraDamage
+        module.addDeserializer(CityInfraDamage.class, (JsonDeserializer<CityInfraDamage>) (Object) new CityInfraDamageDeserializer());
+        jacksonObjectMapper.registerModule(module);
     }
 
     public PoliticsAndWarV3(ApiKeyPool pool) {
@@ -92,7 +104,10 @@ public class PoliticsAndWarV3 {
     }
 
     public String getSnapshotUrl(Class<?> type, String key) {
-        return snapshotUrl + type.getSimpleName().toLowerCase() + "?api_key=" + key;
+        String endpointName;
+        endpointName = CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, type.getSimpleName());
+        if (endpointName.equalsIgnoreCase("war_attack")) endpointName = "warattack";
+        return snapshotUrl + endpointName + "?api_key=" + key;
     }
 
     public void throwInvalid(AlliancePermission alliancePermission, String message) {
@@ -140,15 +155,16 @@ public class PoliticsAndWarV3 {
         return requestTracker;
     }
 
-    public <T> List<T> readSnapshot(PagePriority priority, Class<T> type) {
+    public <T extends Serializable> List<T> readSnapshot(PagePriority priority, Class<T> type) {
         handleRateLimit();
         String errorMsg;
         while (true) {
             errorMsg = null;
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getSnapshotUrl(type, pair.getKey());
+            String body = null;
             try {
-                String body = FileUtil.readStringFromURL(priority, url);
+                body = FileUtil.readStringFromURL(priority, url);
                 // parse json
                 if (body.contains("\"error\":")) {
                     JsonObject obj = JsonParser.parseString(body).getAsJsonObject();
@@ -164,6 +180,9 @@ public class PoliticsAndWarV3 {
                     return jacksonObjectMapper.readerForListOf(type).readValue(body);
                 }
             } catch (IOException e) {
+                if (body != null) {
+                    System.out.println("Body " + body);
+                }
                 errorMsg = e.getMessage();
                 errorMsg = errorMsg == null ? "" : StringMan.stripApiKey(errorMsg);
             } catch (InterruptedException e) {

@@ -2104,7 +2104,7 @@ public class AdminCommands {
         if (nations != null && !nations.isEmpty()) {
             updatedIds = db.updateNations(nations.stream().map(DBNation::getId).toList(), events::add);
         } else {
-            updatedIds = db.updateAllNations(events::add);
+            updatedIds = db.updateAllNations(events::add, true);
         }
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {

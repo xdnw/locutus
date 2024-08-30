@@ -100,8 +100,15 @@ public class PreLoader implements ILoader {
         this.discordDB = add("Discord Database", () -> new DiscordDB());
         this.nationDB = add("Nation Database", () -> new NationDB().load());
         add("Flag Outdated Cities", () -> {
-            NationDB db = getNationDB();
-            db.markDirtyIncorrectNations(true, true);
+            getNationDB().markDirtyIncorrectNations(true, true);
+            return null;
+        });
+        add("Initialize Nuke Dates", () -> {
+            getNationDB().loadNukeDatesIfEmpty();
+            return null;
+        });
+        add("Create Default Exchanges", () -> {
+            getStockDB().createDefaultExchanges();
             return null;
         });
 
@@ -202,7 +209,7 @@ public class PreLoader implements ILoader {
                     Logg.text("Locutus initialized successfully");
                 }
             }
-        }, 30, TimeUnit.SECONDS);
+        }, 120, TimeUnit.SECONDS);
     }
 
     public static List<String> detectDeadlock(Set<Long> threadIds) {

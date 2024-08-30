@@ -33,6 +33,7 @@ import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.AlertUtil;
@@ -40,6 +41,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
@@ -106,7 +108,7 @@ public class WarDB extends DBMainV2 {
         int num_attacks = 0;
         int numErrors = 0;
 
-        AttackCursorFactory cursorManager = new AttackCursorFactory();
+        AttackCursorFactory cursorManager = new AttackCursorFactory(this);
 
         FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
         long totalBytes = 0;
@@ -361,7 +363,7 @@ public class WarDB extends DBMainV2 {
 
         // load attacks
         // convert to attack cursor
-        AttackCursorFactory cursorManager = new AttackCursorFactory();
+        AttackCursorFactory cursorManager = new AttackCursorFactory(this);
         List<AbstractCursor> attacks = new ArrayList<>();
         try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
             stmt.setFetchSize(2 << 16);
@@ -528,19 +530,29 @@ public class WarDB extends DBMainV2 {
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
             Logg.text("remove:||PERF Loaded wardb attacks in " + (-start + (start = System.currentTimeMillis())));
 
-            {
-                // get attacks by id 20071530
-//                Map<Integer, DBWar> wars = getWars(f -> f.date > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(20));
-//                List<AbstractCursor> attacks = queryAttacks().withWars(wars).getList();
-//                //
-//                attacks.removeIf(f -> f.getDate() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(18));
-//                // get last
-//                AbstractCursor attack = attacks.stream().max(Comparator.comparing(AbstractCursor::getWar_attack_id)).orElse(null);
-//                if (attack == null) {
-//                    Logg.text("No attacks found");
-//                } else {
-//                    updateAttacks(attack, false, null, false);
-//                }
+            if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
+                Logg.text("No wars loaded, fetching all");
+                updateAllWars(null);
+                Logg.text("Done fetching wars");
+            }
+
+            if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
+                Logg.text("No attacks loaded, fetching all");
+                AttackCursorFactory factory = new AttackCursorFactory(this);
+                List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
+                System.out.println("Done fetching attacks, now adapting them");
+                List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
+                for (WarAttack v3Attack : attacks) {
+                    attackList.add(factory.load(v3Attack, true));
+                }
+                saveAttacks(attackList);
+                Logg.text("Done fetching attacks");
+            }
+
+            if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0 && !hasAnyBounties()) {
+                Logg.text("No bounties loaded, fetching all");
+                updateBountiesV3();
+                Logg.text("Done fetching bounties");
             }
         }
 
@@ -551,6 +563,9 @@ public class WarDB extends DBMainV2 {
             conflictManager.loadConflicts();
             Logg.text("remove:||PERF Loaded conflicts " + (-start + (start = System.currentTimeMillis())));
         }
+
+
+
         return this;
     }
 
@@ -778,11 +793,11 @@ public class WarDB extends DBMainV2 {
             loader = (war, data) -> attackCursorFactory.load(war, data, true);
         }
         final Consumer<AbstractCursor> attackAdder = attackFilter == null ? cursor -> {
-            List<AbstractCursor> list = result.computeIfAbsent(cursor.getWar(), f -> new ObjectArrayList<>());
+            List<AbstractCursor> list = result.computeIfAbsent(cursor.getWar(this), f -> new ObjectArrayList<>());
             list.add(cursor);
         } : cursor -> {
             if (attackFilter.test(cursor)) {
-                List<AbstractCursor> list = result.computeIfAbsent(cursor.getWar(), f -> new ObjectArrayList<>());
+                List<AbstractCursor> list = result.computeIfAbsent(cursor.getWar(this), f -> new ObjectArrayList<>());
                 list.add(cursor);
             }
         };
@@ -1435,7 +1450,7 @@ public class WarDB extends DBMainV2 {
             return stat;
         }
         int warId = war.warId;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war, false);
+        List<AbstractCursor> attacks = getAttacksByWarId2(war, false);
 
         long startDate = war.getDate();
         long startTurn = TimeUtil.getTurn(startDate);
@@ -1575,6 +1590,10 @@ public class WarDB extends DBMainV2 {
         return getBounties().stream().collect(Collectors.groupingBy(DBBounty::getId, Collectors.toList()));
     }
 
+    public boolean hasAnyBounties() {
+        return select("SELECT 1 FROM `BOUNTIES_V3` LIMIT 1", f -> {}, (ThrowingFunction<ResultSet, Boolean>) ResultSet::next);
+    }
+
     public Set<DBBounty> getBounties() {
         LinkedHashSet<DBBounty> result = new LinkedHashSet<>();
         query("SELECT * FROM `BOUNTIES_V3` ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {},
@@ -1587,9 +1606,9 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
-    private Object bountyLock = new Object();
+    private final Object bountyLock = new Object();
 
-    public void updateBountiesV3() throws IOException {
+    public void updateBountiesV3() {
         List<Event> events = null;
         synchronized (bountyLock) {
             Set<DBBounty> removedBounties = getBounties();
@@ -1598,7 +1617,7 @@ public class WarDB extends DBMainV2 {
             boolean callEvents = !removedBounties.isEmpty();
 
             PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-            Collection<Bounty> bounties = v3.fetchBounties(null, f -> f.all$(-1));
+            Collection<Bounty> bounties = v3.readSnapshot(PagePriority.API_BOUNTIES, Bounty.class);
 
             if (bounties.isEmpty()) return;
             bounties = new HashSet<>(bounties); // Ensure uniqueness (in case of pagination concurrency issues)
@@ -1660,8 +1679,10 @@ public class WarDB extends DBMainV2 {
     }
 
     public boolean updateAllWars(Consumer<Event> eventConsumer) {
-        long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 61);
-        return updateWarsSince(eventConsumer, start);
+        List<DBWar> wars = Locutus.imp().getV3().readSnapshot(PagePriority.API_WARS, War.class)
+                .stream().map(f -> new DBWar(f, false)).toList();
+        Set<Integer> activeWarIds = getActiveWars().stream().map(DBWar::getWarId).collect(Collectors.toSet());
+        return updateWars(wars, activeWarIds, eventConsumer, eventConsumer != null);
     }
 
     public boolean updateWarsSince(Consumer<Event> eventConsumer, long date) {
@@ -1682,7 +1703,7 @@ public class WarDB extends DBMainV2 {
         for (DBWar war : dbWars) {
             activeWarsToFetch.remove(war.getWarId());
         }
-        updateWars(dbWars, null, eventConsumer);
+        updateWars(dbWars, null, eventConsumer, true);
 
         if (!activeWarsToFetch.isEmpty()) {
             int notDeleted = 0;
@@ -1735,7 +1756,7 @@ public class WarDB extends DBMainV2 {
             dbWars.add(newWar);
         }
 
-        boolean result = updateWars(dbWars, null, eventConsumer);
+        boolean result = updateWars(dbWars, null, eventConsumer, true);
         return result;
     }
 
@@ -1778,7 +1799,7 @@ public class WarDB extends DBMainV2 {
             });
 
             List<DBWar> wars = warsQL.stream().map(DBWar::new).collect(Collectors.toList());
-            updateWars(wars, subList, eventConsumer);
+            updateWars(wars, subList, eventConsumer, true);
         }
     }
 
@@ -1796,7 +1817,7 @@ public class WarDB extends DBMainV2 {
         });
         if (warsQl.isEmpty()) return;
         List<DBWar> wars = warsQl.stream().map(DBWar::new).collect(Collectors.toList());
-        updateWars(wars, null, eventConsumer);
+        updateWars(wars, null, eventConsumer, true);
     }
 
     public boolean updateMostActiveWars(Consumer<Event> eventConsumer) throws IOException {
@@ -1847,12 +1868,12 @@ public class WarDB extends DBMainV2 {
         }
 
         List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
-        updateWars(dbWars, warIdsToUpdate, eventConsumer);
+        updateWars(dbWars, warIdsToUpdate, eventConsumer, true);
 
         return true;
     }
 
-    public boolean updateWars(List<DBWar> dbWars, Collection<Integer> expectedIds, Consumer<Event> eventConsumer) {
+    public boolean updateWars(List<DBWar> dbWars, Collection<Integer> expectedIds, Consumer<Event> eventConsumer, boolean handleNationStatus) {
         List<DBWar> prevWars = new ArrayList<>();
         List<DBWar> newWars = new ArrayList<>();
         Set<Integer> expectedIdsSet = expectedIds == null ? null : expectedIds instanceof Set ? (Set<Integer>) expectedIds : new ObjectOpenHashSet<>(expectedIds);
@@ -1865,7 +1886,7 @@ public class WarDB extends DBMainV2 {
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);
 
-            if (existing == null && war.getDate() > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.getStatus() == WarStatus.ACTIVE) {
+            if (handleNationStatus && existing == null && war.getDate() > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.getStatus() == WarStatus.ACTIVE) {
                 Locutus.imp().getNationDB().setNationActive(war.getAttacker_id(), war.getDate(), eventConsumer);
                 DBNation attacker = war.getNation(true);
                 if (attacker != null && attacker.isBeige()) {
@@ -1900,7 +1921,7 @@ public class WarDB extends DBMainV2 {
             if (newWar.isActive()) {
                 activeWars.addActiveWar(newWar);
             } else {
-                if (previous != null && previous.isActive() && (newWar.getStatus() == WarStatus.DEFENDER_VICTORY || newWar.getStatus() == WarStatus.ATTACKER_VICTORY)) {
+                if (handleNationStatus && previous != null && previous.isActive() && (newWar.getStatus() == WarStatus.DEFENDER_VICTORY || newWar.getStatus() == WarStatus.ATTACKER_VICTORY)) {
                     boolean isAttacker = newWar.getStatus() == WarStatus.ATTACKER_VICTORY;
                     DBNation defender = newWar.getNation(!isAttacker);
                     if (defender != null && defender.getColor() != NationColor.BEIGE) {
@@ -2273,7 +2294,7 @@ public class WarDB extends DBMainV2 {
 //        return query;
 //    }
 
-    private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory();
+    private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
     private long lastUnloadAttacks = 0;
     public void saveAttacks(Collection<AbstractCursor> values) {
         if (values.isEmpty()) return;
@@ -2413,7 +2434,7 @@ public class WarDB extends DBMainV2 {
         Integer maxId = latest == null ? null : latest.getWar_attack_id();
         if (maxId == null || maxId == 0) runAlerts = false;
 
-        AttackCursorFactory factory = new AttackCursorFactory();
+        AttackCursorFactory factory = new AttackCursorFactory(this);
 
         // Dont run events if attacks are > 1 day old
         if (!v2 && (latest == null || latest.getDate() < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
@@ -2639,7 +2660,7 @@ public class WarDB extends DBMainV2 {
 //                    if (war.date > cutoff) {
 //                        continue;
 //                    }
-//                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory());
+//                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory(this));
 //                    if (list != null && !list.isEmpty()) {
 //                        result.put(war.warId, list);
 //                    }
@@ -2651,7 +2672,7 @@ public class WarDB extends DBMainV2 {
 
     public void iterateAttacks(long start, long end, Predicate<DBWar> ifWar, Consumer<AbstractCursor> consumer) {
         if (start > end) return;
-        AttackCursorFactory factory = new AttackCursorFactory();
+        AttackCursorFactory factory = new AttackCursorFactory(this);
         Predicate<AbstractCursor> pretest = attack -> attack.getDate() >= start && attack.getDate() <= end;
         synchronized (warsById) {
             iterateAttacks(ArrayUtil.select(warsById,
@@ -2664,7 +2685,7 @@ public class WarDB extends DBMainV2 {
     public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> ifWar, Predicate<AbstractCursor> filter) {
         if (start > end) return Collections.emptyList();
         List<AbstractCursor> list = new ObjectArrayList<>();
-        AttackCursorFactory factory = new AttackCursorFactory();
+        AttackCursorFactory factory = new AttackCursorFactory(this);
 
         Predicate<AbstractCursor> pretest = attack -> attack.getDate() >= start && attack.getDate() <= end;
         if (filter != null) {
@@ -2820,7 +2841,7 @@ public class WarDB extends DBMainV2 {
     public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy(long time) {
         Map<Integer, Map.Entry<Long, double[]>> nationLoot = new ConcurrentHashMap<>();
 
-        AttackCursorFactory factory = new AttackCursorFactory();
+        AttackCursorFactory factory = new AttackCursorFactory(this);
         // iterate all victory attacks
         iterateAttacks(getWarsSince(time).values(), type -> type == AttackType.VICTORY, null, attack -> {
             int looted = attack.getDefender_id();

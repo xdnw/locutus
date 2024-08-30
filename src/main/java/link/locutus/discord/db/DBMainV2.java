@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DBMainV2 implements Closeable {
     private final File file;
@@ -195,6 +196,18 @@ public class DBMainV2 implements Closeable {
         if (objects.isEmpty()) return new int[0];
         synchronized (this) {
             return SQLUtil.executeBatch(getConnection(), objects, query, consumer);
+        }
+    }
+
+    public <T> T select(String sql, Consumer<PreparedStatement> withStmt, Function<ResultSet, T> rsq) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setFetchSize(10000);
+            withStmt.accept(stmt);
+            ResultSet rs = stmt.executeQuery();
+            return rsq.apply(rs);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 

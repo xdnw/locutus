@@ -43,7 +43,9 @@ public class StockDB extends DBMain {
         executeStmt("CREATE TABLE IF NOT EXISTS `TRADES` (`id` INTEGER PRIMARY KEY, `company` INT NOT NULL, `buyer` INT NOT NULL, `seller` INT NOT NULL, `is_buying` INT NOT NULL, `resource` INT NOT NULL, `amount` BIGINT NOT NULL, `price` BIGINT NOT NULL, `date_offered` BIGINT NOT NULL, `date_bought` BIGINT NOT NULL)");
 //         Transactions from corp <-> nation or corp <-> corp
 //        executeStmt("CREATE TABLE IF NOT EXISTS `TRANSACTIONS` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, type INT NOT NULL, amount INT NOT NULL)");
+    }
 
+    public void createDefaultExchanges() {
         if (getExchanges().isEmpty()) {
             for (ResourceType type : ResourceType.values) {
                 Exchange company = new Exchange(ExchangeCategory.CURRENCY, type.name().toLowerCase(), type.name() + " resource exchange, 1 share = 1 resource", Integer.MAX_VALUE, ROOT_GUILD);
@@ -54,7 +56,7 @@ public class StockDB extends DBMain {
         }
         Map<Integer, Exchange> exchanges = getExchangesById();
         // add exchange for each alliance
-        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+        for (DBAlliance alliance : Locutus.imp(). getNationDB().getAlliances()) {
             int id = alliance.getAlliance_id();
             Exchange exchange = exchanges.get(id);
             if (exchange == null) {

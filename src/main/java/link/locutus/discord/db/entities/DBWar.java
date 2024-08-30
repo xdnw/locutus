@@ -135,7 +135,11 @@ public class DBWar {
     }
 
     public DBWar(War war) {
-         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), getCities(war.getAtt_id()), getCities(war.getDef_id()));
+        this(war, true);
+    }
+
+    public DBWar(War war, boolean cities) {
+         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), cities ? getCities(war.getAtt_id()) : 0, cities ? getCities(war.getDef_id()) : 0);
     }
 
     private static int getAA(String aaStr) {

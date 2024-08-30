@@ -1,10 +1,12 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
@@ -171,7 +173,15 @@ public interface IAttack {
 
     double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 
-    DBWar getWar();
+    default DBWar getWar() {
+        Locutus lc = Locutus.imp();
+        if (lc != null) {
+            return getWar(lc.getWarDb());
+        }
+        return null;
+    }
+
+    public DBWar getWar(WarDB db);
 
     default AttackTypeSubCategory getSubCategory(BiFunction<DBNation, Long, Integer> checkActiveM) {
         return WarUpdateProcessor.subCategorize(this, checkActiveM);

@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
@@ -36,7 +37,8 @@ public abstract class AbstractCursor implements IAttack {
     public abstract AttackType getAttack_type();
     @Override
     public abstract SuccessType getSuccess();
-    public void load(WarAttack attack) {
+
+    public void load(WarAttack attack, WarDB db) {
         war_cached = null;
         war_attack_id = attack.getId();
         date = attack.getDate().toEpochMilli();
@@ -117,12 +119,9 @@ public abstract class AbstractCursor implements IAttack {
     }
 
     @Override
-    public DBWar getWar() {
+    public DBWar getWar(WarDB db) {
         if (war_cached == null) {
-            Locutus lc = Locutus.imp();
-            if (lc != null) {
-                war_cached = lc.getWarDb().getWar(war_id);
-            }
+            war_cached = db.getWar(war_id);
         }
         return war_cached;
     }

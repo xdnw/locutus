@@ -11,6 +11,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
@@ -247,8 +248,8 @@ public abstract class DamageCursor extends AbstractCursor{
 
 
     @Override
-    public void load(WarAttack attack) {
-        super.load(attack);
+    public void load(WarAttack attack, WarDB db) {
+        super.load(attack, db);
         success = SuccessType.values[attack.getSuccess()];
         if (getSuccess() != SuccessType.UTTER_FAILURE) {
             city_id = attack.getCity_id();

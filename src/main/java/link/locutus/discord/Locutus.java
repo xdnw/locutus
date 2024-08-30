@@ -544,15 +544,6 @@ public final class Locutus extends ListenerAdapter {
 
     public void initRepeatingTasks() {
         Object warUpdateLock = new Object();
-        if ((Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0) && getNationDB().getNations().isEmpty()) {
-            Logg.text("No nations found. Updating all nations");
-            if (Settings.USE_V2) {
-                getNationDB().updateNationsV2(true, null);
-            } else {
-                getNationDB().updateAllNations(null);
-            }
-        }
-
         // Turn change
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
