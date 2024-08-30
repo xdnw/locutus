@@ -1277,14 +1277,14 @@ public class StatCommands {
     public void warStatusRankingByAA(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
                                       @Arg("Date to start from")
                                      @Timestamp long time) {
-        warStatusRankingBy(true, db, channel, command, attackers, defenders, time);
+        warStatusRankingBy(true, channel, command, attackers, defenders, time);
     }
 
     @Command(desc = "Generate ranking of war status by Nation")
     public void warStatusRankingByNation(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
                                          @Arg("Date to start from")
                                          @Timestamp long time) {
-        warStatusRankingBy(false, db, channel, command, attackers, defenders, time);
+        warStatusRankingBy(false, channel, command, attackers, defenders, time);
     }
 
     public void warStatusRankingBy(boolean isAA, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {

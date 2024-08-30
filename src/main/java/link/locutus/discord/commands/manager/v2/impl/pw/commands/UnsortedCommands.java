@@ -222,7 +222,7 @@ public class UnsortedCommands {
             }
         }
         if (!isFighting && !doNotRequireWar) {
-            return "You are not fighting " + target.getName() + "!";
+            return "You are not fighting " + target.getName() + "! Add `doNotRequireWar:True` to ignore this check.";
         }
         synchronized (target) {
             Map<Long, Long> existingMap = target.getLoginNotifyMap();

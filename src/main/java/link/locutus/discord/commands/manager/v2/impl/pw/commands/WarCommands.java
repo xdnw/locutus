@@ -1419,7 +1419,7 @@ public class WarCommands {
             "To see a list of coalitions, use `{prefix}coalition list`.\n\t" +
             "Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success")
     @RolePermission(Roles.MEMBER)
-    public String damage(@Me DBNation me, @Me User author, Set<DBNation> nations,
+    public String damage(@Me IMessageIO channel, @Me DBNation me, @Me User author, Set<DBNation> nations,
                          @Arg("Include targets which are applicants")
                          @Switch("a") boolean includeApps,
                          @Arg("Include targets which are inactive")
@@ -1535,7 +1535,8 @@ public class WarCommands {
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
-        return response.toString();
+        channel.send(response.toString());
+        return null;
     }
 
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {

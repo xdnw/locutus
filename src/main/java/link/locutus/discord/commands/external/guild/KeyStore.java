@@ -65,6 +65,6 @@ public class KeyStore extends Command implements Noformat {
             value = StringMan.join(args.subList(1, args.size()), " ");
         }
         boolean listAll = flags.contains('a');
-        return SettingCommands.info(io, guild, author, me, setting, value, listAll);
+        return SettingCommands.info(guild, author, setting, value, listAll);
     }
 }
