@@ -63,6 +63,7 @@ import java.awt.*;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -398,7 +399,7 @@ public class PWCompleter extends BindingHelper {
             }
         }
         if (aaList != null) {
-            for (Map.Entry<Integer, TaxBracket> entry : aaList.getTaxBrackets(true).entrySet()) {
+            for (Map.Entry<Integer, TaxBracket> entry : aaList.getTaxBrackets(Long.MAX_VALUE).entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 if (bracket.getName().isEmpty()) {
                     bracket.setName("tax_id:" + bracket.taxId);
@@ -551,7 +552,7 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={TaxBracket.class})
     public List<String> TaxBracket(@Me GuildDB db, String input) {
-        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(Long.MAX_VALUE);
         if (brackets.isEmpty()) return null;
 
         List<String> options = brackets.values().stream().map(f -> f.taxId + "").collect(Collectors.toList());

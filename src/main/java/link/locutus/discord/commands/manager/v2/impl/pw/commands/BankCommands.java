@@ -3247,7 +3247,7 @@ public class BankCommands {
         ));
 
         AllianceList alliances = db.getAllianceList();
-        Map<Integer, TaxBracket> brackets = alliances.getTaxBrackets(false);
+        Map<Integer, TaxBracket> brackets = alliances.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
 
         Set<DBNation> nations = alliances.getNations();
 
@@ -4049,7 +4049,7 @@ public class BankCommands {
             if (alliances == null) {
                 return "Please register an alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention();
             }
-            brackets = alliances.getTaxBrackets(false);
+            brackets = alliances.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();

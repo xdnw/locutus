@@ -811,7 +811,7 @@ public class GuildKey {
             if (alliance == null || alliance.isEmpty())
                 throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
-            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
+            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
             if (brackets.isEmpty())
                 throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
 

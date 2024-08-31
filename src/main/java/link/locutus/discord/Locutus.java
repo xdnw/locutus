@@ -641,7 +641,7 @@ public final class Locutus extends ListenerAdapter {
             }
 
             if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
-                addTask("Discord User Id", () -> {
+                taskTrack.addTask("Discord User Id", () -> {
                             Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false);
                         },
                         Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);

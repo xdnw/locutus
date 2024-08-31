@@ -85,6 +85,7 @@ import net.dv8tion.jda.api.entities.User;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -1586,7 +1587,7 @@ public class PWBindings extends BindingHelper {
         if (allianceList == null) {
             throw new IllegalArgumentException("No alliance registered. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
         }
-        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(true);
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
             int moneyRate = Integer.parseInt(split[0]);

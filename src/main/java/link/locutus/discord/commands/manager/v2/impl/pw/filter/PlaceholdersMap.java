@@ -85,6 +85,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -1988,7 +1989,7 @@ public class PlaceholdersMap {
                         if (db != null) {
                             AllianceList aaList = db.getAllianceList();
                             if (aaList != null) {
-                                return new HashSet<TaxBracket>(aaList.getTaxBrackets(true).values());
+                                return new HashSet<TaxBracket>(aaList.getTaxBrackets(TimeUnit.MINUTES.toMillis(5)).values());
                             }
                         }
                         Map<Integer, Integer> ids = Locutus.imp().getNationDB().getAllianceIdByTaxId();
