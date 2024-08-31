@@ -79,12 +79,12 @@ public class AllianceList {
         return nations;
     }
 
-    public Map<Integer, TaxBracket> getTaxBrackets(boolean useCache) {
+    public Map<Integer, TaxBracket> getTaxBrackets(long cacheFor) {
         Map<Integer, TaxBracket> brackets = new HashMap<>();
         for (int id : ids) {
             DBAlliance alliance = DBAlliance.get(id);
             if (alliance != null) {
-                brackets.putAll(alliance.getTaxBrackets(useCache));
+                brackets.putAll(alliance.getTaxBrackets(cacheFor));
             }
         }
         return brackets;

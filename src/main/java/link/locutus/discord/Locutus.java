@@ -299,9 +299,9 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
             this.messageHandler = new GuildCustomMessageHandler();
             // run every 5m
-            taskTrack.addTask(() -> {
+            taskTrack.addTask("Recruit Message Handler", () -> {
                 messageHandler.run();
-            }, 5 * 60);
+            }, 5 * 60, TimeUnit.SECONDS);
             Logg.text("Setup message handler (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         }
         Logg.text("Waiting for startup tasks to resolve...");

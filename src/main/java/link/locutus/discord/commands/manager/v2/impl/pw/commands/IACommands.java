@@ -1562,7 +1562,7 @@ public class IACommands {
             }
         }
 
-        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
+        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
 
         if (bracket == null) {
             StringBuilder response = new StringBuilder();

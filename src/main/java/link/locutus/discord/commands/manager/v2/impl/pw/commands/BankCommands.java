@@ -637,7 +637,7 @@ public class BankCommands {
             responses.add("Applicants are not taxed. ");
         } else {
             DBAlliance alliance = nation.getAlliance();
-            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(true);
+            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
             TaxBracket bracket = brackets.get(nation.getTax_id());
             if (bracket == null) {
                 bracket = nation.getTaxBracket();

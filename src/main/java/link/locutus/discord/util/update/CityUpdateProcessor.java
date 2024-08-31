@@ -39,12 +39,12 @@ public class CityUpdateProcessor {
 
     public CityUpdateProcessor() {
         changes2 = new ConcurrentHashMap<>();
-        Locutus.imp().addTaskSeconds(new CaughtTask() {
+        Locutus.imp().getRepeatingTasks().addTask("Officer MMR Alerts", new CaughtTask() {
             @Override
             public void runUnsafe() throws Exception {
                 runOfficerMMRTask();
             }
-        }, 60);
+        }, 60, TimeUnit.SECONDS);
     }
 
     @Subscribe

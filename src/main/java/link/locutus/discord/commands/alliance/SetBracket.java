@@ -25,6 +25,7 @@ import net.dv8tion.jda.api.entities.User;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class SetBracket extends Command {
     public SetBracket() {
@@ -72,7 +73,7 @@ public class SetBracket extends Command {
         DBAlliance alliance = nation.getAlliance();
         if (!db.isAllianceId(alliance.getId())) return nation.getNation() + " is not in " + alliance;
 
-        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
+        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
 
         if (args.size() == 1) {
             StringBuilder response = new StringBuilder();

@@ -257,7 +257,7 @@ public class UnsortedCommands {
                 DBAlliance alliance = DBAlliance.get(aaId);
                 TaxBracket bracket = new TaxBracket(taxId, aaId, "", -1, -1, 0L);
                 if (alliance != null) {
-                    Map<Integer, TaxBracket> aaBrackets = alliance.getTaxBrackets(!forceUpdate || !alliancesUpdated.add(aaId));
+                    Map<Integer, TaxBracket> aaBrackets = alliance.getTaxBrackets((!forceUpdate || !alliancesUpdated.add(aaId)) ? TimeUnit.SECONDS.toMillis(30) : TimeUnit.MINUTES.toMillis(5));
                     bracket = aaBrackets.get(taxId);
                 }
                 brackets.add(bracket);
@@ -266,7 +266,7 @@ public class UnsortedCommands {
             for (int aaId : aaIds) {
                 DBAlliance alliance = DBAlliance.get(aaId);
                 if (alliance != null) {
-                    brackets.addAll(alliance.getTaxBrackets(!forceUpdate || !alliancesUpdated.add(aaId)).values());
+                    brackets.addAll(alliance.getTaxBrackets((!forceUpdate || !alliancesUpdated.add(aaId)) ? TimeUnit.SECONDS.toMillis(30) : TimeUnit.MINUTES.toMillis(5)).values());
                 }
             }
         } else {
