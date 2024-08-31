@@ -375,10 +375,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     private Map<Integer, TaxBracket> BRACKETS_CACHED;
-    private long BRACKETS_TURN_UPDATED;
+    private long BRACKETS_TIME_UPDATED;
 
-    public synchronized Map<Integer, TaxBracket> getTaxBrackets(boolean useCache) {
-        if (useCache && BRACKETS_TURN_UPDATED == TimeUtil.getTurn()) {
+    public synchronized Map<Integer, TaxBracket> getTaxBrackets(long cacheFor) {
+        long now = System.currentTimeMillis();
+        if (cacheFor > 0 && (now - BRACKETS_TIME_UPDATED < cacheFor)) {
             boolean isOutdated = false;
             for (int id : listUsedTaxIds()) {
                 if (!BRACKETS_CACHED.containsKey(id)) {
@@ -402,7 +403,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId, true);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
-        BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
+        BRACKETS_TIME_UPDATED = now;
         for (Map.Entry<Integer, com.politicsandwar.graphql.model.TaxBracket> entry : bracketsV3.entrySet()) {
             TaxBracket bracket = new TaxBracket(entry.getValue());
             Locutus.imp().getBankDB().addTaxBracket(bracket);

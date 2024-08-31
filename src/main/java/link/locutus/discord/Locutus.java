@@ -1,10 +1,7 @@
 package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
-import link.locutus.discord._main.Backup;
-import link.locutus.discord._main.FinalizedLoader;
-import link.locutus.discord._main.ILoader;
-import link.locutus.discord._main.PreLoader;
+import link.locutus.discord._main.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -95,6 +92,7 @@ import java.util.function.Consumer;
 
 public final class Locutus extends ListenerAdapter {
     private static Locutus INSTANCE;
+    private final RepeatingTasks taskTrack;
     private ILoader loader;
 
     private final ThreadPoolExecutor executor;
@@ -128,6 +126,8 @@ public final class Locutus extends ListenerAdapter {
         long start = System.currentTimeMillis();
         this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
         this.scheduler = new ScheduledThreadPoolExecutor(256, Executors.defaultThreadFactory());
+        this.taskTrack = new RepeatingTasks(scheduler);
+        Logg.text("Created Executors (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.ROOT_COALITION_SERVER <= 0) Settings.INSTANCE.ROOT_COALITION_SERVER = Settings.INSTANCE.ROOT_SERVER;
@@ -152,10 +152,10 @@ public final class Locutus extends ListenerAdapter {
         }
 
         this.eventBus = new AsyncEventBus("locutus", Runnable::run);
-        Logg.text("remove:||PERF eventbus " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Created Event Bus (" + (((-start)) + (start = System.currentTimeMillis())) + "ms");
         this.loader = new PreLoader(this, executor, scheduler);
         this.loader.initialize();
-        Logg.text("remove:||PERF new preloader " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Created and initialized Module Loader (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
     }
 
     public static void post(Object event) {
@@ -169,29 +169,26 @@ public final class Locutus extends ListenerAdapter {
     public void registerEvents() {
         long start = System.currentTimeMillis();
         eventBus.register(new TreatyUpdateProcessor());
-        System.out.println("remove:||PERF treaty update processor " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Treaty Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new NationUpdateProcessor());
-        System.out.println("Registered NationUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Nation Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new TradeListener());
-        System.out.println("Registered TradeListener " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Trade Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new CityUpdateProcessor());
-        System.out.println("Registered CityUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered City Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new BankUpdateProcessor());
-        System.out.println("Registered BankUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Bank Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new WarUpdateProcessor());
-        System.out.println("Registered WarUpdateProcessor " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered War Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new AllianceListener());
-        System.out.println("Registered AllianceListener " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Alliance Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         CommandManager cmdManager = loader.getCommandManager();
-        System.out.println("Get CommandManager " + (((-start)) + (start = System.currentTimeMillis())));
         eventBus.register(new MailListener(cmdManager.getV2().getStore(), cmdManager.getV2().getValidators(), cmdManager.getV2().getPermisser()));
-        System.out.println("Registered MailListener " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Mail Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         WarDB warDb = loader.getWarDB();
-        System.out.println("Get WarDB " + (((-start)) + (start = System.currentTimeMillis())));
         ConflictManager conflictManager = warDb == null ? null : warDb.getConflicts();
-        System.out.println("Get ConflictManager " + (((-start)) + (start = System.currentTimeMillis())));
         if (conflictManager != null) eventBus.register(conflictManager);
-        System.out.println("Registered ConflictManager " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered Conflict Manager (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
     }
 
     public EventBus getEventBus() {
@@ -210,18 +207,14 @@ public final class Locutus extends ListenerAdapter {
         if (loader.getNationId() <= 0) {
             throw new IllegalStateException("Could not get NATION_ID from key. Please ensure a valid API_KEY is set in " + Settings.INSTANCE.getDefaultFile());
         }
-        Logg.text("remove:||PERF wait for nation id and api key " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
             this.registerEvents();
         }
-        Logg.text("remove:||PERF register events " + (((-start)) + (start = System.currentTimeMillis())));
-        Logg.text("remove:||PERF backup " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Registered event listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDA jda = loader.getJda();
-            Logg.text("remove:||PERF get jda " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
-                Logg.text("remove:||PERF get slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
                 if (slashCommands != null) {
                     executor.submit(() -> slashCommands.registerCommandData(jda));
                 }
@@ -230,32 +223,26 @@ public final class Locutus extends ListenerAdapter {
                 e.printStackTrace();
                 Logg.text("Failed to update slash commands: " + e.getMessage());
             }
-            Logg.text("remove:||PERF build " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             setSelfUser(jda);
-            Logg.text("remove:||PERF Setup slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             manager.put(jda);
             jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
-            Logg.text("remove:||PERF subsystems " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             jda.awaitReady();
-            Logg.text("remove:||PERF awaitready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             setSelfUser(jda);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
             }
-            Logg.text("Remove:||PERF init db " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Initialized Guild Databases " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
             if (rootGuild != null) {
-                Logg.text("remove:||PERF get guild " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
                 this.server = rootGuild;
-                Logg.text("remove:||PERF init db " + (((-start)) + (start = System.currentTimeMillis())));
             } else {
                 throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.ROOT_SERVER + " as `root-server` in " + Settings.INSTANCE.getDefaultFile().getAbsolutePath());
             }
-
-            Logg.text("remove:||PERF ready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
-                Logg.text("remove:||PERF init repeating tasks " + (((-start)) + (start = System.currentTimeMillis())));
+                Logg.text("Initialized API fetching tasks (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             }
             {
                 List<GuildDB> queue = new ArrayList<>(guildDatabases.values());
@@ -269,11 +256,11 @@ public final class Locutus extends ListenerAdapter {
                     public void run() {
                         GuildDB db = queue.size() > index.get() ? queue.get(index.getAndIncrement()) : null;
                         if (db == null || !db.getGuild().isLoaded()) {
-                            Logg.text("Done loading guild members");
+                            Logg.text("Done loading all guild members");
                             return;
                         }
                         Guild guild = db.getGuild();
-                        Logg.text("remove:||PERF Loading members for " + guild);
+                        Logg.text("Loading members for " + guild);
                         guild.loadMembers().onSuccess(f -> {
                             Logg.text("Loaded " + f.size() + " members for " + guild);
                             queueFunc[0].run();
@@ -285,7 +272,6 @@ public final class Locutus extends ListenerAdapter {
                 };
                 queueFunc[0].run();
             }
-            Logg.text("remove:||PERF await members " + (((-start)) + (start = System.currentTimeMillis())));
         }
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && Settings.INSTANCE.WEB.PORT > 0) {
@@ -294,7 +280,7 @@ public final class Locutus extends ListenerAdapter {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            Logg.text("remove:||PERF setup web interface " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Initialized Web Interface (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         }
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
             this.pusher = new PnwPusherShardManager();
@@ -308,25 +294,24 @@ public final class Locutus extends ListenerAdapter {
                     Logg.text("Subscribed to default events");
                 }
             });
-            Logg.text("remove:||PERF setup pusher " + (((-start)) + (start = System.currentTimeMillis())));
         }
 
         if (Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
             this.messageHandler = new GuildCustomMessageHandler();
             // run every 5m
-            addTaskSeconds(() -> {
+            taskTrack.addTask(() -> {
                 messageHandler.run();
             }, 5 * 60);
-            Logg.text("remove:||PERF setup message handler " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Setup message handler (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         }
-        System.out.println("Start resolve fully");
+        Logg.text("Waiting for startup tasks to resolve...");
         try {
             loader.resolveFully(TimeUnit.MINUTES.toMillis(15));
         } catch (Throwable e) {
             e.printStackTrace();
             throw new IllegalStateException("Failed to start locutus in 15 minutes.\n\n" + loader.printStacktrace());
         }
-        Logg.text("remove:||PERF resolve loader fully " + (((-start)) + (start = System.currentTimeMillis())));
+        Logg.text("Resolved all startup tasks");
         return this;
     }
 
@@ -498,23 +483,6 @@ public final class Locutus extends ListenerAdapter {
         return loader.getForumDB();
     }
 
-    public ScheduledFuture<?> addTaskSeconds(CaughtTask task, long interval) {
-        return addTask(CaughtRunnable.wrap(task), interval, TimeUnit.SECONDS);
-    }
-    public ScheduledFuture<?> addTask(Runnable task, long interval, TimeUnit unit) {
-        if (interval <= 0) return null;
-        if (!(task instanceof CaughtRunnable)) {
-            Runnable parent = task;
-            task = new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
-                    parent.run();
-                }
-            };
-        }
-        return loader.getCommandManager().getExecutor().scheduleWithFixedDelay(task, interval, interval, unit);
-    }
-
     public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
         ArrayDeque<Event> events = new ArrayDeque<>(0);
         eventHandler.accept(events::add);
@@ -544,10 +512,9 @@ public final class Locutus extends ListenerAdapter {
 
     public void initRepeatingTasks() {
         Object warUpdateLock = new Object();
-        // Turn change
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
-            addTaskSeconds(new CaughtTask() {
+            taskTrack.addTask("Turn Change", new CaughtTask() {
                 long lastTurnTmp;
                 @Override
                 public void runUnsafe() throws Exception {
@@ -558,152 +525,125 @@ public final class Locutus extends ListenerAdapter {
 
                         lastTurn = Math.max(lastTurnTmp, lastTurn);
                         lastTurnTmp = currentTurn;
-
                         if (currentTurn != lastTurn) {
                             runTurnTasks(lastTurn, currentTurn);
                         }
                     }
                 }
-            }, 5);
-            addTaskSeconds(new CaughtTask() {
+            }, 5, TimeUnit.SECONDS);
+            taskTrack.addTask("Activity Check", new CaughtTask() {
                 @Override
                 public void runUnsafe() throws Exception {
                     NationUpdateProcessor.onActivityCheck();
                 }
-            }, 60);
+            }, 60, TimeUnit.SECONDS);
         }
         if (Settings.USE_V2) {
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Update Nations V2 (No VM)", () -> {
                 runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
-            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
+            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Update Nations V2", () -> {
                 runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
-            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("City (V2)", () -> {
                 runEventsAsync(events -> getNationDB().updateCitiesV2(events));
-            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("War/Attack (V2)", () -> {
                 synchronized (warUpdateLock)
                 {
-                    Logg.text("Start update wars 1");
-                    long start = System.currentTimeMillis();
                     runEventsAsync(getWarDb()::updateAllWarsV2);
-                    Logg.text("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
                     runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
-                    Logg.text("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
                 }
-            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
         } else {
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Nation (Active)", () -> {
                 try {
-                    Logg.text("Update most active nations");
                     runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
-            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
+            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Treaty", () -> {
                 runEventsAsync(getNationDB()::updateTreaties);
-            }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS);
+            }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Bank", () -> {
                 runEventsAsync(f -> getBankDB().updateBankRecs(false, f));
-            }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
+            }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Nation (Recent)", () -> {
                 runEventsAsync(getNationDB()::updateRecentNations);
-            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
+            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Nation (Non VM)", () -> {
                 runEventsAsync(events -> getNationDB().updateNonVMNations(events));
-            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Outdated Cities", () -> {
                 runEventsAsync(f -> getNationDB().updateDirtyCities(false, f));
-            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
+            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS, TimeUnit.SECONDS);
 
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
                 SpyUpdater spyUpdate = new SpyUpdater();
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Spy Tracker", () -> {
                     spyUpdate.run();
-                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS);
+                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS, TimeUnit.SECONDS);
             }
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("War/Attack", () -> {
                 try {
-                    Logg.text("Start update wars 1");
                     synchronized (warUpdateLock) {
-                        Logg.text("Start update wars 1.1");
-                        long start = System.currentTimeMillis();
-                        Logg.text("Start update wars 1.2");
                         runEventsAsync(f -> getWarDb().updateActiveWars(f, false));
-                        Logg.text("Start update wars 1.3");
                         runEventsAsync(getWarDb()::fetchNewWars);
-                        Logg.text("Start update wars 1.4");
                         runEventsAsync(getWarDb()::updateAttacks);
-                        Logg.text("Start update wars 1.5");
                     }
-                    Logg.text("End update wars 1.5");
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
 
-            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
+            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
 
-//            addTaskSeconds(() -> {
-//                synchronized (warUpdateLock) {
-//                    Logg.text("Start update wars");
-//                    long start1 = System.currentTimeMillis();
-//                    runEventsAsync(warDb::updateAllWars);
-//                    runEventsAsync(warDb::updateAttacks);
-//                    long diff1 = System.currentTimeMillis() - start1;
-//                    {
-//                        Logg.text("Update wars took " + diff1);
-//                    }
-//
-//                    if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
-//                        long start = System.currentTimeMillis();
-//                        WarUpdateProcessor.checkActiveConflicts();
-//                        long diff = System.currentTimeMillis() - start;
-//                        if (diff > 500) {
-//                            AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
-//                        }
-//                    }
-//                }
-//            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+            taskTrack.addTask("All War/Attack", () -> {
+                synchronized (warUpdateLock) {
+                    runEventsAsync(getWarDb()::updateAllWars);
+                    runEventsAsync(getWarDb()::updateAttacks);
+                }
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
             checkMailTasks();
 
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
-                addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
+                taskTrack.addTask("Bounties", () -> Locutus.imp().getWarDb().updateBountiesV3(),
+                        Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
             if (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0) {
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Treasure", () -> {
                     runEventsAsync(Locutus.imp().getNationDB()::updateTreasures);
-                }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS);
+                }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Baseball", () -> {
                     runEventsAsync(getBaseballDB()::updateGames);
-                }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
+                }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Trade", () -> {
                             runEventsAsync(getTradeManager()::updateTradeList);
                         },
-                        Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
+                        Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
-                addTask(() ->
-                                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false),
+                addTask("Discord User Id", () -> {
+                            Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false);
+                        },
                         Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
             }
         }
@@ -711,11 +651,11 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS > 0) {
             LeavingBeigeAlert beigeAlerter = new LeavingBeigeAlert();
 
-            addTaskSeconds(beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS);
+            taskTrack.addTask("Beige Alert", beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, TimeUnit.SECONDS);
         }
 
         if (getForumDb() != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
-            addTaskSeconds(getForumDb()::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS);
+            taskTrack.addTask("Forum", getForumDb()::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS, TimeUnit.SECONDS);
         }
     }
 
@@ -787,7 +727,7 @@ public final class Locutus extends ListenerAdapter {
             try {
                 Auth auth = nation.getAuth(true);
                 AlertMailTask alertMailTask = new AlertMailTask(auth, channelId);
-                getCommandManager().getExecutor().scheduleWithFixedDelay(alertMailTask, 60, task.FETCH_INTERVAL_SECONDS, TimeUnit.SECONDS);
+                taskTrack.addTask("Mail " + section, alertMailTask, interval, TimeUnit.SECONDS);
             } catch (IllegalArgumentException e) {
                 AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): They are not authenticated (user/pass)");
             }
@@ -841,13 +781,11 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
-        Logg.text("remove:||PERF load members guild join");
         event.getGuild().loadMembers();
     }
 
     @Override
     public void onGuildAvailable(@NotNull GuildAvailableEvent event) {
-        Logg.text("remove:||PERF load members guild available");
         event.getGuild().loadMembers();
     }
 
@@ -862,7 +800,6 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildMemberJoin(@Nonnull GuildMemberJoinEvent event) {
-        Logg.text("remove:||PERF Guild member join debug| " + event.getGuild() + " | " + event.getUser());
         executor.submit(() -> {
             try {
                 Guild guild = event.getGuild();
@@ -1335,5 +1272,9 @@ public final class Locutus extends ListenerAdapter {
 
     public void setLoader(ILoader loader) {
         this.loader = loader;
+    }
+
+    public RepeatingTasks getRepeatingTasks() {
+        return taskTrack;
     }
 }

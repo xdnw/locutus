@@ -23,6 +23,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
@@ -48,16 +49,12 @@ import java.util.function.Consumer;
 public class SpyTracker {
     public SpyTracker() {
         long delay = TimeUnit.MINUTES.toMillis(1);
-        Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(new Runnable() {
+        Locutus.imp().getRepeatingTasks().addTask("Spy Tracker (Queue)" , new CaughtRunnable() {
             @Override
-            public void run() {
-                try {
-                    processQueue();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
+            public void runUnsafe() throws IOException {
+                processQueue();
             }
-        }, delay, delay, TimeUnit.MILLISECONDS);
+        }, delay, TimeUnit.MILLISECONDS);
     }
 
     public void loadCasualties(Integer allianceId) {

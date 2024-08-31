@@ -562,18 +562,11 @@ public class ConflictManager {
 //        }
         Locutus.imp().getExecutor().submit(() -> {
             loadConflictWars(null, false);
-            Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(() -> {
-                try {
-                    System.out.println("Update task " + (!conflictsLoaded) + " | " + (!TimeUtil.checkTurnChange()));
-                    if (!conflictsLoaded || !TimeUtil.checkTurnChange()) return;
-                    System.out.println("Pushing dirty conflicts");
-                    pushDirtyConflicts();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }, 1, 1, TimeUnit.MINUTES);
+            Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
+                if (!conflictsLoaded) return;
+                pushDirtyConflicts();
+            }, 1, TimeUnit.MINUTES);
         });
-        System.out.println("Load graph data: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
     }
 
     public void loadVirtualConflict(Conflict conflict, boolean clearBeforeUpdate) {
