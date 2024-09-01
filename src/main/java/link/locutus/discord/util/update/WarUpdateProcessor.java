@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -152,7 +153,7 @@ public class WarUpdateProcessor {
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 500) {
-            System.out.println("Took " + diff + "ms to process " + wars.size() + " wars");
+            Logg.text("Took " + diff + "ms to process " + wars.size() + " wars");
             AlertUtil.error("Took " + diff + "ms to process " + wars.size() + " wars", StringMan.stacktraceToString(new Exception().getStackTrace()));
         }
     }

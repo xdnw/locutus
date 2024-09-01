@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
@@ -584,7 +585,7 @@ public class Auth {
 
                     Elements tables = dom.getElementsByClass("nationtable");
                     if (tables.size() == 0) {
-                        System.out.println("Error fetching trades " + html);
+                        Logg.text("Error fetching trades\n\n---BODY TEXT\n\n" + html + "\n\n---\n\n");
                         return Collections.singleton(new TradeResult("Could not load trade page", TradeResultType.CAPTCHA));
                     }
                     Element table = tables.get(0);

@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -182,7 +183,7 @@ public class IACheckup {
             audit(type, nation, transactions, cities, stockpile, results, individual, fast);
             long diff = System.currentTimeMillis() - start2;
             if (diff > 10) {
-                System.out.println("remove:||Checkup Diff " + type + " | " + diff + " ms");
+                Logg.text("Audit " + type + " took " + diff + " ms");
             }
         }
 

@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -74,7 +75,7 @@ public class MailListener {
         GuildMessageChannel channel = event.getChannel();
         if (channel == null) {
             new Exception().printStackTrace();
-            System.out.println("No channel found for mail " + event.getAuth().getNationId() + " | " + event.getDefaultChannelId());
+            Logg.text("No channel found for mail `nation:" + event.getAuth().getNationId() + "` | " + event.getDefaultChannelId());
             return;
         }
         String body = event.toEmbedString();
@@ -130,12 +131,12 @@ public class MailListener {
             StringBuilder remaining = new StringBuilder();
             CommandCallable callable = commands.getCallable(msg, remaining);
             if (callable == null) {
-                System.out.println("No command found for: `" + msg + "`");
+                Logg.text("No command found for: `" + msg + "`");
                 return;
             }
 
             List<String> args = remaining.isEmpty() ? new ArrayList<>() : StringMan.split(remaining.toString(), " ");
-            System.out.println("Running mail command `" + msg + "`");
+            Logg.text(nation.getMarkdownUrl() + " Running mail command `" + msg + "` in message `" + subject + "`");
             LocalValueStore locals = createLocals(db, guild, io, event, msg);
             ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
             Object response = callable.call(stack);

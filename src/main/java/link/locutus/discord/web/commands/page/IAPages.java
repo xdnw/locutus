@@ -52,8 +52,6 @@ public class IAPages {
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
     public String iaChannels(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author) throws ExecutionException, InterruptedException {
-        long start = System.currentTimeMillis();
-
         IACategory iaCat = db.getIACategory();
         iaCat.load();
         CompletableFuture<Void> future = iaCat.updateChannelMessages();
@@ -149,9 +147,6 @@ public class IAPages {
         JsonElement avatarsJson = gson.toJsonTree(avatarUrls);
         JsonElement usersJson = gson.toJsonTree(usernames);
         JsonElement messagesJson = gson.toJsonTree(messagesMap);
-
-        long diff = System.currentTimeMillis() - start;
-        System.out.println("Diff " + diff + "ms");
 
         return WebStore.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels));
     }
