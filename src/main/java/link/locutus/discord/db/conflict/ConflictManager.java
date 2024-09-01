@@ -186,10 +186,7 @@ public class ConflictManager {
         }
         if (hasDirty) {
             pushIndex();
-            System.out.println("Pushed dirty conflicts");
             return true;
-        } else {
-            System.out.println("No dirty conflicts");
         }
         return false;
     }

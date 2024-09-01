@@ -590,7 +590,6 @@ public class WarDB extends DBMainV2 {
         if (!saveWars.isEmpty()) {
             saveWars(saveWars, false);
         }
-        System.out.println("Set " + setStatusCount.get() + " wars to expired");
     }
 
     public List<AbstractCursor> getAttacks(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
@@ -1787,11 +1786,9 @@ public class WarDB extends DBMainV2 {
     public void fetchNewWars(Consumer<Event> eventConsumer) {
         int maxId = activeWars.getActiveWars().stream().mapToInt(f -> f.warId).max().orElse(0);
         if (maxId == 0) {
-            Logg.text("No active wars");
             return;
         }
         PoliticsAndWarV3 api = Locutus.imp().getV3();
-        Logg.text("Fetch new wars " + maxId);
         List<War> warsQl = api.fetchWarsWithInfo(r -> {
             r.setMin_id(maxId + 1);
             r.setActive(false);
@@ -1969,7 +1966,6 @@ public class WarDB extends DBMainV2 {
         } else {
             executeBatch(values, query, setStmt);
         }
-        Logg.text("Done save war");
     }
 
     public Map<Integer, DBWar> getWars(WarStatus status) {

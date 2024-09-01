@@ -103,8 +103,6 @@ public class RaidCommand extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Set<Integer> enemyAAs = db.getCoalition("enemies");
 
-        long start = System.currentTimeMillis();
-
         int results = 5;
 
         String aa = null;
@@ -215,8 +213,6 @@ public class RaidCommand extends Command {
 
         if (beigeTurns > 0) vm = Math.max(vm, beigeTurns);
 
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (1)");
-
         Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations().values());
         Set<DBNation> nations;
 
@@ -248,7 +244,6 @@ public class RaidCommand extends Command {
                 }
         }
 
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (3)");
         nations.removeIf(f -> f.hasUnsetMil());
         if (nations.isEmpty()) {
             return "Invalid AA or Coalition (case sensitive): " + aa + ". @see also: `!coalitions`";
@@ -383,7 +378,6 @@ public class RaidCommand extends Command {
             double bankLootEst = 0;
 
             if (!ignoreBank) {
-                long start4 = System.nanoTime();
                 DBAlliance alliance = enemy.getAlliance();
                 if (alliance != null && enemy.getPositionEnum() != Rank.APPLICANT) {
                     LootEntry aaLoot = alliance.getLoot();
@@ -399,7 +393,6 @@ public class RaidCommand extends Command {
                         value += bankLootEst;
                     }
                 }
-                diffBankLootEst += System.nanoTime() - start4;
             }
 
             List<DBBounty> natBounties = allBounties.get(enemy.getNation_id());
@@ -447,7 +440,6 @@ public class RaidCommand extends Command {
             double counterChance = -1;
             long myMilValue = me.militaryValue(false);
 
-            long start5 = System.nanoTime();
             if (enemy.active_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id())) {
                 int turns = 2 * 12;
                 long startTurn = TimeUtil.getTurn() - 70 * 12;
@@ -499,10 +491,6 @@ public class RaidCommand extends Command {
                     winChance *= 0.8;
                 }
             }
-            diffWars += System.nanoTime() - start5;
-
-            long start6 = System.nanoTime();
-            diffCounter += System.nanoTime() - start6;
 
             if (counterChance != -1) {
                 costIncurred += Math.min(myMilValue, 1000000 * enemy.getCities()) * counterChance;
@@ -521,13 +509,6 @@ public class RaidCommand extends Command {
 
             nationNetValues.add(new AbstractMap.SimpleEntry<>(enemy, new AbstractMap.SimpleEntry<>(value, originalValue)));
         }
-
-        System.out.println("Diffloop:" +
-                "\n- diffRevenue " + (diffRevenue / TimeUnit.MILLISECONDS.toNanos(1)) +
-                "\n- diffBankLootEst " + (diffBankLootEst / TimeUnit.MILLISECONDS.toNanos(1)) +
-                "\n- diffWars " + (diffWars / TimeUnit.MILLISECONDS.toNanos(1)) +
-                "\n- diffCounter " + (diffCounter / TimeUnit.MILLISECONDS.toNanos(1))
-        );
 
         nationNetValues.sort((o1, o2) -> Double.compare(o2.getValue().getKey(), o1.getValue().getKey()));
 

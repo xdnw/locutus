@@ -1790,12 +1790,9 @@ public class DBNation implements NationOrAlliance {
         if (Settings.USE_V2) {
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, priority, events));
         } else if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
-            System.out.println("Update bank recs 0");
             Locutus.imp().runEventsAsync(f -> bankDb.updateBankRecs(priority, f));
         } else {
-            System.out.println("Update bank recs 1");
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, priority, events));
-            System.out.println("Update bank recs 2");
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
     }
@@ -1914,8 +1911,6 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (update) {
-            System.out.println("Update transactions");
-            new Exception().printStackTrace();
             return updateTransactions(priority);
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
@@ -3311,7 +3306,6 @@ public class DBNation implements NationOrAlliance {
             if (updateNewCities && cityObj.size() != cities) force = true;
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
-                System.out.println("Fetch cities for " + getNation() + " | " + getNation_id());
                 Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true,true, events));
                 cityObj = _getCitiesV3();
             }
@@ -6305,7 +6299,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void updateCities(boolean bulk) {
-        System.out.println("nation update cities");
         Locutus.imp().runEventsAsync(events ->
                 Locutus.imp().getNationDB().updateCitiesOfNations(Set.of(nation_id), true, bulk, events));
     }

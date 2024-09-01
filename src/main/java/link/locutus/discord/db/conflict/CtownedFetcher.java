@@ -141,7 +141,6 @@ public class CtownedFetcher {
         }
         String wiki = PWWikiUtil.getWikiUrlFromCtowned(conflictName);
         if (wiki == null) wiki = "";
-        System.out.println("Set wiki " + conflictName + " -> " + wiki);
 
         Conflict conflict = manager.getConflict(conflictName);
         if (conflict == null) {

@@ -321,7 +321,6 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
         Set<DBNation> nations = new LinkedHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
-        System.out.println("Parse4 " + name);
         DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
         if (nation == null || containsAA) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);

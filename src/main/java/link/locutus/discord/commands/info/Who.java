@@ -64,7 +64,6 @@ public class Who extends Command {
         Long date = DiscordUtil.parseArgFunc(args, "date", (ThrowingFunction<String, Long>) PrimitiveBindings::timestamp);
         Integer page = DiscordUtil.parseArgInt(args, "page");
         String arg0 = StringMan.join(args, " ");
-        System.out.println("Args " + arg0);
         Set<NationOrAlliance> nations = PWBindings.nationOrAlliance(null, guild, arg0, author, me);
         if (args.isEmpty()) {
             return "Usage: `" + Settings.commandPrefix(true) + "pnw-who <discord-user>`";

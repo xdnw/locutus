@@ -288,10 +288,8 @@ public class SlashCommandManager extends ListenerAdapter {
                 }
                 toRegister.add(cmd);
             } catch (Throwable e) {
-                // print command
                 System.out.println("Slash command error: " + id + " | " + callable.getFullPath());
                 if (callable instanceof ParametricCallable parametric) {
-                    // print method and class
                     System.out.println(parametric.getMethod().getName() + " | " + parametric.getMethod().getDeclaringClass());
                 }
                 throw e;
@@ -828,12 +826,10 @@ public class SlashCommandManager extends ListenerAdapter {
             String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
                 isModal = false;
-                System.out.println("Path " + path);
                 if (ephemeralOrNull.contains(path)) {
                     RateLimitUtil.complete(event.deferReply(true));
                     hook.setEphemeral(true);
                 } else {
-                    System.out.println("Normal reply");
                     RateLimitUtil.queue(event.deferReply(false));
                 }
             }

@@ -959,7 +959,6 @@ public class CommandManager2 {
                     io.create().append(result.toString()).send();
                 }
             } catch (CommandUsageException e) {
-                System.out.println("Had usage exception");
                 Throwable root = e;
                 while (root.getCause() != null && root.getCause() != root) {
                     root = root.getCause();

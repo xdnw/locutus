@@ -880,7 +880,6 @@ public final class Locutus extends ListenerAdapter {
             Message message = event.getMessage();
 
             Button button = event.getButton();
-            Logg.text("Button press " + button.getId() + " | " + button.getLabel());
 
             if (button.getId().equalsIgnoreCase("")) {
                 RateLimitUtil.queue(message.delete());
@@ -1092,7 +1091,6 @@ public final class Locutus extends ListenerAdapter {
                 return false;
             }
         }
-        Logg.text("CMD1 " + cmd);
         if (!(cmdObject instanceof Noformat)) {
             DBNation nation = DiscordUtil.getNation(user);
             NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
@@ -1109,7 +1107,6 @@ public final class Locutus extends ListenerAdapter {
                 return false;
             }
         }
-        Logg.text("Run " + io.getClass());
         getCommandManager().run(guild, io, user, cmd, async, false);
         return true;
     }
@@ -1171,7 +1168,6 @@ public final class Locutus extends ListenerAdapter {
         DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
 
         String[] split = raw.split("\\r?\\n(?=[" + StringMan.join(getCommandManager().getAllPrefixes(), "|") + "|{])");
-        Logg.text("Split " + StringMan.getString(split));
         for (String cmd : split) {
             success |= handleCommandReaction(cmd, message, io, user, async);
         }

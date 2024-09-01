@@ -532,7 +532,6 @@ public class DiscordUtil {
             List<String> split = Arrays.asList(id.split("\\r?\\n(?=[" + StringMan.join(Locutus.cmd().getAllPrefixes(), "|") + "|{])"));
             List<CommandInfo> infos = new ArrayList<>(split.size());
             for (String cmd : split) {
-                System.out.println("Add cmd " + cmd);
                 infos.add(new CommandInfo(channelId, behavior, cmd));
             }
             return infos;

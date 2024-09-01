@@ -101,7 +101,6 @@ public class GuildCustomMessageHandler implements Runnable {
             // sort messages by delay desc
             messages.sort(Comparator.comparingLong(CustomConditionMessage::getDelay).reversed());
             newMessagesByGuild.put(db.getIdLong(), messages);
-            System.out.println("Messages " + messages.size() + " " + db.getGuild());
         }
         messagesByGuild = newMessagesByGuild;
     }
@@ -279,7 +278,6 @@ public class GuildCustomMessageHandler implements Runnable {
                                 continue;
                             }
 
-                            System.out.println("Send 1");
                             message.send(db, nation, sendEnabled);
                         } finally {
                             if (updateMeta) {

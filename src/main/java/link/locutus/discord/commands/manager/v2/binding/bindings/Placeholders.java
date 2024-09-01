@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -221,7 +222,6 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
         }
         for (TypedFunction<T, String> column : columnsNonNull) {
-            System.out.println("Add `" + column.getName() + "` | " + column.toString());
             sheet.columns.add(column.getName());
         }
         db.getSheetManager().addSheetTemplate(sheet);
@@ -238,9 +238,9 @@ public abstract class Placeholders<T> extends BindingHelper {
         Parser existing = store.get(key);
         if (existing != null) {
             if (existing instanceof MethodParser<?> mp) {
-                System.out.println("Existing: " + mp.getMethod().getDeclaringClass().getSimpleName() + " | " + mp.getMethod().getName());
+                Logg.text("Existing: " + mp.getMethod().getDeclaringClass().getSimpleName() + " | " + mp.getMethod().getName());
             } else {
-                System.out.println("Existing: " + key);
+                Logg.text("Existing: " + key);
             }
             return;
         }
@@ -536,10 +536,8 @@ public abstract class Placeholders<T> extends BindingHelper {
             // get function
             TypedFunction<T, ?> function = functions.get(section);
             if (function != null) {
-                System.out.println("Return function 1:" + function.getName() + " | " + function.getType());
                 return function;
             }
-            System.out.println("Return non function section " + section);
             return new ResolvedFunction<>(String.class, section, section);
         }
         boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ResolvedFunction.class::isInstance);
@@ -788,7 +786,6 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
 
         boolean finalIsResolved = isResolved;
-        System.out.println("Pre parse 2");
         Function<T, Object[]> resolved = f -> {
             Map<String, Object> finalArgs;
             if (!finalIsResolved) {

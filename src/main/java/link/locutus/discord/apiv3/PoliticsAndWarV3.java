@@ -187,7 +187,7 @@ public class PoliticsAndWarV3 {
                 throw new RuntimeException(e);
             }
             if (body != null && !errorMsg.contains("rate-limited") && !errorMsg.contains("database error") && !errorMsg.contains("couldn't find api key")) {
-                System.out.println("Unknown error with APIv3 Snapshot response: " + errorMsg + "\n\n---START BODY\n\n" + body + "\n\n---END BODY---\n\n");
+                Logg.text("Unknown error with APIv3 Snapshot response: " + errorMsg + "\n\n---START BODY\n\n" + body + "\n\n---END BODY---\n\n");
             }
             rethrow(new IllegalArgumentException(errorMsg.replace(pair.getKey(), "XXX")), pair, true);
         }
@@ -279,22 +279,21 @@ public class PoliticsAndWarV3 {
                 try {
                     HttpHeaders headers = e.getResponseHeaders();
                     // Retry-After
-                    if (headers != null) {
-                        String retryAfter = headers.getFirst("Retry-After");
-                        System.out.println("Retry-After " + retryAfter);
-                    }
                     long timeout = (60000L);
-                    System.out.println(e.getMessage());
+                    String retryAfter = null;
+                    if (headers != null) {
+                        retryAfter = headers.getFirst("Retry-After");
+                        timeout = retryAfter != null ? Math.min(60, Long.parseLong(retryAfter)) * 1000L : timeout;
+                    }
                     Logg.text("Rate Limited On:\n" +
                             "- Request: " + graphQLRequest.getRequest() + "\n" +
-                            "- Retry After: " + timeout + "ms");
+                            "- Retry After: " + retryAfter);
                     Thread.sleep(timeout);
                 } catch (InterruptedException ex) {
                     throw new RuntimeException(ex);
                 }
                 backOff++;
             } catch (HttpClientErrorException.Unauthorized e) {
-                System.out.println("Unauthorized ");
                 try {
                     if (badKey++ >= 4 || pool.size() <= 1) {
                         e.printStackTrace();
@@ -331,7 +330,7 @@ public class PoliticsAndWarV3 {
                     if (remove) pool.removeKey(pair);
                     continue;
                 }
-                System.out.println("Error " + graphQLRequest.toHttpJsonBody() + "\n- " + e.getMessage());
+                Logg.text("Error " + graphQLRequest.toHttpJsonBody() + "\n\n---START BODY---\n\n" + e.getMessage() + "\n\n---END BODY---\n\n");
                 rethrow(e, pair,false);
                 throw e;
             }
@@ -1045,7 +1044,6 @@ public class PoliticsAndWarV3 {
             }
         }, f -> ErrorResponse.THROW, f -> true);
         if (alliance == null || alliance.size() != 1) {
-            System.out.println("No results");
             return null;
         }
         return alliance.get(0).getBankrecs();

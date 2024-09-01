@@ -326,8 +326,6 @@ public class CommandManager {
                         }
                     }
                 }
-                System.out.println("Content 1: " + content1);
-
                 if (!(cmd instanceof Noformat) && nation != null && content1.indexOf('{') != -1 && content1.indexOf('}') != -1) {
                     try {
                         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
@@ -336,7 +334,6 @@ public class CommandManager {
                             assert guild != null;
                         }
                         content1 = formatted;
-                        System.out.println("FOrmatted to: " + content1);
                     } catch (IllegalArgumentException ignore) {}
                 }
 
@@ -526,7 +523,7 @@ public class CommandManager {
 
                     Map.Entry<DBNation, double[]> entry = ResourceType.parseIntelRss(content, null);
                     if (entry == null) {
-                        System.out.println("Failed to parse `" + content + "`");
+                        Logg.text("Failed to parse `" + content + "`");
                         return;
                     }
                     if (attacker != null) {

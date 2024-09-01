@@ -156,9 +156,7 @@ public class RequestTracker {
                         try {
                             if (sleepMs > 60000) {
                                 sleepMs = 60000;
-                                System.out.println("Sleeping for " + sleepMs + "ms, but limiting to 60s");
                             }
-                            System.out.println("Sleeping for " + sleepMs + "ms");
                             Thread.sleep(sleepMs);
                         } catch (InterruptedException e) {
                             e.printStackTrace();

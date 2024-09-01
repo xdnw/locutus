@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.DataFile;
@@ -36,15 +37,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class DataDumpParser {
-
-    public static void main(String[] args) throws IOException, ParseException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        DataDumpParser parser = new DataDumpParser().load();
-        System.out.println("Loaded");
-
-        System.out.println("Done!");
-        System.exit(1);
-    }
 
     private Map<Long, NationsFile> nationFilesByDay;
     private Map<Long, CitiesFile> cityFilesByDay;
@@ -178,10 +170,10 @@ public class DataDumpParser {
                     onEach.accept(day);
                 }
             } catch (IOException e) {
-                System.out.println("Error reading file " + day + " | " + (cityFile == null ? "no city file" : cityFile.getFilePart()));
+                Logg.text("Error reading file " + day + " | " + (cityFile == null ? "no city file" : cityFile.getFilePart()));
                 throw new RuntimeException(e);
             } catch (Throwable e) {
-                System.out.println("Error reading file (2) " + day + " | " + (cityFile == null ? "no city file" : cityFile.getFilePart()));
+                Logg.text("Error reading file (2) " + day + " | " + (cityFile == null ? "no city file" : cityFile.getFilePart()));
                 throw e;
             }
         });

@@ -64,7 +64,6 @@ public interface NationList extends NationFilter {
     }
 
     default void updateCities(boolean events) {
-        System.out.println("NationList update cities");
         if (events) {
             Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateCitiesOfNations(getNationIds(), true, true, f));
         } else {

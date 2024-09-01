@@ -411,7 +411,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 if (getAlliance(id) == null) newIds.add(id);
             }
         }
-        System.out.println("Update new alliances");
         return updateAlliancesById(new ArrayList<>(newIds), eventConsumer);
     }
 
@@ -448,7 +447,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
         Set<Integer> updated = processUpdatedAlliances(alliances, eventConsumer);
         if (!toDelete.isEmpty()) {
-            System.out.println("Update deleted alliances");
             updateAlliancesById(new ArrayList<>(toDelete), eventConsumer);
 //            deleteAlliances(toDelete, eventConsumer);
         }
@@ -757,7 +755,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             ids.addAll(getActiveAlliancesToUpdate(pad, Rank.MEMBER, AlliancePermission.EDIT_ALLIANCE_INFO, AlliancePermission.CHANGE_PERMISSIONS));
         }
 
-        System.out.println("Update outdated alliances");
         // Add new alliances as padding
         return updateNewAlliances(ids, eventConsumer);
     }
@@ -963,7 +960,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             ids = new ArrayList<>(dirtyNations);
             dirtyNations.clear();
         }
-        System.out.println("Dirty nation Ids " + ids.size());
         updateNations(ids, eventConsumer);
     }
 
@@ -982,7 +978,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         } else {
             fetched = updateNations(r -> r.setId(idsFinal), eventConsumer, eventConsumer != null);
-            System.out.println("Fetched " + fetched);
         }
         if (ids.size() >= 500 && fetched.isEmpty()) {
             System.out.println("No nations fetched");
@@ -1184,7 +1179,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
                 int numToFetch = 490 - idList.size();
                 List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new HashSet<>(idList));
-                System.out.println("Fetching active nation cities: " + mostActiveNations.size());
                 idList.addAll(mostActiveNations);
             }
         }
@@ -1194,14 +1188,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             List<Integer> toFetch = idList.subList(i, end);
             List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setNation_id(toFetch), true);
             Map<Integer, Map<Integer, City>> completeCities = new Int2ObjectOpenHashMap<>();
-            System.out.println("Return cities " + cities.size());
             for (City city : cities) {
                 completeCities.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
                         .put(city.getId(), city);
             }
             updateCities(completeCities, eventConsumer);
         }
-        System.out.println("Done update cities of nations");
     }
 
     public boolean updateDirtyCities(boolean priority, Consumer<Event> eventConsumer) {
@@ -1209,7 +1201,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         markDirtyIncorrectNations(true, true);
 
-        if (!dirtyCities.isEmpty()) System.out.println("Dirty cities " + dirtyCities.size());
         while (!dirtyCities.isEmpty()) {
             try {
                 Iterator<Integer> iter = dirtyCities.iterator();
@@ -1748,7 +1739,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             if (!toSave.isEmpty()) saveNations(toSave);
 
             if (!dirtyNationCities.isEmpty()) {
-                System.out.println("Dirty cities " + dirtyNationCities.size());
                 updateCitiesOfNations(dirtyNationCities, false, true, eventConsumer);
             }
 
@@ -2020,28 +2010,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 //                    fetchCitiesOfNations.add(curr.getNation_id());
 //                }
 //            }
-            System.out.println("Nations " + allNations.size());
-            System.out.println("Contains " + allNations.contains(DBNation.getById(10251)));
             for (DBNation nation : allNations) {
-                if (nation.getId() == 10251) {
-                    System.out.println("Score " + nation.getScore() + " | " + PW.estimateScore(this, nation));
-                } else if (allNations.size() == 1) {
-                    System.out.println("Updated " + nation.getId());
-                }
                 if (Math.round(100 * (nation.getScore() - PW.estimateScore(this, nation))) != 0) {
                     fetchCitiesOfNations.add(nation.getId());
                 }
             }
         }
 
-        System.out.println("Updated nations.\n" +
-                "Changes: " + nationChanges.size() + "\n" +
-                "Cities: " + fetchCitiesOfNations.size());
-        System.out.println("Dirty " + dirtyNations.size());
-
-
+        if (dirtyNations.size() > 1000) {
+            Logg.text("Updated nations.\n" +
+                    "Changes: " + nationChanges.size() + "\n" +
+                    "Cities: " + fetchCitiesOfNations.size() + "\n" +
+                    "Dirty: " + dirtyNations.size());
+        }
         if (!fetchCitiesOfNations.isEmpty() || (fetchMostActiveIfNoneOutdated)) {
-            System.out.println("Update cities " + fetchCitiesOfNations.size());
             updateCitiesOfNations(fetchCitiesOfNations, false, true, eventConsumer);
 
         }
@@ -3144,10 +3126,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 }
             }
         }
-        System.out.println("Score " + score.size());
         // Sorted
         score = new SummedMapRankBuilder<>(score).sort().get();
-        System.out.println("Score 2 " + score.size());
         Set<DBAlliance> result = new LinkedHashSet<>();
         for (int aaId : score.keySet()) {
             DBAlliance alliance = getAlliance(aaId);

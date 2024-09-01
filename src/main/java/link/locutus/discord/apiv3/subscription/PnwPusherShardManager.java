@@ -6,6 +6,7 @@ import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 import graphql.GraphQLException;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -90,19 +91,16 @@ public class PnwPusherShardManager {
                 db.deleteInfo(GuildKey.ESPIONAGE_ALERT_CHANNEL);
                 return false;
             }
-            System.out.println("Enabling pusher for " + allianceId);
             runningAlliances.add(allianceId);
             this.root.subscribeBuilder(key, Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, allianceId).build(nations -> {
                 try {
-                    System.out.println("Subscription alert " + allianceId);
                     spyTracker.updateCasualties(nations);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
             });
-            System.out.println("Subscribed to " + allianceId);
             spyTracker.loadCasualties(allianceId);
-            System.out.println("Loaded casualties for " + allianceId);
+            Logg.text("Loaded spy tracker for " + allianceId);
             this.root.connect();
             return true;
         }
@@ -136,7 +134,6 @@ public class PnwPusherShardManager {
                 }
 //                Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events));
             });
-            System.out.println("Loading alliances");
             for (DBAlliance alliance : nationDB.getAlliances()) {
                 if (!alliance.getNations(f -> f.active_m() < 7200 && f.getPositionEnum().id > Rank.APPLICANT.id && f.getVm_turns() == 0).isEmpty()) {
                     try {
@@ -146,8 +143,6 @@ public class PnwPusherShardManager {
                     }
                 }
             }
-            System.out.println("Done loading alliances");
-            // register alliances
         }
 
 //        { // cities

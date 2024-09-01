@@ -195,7 +195,6 @@ public class PrimitiveBindings extends BindingHelper {
             }
         }
         List<String> result = new ArrayList<>(StringMan.split(string, splitChar));
-        System.out.println("Split `" + splitChar + "` | " + result.size());
         for (int i = 0; i < result.size(); i++) {
             String s = result.get(i);
             if (s.length() <= 2) continue;

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -354,7 +355,7 @@ public class CommandGroup implements ICommandGroup {
                     try {
                         return f.newInstance();
                     } catch (InstantiationException | IllegalAccessException e) {
-                        System.out.println("Failed to instantiate " + f.getName() + " for " + clazz.getName() + " | " + methodInfo.method());
+                        Logg.text("Failed to instantiate " + f.getName() + " for " + clazz.getName() + " | " + methodInfo.method());
                         throw new RuntimeException(e);
                     }
                 });

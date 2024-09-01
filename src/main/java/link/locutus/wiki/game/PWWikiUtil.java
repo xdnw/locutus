@@ -390,7 +390,6 @@ public class PWWikiUtil {
 
         // If the file does not exist, fetch and save to sitemap.json
         if (!file.exists()) {
-            System.out.println("Fetching default pages");
             fetchDefaultPages();
         }
 
