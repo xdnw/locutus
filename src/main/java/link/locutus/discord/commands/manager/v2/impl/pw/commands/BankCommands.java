@@ -3031,8 +3031,8 @@ public class BankCommands {
                 Map<ResourceType, Double> amtA = approvedAmounts.getOrDefault(nationOrAlliance, Collections.emptyMap());
                 Map<ResourceType, Double> amtB = transfers.getOrDefault(nationOrAlliance, Collections.emptyMap());
                 if (!ResourceType.equals(amtA, amtB)) {
-                    System.out.println(nationOrAlliance + " | " + amtA + " | " + amtB);
-                    return "The confirmed amount does not match. Please try again";
+                    return "The confirmed amount does not match (For " + nationOrAlliance.getMarkdownUrl() + " `" + ResourceType.resourcesToString(amtA) + "` != `" + ResourceType.resourcesToString(amtB) + "`)\n" +
+                            "Please try again, and avoid confirming multiple transfers at once";
                 }
             }
         }

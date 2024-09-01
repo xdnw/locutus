@@ -863,13 +863,11 @@ public class GrantCommands {
                                                 "Defaults to false")
                                         @Switch("ignore") boolean allowIgnore,
                                         @Switch("f") boolean force) {
-        System.out.println(1);
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
             throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
         }
-        System.out.println(2);
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
@@ -885,25 +883,17 @@ public class GrantCommands {
         if (bracket != null && useReceiverBracket) {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
-        System.out.println(3);
         ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore);
-        System.out.println(4);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
-        System.out.println(5);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         // confirmation
         if (!force) {
-            System.out.println(6);
             String body = template.toFullString(me, null, null);
-            System.out.println(7);
             Set<Integer> aaIds = db.getAllianceIds();
-            System.out.println(7.1);
             Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
-            System.out.println(7.2);
             nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
-            System.out.println(8);
             if (nations.isEmpty()) {
                 body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
             }
@@ -912,10 +902,8 @@ public class GrantCommands {
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
                         "\n\n" + body;
             }
-            System.out.println(9);
             String prefix = existing != null ? "Overwrite " : "Create ";
             io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
-            System.out.println(10);
             return null;
         }
         manager.saveTemplate(template);

@@ -367,7 +367,6 @@ public class PWBindings extends BindingHelper {
             "Use `*` as the filter to match all nations.\n" +
             "Only alliance members can be given role")
     public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
-        System.out.println("Parse conditional roles " + input);
         Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             int index = line.lastIndexOf(":");
@@ -844,7 +843,6 @@ public class PWBindings extends BindingHelper {
     public static Set<DBNation> nations(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted, @Default @Me User user, @Default @Me DBNation nation) {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, user, nation, input, true, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
         if (nations.isEmpty() && (data == null || data.getAnnotation(AllowEmpty.class) == null)) {
-            System.out.println("Data " + data);
             throw new IllegalArgumentException("No nations found matching: `" + input + "`");
         }
         return nations;

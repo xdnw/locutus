@@ -427,7 +427,6 @@ public class RaidCommand extends Command {
                 for (Map.Entry<WarType, Double> entry : total.entrySet()) {
                     value = Math.max(value, entry.getValue());
                 }
-                System.out.println("Value2 " + MathMan.format(value));
             }
 
             double originalValue = value;

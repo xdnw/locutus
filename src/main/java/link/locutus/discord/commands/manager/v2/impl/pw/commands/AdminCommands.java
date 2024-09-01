@@ -548,7 +548,6 @@ public class AdminCommands {
             StringBuilder body = new StringBuilder("Unset " + settings.size() + " keys for " + guilds.size() + " servers\n");
             body.append("Unset on error: `" + unset_null + "`\n");
             body.append("Servers affected: `" + unsetReasons.size() + "`\n");
-            System.out.println("Create confirm " + command);
             io.create().confirmation(title, body.toString(), command)
                     .file("unset.txt", msg.toString())
                     .send();
@@ -1862,7 +1861,6 @@ public class AdminCommands {
                 toRemove.add(id);
             }
         }
-        System.out.println(StringMan.getString(toRemove));
         for (long id : toRemove) {
             db.removeCoalition(id,coalition);
         }

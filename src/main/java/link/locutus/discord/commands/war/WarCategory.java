@@ -787,8 +787,6 @@ public class WarCategory {
                 String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + msg.getId() + " " + CM.war.room.pin.cmd.toSlashMention();
                 RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
                 RateLimitUtil.queue(channel.pinMessageById(msg.getId()));
-            } else {
-                System.out.println("Topic is valid message " + topic + " | " + msg);
             }
 
             return msg;
