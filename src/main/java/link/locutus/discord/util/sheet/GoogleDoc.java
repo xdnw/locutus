@@ -108,7 +108,6 @@ public class GoogleDoc {
 
         Docs api = null;
 
-        System.out.println("Credentials " + credentialsExists());
         if (credentialsExists()) {
             if (documentId == null) {
                 // Set the title of the document

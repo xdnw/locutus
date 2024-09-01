@@ -156,7 +156,6 @@ public class OffshoreInstance {
 
         if (lastFunds2 != null && checkLast) {
             if (Arrays.equals(lastFunds2, stockpile)) {
-                System.out.println("Funds are the same");
                 outOfSync.set(false);
                 return true;
             }
@@ -173,7 +172,6 @@ public class OffshoreInstance {
 
         int finalBankMetaI = bankMetaI;
         if (!Settings.USE_V2) {
-            System.out.println("Fetch alliance bank records");
             List<Bankrec> bankRecs = api.fetchAllianceBankRecs(allianceId, f -> {
                 f.or_id(List.of(allianceId));
                 f.rtype(List.of(2));
@@ -199,7 +197,6 @@ public class OffshoreInstance {
                     minDate = Math.min(minDate, tx.tx_datetime);
                 }
 
-                System.out.println("Add " + bankRecs.size());
                 Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
 
                 if (bankRecs.size() > 0) {

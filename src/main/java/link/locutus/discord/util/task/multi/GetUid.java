@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.multi;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
@@ -41,9 +42,8 @@ public class GetUid implements Callable<BigInteger> {
                     Locutus.imp().getDiscordDB().addVerified(nation.getNation_id());
                 }
                 Locutus.imp().getDiscordDB().addUUID(nation.getNation_id(), uuid);
-                System.out.println("Fetched uid for " + nation.getNation_id() + " (" + uuid.toString(16) + ")");
             } else {
-                System.out.println("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
+                Logg.text("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
             }
             return uuid;
         } catch (Throwable e) {

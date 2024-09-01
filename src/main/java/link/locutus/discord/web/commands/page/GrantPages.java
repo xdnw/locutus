@@ -4,6 +4,7 @@ import gg.jte.generated.precompiled.grant.JtecitiesGenerated;
 import gg.jte.generated.precompiled.grant.JteinfrasGenerated;
 import gg.jte.generated.precompiled.grant.JtelandsGenerated;
 import gg.jte.generated.precompiled.grant.JteprojectsGenerated;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -47,7 +48,7 @@ public class GrantPages {
                 Boolean result = requirement.apply(nation);
                 long diff = System.currentTimeMillis() - start;
                 if (diff > 10) {
-                    System.out.println(requirement.getMessage() + " took " + (diff) + "ms");
+                    Logg.text(requirement.getMessage() + " took " + (diff) + "ms");
                 }
                 if (!result) {
                     if (requirement.canOverride()) {

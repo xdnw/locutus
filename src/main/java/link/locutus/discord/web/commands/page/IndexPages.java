@@ -300,7 +300,6 @@ public class IndexPages extends PageHelper {
             String nation2Str = nation2 == null ? "null" : nation2.getName();
             return "You are not logged in | " + user2Str + " | " + nation2Str;
         }
-        System.out.println("Current " + (current == null ? null : current.getName()));
         JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
         String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
         String locutusInvite = null;
@@ -344,7 +343,6 @@ public class IndexPages extends PageHelper {
     @Command()
     @RolePermission(Roles.MEMBER)
     public Object guildMemberIndex(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default DBNation nation) throws IOException {
-        System.out.println("NATION " + nation);
         if (nation == null) nation = me;
         if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.MILCOM.has(author, guild)) {
             return "You do not have permission to view another nations page";
@@ -355,21 +353,15 @@ public class IndexPages extends PageHelper {
         Map<DBWar, WarCard> warCards = new HashMap<>();
         Map<DBWar, AttackType> recommendedAttack = new HashMap<>();
 
-        long start = System.currentTimeMillis();
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (0)");
         List<DBWar> myWars = new ObjectArrayList<>(nation.getActiveWars());
 //        myWars = nation.getWars().subList(0, 5);
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (1)");
 
         Collections.sort(myWars, Comparator.comparingLong(o -> o.getDate()));
         Collections.reverse(myWars);
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (2)");
         List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (3)");
         boolean isFightingActives = false;
 
         Collection<JavaCity> cities = myWars.isEmpty() ? null : nation.getCityMap(false, false).values();
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (4)");
 
         for (DBWar war : myWars) {
             List<AbstractCursor> warAttacks = attacks.stream().filter(f -> f.getWar_id() == war.warId).collect(Collectors.toList());
@@ -389,11 +381,8 @@ public class IndexPages extends PageHelper {
                 defensiveWars.put(war, other);
             }
         }
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (5)");
-
         Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
         if (db.isWhitelisted() && db.hasAlliance()) {
-            System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (5.1)");
             try {
                 IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
                 checkupResult = checkup.checkup(nation, true, true);
@@ -403,7 +392,6 @@ public class IndexPages extends PageHelper {
             }
         }
         double[] deposits = nation.getNetDeposits(db, -1L, true);
-        System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (7)");
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);
 

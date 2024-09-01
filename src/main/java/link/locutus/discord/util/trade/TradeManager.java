@@ -122,9 +122,6 @@ public class TradeManager {
     }
 
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(Predicate<TradeDB.BulkTradeOffer> filter) {
-        Set<TradeDB.BulkTradeOffer> offers1 = offersByResource.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
-        Set<TradeDB.BulkTradeOffer> offers2 = offersByResource.values().stream().flatMap(Collection::stream).filter(filter).collect(Collectors.toSet());
-        System.out.println("Offers " + offers1.size() + " | " + offers2.size());
         return offersByResource.values().stream().flatMap(Collection::stream).filter(filter).filter(f -> !f.isExpired()).collect(Collectors.toSet());
     }
 
@@ -204,7 +201,6 @@ public class TradeManager {
         lowTmp[ResourceType.MONEY.ordinal()] = 1;
         highTmp[ResourceType.MONEY.ordinal()] = 1;
 
-        System.out.println(StringMan.getString(lowTmp) + " | " + StringMan.getString(highTmp));
         low = lowTmp;
         high = highTmp;
     }

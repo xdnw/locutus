@@ -1,5 +1,6 @@
 package link.locutus.discord.util.search;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
@@ -106,7 +107,7 @@ public class BFSUtil {
         }
 
         long diff = System.currentTimeMillis() - originalStart;
-        System.out.println("BFS. Searched " + i + " in " + diff + " for a rate of " + (i * 1000d / diff) + " per second");
+        Logg.text("BFS searched " + i + " options in " + diff + "ms for a rate of " + (i * 1000d / diff) + " per second");
         return max;
     }
 }
