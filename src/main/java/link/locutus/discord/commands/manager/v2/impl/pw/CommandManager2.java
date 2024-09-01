@@ -150,47 +150,33 @@ public class CommandManager2 {
     public CommandManager2() {
         long start = System.currentTimeMillis();
         this.store = new SimpleValueStore<>();
-        Logg.text("remove:||PERF CM2 store" + (-start + (start = System.currentTimeMillis())));
         new PrimitiveBindings().register(store);
-        Logg.text("remove:||PERF CM2 primtive bindings " + (-start + (start = System.currentTimeMillis())));
         new DiscordBindings().register(store);
-        Logg.text("remove:||PERF CM2 discord bindings " + (-start + (start = System.currentTimeMillis())));
         PWBindings pwBindings = new PWBindings();
-        Logg.text("remove:||PERF CM2 pw bindings (1) " + (-start + (start = System.currentTimeMillis())));
         pwBindings.register(store);
-        Logg.text("remove:||PERF CM2 pw bindings " + (-start + (start = System.currentTimeMillis())));
         new GPTBindings().register(store);
-        Logg.text("remove:||PERF CM2 gpt bindings" + (-start + (start = System.currentTimeMillis())));
         new SheetBindings().register(store);
-        Logg.text("remove:||PERF CM2 sheet bindings" + (-start + (start = System.currentTimeMillis())));
 //        new StockBinding().register(store);
         new NewsletterBindings().register(store);
-        Logg.text("remove:||PERF CM2 newsletter bindings" + (-start + (start = System.currentTimeMillis())));
 
         this.validators = new ValidatorStore();
         new PrimitiveValidators().register(validators);
-        Logg.text("remove:||PERF CM2 primitive validators" + (-start + (start = System.currentTimeMillis())));
 
         this.permisser = new PermissionHandler();
         new PermissionBinding().register(permisser);
-        Logg.text("remove:||PERF CM2 permission binding" + (-start + (start = System.currentTimeMillis())));
 
         this.placeholders = new PlaceholdersMap(store, validators, permisser);
-        Logg.text("remove:||PERF CM2 placeholders " + (-start + (start = System.currentTimeMillis())));
         // Register bindings
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?> ph = placeholders.get(type);
             ph.register(store);
         }
-        Logg.text("remove:||PERF CM2 register placeholders" + (-start + (start = System.currentTimeMillis())));
         // Initialize commands (staged after bindings as there might be cross dependency)
         for (Class<?> type : placeholders.getTypes()) {
             placeholders.get(type).init();
         }
-        Logg.text("remove:||PERF CM2 init placeholders" + (-start + (start = System.currentTimeMillis())));
 
         this.commands = CommandGroup.createRoot(store, validators);
-        Logg.text("remove:||PERF CM2 create root" + (-start + (start = System.currentTimeMillis())));
 
         if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY.isEmpty()) {
             try {
@@ -199,7 +185,6 @@ public class CommandManager2 {
                      IOException e) {
                 throw new RuntimeException(e);
             }
-            Logg.text("remove:||PERF CM2 init gpt handler" + (-start + (start = System.currentTimeMillis())));
         }
     }
 
@@ -729,7 +714,6 @@ public class CommandManager2 {
         if (!fullCmdStr.isEmpty() && Locutus.cmd().isModernPrefix(fullCmdStr.charAt(0))) {
             fullCmdStr = fullCmdStr.substring(1);
         }
-        System.out.println("remove:|| full " + fullCmdStr);
         Message message = null;
         MessageChannel channel = null;
         if (io instanceof DiscordChannelIO dio) {

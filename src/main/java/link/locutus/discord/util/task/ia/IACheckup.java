@@ -160,9 +160,6 @@ public class IACheckup {
     }
 
     public Map<AuditType, Map.Entry<Object, String>> checkup(DBNation nation, AuditType[] audits, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        int days = 120;
-
-        long start = System.currentTimeMillis();
         Map<Integer, JavaCity> cities = nation.getCityMap(false);
         if (cities.isEmpty()) {
             return new HashMap<>();
@@ -178,12 +175,7 @@ public class IACheckup {
         Map<ResourceType, Double> stockpile = memberStockpile.get(nation);
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
-            long start2 = System.currentTimeMillis();
             audit(type, nation, transactions, cities, stockpile, results, individual, fast);
-            long diff = System.currentTimeMillis() - start2;
-            if (diff > 10) {
-                System.out.println("remove:||Checkup Diff " + type + " | " + diff + " ms");
-            }
         }
 
         long bitMask = 0;

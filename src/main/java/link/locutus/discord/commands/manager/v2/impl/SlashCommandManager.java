@@ -716,24 +716,20 @@ public class SlashCommandManager extends ListenerAdapter {
         CommandCallable cmd = cmdAndPath.getKey();
 
         if (cmd == null) {
-            System.out.println("remove:||No command found: " + path);
+            Logg.text("[Autocomplete]" + user + " | No command found for: `" + path + "`");
             return;
         }
 
         if (!(cmd instanceof ParametricCallable parametric)) {
-            System.out.println("remove:||Not parametric: " + path);
+            Logg.text("[Autocomplete]" + user + " | Cannot provide completions for a command group: `" + path + "`");
             return;
         }
 
         Map<String, ParameterData> map = parametric.getUserParameterMap();
         ParameterData param = map.get(optionName);
         if (param == null) {
-            System.out.println("remove:||No parameter found for " + optionName + " | " + map.keySet());
+            Logg.text("[Autocomplete]" + user + " | No parameter found for `" + optionName + "` (args: `" + map.keySet() + "`) at `" + path + "`");
             return;
-        }
-
-        if (event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
-            System.out.println("remove:||Admin runs complete " + path + " | " + option.getValue());
         }
 
         /*
@@ -757,7 +753,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 }
 
                 if (parser == null) {
-                    System.out.println("remove:||No completer found for " + key);
+                    Logg.text("[Autocomplete]" + user + " | No parser or completer found for `" + key + "` at `" + path + "`");
                     return;
                 }
 
@@ -782,7 +778,7 @@ public class SlashCommandManager extends ListenerAdapter {
                     Object result = parser.apply(stack);
                     if (!(result instanceof List) || ((List) result).isEmpty()) {
                         long diff = System.currentTimeMillis() - (startNanos / 1_000_000);
-                        System.out.println("remove:||No results for " + option.getValue() + " | " + diff);
+                        Logg.text("[Autocomplete]" + user + " | No results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
                         return;
                     }
                     List<Object> resultList = (List<Object>) result;
@@ -805,7 +801,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 if (!choices.isEmpty()) {
                     double diff = (System.nanoTime() - startNanos) / 1_000_000d;
                     if (diff > 15) {
-                        System.out.println("remove:||results for " + option.getValue() + " | " + key + " | " + MathMan.format(diff));
+                        Logg.text("[Autocomplete]" + user + " | Results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
                     }
                     long newCompleteTime = userIdToAutoCompleteTimeNs.get(user.getIdLong());
                     if (newCompleteTime != startNanos) {
@@ -856,7 +852,7 @@ public class SlashCommandManager extends ListenerAdapter {
             Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path, combined, true);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
-                System.out.println("remove:||Slash command interaction took " + (end - start) + "ms");
+                Logg.text("[Slash Command] Slash interaction `" + path + "` | `" + combined + "` took " + (end - start) + "ms");
             }
         } catch (Throwable e) {
             e.printStackTrace();

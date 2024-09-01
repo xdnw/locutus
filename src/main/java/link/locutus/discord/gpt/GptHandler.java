@@ -48,17 +48,11 @@ public class GptHandler {
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         long start = System.currentTimeMillis();
-        Logg.text("remove:|| gpthandler1 new registry " + (-start + (start = System.currentTimeMillis())));
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
-        Logg.text("remove:|| gpthandler1 new service " + (-start + (start = System.currentTimeMillis())));
-        Logg.text("remove:|| gpthandler1 new platform " + (-start + (start = System.currentTimeMillis())));
-
         this.moderator = new GPTModerator(service);
-        Logg.text("remove:|| gpthandler1 new moderator " + (-start + (start = System.currentTimeMillis())));
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
         this.embeddingDatabase = new MiniEmbedding(database);
-        Logg.text("remove:|| gpthandler1 new embeddingDatabase " + (-start + (start = System.currentTimeMillis())));
 
 
         File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
@@ -73,10 +67,8 @@ public class GptHandler {
             }
 //        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
             this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
-            Logg.text("remove:|| gpthandler1 new processT2 " + (-start + (start = System.currentTimeMillis())));
         } else {
             processT2 = null;
-            Logg.text("remove:|| gpthandler1 new processT2 null " + (-start + (start = System.currentTimeMillis())));
         }
     }
 

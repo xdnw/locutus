@@ -191,22 +191,21 @@ public class PreLoader implements ILoader {
             cmdMan.registerCommands(db);
             return null;
         });
-
-        System.out.println("Setup monitor");
         setupMonitor();
     }
 
     private void setupMonitor() {
+        Logg.text("Initializing Startup Monitor");
         scheduler.schedule(() -> {
             List<String> deadlocks = detectDeadlock(resolverThreads.values().stream().map(Thread::getId).collect(Collectors.toSet()));
             if (!deadlocks.isEmpty()) {
-                Logg.text("# " + deadlocks.size() + " Deadlocks detected\n" + deadlocks);
+                Logg.text("\n[Startup Monitor] " + deadlocks.size() + " Deadlocks detected\n" + deadlocks + "\n");
             } else {
                 String stacktrace = printStacktrace();
                 if (!stacktrace.isEmpty()) {
-                    Logg.text("Initializing Locutus taking longer than expected (30s):\n" + stacktrace);
+                    Logg.text("\n[Startup Monitor] Initializing the bot taking longer than expected, but is not hung (120s):\n" + stacktrace + "\n");
                 } else {
-                    Logg.text("Locutus initialized successfully");
+                    Logg.text("\n[Startup Monitor] Detected no hung or incomplete startup threads (they either completed successfully or completed with errors)");
                 }
             }
         }, 120, TimeUnit.SECONDS);

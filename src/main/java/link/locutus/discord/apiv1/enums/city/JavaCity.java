@@ -610,7 +610,6 @@ public class JavaCity implements ICity {
         CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
         CityBranch searchServices = new CityBranch(cached);
         CityNode optimized = searchServices.toOptimal(valueFunction, goal, timeout);
-        System.out.println("Buildings " + (optimized == null ? "null" : optimized.getNumBuildings()));
         if (optimized != null) copy.setBuildings(optimized);
         return optimized == null ? null : copy;
     }

@@ -36,11 +36,8 @@ public class MiniEmbedding extends AEmbeddingDatabase {
                                 .optEngine("PyTorch")
                                 .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
                                 .build();
-                        Logg.text("remove:||PERF Mini embedding " + (-start + (start = System.currentTimeMillis())));
                         this.model = criteria.loadModel();
-                        Logg.text("remove:||PERF Mini embedding load " + (-start + (start = System.currentTimeMillis())));
                         predictor = model.newPredictor();
-                        Logg.text("remove:||PERF Mini embedding predictor " + (-start + (start = System.currentTimeMillis())));
                     } catch (ModelNotFoundException | MalformedModelException | IOException e) {
                         throw new RuntimeException(e);
                     }

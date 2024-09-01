@@ -72,9 +72,7 @@ public class TradeManager {
     public TradeManager() throws SQLException, ClassNotFoundException {
         long start = System.currentTimeMillis();
         this.tradeDb = new TradeDB();
-        Logg.text("remove:||PERF tm1 " + (-start + (start = System.currentTimeMillis())) + "ms");
         loadBulkOffers();
-        Logg.text("remove:||PERF tm2 " + (-start + (start = System.currentTimeMillis())) + "ms");
     }
 
     private void loadBulkOffers() {

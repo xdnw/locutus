@@ -74,17 +74,14 @@ public class TradeDB extends DBMainV2 {
         // add index for seller and buyer if not exist
         executeStmt("CREATE INDEX IF NOT EXISTS index_trade_seller ON TRADES (seller);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_trade_buyer ON TRADES (buyer);");
-        System.out.println("remove:|| tm tb1 " + (-start + (start = System.currentTimeMillis())) + "ms");
 
         deleteIncompleteTrades();
-        System.out.println("remove:|| tm tb2 " + (-start + (start = System.currentTimeMillis())) + "ms");
 
         TablePreset.create("COLOR_BLOC")
                 .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("name", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
                 .putColumn("bonus", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .create(getDb());
-        System.out.println("remove:|| tm tb3 " + (-start + (start = System.currentTimeMillis())) + "ms");
         try {
             try (PreparedStatement close = prepareQuery("ALTER TABLE TRADES ADD COLUMN `type` INT NOT NULL DEFAULT 0" )) {close.execute();}
             try (PreparedStatement close = prepareQuery("ALTER TABLE TRADES ADD COLUMN `date_accepted` BIGINT NOT NULL DEFAULT 0" )) {close.execute();}
@@ -102,8 +99,6 @@ public class TradeDB extends DBMainV2 {
                 .buildQuery(getDb().getType());
         query = query.replace(");", ", PRIMARY KEY(user, resource, isBuy, above, type));");
         getDb().executeUpdate(query);
-
-        System.out.println("remove:|| tm tb4 " + (-start + (start = System.currentTimeMillis())) + "ms");
 
         {
             query = "CREATE TABLE IF NOT EXISTS `TRADEPRICE_2` (`resource` INT NOT NULL, `ppu` INT NOT NULL, `isBuy` INT NOT NULL, PRIMARY KEY(resource, isBuy))";
@@ -132,13 +127,9 @@ public class TradeDB extends DBMainV2 {
                     "`exchangePPU` BLOB)";
             executeStmt(stmt);
         }
-        System.out.println("remove:|| tm tb5 " + (-start + (start = System.currentTimeMillis())) + "ms");
         purgeExpiredMarketOffers();
-        System.out.println("remove:|| tm tb6 " + (-start + (start = System.currentTimeMillis())) + "ms");
         purgeSubscriptions();
-        System.out.println("remove:|| tm tb7 " + (-start + (start = System.currentTimeMillis())) + "ms");
         loadColorBlocs();
-        System.out.println("remove:|| tm tb8 " + (-start + (start = System.currentTimeMillis())) + "ms | " + (System.currentTimeMillis() - startOrigin) + "ms");
     }
 
     public static class BulkTradeOffer {

@@ -433,7 +433,6 @@ public class WarDB extends DBMainV2 {
             warsByAllianceId.clear();
             warsByNationId.clear();
         }
-        long start = System.currentTimeMillis();
         Int2IntOpenHashMap numWarsByAlliance = new Int2IntOpenHashMap();
         Int2IntOpenHashMap numWarsByNation = new Int2IntOpenHashMap();
         for (DBWar war : allWars) {
@@ -442,16 +441,13 @@ public class WarDB extends DBMainV2 {
             numWarsByNation.addTo(war.getAttacker_id(), 1);
             numWarsByNation.addTo(war.getDefender_id(), 1);
         }
-        Logg.text("remove:||Perf count wars " + (-start + (start = System.currentTimeMillis())));
         warsById.addAll(allWars);
-        Logg.text("remove:||Perf add wars " + (-start + (start = System.currentTimeMillis())));
         for (DBWar war : allWars) {
             if (war.getAttacker_aa() != 0) setWar(war, war.getAttacker_aa(), numWarsByAlliance.addTo(war.getAttacker_aa(), -1) + 1, this.warsByAllianceId);
             if (war.getDefender_aa() != 0) setWar(war, war.getDefender_aa(), numWarsByAlliance.addTo(war.getDefender_aa(), -1) + 1, this.warsByAllianceId);
             setWar(war, war.getAttacker_id(), numWarsByNation.addTo(war.getAttacker_id(), -1) + 1, this.warsByNationId);
             setWar(war, war.getDefender_id(), numWarsByNation.addTo(war.getDefender_id(), -1) + 1, this.warsByNationId);
         }
-        Logg.text("remove:||Perf set wars " + (-start + (start = System.currentTimeMillis())));
                 }
             }
         }
@@ -519,50 +515,34 @@ public class WarDB extends DBMainV2 {
     }
 
     public WarDB load() {
-        Logg.text("remove:||PERF Loading wars and attacks");
         long start = System.currentTimeMillis();
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
-        Logg.text("remove:||PERF Loaded wars " + (-start + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
-            Logg.text("remove:||PERF Loading attacks " + (-start + (start = System.currentTimeMillis())));
             importLegacyAttacks();
-            Logg.text("remove:||PERF Loaded legacy attacks " + (-start + (start = System.currentTimeMillis())));
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
-            Logg.text("remove:||PERF Loaded wardb attacks in " + (-start + (start = System.currentTimeMillis())));
 
             if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
-                Logg.text("No wars loaded, fetching all");
                 updateAllWars(null);
-                Logg.text("Done fetching wars");
             }
 
             if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
-                Logg.text("No attacks loaded, fetching all");
                 AttackCursorFactory factory = new AttackCursorFactory(this);
                 List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
-                Logg.text("remove:||PERF Done fetching attacks, now adapting them");
                 List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
                 for (WarAttack v3Attack : attacks) {
                     attackList.add(factory.load(v3Attack, true));
                 }
-                Logg.text("remove:||PERF Done adapting attacks, now saving them");
                 saveAttacks(attackList, null);
-                Logg.text("Done fetching attacks");
             }
 
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0 && !hasAnyBounties()) {
-                Logg.text("No bounties loaded, fetching all");
                 updateBountiesV3();
-                Logg.text("Done fetching bounties");
             }
         }
 
-        System.out.println("Sync blockades??? " + activeWars.getActiveWars().size());
         activeWars.syncBlockades();
-        Logg.text("remove:||PERF Loaded wars and attacks " + (-start + (start = System.currentTimeMillis())));
         if (conflictManager != null) {
             conflictManager.loadConflicts();
-            Logg.text("remove:||PERF Loaded conflicts " + (-start + (start = System.currentTimeMillis())));
         }
 
 
@@ -2341,13 +2321,9 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        Logg.text("remove:||PERF Done generating loot");
-
         if (lootList != null) {
             Locutus.imp().getNationDB().saveLoot(lootList, eventConsumer);
         }
-
-        Logg.text("remove:||PERF Done saving loot");
 
         List<AttackEntry> toSave = new ArrayList<>();
         Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
@@ -2399,8 +2375,6 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        Logg.text("remove:||PERF Done adding to map");
-
         // String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
         String query = "INSERT OR REPLACE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
         executeBatch(toSave, query, new ThrowingBiConsumer<AttackEntry, PreparedStatement>() {
@@ -2414,8 +2388,6 @@ public class WarDB extends DBMainV2 {
                 stmt.setBytes(6, attack.data());
             }
         });
-
-        Logg.text("remove:||PERF Done saving to db");
     }
 
     public boolean updateAttacks(Consumer<Event> eventConsumer) {
@@ -2638,8 +2610,6 @@ public class WarDB extends DBMainV2 {
         List<byte[]> attacks = new ObjectArrayList<>();
         Int2IntOpenHashMap numAttacksByWarId = new Int2IntOpenHashMap();
 
-        Logg.text("remove:||PERF loadAttacks: " + (-start + (start = System.currentTimeMillis())));
-
         try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -2655,16 +2625,12 @@ public class WarDB extends DBMainV2 {
             e.printStackTrace();
         }
 
-        Logg.text("remove:||PERF loadAttacks2: " + (-start + (start = System.currentTimeMillis())));
-
         for (int i = 0; i < attacks.size(); i++) {
             byte[] data = attacks.get(i);
             int warId = warIds.getInt(i);
             int size = numAttacksByWarId.get(warId);
             attacksByWarId2.computeIfAbsent(warId, f -> new ObjectArrayList<>(size)).add(data);
         }
-
-        Logg.text("remove:||PERF loadAttacks3: " + (-start + (start = System.currentTimeMillis())));
     }
 
 //    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar2(int nationId, long startDate) {

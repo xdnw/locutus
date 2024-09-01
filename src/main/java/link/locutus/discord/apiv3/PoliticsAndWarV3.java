@@ -14,6 +14,7 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -180,13 +181,13 @@ public class PoliticsAndWarV3 {
                     return jacksonObjectMapper.readerForListOf(type).readValue(body);
                 }
             } catch (IOException e) {
-                if (body != null) {
-                    System.out.println("Body " + body);
-                }
                 errorMsg = e.getMessage();
                 errorMsg = errorMsg == null ? "" : StringMan.stripApiKey(errorMsg);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
+            }
+            if (body != null && !errorMsg.contains("rate-limited") && !errorMsg.contains("database error") && !errorMsg.contains("couldn't find api key")) {
+                System.out.println("Unknown error with APIv3 Snapshot response: " + errorMsg + "\n\n---START BODY\n\n" + body + "\n\n---END BODY---\n\n");
             }
             rethrow(new IllegalArgumentException(errorMsg.replace(pair.getKey(), "XXX")), pair, true);
         }
@@ -202,7 +203,9 @@ public class PoliticsAndWarV3 {
                     if (sleepMs > 0) {
                         try {
                             sleepMs = Math.min(sleepMs, 60 * 1000);
-                            System.out.println("Hit rate limit ( " + rateLimitGlobal.limit + " | " + sleepMs + " )");
+                            Logg.text("Pausing API requests to avoid being rate limited:\n" +
+                                    "- Limit: " + rateLimitGlobal.limit + "\n" +
+                                    "- Retry After: " + sleepMs + "msg");
                             Thread.sleep(sleepMs + 1000);
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
@@ -253,10 +256,11 @@ public class PoliticsAndWarV3 {
                 JsonNode json = jacksonObjectMapper.readTree(body);
 
                 if (json.has("errors")) {
-                    System.out.println("Body " + exchange.getBody());
-                    System.out.println("\n\n------\n");
-                    System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
-                    System.out.println("\n\n------\n");
+                    StringBuilder printToConsole = new StringBuilder("[GraphQL][" + priority + "] Error with " + graphQLRequest.getRequest());
+                    printToConsole.append("\n\n---START BODY---\n");
+                    printToConsole.append(body);
+                    printToConsole.append("\n\n---END BODY---\n");
+                    Logg.text(printToConsole.toString());
                     JsonNode errors = json.get("errors");
                     List<String> errorMessages = new ObjectArrayList<>();
                     for (JsonNode error : errors) {
@@ -273,7 +277,6 @@ public class PoliticsAndWarV3 {
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
                 try {
-                    System.out.println("Status " + e.getStatusText());
                     HttpHeaders headers = e.getResponseHeaders();
                     // Retry-After
                     if (headers != null) {
@@ -282,7 +285,9 @@ public class PoliticsAndWarV3 {
                     }
                     long timeout = (60000L);
                     System.out.println(e.getMessage());
-                    System.out.println("Hit rate limit 2 " + timeout + "ms");
+                    Logg.text("Rate Limited On:\n" +
+                            "- Request: " + graphQLRequest.getRequest() + "\n" +
+                            "- Retry After: " + timeout + "ms");
                     Thread.sleep(timeout);
                 } catch (InterruptedException ex) {
                     throw new RuntimeException(ex);
@@ -453,7 +458,6 @@ public class PoliticsAndWarV3 {
                     break pageLoop;
                 }
                 if (result.hasErrors()) {
-                    System.out.println("Has error ");
                     int maxBehavior = 0;
                     List<GraphQLError> errors = result.getErrors();
                     for (GraphQLError error : errors) {
@@ -468,7 +472,10 @@ public class PoliticsAndWarV3 {
                         case RETRY:
                             try {
                                 long timeout = Math.min(60000, (long) (1000 + Math.pow(i * 1000, 2)));
-                                System.out.println("Hit rate limit 3 " + timeout + "ms");
+                                Logg.text("Handle Rate Limit (backoff):\n" +
+                                        "- Request: " + graphQLRequest.getRequest() + "\n" +
+                                        "- Retry After: " + timeout + "ms" +
+                                        "\n\n---\n\n" + errors + "\n\n---\n\n");
                                 Thread.sleep(timeout);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();

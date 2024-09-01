@@ -81,7 +81,6 @@ public class AuthBindings extends WebBindingHelper {
             }
             url =  WebRoot.REDIRECT + "/page/login";
         } else {
-            System.out.println(":||Remove Redirect discord oauth user page");
             url = AuthBindings.getDiscordAuthUrl();
         }
         throw new RedirectResponse(HttpStatus.SEE_OTHER, url);
@@ -99,7 +98,6 @@ public class AuthBindings extends WebBindingHelper {
             if (nation != null) {
                 return nation;
             }
-            System.out.println(":||Remove Redirect register page");
             url =  WebRoot.REDIRECT + "/page/register";
         } else {
             url = WebRoot.REDIRECT + "/page/login?nation";

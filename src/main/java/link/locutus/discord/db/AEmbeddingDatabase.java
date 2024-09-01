@@ -72,19 +72,12 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         loaded = true;
         long start = System.currentTimeMillis();
         createTables();
-        Logg.text("remove:|| aedb create tables " + (-start + (start = System.currentTimeMillis())));
         importLegacyDate();
-        Logg.text("remove:|| aedb import legacy data " + (-start + (start = System.currentTimeMillis())));
         loadVectors();
-        Logg.text("remove:|| aedb load vectors " + (-start + (start = System.currentTimeMillis())));
         loadHashesBySource();
-        Logg.text("remove:|| aedb load hashes by source " + (-start + (start = System.currentTimeMillis())));
         loadSources();
-        Logg.text("remove:|| aedb load sources " + (-start + (start = System.currentTimeMillis())));
         loadExpandedTextMeta();
-        Logg.text("remove:|| aedb load expanded text meta " + (-start + (start = System.currentTimeMillis())));
         loadUnconvertedDocuments();
-        Logg.text("remove:|| aedb load unconverted documents " + (-start + (start = System.currentTimeMillis())));
         return (T) this;
     }
 

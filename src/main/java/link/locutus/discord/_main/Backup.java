@@ -1,5 +1,6 @@
 package link.locutus.discord._main;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.TimeUtil;
 
@@ -18,7 +19,7 @@ public class Backup {
         int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
         String script = Settings.INSTANCE.BACKUP.SCRIPT;
         if (script.isEmpty()) {
-            System.out.println("""
+            Logg.text("""
                     No backup script is mentioned in the config.yaml
                     It is recommended to set a backup script to prevent data loss
                     e.g. <https://restic.net/>
@@ -42,7 +43,7 @@ public class Backup {
         if (!lastBackup.exists()) {
 //            lastBackup.createNewFile();
             if (!lastBackup.createNewFile()) {
-                System.out.println("Failed to create lastBackup.txt");
+                Logg.text("Failed to create lastBackup.txt");
                 return;
             }
             shouldBackup = true;
@@ -75,7 +76,7 @@ public class Backup {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                System.out.println(line);
+                Logg.text(line);
             }
         } catch (IOException e) {
             // handle exception
