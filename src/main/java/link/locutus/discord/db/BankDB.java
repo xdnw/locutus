@@ -154,7 +154,6 @@ public class BankDB extends DBMainV3 {
         long start = System.currentTimeMillis();
         List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
         int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
-        System.out.println("Latest tx id: " + minId + " in " + (System.currentTimeMillis() - start) + "ms");
         List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(priority, new Consumer<BankrecsQueryRequest>() {
             @Override
             public void accept(BankrecsQueryRequest request) {
@@ -891,7 +890,6 @@ public class BankDB extends DBMainV3 {
         invalidateTXCache();
         int[] result;
         if (queries.size() == 1) {
-            System.out.println("Add 1");
             result = new int[]{queries.get(0).execute()};
         } else {
             result = ctx().batch(queries).execute();

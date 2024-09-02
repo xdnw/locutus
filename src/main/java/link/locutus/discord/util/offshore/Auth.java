@@ -111,7 +111,6 @@ public class Auth {
 
             String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN, url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
-                System.out.println(loginResult);
                 throw new IllegalArgumentException("Error: " + PW.parseDom(Jsoup.parse(loginResult), "columnheader"));
             }
             loggedIn = true;
@@ -185,7 +184,7 @@ public class Auth {
                         if (tables.isEmpty()) {
                             String alerts = PW.getAlert(dom);
                             if (alerts == null || alerts.isEmpty()) {
-                                System.out.println(html);
+                                Logg.text("Unable to confirm login\n\n---START BODY---\n\n" + html + "\n\n---END BODY---\n\n");
                             }
                             throw new IllegalArgumentException("Error: " + alerts);
                         }
@@ -472,8 +471,7 @@ public class Auth {
                         }
                     }
                 }
-                System.out.println(result);
-                new Exception().printStackTrace();
+                Logg.text("Failed to set rank:\n\n---START BODY---\n\n" + result + "\n\n---END BODY---\n\n");
             }
             result = readStringFromURL(PagePriority.TOKEN, url, Collections.emptyMap());
             dom = Jsoup.parse(result);
@@ -509,8 +507,7 @@ public class Auth {
                 response.append('\n').append(element.text());
             }
             if (alerts == 0) {
-                System.out.println("could not find alert for setrank " + dom);
-                response.append('\n').append("Set player rank ingame. Remember to also set the rank on discord.");
+                response.append('\n').append("Set player rank ingame (probably? please confirm ingame). Remember to also set the rank on discord.");
             }
 
             nation.update(false);

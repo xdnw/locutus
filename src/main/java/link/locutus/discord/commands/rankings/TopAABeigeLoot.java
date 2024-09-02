@@ -74,12 +74,6 @@ public class TopAABeigeLoot extends Command {
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
         sorted.nameKeys(i -> PW.getName(i, true)).build(author, channel, fullCommandRaw, title);
-
-        for (Integer integer : sorted.get().keySet()) {
-            System.out.println(PW.getBBUrl(integer, true));
-        }
-
-
         return null;
     }
 }

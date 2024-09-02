@@ -139,7 +139,6 @@ public class PageRequestQueue {
 //            double fiveCount = tracker.getDomainRequestsSince(task.getUrl(), fiveMinutes) / 5d;
             double maxCount = minuteCount;//Math.max(minuteCount, fiveCount);
 
-            System.out.println("Current minute count is " + minuteCount);
             long submitDate = task.getCreationDate();
             long bufferMs = task.getAllowBuffering();
             long delayMs = task.getAllowDelay();

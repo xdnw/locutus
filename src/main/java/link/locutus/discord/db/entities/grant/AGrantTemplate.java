@@ -155,13 +155,11 @@ public abstract class AGrantTemplate<T> {
     public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable);
 
     public String toFullString(DBNation sender, DBNation receiver, T parsed) {
-        System.out.println(6.1);
         // sender or receiver may be null
         StringBuilder data = new StringBuilder();
         if (!enabled) {
             data.append("Disabled: enable with " + CM.grant_template.enable.cmd.toSlashMention() + "\n");
         }
-        System.out.println(6.2);
         data.append("Name: `").append(getName()).append("`\n");
         data.append("Type: `").append(this.getType().name()).append("`\n");
         data.append("Allowed: `" + nationFilter.getFilter() + "`\n");
@@ -170,7 +168,6 @@ public abstract class AGrantTemplate<T> {
             String roleStr = role == null ? "`<@&" + econRole + ">`" : role.getAsMention();
             data.append("Granter Other: ").append(roleStr).append("\n");
         }
-        System.out.println(6.3);
         if (selfRole > 0) {
             Role role = getSelfRole();
             String roleStr = role == null ? "`<@&" + selfRole + ">`" : role.getAsMention();
@@ -194,7 +191,6 @@ public abstract class AGrantTemplate<T> {
         if (allowIgnore) {
             data.append("Allow #ignore: `true`\n");
         }
-        System.out.println(6.4);
         if (maxGranterTotal > 0) {
             data.append("Total(Granter): `");
             if (sender != null) {
@@ -202,7 +198,6 @@ public abstract class AGrantTemplate<T> {
             }
             data.append(maxGranterTotal).append("`\n");
         }
-        System.out.println(6.5);
         if (maxGranterDay > 0) {
             data.append("Daily(Granter): `");
             if (sender != null) {
@@ -210,19 +205,13 @@ public abstract class AGrantTemplate<T> {
             }
             data.append(maxGranterDay).append("`\n");
         }
-        System.out.println(6.6);
-
         data.append(toInfoString(sender, receiver, parsed));
-        System.out.println(6.7);
-
         // receiver markdown
         if (sender != null && receiver != null) {
-            System.out.println(6.8);
             double[] cost = getCost(db, sender, receiver, parsed);
             if (cost != null) {
                 data.append("Cost: `").append(ResourceType.resourcesToString(cost)).append("`\n");
             }
-            System.out.println(6.9);
             List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed);
             Set<Grant.Requirement> failedFinal = new HashSet<>();
             Set<Grant.Requirement> failedOverride = new HashSet<>();
@@ -236,37 +225,30 @@ public abstract class AGrantTemplate<T> {
                     }
                 }
             }
-            System.out.println(6.11);
             if (!failedFinal.isEmpty()) {
                 data.append("Errors:\n");
                 for (Grant.Requirement requirement : failedFinal) {
                     data.append("- " + requirement.getMessage()).append("\n");
                 }
             }
-            System.out.println(6.12);
             if (!failedOverride.isEmpty()) {
                 data.append("Warnings:\n");
                 for (Grant.Requirement requirement : failedOverride) {
                     data.append("- " + requirement.getMessage()).append("\n");
                 }
             }
-            System.out.println(6.13);
             String instructions = this.getInstructions(sender, receiver, parsed);
             if (instructions != null && !instructions.isEmpty()) {
                 data.append("Instructions:\n>>> ").append(instructions).append("\n");
             }
-            System.out.println(6.14);
         } else {
-            System.out.println(6.15);
             List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed);
-            System.out.println(6.16);
             if (!requirements.isEmpty()) {
                 data.append("\n**Template Checks:**\n");
                 for (Grant.Requirement requirement : requirements) {
                     data.append("- " + requirement.getMessage()).append("\n");
                 }
             }
-            System.out.println(6.17);
         }
 
         return data.toString();

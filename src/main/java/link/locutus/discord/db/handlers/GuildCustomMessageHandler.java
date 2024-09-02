@@ -239,7 +239,6 @@ public class GuildCustomMessageHandler implements Runnable {
     public void run() {
         // Check it is NOT near turn change
         if (!TimeUtil.checkTurnChange()) {
-            System.out.println("Turn change");
             return;
         }
         updateMessages();

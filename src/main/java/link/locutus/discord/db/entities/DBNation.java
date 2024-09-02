@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -1987,17 +1988,11 @@ public class DBNation implements NationOrAlliance {
 
         LoginFactorResult result = new LoginFactorResult();
         for (LoginFactor factor : factors) {
-            long start2 = System.currentTimeMillis();
             Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
             BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
 
             int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
             int numInactive = Math.max(1, sumFactor.apply(14 * 12, 30 * 12) / (30 - 14));
-
-            long diff = System.currentTimeMillis() - start2;
-            if (diff > 5) {
-                System.out.println("Diff " + factor.name + ": " + diff + "ms");
-            }
 
             double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
             result.put(factor, loginPct);
@@ -4232,7 +4227,7 @@ public class DBNation implements NationOrAlliance {
                         Auth.TradeResult first = result.get(0);
                         first.setMessage(StringMan.join(responses, "\n") + "\n" + first.getMessage());
                     } else {
-                        System.out.println("No trades to accept: " + responses);
+                        Logg.text("[Accept Trades] nation:" + getNation_id() + " | No trades to accept: " + responses);
                     }
                 }
                 return result;
@@ -4663,7 +4658,6 @@ public class DBNation implements NationOrAlliance {
             post.put("message", message);
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
             String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, post, null));
-            System.out.println("Result " + result);
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
                 pool.removeKey(pair);
@@ -4676,17 +4670,15 @@ public class DBNation implements NationOrAlliance {
                         return JsonParser.parseString(result).getAsJsonObject();
                     }
                 }
-                System.out.println("Invalid response " + result);
+                Logg.text("Invalid response\n\n---START BODY---\n" + result + "\n---END BODY---");
             }
             try {
                 JsonObject obj = JsonParser.parseString(result).getAsJsonObject();
                 String generalMessage = obj.get("general_message").getAsString();
                 lastResult = obj;
             } catch (JsonSyntaxException e) {
-                System.out.println("Error sending mail to " + getNation_id() + " with key " + pair.getKey());
-                System.out.println(result);
+                Logg.text("Error sending mail to " + getNation_id() + " with key " + pair.getKey() + "\n\n---START BODY---\n" + result + "\n---END BODY---");
             }
-            System.out.println("Mail response " + result);
             break;
         }
         return lastResult;

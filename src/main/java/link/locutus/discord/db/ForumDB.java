@@ -198,7 +198,6 @@ public class ForumDB extends DBMain {
                 String dateStr = date.attr("datetime");
                 // to milliseconds
 //                System.out.println("Date " + dateStr);
-                System.out.println("Date " + elem);
                 DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
                 ZonedDateTime dateTime = ZonedDateTime.parse(dateStr, formatter);
                 long timestamp = dateTime.toInstant().toEpochMilli();
@@ -211,7 +210,6 @@ public class ForumDB extends DBMain {
 
                 // public DBTopic(int topic_id, int section_id, String topic_name, String topic_urlname, String section_name, String section_urlname, long timestamp, int poster_id, String poster_name) {
 
-                System.out.println("Saving: " + topicName + " | " + posterName + " | " + posterId + " | " + dateStr);
                 DBTopic topic = new DBTopic(topic_id, section_id, topicName, topicUrlName, section_name, section_name, timestamp, posterId, posterName);
                 addTopic(topic);
             }

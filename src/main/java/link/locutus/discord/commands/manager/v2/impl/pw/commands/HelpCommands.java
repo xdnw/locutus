@@ -69,7 +69,6 @@ public class HelpCommands {
             msg.append("Flagged: " + result.isFlagged() + "\n");
             if (result.isFlagged()) {
                 msg.append("Flagged categories: " + result.getFlaggedCategories() + "\n");
-                System.out.println("Category scores: " + result.getScores());
             }
             if (result.isError()) {
                 msg.append("Error message: " + result.getMessage() + "\n");

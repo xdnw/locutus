@@ -53,7 +53,6 @@ public class PlayerSettingCommands {
         Announcement parent = db.getAnnouncement(ann_id);
         boolean isInvite = StringUtils.countMatches(parent.replacements, ",") == 2 && !parent.replacements.contains("|") && !parent.replacements.contains("\n");
         AnnounceType type = isInvite ? AnnounceType.INVITE : document ? AnnounceType.DOCUMENT : AnnounceType.MESSAGE;
-        System.out.println("Type " + type + " | " + isInvite + " | `" + parent.replacements + "` | " + StringMan.countWords(parent.replacements, ",") + " | " + parent.replacements.contains("|") + " | " + parent.replacements.contains("\n"));
         if (type == AnnounceType.INVITE) {
             String[] split = parent.replacements.split(",");
             if (!parent.replacements.isEmpty() && split.length > 0 && MathMan.isInteger(split[0])) {

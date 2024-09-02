@@ -1985,7 +1985,7 @@ public class BankCommands {
                             ResourceType.add(totalExpire, tx.resources);
                             if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else {
-                            System.out.println("Invalid sign " + sign);
+                            System.out.println("Invalid sign for deposits reset " + sign);
                         }
                     }
                 }

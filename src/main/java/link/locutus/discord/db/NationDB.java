@@ -979,7 +979,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             fetched = updateNations(r -> r.setId(idsFinal), eventConsumer, eventConsumer != null);
         }
         if (ids.size() >= 500 && fetched.isEmpty()) {
-            System.out.println("No nations fetched");
             return fetched;
         }
 
@@ -1135,7 +1134,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
         int newDirty = dirtyCities.size() - originalDirtySize;
         if (newDirty > 500) {
-            System.out.println("Dirty cities " + newDirty);
+            System.out.println("Marking cities as outdated " + newDirty);
         }
 
         if (!citiesToDeleteToNationId.isEmpty()) {
@@ -1146,7 +1145,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
                 }
             }
-            System.out.println("Delete cities 1 " + citiesToDeleteToNationId.size());
             deleteCitiesInDB(citiesToDeleteToNationId.keySet());
         }
     }
@@ -1231,7 +1229,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             updateCities(cities, eventConsumer);
         }
         if (!deletedCities.isEmpty()) {
-            System.out.println("Delete cities 2 " + deletedCities.size());
             deleteCities(deletedCities, eventConsumer);
         }
         return true;
@@ -1332,7 +1329,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         }
         if (!citiesToDelete.isEmpty()) {
-            System.out.println("Delete cities 3 " + citiesToDelete.size());
             deleteCitiesInDB(citiesToDelete);
         }
         if (!dirtyCities.isEmpty()) {
@@ -1715,7 +1711,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                         eventConsumer.accept(new NationCreateEvent(null, existing));
                     }
                     toSave.add(existing);
-                    System.out.println("Existing is null dirty");
                     dirtyNations.add(nation.getNationid());
                 } else {
                     expected.remove(existing.getNation_id());
@@ -1739,7 +1734,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
 
             if (!expected.isEmpty()) {
-                System.out.println("Add dirty " + expected.size());
                 dirtyNations.addAll(expected);
             }
         } catch (IOException e) {
@@ -1906,7 +1900,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
         int added = dirtyNations.size() - originalSize;
         if (added > 1000) {
-            System.out.println("Added " + added + " nations to dirty list");
+            System.out.println("Added " + added + " nations to outdated list");
         }
     }
 
@@ -4762,10 +4756,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (ids.isEmpty()) return;
 
         if (!citiesToDelete.isEmpty()) {
-            System.out.println("Delete cities 3 " + citiesToDelete.size());
             deleteCitiesInDB(citiesToDelete);
         }
-        System.out.println("Delete nations " + StringMan.getString(ids));
         deleteNationsInDB(ids);
     }
 

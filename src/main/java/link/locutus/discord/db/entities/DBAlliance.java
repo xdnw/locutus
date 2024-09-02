@@ -143,7 +143,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return lootEntry;
     }
 
-    public void setAAPage(String file) throws Exception{
+    public String setAAPage(String file) throws Exception{
         String input = FileUtil.readFile(file);
 
         input = input.replaceAll("\n", "");
@@ -154,14 +154,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         String finalInput = input;
 
         Auth auth = getAuth();
-        System.out.println(auth.getNation() + " | " + auth.getAllianceId());
-        String response = new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
+        return new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
             @Override
             public void accept(Map<String, String> stringStringMap) {
                 stringStringMap.put("desc", finalInput);
             }
         }).call();
-        System.out.println(response + " | response");
     }
 
     public static DBAlliance parse(String arg, boolean throwError) {

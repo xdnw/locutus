@@ -1282,7 +1282,6 @@ public class ReportCommands {
 
     @Command(desc = "Show an analysis of a nation's risk factors including: Reports, loans, discord & game bans, money trades and proximity with blacklisted nations, multi info, user account age, inactivity predictors")
     public String riskFactors(@Me IMessageIO io, ReportManager reportManager, LoanManager loanManager, DBNation nation) {
-        long start = System.currentTimeMillis();
         StringBuilder response = new StringBuilder();
         // Nation | Alliance (#AA Rank) | Position
         response.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
@@ -1291,8 +1290,6 @@ public class ReportCommands {
             response.append(" (#").append(alliance.getRank()).append(")");
             response.append(" " + nation.getPositionEnum().name());
         }
-
-        System.out.println("Risk factors 1: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
         response.append("\n");
         //- loot factor risks (activity)
@@ -1304,13 +1301,9 @@ public class ReportCommands {
             response.append("- " + factor.name + "=" + factor.toString(factor.get(nation)) + ": " + MathMan.format(100 - percent) + "%\n");
         }
 
-        System.out.println("Risk factors 2: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
-
-
         //- Active loans (share_loan_info, or shared sheets)
         List<DBLoan> loans = loanManager.getLoansByNation(nation.getId());
 
-        System.out.println("Risk factors 3: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         // remove completed loans
         loans.removeIf(loan -> loan.status == DBLoan.Status.CLOSED);
         if (!loans.isEmpty()) {
@@ -1332,7 +1325,6 @@ public class ReportCommands {
                 }
             }
         }
-        System.out.println("Risk factors 4: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
         // Get reports by same nation/discord
         List<ReportManager.Report> reports = reportManager.loadReports(nation.getId(), nation.getUserId(), null, null);
@@ -1343,7 +1335,6 @@ public class ReportCommands {
                     CM.report.search.cmd.toSlashMention() + "\n");
         }
 
-        System.out.println("Risk factors 5: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
         //- server bans
         User user = nation.getUser();
@@ -1362,7 +1353,6 @@ public class ReportCommands {
                 }
             }
         }
-        System.out.println("Risk factors 6: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         // Get bans
         List<DBBan> bans = nation.getBans();
         List<DBBan> currentIpBans = new ArrayList<>();
@@ -1387,7 +1377,6 @@ public class ReportCommands {
                 }
             }
         }
-        System.out.println("Risk factors 7: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         currentSharedNetwork.remove((Integer) nation.getNation_id());
         historicalSharedNetwork.remove((Integer) nation.getNation_id());
         Set<DBNation> sharedNetworkActive = currentSharedNetwork.stream().map(DBNation::getById).filter(Objects::nonNull).collect(Collectors.toSet());
@@ -1425,10 +1414,8 @@ public class ReportCommands {
                 response.append("- " + other.getNationUrlMarkup(true) + "\n");
             }
         }
-        System.out.println("Risk factors 8: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         // Alliance history
         Map<Integer, List<Map.Entry<Long, Long>>> history = reportManager.getCachedHistory(nation.getNation_id());
-        System.out.println("Risk factors 9: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 //        Map<Integer, List<Map.Entry<Long, Long>>> durations = reportManager.getAllianceDurationMap(history);
 //        // Member in the following alliances
 //        response.append("Member in " + durations.size() + " alliance" + (durations.size() == 1 ? "" : "s") + ":\n");
@@ -1446,9 +1433,7 @@ public class ReportCommands {
         //- proximity to banned or reported individuals (alliance history, trades, bank transfers)
         // Map of Nation id -> Alliance -> duration
         Map<Integer, Long> sameAAProximity = reportManager.getBlackListProximity(nation, history);
-        System.out.println("Risk factors 10: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         Map<Integer, Set<ReportManager.ReportType>> reportTypes = reportManager.getApprovedReportTypesByNation(sameAAProximity.keySet());
-        System.out.println("Risk factors 11: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         if (!sameAAProximity.isEmpty()) {
             response.append("Proximity to reported individuals:\n");
             for (Map.Entry<Integer, Long> entry : sameAAProximity.entrySet()) {
@@ -1459,9 +1444,7 @@ public class ReportCommands {
             }
             response.append("See: " + CM.nation.departures.cmd.toSlashMention() + "\n");
         }
-        System.out.println("Risk factors 12: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         Map<Integer, Double> trades = reportManager.getBlacklistedMoneyTrade(nation);
-        System.out.println("Risk factors 13: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         if (!trades.isEmpty()) {
             response.append("Money Trades with reported individuals:\n");
             for (Map.Entry<Integer, Double> entry : trades.entrySet()) {
@@ -1470,7 +1453,6 @@ public class ReportCommands {
                 response.append("- " + nationName + ": " + MathMan.format(entry.getValue()) + "\n");
             }
         }
-        System.out.println("Risk factors 14: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         if (response.length() < 4000) {
             io.create().embed(nation.getNation() + " Analysis", response.toString()).send();
         } else {

@@ -1,6 +1,7 @@
 package link.locutus.discord.event;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.util.AlertUtil;
 
 public class Event {
@@ -23,7 +24,7 @@ public class Event {
         Locutus.post(this);
         long diff = System.currentTimeMillis() - start;
         if (diff > 100) {
-            System.out.println("Posted " + this.getClass().getSimpleName() + "(took " + diff + ")");
+            Logg.text("Posted " + this.getClass().getSimpleName() + "(took " + diff + ")");
         } else {
 //            System.out.println("Posted " + this.getClass().getSimpleName());
         }

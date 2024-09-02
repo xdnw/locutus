@@ -2,6 +2,7 @@ package link.locutus.discord.db.guild;
 
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -238,7 +239,7 @@ public abstract class GuildSetting<T> {
         try {
             return (T) parser.apply(locals, input);
         } catch (Throwable e) {
-            System.out.println(db.getGuild().toString() + ": Failed to parse " + input + " for " + name() + " with " + parser.getKey().toSimpleString() + " | " + StringMan.stripApiKey(e.getMessage()));
+            Logg.text(db.getGuild().toString() + ": Failed to parse " + input + " for " + name() + " with " + parser.getKey().toSimpleString() + " | " + StringMan.stripApiKey(e.getMessage()));
             return null;
         }
     }

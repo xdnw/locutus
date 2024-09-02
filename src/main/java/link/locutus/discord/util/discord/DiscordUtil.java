@@ -312,7 +312,6 @@ public class DiscordUtil {
 
     public static void paginate(IMessageIO io, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
         if (results.isEmpty()) {
-            System.out.println("Results are empty");
             return;
         }
 
@@ -490,7 +489,6 @@ public class DiscordUtil {
 
     private static List<CommandInfo> parseCommands(Guild guild, String label, String id, Map<String, String> reactions, String ref) {
         if (id == null) {
-            System.out.println("ID is null");
             return null;
         }
         if (id.isBlank()) {

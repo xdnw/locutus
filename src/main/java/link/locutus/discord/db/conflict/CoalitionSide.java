@@ -448,20 +448,6 @@ public class CoalitionSide {
         return copy;
     }
 
-    public static void main(String[] args) {
-        Long2ObjectArrayMap<String> map = new Long2ObjectArrayMap<>();
-
-        // Insert values
-        map.put(3L, "Three");
-        map.put(1L, "One");
-        map.put(2L, "Two");
-
-        // Iterate over the map
-        for (Long key : map.keySet()) {
-            System.out.println("Key: " + key + ", Value: " + map.get(key));
-        }
-    }
-
     public Map<String, Object> toGraphMap(ConflictManager manager, List<Integer> metricsTurn, List<Integer> metricsDay, List<Function<DamageStatGroup, Object>> damageHeaders, int columnMetricOffset) {
         List<ConflictMetric.Entry> entries = getGraphEntries();
         // day -> metric -> alliance -> city -> value

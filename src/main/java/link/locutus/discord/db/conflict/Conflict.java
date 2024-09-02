@@ -140,19 +140,13 @@ public class Conflict {
         nationIds.addAll(coalition1.getNationIds());
         nationIds.addAll(coalition2.getNationIds());
 
-        System.out.println("Graph 1");
-
         long startMs = TimeUtil.getTimeFromTurn(turnStart);
         long endMs = turnEnd == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(turnEnd);
-
-        System.out.println("Graph 2");
 
         Map<Long, Map<Integer, Map<MilitaryUnit, Integer>>> milHistory = Locutus.imp().getNationDB().getMilitaryHistoryByTurn(nationIds, startMs, endMs);
         Map<Long, Map<Integer, DBNation>> nationsByDay = new HashMap<>();
 
         DataDumpParser parser = Locutus.imp().getDataDumper(true);
-
-        System.out.println("Graph 3");
 
         long dayStart = TimeUtil.getDayFromTurn(getStartTurn());
         long dayEnd = getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getDayFromTurn(getEndTurn() + 11);
@@ -185,8 +179,6 @@ public class Conflict {
             DBCity city = cityHeader.getCity();
             nation.addCity(city);
         }, null);
-
-        System.out.println("Graph 4");
 
         long currentTurn = TimeUtil.getTurn();
 
@@ -234,8 +226,6 @@ public class Conflict {
                 coalition2.updateDayTierGraph(manager, day, col2Nations, true, false);
             }
         }
-
-        System.out.println("Graph 6");
 
         {
             MilitaryUnit[] units = {MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP};
@@ -318,13 +308,9 @@ public class Conflict {
             }
         }
 
-        System.out.println("Graph 7");
         manager.deleteGraphData(getId());
-        System.out.println("Graph 8");
         List<ConflictMetric.Entry> entries = getGraphEntries();
-        System.out.println("Entries " + entries.size());
         manager.addGraphData(entries);
-        System.out.println("Graph 9");
     }
 
     public List<ConflictMetric.Entry> getGraphEntries() {

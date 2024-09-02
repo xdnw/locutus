@@ -419,9 +419,6 @@ public class ConflictManager {
     }
 
     public void loadConflicts() {
-        System.out.println("Load conflicts");
-        long start = System.currentTimeMillis();
-
         List<Conflict> conflicts = new ArrayList<>();
         conflictById.clear();
         db.query("SELECT * FROM conflicts", stmt -> {
@@ -448,8 +445,6 @@ public class ConflictManager {
         });
         this.conflictArr = conflicts.toArray(new Conflict[0]);
 
-        System.out.println("Loaded " + conflictArr.length + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
 //        db.update("DELETE FROM conflict_participant WHERE alliance_id = 0");
         db.query("SELECT * FROM conflict_participant", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
@@ -465,8 +460,6 @@ public class ConflictManager {
                 }
             }
         });
-
-        System.out.println("Loaded participants in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
 
         // load announcements
         if (Locutus.imp().getForumDb() != null) {
@@ -484,10 +477,7 @@ public class ConflictManager {
                 }
             });
 
-            System.out.println("Loaded announcements in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
             Map<Integer, DBTopic> topics = Locutus.imp().getForumDb().getTopics(conflictsByTopic.keySet());
-            System.out.println("Loaded topics " + topics.size());
             for (Map.Entry<Integer, Map<Integer, String>> entry : conflictsByTopic.entrySet()) {
                 DBTopic topic = topics.get(entry.getKey());
                 if (topic != null) {
@@ -499,10 +489,6 @@ public class ConflictManager {
                     }
                 }
             }
-
-            System.out.println("Loaded announcements in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-        } else {
-            System.out.println("Forum db is null");
         }
         // load legacyNames
         db.query("SELECT * FROM legacy_names2", stmt -> {
@@ -517,8 +503,6 @@ public class ConflictManager {
             }
         });
 
-        System.out.println("Loaded legacy names in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
         for (Map.Entry<String, Integer> entry : getDefaultNames().entrySet()) {
             String name = entry.getKey();
             int id = entry.getValue();
@@ -531,8 +515,6 @@ public class ConflictManager {
                 map.put(Long.MAX_VALUE, id);
             }
         }
-
-        System.out.println("Loaded default names in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
 
 //        Set<Integer> empty = new HashSet<>();
 //        for (Map.Entry<Integer, Conflict> conflictEntry : conflictMap.entrySet()) {
@@ -591,14 +573,11 @@ public class ConflictManager {
         try {
             long start = System.currentTimeMillis();
             initTurn();
-            System.out.println("Init turns in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
             if (clearBeforeUpdate) {
                 Collection<Conflict> tmp = conflicts == null ? Arrays.asList(conflictArr) : conflicts;
                 for (Conflict conflict : tmp) {
                     conflict.clearWarData();
                 }
-                System.out.println("Clear war data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             }
 
             long startMs, endMs;
@@ -625,8 +604,6 @@ public class ConflictManager {
                 allowedConflicts = f -> true;
             }
 
-            System.out.println("Loaded allowed conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
             Set<DBWar> wars = new ObjectOpenHashSet<>();
             long currentTurn = TimeUtil.getTurn();
             for (DBWar war : this.db.getWars()) {
@@ -640,10 +617,8 @@ public class ConflictManager {
                 }
             }
 
-            System.out.println("Loaded wars in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             if (!wars.isEmpty()) {
                 Map<Integer, Byte> subTypes = loadSubTypes();
-                System.out.println("Loaded subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms") + " | " + subTypes.size());
                 Map<Integer, Byte> newSubTypes = new Int2ByteOpenHashMap();
                 BiFunction<DBNation, Long, Integer> activityCache = new BiFunction<>() {
                     private Map<Integer, Set<Long>> activity;
@@ -652,7 +627,6 @@ public class ConflictManager {
                         if (activity == null) {
                             long start = System.currentTimeMillis();
                             activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
-                            System.out.println("Loaded activity in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
                         }
                         Set<Long> natAct = activity.get(nation.getId());
                         if (natAct == null) return Integer.MAX_VALUE;
@@ -682,11 +656,9 @@ public class ConflictManager {
                         });
                     }
                 });
-                System.out.println("Loaded conflict attacks and subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
                 if (!newSubTypes.isEmpty()) {
                     saveSubTypes(newSubTypes);
                 }
-                System.out.println("Saved new conflict subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms") + " | " + newSubTypes.size());
             }
 
             if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {
@@ -707,7 +679,6 @@ public class ConflictManager {
                         }
                     }
                 });
-                System.out.println("Loaded graph data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             }
             conflictsLoaded = true;
         } catch (Throwable e) {

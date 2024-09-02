@@ -585,8 +585,6 @@ public class StatCommands {
     public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         long turnStart = TimeUtil.getTurn(timeStart);
         long turnEnd = TimeUtil.getTurn(timeEnd);
-        System.out.println(timeStart);
-        System.out.println(timeEnd);
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metric, turnStart);
@@ -1520,7 +1518,6 @@ public class StatCommands {
                                                @Arg("Date to start from")
                                                @Timestamp long time, @Switch("j") boolean attachJson,
                                                @Switch("c") boolean attachCsv) throws IOException {
-        System.out.println("Alliances " + alliances.size());
         long turnStart = TimeUtil.getTurn(time);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
@@ -2699,7 +2696,6 @@ public class StatCommands {
 
         sheet.setHeader(header);
 
-        System.out.println("START CHECK ALLIANCE MEMBERS");
         for (Map.Entry<Integer, Map<Long, Integer>> entry : membersByAAByTurn.entrySet()) {
             int aaId = entry.getKey();
             Map<Long, Integer> membersByDay = entry.getValue();

@@ -1882,7 +1882,6 @@ public class UnsortedCommands {
 
         if (moneyPositive) cmd.add("cash=" + moneyPositive);
         if (geographicContinent != null) cmd.add("continent=" + geographicContinent);
-        System.out.println(cmd);
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
 

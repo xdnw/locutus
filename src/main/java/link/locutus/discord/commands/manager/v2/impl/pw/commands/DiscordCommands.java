@@ -195,7 +195,6 @@ public class DiscordCommands {
             }
             body = body.replace("\\n", "\n");
 
-            System.out.println("Commands: " + commands.size());
             IMessageBuilder msg = channel.create().embed(title, body);
             for (int i = 0; i < commands.size(); i++) {
                 String cmd = commands.get(i);

@@ -284,7 +284,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     addApiKey(natId, keyStats.getKey());
                     return natId;
                 } else {
-                    System.out.println("Invalid nation id " + keyStats);
+                    System.out.println("No nation found for api key. Invalid nation id " + keyStats);
                 }
             }
         }

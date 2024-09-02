@@ -3,6 +3,7 @@ package link.locutus.discord.db;
 import com.google.common.eventbus.AsyncEventBus;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -161,7 +162,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         super("guilds/" + guild.getId());
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
-        System.out.println(guild + " | AA:" + StringMan.getString(getInfo("ALLIANCE_ID", false)));
+        Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
         importLegacyRoles();
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null) {
@@ -207,7 +208,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 if (grantTemplateManager == null) {
                     grantTemplateManager = new GrantTemplateManager(this);
                     try {
-                        System.out.println("Loading grant templates for " + guild.getName());
                         grantTemplateManager.loadTemplates();
                     } catch (SQLException | InvocationTargetException | InstantiationException |
                              IllegalAccessException e) {
@@ -1018,7 +1018,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
                     if (rowCount == newRowCount) {
                         stmt.execute("DROP TABLE ROLES2_old");
-                        System.out.println("Primary key added to the ROLES2 table.");
                     } else {
                         System.err.println("Data migration failed. The old table still exists.");
                     }

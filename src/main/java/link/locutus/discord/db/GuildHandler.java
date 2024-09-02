@@ -2742,8 +2742,6 @@ public class GuildHandler {
                 " | " + PW.getMarkdownUrl(current.getAttacker_aa(), true)).append("\n");
         body.append("DEF: " + PW.getMarkdownUrl(current.getDefender_id(), false) +
                 " | " + PW.getMarkdownUrl(current.getDefender_aa(), true)).append("\n");
-
-        System.out.println("Create peace alert");
         DiscordUtil.createEmbedCommand(channel, title, body.toString());
     }
 }

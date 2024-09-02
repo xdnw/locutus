@@ -393,8 +393,6 @@ public class TradeCommands {
             }
         }
 
-        System.out.println("Response " + response.toString() + " | " + removed);
-
         io.create().embed("Posted: " + offer.getTitle(), body).append(response.toString()).send();
         return null;
     }

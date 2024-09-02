@@ -60,11 +60,6 @@ public class LargestBanks extends Command {
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(total).sort();
         sorted.nameKeys(i -> PW.getName(i, true)).build(author, channel, fullCommandRaw, "AA bank");
 
-        for (Integer integer : sorted.get().keySet()) {
-            System.out.println(PW.getBBUrl(integer, true));
-        }
-
-
         return null;
     }
 }

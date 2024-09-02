@@ -1,5 +1,6 @@
 package link.locutus.discord.gpt.pw;
 
+import link.locutus.discord.Logg;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GptHandler;
@@ -141,8 +142,6 @@ public class WikiManager {
         if (pages.isEmpty()) {
             throw new IllegalArgumentException("No pages found");
         }
-        System.out.println("Importing " + pages.size() + " pages");
-
         if (deleteMissing) {
             Set<EmbeddingSource> wikiSources = embeddings.getSources(f -> f == 0, f -> f.source_name.startsWith("wiki/"));
             for (EmbeddingSource source : wikiSources) {
@@ -189,7 +188,7 @@ public class WikiManager {
             WikiPagePW wikiPage = new WikiPagePW(pageName, pageEntry.getValue(), 0, Collections.emptySet());
             Map<String, Object> map = wikiPage.getPageData(embeddings);
             if (map == null) {
-                System.out.println("No page found for " + pageName);
+                Logg.text("No page found for " + pageName);
                 continue;
             }
             String sourceName = "wiki/" + pageName;

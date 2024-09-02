@@ -1243,8 +1243,6 @@ public class WarCategory {
 
         allies.clear();
         allies.addAll(allianceIds);
-
-        System.out.println("Allies " + StringMan.getString(allianceIds));
     }
 
     public Set<Category> getCategories() {

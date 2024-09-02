@@ -443,8 +443,6 @@ public class SpyTracker {
                 }
             }
 
-            System.out.println(body);
-
             GuildDB db = defender.getGuildDB();
             if (db == null) continue;
             MessageChannel channel = db.getOrNull(GuildKey.ESPIONAGE_ALERT_CHANNEL);

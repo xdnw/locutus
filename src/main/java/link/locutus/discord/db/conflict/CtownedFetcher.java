@@ -29,6 +29,7 @@ import java.text.Normalizer;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class CtownedFetcher {
@@ -74,7 +75,7 @@ public class CtownedFetcher {
         }
     }
 
-    private void loadCtownedConflict(GuildDB db, boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Date startDate, Date endDate) throws IOException {
+    private void loadCtownedConflict(GuildDB db, boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Date startDate, Date endDate, Consumer<String> output) throws IOException {
         String conflictHtml = getCtoConflict(cellUrl, conflictName, useCache);
 
         long startMs = startDate.getTime();
@@ -125,12 +126,12 @@ public class CtownedFetcher {
         }
         Set<Integer> col1Ids = coalition1Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
         Set<Integer> col2Ids = coalition2Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
-        System.out.println(conflictName + " | " + startDate + "|  " + endDate);
-        System.out.println("- Col1: " + coalition1Names);
-        System.out.println("- Col2: " + coalition2Names);
+        output.accept("Adding add: " + conflictName + " | " + startDate + "|  " + endDate + "\n" +
+                "- Col1: " + coalition1Names + "\n" +
+                "- Col2: " + coalition2Names);
         boolean isOverLap = col1Ids.stream().anyMatch(col2Ids::contains);
         if (isOverLap) {
-            System.out.println("Overlap between coalitions " + coalition1Names.stream().filter(coalition2Names::contains).collect(Collectors.toList()));
+            output.accept("Overlap between coalitions " + coalition1Names.stream().filter(coalition2Names::contains).collect(Collectors.toList()));
             return;
         }
         if (col1Ids.isEmpty()) {
