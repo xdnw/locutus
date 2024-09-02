@@ -521,22 +521,24 @@ public class WarDB extends DBMainV2 {
             importLegacyAttacks();
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
-            if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
-                updateAllWars(null);
-            }
-
-            if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
-                AttackCursorFactory factory = new AttackCursorFactory(this);
-                List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
-                List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
-                for (WarAttack v3Attack : attacks) {
-                    attackList.add(factory.load(v3Attack, true));
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
+                if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
+                    updateAllWars(null);
                 }
-                saveAttacks(attackList, null);
-            }
 
-            if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0 && !hasAnyBounties()) {
-                updateBountiesV3();
+                if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
+                    AttackCursorFactory factory = new AttackCursorFactory(this);
+                    List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
+                    List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
+                    for (WarAttack v3Attack : attacks) {
+                        attackList.add(factory.load(v3Attack, true));
+                    }
+                    saveAttacks(attackList, null);
+                }
+
+                if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0 && !hasAnyBounties()) {
+                    updateBountiesV3();
+                }
             }
         }
 
@@ -1018,8 +1020,8 @@ public class WarDB extends DBMainV2 {
         {
             String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL)";
             executeStmt(create);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0");
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0");
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0", true);
         };
 
         {

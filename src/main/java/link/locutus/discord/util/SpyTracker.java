@@ -58,7 +58,6 @@ public class SpyTracker {
     }
 
     public void loadCasualties(Integer allianceId) {
-        System.out.println("Loading casualties " + allianceId);
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         if (allianceId != null) {
             api = DBAlliance.getOrCreate(allianceId).getApi(AlliancePermission.SEE_SPIES);

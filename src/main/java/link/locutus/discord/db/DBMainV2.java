@@ -183,12 +183,16 @@ public class DBMainV2 implements Closeable {
     }
 
     public synchronized void executeStmt(String query) {
+        executeStmt(query, false);
+    }
+
+    public synchronized void executeStmt(String query, boolean ignoreError) {
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(query);
             stmt.executeBatch();
             stmt.clearBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            if (!ignoreError) e.printStackTrace();
         }
     }
 

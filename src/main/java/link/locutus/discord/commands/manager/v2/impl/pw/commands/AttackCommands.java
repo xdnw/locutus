@@ -53,7 +53,7 @@ public class AttackCommands {
         int reqUnarmedUF = (int) Math.ceil(defStr * 0.4);
         int reqArmedUF = (int) Math.ceil(defStr * 0.4 / 1.7_5);
 
-        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.7_5 Unarmed\n" + "- Guaranteed IT needs 2.5x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
+        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.7_5 Unarmed\n" + "- Guaranteed IT needs 3.4x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
 
         return response.toString();
     }
@@ -72,7 +72,7 @@ public class AttackCommands {
             response.append("\n").append(SuccessType.values[success]).append("=").append(pctStr);
         }
 
-        response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength.");
+        response.append("\n\nNote: For a guaranteed IT, you need 3.4x enemy strength.");
 
         return response.toString();
     }
@@ -237,7 +237,7 @@ public class AttackCommands {
             response.append("\n- ").append(SuccessType.values[success]).append("=").append(pctStr);
         }
 
-        response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength");
+        response.append("\n\nNote: For a guaranteed IT, you need 3.4x enemy strength");
 
         return response.toString();
     }

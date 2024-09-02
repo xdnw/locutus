@@ -81,7 +81,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
         for (String table : new String[]{"USERS", "CREDENTIALS2", "API_KEYS3"}) {
             if (getTableColumns(table).stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
-                executeStmt("ALTER TABLE " + table + " ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+                executeStmt("ALTER TABLE " + table + " ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
             }
         }
 

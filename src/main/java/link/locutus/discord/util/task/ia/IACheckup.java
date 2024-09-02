@@ -176,8 +176,9 @@ public class IACheckup {
         Map<ResourceType, Double> stockpile = memberStockpile.get(nation);
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
+            long start = System.currentTimeMillis();
             audit(type, nation, transactions, cities, stockpile, results, individual, fast);
-            long diff = System.currentTimeMillis() - start2;
+            long diff = System.currentTimeMillis() - start;
             if (diff > 10) {
                 Logg.text("Audit " + type + " took " + diff + " ms");
             }

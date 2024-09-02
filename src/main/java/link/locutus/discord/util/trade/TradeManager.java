@@ -214,17 +214,39 @@ public class TradeManager {
         if (lowAvg != null) return this;
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<DBTrade> trades = getTradeDb().getTrades(cutOff);
-        if (trades.isEmpty() && Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-            updateTradeList(null);
+        if (trades.isEmpty()) {
+            if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
+                updateTradeList(null);
+            } else {
+                Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
+                initDefaults.put(ResourceType.MONEY, 1);
+                initDefaults.put(ResourceType.CREDITS, 25_000_000);
+                initDefaults.put(ResourceType.FOOD, 100);
+                initDefaults.put(ResourceType.COAL, 3800);
+                initDefaults.put(ResourceType.OIL, 3700);
+                initDefaults.put(ResourceType.URANIUM, 3250);
+                initDefaults.put(ResourceType.LEAD, 4100);
+                initDefaults.put(ResourceType.IRON, 3900);
+                initDefaults.put(ResourceType.BAUXITE, 3800);
+                initDefaults.put(ResourceType.GASOLINE, 3150);
+                initDefaults.put(ResourceType.MUNITIONS, 1850);
+                initDefaults.put(ResourceType.STEEL, 3800);
+                initDefaults.put(ResourceType.ALUMINUM, 2650);
+                for (ResourceType type : ResourceType.values) {
+                    int def = initDefaults.getOrDefault(type, 3000);
+                    low[type.ordinal()] = def;
+                    high[type.ordinal()] = def;
+                }
+            }
         } else {
             Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
             lowAvg = ResourceType.resourcesToArray(averages.getKey());
-            lowAvg[0] = 1;
-            lowAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
             highAvg = ResourceType.resourcesToArray(averages.getValue());
-            highAvg[0] = 1;
-            highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
         }
+        lowAvg[0] = 1;
+        lowAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
+        highAvg[0] = 1;
+        highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
 
         loadActiveTrades();
         return this;

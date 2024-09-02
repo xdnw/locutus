@@ -971,7 +971,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
             // add date if missing
             if (getTableColumns("NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
-                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
             }
         };
 
@@ -986,7 +986,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 e.printStackTrace();
             }
             if (getTableColumns("ROLES2").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
-                executeStmt("ALTER TABLE ROLES2 ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+                executeStmt("ALTER TABLE ROLES2 ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
             }
             try (Statement stmt = getConnection().createStatement()) {
                 // Check if the table exists
@@ -1022,8 +1022,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     } else {
                         System.err.println("Data migration failed. The old table still exists.");
                     }
-                } else {
-                    System.out.println("Primary key already exists in the ROLES2 table.");
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -1039,7 +1037,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 e.printStackTrace();
             }
             if (getTableColumns("COALITIONS").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
-                executeStmt("ALTER TABLE COALITIONS ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+                executeStmt("ALTER TABLE COALITIONS ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
             }
         };
         {
@@ -1067,7 +1065,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 executeStmt(updateKey);
             }
             if (getTableColumns("INFO").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
-                executeStmt("ALTER TABLE `INFO` ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+                executeStmt("ALTER TABLE `INFO` ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
             }
         };
         createDeletionsTables();
@@ -1751,7 +1749,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
             if (toSubtract != null) {
                 ammountEach.put(account, toSubtract.clone());
-                System.out.println("Add balance to: " + account.getQualifiedId() + " " + ResourceType.resourcesToString(toSubtract) + "");
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }

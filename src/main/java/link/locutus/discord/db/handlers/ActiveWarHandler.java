@@ -281,18 +281,10 @@ public class ActiveWarHandler {
 
     public void syncBlockades() {
         long now = System.currentTimeMillis();
-
-        System.out.println("Get wars");
         Map<Integer, DBWar> wars = warDB.getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-        System.out.println("Get attacks");
         List<AbstractCursor> attacks = warDB.queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
-        System.out.println("query attacks size " + attacks.size());
         attacks.sort(Comparator.comparingLong(AbstractCursor::getDate));
-        System.out.println("Sort " + attacks.size());
-
         ObjectOpenHashSet<DBWar> activeWars2 = getActiveWarsById();
-        System.out.println("Get active wars " + activeWars2.size());
-
         synchronized (blockadeLock) {
             defenderToBlockader.clear();
             blockaderToDefender.clear();
@@ -312,6 +304,5 @@ public class ActiveWarHandler {
                 }
             }
         }
-        System.out.println("Done fetch");
     }
 }

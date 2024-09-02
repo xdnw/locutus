@@ -459,7 +459,6 @@ public class SpyBlitzGenerator {
         outer:
         for (int i = 0; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
-            System.out.println("Row " + i + " | " + StringMan.getString(row));
             if (row.isEmpty()) continue;
             // Leader / Nation
             for (int column = 0; column < row.size(); column++) {

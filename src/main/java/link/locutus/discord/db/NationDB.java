@@ -157,37 +157,36 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
 //        importLegacyNationLoot(true);
 
-        System.out.println("Loading meta...");
         loadAndPurgeMeta();
-        System.out.println("Done loading nations/meta");
-
         loadTreasures();
 
         // Load missing data
-        if (nationsById.isEmpty() && (Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0)) {
-            Logg.text("No nations loaded, fetching all");
-            updateAllNations(null, false);
-            Logg.text("Done fetching all nations");
-        }
-        if (alliancesById.isEmpty() && (Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0)) {
-            Logg.text("No alliances loaded, fetching all");
-            updateAlliances(null, null);
-            Logg.text("Done fetching all alliances");
-        }
-        if (citiesByNation.isEmpty() && (Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS > 0)) {
-            Logg.text("No cities loaded, fetching all");
-            updateAllCities(null);
-            Logg.text("Done fetching all cities");
-        }
-        if (treatiesByAlliance.isEmpty() && (Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS > 0)) {
-            Logg.text("No treaties loaded, fetching all");
-            updateTreaties(null);
-            Logg.text("Done fetching all treaties");
-        }
-        if (treasuresByNation.isEmpty() && (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0)) {
-            Logg.text("No treasures loaded, fetching all");
-            updateTreasures(null);
-            Logg.text("Done fetching all treasures");
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
+            if (nationsById.isEmpty() && (Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0)) {
+                Logg.text("No nations loaded, fetching all");
+                updateAllNations(null, false);
+                Logg.text("Done fetching all nations");
+            }
+            if (alliancesById.isEmpty() && (Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0)) {
+                Logg.text("No alliances loaded, fetching all");
+                updateAlliances(null, null);
+                Logg.text("Done fetching all alliances");
+            }
+            if (citiesByNation.isEmpty() && (Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS > 0)) {
+                Logg.text("No cities loaded, fetching all");
+                updateAllCities(null);
+                Logg.text("Done fetching all cities");
+            }
+            if (treatiesByAlliance.isEmpty() && (Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS > 0)) {
+                Logg.text("No treaties loaded, fetching all");
+                updateTreaties(null);
+                Logg.text("Done fetching all treaties");
+            }
+            if (treasuresByNation.isEmpty() && (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0)) {
+                Logg.text("No treasures loaded, fetching all");
+                updateTreasures(null);
+                Logg.text("Done fetching all treasures");
+            }
         }
         return this;
     }
@@ -1527,7 +1526,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     private int loadTreaties() throws SQLException {
-        System.out.println("Load treaties");
         int total = 0;
         Set<Integer> treatiesToDelete = new LinkedHashSet<>();
         long currentTurn = TimeUtil.getTurn();
@@ -1557,9 +1555,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         }
         if (postAsync != null && Locutus.imp() != null) Locutus.imp().runEventsAsync(postAsync);
-        System.out.println("Del treaties");
         deleteTreatiesInDB(treatiesToDelete);
-        System.out.println("DOne del treaties");
         return total;
     }
 
@@ -1909,7 +1905,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         }
         int added = dirtyNations.size() - originalSize;
-        if (added > 10) {
+        if (added > 1000) {
             System.out.println("Added " + added + " nations to dirty list");
         }
     }
@@ -2216,13 +2212,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             nationTable.create(getDb());
 
             // add gdp column to NATIONS2 BIGINT NOT NULL default 0
-            try {
-                try (PreparedStatement close = prepareQuery("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0")) {
-                    close.execute();
-                }
-            } catch (SQLException ignore) {
-            }
-
+            executeStmt("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0", true);
             update("DROP TABLE IF EXISTS NATIONS_WAR_SNAPSHOT");
 
             TablePreset.create("POSITIONS")
@@ -2282,7 +2272,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 e.printStackTrace();
             }
             if (getTableColumns("NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
-                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
             }
         }
         ;
@@ -2302,10 +2292,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_date ON NATION_MIL_HISTORY (date);");
         {
             executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` BIGINT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` BIGINT NOT NULL, nuke_date BIGINT NOT NULL)");
-            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0")) {
-                stmt.executeUpdate();
-            } catch (SQLException ignore) {
-            }
+            executeStmt("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0", true);
         }
 
 

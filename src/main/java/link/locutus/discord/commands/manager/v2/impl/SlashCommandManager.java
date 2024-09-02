@@ -64,6 +64,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 public class SlashCommandManager extends ListenerAdapter {
+    public static boolean PRINT_MISSING = false;
+
     private static final Map<Type, Collection<ChannelType>> CHANNEL_TYPES = new ConcurrentHashMap<>();
     private static final Map<Type, OptionType> OPTION_TYPES = new ConcurrentHashMap<>();
 
@@ -576,8 +578,8 @@ public class SlashCommandManager extends ListenerAdapter {
                             if (parser != null && !parser.getKey().equals(emptyKey)) {
                                 option.setAutoComplete(true);
                             } else {
-                                if (bindingKeys.add(completerKey)) {
-                                    System.out.println("No autocomplete binding: " + binding.getKey());
+                                if (bindingKeys.add(completerKey) && PRINT_MISSING) {
+                                    Logg.text("No autocomplete binding: " + binding.getKey());
                                 }
                             }
                         }

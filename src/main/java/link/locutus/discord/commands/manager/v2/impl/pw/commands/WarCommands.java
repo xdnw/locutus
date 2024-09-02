@@ -851,7 +851,7 @@ public class WarCommands {
 
             response.append("\n\n");
         }
-        response.append("`note: 2.5x ships for guaranteed IT (rounded up). 2x for 90%. see:`" + CM.simulate.naval.cmd.toSlashMention());
+        response.append("`note: 3.4x ships for guaranteed IT (rounded up). 2x for 90%. see:`" + CM.simulate.naval.cmd.toSlashMention());
 
         return response.toString();
 
@@ -926,7 +926,6 @@ public class WarCommands {
                 }
                 alliances.addAll(allies);
             }
-            System.out.println(aaId + " | allies=" + includeAllies + " | " + StringMan.getString(alliances));
             for (DBAlliance ally : alliances) {
                 canCounter.addAll(ally.getNations(true, 10000, true));
             }

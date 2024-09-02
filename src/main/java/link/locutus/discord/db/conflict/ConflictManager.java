@@ -101,11 +101,11 @@ public class ConflictManager {
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
         // add wiki column, default empty
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0", true);
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
