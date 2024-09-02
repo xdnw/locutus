@@ -47,7 +47,6 @@ public class GptHandler {
     private final ProcessText2Text processT2;
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        long start = System.currentTimeMillis();
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
         this.moderator = new GPTModerator(service);
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);

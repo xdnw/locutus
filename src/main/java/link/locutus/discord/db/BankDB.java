@@ -151,7 +151,6 @@ public class BankDB extends DBMainV3 {
     public void updateBankRecs(int nationId, boolean priority, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
-        long start = System.currentTimeMillis();
         List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
         int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
         List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(priority, new Consumer<BankrecsQueryRequest>() {

@@ -531,9 +531,16 @@ public class ConflictCommands {
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
         CtownedFetcher fetcher = new CtownedFetcher(manager);
-        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
-        return "Done!\nNote: this does not push the data to the site";
+        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+        List<String> warnings = new ArrayList<>();
+        if (!response1.isEmpty()) warnings.add(response1);
+        if (!response2.isEmpty()) warnings.add(response2);
+        String msg = "Done!\nNote: this does not push the data to the site";
+        if (!warnings.isEmpty()) {
+            msg += ". See the log below:\n\n" + StringMan.join(warnings, "\n");
+        }
+        return msg;
     }
 
     @Command(desc = "Import alliance names (to match with the ids of deleted alliances)\n" +

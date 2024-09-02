@@ -166,7 +166,8 @@ public class CtownedFetcher {
         }
     }
 
-    public void loadCtownedConflicts(GuildDB db, boolean useCache, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    public String loadCtownedConflicts(GuildDB db, boolean useCache, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+        List<String> warnings = new ArrayList<>();
         Document document = Jsoup.parse(getCtoConflict(urlStub, fileName, useCache));
         // get table id=conflicts-table
         Element table = document.getElementById("conflicts-table");
@@ -188,7 +189,8 @@ public class CtownedFetcher {
             String endDateStr = row.select("td").get(7).text();
             Date startDate = TimeUtil.YYYY_MM_DD_FORMAT.parse(startDateStr);
             Date endDate = endDateStr.contains("Ongoing") ? null : TimeUtil.YYYY_MM_DD_FORMAT.parse(endDateStr);
-            loadCtownedConflict(db, useCache, cellUrl, category, conflictName, startDate, endDate);
+            loadCtownedConflict(db, useCache, cellUrl, category, conflictName, startDate, endDate, warnings::add);
         }
+        return warnings.isEmpty() ? "" : String.join("\n", warnings);
     }
 }

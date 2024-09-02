@@ -149,7 +149,6 @@ public class CommandManager {
 
     public CommandManager(ScheduledThreadPoolExecutor executor) {
         this.executor = executor;
-        long start = System.currentTimeMillis();
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         this.modernPrefixes = new CharOpenHashSet();
         modernPrefixes.add(Settings.commandPrefix(false).charAt(0));

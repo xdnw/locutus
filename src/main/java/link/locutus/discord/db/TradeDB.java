@@ -52,8 +52,6 @@ public class TradeDB extends DBMainV2 {
 
     @Override
     public void createTables() {
-        long start = System.currentTimeMillis();
-        long startOrigin = start;
         TablePreset.create("TRADES")
                 .putColumn("tradeId", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))

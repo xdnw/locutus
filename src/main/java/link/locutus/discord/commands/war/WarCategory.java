@@ -1318,9 +1318,6 @@ public class WarCategory {
         Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
         Map<Integer, List<DBWar>> byTarget = new RankBuilder<>(wars).group(war -> allianceIds.contains(war.getAttacker_aa()) ? war.getDefender_id() : war.getAttacker_id()).get();
 
-        long createDiff = 0;
-        long updateDiff = 0;
-
         for (Map.Entry<Integer, List<DBWar>> entry : byTarget.entrySet()) {
             List<DBWar> currentWars = entry.getValue();
             int targetId = entry.getKey();
@@ -1344,7 +1341,6 @@ public class WarCategory {
             WarCatReason reason = getActiveReason(wars, targetNation);
 
             if (reason.isActive()) {
-                long createStart = System.currentTimeMillis();
                 WarRoom room;
                 try {
                     room = get(targetNation, create, create, create);
@@ -1353,9 +1349,7 @@ public class WarCategory {
                     continue;
 //                    room = get(targetNation, false, false, false);
                 }
-                createDiff += (System.currentTimeMillis() - createStart);
 
-                long updateStart = System.currentTimeMillis();
                 if (room != null) {
                     if (room.channel != null) {
                         if (guild.getGuildChannelById(room.channel.getIdLong()) != null) {
@@ -1374,7 +1368,6 @@ public class WarCategory {
                     if (toCreate != null) toCreate.add(targetNation);
                     if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.NOT_CREATED);
                 }
-                updateDiff += (System.currentTimeMillis() - updateStart);
 
             } else {
                 WarRoom room = targetNation == null ? warRoomMap.get(targetId) : get(targetNation, false, false);

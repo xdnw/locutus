@@ -53,7 +53,6 @@ public class PWGPTHandler {
     private final WikiManager wikiManager;
 
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        long start = System.currentTimeMillis();
         this.database = new GptDatabase();
         this.cmdManager = manager;
         this.handler = new GptHandler(database);

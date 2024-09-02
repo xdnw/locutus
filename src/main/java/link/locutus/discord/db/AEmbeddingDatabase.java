@@ -70,7 +70,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     public <T extends AEmbeddingDatabase> T load() {
         if (loaded) return (T) this;
         loaded = true;
-        long start = System.currentTimeMillis();
         createTables();
         importLegacyDate();
         loadVectors();

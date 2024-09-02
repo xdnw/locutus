@@ -2197,7 +2197,8 @@ public class WarCommands {
     public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
-        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate);
+        List<String> warnings = new ArrayList<>();
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate, warnings::add);
 
         if (output == null) {
             output = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
@@ -2208,7 +2209,8 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author.getAsMention()).send();
+        String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
+        output.send(io, null, warningStr + author.getAsMention()).send();
         return null;
     }
 
@@ -2237,7 +2239,8 @@ public class WarCommands {
     public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                      @Switch("a") boolean groupByAttacker, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
-        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, force);
+        List<String> warnings = new ArrayList<>();
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, force, warnings::add);
 
         if (output == null) {
             output = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
@@ -2248,7 +2251,8 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author.getAsMention()).send();
+        String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
+        output.send(io, null, warningStr + author.getAsMention()).send();
         return null;
     }
 

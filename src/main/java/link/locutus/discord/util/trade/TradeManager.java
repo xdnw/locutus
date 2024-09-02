@@ -70,7 +70,6 @@ public class TradeManager {
     private Map<ResourceType, Queue<TradeDB.BulkTradeOffer>> offersByResource = new ConcurrentHashMap<>();
 
     public TradeManager() throws SQLException, ClassNotFoundException {
-        long start = System.currentTimeMillis();
         this.tradeDb = new TradeDB();
         loadBulkOffers();
     }

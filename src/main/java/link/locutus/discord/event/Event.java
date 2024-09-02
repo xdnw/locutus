@@ -25,8 +25,6 @@ public class Event {
         long diff = System.currentTimeMillis() - start;
         if (diff > 100) {
             Logg.text("Posted " + this.getClass().getSimpleName() + "(took " + diff + ")");
-        } else {
-//            System.out.println("Posted " + this.getClass().getSimpleName());
         }
     }
 

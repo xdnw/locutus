@@ -29,7 +29,6 @@ public class MiniEmbedding extends AEmbeddingDatabase {
             synchronized (this) {
                 if (criteria == null) {
                     try {
-                        long start = System.currentTimeMillis();
                         criteria = Criteria.builder()
                                 .setTypes(String.class, float[].class)
                                 .optModelUrls("djl://ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")

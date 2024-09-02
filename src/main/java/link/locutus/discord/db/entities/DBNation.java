@@ -1974,7 +1974,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     public static LoginFactorResult getLoginFactorPercents(DBNation nation) {
-        long start = System.currentTimeMillis();
         List<LoginFactor> factors = DBNation.getLoginFactors(nation);
 
         long turnNow = TimeUtil.getTurn();

@@ -157,10 +157,7 @@ public class WarDB extends DBMainV2 {
 
         long diff = System.currentTimeMillis() - start;
         // print time, num and skipped
-        Logg.text("Took " + diff + "ms to load " + num_attacks + " attacks (" + skipped + " skipped)");
-        // print total bytes
-        Logg.text("Total bytes: " + totalBytes);
-        // Took 54134ms to load 12695101 attacks (228834 skipped)
+        Logg.text("Took " + diff + "ms to load " + num_attacks + " attacks (" + skipped + " skipped). Total bytes: " + totalBytes);
         // print total by type
         for (Map.Entry<AttackType, Integer> entry : countByType.entrySet()) {
             Logg.text(entry.getKey() + ": " + entry.getValue());
@@ -515,7 +512,6 @@ public class WarDB extends DBMainV2 {
     }
 
     public WarDB load() {
-        long start = System.currentTimeMillis();
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
             importLegacyAttacks();
@@ -2586,7 +2582,6 @@ public class WarDB extends DBMainV2 {
 
     public void loadAttacks(boolean loadInactive, boolean loadActive) {
         if (!loadActive) return;
-        long start = System.currentTimeMillis();
         String whereClause;
         if (!loadInactive) {
             long dateCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120);

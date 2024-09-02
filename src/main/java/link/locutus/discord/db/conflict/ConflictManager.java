@@ -571,7 +571,6 @@ public class ConflictManager {
 
     public void loadConflictWars(Collection<Conflict> conflicts, boolean clearBeforeUpdate) {
         try {
-            long start = System.currentTimeMillis();
             initTurn();
             if (clearBeforeUpdate) {
                 Collection<Conflict> tmp = conflicts == null ? Arrays.asList(conflictArr) : conflicts;
@@ -625,7 +624,6 @@ public class ConflictManager {
                     @Override
                     public Integer apply(DBNation nation, Long dateMs) {
                         if (activity == null) {
-                            long start = System.currentTimeMillis();
                             activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
                         }
                         Set<Long> natAct = activity.get(nation.getId());

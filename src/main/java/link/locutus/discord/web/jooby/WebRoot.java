@@ -217,7 +217,10 @@ public class WebRoot {
         this.app.get("/page/**", ctx -> {
             long start = System.currentTimeMillis();
             pageHandler.handle(ctx);
-            Logg.text("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
+            long diff = System.currentTimeMillis() - start;
+            if (diff > 0) {
+                Logg.text("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
+            }
         });
         this.app.post("/page/**", ctx -> {
             pageHandler.handle(ctx);

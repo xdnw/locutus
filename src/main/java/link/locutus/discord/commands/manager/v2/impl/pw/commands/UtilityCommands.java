@@ -582,7 +582,6 @@ public class UtilityCommands {
                 }
             }
 
-            long start = System.currentTimeMillis();
             List<Transaction2> transfers = Locutus.imp().getBankDB().getTransactions(TRANSACTIONS_2.SENDER_ID.eq((long) aaId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)).and(TRANSACTIONS_2.TX_DATETIME.gt(cutoff)));
 
             transfers.removeIf(f -> f.sender_id != aaId || f.tx_datetime < cutoff);

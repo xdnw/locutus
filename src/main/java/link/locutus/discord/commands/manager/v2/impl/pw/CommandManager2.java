@@ -148,7 +148,6 @@ public class CommandManager2 {
     }
 
     public CommandManager2() {
-        long start = System.currentTimeMillis();
         this.store = new SimpleValueStore<>();
         new PrimitiveBindings().register(store);
         new DiscordBindings().register(store);
