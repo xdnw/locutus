@@ -64,7 +64,10 @@ import java.util.stream.Collectors;
 
 public class ConflictCommands {
     @Command(desc = "View a conflict's configured information")
-    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants) {
+    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants, @Switch("d") boolean hideDeleted) {
+        if (hideDeleted && !showParticipants) {
+            throw new IllegalArgumentException("Cannot hide deleted conflicts without `showParticipants:True`");
+        }
         StringBuilder response = new StringBuilder();
 
         response.append("**__" + conflict.getName() + " - `#" + conflict.getId() + "` - " + conflict.getCategory().name() + "__**\n");
@@ -80,11 +83,16 @@ public class ConflictCommands {
         response.append("\n");
 
         List<CoalitionSide> sides = Arrays.asList(conflict.getSide(true), conflict.getSide(false));
+        boolean hasDeleted = false;
         if (showParticipants) {
             int i = 1;
             for (CoalitionSide side : sides) {
                 response.append("\n**" + side.getName() + "** (coalition " + (i++) + ")\n");
                 for (int aaId : side.getAllianceIdsSorted()) {
+                    if (DBAlliance.get(aaId) == null) {
+                        if (hasDeleted) continue;
+                        hasDeleted = true;
+                    }
                     long start = conflict.getStartTurn(aaId);
                     long end = conflict.getEndTurn(aaId);
                     String aaName = manager.getAllianceName(aaId);
@@ -109,7 +117,10 @@ public class ConflictCommands {
             for (CoalitionSide side : sides) {
                 response.append(side.getName() + ": `" + StringMan.join(side.getAllianceIdsSorted(), ",") + "`\n");
             }
-            response.append("Use `showParticipants: True` to list participants");
+            response.append("Use `showParticipants:True` to list participants\n");
+        }
+        if (hasDeleted && !hideDeleted) {
+            response.append("\nUse `hideDeleted:True` to hide deleted alliances");
         }
 
         return response.toString() + "\n\n<" + Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + conflict.getId() + ">";
