@@ -89,9 +89,7 @@ public class ExportSim {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
 
-        long start = System.currentTimeMillis();
         SimulatedWarNode solution = origin.minimax(System.currentTimeMillis(), alpha, beta, true, valueFunction, goal, 1000);
-        long diff = System.currentTimeMillis() - start;
 
         List<SimulatedWarNode> solutionList = solution.toActionList();
         StringBuilder result = new StringBuilder();

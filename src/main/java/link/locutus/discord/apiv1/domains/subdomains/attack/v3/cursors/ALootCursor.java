@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
@@ -56,8 +57,8 @@ public class ALootCursor extends FailedCursor {
     }
 
     @Override
-    public void load(WarAttack attack) {
-        super.load(attack);
+    public void load(WarAttack attack, WarDB db) {
+        super.load(attack, db);
         String note = attack.getLoot_info();
         Arrays.fill(looted, 0);
         if (note != null) {
@@ -78,7 +79,7 @@ public class ALootCursor extends FailedCursor {
             loot_percent_cents = (int) (DBAttack.parseBankLoot(note, allianceId, null) * 100 * 100);
             this.alliance_id = allianceId.get();
             if (alliance_id == 0) {
-                DBWar war = getWar();
+                DBWar war = getWar(db);
                 if (war != null) {
                     alliance_id = war.getAttacker_id() == attacker_id ? war.getDefender_aa() : war.getAttacker_aa();
                 }

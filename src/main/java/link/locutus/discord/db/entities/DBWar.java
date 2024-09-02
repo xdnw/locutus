@@ -34,6 +34,23 @@ public class DBWar {
     private final long date;
     private char attDefCities;
 
+    public static final class DBWarKey {
+        public final int id;
+        public DBWarKey(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return ((DBWar) o).warId == id;
+        }
+
+        @Override
+        public int hashCode() {
+            return id;
+        }
+    }
+
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }
@@ -118,7 +135,11 @@ public class DBWar {
     }
 
     public DBWar(War war) {
-         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), getCities(war.getAtt_id()), getCities(war.getDef_id()));
+        this(war, true);
+    }
+
+    public DBWar(War war, boolean cities) {
+         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), cities ? getCities(war.getAtt_id()) : 0, cities ? getCities(war.getDef_id()) : 0);
     }
 
     private static int getAA(String aaStr) {

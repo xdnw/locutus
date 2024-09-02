@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager;
 
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.account.*;
@@ -120,6 +121,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
@@ -140,12 +142,13 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class CommandManager {
     private final char prefix1;
-    private final ScheduledThreadPoolExecutor executor;
     private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
     private final CharOpenHashSet modernPrefixes;
+    private final ScheduledThreadPoolExecutor executor;
 
-    public CommandManager(Locutus locutus) {
+    public CommandManager(ScheduledThreadPoolExecutor executor) {
+        this.executor = executor;
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         this.modernPrefixes = new CharOpenHashSet();
         modernPrefixes.add(Settings.commandPrefix(false).charAt(0));
@@ -153,8 +156,6 @@ public class CommandManager {
             modernPrefixes.add(prefix.charAt(0));
         }
         this.commandMap = new LinkedHashMap<>();
-        this.executor = new ScheduledThreadPoolExecutor(256);
-
         modernized = new CommandManager2();
     }
 
@@ -324,8 +325,6 @@ public class CommandManager {
                         }
                     }
                 }
-                System.out.println("Content 1: " + content1);
-
                 if (!(cmd instanceof Noformat) && nation != null && content1.indexOf('{') != -1 && content1.indexOf('}') != -1) {
                     try {
                         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
@@ -334,7 +333,6 @@ public class CommandManager {
                             assert guild != null;
                         }
                         content1 = formatted;
-                        System.out.println("FOrmatted to: " + content1);
                     } catch (IllegalArgumentException ignore) {}
                 }
 
@@ -361,7 +359,7 @@ public class CommandManager {
 //                    return;
                 }
                 if (result != null && !result.isEmpty()) {
-                    result = result.replaceAll("(?i)" + Settings.INSTANCE.API_KEY_PRIMARY, "XXX");
+                    result = result.replaceAll("(?i)" + Locutus.loader().getApiKey(), "XXX");
 //                    result = result.replaceAll("(?i)(?<=^|[^A-Fa-f0-9])(?:[0-9a-f]{2}){7,}(?=[^A-Fa-f0-9]|$)", "XXX");
                     channel.send(result);
                 }
@@ -524,7 +522,7 @@ public class CommandManager {
 
                     Map.Entry<DBNation, double[]> entry = ResourceType.parseIntelRss(content, null);
                     if (entry == null) {
-                        System.out.println("Failed to parse `" + content + "`");
+                        Logg.text("Failed to parse `" + content + "`");
                         return;
                     }
                     if (attacker != null) {
@@ -534,7 +532,7 @@ public class CommandManager {
                     DBNation nation = entry.getKey();
                     if (nation != null) {
                         long now = System.currentTimeMillis();
-                        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE);
+                        Locutus.imp().runEventsAsync(events -> LootEntry.forNation(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE).save(events));
                         GuildDB db = Locutus.imp().getGuildDB(guild);
                         if (db != null) {
                             assert value != null;
@@ -560,9 +558,6 @@ public class CommandManager {
     }
 
     public void registerCommands(DiscordDB db) {
-        if (modernized != null) {
-            modernized.registerDefaults();
-        }
         this.register(new RaidCommand());
         /// not useful
 //        this.register(new Kev());

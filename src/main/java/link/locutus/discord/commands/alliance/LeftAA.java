@@ -63,6 +63,6 @@ public class LeftAA extends Command {
         boolean ignoreVM = flags.contains('v');
         boolean ignoreMembers = flags.contains('m');
         boolean listIds = flags.contains('i');
-        return UnsortedCommands.leftAA(channel, guild, author, me, target,time,filter,ignoreInactive,ignoreVM,ignoreMembers,listIds,null);
+        return UnsortedCommands.leftAA(channel, target,time,filter,ignoreInactive,ignoreVM,ignoreMembers,listIds,null);
     }
 }

@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
@@ -96,8 +97,8 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
-    public void load(WarAttack attack) {
-        super.load(attack);
+    public void load(WarAttack attack, WarDB db) {
+        super.load(attack, db);
 
         List<CityInfraDamage> infraBefore = attack.getCities_infra_before();
         infra_destroyed_percent_cents = (int) (attack.getInfra_destroyed_percentage() * 100);
@@ -106,6 +107,12 @@ public class VictoryCursor extends FailedCursor {
         infra_destroyed_cents = 0;
 
         if (infraBefore != null && !infraBefore.isEmpty() && infra_destroyed_percent_cents > 0) {
+            if (infraBefore.size() == 1) {
+                Object elem0 = infraBefore.get(0);
+                if (elem0 instanceof List) {
+                    infraBefore = (List<CityInfraDamage>) elem0;
+                }
+            }
             for (CityInfraDamage cityInfraDamage : infraBefore) {
                 double before = cityInfraDamage.getInfrastructure();
                 double after = before * (1 - attack.getInfra_destroyed_percentage());
@@ -134,7 +141,7 @@ public class VictoryCursor extends FailedCursor {
 
         if (hasLoot) {
             // get war
-            DBWar war = getWar();
+            DBWar war = getWar(db);
 
             if (war != null) {
                 DBNation attacker = war.getNation(true);

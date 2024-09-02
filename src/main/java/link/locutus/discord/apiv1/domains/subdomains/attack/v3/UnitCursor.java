@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.BitBuffer;
@@ -80,8 +81,8 @@ public abstract class UnitCursor extends DamageCursor {
     }
 
     @Override
-    public void load(WarAttack attack) {
-        super.load(attack);
+    public void load(WarAttack attack, WarDB db) {
+        super.load(attack, db);
 
         att_mun_used_cents = (int) (attack.getAtt_mun_used() * 100);
         def_mun_used_cents = (int) (attack.getDef_mun_used() * 100);

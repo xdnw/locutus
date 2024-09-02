@@ -69,6 +69,6 @@ public class AllianceSheet extends Command implements Noformat {
         NationPlaceholders nationPlaceholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKey.ALLIANCES_SHEET);
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        return UtilityCommands.AllianceSheet(nationPlaceholders, aaPlaceholders, guild, channel, me, author, db, nations, args, sheet);
+        return UtilityCommands.AllianceSheet(aaPlaceholders, guild, channel, me, author, db, nations, args, sheet);
     }
 }

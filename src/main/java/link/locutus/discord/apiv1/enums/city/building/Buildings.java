@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.imp.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.PW;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -222,6 +223,9 @@ public class Buildings {
 
 
             BUILDINGS = buildingsList.toArray(new Building[0]);
+            if (BUILDINGS.length != PW.City.Building.SIZE) {
+                throw new IllegalArgumentException("Building size mismatch");
+            }
 
             HASHCODES = new int[BUILDINGS.length];
             int total = 0;
@@ -273,10 +277,6 @@ public class Buildings {
                 return ALUMINUM_REFINERY;
         }
         return null;
-    }
-
-    public static int size() {
-        return BUILDINGS.length;
     }
 
     public static Building fromV3(String v3Name) {

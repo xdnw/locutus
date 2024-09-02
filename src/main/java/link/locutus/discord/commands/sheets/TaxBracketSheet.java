@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class TaxBracketSheet extends Command {
     public TaxBracketSheet() {
@@ -78,7 +79,7 @@ public class TaxBracketSheet extends Command {
         try {
             AllianceList aaList = db.getAllianceList();
             if (aaList == null) throw new IllegalArgumentException("No alliance registered to guild. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
-            brackets = aaList.getTaxBrackets(false);
+            brackets = aaList.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();

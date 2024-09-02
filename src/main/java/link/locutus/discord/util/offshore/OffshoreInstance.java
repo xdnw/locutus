@@ -156,7 +156,6 @@ public class OffshoreInstance {
 
         if (lastFunds2 != null && checkLast) {
             if (Arrays.equals(lastFunds2, stockpile)) {
-                System.out.println("Funds are the same");
                 outOfSync.set(false);
                 return true;
             }
@@ -173,7 +172,6 @@ public class OffshoreInstance {
 
         int finalBankMetaI = bankMetaI;
         if (!Settings.USE_V2) {
-            System.out.println("Fetch alliance bank records");
             List<Bankrec> bankRecs = api.fetchAllianceBankRecs(allianceId, f -> {
                 f.or_id(List.of(allianceId));
                 f.rtype(List.of(2));
@@ -199,7 +197,6 @@ public class OffshoreInstance {
                     minDate = Math.min(minDate, tx.tx_datetime);
                 }
 
-                System.out.println("Add " + bankRecs.size());
                 Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
 
                 if (bankRecs.size() > 0) {
@@ -1111,7 +1108,7 @@ public class OffshoreInstance {
             return new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, amount, note).addMessage("You did not withdraw anything.");
         }
 
-        if (DISABLE_TRANSFERS && (banker == null || banker.getNation_id() != Settings.INSTANCE.NATION_ID)) {
+        if (DISABLE_TRANSFERS && (banker == null || banker.getNation_id() != Locutus.loader().getNationId())) {
 //            return Map.entry(TransferStatus.AUTHORIZATION, "Error: Maintenance. Transfers are currently disabled");
             return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Error: Maintenance. Transfers are currently disabled");
         }
@@ -1281,7 +1278,7 @@ public class OffshoreInstance {
                 case CONFIRMATION:
                 default:
                 case OTHER:
-                    log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                    log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Locutus.loader().getAdminUserId() + ">");
                 case SUCCESS:
                 case SENT_TO_ALLIANCE_BANK: {
                     {
@@ -1321,7 +1318,7 @@ public class OffshoreInstance {
                                 NationOrAllianceOrGuild account = entry.getKey();
                                 body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + ResourceType.resourcesToString(entry.getValue()) + " #deposit");
                             }
-                            body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                            body.append("\n<@" + Locutus.loader().getAdminUserId() + ">");
                             log(senderDB, banker, receiver, title + ": " + body.toString());
                         }
                     }
@@ -1572,7 +1569,7 @@ public class OffshoreInstance {
             WebRoot web = WebRoot.getInstance();
 
             BankRequestHandler handler = web.getLegacyBankHandler();
-            if (auth.getNationId() != Settings.INSTANCE.NATION_ID || auth.getAllianceId() != allianceId) {
+            if (auth.getNationId() != Locutus.loader().getNationId() || auth.getAllianceId() != allianceId) {
                 throw new IllegalArgumentException("Game API is down currently");
             }
 

@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -150,7 +151,8 @@ public class CommandManager2 {
         this.store = new SimpleValueStore<>();
         new PrimitiveBindings().register(store);
         new DiscordBindings().register(store);
-        new PWBindings().register(store);
+        PWBindings pwBindings = new PWBindings();
+        pwBindings.register(store);
         new GPTBindings().register(store);
         new SheetBindings().register(store);
 //        new StockBinding().register(store);
@@ -166,7 +168,6 @@ public class CommandManager2 {
         // Register bindings
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?> ph = placeholders.get(type);
-            System.out.println("Type " + type);
             ph.register(store);
         }
         // Initialize commands (staged after bindings as there might be cross dependency)
@@ -517,9 +518,11 @@ public class CommandManager2 {
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
-            Method[] methods = setting.getClass().getDeclaredMethods();
+            Class<? extends GuildSetting> settingClass = setting.getClass();
+            Method[] methods = settingClass.getMethods();
             Map<String, String> methodNameToCommandName = new HashMap<>();
             for (Method method : methods) {
+                if (method.getDeclaringClass() != settingClass) continue;
                 if (method.getAnnotation(Command.class) != null) {
                     Command command = method.getAnnotation(Command.class);
 
@@ -613,7 +616,9 @@ public class CommandManager2 {
 
             Method methodAlias = null;
             Method methodColumns = null;
-            for (Method method : ph.getClass().getDeclaredMethods()) {
+            Class<? extends Placeholders> phClass = ph.getClass();
+            for (Method method : phClass.getMethods()) {
+                if (method.getDeclaringClass() != phClass) continue;
                 if (method.getName().equals("addSelectionAlias")) {
                     methodAlias = method;
                 } else if (method.getName().equals("addColumns")) {
@@ -629,7 +634,6 @@ public class CommandManager2 {
                 continue;
             }
             String typeName = PlaceholdersMap.getClassName(ph.getType());
-            System.out.println("Registering " + typeName);
             this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
             this.commands.registerMethod(ph, List.of("sheet_template", "add"), methodColumns.getName(), typeName);
 //            for (Method method : ph.getClass().getDeclaredMethods()) {
@@ -710,7 +714,6 @@ public class CommandManager2 {
         if (!fullCmdStr.isEmpty() && Locutus.cmd().isModernPrefix(fullCmdStr.charAt(0))) {
             fullCmdStr = fullCmdStr.substring(1);
         }
-        System.out.println("remove:|| full " + fullCmdStr);
         Message message = null;
         MessageChannel channel = null;
         if (io instanceof DiscordChannelIO dio) {
@@ -956,7 +959,6 @@ public class CommandManager2 {
                     io.create().append(result.toString()).send();
                 }
             } catch (CommandUsageException e) {
-                System.out.println("Had usage exception");
                 Throwable root = e;
                 while (root.getCause() != null && root.getCause() != root) {
                     root = root.getCause();

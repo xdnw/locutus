@@ -267,7 +267,7 @@ public class OptimalBuild extends Command {
             cityId = Integer.parseInt(cityArg.split("=")[1]);
 
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            if (cityEntry == null) Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, f -> f.post());
+            if (cityEntry == null) Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events));
             cityEntry.update(true);
             me = Locutus.imp().getNationDB().getNation(cityEntry.getNationId());
             origin = cityEntry.toJavaCity(me);
@@ -478,7 +478,7 @@ public class OptimalBuild extends Command {
             int max = Buildings.POLICE_STATION.cap(hasProject);
             Double finalCrimeLimit = crimeLimit;
 
-            int maxIndex = Buildings.size() - 1;
+            int maxIndex = PW.City.Building.SIZE - 1;
             int policeIndex = Buildings.POLICE_STATION.ordinal();
             int diff = maxIndex - policeIndex;
 

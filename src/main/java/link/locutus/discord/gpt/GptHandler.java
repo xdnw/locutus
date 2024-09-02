@@ -10,6 +10,7 @@ import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
@@ -40,23 +41,18 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    private final EncodingRegistry registry;
     private final OpenAiService service;
-    private final Platform platform;
     public final IEmbeddingDatabase embeddingDatabase;
     private final IModerator moderator;
     private final ProcessText2Text processT2;
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        this.registry = Encodings.newDefaultEncodingRegistry();
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
-
-        this.platform = Platform.detectPlatform("pytorch");
-
         this.moderator = new GPTModerator(service);
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
-        this.embeddingDatabase = new MiniEmbedding(platform, database);
+        this.embeddingDatabase = new MiniEmbedding(database);
+
 
         File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");

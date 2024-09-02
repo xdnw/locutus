@@ -1,9 +1,9 @@
-package link.locutus.discord;
+package link.locutus.discord.apiv3;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import link.locutus.discord.Logg;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -13,8 +13,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -86,9 +84,10 @@ public class RequestTracker {
                     long diff = retryMs - now;
                     if (diff > 60000) {
                         diff = 60000;
-                        System.out.println("Rate limited on " + task.getUrl() + " for " + (retryMs - now) + "ms, but limiting to 60s");
                     }
-                    System.out.println("Rate limited on " + task.getUrl() + " for " + (retryMs - now) + "ms");
+                    Logg.text("Rate Limited On:\n" +
+                            "- Request: " + task.getUrl() + "\n" +
+                            "- Retry After: " + (retryMs - now) + "ms");
                     Thread.sleep(diff);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -132,7 +131,7 @@ public class RequestTracker {
                 // print rate limit when it hits (retry after, + how many requests on that domain + the domain)
                 {
                     int requestsPast2m = getDomainRequestsSince(domainId, now - TimeUnit.MINUTES.toMillis(2));
-                    System.err.println(":||Rate Limited On:\n" +
+                    Logg.text("Rate Limited On:\n" +
                             "- Domain: " + task.getUrl().getHost() + "\n" +
                             "- Retry After: " + retryAfter + "\n" +
                             "- Requests Past 2m: " + requestsPast2m + "\n" +
@@ -157,9 +156,7 @@ public class RequestTracker {
                         try {
                             if (sleepMs > 60000) {
                                 sleepMs = 60000;
-                                System.out.println("Sleeping for " + sleepMs + "ms, but limiting to 60s");
                             }
-                            System.out.println("Sleeping for " + sleepMs + "ms");
                             Thread.sleep(sleepMs);
                         } catch (InterruptedException e) {
                             e.printStackTrace();

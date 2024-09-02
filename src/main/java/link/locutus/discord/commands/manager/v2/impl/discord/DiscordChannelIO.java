@@ -93,7 +93,6 @@ public class DiscordChannelIO implements IMessageIO {
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             if (builder.getId() > 0) {
-                System.out.println("Send ");
                 CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }

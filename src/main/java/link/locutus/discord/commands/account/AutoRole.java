@@ -62,7 +62,7 @@ public class AutoRole extends Command {
         if (args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission";
             JSONObject command = CM.role.autoassign.cmd.force(force + "").toJson();
-            return UtilityCommands.autoroleall(author, db, channel, command, force);
+            return UtilityCommands.autoroleall(db, channel, command, force);
         } else {
             DBNation nation = DiscordUtil.parseNation(args.get(0));
             if (nation == null) return "That nation isn't registered: `" + args.get(0) + "` see:" + CM.register.cmd.toSlashMention() + "";

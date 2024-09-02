@@ -47,7 +47,10 @@ public class BindingHelper {
     }
 
     public void register(ValueStore<Object> store) {
-        for (Method method : getClass().getDeclaredMethods()) {
+        Class<? extends BindingHelper> thisClass = getClass();
+        Method[] methods = thisClass.getMethods();
+        for (Method method : methods) {
+            if (method.getDeclaringClass() != thisClass) continue;
             register(method, store);
         }
         while (!tasks.isEmpty()) {
@@ -56,7 +59,6 @@ public class BindingHelper {
     }
 
     private boolean register(Method method, ValueStore<Object> store) {
-        // Check that it has the binding
         Binding binding = method.getAnnotation(Binding.class);
         if (binding == null) {
             return false;
@@ -73,11 +75,12 @@ public class BindingHelper {
             Key key = parser.getKey();
             store.addParser(key, parser);
         } else {
-            Set<Type> types = new LinkedHashSet<>(Arrays.asList(binding.types()));
+            Class<?>[] typesArr = binding.types();
+            Set<Type> types = new LinkedHashSet<>(Math.max(1, typesArr.length));
+            for (Class<?> type : typesArr) types.add(type);
             if (types.isEmpty()) {
                 types.add(method.getGenericReturnType());
             }
-
             for (Type ret : types) {
                 MethodParser parser = new MethodParser(this, method, desc, binding, ret);
                 Key key = parser.getKey();

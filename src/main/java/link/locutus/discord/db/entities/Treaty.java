@@ -26,7 +26,7 @@ public class Treaty {
         this.type = TreatyType.valueOf(v3.getTreaty_type().toUpperCase(Locale.ROOT));
         this.turn_ends = TimeUtil.getTurn() + v3.getTurns_left() + 1;
         this.date = v3.getDate().toEpochMilli();
-        this.pending = !v3.getApproved();
+        this.pending = v3.getApproved() != null && !v3.getApproved();
     }
 
     public Treaty(int id, long date, TreatyType type, int from, int to, long turn_ends) {

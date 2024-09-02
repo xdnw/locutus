@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -152,7 +153,7 @@ public class WarUpdateProcessor {
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 500) {
-            System.out.println("Took " + diff + "ms to process " + wars.size() + " wars");
+            Logg.text("Took " + diff + "ms to process " + wars.size() + " wars");
             AlertUtil.error("Took " + diff + "ms to process " + wars.size() + " wars", StringMan.stacktraceToString(new Exception().getStackTrace()));
         }
     }
@@ -927,7 +928,7 @@ public class WarUpdateProcessor {
                 }
             }
 
-            if (current.getDefender_id() == Settings.INSTANCE.NATION_ID) {
+            if (current.getDefender_id() == Locutus.loader().getNationId()) {
                 String body = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
                 AlertUtil.displayTray("" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {

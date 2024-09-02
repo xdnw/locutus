@@ -390,7 +390,6 @@ public class PWWikiUtil {
 
         // If the file does not exist, fetch and save to sitemap.json
         if (!file.exists()) {
-            System.out.println("Fetching default pages");
             fetchDefaultPages();
         }
 
@@ -637,7 +636,6 @@ public class PWWikiUtil {
         List<Conflict> conflicts = new ArrayList<>();
         String wikiCategory = "Alliance_Wars";
         Map<String, String> pages = getPages(wikiCategory);
-        System.out.println("Got pages");
         for (Map.Entry<String, String> entry : pages.entrySet()) {
             String name = entry.getKey();
             String urlStub = entry.getValue();

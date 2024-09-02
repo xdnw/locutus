@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -160,9 +161,6 @@ public class IACheckup {
     }
 
     public Map<AuditType, Map.Entry<Object, String>> checkup(DBNation nation, AuditType[] audits, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        int days = 120;
-
-        long start = System.currentTimeMillis();
         Map<Integer, JavaCity> cities = nation.getCityMap(false);
         if (cities.isEmpty()) {
             return new HashMap<>();
@@ -178,11 +176,11 @@ public class IACheckup {
         Map<ResourceType, Double> stockpile = memberStockpile.get(nation);
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
-            long start2 = System.currentTimeMillis();
+            long start = System.currentTimeMillis();
             audit(type, nation, transactions, cities, stockpile, results, individual, fast);
-            long diff = System.currentTimeMillis() - start2;
+            long diff = System.currentTimeMillis() - start;
             if (diff > 10) {
-                System.out.println("remove:||Checkup Diff " + type + " | " + diff + " ms");
+                Logg.text("Audit " + type + " took " + diff + " ms");
             }
         }
 

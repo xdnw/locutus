@@ -2,6 +2,7 @@ package link.locutus.discord.db.guild;
 
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -46,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 
@@ -54,7 +56,7 @@ public abstract class GuildSetting<T> {
     private final Set<String> requiresCoalitionStr = new LinkedHashSet<>();
     private final Set<String> requiresCoalitionRootStr = new LinkedHashSet<>();
 
-    private final Map<BiPredicate<GuildDB, Boolean>, String> requiresFunction = new LinkedHashMap<>();
+    private final Map<BiPredicate<GuildDB, Boolean>, Supplier<String>> requiresFunction = new LinkedHashMap<>();
     private final Map<Roles, Boolean> requiresRole = new LinkedHashMap<>();
 
     private final Key type;
@@ -77,7 +79,8 @@ public abstract class GuildSetting<T> {
         for (Roles role : requiresRole.keySet()) {
             reqListStr.add("role:" + role.name());
         }
-        for (String value : requiresFunction.values()) {
+        for (Supplier<String> valueSup : requiresFunction.values()) {
+            String value = valueSup.get();
             if (value.isEmpty()) continue;
             reqListStr.add("function:" + value);
         }
@@ -236,7 +239,7 @@ public abstract class GuildSetting<T> {
         try {
             return (T) parser.apply(locals, input);
         } catch (Throwable e) {
-            System.out.println(db.getGuild().toString() + ": Failed to parse " + input + " for " + name() + " with " + parser.getKey().toSimpleString() + " | " + StringMan.stripApiKey(e.getMessage()));
+            Logg.text(db.getGuild().toString() + ": Failed to parse " + input + " for " + name() + " with " + parser.getKey().toSimpleString() + " | " + StringMan.stripApiKey(e.getMessage()));
             return null;
         }
     }
@@ -348,10 +351,10 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requiresOffshore() {
-        String msg = "No bank is setup (see: " + CM.offshore.add.cmd.toSlashCommand() + ")";
+        Supplier<String> msg = () -> "No bank is setup (see: " + CM.offshore.add.cmd.toSlashCommand() + ")";
         this.requiresFunction.put((db, throwError) -> {
             if (db.getOffshoreDB() == null) {
-                throw new IllegalArgumentException(msg);
+                throw new IllegalArgumentException(msg.get());
             }
             return true;
         }, msg);
@@ -379,7 +382,7 @@ public abstract class GuildSetting<T> {
                 }
                 return true;
             }
-        }, msg);
+        }, () -> msg);
         return this;
     }
 
@@ -392,7 +395,7 @@ public abstract class GuildSetting<T> {
                 if (db.hasCoalitionPermsOnRoot(Coalition.WHITELISTED)) return true;
                 throw new IllegalArgumentException(msg);
             }
-        }, msg);
+        }, () -> msg);
         return this;
     }
 
@@ -424,10 +427,10 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requireValidAlliance() {
-        String msg = "No valid alliance is setup (see: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")";
+        Supplier<String> msg = () -> "No valid alliance is setup (see: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")";
         requiresFunction.put((db, throwError) -> {
             if (!db.isValidAlliance()) {
-                throw new IllegalArgumentException(msg);
+                throw new IllegalArgumentException(msg.get());
             }
             return true;
         }, msg);
@@ -439,10 +442,10 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requiresNot(GuildSetting setting, boolean checkDelegate) {
-        String msg = "Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention();
+        Supplier<String> msg = () -> "Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention();
         requiresFunction.put((db, throwError) -> {
             if (setting.getOrNull(db, checkDelegate) != null) {
-                throw new IllegalArgumentException(msg);
+                throw new IllegalArgumentException(msg.get());
             }
             return true;
         }, msg);
@@ -458,7 +461,7 @@ public abstract class GuildSetting<T> {
                 return false;
             }
             return true;
-        }, msg);
+        }, () -> msg);
         return this;
     }
 
@@ -498,7 +501,7 @@ public abstract class GuildSetting<T> {
         }
 
         Member owner = db.getGuild().getOwner();
-        if (owner != null && owner.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+        if (owner != null && owner.getIdLong() != Locutus.loader().getAdminUserId()) {
             DBNation ownerNation = DiscordUtil.getNation(owner.getUser());
             if (ownerNation == null) {
                 throw new IllegalArgumentException("The owner of this server (" + owner.getEffectiveName() + ") is not registered with the bot (see: " + CM.register.cmd.toSlashMention() + ")");
@@ -537,7 +540,7 @@ public abstract class GuildSetting<T> {
 
     public T allowedAndValidate(GuildDB db, User user, T value) {
         DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+        if (nation == null && user.getIdLong() != Locutus.loader().getAdminUserId()) {
             throw new IllegalArgumentException("You are not registered with the bot (see: " + CM.register.cmd.toSlashMention() + ")");
         }
         if (!allowed(db, true)) {

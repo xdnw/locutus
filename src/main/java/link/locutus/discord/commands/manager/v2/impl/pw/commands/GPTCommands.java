@@ -593,8 +593,6 @@ public class GPTCommands {
             "Use keywords for relevant results, or ask a question.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_argument(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
-
-
         Function<Integer, List<Parser>> getClosest = integer -> {
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
             return pwGpt.getClosestArguments(store, search, 100);
@@ -604,7 +602,6 @@ public class GPTCommands {
             String arg = StringMan.join(strings, " ");
             arg = arg.replaceFirst("[1-8]\\.[ ]", "").trim();
             arg = arg.replace("`", "");
-            System.out.println(arg);
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
             ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) pwGpt.getAdapter(EmbeddingType.Argument);
             Parser parser = adapter.getParser(arg);
@@ -614,7 +611,6 @@ public class GPTCommands {
                 for (Parser value : adapter.getObjectsByHash().values()) {
                     System.out.println("- `" + value.getKey().toSimpleString() + "`");
                 }
-
             }
             return parser;
         };
@@ -794,7 +790,6 @@ public class GPTCommands {
                     errors.add("Invalid line: `" + line + "`");
                     continue;
                 }
-                System.out.println("Line " + line);
                 String channelName = line.substring(0, line.indexOf(":")).trim();
                 String emoji = line.substring(line.indexOf(":") + 1, line.indexOf("|")).trim();
                 String desc = line.substring(line.indexOf("|") + 1).trim();

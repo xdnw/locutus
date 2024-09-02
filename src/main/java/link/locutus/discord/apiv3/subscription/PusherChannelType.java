@@ -2,6 +2,7 @@ package link.locutus.discord.apiv3.subscription;
 
 import com.pusher.client.Pusher;
 import com.pusher.client.channel.*;
+import link.locutus.discord.Logg;
 
 import java.util.Locale;
 import java.util.Set;
@@ -27,12 +28,12 @@ public enum PusherChannelType {
                 @Override
                 public void onAuthenticationFailure(String message, Exception e) {
                     e.printStackTrace();
-                    System.out.println("Pusher: Private channel authentication failure: " + message + " | " + e);
+                    Logg.text("Pusher: Private channel authentication failure: " + message + " | " + e);
                 }
 
                 @Override
                 public void onSubscriptionSucceeded(String channelName) {
-                    System.out.println("Pusher: Private channel subscription succeeded: " + channelName);
+                    Logg.text("Pusher: Private channel subscription succeeded: " + channelName);
                 }
 
                 @Override
@@ -45,7 +46,6 @@ public enum PusherChannelType {
         @Override
         public void bind(Channel channel, PnwPusherModel model, PnwPusherEvent event, boolean bulk, SubscriptionEventListener listener, BiConsumer<String, Exception> error) {
             String name = getEventName(model, event, bulk);
-            System.out.println("Name: " + name);
             if (!(listener instanceof PrivateChannelEventListener)) {
                 SubscriptionEventListener parent = listener;
                 listener = new PrivateChannelEventListener() {
@@ -56,7 +56,7 @@ public enum PusherChannelType {
 
                     @Override
                     public void onSubscriptionSucceeded(String channelName) {
-                        System.out.println("channel connected: " + channelName);
+                        Logg.text("channel connected: " + channelName);
                     }
 
                     @Override
@@ -102,7 +102,7 @@ public enum PusherChannelType {
 
                     @Override
                     public void onSubscriptionSucceeded(String channelName) {
-                        System.out.println("channel connected: " + channelName);
+                        Logg.text("channel connected: " + channelName);
                     }
 
                     @Override

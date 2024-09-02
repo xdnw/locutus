@@ -35,7 +35,6 @@ public class SearchMailTask implements Callable<List<Mail>> {
         } else {
             this.url = "https://politicsandwar.com/index.php?id=16&backpage=%3C%3C&maximum=15000&minimum=0&od=DESC&searchTerm=" + URLEncoder.encode(query);
         }
-        System.out.println("URL " + url);
         this.checkUnread = checkUnread;
         this.checkRead = checkRead;
         this.readContent = readContent;
@@ -97,8 +96,6 @@ public class SearchMailTask implements Callable<List<Mail>> {
                     if (skipUnread && !recRead) continue;
 
                     if (unread && checkUnread || !unread && checkRead) {
-                        System.out.println("Row " + row.html());
-                        System.out.println("Columns " + columns.html());
                         String url = columns.get(2).getElementsByTag("a").first().attr("href");
                         int msgId = Integer.parseInt(url.split("=")[1]);
 

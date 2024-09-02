@@ -244,7 +244,7 @@ public class WarParser {
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
         for (AbstractCursor attack : getAttacks()) {
             if (attack.getDate() > System.currentTimeMillis()) {
-                System.out.println(attack.getWar_attack_id() + " is in future");
+                System.out.println("attack id:" + attack.getWar_attack_id() + " is in future");
             }
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;

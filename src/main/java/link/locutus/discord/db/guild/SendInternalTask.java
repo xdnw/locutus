@@ -1,6 +1,7 @@
 package link.locutus.discord.db.guild;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -53,7 +54,7 @@ public class SendInternalTask {
     private final OffshoreInstance receiverOffshore;
 
     public SendInternalTask(@Me User banker, @Me DBNation bankerNation, GuildDB senderDB, DBAlliance senderAlliance, DBNation senderNation, GuildDB receiverDB, DBAlliance receiverAlliance, DBNation receiverNation, double[] amount) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS && banker.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) throw new IllegalArgumentException("Error: Maintenance");
+        if (OffshoreInstance.DISABLE_TRANSFERS && banker.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException("Error: Maintenance");
         checkNotNull(bankerNation, "No banker specified. Register with " + CM.register.cmd.toSlashMention());
         checkArgsNotNull(senderDB, senderAlliance, senderNation, receiverDB, receiverAlliance, receiverNation);
         checkNonNegative(amount);

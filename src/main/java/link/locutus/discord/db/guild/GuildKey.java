@@ -127,7 +127,7 @@ public class GuildKey {
                 DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                 GuildDB otherDb = alliance.getGuildDB();
                 Member owner = db.getGuild().getOwner();
-                if (user == null || user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) {
+                if (user == null || user.getIdLong() != Locutus.loader().getAdminUserId()) {
                     DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
                     if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
                         Set<String> inviteCodes = new HashSet<>();
@@ -811,7 +811,7 @@ public class GuildKey {
             if (alliance == null || alliance.isEmpty())
                 throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
-            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
+            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
             if (brackets.isEmpty())
                 throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
 

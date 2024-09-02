@@ -204,7 +204,6 @@ public class WarCommands {
     @CoalitionPermission(Coalition.RAIDPERMS)
     public String beigeAlertRequiredStatus(@Me DBNation me, NationMeta.BeigeAlertRequiredStatus status) {
         me.setMeta(NationMeta.BEIGE_ALERT_REQUIRED_STATUS, (byte) status.ordinal());
-        NationMeta.BeigeAlertMode mode = me.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
         return "Set beige alert required status to " + status + "\nSee also:" + CM.alerts.beige.test_auto.cmd.toSlashMention();
     }
 
@@ -637,7 +636,7 @@ public class WarCommands {
     @Command(desc = "Find nations blockading your allies\n" +
             "Allies with requests to have their blockade lifted are prioritized")
     @RolePermission(Roles.MEMBER)
-    public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel,
+    public String unblockade(@Me DBNation me, @Me GuildDB db,
                              @Arg("The nations to check for blockades")
                              @Default Set<DBNation> allies,
                              @Arg("The list of enemies to check blockading\n" +
@@ -852,7 +851,7 @@ public class WarCommands {
 
             response.append("\n\n");
         }
-        response.append("`note: 2.5x ships for guaranteed IT (rounded up). 2x for 90%. see:`" + CM.simulate.naval.cmd.toSlashMention());
+        response.append("`note: 3.4x ships for guaranteed IT (rounded up). 2x for 90%. see:`" + CM.simulate.naval.cmd.toSlashMention());
 
         return response.toString();
 
@@ -927,7 +926,6 @@ public class WarCommands {
                 }
                 alliances.addAll(allies);
             }
-            System.out.println(aaId + " | allies=" + includeAllies + " | " + StringMan.getString(alliances));
             for (DBAlliance ally : alliances) {
                 canCounter.addAll(ally.getNations(true, 10000, true));
             }
@@ -1043,7 +1041,7 @@ public class WarCommands {
     @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters\n" +
             "Not suitable if you have no military")
     @RolePermission(Roles.MEMBER)
-    public String unprotected(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> targets, @Me DBNation me,
+    public String unprotected(@Me GuildDB db, Set<DBNation> targets, @Me DBNation me,
                               @Switch("r") @Default("10") @Range(min=1, max=25) Integer numResults,
                               @Arg("Ignore the configured Do Not Raid list")
                               @Switch("d") boolean ignoreDNR,
@@ -1308,7 +1306,7 @@ public class WarCommands {
 
     @Command(desc = "Find nations in war range that have a treasure")
     @RolePermission(Roles.MEMBER)
-    public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findTreasureNations(@Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
@@ -1355,7 +1353,7 @@ public class WarCommands {
 
     @Command(desc = "Find nations with high bounties within your war range")
     @RolePermission(Roles.MEMBER)
-    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel,
+    public void findBountyNations(@Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel,
                                   @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker,
                                   @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR,
                                   @Switch("b") Set<WarType> bountyTypes,
@@ -1536,7 +1534,8 @@ public class WarCommands {
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
-        return response.toString();
+        channel.send(response.toString());
+        return null;
     }
 
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {
@@ -1585,7 +1584,7 @@ public class WarCommands {
                     "The alliance argument is optional\n" +
                     "Use `success>80` to specify a cutoff for spyop success")
     @RolePermission(Roles.MEMBER)
-    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db,
                              @Arg("The enemy to spy")
                              DBNation enemy,
                              @Arg("The allowed spy operations")
@@ -2198,7 +2197,8 @@ public class WarCommands {
     public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
-        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate);
+        List<String> warnings = new ArrayList<>();
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate, warnings::add);
 
         if (output == null) {
             output = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
@@ -2209,7 +2209,8 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author.getAsMention()).send();
+        String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
+        output.send(io, null, warningStr + author.getAsMention()).send();
         return null;
     }
 
@@ -2238,7 +2239,8 @@ public class WarCommands {
     public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                      @Switch("a") boolean groupByAttacker, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
-        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, force);
+        List<String> warnings = new ArrayList<>();
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, force, warnings::add);
 
         if (output == null) {
             output = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
@@ -2249,7 +2251,8 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author.getAsMention()).send();
+        String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
+        output.send(io, null, warningStr + author.getAsMention()).send();
         return null;
     }
 
@@ -2509,7 +2512,6 @@ public class WarCommands {
         List<Transaction2> records = Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver(nationIds, nationIds, start_time, end_time);
         Predicate<Integer> allowNation = f -> nationIds.contains((long) f);
 
-        NationDB natDb = Locutus.imp().getNationDB();
         Map<Integer, Map<Long, Double>> deposited = new Int2ObjectOpenHashMap<>();
         Map<Integer, Map<Long, Double>> withdrawn = new Int2ObjectOpenHashMap<>();
         Function<Transaction2, Long> toTime = by_turn ? f -> TimeUtil.getTurn(f.getDate()) : f -> TimeUtil.getDay(f.getDate());
@@ -2627,7 +2629,6 @@ public class WarCommands {
         Set<DBWar> wars = Locutus.imp().getWarDb().queryAttacks().withWarsForNationOrAlliance(nationIds::contains, null, null).between(start_time, end_time).getWars();
         Predicate<Integer> allowNation = nationIds::contains;
 
-        NationDB natDb = Locutus.imp().getNationDB();
         Map<Integer, Map<Long, Integer>> offWarsByTime = new Int2ObjectOpenHashMap<>();
         Map<Integer, Map<Long, Integer>> defWarsByTime = new Int2ObjectOpenHashMap<>();
         Function<DBWar, Long> toTime = by_turn ? war -> TimeUtil.getTurn(war.getDate()) : war -> TimeUtil.getDay(war.getDate());
@@ -3040,7 +3041,7 @@ public class WarCommands {
                                 @Arg("Date to start from")
                                 @Timestamp long cuttOff,
                                 @Arg("Only check these nations")
-                                @Default("*") Set<DBNation> filter,
+                                @Default Set<DBNation> filter,
                                 @Arg("Ignore inactive nations")
                                 @Switch("a") boolean ignoreInactive,
                                 @Arg("Ignore vacation mode nations")
@@ -3058,6 +3059,7 @@ public class WarCommands {
                 if (change.getFromRank().id >= Rank.MEMBER.id && change.getFromId() == aaId) {
                     DBNation nation = DBNation.getById(change.getNationId());
                     if (nation == null || nation.getAlliance_id() == aaId) continue;
+                    if (filter != null && !filter.contains(nation)) continue;
                     nations.put(nation, new AbstractMap.SimpleEntry<>(change.getDate(), change.getFromRank()));
                     nationPreviousAA.put(nation.getId(), aaId);
                 }
@@ -3368,7 +3370,7 @@ public class WarCommands {
     }
 
     @Command(desc = "List war rooms for an ally or enemy")
-    public String warRoomList(@Me GuildDB db, @Me WarCategory warCategory, DBNation nation) {
+    public String warRoomList(@Me WarCategory warCategory, DBNation nation) {
         Map<Integer, WarCategory.WarRoom> roomMap = warCategory.getWarRoomMap();
         WarCategory.WarRoom room = roomMap.get(nation.getId());
         Function<WarCategory.WarRoom, String> toString = f -> {

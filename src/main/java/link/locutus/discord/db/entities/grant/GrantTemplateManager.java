@@ -261,12 +261,12 @@ public class GrantTemplateManager {
         // add decay
         for (TemplateTypes value : TemplateTypes.values()) {
             String tableName = value.getTable();
-            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `decay` BIGINT NOT NULL DEFAULT 0");
+            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `decay` BIGINT NOT NULL DEFAULT 0", true);
         }
         // add repeatable
         for (TemplateTypes value : TemplateTypes.values()) {
             String tableName = value.getTable();
-            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `repeatable` BIGINT NOT NULL DEFAULT 0");
+            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `repeatable` BIGINT NOT NULL DEFAULT 0", true);
         }
 
     }

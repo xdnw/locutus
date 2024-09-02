@@ -1612,18 +1612,15 @@ public class ArrayUtil {
 //        }
 
         String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", f -> true);
-        System.out.println(input);
         // private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         ParseResult<Object> test = parseTokens(input, null, new Function<String, Predicate<Object>>() {
             @Override
             public Predicate<Object> apply(String s) {
-                System.out.println("Parse elem predicate " + s);
                 return f -> true;
             }
         }, new Function<String, Predicate<Object>>() {
             @Override
             public Predicate<Object> apply(String s) {
-                System.out.println("Parse filter " + s);
                 return f -> true;
             }
         });

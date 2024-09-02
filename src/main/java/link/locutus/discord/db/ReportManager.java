@@ -232,15 +232,7 @@ public class ReportManager {
     }
 
     public Map<Integer, Long> getBlackListProximity(DBNation nation, Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap) {
-        long start = System.currentTimeMillis();
         Set<Integer> nationIds = getReportedNationIds(true);
-        System.out.println("proximity 1: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
-
-        System.out.println("proximity 2: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
-
-        long getCachedHistory = 0;
-        long getAllianceDurationMap = 0;
-        long add = 0;
         Map<Integer, Long> proximityMap = new HashMap<>();
 
         for (int nationId : nationIds) {
@@ -248,13 +240,7 @@ public class ReportManager {
                 continue;  // Skip comparing with itself
             }
 
-            long start2 = System.nanoTime();
             Map<Integer, List<Map.Entry<Long, Long>>> otherAllianceDurationMap = getCachedHistory(nationId);
-            getCachedHistory += System.nanoTime() - start2;
-            long start3 = System.nanoTime();
-            getAllianceDurationMap += System.nanoTime() - start3;
-            long start4 = System.nanoTime();
-
             long totalProximity = 0;
 
             for (Map.Entry<Integer, List<Map.Entry<Long, Long>>> entry : allianceDurationMap.entrySet()) {
@@ -269,18 +255,10 @@ public class ReportManager {
                 long overlapTime = calculateOverlapDuration(durations, otherDurations);
                 totalProximity += overlapTime;
             }
-            add += System.nanoTime() - start4;
-
             if (totalProximity > 0) {
                 proximityMap.put(nationId, totalProximity);
             }
         }
-
-        // print getCachedHistory, getAllianceDurationMap, add as ms
-        System.out.println("getCachedHistory: " + (getCachedHistory / 1000000) + "ms");
-        System.out.println("getAllianceDurationMap: " + (getAllianceDurationMap / 1000000) + "ms");
-        System.out.println("add: " + (add / 1000000) + "ms");
-
         return proximityMap;
     }
 

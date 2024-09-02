@@ -1,7 +1,7 @@
 package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord._main.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -30,7 +30,6 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.handlers.GuildCustomMessageHandler;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
-import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -41,16 +40,15 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
-import link.locutus.discord.web.jooby.WebRoot;
 import com.google.common.eventbus.EventBus;
-import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -79,17 +77,6 @@ import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.modals.ModalInteraction;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
-import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.dv8tion.jda.api.utils.ChunkingFilter;
-import net.dv8tion.jda.api.utils.Compression;
-import net.dv8tion.jda.api.utils.MemberCachePolicy;
-import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.async.AsyncLoggerContextSelector;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -102,42 +89,26 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.logging.Logger;
 
 public final class Locutus extends ListenerAdapter {
     private static Locutus INSTANCE;
-    private final CommandManager commandManager;
-    private final Logger logger;
-    private final StockDB stockDB;
-    private PnwPusherShardManager pusher;
-    private ForumDB forumDb;
+    private final RepeatingTasks taskTrack;
+    private ILoader loader;
 
-    private GuildShardManager manager = new GuildShardManager();
+    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor scheduler;
 
-    private final String discordToken;
+    private final EventBus eventBus;
 
-    private final DiscordDB discordDB;
-    private final NationDB nationDB;
-    private Guild server;
-
-    private final PoliticsAndWarV2 pnwApi;
-
-    private final PoliticsAndWarV3 v3;
-
-    private final TradeManager tradeManager;
-    private final WarDB warDb;
-    private BaseballDB baseBallDB;
-    private final BankDB bankDb;
-    private final ExecutorService executor;
-
-    private final Map<Long, GuildDB> guildDatabases = new ConcurrentHashMap<>();
-    private EventBus eventBus;
-    private SlashCommandManager slashCommands;
-
-    private ProxyHandler proxyHandler;
+    private final GuildShardManager manager = new GuildShardManager();
     private GuildCustomMessageHandler messageHandler;
     private DataDumpParser dataDumpParser;
-    private Object dataDumpParserLock = new Object();
+
+    private final Map<Long, GuildDB> guildDatabases = new ConcurrentHashMap<>();
+    private final Object dataDumpParserLock = new Object();
+
+    private PnwPusherShardManager pusher;
+    private Guild server;
 
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
@@ -150,15 +121,13 @@ public final class Locutus extends ListenerAdapter {
 
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {
         Logg.setInfoLogging();
-
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         long start = System.currentTimeMillis();
-
-        this.proxyHandler = new ProxyHandler();
-
-        System.out.println("remove:|| proxyhandler " + (((-start)) + (start = System.currentTimeMillis())));
-
+        this.executor = new ThreadPoolExecutor(0, 256, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
+        this.scheduler = new ScheduledThreadPoolExecutor(256, Executors.defaultThreadFactory());
+        this.taskTrack = new RepeatingTasks(scheduler);
+        Logg.text("Created Executors (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.ROOT_COALITION_SERVER <= 0) Settings.INSTANCE.ROOT_COALITION_SERVER = Settings.INSTANCE.ROOT_SERVER;
@@ -173,121 +142,53 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.commandPrefix(true).matches("[._~]")) {
             throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
         }
-
-        this.logger = Logger.getLogger("LOCUTUS");
-        this.eventBus = new AsyncEventBus("locutus", Runnable::run);
-
-        System.out.println("remove:|| eventbus " + (((-start)) + (start = System.currentTimeMillis())));
-
-        this.executor = Executors.newCachedThreadPool();
-
-        System.out.println("remove:|| executor " + (((-start)) + (start = System.currentTimeMillis())));
-        this.discordDB = new DiscordDB();
-        System.out.println("remove:|| discorddb " + (((-start)) + (start = System.currentTimeMillis())));
-        this.nationDB = new NationDB();
-        System.out.println("remove:|| nationdb " + (((-start)) + (start = System.currentTimeMillis())));
-        this.warDb = new WarDB();
-        System.out.println("remove:|| wardb " + (((-start)) + (start = System.currentTimeMillis())));
-        this.stockDB = new StockDB();
-        System.out.println("remove:|| stockdb " + (((-start)) + (start = System.currentTimeMillis())));
-        this.bankDb = new BankDB("bank");
-        System.out.println("remove:|| bankdb " + (((-start)) + (start = System.currentTimeMillis())));
-        this.tradeManager = new TradeManager();
-        System.out.println("remove:|| trademanager " + (((-start)) + (start = System.currentTimeMillis())));
-        if (Settings.INSTANCE.FORUM_FEED_SERVER > 0) {
-            this.forumDb = new ForumDB(Settings.INSTANCE.FORUM_FEED_SERVER);
-            System.out.println("remove:|| forumfeed " + (((-start)) + (start = System.currentTimeMillis())));
-        }
-
-        this.commandManager = new CommandManager(this);
-        System.out.println("remove:|| commandmanager " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.BOT_TOKEN.isEmpty()) {
             throw new IllegalStateException("Please set BOT_TOKEN in " + Settings.INSTANCE.getDefaultFile());
         }
-        this.discordToken = Settings.INSTANCE.BOT_TOKEN;
-
         if (Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
             if (Settings.INSTANCE.USERNAME.isEmpty() || Settings.INSTANCE.PASSWORD.isEmpty()) {
                 throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
             }
-            Auth auth = new Auth(0, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
-            ApiKeyPool.ApiKey key = auth.fetchApiKey();
-            Settings.INSTANCE.API_KEY_PRIMARY = key.getKey();
-        }
-        System.out.println("remove:|| apikey " + (((-start)) + (start = System.currentTimeMillis())));
-
-        if (Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
-            throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
         }
 
-        if (Settings.INSTANCE.NATION_ID <= 0) {
-            Settings.INSTANCE.NATION_ID = 0;
-            Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
-            if (nationIdFromKey == null) {
-                throw new IllegalStateException("Could not get NATION_ID from key. Please ensure a valid API_KEY is set in " + Settings.INSTANCE.getDefaultFile());
-            }
-            Settings.INSTANCE.NATION_ID = nationIdFromKey;
-        }
-
-        System.out.println("remove:|| nationid " + (((-start)) + (start = System.currentTimeMillis())));
-
-        {
-            PNWUser adminPnwUser = Locutus.imp().getDiscordDB().getUserFromNationId(Settings.INSTANCE.NATION_ID);
-            if (adminPnwUser != null) {
-                Settings.INSTANCE.ADMIN_USER_ID = adminPnwUser.getDiscordId();
-            }
-        }
-        System.out.println("remove:|| adminuserid " + (((-start)) + (start = System.currentTimeMillis())));
-
-        List<String> pool = new ArrayList<>();
-        pool.addAll(Settings.INSTANCE.API_KEY_POOL);
-        if (pool.isEmpty()) {
-            pool.add(Settings.INSTANCE.API_KEY_PRIMARY);
-        }
-
-        this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
-        System.out.println("remove:|| pnwapi " + (((-start)) + (start = System.currentTimeMillis())));
-
-        ApiKeyPool v3Pool = ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY,Settings.INSTANCE.ACCESS_KEY).build();
-        this.v3 = new PoliticsAndWarV3(v3Pool);
-        System.out.println("remove:|| v3 " + (((-start)) + (start = System.currentTimeMillis())));
-
-        this.commandManager.registerCommands(discordDB);
-        System.out.println("remove:|| registercommands " + (((-start)) + (start = System.currentTimeMillis())));
-
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
-            this.registerEvents();
-        }
-
-        System.out.println("remove:|| events " + (((-start)) + (start = System.currentTimeMillis())));
-
-        this.nationDB.load();
-        System.out.println("remove:|| nationdbload " + (((-start)) + (start = System.currentTimeMillis())));
-        this.warDb.load();
-        System.out.println("remove:|| wardbload " + (((-start)) + (start = System.currentTimeMillis())));
-        this.tradeManager.load();
-        System.out.println("remove:|| trademanagerload " + (((-start)) + (start = System.currentTimeMillis())));
-    }
-
-    public ProxyHandler getProxyHandler() {
-        return proxyHandler;
+        this.eventBus = new AsyncEventBus("locutus", Runnable::run);
+        Logg.text("Created Event Bus (" + (((-start)) + (start = System.currentTimeMillis())) + "ms");
+        this.loader = new PreLoader(this, executor, scheduler);
+        this.loader.initialize();
+        Logg.text("Created and initialized Module Loader (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
     }
 
     public static void post(Object event) {
         imp().eventBus.post(event);
     }
 
+    public static ILoader loader() {
+        return imp().loader;
+    }
+
     public void registerEvents() {
+        long start = System.currentTimeMillis();
         eventBus.register(new TreatyUpdateProcessor());
+        Logg.text("Registered Treaty Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new NationUpdateProcessor());
+        Logg.text("Registered Nation Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new TradeListener());
+        Logg.text("Registered Trade Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new CityUpdateProcessor());
+        Logg.text("Registered City Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new BankUpdateProcessor());
+        Logg.text("Registered Bank Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new WarUpdateProcessor());
+        Logg.text("Registered War Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         eventBus.register(new AllianceListener());
-        eventBus.register(new MailListener(commandManager.getV2().getStore(), commandManager.getV2().getValidators(), commandManager.getV2().getPermisser()));
+        Logg.text("Registered Alliance Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+        CommandManager cmdManager = loader.getCommandManager();
+        eventBus.register(new MailListener(cmdManager.getV2().getStore(), cmdManager.getV2().getValidators(), cmdManager.getV2().getPermisser()));
+        Logg.text("Registered Mail Listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+        WarDB warDb = loader.getWarDB();
         ConflictManager conflictManager = warDb == null ? null : warDb.getConflicts();
         if (conflictManager != null) eventBus.register(conflictManager);
+        Logg.text("Registered Conflict Manager (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
     }
 
     public EventBus getEventBus() {
@@ -300,124 +201,49 @@ public final class Locutus extends ListenerAdapter {
 
     public Locutus start() throws InterruptedException, LoginException, SQLException, ClassNotFoundException {
         long start = System.currentTimeMillis();
-        backup();
-        System.out.println("remove:|| backup " + (((-start)) + (start = System.currentTimeMillis())));
+        if (loader.getApiKey().isEmpty()) {
+            throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
+        }
+        if (loader.getNationId() <= 0) {
+            throw new IllegalStateException("Could not get NATION_ID from key. Please ensure a valid API_KEY is set in " + Settings.INSTANCE.getDefaultFile());
+        }
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
+            this.registerEvents();
+        }
+        Logg.text("Registered event listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
-            JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
-                this.slashCommands = new SlashCommandManager(this, Settings.INSTANCE.ENABLED_COMPONENTS.REGISTER_ADMIN_SLASH_COMMANDS);
-                builder.addEventListeners(slashCommands);
-            }
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.MESSAGE_COMMANDS) {
-                builder.addEventListeners(this);
-            }
-            builder
-                    .setChunkingFilter(ChunkingFilter.NONE)
-                    .setBulkDeleteSplittingEnabled(false)
-                    .setCompression(Compression.ZLIB)
-                    .setLargeThreshold(250)
-                    .setMemberCachePolicy(MemberCachePolicy.ALL);
-            if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
-                builder.enableIntents(GatewayIntent.GUILD_MEMBERS);
-            }
-            if (Settings.INSTANCE.DISCORD.INTENTS.MESSAGE_CONTENT) {
-                builder.enableIntents(GatewayIntent.MESSAGE_CONTENT);
-            }
-            if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_PRESENCES) {
-                builder.enableIntents(GatewayIntent.GUILD_PRESENCES);
-            }
-            if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGES) {
-                builder.enableIntents(GatewayIntent.GUILD_MESSAGES);
-            }
-            if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGE_REACTIONS) {
-                builder.enableIntents(GatewayIntent.GUILD_MESSAGE_REACTIONS);
-            }
-            if (Settings.INSTANCE.DISCORD.INTENTS.DIRECT_MESSAGES) {
-                builder.enableIntents(GatewayIntent.DIRECT_MESSAGES);
-            }
-            if (Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
-                builder.enableIntents(GatewayIntent.GUILD_EMOJIS_AND_STICKERS);
-            }
-            if (Settings.INSTANCE.DISCORD.CACHE.MEMBER_OVERRIDES) {
-                builder.enableCache(CacheFlag.MEMBER_OVERRIDES);
-            }
-            if (Settings.INSTANCE.DISCORD.CACHE.ONLINE_STATUS) {
-                builder.enableCache(CacheFlag.ONLINE_STATUS);
-            }
-            if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
-                builder.enableCache(CacheFlag.EMOJI);
-            }
-//                Set<Long> whitelist = Settings.INSTANCE.Discord.Guilds.GET().WHITELIST();
-//                long[] whitelistArr = new long[whitelist.size()];
-//            int numShards = 10;
-//            for (int i = 0; i < numShards; i++) {
-//                long guildId = whitelistArr[i];
-//                JDA instance = builder.useSharding(i, numShards).build();
-//                manager.put(instance);
-//            }
-//            rootInstance = builder.useSharding(whitelistArr.length, whitelistArr.length + 1).build();
-
-            System.out.println("remove:|| building " + (((-start)) + (start = System.currentTimeMillis())));
-            JDA jda = builder.build();
+            JDA jda = loader.getJda();
             try {
-                if (slashCommands != null) slashCommands.registerCommandData(jda);
+                SlashCommandManager slashCommands = loader.getSlashCommandManager();
+                if (slashCommands != null) {
+                    executor.submit(() -> slashCommands.registerCommandData(jda));
+                }
             } catch (Throwable e) {
                 // sometimes happen when discord api is spotty / timeout
                 e.printStackTrace();
+                Logg.text("Failed to update slash commands: " + e.getMessage());
             }
-            System.out.println(":||Remove build " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             setSelfUser(jda);
-            System.out.println(":||Remove Setup slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             manager.put(jda);
             jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
-            System.out.println(":||Remove subsystems " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             jda.awaitReady();
+            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             setSelfUser(jda);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
             }
-            System.out.println(":||Remove init db " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+            Logg.text("Initialized Guild Databases " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
             if (rootGuild != null) {
-                System.out.println(":||Remove get guild " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
                 this.server = rootGuild;
-                System.out.println("remove:|| init db " + (((-start)) + (start = System.currentTimeMillis())));
             } else {
                 throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.ROOT_SERVER + " as `root-server` in " + Settings.INSTANCE.getDefaultFile().getAbsolutePath());
             }
-
-            System.out.println(":||Remove ready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
+                Logg.text("Initialized API fetching tasks (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             }
-
-            System.out.println("remove:|| init repeating tasks " + (((-start)) + (start = System.currentTimeMillis())));
-
-//            for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS.keySet()) {
-//                Guild guild = getDiscordApi().getGuildById(guildId);
-//                if (guild != null) {
-//                    link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
-//                }
-//            }
-//
-//            System.out.println("remove:|| banned guilds " + (((-start)) + (start = System.currentTimeMillis())));
-//
-//            if (!Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.isEmpty()) {
-//                for (GuildDB value : getGuildDatabases().values()) {
-//                    Guild guild = value.getGuild();
-//                    if (!guild.isLoaded()) continue;
-//                    long owner = guild.getOwnerIdLong();
-//                    DBNation nation = DiscordUtil.getNation(owner);
-//                    if (nation != null) {
-//                        if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.containsKey(nation.getAlliance_id())) {
-//                            link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
-//                        }
-//                    }
-//                }
-//            }
-//            System.out.println("remove:|| banned alliances " + (((-start)) + (start = System.currentTimeMillis())));
-
-            // load members
             {
                 List<GuildDB> queue = new ArrayList<>(guildDatabases.values());
                 // sort by GuildDB.getLastModified (highest first)
@@ -430,16 +256,16 @@ public final class Locutus extends ListenerAdapter {
                     public void run() {
                         GuildDB db = queue.size() > index.get() ? queue.get(index.getAndIncrement()) : null;
                         if (db == null || !db.getGuild().isLoaded()) {
-                            System.out.println("Done loading guild members");
+                            Logg.text("Done loading all guild members");
                             return;
                         }
                         Guild guild = db.getGuild();
-                        System.out.println(":||Remove Loading members for " + guild);
+                        Logg.text("Loading members for " + guild);
                         guild.loadMembers().onSuccess(f -> {
-                            System.out.println("Loaded " + f.size() + " members for " + guild);
+                            Logg.text("Loaded " + f.size() + " members for " + guild);
                             queueFunc[0].run();
                         }).onError(f -> {
-                            System.out.println("Failed to load members for " + guild);
+                            Logg.text("Failed to load members for " + guild);
                             queueFunc[0].run();
                         });
                     }
@@ -454,17 +280,18 @@ public final class Locutus extends ListenerAdapter {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
+            Logg.text("Initialized Web Interface (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         }
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
             this.pusher = new PnwPusherShardManager();
             executor.submit(new Runnable() {
                 @Override
                 public void run() {
-                    System.out.println("Loading pusher");
+                    Logg.text("Loading pusher");
                     pusher.load();
-                    System.out.println("Loaded pusher");
+                    Logg.text("Loaded pusher");
                     pusher.subscribeDefaultEvents();
-                    System.out.println("Subscribed to default events");
+                    Logg.text("Subscribed to default events");
                 }
             });
         }
@@ -472,11 +299,19 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.TASKS.CUSTOM_MESSAGE_HANDLER) {
             this.messageHandler = new GuildCustomMessageHandler();
             // run every 5m
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Recruit Message Handler", () -> {
                 messageHandler.run();
-            }, 5 * 60);
+            }, 5 * 60, TimeUnit.SECONDS);
+            Logg.text("Setup message handler (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         }
-
+        Logg.text("Waiting for startup tasks to resolve...");
+        try {
+            loader.resolveFully(TimeUnit.MINUTES.toMillis(15));
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw new IllegalStateException("Failed to start locutus in 15 minutes.\n\n" + loader.printStacktrace());
+        }
+        Logg.text("Resolved all startup tasks");
         return this;
     }
 
@@ -492,16 +327,6 @@ public final class Locutus extends ListenerAdapter {
             if (appId > 0) {
                 Settings.INSTANCE.APPLICATION_ID = appId;
             }
-        }
-    }
-
-    private void backup() {
-            int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
-            String script = Settings.INSTANCE.BACKUP.SCRIPT;
-        try {
-            Backup.backup(script, turnsCheck);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -521,8 +346,8 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Auth getRootAuth() {
-        Auth auth = getNationDB().getNation(Settings.INSTANCE.NATION_ID).getAuth(true);
-        if (auth != null) auth.setApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
+        Auth auth = getNationDB().getNation(loader.getNationId()).getAuth(true);
+        if (auth != null) auth.setApiKey(loader.getApiKey());
         return auth;
     }
 
@@ -545,7 +370,7 @@ public final class Locutus extends ListenerAdapter {
                 guildDatabases.put(guild.getIdLong(), db);
                 return db;
             } catch (Throwable e) {
-                System.out.println("Critical error creating GuildDB for " + guild);
+                Logg.text("Critical error creating GuildDB for " + guild);
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
@@ -599,7 +424,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public SlashCommandManager getSlashCommands() {
-        return slashCommands;
+        return loader.getSlashCommandManager();
     }
 
     public static Locutus imp() {
@@ -613,31 +438,19 @@ public final class Locutus extends ListenerAdapter {
         Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
     }
     public WarDB getWarDb() {
-        return warDb;
+        return loader.getWarDB();
     }
 
     public BaseballDB getBaseballDB() {
-        if (this.baseBallDB == null) {
-            synchronized (this) {
-                if (this.baseBallDB == null) {
-                    try {
-                        baseBallDB = new BaseballDB(Settings.INSTANCE.DATABASE);
-                    } catch (SQLException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        }
-        return this.baseBallDB;
+        return loader.getBaseballDB();
     }
 
     public TradeManager getTradeManager() {
-        this.tradeManager.load();
-        return tradeManager;
+        return loader.getTradeManager();
     }
 
     public CommandManager getCommandManager() {
-        return commandManager;
+        return loader.getCommandManager();
     }
 
     public void autoRole(DBNation nation) {
@@ -663,47 +476,24 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public StockDB getStockDB() {
-        return stockDB;
+        return loader.getStockDB();
     }
 
     public ForumDB getForumDb() {
-        return forumDb;
-    }
-
-//    public Set<DBMain> getDatabases() {
-//        Set<DBMain> databases = new HashSet<>();
-//        databases.add(tradeManager.getTradeDb());
-//        databases.add(forumDb);
-//        databases.add(discordDB);
-//        databases.add(nationDB);
-//        databases.add(warDb);
-//        databases.add(bankDb);
-//        databases.add(stockDB);
-//        databases.addAll(guildDatabases.values());
-//        return databases;
-//    }
-
-    public ScheduledFuture<?> addTaskSeconds(CaughtTask task, long interval) {
-        return addTask(CaughtRunnable.wrap(task), interval, TimeUnit.SECONDS);
-    }
-    public ScheduledFuture<?> addTask(Runnable task, long interval, TimeUnit unit) {
-        if (interval <= 0) return null;
-        if (!(task instanceof CaughtRunnable)) {
-            Runnable parent = task;
-            task = new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
-                    parent.run();
-                }
-            };
-        }
-        return commandManager.getExecutor().scheduleWithFixedDelay(task, interval, interval, unit);
+        return loader.getForumDB();
     }
 
     public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
-        ArrayDeque<Event> events = new ArrayDeque<>();
+        ArrayDeque<Event> events = new ArrayDeque<>(0);
         eventHandler.accept(events::add);
         runEventsAsync(events);
+    }
+
+    public <T> T returnEventsAsync(ThrowingFunction<Consumer<Event>, T> eventHandler) {
+        Collection<Event> events = new ArrayDeque<>(0);
+        T result = eventHandler.apply(events::add);
+        runEventsAsync(events);
+        return result;
     }
 
     public void runEventsAsync(Collection<Event> events) {
@@ -722,19 +512,9 @@ public final class Locutus extends ListenerAdapter {
 
     public void initRepeatingTasks() {
         Object warUpdateLock = new Object();
-        if ((Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0) && nationDB.getNations().isEmpty()) {
-            logger.info("No nations found. Updating all nations");
-            if (Settings.USE_V2) {
-                nationDB.updateNationsV2(true, null);
-            } else {
-                nationDB.updateAllNations(null);
-            }
-        }
-
-        // Turn change
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
-            addTaskSeconds(new CaughtTask() {
+            taskTrack.addTask("Turn Change", new CaughtTask() {
                 long lastTurnTmp;
                 @Override
                 public void runUnsafe() throws Exception {
@@ -745,152 +525,125 @@ public final class Locutus extends ListenerAdapter {
 
                         lastTurn = Math.max(lastTurnTmp, lastTurn);
                         lastTurnTmp = currentTurn;
-
                         if (currentTurn != lastTurn) {
                             runTurnTasks(lastTurn, currentTurn);
                         }
                     }
                 }
-            }, 5);
-            addTaskSeconds(new CaughtTask() {
+            }, 5, TimeUnit.SECONDS);
+            taskTrack.addTask("Activity Check", new CaughtTask() {
                 @Override
                 public void runUnsafe() throws Exception {
                     NationUpdateProcessor.onActivityCheck();
                 }
-            }, 60);
+            }, 60, TimeUnit.SECONDS);
         }
         if (Settings.USE_V2) {
-            addTaskSeconds(() -> {
-                runEventsAsync(events -> nationDB.updateNationsV2(false, events));
-            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
+            taskTrack.addTask("Update Nations V2 (No VM)", () -> {
+                runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
+            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(events -> nationDB.updateNationsV2(true, events));
-            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+            taskTrack.addTask("Update Nations V2", () -> {
+                runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(events -> nationDB.updateCitiesV2(events));
-            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+            taskTrack.addTask("City (V2)", () -> {
+                runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("War/Attack (V2)", () -> {
                 synchronized (warUpdateLock)
                 {
-                    System.out.println("Start update wars 1");
-                    long start = System.currentTimeMillis();
-                    runEventsAsync(warDb::updateAllWarsV2);
-                    System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
-                    runEventsAsync(e -> warDb.updateAttacks(true, e, true));
-                    System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
+                    runEventsAsync(getWarDb()::updateAllWarsV2);
+                    runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
                 }
-            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
         } else {
-            addTaskSeconds(() -> {
+            taskTrack.addTask("Nation (Active)", () -> {
                 try {
-                    System.out.println("Update most active nations");
-                    runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
+                    runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
-            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
+            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(nationDB::updateTreaties);
-            }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS);
+            taskTrack.addTask("Treaty", () -> {
+                runEventsAsync(getNationDB()::updateTreaties);
+            }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(f -> bankDb.updateBankRecs(false, f));
-            }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
+            taskTrack.addTask("Bank", () -> {
+                runEventsAsync(f -> getBankDB().updateBankRecs(false, f));
+            }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(nationDB::updateRecentNations);
-            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
+            taskTrack.addTask("Nation (Recent)", () -> {
+                runEventsAsync(getNationDB()::updateRecentNations);
+            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(events -> nationDB.updateNonVMNations(events));
-            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+            taskTrack.addTask("Nation (Non VM)", () -> {
+                runEventsAsync(events -> getNationDB().updateNonVMNations(events));
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            addTaskSeconds(() -> {
-                runEventsAsync(f -> nationDB.updateDirtyCities(false, f));
-            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
+            taskTrack.addTask("Outdated Cities", () -> {
+                runEventsAsync(f -> getNationDB().updateDirtyCities(false, f));
+            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS, TimeUnit.SECONDS);
 
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
                 SpyUpdater spyUpdate = new SpyUpdater();
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Spy Tracker", () -> {
                     spyUpdate.run();
-                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS);
+                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS, TimeUnit.SECONDS);
             }
 
-            addTaskSeconds(() -> {
+            taskTrack.addTask("War/Attack", () -> {
                 try {
-                    System.out.println("Start update wars 1");
                     synchronized (warUpdateLock) {
-                        System.out.println("Start update wars 1.1");
-                        long start = System.currentTimeMillis();
-                        System.out.println("Start update wars 1.2");
-                        runEventsAsync(f -> warDb.updateActiveWars(f, false));
-                        System.out.println("Start update wars 1.3");
-                        runEventsAsync(warDb::fetchNewWars);
-                        System.out.println("Start update wars 1.4");
-                        runEventsAsync(warDb::updateAttacks);
-                        System.out.println("Start update wars 1.5");
+                        runEventsAsync(f -> getWarDb().updateActiveWars(f, false));
+                        runEventsAsync(getWarDb()::fetchNewWars);
+                        runEventsAsync(getWarDb()::updateAttacks);
                     }
-                    System.out.println("End update wars 1.5");
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
 
-            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
+            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
 
-//            addTaskSeconds(() -> {
-//                synchronized (warUpdateLock) {
-//                    System.out.println("Start update wars");
-//                    long start1 = System.currentTimeMillis();
-//                    runEventsAsync(warDb::updateAllWars);
-//                    runEventsAsync(warDb::updateAttacks);
-//                    long diff1 = System.currentTimeMillis() - start1;
-//                    {
-//                        System.out.println("Update wars took " + diff1);
-//                    }
-//
-//                    if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
-//                        long start = System.currentTimeMillis();
-//                        WarUpdateProcessor.checkActiveConflicts();
-//                        long diff = System.currentTimeMillis() - start;
-//                        if (diff > 500) {
-//                            AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
-//                        }
-//                    }
-//                }
-//            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+            taskTrack.addTask("All War/Attack", () -> {
+                synchronized (warUpdateLock) {
+                    runEventsAsync(getWarDb()::updateAllWars);
+                    runEventsAsync(getWarDb()::updateAttacks);
+                }
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
             checkMailTasks();
 
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
-                addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
+                taskTrack.addTask("Bounties", () -> Locutus.imp().getWarDb().updateBountiesV3(),
+                        Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
             if (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0) {
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Treasure", () -> {
                     runEventsAsync(Locutus.imp().getNationDB()::updateTreasures);
-                }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS);
+                }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Baseball", () -> {
                     runEventsAsync(getBaseballDB()::updateGames);
-                }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
+                }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-                addTaskSeconds(() -> {
+                taskTrack.addTask("Trade", () -> {
                             runEventsAsync(getTradeManager()::updateTradeList);
                         },
-                        Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
+                        Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
-                addTask(() ->
-                                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false),
+                taskTrack.addTask("Discord User Id", () -> {
+                            Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false);
+                        },
                         Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
             }
         }
@@ -898,11 +651,11 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS > 0) {
             LeavingBeigeAlert beigeAlerter = new LeavingBeigeAlert();
 
-            addTaskSeconds(beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS);
+            taskTrack.addTask("Beige Alert", beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, TimeUnit.SECONDS);
         }
 
-        if (forumDb != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
-            addTaskSeconds(forumDb::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS);
+        if (getForumDb() != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
+            taskTrack.addTask("Forum", getForumDb()::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS, TimeUnit.SECONDS);
         }
     }
 
@@ -910,7 +663,7 @@ public final class Locutus extends ListenerAdapter {
         try {
             new TurnChangeEvent(lastTurn, currentTurn).post();
 
-            for (DBNation nation : nationDB.getNations().values()) {
+            for (DBNation nation : getNationDB().getNations().values()) {
                 nation.processTurnChange(lastTurn, currentTurn, Event::post);
             }
 
@@ -923,27 +676,26 @@ public final class Locutus extends ListenerAdapter {
                 // Update all nations
 
                 {
-                    runEventsAsync(events -> nationDB.updateNonVMNations(events));
+                    runEventsAsync(events -> getNationDB().updateNonVMNations(events));
                 }
                 {
-                    runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
+                    runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
                 }
                 {
-                    runEventsAsync(events -> nationDB.updateAlliances(null, events));
+                    runEventsAsync(events -> getNationDB().updateAlliances(null, events));
                 }
 
-                runEventsAsync(nationDB::deleteExpiredTreaties);
-                runEventsAsync(nationDB::updateTreaties);
+                runEventsAsync(getNationDB()::deleteExpiredTreaties);
+                runEventsAsync(getNationDB()::updateTreaties);
                 try {
-                    runEventsAsync(nationDB::updateBans);
+                    runEventsAsync(getNationDB()::updateBans);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
 
-                nationDB.saveAllCities(); // TODO save all cities
+                getNationDB().saveAllCities(); // TODO save all cities
 
-
-                tradeManager.updateColorBlocs(); // TODO move to configurable task
+                getTradeManager().updateColorBlocs(); // TODO move to configurable task
             }
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {
@@ -975,7 +727,7 @@ public final class Locutus extends ListenerAdapter {
             try {
                 Auth auth = nation.getAuth(true);
                 AlertMailTask alertMailTask = new AlertMailTask(auth, channelId);
-                commandManager.getExecutor().scheduleWithFixedDelay(alertMailTask, 60, task.FETCH_INTERVAL_SECONDS, TimeUnit.SECONDS);
+                taskTrack.addTask("Mail " + section, alertMailTask, interval, TimeUnit.SECONDS);
             } catch (IllegalArgumentException e) {
                 AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): They are not authenticated (user/pass)");
             }
@@ -987,11 +739,11 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public DiscordDB getDiscordDB() {
-        return discordDB;
+        return loader.getDiscordDB();
     }
 
     public NationDB getNationDB() {
-        return nationDB;
+        return loader.getNationDB();
     }
 
     public JDA getDiscordApi(long guildId) {
@@ -999,11 +751,11 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public PoliticsAndWarV3 getV3() {
-        return v3;
+        return loader.getApiV3();
     }
 
     public PoliticsAndWarV2 getPnwApiV2() {
-        return pnwApi;
+        return loader.getApiV2();
     }
 
     @Override
@@ -1029,13 +781,11 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
-        System.out.println(":||Remove load members guild join");
         event.getGuild().loadMembers();
     }
 
     @Override
     public void onGuildAvailable(@NotNull GuildAvailableEvent event) {
-        System.out.println(":||Remove load members guild available");
         event.getGuild().loadMembers();
     }
 
@@ -1050,7 +800,6 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildMemberJoin(@Nonnull GuildMemberJoinEvent event) {
-        System.out.println(":||Remove Guild member join debug| " + event.getGuild() + " | " + event.getUser());
         executor.submit(() -> {
             try {
                 Guild guild = event.getGuild();
@@ -1131,7 +880,6 @@ public final class Locutus extends ListenerAdapter {
             Message message = event.getMessage();
 
             Button button = event.getButton();
-            System.out.println("Button press " + button.getId() + " | " + button.getLabel());
 
             if (button.getId().equalsIgnoreCase("")) {
                 RateLimitUtil.queue(message.delete());
@@ -1139,7 +887,7 @@ public final class Locutus extends ListenerAdapter {
             }
 
             if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
-                System.out.println("Author not application");
+                Logg.text("Author not application");
                 return;
             }
 
@@ -1203,7 +951,7 @@ public final class Locutus extends ListenerAdapter {
                         hookIO.setIsModal(event);
                     }
 
-                    if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || commandManager.isModernPrefix(id.charAt(0)))) {
+                    if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || getCommandManager().isModernPrefix(id.charAt(0)))) {
                         success |= handleCommandReaction(id, message, ioToUse, user, true);
                         hasLegacyCommand = true;
                     } else if (id.startsWith("{")) {
@@ -1274,7 +1022,7 @@ public final class Locutus extends ListenerAdapter {
 
             String message = event.getMessage().getContentRaw();
             DiscordChannelIO io = new DiscordChannelIO(event.getChannel(), () -> event.getMessage());
-            commandManager.run(guild, io, author, message, true, true);
+            getCommandManager().run(guild, io, author, message, true, true);
             long diff = System.currentTimeMillis() - start;
             if (diff > 1000) {
                 StringBuilder response = new StringBuilder("## Long action: " + event.getAuthor().getIdLong() + " | " + event.getAuthor().getName() + ": " + DiscordUtil.trimContent(event.getMessage().getContentRaw()));
@@ -1318,7 +1066,7 @@ public final class Locutus extends ListenerAdapter {
         Message message = isMessageLocutus(event.getMessageIdLong(), event.getGuildChannel());
         if (message == null) return;
         EmojiUnion emote;
-        if (event.getUser().getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) {
+        if (event.getUser().getIdLong() == Locutus.loader().getAdminUserId()) {
             emote = event.getEmoji();
             if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
                 link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));
@@ -1338,12 +1086,11 @@ public final class Locutus extends ListenerAdapter {
         boolean legacy = cmd.charAt(0) == Settings.commandPrefix(true).charAt(0);
         if (legacy) {
             String cmdLabel = cmd.split(" ")[0].substring(1);
-            cmdObject = commandManager.getCommandMap().get(cmdLabel.toLowerCase());
+            cmdObject = getCommandManager().getCommandMap().get(cmdLabel.toLowerCase());
             if (cmdObject == null) {
                 return false;
             }
         }
-        System.out.println("CMD1 " + cmd);
         if (!(cmdObject instanceof Noformat)) {
             DBNation nation = DiscordUtil.getNation(user);
             NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
@@ -1360,8 +1107,7 @@ public final class Locutus extends ListenerAdapter {
                 return false;
             }
         }
-        System.out.println("Run " + io.getClass());
-        commandManager.run(guild, io, user, cmd, async, false);
+        getCommandManager().run(guild, io, user, cmd, async, false);
         return true;
     }
 
@@ -1421,8 +1167,7 @@ public final class Locutus extends ListenerAdapter {
 
         DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
 
-        String[] split = raw.split("\\r?\\n(?=[" + StringMan.join(commandManager.getAllPrefixes(), "|") + "|{])");
-        System.out.println("Split " + StringMan.getString(split));
+        String[] split = raw.split("\\r?\\n(?=[" + StringMan.join(getCommandManager().getAllPrefixes(), "|") + "|{])");
         for (String cmd : split) {
             success |= handleCommandReaction(cmd, message, io, user, async);
         }
@@ -1442,7 +1187,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public BankDB getBankDB() {
-        return this.bankDb;
+        return loader.getBankDB();
     }
 
     public ExecutorService getExecutor() {
@@ -1461,7 +1206,8 @@ public final class Locutus extends ListenerAdapter {
             // close pusher subscriptions
 
             executor.shutdownNow();
-            if (commandManager != null) commandManager.getExecutor().shutdownNow();
+            CommandManager cmdManager = getCommandManager();
+            if (cmdManager != null) cmdManager.getExecutor().shutdownNow();
 
             // join all threads
             for (Thread thread : Thread.getAllStackTraces().keySet()) {
@@ -1476,12 +1222,22 @@ public final class Locutus extends ListenerAdapter {
                 Thread.sleep(5000);
             } catch (InterruptedException e) {}
 
-            System.out.println("\n == Ignore the following if the thread doesn't relate to anything modifying persistent data");
+            Logg.text("\n == Ignore the following if the thread doesn't relate to anything modifying persistent data");
             for (Map.Entry<Thread, StackTraceElement[]> thread : Thread.getAllStackTraces().entrySet()) {
-                System.out.println("Thread did not close after 5s: " + thread.getKey() + "\n- " + StringMan.stacktraceToString(thread.getValue()));
+                Logg.text("Thread did not close after 5s: " + thread.getKey() + "\n- " + StringMan.stacktraceToString(thread.getValue()));
             }
 
             System.exit(1);
+        }
+    }
+
+    private void backup() {
+        int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
+        String script = Settings.INSTANCE.BACKUP.SCRIPT;
+        try {
+            Backup.backup(script, turnsCheck);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -1508,5 +1264,13 @@ public final class Locutus extends ListenerAdapter {
             }
         }
         return dataDumpParser;
+    }
+
+    public void setLoader(ILoader loader) {
+        this.loader = loader;
+    }
+
+    public RepeatingTasks getRepeatingTasks() {
+        return taskTrack;
     }
 }

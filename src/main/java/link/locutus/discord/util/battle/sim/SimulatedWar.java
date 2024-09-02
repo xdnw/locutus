@@ -1,5 +1,7 @@
 package link.locutus.discord.util.battle.sim;
 
+import link.locutus.discord.Logg;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -47,7 +49,7 @@ public class SimulatedWar {
                     solution = next;
                 }
                 if (System.currentTimeMillis() - start > 10000) {
-                    System.out.println("!!! Took too long to brute force. Breaking loop");
+                    Logg.text("!!! Took too long to simulate wars (>10s). Breaking loop");
                     break;
                 }
                 continue;

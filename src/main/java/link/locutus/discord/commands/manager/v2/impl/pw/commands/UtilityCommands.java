@@ -270,7 +270,6 @@ public class UtilityCommands {
     @RolePermission(Roles.ECON)
     public String findOffshore(@Me IMessageIO channel, @Me JSONObject command, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
         if (cutoffMs == null) cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(200);
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
         long now = System.currentTimeMillis();
@@ -548,7 +547,6 @@ public class UtilityCommands {
         Set<Integer> enemies = enemiesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Set<Integer> allies = alliesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
 
-        long start1 = System.currentTimeMillis();
         Map<Integer, List<AllianceChange>> removes = Locutus.imp().getNationDB().getRemovesByAlliances(enemies, cutoff);
         Map<Integer, Set<AllianceChange>> removesByNation = removes.entrySet().stream().flatMap(f -> f.getValue().stream()).collect(Collectors.groupingBy(AllianceChange::getNationId, Collectors.toSet()));
 
@@ -557,8 +555,6 @@ public class UtilityCommands {
         Map<Integer, Integer> offshoresOfficer = new HashMap<>();
         Map<Integer, Integer> offshoresMember = new HashMap<>();
         Map<Integer, Map.Entry<Integer, Map.Entry<Integer, Double>>> offshoresTransfers = new HashMap<>(); // Ofshore AA id -> (parent AA id, num transfers, value transferred)
-
-        long totalBankDiff = 0;
 
         Map<Integer, List<DBNation>> alliances = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true, true);
         outer:
@@ -586,9 +582,7 @@ public class UtilityCommands {
                 }
             }
 
-            long start = System.currentTimeMillis();
             List<Transaction2> transfers = Locutus.imp().getBankDB().getTransactions(TRANSACTIONS_2.SENDER_ID.eq((long) aaId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)).and(TRANSACTIONS_2.TX_DATETIME.gt(cutoff)));
-            totalBankDiff += System.currentTimeMillis() - start;
 
             transfers.removeIf(f -> f.sender_id != aaId || f.tx_datetime < cutoff);
             transfers.removeIf(f -> f.note != null && f.note.contains("of the alliance bank inventory"));
@@ -958,7 +952,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"})
-    public String TurnTimer(@Me GuildDB db, DBNation nation) throws IOException {
+    public String TurnTimer(DBNation nation) throws IOException {
         StringBuilder response = new StringBuilder();
         response.append("City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n");
         response.append("Project: " + nation.getProjectTurns() + " turns | " +
@@ -1279,7 +1273,7 @@ public class UtilityCommands {
 
     @Command(desc = "Add or remove the configured auto roles to all users in this discord guild")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public static String autoroleall(@Me User author, @Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean force) {
+    public static String autoroleall(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean force) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
 
@@ -1347,7 +1341,7 @@ public class UtilityCommands {
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @NoFormat
-    public static String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
+    public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
@@ -2131,9 +2125,12 @@ public class UtilityCommands {
 
     @Command(aliases = {"setloot"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String setLoot(@Me IMessageIO channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("ESPIONAGE") NationLootType type, @Default("1") double fraction) {
+    public String setLoot(DBNation nation, Map<ResourceType, Double> resources, @Default("ESPIONAGE") NationLootType type, @Default("1") double fraction) {
         resources = PW.multiply(resources, 1d / fraction);
-        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), ResourceType.resourcesToArray(resources), type);
+        double[] rssArr = ResourceType.resourcesToArray(resources);
+        Locutus.imp().runEventsAsync(events ->
+                LootEntry.forNation(nation.getNation_id(), System.currentTimeMillis(), rssArr, type)
+                        .save(events));
         return "Set " + nation.getNation() + " to " + ResourceType.resourcesToString(resources) + " worth: ~$" + ResourceType.convertedTotal(resources);
     }
 
@@ -2342,7 +2339,6 @@ public class UtilityCommands {
 
         long finalMinDay = minDay;
         parser.iterateAll(f -> f >= finalMinDay, (h, r) -> r.required(h.nation_id).optional(h.vm_turns), null, new BiConsumer<Long, NationHeader>() {
-            private long timestampFromDay;
             private long lastDay = -1;
 
             @Override
@@ -2351,7 +2347,6 @@ public class UtilityCommands {
                 if (!contains.test(nationId)) return;
                 if (lastDay != day) {
                     lastDay = day;
-                    timestampFromDay = TimeUtil.getTimeFromDay(day);
                 }
                 Integer vmTurns = header.vm_turns.get();
                 if (vmTurns != null && vmTurns > 0) {

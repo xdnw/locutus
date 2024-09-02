@@ -94,7 +94,6 @@ public class Deposits extends Command {
                 channel,
                 banker,
                 author,
-                guildDb.getHandler(),
                 (args.get(0).equalsIgnoreCase("*")) ? guildDb : PWBindings.nationOrAllianceOrGuildOrTaxId(args.get(0)),
                 args.size() == 2 ? PWBindings.alliances(guild, args.get(1), author, me) : null,
                 cutOff != 0 ? cutOff : null,

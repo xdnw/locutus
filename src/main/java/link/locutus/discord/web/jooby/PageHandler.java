@@ -629,7 +629,6 @@ public class PageHandler implements Handler {
             response.addProperty("value", redirect);
             sse.sendEvent(response);
         } catch (Throwable e) {
-            System.out.println("Handle errors");
             handleErrors(e, sse.ctx);
         }
     }

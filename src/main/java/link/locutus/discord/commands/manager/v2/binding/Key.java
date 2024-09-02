@@ -65,24 +65,18 @@ public class Key<T> {
     private Key(Binding binding, Type type, Annotation... annotations) {
         this.binding = binding;
         this.type = type;
-        this.annotationTypes = new LinkedHashSet<>();
+        this.annotationTypes = new LinkedHashSet<>(annotations.length);
         this.annotations = annotations;
         for (Annotation annotation : annotations) {
-            annotationTypes.add(annotation.annotationType());
-        }
-        if (!this.annotationTypes.isEmpty()) {
-            Iterator<Class<?>> iter = this.annotationTypes.iterator();
-            while (iter.hasNext()) {
-                Class<?> f = iter.next();
-                if (Binding.class.isAssignableFrom(f)) {
-                    iter.remove();
-                } else if (Default.class.isAssignableFrom(f)) {
-                    iter.remove();
-                    isDefault = true;
-                }
+            Class<? extends Annotation> annType = annotation.annotationType();
+            if (annType == Binding.class) {
+                continue;
+            } else if (annType == Default.class) {
+                isDefault = true;
+                continue;
             }
+            annotationTypes.add(annType);
         }
-
     }
 
     public static <T> Key<T> of(Type type, Class annotationClass) {

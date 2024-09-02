@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -96,8 +97,6 @@ public class DataUtil {
             nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.getDefender_id());
         }
 
-        System.out.println("Attacks " + attacks.size());
-
         Map<Long, Map<Integer, Map<Integer, Double>>> infraMap = cityInfraByDay((day, nation) -> nationsByDay.getOrDefault(day, Collections.emptySet()).contains(nation));
 
         attacks.removeIf(AbstractCursor -> {
@@ -143,7 +142,8 @@ public class DataUtil {
                     }
 
                 } catch (Throwable e) {
-                    System.out.println("Error parsing " + note);
+                    Logg.text("Error parsing " + id + " " + note + " " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
 
@@ -829,144 +829,4 @@ public class DataUtil {
 //        return tracker;
 //    }
 
-    public static void main(String[] args) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        DataDumpParser instance = new DataDumpParser().load();
-        long start = System.currentTimeMillis();
-
-//        CitiesFile citiesFile = new CitiesFile(new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES, "cities-2022-12-16.csv"), instance.getDict(true));
-//        citiesFile.getCompressedFile(true, false);
-//        Map<Integer, Map<Integer, DBCity>> cities = citiesFile.readCities(f -> true, false);
-
-
-        instance.iterateFiles(new TriConsumer<Long, NationsFile, CitiesFile>() {
-            @Override
-            public void accept(Long day, NationsFile nationsFile, CitiesFile citiesFile) {
-                try {
-                    long start = System.currentTimeMillis();
-//                    nationsFile.testCsv();
-//                    nationsFile.testRead();
-                    AtomicInteger i = new AtomicInteger();
-                    citiesFile.reader().all(false).read(cityHeader -> {
-                        // do nothing
-                        i.getAndIncrement();
-                    });
-                    long diff = System.currentTimeMillis() - start;
-                    System.out.println("Read " + nationsFile.getDay() + " in " + diff + "ms (" + i.get() + ")");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-
-        if (true) {
-            System.out.println("Done");
-            System.exit(0);
-        }
-
-//        long diff = System.currentTimeMillis() - start;
-//        System.out.println("Diff " + diff + "ms");
-//        try {
-//            // get the number of raw buildings by each continent
-//            instance.load();
-//            Map<Continent, Map<ResourceType, Map<Integer, Integer>>> countByContinent = new Object2ObjectLinkedOpenHashMap<>();
-//
-//            NationsFile natFile = new NationsFile(new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS, "nations-2024-03-13.csv"), instance.getDict(true));
-//            CitiesFile citiesFile = new CitiesFile(new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES, "cities-2024-03-13.csv"), instance.getDict(true));
-//
-//            Map<Integer, Continent> continentByNation = new Int2ObjectOpenHashMap<>();
-//            natFile.reader().required(f -> List.of(f.nation_id, f.continent)).read(new Consumer<NationHeader>() {
-//                @Override
-//                public void accept(NationHeader h) {
-//                    continentByNation.put(h.nation_id.get(), h.continent.get());
-//                }
-//            });
-//            // coal_mines = ResourceType.COAL
-//            // oil_wells = ResourceType.OIL
-//            // uranium_mines = ResourceType.URANIUM
-//            // lead_mines = ResourceType.LEAD
-//            // iron_mines = ResourceType.IRON
-//            // bauxite_mines = ResourceType.BAUXITE
-//            // farms = ResourceType.FOOD
-//            Map<ResourceType, IntColumn<DBCity>> columnMap = new EnumMap<>(ResourceType.class);
-//            columnMap.put(ResourceType.COAL, citiesFile.getHeader().coal_mines);
-//            columnMap.put(ResourceType.OIL, citiesFile.getHeader().oil_wells);
-//            columnMap.put(ResourceType.URANIUM, citiesFile.getHeader().uranium_mines);
-//            columnMap.put(ResourceType.LEAD, citiesFile.getHeader().lead_mines);
-//            columnMap.put(ResourceType.IRON, citiesFile.getHeader().iron_mines);
-//            columnMap.put(ResourceType.BAUXITE, citiesFile.getHeader().bauxite_mines);
-//            columnMap.put(ResourceType.FOOD, citiesFile.getHeader().farms);
-//
-//            citiesFile.reader().required(f -> List.of(f.nation_id, f.coal_mines, f.oil_wells, f.uranium_mines, f.lead_mines, f.iron_mines, f.bauxite_mines, f.farms)).read(new Consumer<CityHeader>() {
-//                @Override
-//                public void accept(CityHeader h) {
-//                    Continent continent = continentByNation.get(h.nation_id.get());
-//                    if (continent == null) return;
-//                    for (Map.Entry<ResourceType, IntColumn<DBCity>> entry : columnMap.entrySet()) {
-//                        ResourceType type = entry.getKey();
-//                        if (!continent.hasResource(type)) continue;
-//                        int num = entry.getValue().get();
-//                        countByContinent.computeIfAbsent(continent, k -> new EnumMap<>(ResourceType.class)).computeIfAbsent(type, k -> new Int2IntOpenHashMap()).merge(num, 1, Integer::sum);
-//                    }
-//                }
-//            });
-//
-//            // join by \t
-////            System.out.println("X\n" + Arrays.stream(Continent.values).map(Continent::name).collect(Collectors.joining("\t")));
-//            System.out.println("continent\tresource\tlevel\tcount");
-//            for (Continent continent : Continent.values) {
-//                Map<ResourceType, Map<Integer, Integer>> buildingAmts = countByContinent.get(continent);
-//                for (Map.Entry<ResourceType, Map<Integer, Integer>> entry : buildingAmts.entrySet()) {
-//                    ResourceType type = entry.getKey();
-//                    Map<Integer, Integer> counts = ArrayUtil.sortMapKeys(entry.getValue(), true);
-//                    for (Map.Entry<Integer, Integer> entry3 : counts.entrySet()) {
-//                        System.out.println(continent.name() + "\t" + type + "\t" + entry3.getKey() + "\t" + entry3.getValue());
-//                    }
-//
-//                }
-//            }
-//            System.exit(0);
-//
-//            AtomicLong i = new AtomicLong();
-//            natFile.reader().read(new Consumer<NationHeader>() {
-//                @Override
-//                public void accept(NationHeader h) {
-////                    if (i.get() > 30890) {
-////                        System.out.println(i.get() + " | " + h.nation_name.get() + " | " + h.cities.get());
-////                    }
-//                    i.getAndIncrement();
-//                }
-//            });
-//            long diff = System.currentTimeMillis() - start;
-//            System.out.println("Diff " + diff + "ms");
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//        } finally {
-//            System.out.println("Done");
-//            System.exit(0);
-//        }
-
-//        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-//        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-//        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-//        Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = true;
-//        Locutus.create().start();
-//        DataDumpParser instance = new DataDumpParser().load();
-//
-//        {
-//            instance.load();
-//            instance.getAverageFarms();
-//            System.out.println("Done!");
-//            System.exit(0);
-//        }
-//
-//        // get loot info
-//        Map<Integer, LootEntry> loot = Locutus.imp().getNationDB().getNationLootMap();
-//        System.out.println("Loot entries " + loot.size());
-//
-//        long start = System.currentTimeMillis();
-//
-//        long diff = System.currentTimeMillis() - start;
-//        System.out.println("Diff " + diff + "ms");'
-    }
 }

@@ -101,11 +101,11 @@ public class ConflictManager {
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
 //        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
         // add wiki column, default empty
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''");
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0");
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0", true);
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
@@ -119,7 +119,6 @@ public class ConflictManager {
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
-        System.out.println("remove:|| import: updating " + tableName);
         Connection sourceConnection = sourceDb.getConnection();
         Connection targetConnection = targetDb.getConnection();
 
@@ -161,13 +160,10 @@ public class ConflictManager {
 //                "attack_subtypes"
         );
         // clear conflict_graphs2 and attack_subtypes
-        System.out.println("Remove:|| import: clearing table conflict_graphs2");
         db.executeStmt("DELETE FROM conflict_graphs2");
-        System.out.println("Remove:|| import: clearing table attack_subtypes");
         db.executeStmt("DELETE FROM attack_subtypes");
         for (String table : tables) {
             // clear all rows of table
-            System.out.println("Remove:|| import: clearing table " + table);
             db.executeStmt("DELETE FROM " + table);
             importData(otherDb, db.getDb(), table);
         }
@@ -190,10 +186,7 @@ public class ConflictManager {
         }
         if (hasDirty) {
             pushIndex();
-            System.out.println("Pushed dirty conflicts");
             return true;
-        } else {
-            System.out.println("No dirty conflicts");
         }
         return false;
     }
@@ -426,9 +419,6 @@ public class ConflictManager {
     }
 
     public void loadConflicts() {
-        System.out.println("Load conflicts");
-        long start = System.currentTimeMillis();
-
         List<Conflict> conflicts = new ArrayList<>();
         conflictById.clear();
         db.query("SELECT * FROM conflicts", stmt -> {
@@ -455,8 +445,6 @@ public class ConflictManager {
         });
         this.conflictArr = conflicts.toArray(new Conflict[0]);
 
-        System.out.println("Loaded " + conflictArr.length + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
 //        db.update("DELETE FROM conflict_participant WHERE alliance_id = 0");
         db.query("SELECT * FROM conflict_participant", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
@@ -472,8 +460,6 @@ public class ConflictManager {
                 }
             }
         });
-
-        System.out.println("Loaded participants in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
 
         // load announcements
         if (Locutus.imp().getForumDb() != null) {
@@ -491,10 +477,7 @@ public class ConflictManager {
                 }
             });
 
-            System.out.println("Loaded announcements in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
             Map<Integer, DBTopic> topics = Locutus.imp().getForumDb().getTopics(conflictsByTopic.keySet());
-            System.out.println("Loaded topics " + topics.size());
             for (Map.Entry<Integer, Map<Integer, String>> entry : conflictsByTopic.entrySet()) {
                 DBTopic topic = topics.get(entry.getKey());
                 if (topic != null) {
@@ -506,10 +489,6 @@ public class ConflictManager {
                     }
                 }
             }
-
-            System.out.println("Loaded announcements in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-        } else {
-            System.out.println("Forum db is null");
         }
         // load legacyNames
         db.query("SELECT * FROM legacy_names2", stmt -> {
@@ -524,8 +503,6 @@ public class ConflictManager {
             }
         });
 
-        System.out.println("Loaded legacy names in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
         for (Map.Entry<String, Integer> entry : getDefaultNames().entrySet()) {
             String name = entry.getKey();
             int id = entry.getValue();
@@ -538,8 +515,6 @@ public class ConflictManager {
                 map.put(Long.MAX_VALUE, id);
             }
         }
-
-        System.out.println("Loaded default names in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
 
 //        Set<Integer> empty = new HashSet<>();
 //        for (Map.Entry<Integer, Conflict> conflictEntry : conflictMap.entrySet()) {
@@ -562,18 +537,11 @@ public class ConflictManager {
 //        }
         Locutus.imp().getExecutor().submit(() -> {
             loadConflictWars(null, false);
-            Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(() -> {
-                try {
-                    System.out.println("Update task " + (!conflictsLoaded) + " | " + (!TimeUtil.checkTurnChange()));
-                    if (!conflictsLoaded || !TimeUtil.checkTurnChange()) return;
-                    System.out.println("Pushing dirty conflicts");
-                    pushDirtyConflicts();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }, 1, 1, TimeUnit.MINUTES);
+            Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
+                if (!conflictsLoaded) return;
+                pushDirtyConflicts();
+            }, 1, TimeUnit.MINUTES);
         });
-        System.out.println("Load graph data: " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
     }
 
     public void loadVirtualConflict(Conflict conflict, boolean clearBeforeUpdate) {
@@ -603,16 +571,12 @@ public class ConflictManager {
 
     public void loadConflictWars(Collection<Conflict> conflicts, boolean clearBeforeUpdate) {
         try {
-            long start = System.currentTimeMillis();
             initTurn();
-            System.out.println("Init turns in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
             if (clearBeforeUpdate) {
                 Collection<Conflict> tmp = conflicts == null ? Arrays.asList(conflictArr) : conflicts;
                 for (Conflict conflict : tmp) {
                     conflict.clearWarData();
                 }
-                System.out.println("Clear war data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             }
 
             long startMs, endMs;
@@ -639,8 +603,6 @@ public class ConflictManager {
                 allowedConflicts = f -> true;
             }
 
-            System.out.println("Loaded allowed conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-
             Set<DBWar> wars = new ObjectOpenHashSet<>();
             long currentTurn = TimeUtil.getTurn();
             for (DBWar war : this.db.getWars()) {
@@ -654,19 +616,15 @@ public class ConflictManager {
                 }
             }
 
-            System.out.println("Loaded wars in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             if (!wars.isEmpty()) {
                 Map<Integer, Byte> subTypes = loadSubTypes();
-                System.out.println("Loaded subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms") + " | " + subTypes.size());
                 Map<Integer, Byte> newSubTypes = new Int2ByteOpenHashMap();
                 BiFunction<DBNation, Long, Integer> activityCache = new BiFunction<>() {
                     private Map<Integer, Set<Long>> activity;
                     @Override
                     public Integer apply(DBNation nation, Long dateMs) {
                         if (activity == null) {
-                            long start = System.currentTimeMillis();
                             activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
-                            System.out.println("Loaded activity in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
                         }
                         Set<Long> natAct = activity.get(nation.getId());
                         if (natAct == null) return Integer.MAX_VALUE;
@@ -696,11 +654,9 @@ public class ConflictManager {
                         });
                     }
                 });
-                System.out.println("Loaded conflict attacks and subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
                 if (!newSubTypes.isEmpty()) {
                     saveSubTypes(newSubTypes);
                 }
-                System.out.println("Saved new conflict subtypes in " + ((-start) + (start = System.currentTimeMillis()) + "ms") + " | " + newSubTypes.size());
             }
 
             if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {
@@ -721,7 +677,6 @@ public class ConflictManager {
                         }
                     }
                 });
-                System.out.println("Loaded graph data in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
             }
             conflictsLoaded = true;
         } catch (Throwable e) {

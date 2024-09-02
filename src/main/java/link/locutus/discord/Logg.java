@@ -30,7 +30,13 @@ public class Logg {
         LOGGER.error(msg, obj);
     }
 
+    private static volatile boolean setInfoLogging = false;
+
     public static void setInfoLogging() {
+        if (setInfoLogging) {
+            return;
+        }
+        setInfoLogging = true;
 //        org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
 //        Configurator.setRootLevel(org.apache.logging.log4j.Level.INFO);
         System.setProperty("Log4jContextSelector", AsyncLoggerContextSelector.class.getName());

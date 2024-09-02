@@ -297,7 +297,7 @@ public enum Roles {
     }
 
     public boolean hasOnRoot(User user) {
-        if (user.getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) return true;
+        if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
         if (Locutus.imp().getServer() == null) {
             return false;
         }
@@ -322,8 +322,8 @@ public enum Roles {
 
     public boolean has(Member member) {
         if (member == null) return false;
-        if (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;
-        if (member.getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) return true;
+        if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+        if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
 
         if (member.isOwner()) return true;
         Role role = toRole(member.getGuild());
@@ -354,7 +354,7 @@ public enum Roles {
     public boolean has(User user, Guild server) {
         if (user == null) return false;
         if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;
-        if (user.getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) return true;
+        if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
         if (server == null) return false;
         if (!server.isMember(user)) {
             return false;

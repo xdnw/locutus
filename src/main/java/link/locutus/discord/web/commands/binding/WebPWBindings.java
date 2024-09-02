@@ -85,6 +85,7 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -459,8 +460,6 @@ public class WebPWBindings extends WebBindingHelper {
         List<Guild> guilds = user.getMutualGuilds();
 
         AllianceList aaList = includeBrackets && db == null ? null : db.getAllianceList();
-        Map<Integer, TaxBracket> taxIds = aaList == null || aaList.isEmpty() ? null : aaList.getTaxBrackets(true);
-
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(alliances.size() + nations.size() + guilds.size());
         for (Guild guild : guilds) {
             options.add(Locutus.imp().getGuildDB(guild));
@@ -1239,7 +1238,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= TaxBracket.class)
     public String bracket(@Me GuildDB db, ParameterData param) {
-        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             DBAlliance alliance = obj.getAlliance();

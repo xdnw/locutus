@@ -263,7 +263,6 @@ public enum ResourceType {
                 return RESOURCE_GSON.fromJson(f, RESOURCE_TYPE);
             };
             if (allowBodmas) {
-                System.out.println("Input " + arg);
                 List<ArrayUtil.DoubleArray> resources = (ArrayUtil.calculate(arg, arg1 -> {
                     if (!arg1.contains("{")) {
                         return new ArrayUtil.DoubleArray(PrimitiveBindings.Double(arg1));
@@ -743,7 +742,6 @@ public enum ResourceType {
     public static boolean equals(Map<ResourceType, Double> amtA, Map<ResourceType, Double> amtB) {
         for (ResourceType type : ResourceType.values) {
             if (Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))) != 0) {
-                System.out.println(type + " | " + amtA.getOrDefault(type, 0d) + " | " + amtB.getOrDefault(type, 0d) + " | " + Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))));
                 return false;
             }
         }

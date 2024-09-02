@@ -54,12 +54,12 @@ import java.util.function.BiPredicate;
 public class AllianceListener {
 
     public AllianceListener() {
-        Locutus.imp().addTaskSeconds(new CaughtTask() {
+        Locutus.imp().getRepeatingTasks().addTask("Militarization Alerts", new CaughtTask() {
             @Override
             public void runUnsafe() throws Exception {
                 runMilitarizationAlerts();
             }
-        }, 15);
+        }, 15, TimeUnit.SECONDS);
     }
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {

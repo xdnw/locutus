@@ -667,7 +667,7 @@ public class GrantCommands {
 
     @Command(desc = "List all grant templates for the specified category")
     @RolePermission(Roles.MEMBER)
-    public void templateList(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io,
+    public void templateList(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me Member member, @Me IMessageIO io,
                              @Arg("The category of templates to list\n" +
                                      "Defaults to all categories")@Default TemplateTypes category,
                              @Arg("List the disabled grant templates") @Switch("d") boolean listDisabled) {
@@ -752,7 +752,7 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template,
+    public String templateInfo(@Me JSONObject command, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template,
                                @Arg("View additional info related to granting the template to this nation\n" +
                                        "Such as cost/eligability")
                                @Default DBNation receiver,
@@ -791,7 +791,7 @@ public class GrantCommands {
     // grant_template disable
     @Command(desc = "Set an active grant template as disabled")
     @RolePermission(Roles.ECON)
-    public String templateDisable(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
+    public String templateDisable(@Me GuildDB db, AGrantTemplate template) {
         if (!template.isEnabled()) {
             return "The template: `" + template.getName() + "` is already disabled.";
         }
@@ -802,7 +802,7 @@ public class GrantCommands {
 
     @Command(desc = "Set a disabled grant template as enabled")
     @RolePermission(Roles.ECON)
-    public String templateEnabled(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template) {
+    public String templateEnabled(@Me GuildDB db, AGrantTemplate template) {
         if (template.isEnabled()) {
             return "The template: `" + template.getName() + "` is already enabled.";
         }
@@ -863,13 +863,11 @@ public class GrantCommands {
                                                 "Defaults to false")
                                         @Switch("ignore") boolean allowIgnore,
                                         @Switch("f") boolean force) {
-        System.out.println(1);
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
             throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
         }
-        System.out.println(2);
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
@@ -885,25 +883,17 @@ public class GrantCommands {
         if (bracket != null && useReceiverBracket) {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
-        System.out.println(3);
         ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore);
-        System.out.println(4);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
-        System.out.println(5);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         // confirmation
         if (!force) {
-            System.out.println(6);
             String body = template.toFullString(me, null, null);
-            System.out.println(7);
             Set<Integer> aaIds = db.getAllianceIds();
-            System.out.println(7.1);
             Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
-            System.out.println(7.2);
             nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
-            System.out.println(8);
             if (nations.isEmpty()) {
                 body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
             }
@@ -912,10 +902,8 @@ public class GrantCommands {
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
                         "\n\n" + body;
             }
-            System.out.println(9);
             String prefix = existing != null ? "Overwrite " : "Create ";
             io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
-            System.out.println(10);
             return null;
         }
         manager.saveTemplate(template);

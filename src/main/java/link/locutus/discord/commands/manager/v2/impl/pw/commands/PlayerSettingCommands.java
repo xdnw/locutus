@@ -53,7 +53,6 @@ public class PlayerSettingCommands {
         Announcement parent = db.getAnnouncement(ann_id);
         boolean isInvite = StringUtils.countMatches(parent.replacements, ",") == 2 && !parent.replacements.contains("|") && !parent.replacements.contains("\n");
         AnnounceType type = isInvite ? AnnounceType.INVITE : document ? AnnounceType.DOCUMENT : AnnounceType.MESSAGE;
-        System.out.println("Type " + type + " | " + isInvite + " | `" + parent.replacements + "` | " + StringMan.countWords(parent.replacements, ",") + " | " + parent.replacements.contains("|") + " | " + parent.replacements.contains("\n"));
         if (type == AnnounceType.INVITE) {
             String[] split = parent.replacements.split(",");
             if (!parent.replacements.isEmpty() && split.length > 0 && MathMan.isInteger(split[0])) {
@@ -170,7 +169,7 @@ public class PlayerSettingCommands {
 
     @Command(desc = "Toggle your opt out of bounty alerts")
     public String bountyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
-        return PlayerSettingCommands.handleOptOut(member, db, Roles.WAR_ALERT_OPT_OUT, null);
+        return PlayerSettingCommands.handleOptOut(member, db, Roles.BOUNTY_ALERT_OPT_OUT, null);
     }
 
     @Command(desc = "Set the required transfer market value required for automatic bank alerts\n" +
@@ -191,8 +190,8 @@ public class PlayerSettingCommands {
             "Use `*` to subscribe to all nations")
     @WhitelistPermission
     @RolePermission(Roles.MEMBER)
-    public String bankAlert(@Me DBNation me, @Me GuildDB db, @Me User author,
-                            @Me IMessageIO io, @Me JSONObject command,
+    public String bankAlert(@Me GuildDB db, @Me User author,
+                            @Me JSONObject command,
             Set<NationOrAlliance> nation_or_alliances,
                             @ArgChoice({"send", "receive"}) String send_or_receive,
                             long amount,
@@ -228,7 +227,7 @@ public class PlayerSettingCommands {
     @Command(desc = "List your subscriptions to large bank transfers")
     @WhitelistPermission
     @RolePermission(Roles.MEMBER)
-    public String bankAlertList(@Me DBNation me, @Me User author,
+    public String bankAlertList(@Me User author,
                                 @Me GuildDB db, @Me IMessageIO io) {
         GuildKey.LARGE_TRANSFERS_CHANNEL.get(db);
         Set<BankDB.Subscription> subscriptions = Locutus.imp().getBankDB().getSubscriptions(author.getIdLong());
@@ -282,7 +281,7 @@ public class PlayerSettingCommands {
     @Command(desc = "Remove your subscriptions to large bank transfers")
     @WhitelistPermission
     @RolePermission(Roles.MEMBER)
-    public String bankAlertUnsubscribe(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, @Me User author,
+    public String bankAlertUnsubscribe(@Me GuildDB db, @Me JSONObject command, @Me User author,
                                        Set<NationOrAlliance> nation_or_alliances) {
         GuildKey.LARGE_TRANSFERS_CHANNEL.get(db);
         BankDB bankDb = Locutus.imp().getBankDB();

@@ -42,11 +42,11 @@ public class DBCity implements ICity {
 
     public DBCity(int nation_id) {
         this.nation_id = nation_id;
-        this.buildings3 = new byte[Buildings.size()];
+        this.buildings3 = new byte[PW.City.Building.SIZE];
     }
 
     public void setBuilding(Building building, int amt) {
-        if (buildings3.length != Buildings.size()) {
+        if (buildings3.length != PW.City.Building.SIZE) {
             buildings3 = this.toFull();
         }
         buildings3[building.ordinal()] = (byte) amt;
@@ -65,7 +65,7 @@ public class DBCity implements ICity {
     }
 
     public DBCity(City cityV3) {
-        this.buildings3 = new byte[Buildings.size()];
+        this.buildings3 = new byte[PW.City.Building.SIZE];
         set(cityV3);
     }
 
@@ -83,7 +83,7 @@ public class DBCity implements ICity {
     }
 
     public void condense() {
-        if (buildings3.length != Buildings.size()) {
+        if (buildings3.length != PW.City.Building.SIZE) {
             return;
         }
         for (byte b : buildings3) {
@@ -101,11 +101,11 @@ public class DBCity implements ICity {
     }
 
     public byte[] toFull() {
-        if (this.buildings3.length == Buildings.size()) {
+        if (this.buildings3.length == PW.City.Building.SIZE) {
             return buildings3;
         }
         // convert to full size
-        byte[] full = new byte[Buildings.size()];
+        byte[] full = new byte[PW.City.Building.SIZE];
         for (int i = 0; i < full.length; i++) {
             full[i] = (byte) getBuildingOrdinal(i);
         }
@@ -121,7 +121,7 @@ public class DBCity implements ICity {
     @Command(desc = "Number of buildings in this city")
     public int getNumBuildings() {
         int total = 0;
-        if (buildings3.length == Buildings.size()) {
+        if (buildings3.length == PW.City.Building.SIZE) {
             for (byte amt : buildings3) total += amt;
         } else {
             // two buildings per byte
@@ -135,7 +135,7 @@ public class DBCity implements ICity {
     }
 
     public int getBuildingOrdinal(int ordinal) {
-        if (buildings3.length == Buildings.size()) {
+        if (buildings3.length == PW.City.Building.SIZE) {
             return buildings3[ordinal];
         } else {
             int byteIndex = ordinal >> 1;

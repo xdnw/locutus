@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -257,7 +258,7 @@ public class TaxRecordCategorizer2 {
         this.taxes.removeIf(f -> !acceptsNation.test(f.nationId));
         getTaxes().removeIf(f -> f.date < start || f.date > end);
 
-        this.brackets = new HashMap<>(db.getAllianceList().getTaxBrackets(true));
+        this.brackets = new HashMap<>(db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(60)));
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             BankDB.TaxDeposit tax = getTaxes().get(i);
             if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {

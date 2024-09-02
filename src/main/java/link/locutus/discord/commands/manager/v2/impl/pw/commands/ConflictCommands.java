@@ -118,7 +118,7 @@ public class ConflictCommands {
     @Command(desc = "Sets the wiki page for a conflict")
     @RolePermission(value = Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String setWiki(@Me GuildDB db, ConflictManager manager, Conflict conflict, String url) throws IOException {
+    public String setWiki(ConflictManager manager, Conflict conflict, String url) throws IOException {
         if (url.startsWith("http")) {
             if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
             url = url.substring(url.lastIndexOf("/") + 1);
@@ -531,9 +531,16 @@ public class ConflictCommands {
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
         CtownedFetcher fetcher = new CtownedFetcher(manager);
-        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
-        return "Done!\nNote: this does not push the data to the site";
+        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+        List<String> warnings = new ArrayList<>();
+        if (!response1.isEmpty()) warnings.add(response1);
+        if (!response2.isEmpty()) warnings.add(response2);
+        String msg = "Done!\nNote: this does not push the data to the site";
+        if (!warnings.isEmpty()) {
+            msg += ". See the log below:\n\n" + StringMan.join(warnings, "\n");
+        }
+        return msg;
     }
 
     @Command(desc = "Import alliance names (to match with the ids of deleted alliances)\n" +

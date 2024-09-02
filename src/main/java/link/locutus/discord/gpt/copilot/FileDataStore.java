@@ -1,5 +1,7 @@
 package link.locutus.discord.gpt.copilot;
 
+import link.locutus.discord.Logg;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,7 +35,7 @@ public class FileDataStore implements IDataStore {
     {
         if (!_file.exists())
         {
-            System.out.println("File does not exist");
+            Logg.text("File does not exist " + _file.getAbsolutePath());
             return null;
         }
         return CompletableFuture.supplyAsync(() -> {

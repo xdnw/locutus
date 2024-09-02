@@ -113,7 +113,6 @@ public class Config {
                 }
             }
         }
-        System.out.println("Failed to set config option: " + key + ": " + value + " | " + instance + " | " + root.getSimpleName() + ".yml");
         Logg.text("Failed to set config option: {}: {} | {} | {}.yml", key, value, instance, root.getSimpleName());
     }
 
