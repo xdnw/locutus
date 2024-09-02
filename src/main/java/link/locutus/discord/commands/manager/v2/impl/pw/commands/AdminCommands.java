@@ -2037,7 +2037,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCities(NationDB db) throws IOException, ParseException {
         StringBuilder result = new StringBuilder();
-        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Outdated cities: " + db.getDirtyCities().size() + "\n");
 
         List<Event> events = new ArrayList<>();
         db.updateAllCities(events::add);
@@ -2047,7 +2047,7 @@ public class AdminCommands {
             });
         }
         result.append("events: " + events.size() + "\n");
-        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Outdated cities: " + db.getDirtyCities().size() + "\n");
         result.append("Updated all cities. " + events.size() + " changes detected");
         return result.toString();
     }
@@ -2056,7 +2056,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCitiesTest(NationDB db) throws IOException, ParseException {
         StringBuilder result = new StringBuilder();
-        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Outdated cities: " + db.getDirtyCities().size() + "\n");
 
         List<Event> events = new ArrayList<>();
         db.updateAllCities(events::add);
@@ -2066,7 +2066,7 @@ public class AdminCommands {
             });
         }
         result.append("events: " + events.size() + "\n");
-        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Outdated cities: " + db.getDirtyCities().size() + "\n");
         result.append("Updated all cities. " + events.size() + " changes detected");
         return result.toString();
     }

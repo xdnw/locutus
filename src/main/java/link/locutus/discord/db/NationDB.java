@@ -2011,7 +2011,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             Logg.text("Updated nations.\n" +
                     "Changes: " + nationChanges.size() + "\n" +
                     "Cities: " + fetchCitiesOfNations.size() + "\n" +
-                    "Dirty: " + dirtyNations.size());
+                    "Outdated: " + dirtyNations.size());
         }
         if (!fetchCitiesOfNations.isEmpty() || (fetchMostActiveIfNoneOutdated)) {
             updateCitiesOfNations(fetchCitiesOfNations, false, true, eventConsumer);
