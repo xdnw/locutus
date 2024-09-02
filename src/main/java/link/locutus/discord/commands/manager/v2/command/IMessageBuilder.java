@@ -127,6 +127,32 @@ public interface IMessageBuilder {
             return commandButton(behavior, attach, message);
         }
 
+    default String toSimpleMarkdown() {
+        StringBuilder markdown = new StringBuilder();
+        markdown.append(getContent()).append("\n");
+        for (MessageEmbed embed : getEmbeds()) {
+            String title = embed.getTitle();
+            String description = embed.getDescription();
+            String footerText = null;
+            MessageEmbed.Footer footer = embed.getFooter();
+            if (footer != null) {
+                footerText = footer.getText();
+            }
+            List<MessageEmbed.Field> fields = embed.getFields();
+            markdown.append("## ").append(title).append("\n");
+            markdown.append(">>> ").append(description).append("\n");
+            if (fields != null && !fields.isEmpty()) {
+                for (MessageEmbed.Field field : fields) {
+                    markdown.append("> **").append(field.getName()).append("**: ").append(field.getValue()).append("\n");
+                }
+            }
+            if (footerText != null && !footerText.isEmpty()) {
+                markdown.append("> _").append(footerText).append("_\n");
+            }
+        }
+        return markdown.toString();
+    }
+
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, CommandRef ref, String message) {
         return commandButton(behavior, null, ref, message);

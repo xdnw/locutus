@@ -36,6 +36,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -250,7 +251,12 @@ public class IACategory {
             channelName = user.getName();
         }
 
-        TextChannel channel = RateLimitUtil.complete(category.createTextChannel(channelName));
+        TextChannel channel;
+        try {
+            channel = RateLimitUtil.complete(category.createTextChannel(channelName));
+        } catch (InsufficientPermissionException e) {
+            throw new InsufficientPermissionException(guild, Permission.VIEW_CHANNEL, "Cannot create channel in " + category.getName());
+        }
         if (channel == null) {
             if (guild.getCategoryById(category.getIdLong()) == null) {
                 fetchChannels();

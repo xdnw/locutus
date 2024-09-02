@@ -31,10 +31,6 @@ public class StringMessageIO implements IMessageIO {
         return guild;
     }
 
-    public String getOutput() {
-        return StringMan.join(messages.values(), "\n\n");
-    }
-
     @Override
     public IMessageBuilder getMessage() {
         return null;
