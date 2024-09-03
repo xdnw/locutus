@@ -768,6 +768,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<com.politicsandwar.graphql.model.Treaty> treatiesV3 = v3.readSnapshot(PagePriority.API_TREATIES, com.politicsandwar.graphql.model.Treaty.class);
         if (treatiesV3.isEmpty()) throw new IllegalStateException("No treaties returned from API! (updateTreaties())");
+        treatiesV3 = new ObjectArrayList<>(treatiesV3);
+        treatiesV3.removeIf(f -> f.getTurns_left() <= 0);
+
 
         // Don't call events if first time
         if (treatiesByAlliance.isEmpty()) eventConsumer = f -> {};

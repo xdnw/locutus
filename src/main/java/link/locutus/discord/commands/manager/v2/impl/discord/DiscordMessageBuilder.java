@@ -149,7 +149,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
 
-        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
+        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString().trim());
 
         return discBuilder.build();
     }
@@ -231,7 +231,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 discBuilder.setFiles(upload);
             }
         }
-        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
+        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString().trim());
 
         return discBuilder.build();
     }

@@ -122,7 +122,7 @@ public class TreatyUpdateProcessor {
                     }
                 }
                 DiscordChannelIO io = new DiscordChannelIO(channel);
-                IMessageBuilder msg = io.create().embed(finalTitle, finalBody.toString());
+                IMessageBuilder msg = io.create().embed(finalTitle, finalBody.toString().trim());
                 if (finalImg != null) {
                     msg.image("treaties.png", finalImg);
                 }

@@ -104,7 +104,7 @@ public class DiscordChannelIO implements IMessageIO {
                 discMsg.embeds.clear();
             }
             if (discMsg.content.length() > 2000) {
-                CompletableFuture<List<Message>> future1 = DiscordUtil.sendMessage(channel, discMsg.content.toString());
+                CompletableFuture<List<Message>> future1 = DiscordUtil.sendMessage(channel, discMsg.content.toString().trim());
                 discMsg.content.setLength(0);
             }
             CompletableFuture<IMessageBuilder> msgFuture = null;
@@ -117,7 +117,7 @@ public class DiscordChannelIO implements IMessageIO {
                         message = discMsg.build(false);
                         result = RateLimitUtil.complete(channel.sendMessage(message));
                     }
-                    CompletableFuture<List<Message>> future = DiscordUtil.sendMessage(channel, discMsg.content.toString());
+                    CompletableFuture<List<Message>> future = DiscordUtil.sendMessage(channel, discMsg.content.toString().trim());
                     if (result != null) {
                         assert future != null;
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f.getLast()));

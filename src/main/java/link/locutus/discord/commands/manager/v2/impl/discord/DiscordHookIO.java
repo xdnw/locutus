@@ -93,7 +93,7 @@ public class DiscordHookIO implements IMessageIO {
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
             if (discMsg.content.length() > 2000) {
-                DiscordUtil.sendMessage(hook, discMsg.content.toString());
+                DiscordUtil.sendMessage(hook, discMsg.content.toString().trim());
                 discMsg.content.setLength(0);
             }
             CompletableFuture<IMessageBuilder> msgFuture = null;
@@ -106,7 +106,7 @@ public class DiscordHookIO implements IMessageIO {
                         message = discMsg.build(false);
                         result = RateLimitUtil.complete(hook.sendMessage(message));
                     }
-                    CompletableFuture<Message> future = DiscordUtil.sendMessage(hook, discMsg.content.toString());
+                    CompletableFuture<Message> future = DiscordUtil.sendMessage(hook, discMsg.content.toString().trim());
                     if (result != null) {
                         assert future != null;
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));

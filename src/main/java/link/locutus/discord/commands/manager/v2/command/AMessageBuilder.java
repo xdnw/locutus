@@ -67,7 +67,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     public String getContent() {
-        return content.toString();
+        return content.toString().trim();
     }
 
     public Map<String, String> getButtons() {
@@ -103,8 +103,8 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     @Override
     public void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables) {
         if (!content.isEmpty()) {
-            String existing = root.computeIfAbsent("content", k -> "").toString();
-            root.put("content", existing + content.toString());
+            String existing = root.computeIfAbsent("content", k -> "").toString().trim();
+            root.put("content", existing + content.toString().trim());
         }
         if (!embeds.isEmpty()) {
             List<Map<String, Object>> embedArray = (List<Map<String, Object>>) root.computeIfAbsent("embeds", k -> new ArrayList<>());
@@ -254,7 +254,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     public String toSimpleHtml(boolean includeFiles, boolean includeButtons) {
         StringBuilder html = new StringBuilder();
-        html.append("<p>").append(markdownToHTML(formatDiscordMarkdown(content.toString(), getGuildOrNull()))).append("</p>");
+        html.append("<p>").append(markdownToHTML(formatDiscordMarkdown(content.toString().trim(), getGuildOrNull()))).append("</p>");
         for (MessageEmbed embed : embeds) {
             String title = embed.getTitle();
             String description = markdownToHTML(formatDiscordMarkdown(embed.getDescription(), getGuildOrNull()));
@@ -327,7 +327,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
      * @return the output
      */
     public IMessageBuilder writeTo(IMessageBuilder output) {
-        if (!content.isEmpty()) output.append(content.toString());
+        if (!content.isEmpty()) output.append(content.toString().trim());
         for (MessageEmbed embed : embeds) {
             output.embed(embed);
         }
