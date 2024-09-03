@@ -1676,6 +1676,9 @@ type War {
   # Date and time the war was declared
   date: DateTimeAuto
 
+  # When the war was ended through victory, peace, or expiration
+  end_date: DateTimeAuto
+
   # Reason given for the war
   reason: String
 
@@ -2162,6 +2165,164 @@ type CityInfraDamage {
 
   # Infrastructure of the city before it was attacked
   infrastructure: Float
+}
+
+type Award {
+  name: String
+  image: String
+}
+
+# Order by clause for Alliance.bulletins.orderBy.
+input AllianceBulletinsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceBulletinsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.bulletins.orderBy.
+enum AllianceBulletinsOrderByColumn {
+  ID
+  DATE
+  LAST_EDIT_DATE
+  ACCOUNT_ID
+}
+
+type Bulletin {
+  # ID of the bulletin
+  id: ID!
+
+  # ID of the nation that posted the bulletin
+  nation_id: ID!
+
+  # Nation that posted the bulletin
+  nation: Nation
+
+  # ID of the alliance the bulletin was posted to, null if type is 1
+  alliance_id: ID
+
+  # Alliance the bulletin was posted to, null if type is 1
+  alliance: Alliance
+
+  # Type of bulletin: nation (1) or alliance (2)
+  type: Int!
+
+  # Headline/title of the bulletin
+  headline: String!
+
+  # Excerpt of the bulletin that is shown
+  excerpt: String
+
+  # Banner image of the bulletin
+  image: String
+
+  # Content of the bulletin
+  body: String
+
+  # Who the bulletin was written by, may be different from the nation's leader name
+  author: String
+
+  # Whether or not the bulletin is pinned
+  pinned: Boolean!
+
+  # How many likes the bulletin has
+  like_count: Int
+
+  # Whether or not the bulletin has replies enabled
+  replies_enabled: Boolean!
+
+  # Whether or not the bulletin was locked by moderators
+  locked: Boolean!
+
+  # When the bulletin was posted
+  date: DateTimeAuto!
+
+  # When the bulletin was last updated
+  edit_date: DateTimeAuto!
+
+  # Whether or not the bulletin has been archived by the poster
+  archived: Boolean!
+
+  # The bulletins replies
+  replies(
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BulletinReplyPaginator
+}
+
+# A paginated list of BulletinReply items.
+type BulletinReplyPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BulletinReply items.
+  data: [BulletinReply!]!
+}
+
+# Information about pagination using a fully featured paginator.
+type PaginatorInfo {
+  # Number of items in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the first item in the current page.
+  firstItem: Int
+
+  # Are there more pages after this one?
+  hasMorePages: Boolean!
+
+  # Index of the last item in the current page.
+  lastItem: Int
+
+  # Index of the last available page.
+  lastPage: Int!
+
+  # Number of items per page.
+  perPage: Int!
+
+  # Number of total available items.
+  total: Int!
+}
+
+type BulletinReply {
+  # ID of the reply
+  id: ID!
+
+  # Date that the reply was posted
+  date: DateTimeAuto!
+
+  # ID of the nation posting the reply
+  nation_id: ID!
+
+  # Nation posting the reply
+  nation: Nation
+
+  # ID of the bulleting replied to
+  bulletin_id: ID!
+
+  # Bulletin that was replied to
+  bulletin: Bulletin
+
+  # Content of the reply
+  message: String!
+
+  # Date that the reply was last edited
+  edit_date: DateTimeAuto
+
+  # Name of the nation posting the reply
+  nation_name: String!
+
+  # Name of the leader posting the reply
+  leader_name: String!
+
+  # Number of likes the reply has received
+  like_count: Int
 }
 
 enum WarPolicy {
@@ -2816,6 +2977,40 @@ enum GovernmentType {
   THEOCRATIC_DEMOCRACY
   THEOCRATIC_DICTATORSHIP
   THEOCRATIC_REPUBLIC
+MINDHIVE
+}
+
+# Order by clause for Nation.bulletins.orderBy.
+input NationBulletinsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationBulletinsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.bulletins.orderBy.
+enum NationBulletinsOrderByColumn {
+  ID
+  DATE
+  LAST_EDIT_DATE
+}
+
+# Order by clause for Nation.bulletin_replies.orderBy.
+input NationBulletinRepliesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationBulletinRepliesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.bulletin_replies.orderBy.
+enum NationBulletinRepliesOrderByColumn {
+  ID
+  DATE
+  EDIT_DATE
+  BULLETIN_ID
 }
 
 type ApiKeyPermissions {
@@ -3047,33 +3242,6 @@ type NationPaginator {
 
   # A list of Nation items.
   data: [Nation!]!
-}
-
-# Information about pagination using a fully featured paginator.
-type PaginatorInfo {
-  # Number of items in the current page.
-  count: Int!
-
-  # Index of the current page.
-  currentPage: Int!
-
-  # Index of the first item in the current page.
-  firstItem: Int
-
-  # Are there more pages after this one?
-  hasMorePages: Boolean!
-
-  # Index of the last item in the current page.
-  lastItem: Int
-
-  # Index of the last available page.
-  lastPage: Int!
-
-  # Number of items per page.
-  perPage: Int!
-
-  # Number of total available items.
-  total: Int!
 }
 
 # Order by clause for Query.alliances.orderBy.
@@ -3723,6 +3891,50 @@ type BannedNation {
 
   # Days remaining on that ban. -1 indicates permanent ban and 0 indicates nation was deleted while banned.
   days_left: Int
+}
+
+# Order by clause for Query.bulletins.orderBy.
+input QueryBulletinsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBulletinsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bulletins.orderBy.
+enum QueryBulletinsOrderByColumn {
+  ID
+  DATE
+  LAST_EDIT_DATE
+  ACCOUNT_ID
+}
+
+# A paginated list of Bulletin items.
+type BulletinPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Bulletin items.
+  data: [Bulletin!]!
+}
+
+# Order by clause for Query.bulletin_replies.orderBy.
+input QueryBulletinRepliesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBulletinRepliesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bulletin_replies.orderBy.
+enum QueryBulletinRepliesOrderByColumn {
+  ID
+  DATE
+  EDIT_DATE
+  ACCOUNT_ID
+  BULLETIN_ID
 }
 
 type Mutation {
