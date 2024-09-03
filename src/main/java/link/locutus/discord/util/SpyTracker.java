@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -23,6 +24,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
@@ -48,20 +50,15 @@ import java.util.function.Consumer;
 public class SpyTracker {
     public SpyTracker() {
         long delay = TimeUnit.MINUTES.toMillis(1);
-        Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(new Runnable() {
+        Locutus.imp().getRepeatingTasks().addTask("Spy Tracker (Queue)" , new CaughtRunnable() {
             @Override
-            public void run() {
-                try {
-                    processQueue();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
+            public void runUnsafe() throws IOException {
+                processQueue();
             }
-        }, delay, delay, TimeUnit.MILLISECONDS);
+        }, delay, TimeUnit.MILLISECONDS);
     }
 
     public void loadCasualties(Integer allianceId) {
-        System.out.println("Loading casualties " + allianceId);
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         if (allianceId != null) {
             api = DBAlliance.getOrCreate(allianceId).getApi(AlliancePermission.SEE_SPIES);
@@ -109,13 +106,13 @@ public class SpyTracker {
                 }
             }
         });
-        System.out.println("- Fetched nations " + nations.size());
+        if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("- Fetched nations " + nations.size());
         try {
             updateCasualties(nations);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("- updated casualties " + killTracker.size() + " | " + casualtyTracker.size());
+        if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("- updated casualties " + killTracker.size() + " | " + casualtyTracker.size());
     }
 
     private final Map<Integer, Map<MilitaryUnit, Integer>> casualtyTracker = new ConcurrentHashMap<>();
@@ -124,12 +121,12 @@ public class SpyTracker {
     private final ConcurrentLinkedQueue<SpyActivity> queue = new ConcurrentLinkedQueue<>();
 
     public void updateCasualties(List<Nation> nations) throws IOException {
-        System.out.println("Called update casualties " + nations.size());
+        if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Called update casualties " + nations.size());
         long timestamp = System.currentTimeMillis();
         for (Nation nation : nations) {
             updateCasualties(nation, timestamp);
         }
-        System.out.println(" queue1 " + queue.size());
+        if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text(" queue1 " + queue.size());
         checkActive();
     }
 
@@ -172,19 +169,19 @@ public class SpyTracker {
         if (previousKills != null && kills > previousKills) {
             int change = kills - previousKills;
             queue.add(new SpyActivity(nationId, unit, currentUnits, change, timestamp, score, true));
-            System.out.println("Add activity kill " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+            if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Add activity kill " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
         }
 
         if (previousLosses != null && losses > previousLosses) {
             int change = losses - previousLosses;
             if (unit == MilitaryUnit.SPIES) {
                 SpyActivity activity = new SpyActivity(nationId, unit, currentUnits + change, change, timestamp, score, false);
-                System.out.println("Add activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+                if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Add activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
 
                 checkActiveFlag.set(true);
             } else {
-                System.out.println("Ignore activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score + "| " + previousLosses + " | " + losses);
+                if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Ignore activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score + "| " + previousLosses + " | " + losses);
             }
         }
 
@@ -201,7 +198,7 @@ public class SpyTracker {
                 }
 
                 SpyActivity activity = new SpyActivity(nationId, unit, currentUnits + change, change, timestamp, score, false);
-                System.out.println("Add activity sold " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+                if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Add activity sold " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
             }
         }
@@ -244,7 +241,7 @@ public class SpyTracker {
                             }
                         } else {
                             if (Math.abs(attack.getDate() - activity.timestamp) < requiredProximityMs && !activity.isKill) {
-                                System.out.println("Ignore loss " + attack.getWar_id() + " " + activity.unit + " " + activity.change + " | " + attack.getAttack_type() + " | " + Math.abs(attack.getDate() - activity.timestamp));
+                                if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Ignore loss " + attack.getWar_id() + " " + activity.unit + " " + activity.change + " | " + attack.getAttack_type() + " | " + Math.abs(attack.getDate() - activity.timestamp));
                                 iter.remove();
                                 break;
                             }
@@ -261,7 +258,7 @@ public class SpyTracker {
         checkActive();
         long latestAttackMs = removeMatchingAttacks();
         if (queue.isEmpty()) return;
-        System.out.println("Processing queue1: " + queue.size());
+        if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Processing queue-1: " + queue.size());
 
         long checkDefensiveMaxMs = latestAttackMs - TimeUnit.MINUTES.toMillis(5);
         long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(20);
@@ -287,7 +284,7 @@ public class SpyTracker {
 
         if (offensiveByUnit.isEmpty() && defensiveByUnit.isEmpty()) return;
 
-        System.out.println("Processing queue2 " + offensiveByUnit.size() + " | " + defensiveByUnit.size() + " | " + checkDefensiveMaxMs);
+        if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Processing queue2 " + offensiveByUnit.size() + " | " + defensiveByUnit.size() + " | " + checkDefensiveMaxMs);
 
         // sort defensives
         for (Map.Entry<MilitaryUnit, List<SpyActivity>> entry : defensiveByUnit.entrySet()) {
@@ -317,7 +314,7 @@ public class SpyTracker {
                 DBAlliance defAA = defender.getAlliance();
                 Set<Integer> treaties = defAA == null ? Collections.emptySet() : defAA.getTreaties().keySet();
 
-                System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
+                if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
 
                 SpyAlert alert = new SpyAlert(defender, unit, defensive.original, defensive.change, defensive.timestamp);
 
@@ -373,7 +370,7 @@ public class SpyTracker {
                     }
                 }
                 if (alert.exact.isEmpty() && alert.close.isEmpty() && alert.online.isEmpty()) {
-                    System.out.println("Failed to find op for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
+                    if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Failed to find op for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
                     continue;
                 }
 
@@ -446,8 +443,6 @@ public class SpyTracker {
                     body.append("\n- " + alert.entryToString(attacker, null, entry.getValue()));
                 }
             }
-
-            System.out.println(body);
 
             GuildDB db = defender.getGuildDB();
             if (db == null) continue;

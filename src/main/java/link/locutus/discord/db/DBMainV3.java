@@ -46,10 +46,6 @@ public abstract class DBMainV3 implements Closeable {
             if (!dbLocation.getParentFile().exists()) {
                 dbLocation.getParentFile().mkdirs();
             }
-            Class.forName("org.sqlite.JDBC");
-            String connectStr = "jdbc:sqlite:";
-//        if (inMemory) connectStr += ":memory:";
-            connectStr += dbLocation;
             forceConnection();
         } else {
             throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
@@ -155,8 +151,9 @@ public abstract class DBMainV3 implements Closeable {
                     "pragma temp_store = memory;\n" +
                     "pragma mmap_size = 30000000000;");
         }
-        this.ctx = DSL.using(this.getConnection(), SQLDialect.SQLITE);
-        ctx.settings().withExecuteLogging(false);
+        this.ctx = DSL.using(connection, SQLDialect.SQLITE, new org.jooq.conf.Settings()
+                .withExecuteLogging(false)
+        );
         return connection;
     }
 

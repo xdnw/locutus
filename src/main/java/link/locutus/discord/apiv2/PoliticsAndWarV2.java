@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.core.CacheClient;
@@ -94,11 +95,11 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
                     String successStr = "success\":";
                     int successIndex = json.indexOf(successStr);
                     if (successIndex == -1) {
-                        throw new IOException("Invalid response: " + json + " for " + url.getUrl("XXXX", arg, query));
+                        throw new IOException("Invalid response: " + StringMan.stripApiKey(json) + " for " + url.getUrl("XXXX", arg, query));
                     }
                     char tf = json.charAt(successIndex + successStr.length());
                     if (tf != 't') {
-                        throw new IOException("Failed: " + json + " for " + url.getUrl("XXXX", arg, query));
+                        throw new IOException("Failed: " + StringMan.stripApiKey(json) + " for " + url.getUrl("XXXX", arg, query));
                     }
 
                     String startStr = "\"data\":";
@@ -116,7 +117,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     public ApiRecord getApiRecord() {
-        String json = read(PagePriority.API_KEY_STATS, QueryURLV2.BANK_RECORDS, Settings.INSTANCE.NATION_ID + "", null, false);
+        String json = read(PagePriority.API_KEY_STATS, QueryURLV2.BANK_RECORDS, Locutus.loader().getNationId() + "", null, false);
         Type type = new TypeToken<ApiRecord>() {
         }.getType();
         return getGson().fromJson(json, type);

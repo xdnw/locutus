@@ -177,7 +177,7 @@ public class GuildHandler {
 
         AllianceList allianceList = db.getAllianceList();
 
-        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(false);
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
         Map<DBNation, TaxBracket> bracketsByNation = new HashMap<>();
 
         Map<DBNation, Map.Entry<TaxBracket, String>> nationsMovedBracket = new HashMap<>();
@@ -2742,8 +2742,6 @@ public class GuildHandler {
                 " | " + PW.getMarkdownUrl(current.getAttacker_aa(), true)).append("\n");
         body.append("DEF: " + PW.getMarkdownUrl(current.getDefender_id(), false) +
                 " | " + PW.getMarkdownUrl(current.getDefender_aa(), true)).append("\n");
-
-        System.out.println("Create peace alert");
         DiscordUtil.createEmbedCommand(channel, title, body.toString());
     }
 }

@@ -69,7 +69,6 @@ public class HelpCommands {
             msg.append("Flagged: " + result.isFlagged() + "\n");
             if (result.isFlagged()) {
                 msg.append("Flagged categories: " + result.getFlaggedCategories() + "\n");
-                System.out.println("Category scores: " + result.getScores());
             }
             if (result.isError()) {
                 msg.append("Error message: " + result.getMessage() + "\n");
@@ -79,7 +78,7 @@ public class HelpCommands {
     }
 
     @Command
-    public void argument(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, Parser argument, @Switch("s") boolean skipOptionalArgs) {
+    public void argument(@Me IMessageIO io, Parser argument, @Switch("s") boolean skipOptionalArgs) {
         Key key = argument.getKey();
         String title = "`" + key.toSimpleString() + "`";
         StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true, true));
@@ -146,7 +145,7 @@ public class HelpCommands {
     }
 
     @Command(desc = "Show the description, usage information and permissions for a nation placeholder")
-    public String nation_placeholder(@Me IMessageIO io, NationPlaceholders placeholders, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
+    public String nation_placeholder(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {

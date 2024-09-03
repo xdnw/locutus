@@ -75,7 +75,6 @@ public class NationSheet extends Command implements Noformat {
         }
 
         List<String> header = new ArrayList<>(args.subList(1, args.size()));
-        System.out.println("Header " + header);
         header.remove(0);
         for (int i = 0; i < header.size(); i++) {
             String arg = header.get(i);

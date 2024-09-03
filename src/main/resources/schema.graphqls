@@ -86,6 +86,8 @@ type Query {
     max_id: Int
     before: DateTime
     after: DateTime
+    ended_before: DateTime
+    ended_after: DateTime
     attid: [Int]
     defid: [Int]
     or_id: [Int]
@@ -276,6 +278,47 @@ type Query {
     # The offset from which items are returned.
     page: Int
   ): BannedNationPaginator
+  bulletins(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    nation_id: [Int]
+    type: Int
+    alliance_id: [Int]
+    orderBy: [QueryBulletinsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BulletinPaginator
+  bulletin_replies(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    bulletin_id: [Int]
+    bulletin_min_id: Int
+    bulletin_max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    nation_id: [Int]
+    leader_name: [String]
+    nation_name: [String]
+    orderBy: [QueryBulletinRepliesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BulletinReplyPaginator
 }
 
 type ApiKeyDetails {
@@ -337,6 +380,9 @@ type Nation {
 
   # Enumeration representing the domestic policy the nation is currently on ('MANIFEST_DESTINY', 'OPEN_MARKETS', 'TECHNOLOGICAL_ADVANCEMENT', 'IMPERIALISM', 'URBANIZATION', or 'RAPID_EXPANSION')
   domestic_policy: DomesticPolicy
+
+  # Number of turns until this nation can change its domestic policy
+  domestic_policy_turns: Int
 
   # The color the nation is on ('white', 'green', etc.)
   color: String
@@ -450,6 +496,12 @@ type Nation {
 
     # Selects wars that started on or after the specified date
     after: DateTime
+
+    # Selects wars that ended on or before the specified date
+    ended_before: DateTime
+
+    # Selects wars that ended on or after the specified date
+    ended_after: DateTime
 
     # Selects wars initiated by the nation with the specified ID
     attid: [Int]
@@ -645,7 +697,7 @@ type Nation {
   # Number of projects the nation has
   projects: Int
 
-  # String representing the bit sequence of projects the nation has in this order (note: binary is read right to left, so if the nation has ironworks it will be a 1 at the rightmost bit): Ironworks, Bauxiteworks, Arms Stockpile, Emergency Gasoline Reserve, Mass Irrigation, International Trade Center, Missile Launch Pad, Nuclear Research Facility, Iron Dome, Vital Defense System, Central Intelligence Agency, Center for Civil Engineering, Propaganda Bureau, Uranium Enrichment Program, Urban Planning, Advanced Urban Planning, Space Program, Spy Satellite, Moon Landing, Pirate Economy, Recycling Initiative, Telecommunications Satellite, Green Technologies, Arable Land Agency, Clinical Research Center, Specialized Police Training Program, Advanced Engineering Corps, Government Support Agency, Research and Development Center, Resource Production Center, Metropolitan Planning, Military Salvage, Fallout Shelter
+  # String representing the bit sequence of projects the nation has in this order (note: binary is read right to left, so if the nation has ironworks it will be a 1 at the rightmost bit): Ironworks, Bauxiteworks, Arms Stockpile, Emergency Gasoline Reserve, Mass Irrigation, International Trade Center, Missile Launch Pad, Nuclear Research Facility, Iron Dome, Vital Defense System, Central Intelligence Agency, Center for Civil Engineering, Propaganda Bureau, Uranium Enrichment Program, Urban Planning, Advanced Urban Planning, Space Program, Spy Satellite, Moon Landing, Pirate Economy, Recycling Initiative, Telecommunications Satellite, Green Technologies, Arable Land Agency, Clinical Research Center, Specialized Police Training Program, Advanced Engineering Corps, Government Support Agency, Research and Development Center, Activity Center, Metropolitan Planning, Military Salvage, Fallout Shelter, Bureau of Domestic Affairs, Advanced Pirate Economy, Mars Landing, Surveillance Network, Guiding Satellite, Nuclear Launch Facility
   project_bits: Long
 
   # Whether or not the nation has the Ironworks project [deprecated]
@@ -822,6 +874,12 @@ type Nation {
   # Whether or not the nation has the Surveillance Network project
   surveillance_network: Boolean
 
+  # Whether or not the nation has the Guiding Satellite project
+  guiding_satellite: Boolean
+
+  # Whether or not the nation has the Nuclear Launch Facility projedt
+  nuclear_launch_facility: Boolean
+
   # Date when the nation built the Moon Landing project.
   moon_landing_date: DateTimeAuto
 
@@ -897,15 +955,52 @@ type Nation {
   # How much money the nation has looted across all wars
   money_looted: Float
 
+  # How much infrastructure the nation has destroyed
+  total_infrastructure_destroyed: Float
+
+  # How much infrastructure the nation has lost
+  total_infrastructure_lost: Float
+
   # Whether or not the nation has VIP
   vip: Boolean
   commendations: Int
   denouncements: Int
+
+  # How many offensive wars the nation is actively engaged in
+  offensive_wars_count: Int
+  # How many defensive wars the nation is actively engaged in
+  defensive_wars_count: Int
   economic_policy: EconomicPolicy
   social_policy: SocialPolicy
   government_type: GovernmentType
   credits_redeemed_this_month: Int
   alliance_join_date: DateTimeAuto
+  # The awards which the nation has on their nation page.
+  awards: [Award]
+  bulletins(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    alliance_id: [Int]
+    orderBy: [NationBulletinsOrderByOrderByClause!]
+  ): [Bulletin]
+  bulletin_replies(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    bulletin_id: [Int]
+    bulletin_min_id: Int
+    bulletin_max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    orderBy: [NationBulletinRepliesOrderByOrderByClause!]
+): [BulletinReply]
 }
 
 enum AlliancePositionEnum {

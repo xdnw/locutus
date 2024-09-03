@@ -46,6 +46,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class WebOptionBindings extends BindingHelper {
 //Parser
@@ -190,7 +191,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getTaxBracket() {
         return new WebOption(TaxBracket.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             if (!db.isValidAlliance()) throw new IllegalArgumentException("No alliance is registered. See " + CM.settings_default.registerAlliance.cmd.toSlashMention());
-            Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
+            Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(120));
             List<Map<String, String>> data = new ArrayList<>();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();

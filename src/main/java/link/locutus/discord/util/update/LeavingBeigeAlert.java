@@ -154,7 +154,7 @@ public class LeavingBeigeAlert {
 
         NationMeta.BeigeAlertRequiredStatus requiredStatus = attacker.getBeigeRequiredStatus(NationMeta.BeigeAlertRequiredStatus.ONLINE);
 
-        if ((attacker.active_m() <= 15 || requiredStatus.getApplies().test(member) || attacker.getNation_id() == Settings.INSTANCE.NATION_ID)) {
+        if ((attacker.active_m() <= 15 || requiredStatus.getApplies().test(member) || attacker.getNation_id() == Locutus.loader().getNationId())) {
             NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NO_ALERTS);
             if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) {
                 if (throwError) throw new IllegalArgumentException("You have disabled beige alerts. See " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention());

@@ -115,7 +115,6 @@ public class WebMessage extends AMessageBuilder {
         }
         if (!files.isEmpty() || !images.isEmpty()) {
             Map<String, String> urlFileNames = getUrlFileNames();
-            System.out.println("Add files " + urlFileNames);
             if (!urlFileNames.isEmpty()) {
                 root.put("files", urlFileNames);
             }

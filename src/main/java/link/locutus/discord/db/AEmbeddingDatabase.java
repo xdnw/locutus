@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
@@ -45,6 +46,7 @@ import static graphql.com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeable {
 
+    private volatile boolean loaded = false;
     private final Long2ObjectOpenHashMap<float[]> vectors;
     private final Map<Integer, Set<Long>> textHashBySource;
     private final Map<Integer, Map<Long, Long>> expandedTextHashBySource;
@@ -63,16 +65,19 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
+    }
 
+    public <T extends AEmbeddingDatabase> T load() {
+        if (loaded) return (T) this;
+        loaded = true;
         createTables();
-
-        // import old data
         importLegacyDate();
         loadVectors();
         loadHashesBySource();
         loadSources();
         loadExpandedTextMeta();
         loadUnconvertedDocuments();
+        return (T) this;
     }
 
     public GptDatabase getDatabase() {
@@ -86,6 +91,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent) {
+        load();
         checkNotNull(source);
         if (hashes.isEmpty()) {
             if (deleteAbsent) {
@@ -147,6 +153,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public synchronized void saveVector(long hash, float[] vector) {
+        load();
         byte[] data = ArrayUtil.toByteArray(vector);
         vectors.put(hash, vector);
         String table = "vectors_" + vectorName;
@@ -176,6 +183,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public synchronized boolean saveExpandedText(long embedding_hash, int source_id, String body) {
+        load();
         long body_hash = getHash(body);
         Map<Long, Long> hashesBySource = expandedTextHashBySource.computeIfAbsent(source_id, k -> new Long2LongOpenHashMap());
         // if changed
@@ -189,6 +197,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public boolean hasExpandedText(int source_id, long embedding_hash) {
+        load();
         Map<Long, Long> hashesBySource = expandedTextHashBySource.get(source_id);
         if (hashesBySource == null) {
             return false;
@@ -201,6 +210,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public String getExpandedText(int source_id, long embedding_hash) {
+        load();
         Map<Long, Long> hashesBySource = expandedTextHashBySource.get(source_id);
         if (hashesBySource == null) {
             return null;
@@ -221,6 +231,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public synchronized void saveVectorSources(long hash, int source_id) {
+        load();
         textHashBySource.computeIfAbsent(source_id, k -> new LongOpenHashSet()).add(hash);
         ctx().execute("INSERT INTO vector_sources (source_id, hash) VALUES (?, ?)", source_id, hash);
     }
@@ -252,7 +263,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
     }
 
-    public void loadUnconvertedDocuments() {
+    private void loadUnconvertedDocuments() {
         ctx().execute("DELETE FROM document_queue WHERE converted = ?", true);
         ctx().execute("DELETE FROM document_chunks WHERE converted = ?", true);
         // delete where source_id not in sources
@@ -270,15 +281,18 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public List<ConvertingDocument> getUnconvertedDocuments() {
+        load();
         return new ArrayList<>(this.unconvertedDocuments.values());
     }
 
     @Override
     public ConvertingDocument getConvertingDocument(int source_id) {
+        load();
         return unconvertedDocuments.get(source_id);
     }
 
     public void addConvertingDocument(List<ConvertingDocument> documents) {
+        load();
         for (ConvertingDocument document : documents) {
             unconvertedDocuments.put(document.source_id, document);
         }
@@ -291,6 +305,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public void addChunks(List<DocumentChunk> chunks) {
+        load();
         for (DocumentChunk chunk : chunks) {
             documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.chunk_index, chunk);
         }
@@ -303,6 +318,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public List<DocumentChunk> getChunks(int source_id) {
+        load();
         ArrayList<DocumentChunk> result = new ArrayList<>(documentChunks.getOrDefault(source_id, Collections.emptyMap()).values());
         result.sort(Comparator.comparingInt(o -> o.chunk_index));
         return result;
@@ -310,6 +326,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public void deleteDocumentAndChunks(int sourceId) {
+        load();
         documentChunks.remove(sourceId);
         unconvertedDocuments.remove(sourceId);
         ctx().transaction((TransactionalRunnable) -> {
@@ -320,11 +337,13 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public EmbeddingSource getEmbeddingSource(int source_id) {
+        load();
         return embeddingSources.get(source_id);
     }
 
     @Override
     public synchronized EmbeddingSource getOrCreateSource(String name, long guild_id) {
+        load();
         name = name.toLowerCase();
 
         EmbeddingSource source = this.getSource(name, guild_id);
@@ -348,6 +367,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public void updateSources(List<EmbeddingSource> sources) {
+        load();
         ctx().transaction((TransactionalRunnable) -> {
             for (EmbeddingSource source : sources) {
                 ctx().execute("UPDATE sources SET source_name = ?, date_added = ?, guild_id = ? WHERE source_id = ?",
@@ -370,7 +390,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         } catch (DataAccessException ignore) {}
     }
 
-    public void loadVectors() {
+    private void loadVectors() {
         String table = "vectors_" + vectorName;
             ctx().select().from(table).fetch().forEach(r -> {
             long hash = r.get("hash", Long.class);
@@ -380,7 +400,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         });
     }
 
-    public void loadHashesBySource() {
+    private void loadHashesBySource() {
         ctx().select().from("vector_sources").fetch().forEach(r -> {
             long hash = r.get("hash", Long.class);
             int source_id = r.get("source_id", Integer.class);
@@ -393,7 +413,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         });
     }
 
-    public void loadSources() {
+    private void loadSources() {
         ctx().select().from("sources").fetch().forEach(r -> {
             int source_id = r.get("source_id", Integer.class);
             String source_name = r.get("source_name", String.class);
@@ -424,7 +444,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         createChunksTable();
     }
 
-    public void loadExpandedTextMeta() {
+    private void loadExpandedTextMeta() {
 //        expandedTextHashBySource
         ctx().select().from("expanded_text").fetch().forEach(r -> {
 //            .column("embedding_hash", SQLDataType.BIGINT.notNull())
@@ -439,11 +459,13 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public float[] getEmbedding(long hash) {
+        load();
         return vectors.get(hash);
     }
 
     @Override
     public void deleteSource(EmbeddingSource source) {
+        load();
         // delete from expanded_text and sources and vector_sources
         int source_id = source.source_id;
         ctx().execute("DELETE FROM expanded_text WHERE source_id = ?", source_id);

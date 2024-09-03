@@ -1,14 +1,9 @@
 package link.locutus.discord.util.io;
 
-import link.locutus.discord.RequestTracker;
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.client.HttpClientErrorException;
+import link.locutus.discord.apiv3.RequestTracker;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -17,7 +12,6 @@ import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -145,7 +139,6 @@ public class PageRequestQueue {
 //            double fiveCount = tracker.getDomainRequestsSince(task.getUrl(), fiveMinutes) / 5d;
             double maxCount = minuteCount;//Math.max(minuteCount, fiveCount);
 
-            System.out.println("Current minute count is " + minuteCount);
             long submitDate = task.getCreationDate();
             long bufferMs = task.getAllowBuffering();
             long delayMs = task.getAllowDelay();

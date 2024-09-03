@@ -38,7 +38,6 @@ public abstract class DBMain implements Closeable {
             file.getParentFile().mkdirs();
         }
         this.dbLocation = file;
-
         connection = openConnection();
         createTables();
     }
@@ -152,7 +151,6 @@ public abstract class DBMain implements Closeable {
     private Connection forceConnection() throws SQLException, ClassNotFoundException {
         Class.forName("org.sqlite.JDBC");
         String connectStr = "jdbc:sqlite:";
-//        if (inMemory) connectStr += ":memory:";
         connectStr += dbLocation;
         connection = DriverManager.getConnection(connectStr);
         if (inMemory) {
@@ -177,23 +175,31 @@ public abstract class DBMain implements Closeable {
     }
 
     public synchronized void executeStmt(String query) {
+
+    }
+
+    public synchronized void executeStmt(String query, boolean ignoreError) {
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(query);
             stmt.executeBatch();
             stmt.clearBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            if (!ignoreError) e.printStackTrace();
         }
     }
 
     public synchronized void executeStmt(String query, Consumer<PreparedStatement> consumer) {
+        executeStmt(query, consumer, false);
+    }
+
+    public synchronized void executeStmt(String query, Consumer<PreparedStatement> consumer, boolean ignoreErrors) {
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             consumer.accept(stmt);
             stmt.addBatch();
             stmt.executeBatch();
             stmt.clearBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            if (!ignoreErrors) e.printStackTrace();
         }
     }
 

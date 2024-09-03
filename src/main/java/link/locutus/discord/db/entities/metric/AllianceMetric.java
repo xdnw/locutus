@@ -1093,7 +1093,6 @@ public enum AllianceMetric implements IAllianceMetric {
     public static AllianceMetric[] values = AllianceMetric.values();
 
     public static synchronized void update(int topX) {
-        System.out.println("Updating metrics for top " + topX + " alliances");
         long turn = TimeUtil.getTurn();
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
         List<AllianceMetricValue> toAdd = new ArrayList<>();
@@ -1149,7 +1148,6 @@ public enum AllianceMetric implements IAllianceMetric {
             values.clear();
         };
         runDataDump(parser, metrics, acceptDay, (metric, day, value) -> {
-            System.out.println("Run day " + day);
             for (Map.Entry<Integer, Double> entry : value.entrySet()) {
                 if (saveAllTurns) {
                     for (int i = 0; i < 12; i++) {

@@ -150,7 +150,8 @@ public class ArgParser {
             }
         }));
 
-        for (Method method : DBNation.class.getDeclaredMethods()) {
+        for (Method method : DBNation.class.getMethods()) {
+            if (method.getDeclaringClass() != DBNation.class) continue;
             if (method.getParameters().length != 0) continue;
             if(method.getReturnType().equals(Void.TYPE)) continue;
             link.locutus.discord.commands.manager.v2.binding.annotation.Command annotation = method.getAnnotation(link.locutus.discord.commands.manager.v2.binding.annotation.Command.class);

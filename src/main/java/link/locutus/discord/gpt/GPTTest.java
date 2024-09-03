@@ -66,8 +66,6 @@ public class GPTTest {
         Set<EmbeddingSource> sources = pwGpt.getSources(null, true);
         sources.remove(userInputSrc);
 
-        System.out.println("Fetching closest for " + input);
-
         List<EmbeddingInfo> closest = embeddings.getClosest(userInputSrc, input, 100, sources, new BiPredicate<EmbeddingSource, Long>() {
             @Override
             public boolean test(EmbeddingSource embeddingSource, Long hash) {

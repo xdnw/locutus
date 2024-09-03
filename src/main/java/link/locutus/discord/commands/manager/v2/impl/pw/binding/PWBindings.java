@@ -85,6 +85,7 @@ import net.dv8tion.jda.api.entities.User;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -366,7 +367,6 @@ public class PWBindings extends BindingHelper {
             "Use `*` as the filter to match all nations.\n" +
             "Only alliance members can be given role")
     public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
-        System.out.println("Parse conditional roles " + input);
         Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             int index = line.lastIndexOf(":");
@@ -472,7 +472,8 @@ public class PWBindings extends BindingHelper {
             cityId = Integer.parseInt(input.split("=")[1]);
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             if (cityEntry == null) {
-                cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, f -> f.post());
+                final int finalCityId = cityId;
+                cityEntry = Locutus.imp().returnEventsAsync(f -> Locutus.imp().getNationDB().getCitiesV3ByCityId(finalCityId, true, f));
                 if (cityEntry == null) {
                     throw new IllegalArgumentException("No city found in cache with id " + cityId + " (expecting city id or url)");
                 }
@@ -842,7 +843,6 @@ public class PWBindings extends BindingHelper {
     public static Set<DBNation> nations(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted, @Default @Me User user, @Default @Me DBNation nation) {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, user, nation, input, true, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
         if (nations.isEmpty() && (data == null || data.getAnnotation(AllowEmpty.class) == null)) {
-            System.out.println("Data " + data);
             throw new IllegalArgumentException("No nations found matching: `" + input + "`");
         }
         return nations;
@@ -1585,7 +1585,7 @@ public class PWBindings extends BindingHelper {
         if (allianceList == null) {
             throw new IllegalArgumentException("No alliance registered. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
         }
-        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(true);
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
             int moneyRate = Integer.parseInt(split[0]);
@@ -1678,11 +1678,13 @@ public class PWBindings extends BindingHelper {
         return emum(AllianceMetricMode.class, mode);
     }
 
-    @Binding NationMeta meta(String input) {
+    @Binding
+    public NationMeta meta(String input) {
         return emum(NationMeta.class, input);
     }
 
-    @Binding WarCostByDayMode WarCostByDayMode(String input) {
+    @Binding
+    public WarCostByDayMode WarCostByDayMode(String input) {
         return emum(WarCostByDayMode.class, input);
     }
 }

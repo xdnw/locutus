@@ -3,6 +3,7 @@ package link.locutus.discord.web.jooby;
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
 import com.google.gson.JsonObject;
+import link.locutus.discord.Logg;
 import link.locutus.wiki.WikiGenHandler;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -93,12 +94,12 @@ public class WebRoot {
             DirectoryWatcher watcher = new DirectoryWatcher(jteEngine, jteResolver);
             watcher.start(templates -> {
                 for (String template : templates) {
-                    System.out.println("Reloaded template " + template);
+                    Logg.text("Reloaded template " + template);
                 }
             });
         }
 
-        System.out.println("Starting on port " + port);
+        Logg.text("Starting on port " + port);
 //        BrotliLoader.isBrotliAvailable();
         this.app = Javalin.create(config -> {
             if (ssl) {
@@ -108,10 +109,10 @@ public class WebRoot {
 //            config.enableCorsForOrigin();
             // check if brotli available
             if (Brotli4jLoader.isAvailable()) {
-                System.out.println("Using brotli");
+                Logg.text("Using brotli");
                 config.compression.brotliAndGzip();
             } else {
-                System.out.println("Using gzip");
+                Logg.text("Using gzip");
                 config.compression.gzipOnly();
             }
             for (Map.Entry<String, String> entry : staticFileMap.entrySet()) {
@@ -136,8 +137,6 @@ public class WebRoot {
             });
         }).start(port);
 
-        System.out.println("Started on port " + port);
-
         this.pageHandler = new PageHandler(this);
 
         this.app.get("/test", new Handler() {
@@ -151,7 +150,7 @@ public class WebRoot {
             @Override
             public void handle(@NotNull Context context) throws Exception {
                 if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
-                    System.out.println("Not whitelisted: " + context.ip());
+                    Logg.text("Not whitelisted: " + context.ip());
                     return;
                 }
                 JSONObject request = legacyBankHandler.pollRequest();
@@ -167,10 +166,9 @@ public class WebRoot {
             @Override
             public void handle(@NotNull Context context) throws Exception {
                 if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
-                    System.out.println("Not whitelisted: " + context.ip());
+                    Logg.text("Not whitelisted: " + context.ip());
                     return;
                 }
-                System.out.println("IP : " + context.ip());
                 UUID token = UUID.fromString(context.queryParam("token"));
                 String message = context.queryParam("result");
 
@@ -219,7 +217,10 @@ public class WebRoot {
         this.app.get("/page/**", ctx -> {
             long start = System.currentTimeMillis();
             pageHandler.handle(ctx);
-            System.out.println("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
+            long diff = System.currentTimeMillis() - start;
+            if (diff > 0) {
+                Logg.text("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
+            }
         });
         this.app.post("/page/**", ctx -> {
             pageHandler.handle(ctx);

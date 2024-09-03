@@ -146,8 +146,6 @@ public class Simulate extends Command {
             solution = origin.minimax(start, alpha, beta, true, valueFunction, goal);
         }
 
-        System.out.println("Took " + (System.currentTimeMillis() - start));
-
         if (solution == null) {
             return "**You cannot win this war with your current military composition**";
         }

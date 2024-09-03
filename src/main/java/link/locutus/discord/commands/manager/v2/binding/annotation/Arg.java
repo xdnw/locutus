@@ -8,6 +8,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER, ElementType.METHOD})
 public @interface Arg {
+    String[] requiresAny() default {};
+    String[] requiresAll() default {};
+    String[] requiresNone() default {};
+
     String value();
     int group() default -1;
     String[] aliases() default {};

@@ -177,7 +177,7 @@ public class IACategory {
                     public void accept(List<Message> messages, Throwable throwable) {
                         if (messages == null) {
                             throwable.printStackTrace();
-                            AlertUtil.error("Cannot fetch message", StringMan.stacktraceToString(throwable) + "<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                            AlertUtil.error("Cannot fetch message", StringMan.stacktraceToString(throwable) + "<@" + Locutus.loader().getAdminUserId() + ">");
                             db.updateInterviewMessageDate(channelId);
                             return;
                         }
@@ -532,7 +532,7 @@ public class IACategory {
         Member member = null;
         for (PermissionOverride override : overrides) {
             if (override.getMember() != null) {
-                if (override.getMember().getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) continue;
+                if (override.getMember().getIdLong() == Locutus.loader().getAdminUserId()) continue;
                 if (member != null) {
                     return null;
                 }

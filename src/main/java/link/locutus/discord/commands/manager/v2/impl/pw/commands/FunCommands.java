@@ -38,8 +38,9 @@ public class FunCommands {
             return "You were unsuccessful in stealing one of Borg's cities, your agents were able to operate undetected, the operation cost you $0 and 0 of your spies were captured and executed.";
 
         Auth auth = Locutus.imp().getRootAuth();
+        DBNation authNation = auth.getNation();
 
-        List<Integer> cities = new ArrayList<>(DBNation.getById(189573).getCityMap(false).keySet());
+        List<Integer> cities = new ArrayList<>(authNation.getCityMap(false).keySet());
         // get random city from cities
         int id = cities.get(ThreadLocalRandom.current().nextInt(cities.size()));
         String name = me.getNation() + "'s city";
@@ -51,7 +52,7 @@ public class FunCommands {
         stolenCities.put(id, me.getNation_id());
 
         int num = 113 + ThreadLocalRandom.current().nextInt(312);
-        String msg = "You successfully snuck in the cover of night and replaced every sign in Borg's city, your spies replaced " + num + " signs, your agents were able to operate undetected, the operation cost you $0 and 0 of your spies were captured and executed.";
+        String msg = "You successfully snuck in the cover of night and replaced every sign in " + authNation.getNation() + "'s city, your spies replaced " + num + " signs, your agents were able to operate undetected, the operation cost you $0 and 0 of your spies were captured and executed.";
         msg += "\nThe city is now yours! (until someone wakes up)" + "\n- <" + url + ">";
 
         boolean stolenAll = false;

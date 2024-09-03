@@ -36,6 +36,7 @@ import com.google.api.services.docs.v1.model.StructuralElement;
 import com.google.api.services.docs.v1.model.TableCell;
 import com.google.api.services.docs.v1.model.TableRow;
 import com.google.api.services.docs.v1.model.TextRun;
+import link.locutus.discord.Logg;
 import link.locutus.discord.util.MarkupUtil;
 
 import java.io.FileInputStream;
@@ -76,13 +77,11 @@ public class ExtractText {
         // Load client secrets.
         // ensure file exists CREDENTIALS_FILE_PATH
         if (!new java.io.File(CREDENTIALS_FILE_PATH).exists()) {
-            System.out.println("File not found: " + CREDENTIALS_FILE_PATH);
             throw new IOException("File not found: " + CREDENTIALS_FILE_PATH);
         }
         // ensure new java.io.File(TOKENS_DIRECTORY_PATH) exists
         if (!new java.io.File(TOKENS_DIRECTORY_PATH).exists()) {
             if (!new java.io.File(TOKENS_DIRECTORY_PATH).mkdirs()) {
-                System.out.println("Unable to create directory: " + TOKENS_DIRECTORY_PATH);
                 throw new IOException("Unable to create directory: " + TOKENS_DIRECTORY_PATH);
             }
         }

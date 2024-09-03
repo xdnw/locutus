@@ -50,14 +50,11 @@ public interface IModalBuilder {
         String regexPattern = "\\{(" + String.join("|", allowedPlaceholderNames) + ")(?:=(.*?))?\\}";
         Pattern pattern = Pattern.compile(regexPattern);
         Matcher matcher = pattern.matcher(text);
-
         // Find all matches and populate the placeholders map
         while (matcher.find()) {
             String placeholderName = matcher.group(1);
             String placeholderValue = matcher.group(2); // May be null
-
             placeholders.put(placeholderName, placeholderValue);
-            System.out.println("Add ph" + placeholderName + " " + placeholderValue);
         }
         return placeholders;
     }

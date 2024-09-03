@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
@@ -200,7 +201,6 @@ public final class FileUtil {
         for (Map.Entry<String, String> entry : arguments.entrySet())
             sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "="
                     + URLEncoder.encode(entry.getValue(), "UTF-8"));
-        System.out.println("SJ " + sj);
         byte[] out = sj.toString().getBytes(StandardCharsets.UTF_8);
         return readStringFromURL(priority, urlStr, out, post ? RequestType.POST : RequestType.GET, msCookieManager, apply);
     }
@@ -304,8 +304,7 @@ public final class FileUtil {
                                 throw new IOException(StringMan.stripApiKey(e.getMessage()) + ":\n" + error);
                             }
                         }
-                        System.out.println("URL " + urlStr);
-                        e.printStackTrace();
+                        Logg.text("Error Reading " + urlStr + "\n " + StringMan.stacktraceToString(e));
                         throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
                     }
                 } catch (IOException e) {
@@ -328,7 +327,6 @@ public final class FileUtil {
                             cause = cause.getCause();
                         }
                         if (e.getMessage() != null && e.getMessage().contains("Server returned HTTP response code: 429")) {
-                            System.out.println("Error 429");
                             try {
                                 Thread.sleep(backoff);
                                 backoff += 4000;

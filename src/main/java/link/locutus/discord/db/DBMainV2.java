@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DBMainV2 implements Closeable {
     private final File file;
@@ -182,12 +183,16 @@ public class DBMainV2 implements Closeable {
     }
 
     public synchronized void executeStmt(String query) {
+        executeStmt(query, false);
+    }
+
+    public synchronized void executeStmt(String query, boolean ignoreError) {
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(query);
             stmt.executeBatch();
             stmt.clearBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            if (!ignoreError) e.printStackTrace();
         }
     }
 
@@ -198,18 +203,28 @@ public class DBMainV2 implements Closeable {
         }
     }
 
+    public <T> T select(String sql, Consumer<PreparedStatement> withStmt, Function<ResultSet, T> rsq) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setFetchSize(10000);
+            withStmt.accept(stmt);
+            ResultSet rs = stmt.executeQuery();
+            return rsq.apply(rs);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
-        {
-            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
-                stmt.setFetchSize(10000);
-                withStmt.accept(stmt);
-                ResultSet rs = stmt.executeQuery();
-                rsq.accept(rs);
-                return rs != null;
-            } catch (SQLException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setFetchSize(10000);
+            withStmt.accept(stmt);
+            ResultSet rs = stmt.executeQuery();
+            rsq.accept(rs);
+            return rs != null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 

@@ -177,8 +177,6 @@ public class DiscordHookIO implements IMessageIO {
                 .addActionRows(ActionRow.partitionOf(inputs))
                 .build();
 
-        System.out.println("Sending modal " + idPair);
-
 //        modalCallback.replyModal(modal).complete();
 //        return null;
         return RateLimitUtil.queue(modalCallback.replyModal(modal)).thenApply(f -> casted);

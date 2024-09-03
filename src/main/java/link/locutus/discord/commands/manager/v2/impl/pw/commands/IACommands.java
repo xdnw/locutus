@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
@@ -89,7 +88,7 @@ import java.util.stream.Collectors;
 public class IACommands {
     @Command(desc = "Rename channels and set their topic (if empty) in a category to match the nation registered to the user added")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
-    public String renameInterviewChannels(@Me GuildDB db, @Me Guild guild, @Me User author, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    public String renameInterviewChannels(@Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command,
                                           Set<Category> categories,
                                           @Switch("m") boolean allow_non_members,
                                           @Switch("v") boolean allow_vm,
@@ -810,7 +809,7 @@ public class IACommands {
 
     @Command(desc = "Unassign a mentee from all mentors")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
-    public String unassignMentee(@Me GuildDB db, @Me Guild guild, @Me DBNation nation, DBNation mentee) {
+    public String unassignMentee(@Me GuildDB db, @Me DBNation nation, DBNation mentee) {
         ByteBuffer mentorBuf = db.getNationMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
         DBNation currentMentor = mentorBuf != null ?  DBNation.getById(mentorBuf.getInt()) : null;
 
@@ -937,12 +936,12 @@ public class IACommands {
     @Command(desc = "List mentees, grouped by their respective mentors", aliases = {"mymentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
     public String myMentees(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentees, @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff) throws InterruptedException, ExecutionException, IOException {
-        return listMentors(guild, db, me,Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
+        return listMentors(guild, db, Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
     }
 
     @Command(desc = "List mentors, grouped by their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
-    public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
+    public String listMentors(@Me Guild guild, @Me GuildDB db, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
                               @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff,
                               @Arg("Include an audit summary with the list") @Switch("a") boolean includeAudit,
                               @Arg("Do NOT list members without a mentor") @Switch("u") boolean ignoreUnallocatedMembers,
@@ -1198,7 +1197,6 @@ public class IACommands {
             if (transaction.note == null || !transaction.note.contains("#incentive")) continue;
             Map<String, String> notes = PW.parseTransferHashNotes(transaction.note);
             String incentive = notes.get("#incentive");
-            DBNation member = DBNation.getById(transaction.banker_nation);
             DBNation gov = DBNation.getById((int) transaction.sender_id);
 
             if (gov != null) {
@@ -1224,7 +1222,7 @@ public class IACommands {
             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
     @RolePermission(Roles.MAIL)
     @IsAlliance
-    public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
+    public String reply(@Me DBNation me, @Me User author, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
         if (!url.contains("message/id=") && !MathMan.isInteger(url)) return "URL must be a message url";
         int messageId = MathMan.isInteger(url) ? Integer.parseInt(url) : Integer.parseInt(url.split("=")[1]);
         GPTUtil.checkThrowModeration(message);
@@ -1569,7 +1567,7 @@ public class IACommands {
             }
         }
 
-        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
+        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
 
         if (bracket == null) {
             StringBuilder response = new StringBuilder();
@@ -2158,7 +2156,7 @@ public class IACommands {
 
     @Command(desc = "Move an interview channel from the `interview-archive` category")
     @RolePermission(Roles.MEMBER)
-    public String open(@Me GuildDB db, @Me User author, @Me Guild guild, @Me IMessageIO channel, @Default Category category) {
+    public String open(@Me User author, @Me Guild guild, @Me IMessageIO channel, @Default Category category) {
         if (!(channel instanceof TextChannel)) {
             return "Not a text channel";
         }

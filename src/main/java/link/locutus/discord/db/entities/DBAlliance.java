@@ -143,7 +143,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return lootEntry;
     }
 
-    public void setAAPage(String file) throws Exception{
+    public String setAAPage(String file) throws Exception{
         String input = FileUtil.readFile(file);
 
         input = input.replaceAll("\n", "");
@@ -154,14 +154,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         String finalInput = input;
 
         Auth auth = getAuth();
-        System.out.println(auth.getNation() + " | " + auth.getAllianceId());
-        String response = new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
+        return new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
             @Override
             public void accept(Map<String, String> stringStringMap) {
                 stringStringMap.put("desc", finalInput);
             }
         }).call();
-        System.out.println(response + " | response");
     }
 
     public static DBAlliance parse(String arg, boolean throwError) {
@@ -375,10 +373,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     private Map<Integer, TaxBracket> BRACKETS_CACHED;
-    private long BRACKETS_TURN_UPDATED;
+    private long BRACKETS_TIME_UPDATED;
 
-    public synchronized Map<Integer, TaxBracket> getTaxBrackets(boolean useCache) {
-        if (useCache && BRACKETS_TURN_UPDATED == TimeUtil.getTurn()) {
+    public synchronized Map<Integer, TaxBracket> getTaxBrackets(long cacheFor) {
+        long now = System.currentTimeMillis();
+        if (cacheFor > 0 && (now - BRACKETS_TIME_UPDATED < cacheFor)) {
             boolean isOutdated = false;
             for (int id : listUsedTaxIds()) {
                 if (!BRACKETS_CACHED.containsKey(id)) {
@@ -402,7 +401,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId, true);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
-        BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
+        BRACKETS_TIME_UPDATED = now;
         for (Map.Entry<Integer, com.politicsandwar.graphql.model.TaxBracket> entry : bracketsV3.entrySet()) {
             TaxBracket bracket = new TaxBracket(entry.getValue());
             Locutus.imp().getBankDB().addTaxBracket(bracket);
@@ -811,9 +810,9 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             PoliticsAndWarV3 api = getApi(AlliancePermission.MANAGE_TREATIES);
             if (api != null) {
                 List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(allianceId);
-                Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, f -> {
-                    return f.getFromId() == allianceId || f.getToId() == allianceId;
-                });
+                Locutus.imp().runEventsAsync(events ->
+                    Locutus.imp().getNationDB().
+                        updateTreaties(treaties, events, f -> f.getFromId() == allianceId || f.getToId() == allianceId));
                 Map<Integer, Treaty> result = new HashMap<>();
                 for (com.politicsandwar.graphql.model.Treaty v3 : treaties) {
                     Treaty treaty = new Treaty(v3);
@@ -1222,8 +1221,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public void updateCities(Predicate<DBNation> fetchNation) throws IOException {
         Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
         if (nationIds.isEmpty()) return;
-        System.out.println("Aa update cities");
-        Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
+        Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, events));
     }
 
     public DBAlliance getCachedParentOfThisOffshore() {
@@ -1636,34 +1634,28 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         Map<DBNation, Integer> ops = new HashMap<>();
         // get api
         PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.SEE_SPIES);
-        for (Nation nation : api.fetchNations(true, new Consumer<NationsQueryRequest>() {
-            @Override
-            public void accept(NationsQueryRequest request) {
+        Locutus.imp().runEventsAsync(events -> {
+            for (Nation nation : api.fetchNations(true, request -> {
                 request.setAlliance_id(List.of(allianceId));
                 request.setVmode(false);
-            }
-        }, new Consumer<NationResponseProjection>() {
-            @Override
-            public void accept(NationResponseProjection proj) {
+            }, proj -> {
                 proj.id();
                 proj.spies();
                 proj.spy_attacks();
                 proj.espionage_available();
+            })) {
+                DBNation dbNation = DBNation.getById(nation.getId());
+                if (dbNation == null) continue;
+                dbNation.setSpies(nation.getSpies(), events);
+                if (nation.getEspionage_available() != (dbNation.isEspionageAvailable())) {
+                    dbNation.setEspionageFull(!nation.getEspionage_available());
+                }
+                if (nation.getSpy_attacks() != null) {
+                    nation.setSpy_attacks(nation.getSpy_attacks());
+                    ops.put(dbNation, nation.getSpy_attacks());
+                }
             }
-        })) {
-            DBNation dbNation = DBNation.getById(nation.getId());
-            if (dbNation == null) continue;
-            DBNation copy = new DBNation(dbNation);
-
-            dbNation.setSpies(nation.getSpies(), false);
-            if (nation.getEspionage_available() != (dbNation.isEspionageAvailable())) {
-                dbNation.setEspionageFull(!nation.getEspionage_available());
-            }
-            if (nation.getSpy_attacks() != null) {
-                nation.setSpy_attacks(nation.getSpy_attacks());
-                ops.put(dbNation, nation.getSpy_attacks());
-            }
-        }
+        });
         return ops;
     }
 

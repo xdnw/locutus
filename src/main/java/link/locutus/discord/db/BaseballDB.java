@@ -86,7 +86,6 @@ public class BaseballDB extends DBMainV2{
         });
         games.removeIf(f -> f.getId() == null || gameIds.contains(f.getId()));
 
-        System.out.println("Add games " + games.size());
         for (BBGame game : games) {
             addGame(game);
         }

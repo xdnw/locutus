@@ -441,7 +441,6 @@ public class ImageUtil {
 
         String url = endpoint + imageUrl;
         String jsonStr = FileUtil.readStringFromURL(PagePriority.API_OCR, url);
-        System.out.println(jsonStr);
         JSONObject json = new JSONObject(jsonStr);
         // ParsedResults > ParsedText
         String parsedText = null;
@@ -518,7 +517,6 @@ public class ImageUtil {
             int lineHeight = g2d.getFontMetrics().getAscent();
             int padding = g2d.getFontMetrics().getHeight() - g2d.getFontMetrics().getAscent();
             int totalTextHeight = lines.size() * lineHeight;
-            System.out.println("Line " + lineHeight + " | " + padding);
             int y = (repeat ? 0 : (image.getHeight() - totalTextHeight) / 2) - padding;
             while (y < image.getHeight()) {
                 for (String line : lines) {

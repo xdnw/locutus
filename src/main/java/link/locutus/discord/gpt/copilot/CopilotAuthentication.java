@@ -127,10 +127,7 @@ public abstract class CopilotAuthentication implements ICopilotAuthentication {
             return _httpClient.PostAsync(url, "").thenApply(new Function<HttpResponse<String>, String[]>() {
                 @Override
                 public String[] apply(HttpResponse<String> response) {
-                    System.out.println("Response " + response.headers() + "\n - status:" + response.statusCode());
                     var jsonResult = response.body();
-
-                    System.out.println("Result " + jsonResult);
 
                     JsonNode jsonObject = null;
                     try {
@@ -150,6 +147,5 @@ public abstract class CopilotAuthentication implements ICopilotAuthentication {
 
     @Override
     public void close() throws IOException {
-        System.out.println("Closed http client");
     }
 }

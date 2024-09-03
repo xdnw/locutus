@@ -66,6 +66,6 @@ public class RoleAlias extends Command {
             }
         }
         DBAlliance alliance = args.size() > 2 ? DBAlliance.parse(args.get(2), true) : null;
-        return AdminCommands.aliasRole(user, server, db, locutusRole, role, alliance, removeRole);
+        return AdminCommands.aliasRole(db, locutusRole, role, alliance, removeRole);
     }
 }

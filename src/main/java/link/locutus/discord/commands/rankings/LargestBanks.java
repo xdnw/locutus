@@ -44,10 +44,6 @@ public class LargestBanks extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
-
-        long millis = TimeUtil.timeToSec(args.get(0)) * 1000L;
-        long cutOff = System.currentTimeMillis() - millis;
-
         Map<Integer, Double> total = new HashMap<>();
 
         for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
@@ -59,11 +55,6 @@ public class LargestBanks extends Command {
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(total).sort();
         sorted.nameKeys(i -> PW.getName(i, true)).build(author, channel, fullCommandRaw, "AA bank");
-
-        for (Integer integer : sorted.get().keySet()) {
-            System.out.println(PW.getBBUrl(integer, true));
-        }
-
 
         return null;
     }

@@ -122,7 +122,6 @@ public abstract class FileConfiguration extends MemoryConfiguration {
         if (file == null) {
             throw new NullPointerException("File cannot be null");
         }
-        long start = System.currentTimeMillis();
         try (FileInputStream stream = new FileInputStream(file);
             InputStreamReader reader = new InputStreamReader(new FastBufferedInputStream(stream), StandardCharsets.UTF_8);
             BufferedReader input = new BufferedReader(reader);

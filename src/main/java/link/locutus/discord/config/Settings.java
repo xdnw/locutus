@@ -1,6 +1,7 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Config;
 
 import java.io.File;
@@ -108,7 +109,7 @@ public class Settings extends Config {
         return "https://" + (TEST ? "test." : "") + "politicsandwar.com";
     }
     public int ALLIANCE_ID() {
-        return Locutus.imp().getNationDB().getNation(NATION_ID).getAlliance_id();
+        return Locutus.imp().getNationDB().getNation(Locutus.loader().getNationId()).getAlliance_id();
     }
 
     public static class ENABLED_COMPONENTS {
@@ -344,35 +345,9 @@ public class Settings extends Config {
     public static class LEGACY_SETTINGS {
         @Final
         @Ignore
-        @Comment("Open browser window when these ppl do attacks")
-        public List<Integer> ATTACKER_DESKTOP_ALERTS = new ArrayList<>();
-
-        @Final
-        @Ignore
         @Comment("Timestamp for when marked deposits were introduced")
         public long MARKED_DEPOSITS_DATE = 1622661922L * 1000L;
 
-        @Final
-        @Ignore
-        public boolean OPEN_DESKTOP_FOR_CAPTCHA = false;
-
-        @Final
-        @Ignore
-        public boolean OPEN_DESKTOP_FOR_MISTRADES = false;
-
-        @Final
-        @Ignore
-        public boolean OPEN_DESKTOP_FOR_RAIDS = false;
-
-        @Final
-        @Ignore
-        @Deprecated
-        @Comment("Access key for P&W (deprecated)")
-        public String ACCESS_KEY = "";
-        @Final
-        @Ignore // disabled (not super accurate and not fair)
-        @Deprecated
-        public boolean DEANONYMIZE_SPYOPS = false;
         @Final
         @Ignore // disabled (not super accurate and not fair)
         @Deprecated
@@ -389,6 +364,18 @@ public class Settings extends Config {
         @Deprecated
         @Comment("Reduce the appearance of these always online nations for espionage alerts (if causing false positives)")
         public List<Integer> ESPIONAGE_ALWAYS_ONLINE_AA = Arrays.asList();
+
+        @Ignore
+        @Final
+        @Comment("Print the binding types which lack an autocomplete\n" +
+                "Disabled by default, as its normal for some types not to have completion")
+        public boolean PRINT_MISSING_AUTOCOMPLETE = false;
+
+        @Ignore
+        @Final
+        @Comment("Print the espionage debug information\n" +
+                "Disabled by default, as it is verbose")
+        public boolean PRINT_ESPIONAGE_DEBUG = false;
     }
 
 

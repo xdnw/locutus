@@ -6,6 +6,7 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.SpyReportEvent;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -207,7 +208,7 @@ public class SpyCount {
             result = enemySpiesMin > 2 ? (int) Math.ceil(enemySpiesMin) : (int) enemySpiesMin;
         }
         if (current != result) {
-            nation.setSpies(result, true);
+            nation.setSpies(result, Event::post);
         }
         nation.setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
         return result;
@@ -378,8 +379,7 @@ public class SpyCount {
         }
 
         if (nation != null) {
-            long turn = TimeUtil.getTurn();
-            Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), turn, entry.getValue(), NationLootType.ESPIONAGE);
+            Locutus.imp().runEventsAsync(events -> LootEntry.forNation(nation.getNation_id(), System.currentTimeMillis(), entry.getValue(), NationLootType.ESPIONAGE).save(events));
         }
         return entry;
     }
@@ -410,7 +410,7 @@ public class SpyCount {
 
     public static boolean checkSpiesGreater(PagePriority priority, int id, Operation optype, int safety, int spies) throws IOException {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/war/espionage_get_odds.php?id1=%s&id2=%s&id3=%s&id4=%s&id5=%s";
-        url = String.format(url, Settings.INSTANCE.NATION_ID, id, optype.ordinal(), safety, spies);
+        url = String.format(url, Locutus.loader().getNationId(), id, optype.ordinal(), safety, spies);
         String result = FileUtil.readStringFromURL(priority, url).trim();
         return result.startsWith("Greater");
     }

@@ -64,7 +64,12 @@ import java.util.stream.Collectors;
 
 public class ConflictCommands {
     @Command(desc = "View a conflict's configured information")
-    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants) {
+    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants,
+                       @Switch("d") boolean hideDeleted,
+                       @Switch("i") boolean showIds) {
+        if (hideDeleted && !showParticipants) {
+            throw new IllegalArgumentException("Cannot hide deleted conflicts without `showParticipants:True`");
+        }
         StringBuilder response = new StringBuilder();
 
         response.append("**__" + conflict.getName() + " - `#" + conflict.getId() + "` - " + conflict.getCategory().name() + "__**\n");
@@ -80,11 +85,16 @@ public class ConflictCommands {
         response.append("\n");
 
         List<CoalitionSide> sides = Arrays.asList(conflict.getSide(true), conflict.getSide(false));
+        boolean hasDeleted = false;
         if (showParticipants) {
             int i = 1;
             for (CoalitionSide side : sides) {
                 response.append("\n**" + side.getName() + "** (coalition " + (i++) + ")\n");
                 for (int aaId : side.getAllianceIdsSorted()) {
+                    if (DBAlliance.get(aaId) == null) {
+                        if (hasDeleted) continue;
+                        hasDeleted = true;
+                    }
                     long start = conflict.getStartTurn(aaId);
                     long end = conflict.getEndTurn(aaId);
                     String aaName = manager.getAllianceName(aaId);
@@ -109,7 +119,10 @@ public class ConflictCommands {
             for (CoalitionSide side : sides) {
                 response.append(side.getName() + ": `" + StringMan.join(side.getAllianceIdsSorted(), ",") + "`\n");
             }
-            response.append("Use `showParticipants: True` to list participants");
+            response.append("Use `showParticipants:True` to list participants\n");
+        }
+        if (hasDeleted && !hideDeleted) {
+            response.append("\nUse `hideDeleted:True` to hide deleted alliances");
         }
 
         return response.toString() + "\n\n<" + Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + conflict.getId() + ">";
@@ -118,7 +131,7 @@ public class ConflictCommands {
     @Command(desc = "Sets the wiki page for a conflict")
     @RolePermission(value = Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String setWiki(@Me GuildDB db, ConflictManager manager, Conflict conflict, String url) throws IOException {
+    public String setWiki(ConflictManager manager, Conflict conflict, String url) throws IOException {
         if (url.startsWith("http")) {
             if (url.endsWith("/")) url = url.substring(0, url.length() - 1);
             url = url.substring(url.lastIndexOf("/") + 1);
@@ -531,9 +544,16 @@ public class ConflictCommands {
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
         CtownedFetcher fetcher = new CtownedFetcher(manager);
-        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-        fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
-        return "Done!\nNote: this does not push the data to the site";
+        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
+        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+        List<String> warnings = new ArrayList<>();
+        if (!response1.isEmpty()) warnings.add(response1);
+        if (!response2.isEmpty()) warnings.add(response2);
+        String msg = "Done!\nNote: this does not push the data to the site";
+        if (!warnings.isEmpty()) {
+            msg += ". See the log below:\n\n" + StringMan.join(warnings, "\n");
+        }
+        return msg;
     }
 
     @Command(desc = "Import alliance names (to match with the ids of deleted alliances)\n" +

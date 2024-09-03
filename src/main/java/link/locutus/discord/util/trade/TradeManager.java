@@ -3,7 +3,9 @@ package link.locutus.discord.util.trade;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -119,9 +121,6 @@ public class TradeManager {
     }
 
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(Predicate<TradeDB.BulkTradeOffer> filter) {
-        Set<TradeDB.BulkTradeOffer> offers1 = offersByResource.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
-        Set<TradeDB.BulkTradeOffer> offers2 = offersByResource.values().stream().flatMap(Collection::stream).filter(filter).collect(Collectors.toSet());
-        System.out.println("Offers " + offers1.size() + " | " + offers2.size());
         return offersByResource.values().stream().flatMap(Collection::stream).filter(filter).filter(f -> !f.isExpired()).collect(Collectors.toSet());
     }
 
@@ -201,7 +200,6 @@ public class TradeManager {
         lowTmp[ResourceType.MONEY.ordinal()] = 1;
         highTmp[ResourceType.MONEY.ordinal()] = 1;
 
-        System.out.println(StringMan.getString(lowTmp) + " | " + StringMan.getString(highTmp));
         low = lowTmp;
         high = highTmp;
     }
@@ -211,24 +209,46 @@ public class TradeManager {
         updateLowHighCache();
     }
 
-    public synchronized void load() {
-        if (lowAvg != null) return;
+    public synchronized TradeManager load() {
+        if (lowAvg != null) return this;
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<DBTrade> trades = getTradeDb().getTrades(cutOff);
-        if (trades.isEmpty() && Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-            Locutus.imp().runEventsAsync(this::updateTradeList);
-            trades = getTradeDb().getTrades(cutOff);
+        if (trades.isEmpty()) {
+            if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
+                updateTradeList(null);
+            } else {
+                Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
+                initDefaults.put(ResourceType.MONEY, 1);
+                initDefaults.put(ResourceType.CREDITS, 25_000_000);
+                initDefaults.put(ResourceType.FOOD, 100);
+                initDefaults.put(ResourceType.COAL, 3800);
+                initDefaults.put(ResourceType.OIL, 3700);
+                initDefaults.put(ResourceType.URANIUM, 3250);
+                initDefaults.put(ResourceType.LEAD, 4100);
+                initDefaults.put(ResourceType.IRON, 3900);
+                initDefaults.put(ResourceType.BAUXITE, 3800);
+                initDefaults.put(ResourceType.GASOLINE, 3150);
+                initDefaults.put(ResourceType.MUNITIONS, 1850);
+                initDefaults.put(ResourceType.STEEL, 3800);
+                initDefaults.put(ResourceType.ALUMINUM, 2650);
+                for (ResourceType type : ResourceType.values) {
+                    int def = initDefaults.getOrDefault(type, 3000);
+                    low[type.ordinal()] = def;
+                    high[type.ordinal()] = def;
+                }
+            }
+        } else {
+            Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
+            lowAvg = ResourceType.resourcesToArray(averages.getKey());
+            highAvg = ResourceType.resourcesToArray(averages.getValue());
         }
-
-        Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
-        lowAvg = ResourceType.resourcesToArray(averages.getKey());
         lowAvg[0] = 1;
         lowAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
-        highAvg = ResourceType.resourcesToArray(averages.getValue());
         highAvg[0] = 1;
         highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
 
         loadActiveTrades();
+        return this;
     }
 
     public Collection<Transfer> toTransfers(Collection<DBTrade> offers, boolean onlyMoneyTrades) {
@@ -632,11 +652,9 @@ public class TradeManager {
         return result;
     }
 
-
-
     private boolean fetchNewTradesNextTick = true;
 
-    public synchronized boolean updateTradeList(Consumer<Event> eventConsumer) throws IOException {
+    public synchronized boolean updateTradeList(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         // get last trade
         List<DBTrade> latestTrades = tradeDb.getTrades(f -> f.order("tradeId", QueryOrder.OrderDirection.DESC).limit(1));
@@ -644,24 +662,25 @@ public class TradeManager {
         int latestId = latest == null ? 0 : latest.getTradeId();
         long latestDate = latest == null ? 0 : latest.getDate();
         if (latest == null || latestDate < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2)) {
-
-            ArrayDeque<DBTrade> trades = new ArrayDeque<>();
-            api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), new Predicate<Trade>() {
-                @Override
-                public boolean test(Trade trade) {
+            if (eventConsumer == null) {
+                List<Trade> apiTrades = api.readSnapshot(PagePriority.API_TRADE_GET, Trade.class);
+                List<DBTrade> tradeList = new ObjectArrayList<>(apiTrades.size());
+                apiTrades.forEach(f -> tradeList.add(new DBTrade(f)));
+                tradeDb.saveTrades(tradeList);
+            } else {
+                ArrayDeque<DBTrade> trades = new ArrayDeque<>();
+                api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), trade -> {
                     trades.add(new DBTrade(trade));
                     if (trades.size() > 1000) {
                         tradeDb.saveTrades(new ArrayList<>(trades));
                         trades.clear();
                     }
                     return false;
-                }
-            });
-            tradeDb.saveTrades(new ArrayList<>(trades));
-
+                });
+                tradeDb.saveTrades(new ArrayList<>(trades));
+            }
         } else {
             boolean mixupAlerts = (System.currentTimeMillis() - latestDate) < TimeUnit.MINUTES.toMillis(30);
-
             boolean fetchedNewTrades = false;
             List<Trade> fetched = new ArrayList<>();
 

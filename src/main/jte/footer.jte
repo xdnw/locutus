@@ -1,5 +1,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.config.Settings
+@import link.locutus.discord.Locutus
 <footer class="bd-footer border-top border-1 mt-0 pt-3 bg-light">
     <div class="container-md">
         <div class="row g-4">
@@ -19,8 +20,8 @@
                 <ul class="list-unstyled">
                     <li class="mb-2"><a href="https://github.com/xdnw/locutus/issues"><i class="bi bi-github"></i>&nbsp;Issue Tracker</a></li>
                     <li class="mb-2"><a href="https://discord.gg/cUuskPDrB7"><i class="bi bi-discord"></i>&nbsp;Discord Server</a></li>
-                    <li class="mb-2"><a href="discord://discord.com/users/${Settings.INSTANCE.ADMIN_USER_ID}"><i class="bi bi-person-circle"></i>&nbsp;Discord User</a></li>
-                    <li class="mb-2"><a href="https://politicsandwar.com/nation/id=${Settings.INSTANCE.NATION_ID}"><i class="bi bi-joystick"></i>&nbsp;In-Game</a></li>
+                    <li class="mb-2"><a href="discord://discord.com/users/${Locutus.loader().getAdminUserId()}"><i class="bi bi-person-circle"></i>&nbsp;Discord User</a></li>
+                    <li class="mb-2"><a href="https://politicsandwar.com/nation/id=${Locutus.loader().getNationId()}"><i class="bi bi-joystick"></i>&nbsp;In-Game</a></li>
                     <li class="mb-2"><a href="mailto:jessepaleg@gmail.com"><i class="bi bi-at"></i>&nbsp;Email</a></li>
                 </ul>
             </div>

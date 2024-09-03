@@ -903,16 +903,21 @@ public class StringMan {
             throw new IllegalArgumentException(e.getMessage() + ". Valid options are: " + StringMan.getString(emum.getEnumConstants()));
         }
     }
-    public static <T extends Enum<?>>  List<Map.Entry<String, String>> autocompleteCommaEnum(Class<T> type, String input, int maxResults) {
+    public static <T extends Enum<?>> List<Map.Entry<String, String>> autocompleteCommaEnum(Class<T> type, String input, int maxResults) {
         Function<String, T> parse = f -> parseUpper(type, f);
         return autocompleteCommaEnum(type, input, parse, maxResults);
     }
 
     public static <T extends Enum>  List<Map.Entry<String, String>> autocompleteCommaEnum(Class<T> type, String input, Function<String, T> parse, int maxResults) {
-        List<T> options = Arrays.asList(type.getEnumConstants());
+        List<T> options = new ArrayList<>(Arrays.asList(type.getEnumConstants()));
         Function<T, String> keyFunc = T::name;
         Function<T, String> valueFunc = keyFunc;
+        Function<String, T> parent = parse;
         return autocompleteComma(input, options, parse, keyFunc, valueFunc, maxResults);
+    }
+
+    public static List<String> autocompleteComma(String input, List<String> options, int maxResults) {
+        return autocompleteComma(input, options, f -> f, f -> f, f -> f, maxResults).stream().map(f -> f.getKey()).toList();
     }
 
     public static <T>  List<Map.Entry<String, String>> autocompleteComma(String input, List<T> options, Function<String, T> parse, Function<T, String> keyFunc, Function<T, String> valueFunc, int maxResults) {

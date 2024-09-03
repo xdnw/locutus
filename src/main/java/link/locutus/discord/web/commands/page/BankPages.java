@@ -88,9 +88,7 @@ public class BankPages {
             long start2 = System.currentTimeMillis();
 
             List<String> row = new ArrayList<>(header);
-            long start = System.currentTimeMillis();
             Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, true);
-            long diff = System.currentTimeMillis() - start;
 
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getUrl()));
             row.set(1, MathMan.format(nation.getCities()));

@@ -227,7 +227,8 @@ public class ParametricCallable implements ICommand {
 
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Class clazz, Object object, ValueStore store) {
         List<ParametricCallable> cmds = new ArrayList<>();
-        for (Method method : clazz.getDeclaredMethods()) {
+        for (Method method : clazz.getMethods()) {
+            if (method.getDeclaringClass() != clazz) continue;
             ParametricCallable parametric = generateFromMethod(parent, object, method, store);
             if (parametric != null) cmds.add(parametric);
         }
@@ -488,7 +489,6 @@ public class ParametricCallable implements ICommand {
                         }
                         int originalRemaining = stack.remaining();
                         List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
-                        System.out.println("Key " + parameter.getBinding().getKey() + " | " + parameter.getName() + " | " + method.getName() + " input " + originalRemaining + " | " + remaining);
                         value = locals.get(parameter.getBinding().getKey()).apply(stack);
                         int numConsumed = originalRemaining - stack.remaining();
                         unparsed = String.join(" ", remaining.subList(0, numConsumed));
@@ -498,10 +498,8 @@ public class ParametricCallable implements ICommand {
                 }
             } catch (IllegalStateException e) {
                 if (!parameter.isOptional() || parameter.getDefaultValue() != null) {
-                    System.out.println("Throw e");
                     throw e;
                 }
-                System.out.println("Dont throw e");
                 value = null;
             }
             try {

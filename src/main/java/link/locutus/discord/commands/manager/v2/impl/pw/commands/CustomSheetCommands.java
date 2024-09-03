@@ -319,7 +319,7 @@ public class CustomSheetCommands {
             "A sheet update may produce errors if a selection is no longer valid\n" +
             "Tabs in the google sheet which aren't registered will be ignored")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String updateSheet(@Me IMessageIO io, CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
+    public String updateSheet(CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
         List<String> errors = sheet.update(store);
 
         StringBuilder result = new StringBuilder();
@@ -339,7 +339,7 @@ public class CustomSheetCommands {
     @Command(desc = "Unregister a tab from a custom sheet\n" +
             "The tab wont be deleted from the google sheet, but it will no longer be updated. You may manually delete it from the google sheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String deleteTab(@Me GuildDB db, @Me IMessageIO io, CustomSheet sheet, String tabName) {
+    public String deleteTab(@Me GuildDB db, CustomSheet sheet, String tabName) {
         tabName = tabName.toLowerCase(Locale.ROOT);
         Map.Entry<SelectionAlias, SheetTemplate> tab = sheet.getTab(tabName);
         if (tab == null) {

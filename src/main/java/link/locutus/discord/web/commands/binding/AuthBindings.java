@@ -81,7 +81,6 @@ public class AuthBindings extends WebBindingHelper {
             }
             url =  WebRoot.REDIRECT + "/page/login";
         } else {
-            System.out.println(":||Remove Redirect discord oauth user page");
             url = AuthBindings.getDiscordAuthUrl();
         }
         throw new RedirectResponse(HttpStatus.SEE_OTHER, url);
@@ -99,7 +98,6 @@ public class AuthBindings extends WebBindingHelper {
             if (nation != null) {
                 return nation;
             }
-            System.out.println(":||Remove Redirect register page");
             url =  WebRoot.REDIRECT + "/page/register";
         } else {
             url = WebRoot.REDIRECT + "/page/login?nation";
@@ -490,7 +488,7 @@ public class AuthBindings extends WebBindingHelper {
                     String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
                             MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
 
-                    ApiKeyPool pool = ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY);
+                    ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
                     JsonObject result = nation.sendMail(pool, title, body, true);
                     JsonElement success = result.get("success");
                     if (success != null && success.getAsBoolean()) {

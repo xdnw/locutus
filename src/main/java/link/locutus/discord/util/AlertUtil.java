@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -94,7 +95,6 @@ public class AlertUtil {
             if (optOut != null && optOut.contains(type)) return;
         }
 
-        // TODO put result in database
         Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(channel.getGuild());
         Role pingOptOut2 = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
         boolean hasOptOut = (pingOptOut != null && member.getRoles().contains(pingOptOut)) || (pingOptOut2 != null && member.getRoles().contains(pingOptOut2));
@@ -147,7 +147,7 @@ public class AlertUtil {
                 try {
                     RateLimitUtil.queueWhenFree(channel.sendMessageEmbeds(msg));
                 } catch (InsufficientPermissionException ignore) {
-                    System.out.println("!! " + channel.getName() + " | " + channel.getGuild().getName() + " | " + ignore.getMessage());
+                    Logg.text("Insufficient Permission error in " + channel.getName() + " | " + channel.getGuild().getName() + " | " + ignore.getMessage());
                 }
             }
         }
