@@ -25,6 +25,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.io.IOException;
@@ -233,7 +234,7 @@ public class PnwPusherHandler {
                         return channel.getAsString();
                     }
                 }
-                String msg = channelInfo.replace(pnwKey, "XXX");
+                String msg = StringUtils.replaceIgnoreCase(channelInfo, pnwKey, "XXX");
                 msg = msg.replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-F]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX");
                 throw new PnwPusherError(msg);
             } catch (IOException e) {

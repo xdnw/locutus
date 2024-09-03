@@ -95,11 +95,11 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
                     String successStr = "success\":";
                     int successIndex = json.indexOf(successStr);
                     if (successIndex == -1) {
-                        throw new IOException("Invalid response: " + json + " for " + url.getUrl("XXXX", arg, query));
+                        throw new IOException("Invalid response: " + StringMan.stripApiKey(json) + " for " + url.getUrl("XXXX", arg, query));
                     }
                     char tf = json.charAt(successIndex + successStr.length());
                     if (tf != 't') {
-                        throw new IOException("Failed: " + json + " for " + url.getUrl("XXXX", arg, query));
+                        throw new IOException("Failed: " + StringMan.stripApiKey(json) + " for " + url.getUrl("XXXX", arg, query));
                     }
 
                     String startStr = "\"data\":";

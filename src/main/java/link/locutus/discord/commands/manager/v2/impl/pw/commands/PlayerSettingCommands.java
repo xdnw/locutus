@@ -31,10 +31,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -128,8 +125,19 @@ public class PlayerSettingCommands {
         return "Set " + DiscordMeta.OPT_OUT + " to " + optOut;
     }
 
-    public static String handleOptOut(Member member, GuildDB db, Roles lcRole, Boolean forceOptOut) {
+    public static String handleOptOut(Member member, GuildDB db, Roles lcRole, Boolean forceOptOut, Roles... optInRoles) {
         Guild guild = db.getGuild();
+        List<Role> optInDiscRoles = new ArrayList<>();
+        for (Roles r : optInRoles) {
+            Role discR = r.toRole(guild);
+            if (discR != null) {
+                optInDiscRoles.add(discR);
+            }
+        }
+        List<String> notes = new ArrayList<>();
+        if (optInDiscRoles.isEmpty() && optInRoles.length > 0) {
+            notes.add("No role `" + Arrays.stream(optInRoles).map(Roles::name).collect(Collectors.joining("`, `")) + "` is set. Have an admin use e.g. " + CM.role.setAlias.cmd.locutusRole(optInRoles[0].name()).discordRole("@someRole"));
+        }
         Role role = lcRole.toRole(guild);
         if (role == null) {
             // find role by name
@@ -142,14 +150,27 @@ public class PlayerSettingCommands {
                 db.addRole(lcRole, role, 0);
             }
         }
-        if (member.getRoles().contains(role)) {
+
+        List<Role> memberRoles = member.getRoles();
+        boolean hasAnyOptIn = optInDiscRoles.stream().anyMatch(memberRoles::contains);
+        if (memberRoles.contains(role)) {
             if (forceOptOut == Boolean.TRUE) {
                 return "You are already opted out of " + lcRole.name() + " alerts";
             }
             RateLimitUtil.complete(guild.removeRoleFromMember(member, role));
-            return "Opted back in to " + lcRole.name() + " alerts (@" + role.getName() + " removed from your user). Use the command again to opt out";
+            String msg;
+            if (!optInDiscRoles.isEmpty() && !hasAnyOptIn) {
+                msg = "Your opt out role has been removed (@" + role.getName() + " removed) however you lack a role required to opt back in (@" + Arrays.stream(optInRoles).map(Roles::name).collect(Collectors.joining(", @")) + ")";
+            } else {
+                msg = "Opted back in to " + lcRole.name() + " alerts (@" + role.getName() + " removed)";
+            }
+            msg += ". Use the command again to opt out";
+            return msg;
         }
         if (forceOptOut == Boolean.FALSE) {
+            if (!optInDiscRoles.isEmpty() && !hasAnyOptIn) {
+                return "You do not have the opt out role (@" + role.getName() + ") however lack a role to opt in (@" + Arrays.stream(optInRoles).map(Roles::name).collect(Collectors.joining(", @")) + ")";
+            }
             return "You are already opted in to " + lcRole.name() + " alerts";
         }
         RateLimitUtil.complete(guild.addRoleToMember(member, role));
@@ -164,12 +185,12 @@ public class PlayerSettingCommands {
 
     @Command(desc = "Toggle your opt out of enemy alerts")
     public String enemyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
-        return PlayerSettingCommands.handleOptOut(member, db, Roles.WAR_ALERT_OPT_OUT, null);
+        return PlayerSettingCommands.handleOptOut(member, db, Roles.WAR_ALERT_OPT_OUT, null, Roles.ENEMY_ALERT_OFFLINE, Roles.BEIGE_ALERT);
     }
 
     @Command(desc = "Toggle your opt out of bounty alerts")
     public String bountyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
-        return PlayerSettingCommands.handleOptOut(member, db, Roles.BOUNTY_ALERT_OPT_OUT, null);
+        return PlayerSettingCommands.handleOptOut(member, db, Roles.BOUNTY_ALERT_OPT_OUT, null, Roles.BOUNTY_ALERT);
     }
 
     @Command(desc = "Set the required transfer market value required for automatic bank alerts\n" +

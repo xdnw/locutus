@@ -64,7 +64,9 @@ import java.util.stream.Collectors;
 
 public class ConflictCommands {
     @Command(desc = "View a conflict's configured information")
-    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants, @Switch("d") boolean hideDeleted) {
+    public String info(ConflictManager manager, Conflict conflict, boolean showParticipants,
+                       @Switch("d") boolean hideDeleted,
+                       @Switch("i") boolean showIds) {
         if (hideDeleted && !showParticipants) {
             throw new IllegalArgumentException("Cannot hide deleted conflicts without `showParticipants:True`");
         }

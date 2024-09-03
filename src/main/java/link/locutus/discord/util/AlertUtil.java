@@ -95,7 +95,6 @@ public class AlertUtil {
             if (optOut != null && optOut.contains(type)) return;
         }
 
-        // TODO put result in database
         Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(channel.getGuild());
         Role pingOptOut2 = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
         boolean hasOptOut = (pingOptOut != null && member.getRoles().contains(pingOptOut)) || (pingOptOut2 != null && member.getRoles().contains(pingOptOut2));

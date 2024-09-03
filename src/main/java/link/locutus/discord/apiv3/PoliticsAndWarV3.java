@@ -131,20 +131,23 @@ public class PoliticsAndWarV3 {
     }
 
     private static class RateLimit {
+        // Amount of requests allowed per interval
         public volatile int limit;
+        // The interval in milliseconds (typically 60_000)
         public volatile int intervalMs;
-        public volatile long resetAfterMs;
+        // The number of ms until the ratelimit resets (unused)
+        public volatile long resetAfterMs_unused;
+        // The remaining number of requests this interval
         public volatile int remaining;
+        // the unix epoch time in milliseconds when the ratelimit resets
         public volatile long resetMs;
 
         public void reset(long now) {
             if (now > resetMs) {
                 remaining = limit;
-
                 long remainder = (now - resetMs) % intervalMs;
-
-                resetAfterMs = intervalMs - remainder;
-                resetMs = now + resetAfterMs;
+                resetAfterMs_unused = intervalMs - remainder;
+                resetMs = now + resetAfterMs_unused;
             }
         }
     }
@@ -171,7 +174,9 @@ public class PoliticsAndWarV3 {
                     JsonObject obj = JsonParser.parseString(body).getAsJsonObject();
                     String errorRaw = obj.get("error").getAsString();
                     if (errorRaw.equalsIgnoreCase("rate-limited")) {
-                        Thread.sleep(30500);
+                        long amt = 30_500;
+                        setRateLimit(amt);
+                        Thread.sleep(amt);
                         continue;
                     } else {
                         errorMsg = errorRaw;
@@ -189,7 +194,23 @@ public class PoliticsAndWarV3 {
             if (body != null && !errorMsg.contains("rate-limited") && !errorMsg.contains("database error") && !errorMsg.contains("couldn't find api key")) {
                 Logg.text("Unknown error with APIv3 Snapshot response: " + errorMsg + "\n\n---START BODY\n\n" + body + "\n\n---END BODY---\n\n");
             }
-            rethrow(new IllegalArgumentException(errorMsg.replace(pair.getKey(), "XXX")), pair, true);
+            rethrow(new IllegalArgumentException(StringUtils.replaceIgnoreCase(errorMsg, pair.getKey(), "XXX")), pair, true);
+        }
+    }
+
+    private void setRateLimit(long timeMs) {
+        synchronized (rateLimitGlobal) {
+            if (rateLimitGlobal.intervalMs == 0) {
+                rateLimitGlobal.intervalMs = 60_000;
+            }
+            if (rateLimitGlobal.limit == 0) {
+                rateLimitGlobal.limit = 60;
+            }
+            long now = System.currentTimeMillis();
+            rateLimitGlobal.resetAfterMs_unused = timeMs;
+            rateLimitGlobal.remaining = 0;
+            rateLimitGlobal.resetMs = now + timeMs;
+            rateLimitGlobal.limit = 0;
         }
     }
 
@@ -211,8 +232,9 @@ public class PoliticsAndWarV3 {
                             throw new RuntimeException(e);
                         }
                     }
+                    now = System.currentTimeMillis();
                 }
-                rateLimitGlobal.reset(System.currentTimeMillis());
+                rateLimitGlobal.reset(now);
                 rateLimitGlobal.remaining--;
             }
         }
@@ -270,7 +292,7 @@ public class PoliticsAndWarV3 {
                     }
                     String message = errorMessages.isEmpty() ? errors.toString() : StringMan.join(errorMessages, "\n");
                     message = StringMan.stripApiKey(message);
-                    rethrow(new IllegalArgumentException(message.replace(pair.getKey(), "XXX")), pair, true);
+                    rethrow(new IllegalArgumentException(StringUtils.replaceIgnoreCase(message, pair.getKey(), "XXX")), pair, true);
                 }
 
                 result = jacksonObjectMapper.readValue(body, resultBody);
@@ -338,7 +360,7 @@ public class PoliticsAndWarV3 {
         HttpHeaders header = exchange.getHeaders();
         synchronized (rateLimitGlobal) {
             if (header.containsKey("X-RateLimit-Reset-After")) {
-                rateLimitGlobal.resetAfterMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
+                rateLimitGlobal.resetAfterMs_unused = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
             }
             if (header.containsKey("X-RateLimit-Limit")) {
                 rateLimitGlobal.limit = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Limit")).get(0));

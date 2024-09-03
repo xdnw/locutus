@@ -133,6 +133,7 @@ import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.apache.commons.lang3.StringUtils;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -359,7 +360,7 @@ public class CommandManager {
 //                    return;
                 }
                 if (result != null && !result.isEmpty()) {
-                    result = result.replaceAll("(?i)" + Locutus.loader().getApiKey(), "XXX");
+                    result = StringUtils.replaceIgnoreCase(result, Locutus.loader().getApiKey(), "XXX");
 //                    result = result.replaceAll("(?i)(?<=^|[^A-Fa-f0-9])(?:[0-9a-f]{2}){7,}(?=[^A-Fa-f0-9]|$)", "XXX");
                     channel.send(result);
                 }
