@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -293,6 +294,7 @@ public class AdminCommands {
 
     @Command(desc = "Switch a channel to a subscription channel in multiple servers")
     @RolePermission(value = Roles.ADMIN, root = true)
+    @Ephemeral
     public String unsetNews(@Me IMessageIO io, @Me JSONObject command,
             GuildSetting setting, Set<GuildDB> guilds, MessageChannel news_channel,
             @Switch("e") boolean unset_on_error,
@@ -409,6 +411,7 @@ public class AdminCommands {
 
     @Command(desc = "Bulk unset a guild setting in multiple servers which are invalid based on the provided options")
     @RolePermission(value = Roles.ADMIN, root = true)
+    @Ephemeral
     public String unsetKeys(@Me IMessageIO io, @Me JSONObject command,
             Set<GuildSetting> settings, Set<GuildDB> guilds,
                                 @Switch("t") boolean unset_cant_talk,
@@ -563,6 +566,7 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
+    @Ephemeral
     public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SETTINGS_SERVERS);
@@ -682,6 +686,7 @@ public class AdminCommands {
     }
 
     @Command
+    @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String showFileQueue(@Me IMessageIO io, @Default @Timestamp Long timestamp, @Switch("r") Integer numResults) throws URISyntaxException {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
@@ -1693,6 +1698,7 @@ public class AdminCommands {
     }
 
     @Command()
+    @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me DBAlliance alliance) {
         ApiKeyPool keys = alliance.getApiKeys();
@@ -1701,6 +1707,7 @@ public class AdminCommands {
     }
 
     @Command(desc = "Import api keys from the guild API_KEY setting, so they can be validated")
+    @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String importGuildKeys() {
         StringBuilder response = new StringBuilder();
@@ -1718,7 +1725,8 @@ public class AdminCommands {
                 }
             }
         }
-        return "Done!";
+        Logg.text(response.toString());
+        return "Done! (see console)";
     }
 
 //    @Command(desc = "Check if current api keys are valid")
@@ -1789,6 +1797,7 @@ public class AdminCommands {
     }
 
     @Command
+    @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredGuilds(boolean checkMessages) {
         StringBuilder response = new StringBuilder();
@@ -1879,6 +1888,7 @@ public class AdminCommands {
     }
 
     @Command
+    @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredOffshores() {
         OffshoreInstance offshore = Locutus.imp().getRootBank();
@@ -2153,6 +2163,7 @@ public class AdminCommands {
     }
 
     @Command(desc = "List users in the guild that have provided login credentials to locutus")
+    @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listAuthenticated(@Me GuildDB db) {
         List<Member> members = db.getGuild().getMembers();
