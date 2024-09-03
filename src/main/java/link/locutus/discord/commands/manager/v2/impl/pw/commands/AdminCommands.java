@@ -688,9 +688,15 @@ public class AdminCommands {
         return toAdd.size();
     }
 
-    @Command
+    @Command(desc = "Dump the URL requests to console")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String showFileQueue(@Me IMessageIO io, @Default @Timestamp Long timestamp, @Switch("r") Integer numResults) throws URISyntaxException {
+    public String showFileQueue(@Me IMessageIO io,
+                                @Arg("Specify a timestamp to attach a tallied log of requests over a timeframe\n" +
+                                        "Instead of just a summary of current items in the queue")
+                                @Default @Timestamp Long timestamp,
+                                @Arg("The number of top results to include\n" +
+                                        "Default: 25")
+                                @Switch("r") Integer numResults) throws URISyntaxException {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
         List<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 
