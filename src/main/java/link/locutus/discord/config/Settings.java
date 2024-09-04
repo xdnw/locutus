@@ -200,10 +200,6 @@ public class Settings extends Config {
         })
         public int UNLOAD_WARS_AFTER_TURNS = -1;
 //
-//        @Comment({"If escalation alerts are run every time all wars are updated",
-//                "Requires ALL_WAR_SECONDS to be enabled"})
-//        public boolean ESCALATION_ALERTS = true;
-
         @Comment("Fetches most active nations (default disabled)")
         public int ACTIVE_NATION_SECONDS = -1;
 
