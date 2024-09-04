@@ -131,7 +131,7 @@ public class UnsortedCommands {
             throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.SPY_FREE);
         }
 
         aaList = aaList.subList(aaNations);

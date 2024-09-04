@@ -63,5 +63,6 @@ public enum SheetKey {
     PURCHASE_BULK,
     ACTIVITY_SHEET_DAY,
     ACTIVITY_SHEET_TURN,
+    SPY_FREE,
 
 }
