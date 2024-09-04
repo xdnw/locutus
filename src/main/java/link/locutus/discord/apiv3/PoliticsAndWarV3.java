@@ -226,7 +226,7 @@ public class PoliticsAndWarV3 {
                             sleepMs = Math.min(sleepMs, 60 * 1000);
                             Logg.text("Pausing API requests to avoid being rate limited:\n" +
                                     "- Limit: " + rateLimitGlobal.limit + "\n" +
-                                    "- Retry After: " + sleepMs + "msg");
+                                    "- Retry After: " + sleepMs + "ms");
                             Thread.sleep(sleepMs + 1000);
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
