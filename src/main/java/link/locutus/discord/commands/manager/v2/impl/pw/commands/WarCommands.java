@@ -2921,7 +2921,7 @@ public class WarCommands {
 
                 double daysSpies = nation.daysSinceLastSpyBuy();
 
-                Map<Integer, JavaCity> cities = nation.getCityMap(false, false);
+                Map<Integer, JavaCity> cities = nation.getCityMap(false, false, false);
                 int i = 0;
                 for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
                     int cityBarracks = cityEntry.getValue().getBuilding(Buildings.BARRACKS);

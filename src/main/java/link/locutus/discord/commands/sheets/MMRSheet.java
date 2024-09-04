@@ -143,7 +143,7 @@ public class MMRSheet extends Command {
 
                     List<Object> row = new ArrayList<>(header);
 
-                    Map<Integer, JavaCity> cities = nation.getCityMap(flags.contains('f'), flags.contains('f'));
+                    Map<Integer, JavaCity> cities = nation.getCityMap(flags.contains('f'), flags.contains('f'), flags.contains('f'));
                     int i = 0;
                     for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
                         int cityBarracks = cityEntry.getValue().getBuilding(Buildings.BARRACKS);

@@ -69,7 +69,7 @@ public class CustomBounty {
         double nationInfra = 0;
         double nationUnits = 0;
         for (DBNation nation : nationsToTarget) {
-            Map<Integer, JavaCity> cityMap = nation.getCityMap(true, false);
+            Map<Integer, JavaCity> cityMap = nation.getCityMap(true, true, false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
                 JavaCity city = cityEntry.getValue();
                 {

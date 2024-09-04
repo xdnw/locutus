@@ -132,7 +132,7 @@ public interface NationList extends NationFilter {
             Locutus.imp().returnEventsAsync(events -> Locutus.imp().getNationDB().updateDirtyCities(false, events));
         }
         for (DBNation nation : getNations()) {
-            Map<Integer, JavaCity> cities = nation.getCityMap(false, false);
+            Map<Integer, JavaCity> cities = nation.getCityMap(false, false,false);
             numCities += cities.size();
             for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
                 barracks += cityEntry.getValue().getBuilding(Buildings.BARRACKS);

@@ -2469,7 +2469,7 @@ public class UtilityCommands {
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 cityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa);
             }
-            Map<Integer, JavaCity> cityMap = nation.getCityMap(update, false);
+            Map<Integer, JavaCity> cityMap = nation.getCityMap(update, update,false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
                 JavaCity city = cityEntry.getValue();
                 {

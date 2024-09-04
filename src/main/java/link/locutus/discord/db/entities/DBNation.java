@@ -3403,7 +3403,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, Double forceRads, Boolean forceAtWar, boolean force) {
-        Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
+        Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, force, false) : new HashMap<>();
         double rads = forceRads != null ? forceRads : getRads();
         boolean atWar = forceAtWar != null ? forceAtWar : getNumWars() > 0;
         double[] revenue = PW.getRevenue(null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
@@ -3952,7 +3952,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get the city url by index")
     public String cityUrl(int index) {
-        Set<Map.Entry<Integer, JavaCity>> cities = getCityMap(true, false).entrySet();
+        Set<Map.Entry<Integer, JavaCity>> cities = getCityMap(true, true, false).entrySet();
         int i = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities) {
             if (++i == index) {
@@ -5261,7 +5261,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
-        Map<Integer, JavaCity> cityMap = getCityMap(update, false);
+        Map<Integer, JavaCity> cityMap = getCityMap(update, update, false);
         for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
             JavaCity city = cityEntry.getValue();
             Map<ResourceType, Double> cityProfit = ResourceType.resourcesToMap(city.profit(continent, getRads(), -1L, this::hasProject, null, cities, 1, 12));
@@ -6048,7 +6048,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Are any cities powered")
     public boolean isPowered() {
-        for (Map.Entry<Integer, JavaCity> entry : getCityMap(false, false).entrySet()) {
+        for (Map.Entry<Integer, JavaCity> entry : getCityMap(false, false,false).entrySet()) {
             JavaCity city = entry.getValue();
             if (city.getPoweredInfra() >= city.getInfra()) {
                 JavaCity.Metrics metrics = city.getCachedMetrics();

@@ -1875,7 +1875,7 @@ public class GuildHandler {
                                     tips.add("Buy more soldiers to help defend yourself");
                                 }
                                 if (attacker.getShips() > 0 && defender.getShips() == 0 && defender.getAvg_infra() >= 1450 && defender.getAircraft() > attacker.getAircraft()) {
-                                    Map<Integer, JavaCity> defCities = defender.getCityMap(false, false);
+                                    Map<Integer, JavaCity> defCities = defender.getCityMap(false, false,false);
                                     boolean hasDock = false;
                                     for (JavaCity value : defCities.values()) {
                                         if (value.getBuilding(Buildings.DRYDOCK) != 0) {

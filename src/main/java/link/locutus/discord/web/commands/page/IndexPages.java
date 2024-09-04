@@ -361,7 +361,7 @@ public class IndexPages extends PageHelper {
         List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
         boolean isFightingActives = false;
 
-        Collection<JavaCity> cities = myWars.isEmpty() ? null : nation.getCityMap(false, false).values();
+        Collection<JavaCity> cities = myWars.isEmpty() ? null : nation.getCityMap(false, false,false).values();
 
         for (DBWar war : myWars) {
             List<AbstractCursor> warAttacks = attacks.stream().filter(f -> f.getWar_id() == war.warId).collect(Collectors.toList());
