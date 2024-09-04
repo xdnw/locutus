@@ -204,17 +204,20 @@ public class Settings extends Config {
 //                "Requires ALL_WAR_SECONDS to be enabled"})
 //        public boolean ESCALATION_ALERTS = true;
 
-        @Comment("Fetches most active nations (default 1 minute)")
-        public int ACTIVE_NATION_SECONDS = 60;
+        @Comment("Fetches most active nations (default disabled)")
+        public int ACTIVE_NATION_SECONDS = -1;
 
-        @Comment("Fetches colored nations (default 5 minutes)")
-        public int COLORED_NATIONS_SECONDS = 60 * 5;
+        @Comment("Fetches colored nations (default disabled)")
+        public int COLORED_NATIONS_SECONDS = -1;
 
         @Comment("Fetches non Vacation Mode nations (default 15 minutes)")
-        public int ALL_NON_VM_NATIONS_SECONDS = 60 * 15;
+        public int ALL_NATIONS_SECONDS = 60 * 15;
 
-        @Comment("Fetches outdated cities (default 5 minute)")
-        public int OUTDATED_CITIES_SECONDS = 60 * 5;
+        @Comment("Fetches outdated cities (default disabled)")
+        public int OUTDATED_CITIES_SECONDS = -1;
+
+        @Comment("Fetches outdated cities (default 30 minute)")
+        public int ALL_CITIES_SECONDS = 60 * 30;
 
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
