@@ -1451,15 +1451,15 @@ public class WarDB extends DBMainV2 {
         boolean isOngoing = war.getStatus() == WarStatus.ACTIVE || war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE || war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE;
         boolean isActive = war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE || war.getStatus() == WarStatus.DEFENDER_VICTORY || war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE;
         for (AbstractCursor attack : attacks) {
-            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.getAttacker_id() && war.getStatus() != WarStatus.ATTACKER_VICTORY) {
-                DBWar oldWar = new DBWar(war);
-                war.setStatus(WarStatus.ATTACKER_VICTORY);
-                if (eventConsumer != null) {
-                    eventConsumer.accept(new WarStatusChangeEvent(oldWar, war));
-                }
-                activeWars.makeWarInactive(war);
-                activeWars.processWarChange(oldWar, war, eventConsumer);
-            }
+//            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.getAttacker_id() && war.getStatus() != WarStatus.ATTACKER_VICTORY) {
+//                DBWar oldWar = new DBWar(war);
+//                war.setStatus(WarStatus.ATTACKER_VICTORY);
+//                if (eventConsumer != null) {
+//                    eventConsumer.accept(new WarStatusChangeEvent(oldWar, war));
+//                }
+//                activeWars.makeWarInactive(war);
+//                activeWars.processWarChange(oldWar, war, eventConsumer);
+//            }
             if (attack.getAttacker_id() == war.getDefender_id()) isActive = true;
             switch (attack.getAttack_type()) {
                 case A_LOOT:
@@ -2527,12 +2527,10 @@ public class WarDB extends DBMainV2 {
                 if (attack.getAttack_type() == AttackType.VICTORY) {
                     DBWar war = activeWars.getWar(attack.getAttacker_id(), attack.getWar_id());
                     if (war != null) {
-
                         if (runAlerts) {
                             DBNation defender = DBNation.getById(attack.getDefender_id());
-                            if (defender != null && defender.getLastFetchedUnitsMs() < attack.getDate()) {
-                                DBNation copyOriginal = null;
-                                if (!defender.isBeige()) copyOriginal = new DBNation(defender);
+                            if (defender != null && defender.getColor() != NationColor.BEIGE && attack.getDate() > now - TimeUnit.MINUTES.toMillis(5)) {
+                                DBNation copyOriginal = copyOriginal = new DBNation(defender);
                                 defender.setColor(NationColor.BEIGE);
                                 defender.setBeigeTimer(defender.getBeigeAbsoluteTurn() + 24);
                                 if (copyOriginal != null && eventConsumer != null)

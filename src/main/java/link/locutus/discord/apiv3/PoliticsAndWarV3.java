@@ -179,7 +179,7 @@ public class PoliticsAndWarV3 {
                         JsonObject duration = obj.getAsJsonObject("duration");
                         if (duration != null && duration.has("nanos")) {
                             long nanos = duration.get("nanos").getAsLong();
-                            sleepMs = (nanos + 999_999) / 1_000_000;
+                            sleepMs = Math.min(60_000, (nanos + 999_999) / 1_000_000);
                         }
 
                         setRateLimit(sleepMs);
