@@ -1869,7 +1869,8 @@ public class WarDB extends DBMainV2 {
 
         for (DBWar war : dbWars) {
             DBWar existing = warsById.get(war);
-            if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() || !existing.isActive()))) continue;
+            if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() ||
+                    (!existing.isActive() && (existing.getStatus() != WarStatus.EXPIRED || existing.getTurnsLeft() <= 0))))) continue;
 
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);
