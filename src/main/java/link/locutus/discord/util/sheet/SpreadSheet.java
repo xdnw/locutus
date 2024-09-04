@@ -17,10 +17,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
+import link.locutus.discord.util.*;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -519,7 +516,7 @@ public class SpreadSheet {
     }
 
     public IMessageBuilder attach(IMessageBuilder msg, String name) {
-        return attach(msg, name, null, false, 0);
+        return attach(msg, MarkupUtil.escapeMarkdown(name), null, false, 0);
     }
 
     public IMessageBuilder attach(IMessageBuilder msg, String name, StringBuilder output, boolean allowInline, int currentLength) {

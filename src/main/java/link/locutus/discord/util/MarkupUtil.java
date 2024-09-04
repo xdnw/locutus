@@ -251,6 +251,12 @@ public class MarkupUtil {
         return result;
     }
 
+    public static String escapeMarkdown(String text) {
+        String unescaped = text.replaceAll("\\\\([*_`~\\\\])", "$1");
+        String escaped = unescaped.replaceAll("([*_`~\\\\])", "\\\\$1");
+        return escaped;
+    }
+
     public static String unescapeMarkdown(String input) {
         // Replace escaped characters
         String unescaped = input.replaceAll("\\\\([*_{}\\[\\]()#+.!|\\-])", "$1");
