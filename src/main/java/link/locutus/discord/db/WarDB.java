@@ -1888,9 +1888,9 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        long currentTurn = TimeUtil.getTurn();
+        long cannotExpireWithin5m = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5);
         for (DBWar war : activeWars.getActiveWars()) {
-            // Handle deleted wars
+            if (war.getDate() >= cannotExpireWithin5m) continue;
             if (expectedIdsSet != null && expectedIdsSet.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
                 prevWars.add(new DBWar(war));
                 war.setStatus(WarStatus.EXPIRED);

@@ -1,5 +1,9 @@
 package link.locutus.discord.db.entities;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -7,6 +11,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -16,6 +21,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -161,7 +167,11 @@ public class DBWar {
     }
 
     private static int getCities(int nationId) {
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        Locutus lc = Locutus.imp();
+        if (lc == null) return 0;
+        NationDB natDb = lc.getNationDB();
+        if (natDb == null) return 0;
+        DBNation nation = natDb.getNation(nationId);
         return nation == null ? 0 : nation.getCities();
     }
 

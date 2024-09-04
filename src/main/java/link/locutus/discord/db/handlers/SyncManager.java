@@ -70,38 +70,6 @@ public class SyncManager {
         }
     }
 
-    public static void main(String[] args) {
-
-        String input = "AA:Singularity";
-        List<String> splitAnd = StringMan.split(input, ',');
-        for (String andGroup : splitAnd) {
-            List<String> splitXor = StringMan.split(andGroup, '^');
-            if (splitXor.isEmpty()) {
-                throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
-            }
-
-            for (String xorGroup : splitXor) {
-                List<String> splitOr = StringMan.split(xorGroup, '|');
-                if (splitOr.isEmpty()) {
-                    throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Empty group");
-                }
-
-                for (String elem : splitOr) {
-                    if (elem.isEmpty()) {
-                        if (xorGroup.isEmpty()) {
-                            if (andGroup.isEmpty()) {
-                                throw new IllegalArgumentException("Invalid group: `" + input + "`: Empty group");
-                            }
-                            throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
-                        }
-                        throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Empty group");
-                    }
-                    char char0 = elem.charAt(0);
-                }
-            }
-        }
-    }
-
     private void writeSyncDates() {
         File file = new File("syncdates.dat");
         try (DataOutputStream outputStream = new DataOutputStream(new FileOutputStream(file))) {

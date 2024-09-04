@@ -113,10 +113,6 @@ public class PWGPTHandler {
         providerManager.registerDefaults();
     }
 
-    public static void main(String[] args) throws IOException {
-//
-    }
-
 //    public String generateSolution(ValueStore store, GuildDB db, User user, String userInput) {
 //        // check moderation
 //        List<ModerationResult> modResult = handler.getModerator().moderate(userInput);

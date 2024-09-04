@@ -174,9 +174,16 @@ public class PoliticsAndWarV3 {
                     JsonObject obj = JsonParser.parseString(body).getAsJsonObject();
                     String errorRaw = obj.get("error").getAsString();
                     if (errorRaw.equalsIgnoreCase("rate-limited")) {
-                        long amt = 30_500;
-                        setRateLimit(amt);
-                        Thread.sleep(amt);
+                        long sleepMs = 30_500;
+
+                        JsonObject duration = obj.getAsJsonObject("duration");
+                        if (duration != null && duration.has("nanos")) {
+                            long nanos = duration.get("nanos").getAsLong();
+                            sleepMs = (nanos + 999_999) / 1_000_000;
+                        }
+
+                        setRateLimit(sleepMs);
+                        Thread.sleep(sleepMs);
                         continue;
                     } else {
                         errorMsg = errorRaw;
