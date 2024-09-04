@@ -906,7 +906,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
         if (runEvents) {
             Locutus.imp().runEventsAsync(events -> {
-                Locutus.imp().getNationDB().updateNations(nationActiveData, events, -1);
+                List<Nation> filtered = nationActiveData.stream().filter(f -> getNation(f.getId()) != null).toList();
+                Locutus.imp().getNationDB().updateNations(filtered, events, -1);
             });
         }
 
