@@ -1993,8 +1993,8 @@ public class PoliticsAndWarV3 {
         return result.colors();
     }
 
-    public List<Nation> fetchNationActive(List<Integer> ids) {
-        return fetchNations(true, f -> {
+    public List<Nation> fetchNationActive(boolean priority, List<Integer> ids) {
+        return fetchNations(priority, f -> {
             f.setId(ids);
             f.setVmode(false);
         }, new Consumer<NationResponseProjection>() {

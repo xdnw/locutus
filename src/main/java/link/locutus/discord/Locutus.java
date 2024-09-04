@@ -560,13 +560,13 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
         } else {
-            taskTrack.addTask("Nation (Active)", () -> {
-                try {
-                    runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
+//            taskTrack.addTask("Nation (Active)", () -> {
+//                try {
+//                    runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
+//                } catch (Throwable e) {
+//                    e.printStackTrace();
+//                }
+//            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Treaty", () -> {
                 runEventsAsync(getNationDB()::updateTreaties);
@@ -580,9 +580,13 @@ public final class Locutus extends ListenerAdapter {
                 runEventsAsync(getNationDB()::updateRecentNations);
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            taskTrack.addTask("Nation (Non VM)", () -> {
-                runEventsAsync(events -> getNationDB().updateNonVMNations(events));
+            taskTrack.addTask("Nation", () -> {
+                runEventsAsync(events -> getNationDB().updateAllNations(events, true));
             }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
+
+            taskTrack.addTask("Nation (Active)", () -> {
+                getNationDB().getActive(false, true);
+            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Outdated Cities", () -> {
                 runEventsAsync(f -> getNationDB().updateDirtyCities(false, f));
@@ -680,7 +684,7 @@ public final class Locutus extends ListenerAdapter {
                 // Update all nations
 
                 {
-                    runEventsAsync(events -> getNationDB().updateAllNations(events, false));
+                    runEventsAsync(events -> getNationDB().updateAllNations(events, true));
                 }
                 {
                     runEventsAsync(events -> getNationDB().updateAlliances(null, events));

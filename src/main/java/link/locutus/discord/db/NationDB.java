@@ -166,7 +166,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
             if (nationsById.isEmpty() && (Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS > 0)) {
                 Logg.text("No nations loaded, fetching all");
-                updateAllNations(null, false);
+                updateAllNations(null, true);
                 Logg.text("Done fetching all nations");
             }
             if (alliancesById.isEmpty() && (Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS > 0)) {
@@ -747,7 +747,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         Set<Integer> ids = getUnknownPositionAlliances(positions, true);
         if (ids.isEmpty()) return Collections.emptySet();
 
-
         int amt = PoliticsAndWarV3.ALLIANCES_PER_PAGE - ids.size();
 
         int pad = PoliticsAndWarV3.ALLIANCES_PER_PAGE - ids.size() % PoliticsAndWarV3.ALLIANCES_PER_PAGE;
@@ -892,6 +891,26 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             r.setVmode(false);
             r.setActive_since(new Date(dateStart));
         }, eventConsumer, eventConsumer != null);
+    }
+
+    public List<Nation> getActive(boolean priority, boolean runEvents) throws IOException {
+        String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
+        String html = FileUtil.readStringFromURL(priority ? PagePriority.ACTIVE_PAGE : PagePriority.API_NATIONS_AUTO, url);
+        List<Integer> nationIds = PW.getNationsFromTable(html, 0);
+        Map<Integer, Integer> nationIdIndex = new HashMap<>();
+        for (int i = 0; i < nationIds.size(); i++) {
+            nationIdIndex.put(nationIds.get(i), i);
+        }
+        List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getV3().fetchNationActive(priority, nationIds));
+        nationActiveData.sort(Comparator.comparingInt(o -> nationIdIndex.get(o.getId())));
+
+        if (runEvents) {
+            Locutus.imp().runEventsAsync(events -> {
+                Locutus.imp().getNationDB().updateNations(nationActiveData, events, -1);
+            });
+        }
+
+        return nationActiveData;
     }
 
     public List<Integer> getMostActiveNationIds(int amt) {
@@ -1166,7 +1185,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             nationIdCityIdCityMap.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
                     .put(city.getId(), city);
         }
-        updateCities(nationIdCityIdCityMap, eventConsumer);
+        if (!nationIdCityIdCityMap.isEmpty()) {
+            updateCities(nationIdCityIdCityMap, eventConsumer);
+            long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+            Set<Integer> deletedNations = getNationsMatching(f -> f.getVm_turns() == 0 && !nationIdCityIdCityMap.containsKey(f.getId()) && f.getDate() > cutoff).stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+            deleteNations(deletedNations, eventConsumer);
+        }
     }
 
     private int estimateCities(Set<Integer> nationIds) {
@@ -1182,12 +1206,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public void updateCitiesOfNations(Set<Integer> nationIds, boolean priority, boolean bulk, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<Integer> idList = new ArrayList<>(nationIds);
+        if (bulk) markDirtyIncorrectCities(true, true);
         int estimatedCitiesToFetch = estimateCities(nationIds);
         if (estimatedCitiesToFetch > 500) {
             updateAllCities(eventConsumer);
             return;
         }
-
         if (bulk) {
             if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
                 int numToFetch = 490 - idList.size();
@@ -1902,6 +1926,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return fetched;
     }
 
+    public void markDirtyIncorrectCities(boolean score, boolean cities) {
+        markDirtyIncorrectCities(getNationsMatching(f -> f.getVm_turns() == 0), score, cities);
+    }
+
+    public void markDirtyIncorrectCities(Set<DBNation> nations, boolean score, boolean cities) {
+        for (DBNation nation : nations) {
+            Map<Integer, DBCity> cityMap = getCitiesV3(nation.getNation_id());
+            if (cities && nation.getCities() != cityMap.size()) {
+                dirtyCityNations.add(nation.getNation_id());
+            } else if (score && Math.round(100 * (PW.estimateScore(this, nation) - nation.getScore())) != 0) {
+                cityMap.forEach((key, value) -> dirtyCities.add(key));
+            }
+        }
+    }
+
     public void markDirtyIncorrectNations(boolean score, boolean cities) {
         int originalSize = dirtyNations.size();
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
@@ -1988,8 +2027,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public void updateNationCitiesAndPositions(Collection<DBNation> allNations, Map<DBNation, DBNation> nationChanges,
                                       Consumer<Event> eventConsumer) {
         boolean fetchCitiesIfNew = true;
-        boolean fetchAlliancesIfOutdated = true;
-        boolean fetchPositionsIfOutdated = true;
 
         if (!nationChanges.isEmpty()) {
             Set<DBNation> nationsToSave = new LinkedHashSet<>();
@@ -2010,10 +2047,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     }
                 }
             }
-        }
-
-        if (fetchAlliancesIfOutdated || fetchPositionsIfOutdated) {
-            updateOutdatedAlliances(fetchPositionsIfOutdated, eventConsumer);
         }
     }
 

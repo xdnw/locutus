@@ -493,8 +493,6 @@ public class SpyTracker {
 
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
 
-
-
             StringBuilder message = new StringBuilder();
             message.append("<" + attacker.getUrl() + ">|" + attacker.getNation() + " | " + attacker.getAlliance() + " | " + MathMan.format(odds) + "%");
 
@@ -526,11 +524,8 @@ public class SpyTracker {
         }
         if (activitiesToFlag.isEmpty()) return;
 
-
-
-
         // sort by order in nationIds
-        List<Nation> nationActiveData = getActive();
+        List<Nation> nationActiveData = Locutus.imp().getNationDB().getActive(true, true);
 
         for (SpyActivity activity : activitiesToFlag) {
             activity.nationActiveInfo = nationActiveData;
@@ -553,7 +548,7 @@ public class SpyTracker {
             }
         }
         if (bountiesByGuild.isEmpty()) return;
-        List<Nation> active = getActive();
+        List<Nation> active = Locutus.imp().getNationDB().getActive(true, true);
         for (Map.Entry<GuildDB, Set<Bounty>> entry : bountiesByGuild.entrySet()) {
             GuildDB db = entry.getKey();
             MessageChannel channel = GuildKey.ESPIONAGE_ALERT_CHANNEL.getOrNull(db);
@@ -594,20 +589,6 @@ public class SpyTracker {
                 e.printStackTrace();
             }
         }
-    }
-
-    private List<Nation> getActive() throws IOException {
-        String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
-        String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE, url);
-
-        List<Integer> nationIds = PW.getNationsFromTable(html, 0);
-        Map<Integer, Integer> nationIdIndex = new HashMap<>();
-        for (int i = 0; i < nationIds.size(); i++) {
-            nationIdIndex.put(nationIds.get(i), i);
-        }
-        List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getV3().fetchNationActive(nationIds));
-        nationActiveData.sort(Comparator.comparingInt(o -> nationIdIndex.get(o.getId())));
-        return nationActiveData;
     }
 
     public void updateCasualties(Nation nation, long timestamp) {
