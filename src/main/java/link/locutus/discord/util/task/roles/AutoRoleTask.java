@@ -3,7 +3,7 @@ package link.locutus.discord.util.task.roles;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.rankings.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;

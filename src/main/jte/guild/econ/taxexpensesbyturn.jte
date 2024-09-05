@@ -7,8 +7,8 @@
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
-@import link.locutus.discord.commands.rankings.table.TableNumberFormat
-@import link.locutus.discord.commands.rankings.table.TimeFormat
+@import link.locutus.discord.commands.manager.v2.table.TableNumberFormat
+@import link.locutus.discord.commands.manager.v2.table.TimeFormat
 @import link.locutus.discord.db.BankDB
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Coalition

@@ -1,7 +1,6 @@
-package link.locutus.discord.commands.rankings.builder;
+package link.locutus.discord.commands.manager.v2.builder;
 
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.PW;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

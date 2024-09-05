@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.rankings.builder;
+package link.locutus.discord.commands.manager.v2.builder;
 
 public class NumericGroupRankBuilder<T, G extends Number> extends GroupedRankBuilder<T, G> {
 

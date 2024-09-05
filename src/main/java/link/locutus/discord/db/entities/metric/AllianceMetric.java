@@ -20,8 +20,8 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
-import link.locutus.discord.commands.rankings.table.TableNumberFormat;
-import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
+import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
@@ -53,7 +53,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.commands.rankings.table.TableNumberFormat.*;
+import static link.locutus.discord.commands.manager.v2.table.TableNumberFormat.*;
 
 public enum AllianceMetric implements IAllianceMetric {
     SOLDIER(false, SI_UNIT, new UnitMetric(MilitaryUnit.SOLDIER, f -> f.soldiers)),

@@ -1,8 +1,7 @@
-package link.locutus.discord.commands.rankings.table;
+package link.locutus.discord.commands.manager.v2.table;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.opencsv.CSVWriter;
 import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
 import de.erichseifert.gral.graphics.Drawable;
@@ -16,7 +15,6 @@ import de.erichseifert.gral.plots.XYPlot;
 import de.erichseifert.gral.plots.axes.AxisRenderer;
 import de.erichseifert.gral.plots.colors.ColorMapper;
 import de.erichseifert.gral.plots.legends.AbstractLegend;
-import de.erichseifert.gral.plots.legends.ValueLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import gg.jte.generated.precompiled.data.JtebarchartdatasrcGenerated;
@@ -34,21 +32,15 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
-import link.locutus.discord.web.commands.WebMessage;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.StringWriter;
-import java.text.Format;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;

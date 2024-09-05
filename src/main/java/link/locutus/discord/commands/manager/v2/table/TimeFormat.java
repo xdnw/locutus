@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.rankings.table;
+package link.locutus.discord.commands.manager.v2.table;
 
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;

@@ -6,8 +6,8 @@
 @import java.util.Set
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.rankings.SphereGenerator
-@import link.locutus.discord.commands.rankings.table.TableNumberFormat
-@import link.locutus.discord.commands.rankings.table.TimeFormat
+@import link.locutus.discord.commands.manager.v2.table.TableNumberFormat
+@import link.locutus.discord.commands.manager.v2.table.TimeFormat
 @import link.locutus.discord.db.entities.metric.AllianceMetric
 @import link.locutus.discord.db.entities.DBAlliance
 @import link.locutus.discord.util.TimeUtil

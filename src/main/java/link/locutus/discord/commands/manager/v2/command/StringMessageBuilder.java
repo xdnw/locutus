@@ -2,19 +2,10 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import link.locutus.discord.commands.rankings.table.TableNumberFormat;
-import link.locutus.discord.commands.rankings.table.TimeFormat;
-import link.locutus.discord.commands.rankings.table.TimeNumericTable;
-import link.locutus.discord.util.MarkupUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 public class StringMessageBuilder extends AMessageBuilder {
 
