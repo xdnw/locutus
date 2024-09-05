@@ -214,14 +214,14 @@ public class TradeManager {
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<DBTrade> trades = getTradeDb().getTrades(cutOff);
         if (trades.isEmpty()) {
+            if (low == null) low = new int[ResourceType.values.length];
+            if (high == null) high = new int[ResourceType.values.length];
+            lowAvg = new double[ResourceType.values.length];
+            highAvg = new double[ResourceType.values.length];
+
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
                 updateTradeList(null);
             } else {
-                if (low == null) low = new int[ResourceType.values.length];
-                if (high == null) high = new int[ResourceType.values.length];
-                lowAvg = new double[ResourceType.values.length];
-                highAvg = new double[ResourceType.values.length];
-
                 Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
                 initDefaults.put(ResourceType.MONEY, 1);
                 initDefaults.put(ResourceType.CREDITS, 25_000_000);
@@ -253,7 +253,7 @@ public class TradeManager {
         lowAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
         highAvg[0] = 1;
         highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
-        
+
         loadActiveTrades();
         return this;
     }
