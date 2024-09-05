@@ -596,6 +596,7 @@ public enum ResourceType {
             case "CRE":
             case "CRED":
             case "CREDI":
+            case "CREDIT":
                 return CREDITS;
             case "F":
             case "FO":

@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.war;
+package link.locutus.discord.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
