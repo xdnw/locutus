@@ -40,6 +40,12 @@ apply plugin: 'java'
 group 'link.locutus'
 version '1.0-SNAPSHOT'
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(22))
+    }
+}
+
 publishing {
     repositories {
         maven {
@@ -206,7 +212,7 @@ dependencies {
     runtimeOnly "ai.djl.pytorch:pytorch-engine:0.28.0"
     runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.28.0"
     implementation "ai.djl.huggingface:tokenizers:0.28.0"
-    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu121:2.2.2:win-x86_64'
+//    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu121:2.2.2:win-x86_64'
     runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.2.2-0.28.0'
 //    implementation 'net.sourceforge.tess4j:tess4j:4.5.1'
 //    implementation 'org.bytedeco:javacv:1.5.6'
