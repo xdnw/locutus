@@ -175,7 +175,7 @@ public abstract class DBMain implements Closeable {
     }
 
     public synchronized void executeStmt(String query) {
-
+        executeStmt(query, false);
     }
 
     public synchronized void executeStmt(String query, boolean ignoreError) {
