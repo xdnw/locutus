@@ -68,7 +68,7 @@ public enum TreatyType {
         return this == MDOAP || this == ODOAP;
     }
 
-    public static TreatyType[] values = values();
+    public static final TreatyType[] values = values();
 
     public static TreatyType parse(String arg) {
         return TreatyType.valueOf(arg.toUpperCase());
