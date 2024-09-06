@@ -5691,22 +5691,22 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Can perform a spy attack against a nation of score")
     public boolean canSpyOnScore(double score) {
-        double min = PW.getAttackRange(true, false, true, score);
-        double max = PW.getAttackRange(true, false, false, score);
+        double min = PW.getAttackRange(true, false, true, this.score);
+        double max = PW.getAttackRange(true, false, false, this.score);
         return score >= min && score <= max;
     }
 
     @Command(desc = "Can be spied by a nation of score")
     public boolean canBeSpiedByScore(double score) {
-        double min = PW.getAttackRange(false, false, true, score);
-        double max = PW.getAttackRange(false, false, false, score);
+        double min = PW.getAttackRange(false, false, true, this.score);
+        double max = PW.getAttackRange(false, false, false, this.score);
         return score >= min && score <= max;
     }
 
     @Command(desc = "Can declare war on a nation of score")
         public boolean canDeclareOnScore(double score) {
-        double min = PW.getAttackRange(true, true, true, score);
-        double max = PW.getAttackRange(true, true, false, score);
+        double min = PW.getAttackRange(true, true, true, this.score);
+        double max = PW.getAttackRange(true, true, false, this.score);
         return score >= min && score <= max;
     }
 
