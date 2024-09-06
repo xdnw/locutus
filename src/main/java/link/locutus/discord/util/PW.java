@@ -778,7 +778,7 @@ public final class PW {
                 if (isMin) {
                     range = Math.round(scoreInt / PW.WAR_RANGE_MAX_MODIFIER);
                 } else {
-                    range = Math.round(scoreInt / 0.75);
+                    range = Math.round(scoreInt / PW.WAR_RANGE_MIN_MODIFIER);
                 }
             } else {
                 if (isMin) {

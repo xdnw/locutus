@@ -5712,8 +5712,8 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Can be declared on by a nation of score")
     public boolean canBeDeclaredOnByScore(double score) {
-        double min = PW.getAttackRange(false, true, true, score);
-        double max = PW.getAttackRange(false, true, false, score);
+        double min = PW.getAttackRange(false, true, true, this.score);
+        double max = PW.getAttackRange(false, true, false, this.score);
         return score >= min && score <= max;
     }
 
