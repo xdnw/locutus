@@ -90,10 +90,15 @@ public class ConflictCommands {
             int i = 1;
             for (CoalitionSide side : sides) {
                 response.append("\n**" + side.getName() + "** (coalition " + (i++) + ")\n");
+                Set<Integer> ids = new LinkedHashSet<>();
                 for (int aaId : side.getAllianceIdsSorted()) {
                     if (DBAlliance.get(aaId) == null) {
-                        if (hasDeleted) continue;
+                        if (hideDeleted) continue;
                         hasDeleted = true;
+                    }
+                    if (showIds) {
+                        ids.add(aaId);
+                        continue;
                     }
                     long start = conflict.getStartTurn(aaId);
                     long end = conflict.getEndTurn(aaId);
@@ -111,6 +116,9 @@ public class ConflictCommands {
                         response.append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(end), null));
                     }
                     response.append("\n");
+                }
+                if (!ids.isEmpty()) {
+                    response.append("Participants: `" + StringMan.join(ids, ",") + "`\n");
                 }
 
             }

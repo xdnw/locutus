@@ -249,7 +249,7 @@ public class EmbedCommands {
                 .send();
         io.create().embed("Added Button", "Added button `" + label + "` to " + message.getJumpUrl() + "\n" +
                 "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention() + "\n" +
-                "Rename using " + CM.embed.remove.button.cmd.toSlashMention()).cancelButton("Dismiss").send();// + CM.embed.rename.button.cmd.toSlashMention();
+                "Rename using " + CM.embed.rename.button.cmd.toSlashMention()).cancelButton("Dismiss").send();// + CM.embed.rename.button.cmd.toSlashMention();
         return null;
     }
 

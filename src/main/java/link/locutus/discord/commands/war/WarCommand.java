@@ -299,7 +299,6 @@ public class WarCommand extends Command {
 
                     int count = 0;
 
-                    boolean whitelisted = db.isWhitelisted();
                     boolean isUpdeclare = false;
 
                     for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
@@ -312,11 +311,9 @@ public class WarCommand extends Command {
                                 .append(" | " + String.format("%16s", nation.getNation()))
                                 .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-                        if (whitelisted) {
-                            double total = nation.lootTotal();
-                            if (total != 0) {
-                                response.append(": $" + MathMan.format(total));
-                            }
+                        double total = nation.lootTotal();
+                        if (total != 0) {
+                            response.append(": $" + MathMan.format(total));
                         }
 
                         response.append("\n```")

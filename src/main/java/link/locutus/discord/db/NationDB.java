@@ -591,7 +591,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     String originalName = existing.getName();
                     if (existing.set(alliance, eventConsumer)) {
                         dirtyAlliances.add(existing);
-                        if (originalName != existing.getName()) {
+                        if (!originalName.equals(existing.getName())) {
                             allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
                         }
                     }

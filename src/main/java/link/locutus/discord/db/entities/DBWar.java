@@ -1,9 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -21,7 +17,6 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -196,7 +191,7 @@ public class DBWar {
             double lootValue = enemy.lootTotal();
             body.append("$" + MathMan.format((int) lootValue));
         }
-        body.append(enemy.toCityMilMarkedown());
+        body.append(enemy.toCityMilMarkdown());
 
         String attStr = card.condensedSubInfo(isAttacker);
         String defStr = card.condensedSubInfo(!isAttacker);

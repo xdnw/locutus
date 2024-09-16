@@ -1038,7 +1038,7 @@ public class IACommands {
             }
             User mentorUser = mentor.getUser();
             if (mentorUser == null) {
-                response.append("**MENTOR IS NOT VERIFIED:** " + TimeUtil.turnsToTime(mentor.getVm_turns())).append("\n");
+                response.append("**MENTOR IS NOT VERIFIED**").append("\n");
             } else {
                 if (!Roles.MEMBER.has(mentorUser, guild)) {
                     response.append("**MENTOR IS NOT MEMBER:** ").append("\n");

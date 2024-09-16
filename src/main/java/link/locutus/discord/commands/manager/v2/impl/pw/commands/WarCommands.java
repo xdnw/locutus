@@ -1062,7 +1062,6 @@ public class WarCommands {
 
         List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, targets, numResults, ignoreDNR, includeAllies, nationsToBlitzWith, maxRelativeTargetStrength, maxRelativeCounterStrength, withinAllAttackersRange, ignoreODP, force);
 
-        boolean whitelisted = db.isWhitelisted();
         long currentTurn = TimeUtil.getTurn();
         Map<DBNation, Integer> beigeTurns = new HashMap<>();
 
@@ -1081,11 +1080,9 @@ public class WarCommands {
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-            if (whitelisted) {
-                double total = nation.lootTotal();
-                if (total != 0) {
-                    response.append(": $" + MathMan.format(total));
-                }
+            double total = nation.lootTotal();
+            if (total != 0) {
+                response.append(": $" + MathMan.format(total));
             }
 
             response.append("\n```")
@@ -1253,8 +1250,6 @@ public class WarCommands {
 
         int count = 0;
 
-        boolean whitelisted = db.isWhitelisted();
-
         for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
             if (count++ == numResults) break;
 
@@ -1265,11 +1260,9 @@ public class WarCommands {
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-            if (whitelisted) {
-                double total = nation.lootTotal();
-                if (total != 0) {
-                    response.append(": $" + MathMan.format(total));
-                }
+            double total = nation.lootTotal();
+            if (total != 0) {
+                response.append(": $" + MathMan.format(total));
             }
 
             response.append("\n```")

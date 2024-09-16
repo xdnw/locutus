@@ -54,8 +54,6 @@ public class BlitzGenerator {
     Set<DBNation> colA = new HashSet<>();
     Set<DBNation> colB = new HashSet<>();
 
-    private boolean assignEasy;
-
     public BlitzGenerator(int turn, int maxAttacksPerNation, double sameAAPriority, double activityMatchupPriority, double attActiveThreshold, double defActiveThreshold, Set<Long> guildsIds, boolean parseExisting) {
         this.sameAAPriority = sameAAPriority;
         this.activityMatchupPriority = activityMatchupPriority;
@@ -73,10 +71,6 @@ public class BlitzGenerator {
             Guild guild = Locutus.imp().getDiscordApi().getGuildById(discordId);
             guilds.add(guild);
         }
-    }
-
-    private void setEasy() {
-        this.assignEasy = true;
     }
 
     public static Map<DBNation, Set<DBNation>> reverse(Map<DBNation, Set<DBNation>> targets) {

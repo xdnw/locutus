@@ -1601,7 +1601,7 @@ public class PWBindings extends BindingHelper {
         }
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;
-        throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
+        throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()) + ". If the bracket was just created, please try again in a minute.");
     }
 
     @Binding

@@ -1486,12 +1486,12 @@ public class GuildHandler {
 
         builder.append(enemy.getNationUrlMarkup(true))
                 .append(" | ").append(enemy.getAllianceUrlMarkup(true)).append(":");
-        builder.append(enemy.toCityMilMarkedown());
+        builder.append(enemy.toCityMilMarkdown());
 
         String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
         builder.append(typeStr);
         builder.append(memberNation.getNationUrlMarkup(true) + " (member):");
-        builder.append("\n").append(memberNation.toCityMilMarkedown());
+        builder.append("\n").append(memberNation.toCityMilMarkdown());
 
         String attStr = card.condensedSubInfo(isAttacker);
         String defStr = card.condensedSubInfo(!isAttacker);

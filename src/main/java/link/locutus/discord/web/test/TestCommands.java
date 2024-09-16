@@ -195,30 +195,4 @@ public class TestCommands {
         response.append("```json\n" + ResourceType.toString(deposited) + "\n```\n");
         return response.toString();
     }
-
-//    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {
-//        return placeholders.format2(store, input, me);
-//        if (me != null) {
-//            System.out.println("Me " + me.getNationUrl());
-//        } else {
-//            System.out.println("Me is null");
-//        }
-//        DBNation t = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class));
-//        if (t != null) {
-//            System.out.println("Nation " + t.getMarkdownUrl());
-//        }
-//        System.out.println("Store " + store.toString());
-//
-//        Set<DBNation> nations = placeholders.parseSet(store, input);
-//
-//        StringBuilder response = new StringBuilder();
-//        response.append(nations.size() + " nations found\n");
-//        if (nations.size() < 100) {
-//            // print each
-//            for (DBNation nation : nations) {
-//                response.append(nation.getNationUrlMarkup(false) + " | " + nation.getAllianceUrlMarkup(false)).append("\n");
-//            }
-//        }
-//        return response.toString() + " | " + me.getNationUrlMarkup(false) + " | " + user.getAsMention();
-//    }
 }

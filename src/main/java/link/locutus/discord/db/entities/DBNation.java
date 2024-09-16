@@ -3989,7 +3989,7 @@ public class DBNation implements NationOrAlliance {
         return allianceUrl;
     }
 
-    public String toCityMilMarkedown() {
+    public String toCityMilMarkdown() {
         StringBuilder body = new StringBuilder();
         body
                 .append("```")
@@ -5388,7 +5388,7 @@ public class DBNation implements NationOrAlliance {
             body.append(getWarInfoEmbed(war, loot));
         }
         body.append(this.getNationUrlMarkup(true));
-        body.append("\n").append(this.toCityMilMarkedown());
+        body.append("\n").append(this.toCityMilMarkdown());
         return body.toString().replaceAll(" \\| ","|");
     }
 
