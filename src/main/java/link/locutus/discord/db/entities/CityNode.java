@@ -164,11 +164,12 @@ public class CityNode implements ICity {
             this.baseDisease = ((0.01 * MathMan.sqr((this.infraLow * 100) / (city.getLand() + 0.001)) - 25) * 0.01d) + (this.infraLow * 0.001);
             this.newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
 
-            this.crimeCache = new double[126];
-            this.commerceIncome = new double[126];
-            for (int i = 0; i <= 125; i++) {
-                crimeCache[i] = (MathMan.sqr(103 - i) + (this.infraLow * 100))*(0.000009d);
-                commerceIncome[i] = Math.max(0, (((i * 0.02) * 0.725) + 0.725) * newPlayerBonus) * grossModifier;
+            this.crimeCache = new double[150];
+            this.commerceIncome = new double[150];
+            for (int i = 0; i <= 149; i++) {
+                int commerce = Math.min(maxCommerce, i);
+                crimeCache[i] = (MathMan.sqr(103 - commerce) + (this.infraLow * 100))*(0.000009d);
+                commerceIncome[i] = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * newPlayerBonus) * grossModifier;
             }
 
             this.hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;

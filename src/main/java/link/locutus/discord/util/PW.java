@@ -213,6 +213,9 @@ public final class PW {
             }
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
                 commerce += 1;
+                if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                    commerce += 2;
+                }
             }
             if (commerce > maxCommerce) {
                 commerce = maxCommerce;
@@ -225,7 +228,6 @@ public final class PW {
             int maxCommerce;
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
                 if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
-                    commerce += 2;
                     maxCommerce = 125;
                 } else {
                     maxCommerce = 115;
