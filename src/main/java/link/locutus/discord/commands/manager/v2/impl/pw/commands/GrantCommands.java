@@ -92,6 +92,7 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aup") Boolean advanced_urban_planning,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("mp") Boolean metropolitan_planning,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -112,7 +113,9 @@ public class GrantCommands {
                             urban_planning != null ? urban_planning : receiver.hasProject(Projects.URBAN_PLANNING),
                             advanced_urban_planning != null ? advanced_urban_planning : receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING),
                             metropolitan_planning != null ? metropolitan_planning : receiver.hasProject(Projects.METROPOLITAN_PLANNING),
-                            gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+                            gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
+                            domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)
+                    );
                     double[] resources = ResourceType.MONEY.toArray(cost);
                     grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
                     grant.setCost(f -> resources).setType(note);
@@ -155,6 +158,7 @@ public class GrantCommands {
 
             @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("dpta") Boolean technological_advancement,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -166,7 +170,8 @@ public class GrantCommands {
                 }
                 boolean ta = technological_advancement != null ? technological_advancement : receiver.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
                 boolean gsa = gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                double[] cost = project.cost(ta, gsa);
+                boolean bda = domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                double[] cost = project.cost(ta, gsa, bda);
                 grant.setCost(f -> cost).setType(DepositType.PROJECT.withAmount(project.ordinal()));
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase `" + project.name() + "`");
                 return null;
@@ -211,6 +216,7 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aec") Boolean advanced_engineering_corps,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("cfce") Boolean center_for_civil_engineering,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -224,14 +230,15 @@ public class GrantCommands {
                             advanced_engineering_corps != null ? advanced_engineering_corps : false,
                             center_for_civil_engineering != null ? center_for_civil_engineering : false,
                             urbanization != null ? urbanization : false,
-                            gov_support_agency != null ? gov_support_agency : false
-                            );
+                            gov_support_agency != null ? gov_support_agency : false,
+                            domestic_affairs != null ? domestic_affairs : false);
                 } else {
                     cost = receiver.getBuyInfraCost(infra_level,
                             urbanization != null ? urbanization : false,
                             advanced_engineering_corps != null ? advanced_engineering_corps : false,
                             center_for_civil_engineering != null ? center_for_civil_engineering : false,
-                            gov_support_agency != null ? gov_support_agency : false);
+                            gov_support_agency != null ? gov_support_agency : false,
+                            domestic_affairs != null ? domestic_affairs : false);
                 }
                 if (cost <= 0) {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.INFRA.withValue().toString()).addMessage( "Nation already has infra level: " + infra_level);
@@ -282,6 +289,7 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aec") Boolean advanced_engineering_corps,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("ala") Boolean arable_land_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
+            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -292,7 +300,8 @@ public class GrantCommands {
                             rapid_expansion != null ? rapid_expansion : false,
                             advanced_engineering_corps != null ? advanced_engineering_corps : false,
                             arable_land_agency != null ? arable_land_agency : false,
-                            gov_support_agency != null ? gov_support_agency : false);
+                            gov_support_agency != null ? gov_support_agency : false,
+                            domestic_affairs != null ? domestic_affairs : false);
                     if (cost <= 0) {
                         return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.LAND.withValue().toString()).addMessage( "Nation already has " + to_land + " land");
                     }
@@ -1676,7 +1685,7 @@ public class GrantCommands {
             note = note.ignore(true);
         }
         double[] cost = template.getCost(db, me, receiver, parsed);
-        List<Grant.Requirement> requirements = template.getDefaultRequirements(db, me, receiver, parsed);
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(db, me, receiver, parsed, force);
         String instructions = template.getInstructions(me, receiver, parsed);
 
         for (int i = 0; i < cost.length; i++) {
@@ -3067,7 +3076,8 @@ public class GrantCommands {
                         boolean advCityPlanning = nation.hasProject(Projects.ADVANCED_URBAN_PLANNING) || (force_projects.contains(Projects.ADVANCED_URBAN_PLANNING) && city >= Projects.ADVANCED_URBAN_PLANNING.requiredCities());
                         boolean metPlanning = nation.hasProject(Projects.METROPOLITAN_PLANNING) || (force_projects.contains(Projects.METROPOLITAN_PLANNING) && city >= Projects.METROPOLITAN_PLANNING.requiredCities());
                         boolean govSupportAgency = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                        cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency);
+                        boolean domesticAffairs = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                        cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
                     }
                 }
             }
@@ -3080,7 +3090,8 @@ public class GrantCommands {
                     boolean cfce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || force_projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING);
                     boolean urbanization = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION || force_policy.contains(DomesticPolicy.URBANIZATION);
                     boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                    return PW.City.Infra.calculateInfra(infra, infra_level, aec, cfce, urbanization, gsa);
+                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                    return PW.City.Infra.calculateInfra(infra, infra_level, aec, cfce, urbanization, gsa, bda);
                 };
                 for (DBCity city : nation._getCitiesV3().values()) {
                     if (city.getInfra() >= infra_level) continue;
@@ -3099,7 +3110,8 @@ public class GrantCommands {
                     boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || force_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
                     boolean ala = nation.hasProject(Projects.ARABLE_LAND_AGENCY) || force_projects.contains(Projects.ARABLE_LAND_AGENCY);
                     boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                    return PW.City.Land.calculateLand(land, land_level, ra, aec, ala, gsa);
+                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                    return PW.City.Land.calculateLand(land, land_level, ra, aec, ala, gsa, bda);
                 };
                 for (DBCity city : nation._getCitiesV3().values()) {
                     if (city.getLand() >= land_level) continue;
@@ -3119,7 +3131,8 @@ public class GrantCommands {
                     projectsBought.add(project);
                     boolean ta = nation.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT || force_policy.contains(DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT);
                     boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                    projectCost = ResourceType.add(projectCost, project.cost(ta, gsa));
+                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                    projectCost = ResourceType.add(projectCost, project.cost(ta, gsa, bda));
                 }
             }
 

@@ -112,13 +112,14 @@ public final class PW {
                 return total;
             }
 
-            public static double calculateLand(double from, double to, boolean ra, boolean aec, boolean ala, boolean gsa) {
+            public static double calculateLand(double from, double to, boolean ra, boolean aec, boolean ala, boolean gsa, boolean bda) {
                 double factor = 1;
                 if (aec) factor -= 0.05;
                 if (ala) factor -= 0.05;
                 if (ra) {
                     factor -= 0.05;
                     if (gsa) factor -= 0.025;
+                    if (bda) factor -= 0.0125;
                 }
                 return PW.City.Land.calculateLand(from, to) * factor;
             }
@@ -143,13 +144,14 @@ public final class PW {
                 return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra_cents - 1000, 2000) * 0.01, (2.2d))) * 0.00140845070422535211267605633803));
             }
 
-            public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
+            public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa, boolean bda) {
                 double factor = 1;
                 if (aec) factor -= 0.05;
                 if (cfce) factor -= 0.05;
                 if (urbanization) {
                     factor -= 0.05;
                     if (gsa) factor -= 0.025;
+                    if (bda) factor -= 0.0125;
                 }
                 return calculateInfra(from, to) * (to > from ? factor : 1);
             }
@@ -206,7 +208,12 @@ public final class PW {
                 if (amt == 0) continue;
                 commerce += amt * building.getCommerce();
             }
-
+            if (hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM)) {
+                commerce += 4;
+            }
+            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                commerce += 1;
+            }
             if (commerce > maxCommerce) {
                 commerce = maxCommerce;
             }
@@ -372,7 +379,8 @@ public final class PW {
                     nation != null && nation.hasProject(Projects.URBAN_PLANNING),
                     nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
                     nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+                    nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
+                    nation != null && nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
         }
 
         public static int getPopulation(long infra_cents, double crime, double disease, long ageDays) {
@@ -383,19 +391,19 @@ public final class PW {
             return (int) Math.round(Math.max(10, ((infra_cents - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
 
-        public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
+        public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             double total = 0;
             for (int city = Math.max(1, from); city < to; city++) {
                 total += nextCityCost(city,
                         manifestDestiny,
                         cityPlanning,
                         advCityPlanning,
-                        metPlanning, govSupportAgency);
+                        metPlanning, govSupportAgency, bureauOfDomesticAffairs);
             }
             return total;
         }
 
-        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
+        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
             if (cityPlanning) {
                 cost -= 50000000;
@@ -409,6 +417,7 @@ public final class PW {
             if (manifestDestiny) {
                 double factor = 0.05;
                 if (govSupportAgency) factor += 0.025;
+                if (bureauOfDomesticAffairs) factor += 0.0125;
                 cost *= (1 - factor);
             }
             return Math.max(0, cost);
@@ -1361,14 +1370,13 @@ public final class PW {
         return aaIds;
     }
 
-    public static Map<MilitaryUnit, Long> parseUnits(String arg) {
+    public static <E extends Enum<E>, V extends Number> Map<E, V> parseEnumMap(String arg, Class<E> enumClass, Class<V> valueClass) {
         arg = arg.trim();
         if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
-        for (MilitaryUnit unit : MilitaryUnit.values()) {
-            String name = unit.getName();
-            if (name == null || name.equalsIgnoreCase(unit.name())) continue;
-            arg = arg.replace(name.toUpperCase() + ":", unit.name() + ":");
+        for (E unit : enumClass.getEnumConstants()) {
+            String name = unit.name();
+            arg = arg.replace(name.toUpperCase() + ":", name + ":");
         }
 
         double sign = 1;
@@ -1381,28 +1389,44 @@ public final class PW {
         if (preMultiply != -1) {
             String[] split = arg.split("\\*\\{", 2);
             arg = "{" + split[1];
-            sign *= MathMan.parseDouble(split[0]);
+            sign *= Double.parseDouble(split[0]);
         }
         if (postMultiply != -1) {
             String[] split = arg.split("\\}\\*", 2);
             arg = split[0] + "}";
-            sign *= MathMan.parseDouble(split[1]);
+            sign *= Double.parseDouble(split[1]);
         }
 
-        Type type = new TypeToken<Map<MilitaryUnit, Long>>() {}.getType();
+        Type type = com.google.gson.reflect.TypeToken.getParameterized(Map.class, enumClass, valueClass).getType();
         if (arg.charAt(0) != '{' && arg.charAt(arg.length() - 1) != '}') {
             arg = "{" + arg + "}";
         }
-        Map<MilitaryUnit, Long> result = new Gson().fromJson(arg, type);
+        Map<E, V> result = new Gson().fromJson(arg, type);
         if (result.containsKey(null)) {
             throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
         }
         if (sign != 1) {
-            for (Map.Entry<MilitaryUnit, Long> entry : result.entrySet()) {
-                entry.setValue((long) (entry.getValue() * sign));
+            for (Map.Entry<E, V> entry : result.entrySet()) {
+                entry.setValue(multiply(entry.getValue(), sign, valueClass));
             }
         }
         return result;
+    }
+
+    private static <V extends Number> V multiply(V value, double factor, Class<V> valueClass) {
+        if (valueClass == Long.class) {
+            return valueClass.cast((long) (value.longValue() * factor));
+        } else if (valueClass == Double.class) {
+            return valueClass.cast(value.doubleValue() * factor);
+        } else if (valueClass == Integer.class) {
+            return valueClass.cast((int) (value.intValue() * factor));
+        } else {
+            throw new IllegalArgumentException("Unsupported value type: " + valueClass);
+        }
+    }
+
+    public static Map<MilitaryUnit, Long> parseUnits(String arg) {
+        return parseEnumMap(arg, MilitaryUnit.class, Long.class);
     }
 
     public static Map<String, String> parseMap(String arg) {

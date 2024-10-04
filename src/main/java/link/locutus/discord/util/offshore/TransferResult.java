@@ -8,6 +8,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.*;
@@ -35,7 +36,7 @@ public class TransferResult {
                         f.getReceiver().getName() + "\t" +
                         f.getStatus().name() + "\t" +
                         f.getNote() + "\t" +
-                        f.getStatus().getMessage()
+                        f.getStatus().getMessage() + ". " + StringMan.join(f.resultMessage, ", ").replace("\n", ". ")
                 ).collect(Collectors.joining("\n"));
     }
 
@@ -62,7 +63,19 @@ public class TransferResult {
     }
 
     public static Map<NationOrAllianceOrGuild, TransferResult> toMap(List<TransferResult> list) {
-        return list.stream().collect(Collectors.toMap(TransferResult::getReceiver, Function.identity()));
+        Map<NationOrAllianceOrGuild, TransferResult> errors = new LinkedHashMap<>();
+        for (TransferResult result : list) {
+            TransferResult existing = errors.get(result.getReceiver());
+            if (existing != null) {
+                if (existing.getStatus().isSuccess() && !result.getStatus().isSuccess()) {
+                    existing.status = result.status;
+                }
+                existing.resultMessage.addAll(result.resultMessage);
+            } else {
+                errors.put(result.getReceiver(), result);
+            }
+        }
+        return errors;
     }
 
     public void setStatus(OffshoreInstance.TransferStatus status) {

@@ -950,7 +950,7 @@ public class IACheckup {
         if (nation.getCityTurns() <= 0 && nation.getCities() < 20) {
             if (nation.isBlockaded()) return null;
 
-            double cost = PW.City.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING), nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+            double cost = PW.City.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING), nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY), nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
             Map<ResourceType, Double> resources = Collections.singletonMap(ResourceType.MONEY, cost);
             return new AbstractMap.SimpleEntry<>(nation.getCities(), "Your city timer is up. Use the #resource-request channel to request funds for a city");
         }

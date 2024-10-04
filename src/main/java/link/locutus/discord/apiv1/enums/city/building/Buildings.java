@@ -91,17 +91,26 @@ public class Buildings {
             return super.pollution(hasProject) + (hasProject.test(Projects.GREEN_TECHNOLOGIES) ? -25 : 0);
         }
     };
-    public final static CommerceBuilding MALL = new BuildingBuilder("impMall").cost(MONEY, 45000).cost(ALUMINUM, 50).cost(STEEL, 20).pollution(2).upkeep(MONEY, 5400).cap(4).commerce(9);
-    public final static CommerceBuilding STADIUM = new BuildingBuilder("impStadium").cost(MONEY, 100000).cost(STEEL, 40).cost(ALUMINUM, 50).pollution(5).upkeep(MONEY, 12150).cap(3).commerce(12);
-    public final static CommerceBuilding BANK = new BuildingBuilder("impBank").cost(MONEY, 15000).cost(ALUMINUM, 10).cost(STEEL, 5).upkeep(MONEY, 1800).cap(5).commerce(5);
-    public final static CommerceBuilding SUPERMARKET = new BuildingBuilder("impSupermarket").cost(MONEY, 5000).upkeep(MONEY, 600).cap(6).commerce(3);
-
-    public final static ServiceBuilding POLICE_STATION = new AServiceBuilding(new BuildingBuilder("impPolicestation").cost(MONEY, 75000).cost(STEEL, 20).pollution(1).upkeep(MONEY, 750).cap(5)) {
+    public final static CommerceBuilding MALL = new ACommerceBuilding(new BuildingBuilder("impMall").cost(MONEY, 45000).cost(ALUMINUM, 50).cost(STEEL, 20).pollution(2).upkeep(MONEY, 5400).cap(4), 8) {
         @Override
         public int cap(Predicate<Project> hasProject) {
-            return super.cap(hasProject) + (hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 1 : 0);
+            int val = super.cap(hasProject);
+            if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) val++;
+            return val;
         }
     };
+    public final static CommerceBuilding STADIUM = new BuildingBuilder("impStadium").cost(MONEY, 100000).cost(STEEL, 40).cost(ALUMINUM, 50).pollution(5).upkeep(MONEY, 12150).cap(3).commerce(10);
+    public final static CommerceBuilding BANK = new ACommerceBuilding(new BuildingBuilder("impBank").cost(MONEY, 15000).cost(ALUMINUM, 10).cost(STEEL, 5).upkeep(MONEY, 1800).cap(5), 6) {
+        @Override
+        public int cap(Predicate<Project> hasProject) {
+            int val = super.cap(hasProject);
+            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) val++;
+            return val;
+        }
+    };
+    public final static CommerceBuilding SUPERMARKET = new BuildingBuilder("impSupermarket").cost(MONEY, 5000).upkeep(MONEY, 600).cap(4).commerce(4);
+
+    public final static ServiceBuilding POLICE_STATION = new AServiceBuilding(new BuildingBuilder("impPolicestation").cost(MONEY, 75000).cost(STEEL, 20).pollution(1).upkeep(MONEY, 750).cap(5));
     public final static ServiceBuilding HOSPITAL = new AServiceBuilding(new BuildingBuilder("impHospital").cost(MONEY, 100000).cost(ALUMINUM, 25).pollution(4).upkeep(MONEY, 1000).cap(5)) {
         @Override
         public int cap(Predicate hasProject) {

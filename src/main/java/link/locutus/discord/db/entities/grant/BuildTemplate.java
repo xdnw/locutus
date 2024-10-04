@@ -275,8 +275,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
-            List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, build);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build, boolean confirm) {
+            List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, build, confirm);
             list.addAll(getRequirements(db, sender, receiver, this, build));
             return list;
     }

@@ -180,8 +180,11 @@ public class Grant {
                     for (boolean mp : new boolean[]{true, false}) {
                         for (boolean gsa : new boolean[]{true, false}) {
                             if (gsa && !nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) continue;
-                            double cost = PW.City.nextCityCost(city - 1, md, cp, aup, mp, gsa);
-                            costs.add(Math.round(cost));
+                            for (boolean bda : new boolean[]{true, false}) {
+                                if (bda && !nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) continue;
+                                double cost = PW.City.nextCityCost(city - 1, md, cp, aup, mp, gsa, bda);
+                                costs.add(Math.round(cost));
+                            }
                         }
                     }
                 }
@@ -553,7 +556,7 @@ public class Grant {
             try {
                 if (!force) {
                     List<Grant.Requirement> requirements = new ArrayList<>();
-                    requirements.addAll(AGrantTemplate.getBaseRequirements(db, me, receiver, null));
+                    requirements.addAll(AGrantTemplate.getBaseRequirements(db, me, receiver, null, false));
                     List<Requirement> addReq = getRequirements.apply(receiver);
                     if (addReq != null) requirements.addAll(addReq);
                     for (Requirement requirement : requirements) {

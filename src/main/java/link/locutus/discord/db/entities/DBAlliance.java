@@ -641,6 +641,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return treaty == null ? 0 : treaty.getType().getStrength();
     }
 
+    @Command(desc = "Market value of alliance revenue of taxable member nations")
+    public double getRevenueConverted() {
+        return ResourceType.convertedTotal(getRevenue());
+    }
+
     @Command(desc = "Revenue of taxable alliance members")
     public Map<ResourceType, Double> getRevenue() {
         return getRevenue(getNations(f -> f.isTaxable()));

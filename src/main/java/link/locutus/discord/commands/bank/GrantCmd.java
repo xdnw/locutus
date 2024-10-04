@@ -506,6 +506,9 @@ public class GrantCmd extends Command {
                     if (me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
                         factor -= 0.025;
                     }
+                    if (me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) {
+                        factor -= 0.0125;
+                    }
                 }
                 if (factor != 1) {
                     resources = PW.multiply(resources, factor);
@@ -627,6 +630,9 @@ public class GrantCmd extends Command {
             if (me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
                 factor -= 0.025;
             }
+            if (me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) {
+                factor -= 0.0125;
+            }
         }
         totalCost *= factor;
 
@@ -636,7 +642,8 @@ public class GrantCmd extends Command {
                 Projects.ARABLE_LAND_AGENCY + ": " + ala + "\n" +
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
                 DomesticPolicy.RAPID_EXPANSION + ": " + expansion + "\n" +
-                Projects.GOVERNMENT_SUPPORT_AGENCY +": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+                Projects.GOVERNMENT_SUPPORT_AGENCY +": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) + "\n" +
+                Projects.BUREAU_OF_DOMESTIC_AFFAIRS + ": " + me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
 
 //        if (numBuy > 2000) {
 //            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
@@ -686,6 +693,7 @@ public class GrantCmd extends Command {
         boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
         boolean cce = me.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
         boolean aec = me.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
+        boolean bda = me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
         if (numBuy > 1700 && !urbanization && !force) {
             throw new IllegalArgumentException("Please set Urbanization as your domestic policy");
@@ -695,6 +703,7 @@ public class GrantCmd extends Command {
         if (urbanization) {
             factor -= 0.05;
             if (gsa) factor -= 0.025;
+            if (bda) factor -= 0.0125;
         }
         if (cce) factor -= 0.05;
         if (aec) factor -= 0.05;
@@ -708,7 +717,8 @@ public class GrantCmd extends Command {
                 "\nUrbanization: " + urbanization +
                 "\n" + Projects.CENTER_FOR_CIVIL_ENGINEERING + ": " + cce + "\n" +
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
-                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa);
+                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa + "\n" +
+                Projects.BUREAU_OF_DOMESTIC_AFFAIRS + ": " + bda);
 
 //        if (numBuy > 1500 && fetchROI) {
 //            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
@@ -747,10 +757,11 @@ public class GrantCmd extends Command {
         boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
         boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
         boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
+        boolean bda = me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa);
+            cost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
         }
 
         StringBuilder result = new StringBuilder();

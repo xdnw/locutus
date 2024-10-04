@@ -22,8 +22,8 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
-            return CityTemplate.getBaseRequirements(null, null, null, null);
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
+            return CityTemplate.getBaseRequirements(null, null, null, null, confirm);
         }
     },
     PROJECT(DepositType.PROJECT, ProjectTemplate.class) {
@@ -33,7 +33,7 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
             return ProjectTemplate.getRequirements(null, null, null, null, null);
         }
     },
@@ -44,7 +44,7 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
             return InfraTemplate.getRequirements(null, null, null, null, null);
         }
 
@@ -56,7 +56,7 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
             return LandTemplate.getRequirements(null, null, null, null, null);
         }
     },
@@ -67,7 +67,7 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
             return BuildTemplate.getRequirements(null, null, null, null, null);
         }
     },
@@ -78,7 +78,7 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
             return WarchestTemplate.getRequirements(null, null, null, null, null);
         }
     },
@@ -89,7 +89,7 @@ public enum TemplateTypes {
         }
 
         @Override
-        public List<Grant.Requirement> getRequirements() {
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
             return RawsTemplate.getRequirements(null, null, null, null, null);
         }
     },
@@ -153,9 +153,9 @@ public enum TemplateTypes {
 
     public abstract CommandRef getCommandMention();
 
-    public abstract List<Grant.Requirement> getRequirements();
+    public abstract List<Grant.Requirement> getRequirements(boolean confirm);
 
-    public static List<Grant.Requirement> getDefaultRequirements() {
-        return AGrantTemplate.getBaseRequirements(null, null, null, null);
+    public static List<Grant.Requirement> getDefaultRequirements(boolean confirm) {
+        return AGrantTemplate.getBaseRequirements(null, null, null, null, confirm);
     }
 }

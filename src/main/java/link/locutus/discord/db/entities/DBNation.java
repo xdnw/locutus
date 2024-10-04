@@ -640,7 +640,11 @@ public class DBNation implements NationOrAlliance {
                 lastLootDate = Math.max(lastLootDate, recent);
             }
         }
-        double cityCost = PW.City.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING), hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        double cityCost = PW.City.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING),
+                hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                hasProject(Projects.METROPOLITAN_PLANNING),
+                hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
+                hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
         double maxStockpile = cityCost * 2;
         double daysToMax = maxStockpile / (getInfra() * 300);
         if (lastLootDate == 0) {
@@ -3838,6 +3842,17 @@ public class DBNation implements NationOrAlliance {
         return total;
     }
 
+    @Command(desc = "Get the minimum value of a city attribute for this nation's cities")
+    public double getCityMin(@NoFormat TypedFunction<DBCity, Double> attribute) {
+        Map<Integer, DBCity> cities = _getCitiesV3();
+        double min = Double.MAX_VALUE;
+        for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+            Double value = attribute.apply(entry.getValue());
+            if (value != null) min = Math.min(min, value);
+        }
+        return min;
+    }
+
     @Command(desc = "Get the maximum value of a city attribute for this nation's cities")
     public double getCityMax(@NoFormat TypedFunction<DBCity, Double> attribute) {
         Map<Integer, DBCity> cities = _getCitiesV3();
@@ -4627,7 +4642,7 @@ public class DBNation implements NationOrAlliance {
         return response.toString();
     }
 
-    @Command(desc = "The infra level of their highest city")
+    @Command(desc = "The highest infra level in their cities")
     public double maxCityInfra() {
         double maxInfra = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
@@ -4635,6 +4650,16 @@ public class DBNation implements NationOrAlliance {
             maxInfra = Math.max(city.getInfra(), maxInfra);
         }
         return maxInfra;
+    }
+
+    @Command(desc = "The highest land level in their cities")
+    public double maxCityLand() {
+        double maxLand = 0;
+        Collection<DBCity> cities = _getCitiesV3().values();
+        for (DBCity city : cities) {
+            maxLand = Math.max(city.getLand(), maxLand);
+        }
+        return maxLand;
     }
 
     public JsonObject sendMail(ApiKeyPool pool, String subject, String message, boolean priority) throws IOException {
@@ -5200,7 +5225,8 @@ public class DBNation implements NationOrAlliance {
                 hasProject(Projects.ADVANCED_ENGINEERING_CORPS),
                 hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING),
                 getDomesticPolicy() == DomesticPolicy.URBANIZATION,
-                hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+                hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
+                hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
     }
 
     public double landCost(double from, double to) {
@@ -5210,6 +5236,7 @@ public class DBNation implements NationOrAlliance {
         if (getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION) {
             factor -= 0.05;
             if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
+            if (hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) factor -= 0.0125;
         }
         return PW.City.Land.calculateLand(from, to) * (to > from ? factor : 1);
     }
@@ -5632,7 +5659,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Cost of buying up to a certain infra level")
-    public double getBuyInfraCost(double toInfra, @Switch("u") boolean forceUrbanization, @Switch("aec") boolean forceAEC, @Switch("cfce") boolean forceCFCE, @Switch("gsa") boolean forceGSA) {
+    public double getBuyInfraCost(double toInfra, @Switch("u") boolean forceUrbanization, @Switch("aec") boolean forceAEC, @Switch("cfce") boolean forceCFCE, @Switch("gsa") boolean forceGSA, @Switch("bda") boolean forceBDA) {
         double total = 0;
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             double cityInfra = entry.getValue().getInfra();
@@ -5641,23 +5668,25 @@ public class DBNation implements NationOrAlliance {
                         hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC,
                         hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || forceCFCE,
                         getDomesticPolicy() == DomesticPolicy.URBANIZATION || forceUrbanization,
-                        hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA);
+                        hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA,
+                        hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || forceBDA);
             }
         }
         return total;
     }
 
     @Command(desc = "Cost of buying up to a certain land level")
-    public double getBuyLandCost(double toLand, @Switch("ra") boolean forceRAPolicy, @Switch("aec") boolean forceAEC, @Switch("ala") boolean forceALA, @Switch("gsa") boolean forceGSA) {
+    public double getBuyLandCost(double toLand, @Switch("ra") boolean forceRAPolicy, @Switch("aec") boolean forceAEC, @Switch("ala") boolean forceALA, @Switch("gsa") boolean forceGSA, @Switch("bda") boolean forceBDA) {
         boolean ra = getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || forceRAPolicy;
         boolean aec = hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || forceAEC;
         boolean ala = hasProject(Projects.ARABLE_LAND_AGENCY) || forceALA;
         boolean gsa = hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || forceGSA;
+        boolean bda = hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || forceBDA;
         double total = 0;
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             double cityLand = entry.getValue().getLand();
             if (cityLand < toLand) {
-                total += PW.City.Land.calculateLand(cityLand, toLand, ra, aec, ala, gsa);
+                total += PW.City.Land.calculateLand(cityLand, toLand, ra, aec, ala, gsa, bda);
             }
         }
         return total;
@@ -6295,22 +6324,25 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] projectCost(Project project) {
-        return project.cost(getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT, hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        return project.cost(getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT, hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY), hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
     }
 
     public double getGrossModifier() {
         return getGrossModifier(false);
     }
     public double getGrossModifier(boolean noFood) {
-        return getGrossModifier(noFood, getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS, hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        return getGrossModifier(noFood, getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS, hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY), hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
     }
 
-    public static double getGrossModifier(boolean noFood, boolean openMarkets, boolean gsa) {
+    public static double getGrossModifier(boolean noFood, boolean openMarkets, boolean gsa, boolean bda) {
         double grossModifier = 1;
         if (openMarkets) {
             grossModifier += 0.01;
             if (gsa) {
                 grossModifier += 0.005;
+            }
+            if (bda) {
+                grossModifier += 0.0025;
             }
         }
         if (noFood) grossModifier -= 0.33;
@@ -6323,6 +6355,9 @@ public class DBNation implements NationOrAlliance {
             factor -= 0.05;
             if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
                 factor -= 0.025;
+            }
+            if (hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) {
+                factor -= 0.0125;
             }
         }
         return factor;

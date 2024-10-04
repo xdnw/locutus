@@ -97,8 +97,8 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     //add flags to the template database
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Integer amount) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, amount);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Integer amount, boolean confirm) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, amount, confirm);
         list.addAll(getRequirements(db, sender, receiver, this, amount));
         return list;
     }

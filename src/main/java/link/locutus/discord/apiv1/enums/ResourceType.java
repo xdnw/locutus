@@ -64,7 +64,8 @@ public enum ResourceType {
                     factor = 400;
                 }
                 if (hasProject.test(Projects.FALLOUT_SHELTER)) {
-                    rads = Math.max(0.1, rads);
+                    if (rads < 0.15) rads = 0.15;
+                    else rads = Math.min(1, rads + 0.15);
                 } else {
                     rads = Math.max(0, rads);
                 }
@@ -86,7 +87,7 @@ public enum ResourceType {
     IRON("iron", "withiron", 14, 1600, 12, 3, 10),
     BAUXITE("bauxite", "withbauxite", 9, 1600, 12, 3, 10),
     GASOLINE("gasoline", "withgasoline", 13, 4000, 32, 6, 5, 2, () -> Projects.EMERGENCY_GASOLINE_RESERVE, 3, OIL),
-    MUNITIONS("munitions", "withmunitions", 19, 3500 , 32, 18, 5, 1.34, () -> Projects.ARMS_STOCKPILE, 6, LEAD),
+    MUNITIONS("munitions", "withmunitions", 19, 3500 , 32, 18, 5, 1.2, () -> Projects.ARMS_STOCKPILE, 6, LEAD),
     STEEL("steel", "withsteel", 23, 4000, 40, 9, 5, 1.36, () -> Projects.IRON_WORKS, 3, IRON, COAL),
     ALUMINUM("aluminum", "withaluminum", 8, 2500, 40, 9, 5, 1.36, () -> Projects.BAUXITEWORKS, 3, BAUXITE);
     private static final Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();

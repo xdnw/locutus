@@ -646,6 +646,7 @@ public enum AllianceMetric implements IAllianceMetric {
         private final Map<Integer, Boolean> advancedUrbanPlanningByNation = new Int2ObjectOpenHashMap<>();
         private final Map<Integer, Boolean> metropolitanPlanningByNation = new Int2ObjectOpenHashMap<>();
         private final Map<Integer, Boolean> governmentSupportAgencyByNation = new Int2ObjectOpenHashMap<>();
+        private final Map<Integer, Boolean> bdaByNation = new Int2ObjectOpenHashMap<>();
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
@@ -678,6 +679,9 @@ public enum AllianceMetric implements IAllianceMetric {
                     if (header.government_support_agency_np.get() == Boolean.TRUE) {
                         governmentSupportAgencyByNation.put(nationId, header.government_support_agency_np.get());
                     }
+                    if (header.bureau_of_domestic_affairs_np.get() == Boolean.TRUE) {
+                        bdaByNation.put(nationId, header.bureau_of_domestic_affairs_np.get());
+                    }
                 }
             });
             importer.setCityReader(this, new BiConsumer<Long, CityHeader>() {
@@ -709,7 +713,8 @@ public enum AllianceMetric implements IAllianceMetric {
                 boolean aup = advancedUrbanPlanningByNation.getOrDefault(nationId, false);
                 boolean mp = metropolitanPlanningByNation.getOrDefault(nationId, false);
                 boolean gsa = governmentSupportAgencyByNation.getOrDefault(nationId, false);
-                double cost = PW.City.cityCost(previousCities, totalCities, md, up, aup, mp, gsa);
+                boolean bda = bdaByNation.getOrDefault(nationId, false);
+                double cost = PW.City.cityCost(previousCities, totalCities, md, up, aup, mp, gsa, bda);
                 int allianceId = allianceByNationId.get(nationId);
                 cities10D.merge(allianceId, cost, Double::sum);
             }
@@ -720,6 +725,7 @@ public enum AllianceMetric implements IAllianceMetric {
             advancedUrbanPlanningByNation.clear();
             metropolitanPlanningByNation.clear();
             governmentSupportAgencyByNation.clear();
+            bdaByNation.clear();
             return cities10D;
         }
 

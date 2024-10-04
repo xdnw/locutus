@@ -693,6 +693,8 @@ public class UtilityCommands {
         naps.put(238332L * 7200 * 1000, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
         naps.put(239436L * 7200 * 1000, "<https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
         naps.put(1726938000000L, "(Mid-turn, 5:00pm UTC) <https://forum.politicsandwar.com/index.php?/topic/41182-peace-casino-royale/>");
+        naps.put(1743120000000L, "<https://forum.politicsandwar.com/index.php?/topic/46146-peace-darkest-hour-deux-done/>");
+        naps.put(1737763200000L, "<https://forum.politicsandwar.com/index.php?/topic/46146-peace-darkest-hour-deux-done/>");
 
         long turn = TimeUtil.getTurn();
         int skippedExpired = 0;
@@ -815,7 +817,9 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"})
-    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning, @Default("false") boolean governmentSupportAgency) {
+    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning,
+                           @Default("false") boolean governmentSupportAgency,
+                           @Default("false") boolean domestic_affairs) {
         if (maxCity > 1000) throw new IllegalArgumentException("Max cities 1000");
 
         double total = 0;
@@ -825,7 +829,8 @@ public class UtilityCommands {
                     urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
                     advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
                     metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
-                    governmentSupportAgency);
+                    governmentSupportAgency,
+                    domestic_affairs);
         }
 
         return "$" + MathMan.format(total);
@@ -1143,6 +1148,7 @@ public class UtilityCommands {
                               Set<Project> projects,
                               @Default("false") boolean technologicalAdvancement,
                               @Default("false") boolean governmentSupportAgency,
+                              @Default("false") boolean domesticAffairs,
                               @Switch("n") Set<DBNation> nations,
                               @Switch("s") SpreadSheet sheet,
                               @Switch("p") boolean ignoreProjectSlots,
@@ -1180,6 +1186,7 @@ public class UtilityCommands {
                     "cities",
                     "technological_advancement",
                     "government_support_agency",
+                    "domestic_affairs",
                     "cost",
                     "cost_raw",
                     "errors"
@@ -1201,6 +1208,7 @@ public class UtilityCommands {
                 if (technologicalAdvancement)
                     nationCopy.setDomesticPolicy(DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT);
                 if (governmentSupportAgency) nationCopy.setProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                if (domesticAffairs) nationCopy.setProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
                 for (Project project : projectsList) {
                     boolean canBuy = false;
@@ -1230,9 +1238,10 @@ public class UtilityCommands {
                 header.set(2, String.valueOf(nation.getCities()));
                 header.set(3, nationCopy.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? "true" : "false");
                 header.set(4, nationCopy.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) ? "true" : "false");
-                header.set(5, ResourceType.resourcesToString(nationCost));
-                header.set(6, MathMan.format(ResourceType.convertedTotal(nationCost)));
-                header.set(7, StringMan.join(errors, ","));
+                header.set(5, nationCopy.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) ? "true" : "false");
+                header.set(6, ResourceType.resourcesToString(nationCost));
+                header.set(7, MathMan.format(ResourceType.convertedTotal(nationCost)));
+                header.set(8, StringMan.join(errors, ","));
                 for (int i = 0; i < projectsList.size(); i++) {
                     header.set(i + indexOffset, String.valueOf(buy.get(i)));
                 }
@@ -1702,8 +1711,8 @@ public class UtilityCommands {
 
         String arg0;
         String title;
-        if (nationOrAlliances.size() == 1) {
-            NationOrAlliance nationOrAA = nationOrAlliances.iterator().next();
+        if ((snapshotDate == null && nationOrAlliances.size() == 1) || nations.size() == 1) {
+            NationOrAlliance nationOrAA = snapshotDate == null ? nationOrAlliances.iterator().next() : nations.iterator().next();
             if (nationOrAA.isNation()) {
                 DBNation nation = nationOrAA.asNation();
                 title = nation.getNation();
@@ -2462,7 +2471,8 @@ public class UtilityCommands {
                 boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
                 boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                cityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa);
+                boolean bda = projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                cityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
             }
             Map<Integer, JavaCity> cityMap = nation.getCityMap(update, update,false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
@@ -2585,7 +2595,7 @@ public class UtilityCommands {
 
         if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
-        double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY), hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
 
         JavaCity optimal1 = origin.optimalBuild(nation, 5000, false, null);
         if (optimal1 == null) {
@@ -2635,7 +2645,7 @@ public class UtilityCommands {
         originMinus50.setOptimalPower(continent);
         if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
-        double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY));
+        double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY), hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
 
         JavaCity optimal1 = origin.optimalBuild(nation, 5000, false, null);
         if (optimal1 == null) {

@@ -62,8 +62,8 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed, boolean confirm) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed, confirm);
         list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
@@ -131,7 +131,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 
-        for (Transaction2 record : receiver.getTransactions(true)) {
+        for (Transaction2 record : receiver.getTransactions(-1, true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
                 Map<String, String> notes = PW.parseTransferHashNotes(record.note);
                 if (notes.containsKey("#raws") || notes.containsKey("#tax")) {

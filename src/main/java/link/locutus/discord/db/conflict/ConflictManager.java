@@ -540,7 +540,7 @@ public class ConflictManager {
             Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
                 if (!conflictsLoaded) return;
                 pushDirtyConflicts();
-            }, 1, TimeUnit.MINUTES);
+            }, 5, TimeUnit.MINUTES);
         });
     }
 

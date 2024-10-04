@@ -3459,7 +3459,7 @@ public class WarCommands {
             DBNation target = entry.getKey();
             Set<DBNation> attackers = entry.getValue();
 
-            WarCategory.WarRoom channel = WarRoom.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
+            WarCategory.WarRoom channel = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
 
             try {
                 if (customMessage != null) {

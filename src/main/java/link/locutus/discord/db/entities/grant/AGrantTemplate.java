@@ -212,7 +212,7 @@ public abstract class AGrantTemplate<T> {
             if (cost != null) {
                 data.append("Cost: `").append(ResourceType.resourcesToString(cost)).append("`\n");
             }
-            List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed);
+            List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed, false);
             Set<Grant.Requirement> failedFinal = new HashSet<>();
             Set<Grant.Requirement> failedOverride = new HashSet<>();
             for (Grant.Requirement requirement : requirements) {
@@ -242,7 +242,7 @@ public abstract class AGrantTemplate<T> {
                 data.append("Instructions:\n>>> ").append(instructions).append("\n");
             }
         } else {
-            List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed);
+            List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed, false);
             if (!requirements.isEmpty()) {
                 data.append("\n**Template Checks:**\n");
                 for (Grant.Requirement requirement : requirements) {
@@ -320,11 +320,11 @@ public abstract class AGrantTemplate<T> {
 
     public abstract TemplateTypes getType();
 
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, T parsed) {
-        return getBaseRequirements(db, sender, receiver, this);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, T parsed, boolean confirmed) {
+        return getBaseRequirements(db, sender, receiver, this, confirmed);
     }
 
-    public static List<Grant.Requirement> getBaseRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, @Nullable AGrantTemplate template) {
+    public static List<Grant.Requirement> getBaseRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, @Nullable AGrantTemplate template, boolean confirmed) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         NationFilter filter = template == null ? null : template.getNationFilter();
@@ -487,13 +487,13 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 
-        List<Transaction2> transfers = receiver == null ? Collections.emptyList() : receiver.getTransactions(0L, true);
+        List<Transaction2> transfers = receiver == null ? Collections.emptyList() : receiver.getTransactions(template == null || !confirmed ? -1 : 0, true);
         long latest = !transfers.isEmpty() ? transfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
         // require no new transfers
         list.add(new Grant.Requirement("Nation must NOT receive a transfer whilst this grant is being sent. Please try again", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                List<Transaction2> newTransfers = receiver.getTransactions(0L, true);
+                List<Transaction2> newTransfers = receiver.getTransactions(template == null || !confirmed ? -1 : 0, true);
                 long newLatest = newTransfers.size() > 0 ? newTransfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
                 return latest == newLatest;
             }
@@ -630,7 +630,7 @@ public abstract class AGrantTemplate<T> {
     public Grant createGrant(DBNation sender, DBNation receiver, T customValue) {
         Grant grant = new Grant(receiver, getDepositType(receiver, customValue));
         grant.setCost(f -> this.getCost(db, sender, receiver, customValue));
-        grant.addRequirement(getDefaultRequirements(db, sender, receiver, customValue));
+        grant.addRequirement(getDefaultRequirements(db, sender, receiver, customValue, false));
         // grant.addNote()
         grant.setInstructions(getInstructions(sender, receiver, customValue));
 

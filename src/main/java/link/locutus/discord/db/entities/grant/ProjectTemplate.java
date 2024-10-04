@@ -76,8 +76,8 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Void parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Void parsed, boolean confirm) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed, confirm);
         list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
@@ -103,7 +103,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
             public Boolean apply(DBNation nation) {
                 String findNote = "#project=" + project.name().toLowerCase();
                 String findNotr2 = "#project=" + project.ordinal();
-                for (Transaction2 transaction : nation.getTransactions(true)) {
+                for (Transaction2 transaction : nation.getTransactions(-1, true)) {
                     if (transaction.note == null) continue;
                     String noteLower = transaction.note.toLowerCase();
                     if (noteLower.contains(findNote) || noteLower.contains(findNotr2)) return false;

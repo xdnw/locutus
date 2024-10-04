@@ -14,6 +14,8 @@ import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.ALootCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -530,11 +532,11 @@ public class WarDB extends DBMainV2 {
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
-                if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
+                if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ALL_WAR_SECONDS > 0) {
                     updateAllWars(null);
                 }
 
-                if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS > 0) {
+                if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ALL_WAR_SECONDS > 0) {
                     AttackCursorFactory factory = new AttackCursorFactory(this);
                     List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
                     List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
@@ -2640,6 +2642,93 @@ public class WarDB extends DBMainV2 {
             int warId = warIds.getInt(i);
             int size = numAttacksByWarId.get(warId);
             attacksByWarId2.computeIfAbsent(warId, f -> new ObjectArrayList<>(size)).add(data);
+        }
+
+        adminInterventionFix();
+    }
+
+    private void addLoot(int warId, int attackId, double[] loot) {
+        DBWar war = getWar(warId);
+        if (war != null) {
+            List<byte[]> attacks = attacksByWarId2.get(warId);
+            if (attacks != null) {
+                for (int i = 0; i < attacks.size(); i++) {
+                    byte[] data = attacks.get(i);
+                    if (attackCursorFactory.getId(data) == attackId) {
+                        AbstractCursor attack = attackCursorFactory.load(war, data, true);
+                        boolean modified = false;
+                        if (attack instanceof ALootCursor aLoot && aLoot.looted != null) {
+                            aLoot.looted = ResourceType.add(aLoot.looted, loot);
+                            modified = true;
+                        } else if (attack instanceof VictoryCursor victory && victory.looted != null) {
+                            victory.looted = ResourceType.add(victory.looted, loot);
+                            modified = true;
+                        }
+                        if (modified) {
+                            byte[] newData = attackCursorFactory.toBytes(attack);
+                            attacks.set(i, newData);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void adminInterventionFix() {
+        // flaredragon 2114621 24412523 ALoot
+        // $14,778,120,852.20	11,159,408.43	110,354.05	122,216.34	191,876.88	124,750.57	143,982.64	117,833.70	172,996.36	221,376.84	231,940.75	359,765.25
+        {
+            double[] addLoot = ResourceType.getBuffer();
+            addLoot[ResourceType.MONEY.ordinal()] = 14_778_120_852.20;
+            addLoot[ResourceType.FOOD.ordinal()] = 11_159_408.43;
+            addLoot[ResourceType.COAL.ordinal()] = 110_354.05;
+            addLoot[ResourceType.OIL.ordinal()] = 122_216.34;
+            addLoot[ResourceType.URANIUM.ordinal()] = 191_876.88;
+            addLoot[ResourceType.LEAD.ordinal()] = 124_750.57;
+            addLoot[ResourceType.IRON.ordinal()] = 143_982.64;
+            addLoot[ResourceType.BAUXITE.ordinal()] = 117_833.70;
+            addLoot[ResourceType.GASOLINE.ordinal()] = 172_996.36;
+            addLoot[ResourceType.MUNITIONS.ordinal()] = 221_376.84;
+            addLoot[ResourceType.STEEL.ordinal()] = 231_940.75;
+            addLoot[ResourceType.ALUMINUM.ordinal()] = 359_765.25;
+            addLoot(2114621, 24412523, addLoot);
+        }
+
+        // 2114734 24413762 victory
+        // $738,906,042.61	557,970.42	5,517.70	6,110.82	9,593.84	6,237.53	7,199.13	5,891.69	8,649.82	11,068.84	11,597.04	17,988.26
+        {
+            double[] addLoot = ResourceType.getBuffer();
+            addLoot[ResourceType.MONEY.ordinal()] = 738_906_042.61;
+            addLoot[ResourceType.FOOD.ordinal()] = 557_970.42;
+            addLoot[ResourceType.COAL.ordinal()] = 5_517.70;
+            addLoot[ResourceType.OIL.ordinal()] = 6_110.82;
+            addLoot[ResourceType.URANIUM.ordinal()] = 9_593.84;
+            addLoot[ResourceType.LEAD.ordinal()] = 6_237.53;
+            addLoot[ResourceType.IRON.ordinal()] = 7_199.13;
+            addLoot[ResourceType.BAUXITE.ordinal()] = 5_891.69;
+            addLoot[ResourceType.GASOLINE.ordinal()] = 8_649.82;
+            addLoot[ResourceType.MUNITIONS.ordinal()] = 11_068.84;
+            addLoot[ResourceType.STEEL.ordinal()] = 11_597.04;
+            addLoot[ResourceType.ALUMINUM.ordinal()] = 17_988.26;
+            addLoot(2114734, 24413762, addLoot);
+        }
+        // 2114618 24412909 victory
+        // $701,960,740.48	$530,071.90	5,241.82	5,805.28	9,114.15	5,925.65	6,839.18	5,597.10	8,217.33	10,515.40	11,017.19	17,088.85
+        {
+            double[] addLoot = ResourceType.getBuffer();
+            addLoot[ResourceType.MONEY.ordinal()] = 701_960_740.48;
+            addLoot[ResourceType.FOOD.ordinal()] = 530_071.90;
+            addLoot[ResourceType.COAL.ordinal()] = 5_241.82;
+            addLoot[ResourceType.OIL.ordinal()] = 5_805.28;
+            addLoot[ResourceType.URANIUM.ordinal()] = 9_114.15;
+            addLoot[ResourceType.LEAD.ordinal()] = 5_925.65;
+            addLoot[ResourceType.IRON.ordinal()] = 6_839.18;
+            addLoot[ResourceType.BAUXITE.ordinal()] = 5_597.10;
+            addLoot[ResourceType.GASOLINE.ordinal()] = 8_217.33;
+            addLoot[ResourceType.MUNITIONS.ordinal()] = 10_515.40;
+            addLoot[ResourceType.STEEL.ordinal()] = 11_017.19;
+            addLoot[ResourceType.ALUMINUM.ordinal()] = 17_088.85;
+            addLoot(2114618, 24412909, addLoot);
         }
     }
 

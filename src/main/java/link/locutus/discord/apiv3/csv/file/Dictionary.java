@@ -41,19 +41,21 @@ public class Dictionary {
         if (!map.isEmpty() || !file.exists()) {
             return this;
         }
-        try (DataInputStream in = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
-            int lines = IOUtil.readVarInt(in);
-            int i = 0;
-            for (int line = 0; line < lines; line++) {
-                String value = in.readUTF();
-                this.map.add(value);
-                this.reverse.put(value, i);
-                i++;
+        synchronized (this) {
+            try (DataInputStream in = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
+                int lines = IOUtil.readVarInt(in);
+                int i = 0;
+                for (int line = 0; line < lines; line++) {
+                    String value = in.readUTF();
+                    this.map.add(value);
+                    this.reverse.put(value, i);
+                    i++;
+                }
+            } catch (EOFException e) {
+                // ignore
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        } catch (EOFException e) {
-            // ignore
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
         return this;
     }

@@ -175,8 +175,8 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<ResourceType, Double> parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Map<ResourceType, Double> parsed, boolean confirm) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed, confirm);
         list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
@@ -255,7 +255,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         // received #warchest
         double[] received = ResourceType.getBuffer();
 
-        for (Transaction2 record : receiver.getTransactions(true)) {
+        for (Transaction2 record : receiver.getTransactions(-1, true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
                 Map<String, String> notes = PW.parseTransferHashNotes(record.note);
                 if (notes.containsKey("#warchest")) {

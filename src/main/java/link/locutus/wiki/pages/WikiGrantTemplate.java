@@ -32,10 +32,10 @@ public class WikiGrantTemplate extends BotWikiGen {
     public String generateMarkdown() {
         StringBuilder requirements = new StringBuilder();
         requirements.append(reqSpoilter("Default Requirements",
-                AGrantTemplate.getBaseRequirements(null, null, null, null)));
+                AGrantTemplate.getBaseRequirements(null, null, null, null, false)));
         for (TemplateTypes type : TemplateTypes.values) {
             requirements.append(reqSpoilter(type.name() + " Requirements",
-                    type.getRequirements()));
+                    type.getRequirements(false)));
         }
 
         return build(

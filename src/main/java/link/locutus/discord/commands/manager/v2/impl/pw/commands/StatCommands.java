@@ -546,6 +546,7 @@ public class StatCommands {
         displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile);
     }
 
+    @NoFormat
     @Command(desc = "Rank alliances by an alliance attribute")
     public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, TypedFunction<DBAlliance, Double> attribute, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         long turn = TimeUtil.getTurn();

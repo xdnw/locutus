@@ -1917,13 +1917,19 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 onEachNation.test(nation);
             }
         }, eventConsumer, updateCitiesAndPositions);
+        long cutoff = System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2);
         for (int id : currentNations) {
-            if (!fetched.contains(id)) deleted.add(id);
+            if (!fetched.contains(id)) {
+                DBNation nation = getNation(id);
+                if (nation != null && nation.getDate() < cutoff) {
+                    deleted.add(id);
+                }
+            }
         }
-        for (int id : deleted) {
-            markNationDirty(id);
-        }
-//        deleteNations(deleted, eventConsumer);
+//        for (int id : deleted) {
+//            markNationDirty(id);
+//        }
+        deleteNations(deleted, eventConsumer);
         return fetched;
     }
 
@@ -2765,7 +2771,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             if (nations == null || nations.isEmpty()) return 0;
             int count = 0;
             for (DBNation nation : nations.values()) {
-                if (nation.getPositionEnum().id <= Rank.APPLICANT.id || nation.getVm_turns() == 0) continue;
+                if (nation.getPositionEnum().id <= Rank.APPLICANT.id || nation.getVm_turns() > 0) continue;
                 synchronized (treasuresByNation) {
                     Set<DBTreasure> treasures = treasuresByNation.get(nation.getId());
                     if (treasures == null) continue;

@@ -121,8 +121,8 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed);
+    public List<Grant.Requirement> getDefaultRequirements(GuildDB db, @Nullable DBNation sender, @Nullable DBNation receiver, Double parsed, boolean confirm) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(db, sender, receiver, parsed, confirm);
         list.addAll(getRequirements(db, sender, receiver, this, parsed));
         return list;
     }
@@ -210,7 +210,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     public Map<Integer, Map<Long, Double>> getTopCityInfraGrant(DBNation receiver) {
 
-        List<Transaction2> transactions = receiver.getTransactions(0, true);
+        List<Transaction2> transactions = receiver.getTransactions(-1, true);
 
         Map<Integer, Map<Long, Double>> grants = Grant.getInfraGrantsByCityByDate(receiver, transactions);
 

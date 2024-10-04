@@ -146,8 +146,12 @@ public class JavaCity implements ICity {
                 if (amt == 0) continue;
                 commerce += amt * ((CommerceBuilding) building).getCommerce();
             }
+            if (hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM)) {
+                commerce += 4;
+            }
             int maxCommerce;
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                commerce++;
                 if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
                     commerce += 2;
                     maxCommerce = 125;
