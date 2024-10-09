@@ -276,25 +276,26 @@ public enum Roles {
         return name() + ": `" + desc + "`";
     }
 
-    public Role toRole(MessageReceivedEvent event) {
-        return toRole(event.isFromGuild() ? event.getGuild() : Locutus.imp().getServer());
-    }
+//    public Role toRole(MessageReceivedEvent event) {
+//        return toRole(event.isFromGuild() ? event.getGuild() : Locutus.imp().getServer());
+//    }
 
-    @Deprecated
-    public Role toRole(Guild guild) {
-        return toRole(Locutus.imp().getGuildDB(guild));
-    }
-    public Role toRole(int alliance) {
-        GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
-        if (db == null) return null;
-        return db.getRole(this, (long) alliance);
-    }
+//    @Deprecated
+//    public Role toRole(Guild guild) {
+//        return toRole(Locutus.imp().getGuildDB(guild));
+//    }
 
-    @Deprecated
-    public Role toRole(GuildDB db) {
-        if (db == null) return null;
-        return db.getRole(this, null);
-    }
+//    public Role toRole(int alliance) {
+//        GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
+//        if (db == null) return null;
+//        return db.getRole(this, (long) alliance);
+//    }
+
+//    @Deprecated
+//    public Role toRole(GuildDB db) {
+//        if (db == null) return null;
+//        return db.getRole(this, null);
+//    }
 
     public boolean hasOnRoot(User user) {
         if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
