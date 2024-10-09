@@ -143,12 +143,7 @@ public class GuildHandler {
     public void setupApplicants() {
         MessageChannel alertChannel = getDb().getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
-
-        Role appRole = Roles.APPLICANT.toRole(getGuild());
-        if (appRole == null) return;
-
-        List<Member> members = getGuild().getMembersWithRoles(appRole);
-
+        Set<Member> members = Roles.APPLICANT.getAll(db);
         for (Member member : members) {
             ByteBuffer meta = getDb().getMeta(member.getIdLong(), NationMeta.DISCORD_APPLICANT);
             if (meta == null) {
@@ -254,10 +249,7 @@ public class GuildHandler {
 
         MessageChannel alertChannel = db.getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
-
-        List<Role> roles = event.getRoles();
-        Role appRole = Roles.APPLICANT.toRole(guild);
-        if (!roles.contains(appRole)) return;
+        if (!Roles.APPLICANT.has(event.getMember())) return;
         User user = event.getUser();
         Long last = usersWithAppRole.get(user.getIdLong());
         long now = System.currentTimeMillis();

@@ -2690,17 +2690,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public Map<Member, UnmaskedReason> getMaskedNonMembers() {
         if (!hasAlliance()) return Collections.emptyMap();
 
-        List<Role> roles = new ArrayList<>();
-        roles.add(Roles.MEMBER.toRole(this));
-        roles.add(Roles.ECON_WITHDRAW_SELF.toRole(this));
-        roles.removeIf(Objects::isNull);
+        List<Roles> lcRoles = Arrays.asList(
+                Roles.MEMBER,
+                Roles.ECON_WITHDRAW_SELF
+        );
 
         Map<Member, UnmaskedReason> result = new HashMap<>();
 
         Set<Integer> allowedAAs = new HashSet<>(getAllianceIds());
         allowedAAs.addAll(getCoalition(OFFSHORE));
-        for (Role role : roles) {
-            List<Member> members = guild.getMembersWithRoles(role);
+
+        for (Roles lcRole : lcRoles) {
+            Set<Member> members = lcRole.getAll(this);
             for (Member member : members) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
                 if (nation == null) result.put(member, UnmaskedReason.NOT_REGISTERED);

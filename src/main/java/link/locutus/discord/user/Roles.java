@@ -44,12 +44,12 @@ public enum Roles {
             return ECON.has(member);
         }
 
-//        @Override
-//        public Role toRole(Guild guild) {
-//            Role value = super.toRole(guild);
-//            if (value != null) return value;
-//            return ECON.toRole(guild);
-//        }
+        @Override
+        public Role toRole2(Guild guild) {
+            Role value = super.toRole(guild);
+            if (value != null) return value;
+            return ECON.toRole(guild);
+        }
     },
 
 //    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
@@ -67,7 +67,7 @@ public enum Roles {
         }
 
 //        @Override
-//        public Role toRole(Guild guild) {
+//        public Role toRole2(Guild guild) {
 //            Role value = super.toRole(guild);
 //            if (value != null) return value;
 //            return FOREIGN_AFFAIRS.toRole(guild);
@@ -82,12 +82,12 @@ public enum Roles {
             return INTERNAL_AFFAIRS.has(member);
         }
 
-//        @Override
-//        public Role toRole(Guild guild) {
-//            Role value = super.toRole(guild);
-//            if (value != null) return value;
-//            return INTERNAL_AFFAIRS.toRole(guild);
-//        }
+        @Override
+        public Role toRole2(Guild guild) {
+            Role value = super.toRole(guild);
+            if (value != null) return value;
+            return INTERNAL_AFFAIRS.toRole(guild);
+        }
     },
 
     APPLICANT(16, true, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
@@ -303,26 +303,26 @@ public enum Roles {
         return name() + ": `" + desc + "`";
     }
 
-//    public Role toRole(MessageReceivedEvent event) {
-//        return toRole(event.isFromGuild() ? event.getGuild() : Locutus.imp().getServer());
-//    }
+    public Role toRole2(MessageReceivedEvent event) {
+        return toRole2(event.isFromGuild() ? event.getGuild() : Locutus.imp().getServer());
+    }
 
-//    @Deprecated
-//    public Role toRole(Guild guild) {
-//        return toRole(Locutus.imp().getGuildDB(guild));
-//    }
+    @Deprecated
+    public Role toRole2(Guild guild) {
+        return toRole2(Locutus.imp().getGuildDB(guild));
+    }
 
-//    public Role toRole(int alliance) {
-//        GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
-//        if (db == null) return null;
-//        return db.getRole(this, (long) alliance);
-//    }
+    public Role toRole2(int alliance) {
+        GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
+        if (db == null) return null;
+        return db.getRole(this, (long) alliance);
+    }
 
-//    @Deprecated
-//    public Role toRole(GuildDB db) {
-//        if (db == null) return null;
-//        return db.getRole(this, null);
-//    }
+    @Deprecated
+    public Role toRole2(GuildDB db) {
+        if (db == null) return null;
+        return db.getRole(this, null);
+    }
 
     public boolean hasOnRoot(User user) {
         if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
@@ -405,5 +405,9 @@ public enum Roles {
 
     public Map<Long, Role> toRoleMap(GuildDB senderDB) {
         return senderDB.getRoleMap(this);
+    }
+
+    public Set<Member> getAll(GuildDB db) {
+
     }
 }
