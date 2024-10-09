@@ -1565,6 +1565,9 @@ public class AdminCommands {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
+        if (alliance != null && !removeRole) {
+            throw new IllegalArgumentException("The role `" + locutusRole.name() + "` does not allow alliance specific mappings, please leave `alliance` blank");
+        }
         StringBuilder response = new StringBuilder();
         boolean showGlobalMappingInfo = false;
 
