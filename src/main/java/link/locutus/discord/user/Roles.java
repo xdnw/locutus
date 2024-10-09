@@ -4,10 +4,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -41,12 +43,12 @@ public enum Roles {
             return ECON.has(member);
         }
 
-        @Override
-        public Role toRole(Guild guild) {
-            Role value = super.toRole(guild);
-            if (value != null) return value;
-            return ECON.toRole(guild);
-        }
+//        @Override
+//        public Role toRole(Guild guild) {
+//            Role value = super.toRole(guild);
+//            if (value != null) return value;
+//            return ECON.toRole(guild);
+//        }
     },
 
 //    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
@@ -63,12 +65,12 @@ public enum Roles {
             return FOREIGN_AFFAIRS.has(member);
         }
 
-        @Override
-        public Role toRole(Guild guild) {
-            Role value = super.toRole(guild);
-            if (value != null) return value;
-            return FOREIGN_AFFAIRS.toRole(guild);
-        }
+//        @Override
+//        public Role toRole(Guild guild) {
+//            Role value = super.toRole(guild);
+//            if (value != null) return value;
+//            return FOREIGN_AFFAIRS.toRole(guild);
+//        }
     },
 
     INTERNAL_AFFAIRS(14, "Access to IA related commands", GuildKey.ALLIANCE_ID),
@@ -79,12 +81,12 @@ public enum Roles {
             return INTERNAL_AFFAIRS.has(member);
         }
 
-        @Override
-        public Role toRole(Guild guild) {
-            Role value = super.toRole(guild);
-            if (value != null) return value;
-            return INTERNAL_AFFAIRS.toRole(guild);
-        }
+//        @Override
+//        public Role toRole(Guild guild) {
+//            Role value = super.toRole(guild);
+//            if (value != null) return value;
+//            return INTERNAL_AFFAIRS.toRole(guild);
+//        }
     },
 
     APPLICANT(16, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
@@ -224,11 +226,22 @@ public enum Roles {
     }
 
     public String toDiscordRoleNameElseInstructions(Guild guild) {
-        Role role = toRole(guild);
-        if (role != null) {
-            return role.getName();
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        Map<Long, Role> map = db.getRoleMap(this);
+        Role defRole = map.get(0L);
+        if (defRole != null) {
+            return defRole.getName();
         }
-        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.locutusRole(name()).discordRole(null);
+        if (map.isEmpty()) {
+            return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.locutusRole(name()).discordRole(null);
+        } else {
+            StringBuilder sb = new StringBuilder();
+            sb.append("No default `" + name() + "` role set, see ").append(CM.role.setAlias.cmd.locutusRole(name()).discordRole(null)).append(" or use an alliance role (nation must be in the alliance)\n");
+            for (Map.Entry<Long, Role> entry : map.entrySet()) {
+                sb.append("- ").append(entry.getKey()).append(": @").append(entry.getValue().getName()).append("\n");
+            }
+            return sb.toString();
+        }
     }
 
     public GuildSetting getKey() {
@@ -324,17 +337,29 @@ public enum Roles {
     public boolean has(Member member) {
         if (member == null) return false;
         if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
-        if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
 
         if (member.isOwner()) return true;
-        Role role = toRole(member.getGuild());
+        GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
         List<Role> roles = member.getRoles();
+        int myAA = -1;
         for (Role discordRole : roles) {
             if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
                 return true;
             }
+            Set<Integer> allianceIds = db.getRoleAllianceIds(this, discordRole);
+            if (allianceIds.isEmpty()) continue;
+            if (allianceIds.contains(0)) return true;
+            if (myAA == -1) {
+                DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                if (nation != null) {
+                    myAA = nation.getAlliance_id();
+                } else {
+                    myAA = 0;
+                }
+            }
+            if (allianceIds.contains(myAA)) return true;
         }
-        return role != null && roles.contains(role);
+        return false;
     }
 
     public static boolean hasAny(User user, Guild guild, Roles... roles) {

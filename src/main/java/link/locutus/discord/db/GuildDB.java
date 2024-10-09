@@ -3140,6 +3140,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
+    public Set<Integer> getRoleAllianceIds(Roles lcRole, Role discordRole) {
+        loadRoles();
+        Map<Long, Long> roleIds = roleToAccountToDiscord.get(lcRole);
+        if (roleIds == null) return Collections.emptySet();
+        Set<Integer> result = new HashSet<>();
+        for (Map.Entry<Long, Long> entry : roleIds.entrySet()) {
+            if (entry.getValue() == discordRole.getIdLong()) {
+                result.add(entry.getKey().intValue());
+            }
+        }
+        return result;
+    }
+
     public Role getRole(Roles role, Long allianceOrNull) {
         loadRoles();
         Map<Long, Long> roleIds = roleToAccountToDiscord.get(role);
