@@ -695,6 +695,7 @@ public class UtilityCommands {
         naps.put(1726938000000L, "(Mid-turn, 5:00pm UTC) <https://forum.politicsandwar.com/index.php?/topic/41182-peace-casino-royale/>");
         naps.put(1743120000000L, "<https://forum.politicsandwar.com/index.php?/topic/46146-peace-darkest-hour-deux-done/>");
         naps.put(1737763200000L, "<https://forum.politicsandwar.com/index.php?/topic/46146-peace-darkest-hour-deux-done/>");
+        naps.put(1738368000000L, "<https://forum.politicsandwar.com/index.php?/topic/46388-peace-espresso/>");
 
         long turn = TimeUtil.getTurn();
         int skippedExpired = 0;
