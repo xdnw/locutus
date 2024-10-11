@@ -334,7 +334,6 @@ public class OptimalBuild extends Command {
         DBNation finalMe = me;
         Continent finalContinent = continent;
         Predicate<Project> hasProject = Projects.optimize(project -> addProject.contains(project) || project.get(finalMe) > 0);
-        double grossModifier = finalMe.getGrossModifier();
 
         CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 

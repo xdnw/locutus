@@ -1848,13 +1848,14 @@ public class UnsortedCommands {
             if (infra == null && cityInfra > build.getInfraNeeded()) {
                 build.setInfraNeeded((int) cityInfra);
             }
-            if (geographicContinent == null) {
-                DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(originalCityId);
-                if (city != null) {
-                    DBNation nation = city.getNation();
-                    if (nation != null) {
+            DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(originalCityId);
+            if (city != null) {
+                DBNation nation = city.getNation();
+                if (nation != null) {
+                    if (geographicContinent == null) {
                         geographicContinent = nation.getContinent();
                     }
+                    me = nation;
                 }
             }
         }
