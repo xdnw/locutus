@@ -46,9 +46,9 @@ public enum Roles {
 
         @Override
         public Role toRole2(Guild guild) {
-            Role value = super.toRole(guild);
+            Role value = super.toRole2(guild);
             if (value != null) return value;
-            return ECON.toRole(guild);
+            return ECON.toRole2(guild);
         }
     },
 
@@ -66,12 +66,12 @@ public enum Roles {
             return FOREIGN_AFFAIRS.has(member);
         }
 
-//        @Override
-//        public Role toRole2(Guild guild) {
-//            Role value = super.toRole(guild);
-//            if (value != null) return value;
-//            return FOREIGN_AFFAIRS.toRole(guild);
-//        }
+        @Override
+        public Role toRole2(Guild guild) {
+            Role value = super.toRole2(guild);
+            if (value != null) return value;
+            return FOREIGN_AFFAIRS.toRole2(guild);
+        }
     },
 
     INTERNAL_AFFAIRS(14, true,"Access to IA related commands", GuildKey.ALLIANCE_ID),
@@ -84,15 +84,15 @@ public enum Roles {
 
         @Override
         public Role toRole2(Guild guild) {
-            Role value = super.toRole(guild);
+            Role value = super.toRole2(guild);
             if (value != null) return value;
-            return INTERNAL_AFFAIRS.toRole(guild);
+            return INTERNAL_AFFAIRS.toRole2(guild);
         }
     },
 
     APPLICANT(16, true, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
-    INTERVIEWER(17, true, "Role to get pinged when a user requests an interview to join the alliance", GuildKey.INTERVIEW_PENDING_ALERTS),
-    MENTOR(18, true, "Role for mentoring applicants who have completed their interview", GuildKey.INTERVIEW_PENDING_ALERTS),
+    INTERVIEWER(17, false, "Role to get pinged when a user requests an interview to join the alliance", GuildKey.INTERVIEW_PENDING_ALERTS),
+    MENTOR(18, false, "Role for mentoring applicants who have completed their interview", GuildKey.INTERVIEW_PENDING_ALERTS),
     GRADUATED(19, true, "Members with this role can have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
         @Override
         public boolean has(Member member) {
@@ -111,7 +111,7 @@ public enum Roles {
                     ;
         }
     },
-    RECRUITER(20, true, "Role to get pinged for recruitment messages (if enabled)", GuildKey.RECRUIT_MESSAGE_OUTPUT),
+    RECRUITER(20, false, "Role to get pinged for recruitment messages (if enabled)", GuildKey.RECRUIT_MESSAGE_OUTPUT),
 
     TRADE_ALERT(21, false, "Gets pinged for trade alerts", GuildKey.TRADE_ALERT_CHANNEL),
 
@@ -406,8 +406,61 @@ public enum Roles {
     public Map<Long, Role> toRoleMap(GuildDB senderDB) {
         return senderDB.getRoleMap(this);
     }
+    public Set<Role> toRoles(GuildDB senderDB) {
+        return new HashSet<>(toRoleMap(senderDB).values());
+    }
 
+
+    /**
+     * Get all members with this locutus role
+     * Must have either the default role, or the alliance specific role whilst being in the alliance in-game
+     * @param db
+     * @return Set of members
+     */
     public Set<Member> getAll(GuildDB db) {
+        Set<Member> members = new HashSet<>();
+        Map<Long, Role> roleMap = toRoleMap(db);
+        if (roleMap.isEmpty()) return members;
+        Role defRole = roleMap.get(0L);
+        if (defRole != null) {
+            for (Member member : defRole.getGuild().getMembersWithRoles(defRole)) {
+                if (member.getUser().isBot()) continue;
+                members.add(member);
+            }
+        }
+        if (allowAlliance) {
+            for (Map.Entry<Long, Role> entry : roleMap.entrySet()) {
+                if (entry.getKey() == 0) continue;
+                for (Member member : entry.getValue().getGuild().getMembersWithRoles(entry.getValue())) {
+                    if (member.getUser().isBot()) continue;
+                    DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                    if (nation == null || nation.getAlliance_id() != entry.getKey().intValue()) continue;
+                    members.add(member);
+                }
+            }
+        }
+        return members;
+    }
 
+    /*
+    Get the root or alliance specific role for an author
+     */
+    public Role toRole(User author, GuildDB db) {
+        if (allowAlliance()) {
+            DBNation nation = DiscordUtil.getNation(author);
+            if (nation != null && nation.getAlliance_id() != 0) {
+                Role role = db.getRole(this, (long) nation.getAlliance_id());
+                if (role != null) return role;
+            }
+        }
+        return toRole2(db);
+    }
+
+    public Role toRole(int allianceId, GuildDB db) {
+        if (allianceId != 0 && allowAlliance) {
+            Role role = db.getRole(this, (long) allianceId);
+            if (role != null) return role;
+        }
+        return toRole2(db);
     }
 }

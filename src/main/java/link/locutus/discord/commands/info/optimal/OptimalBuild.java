@@ -575,7 +575,7 @@ public class OptimalBuild extends Command {
 
         result.append(" Click ").append(emoji).append(" to request a grant");
 
-        Role role = Roles.ECON.toRole(db);
+        Role role = Roles.ECON.toRole(me.getAlliance_id(), db);
         if (role != null) {
             result.append("\nPing ").append(role.getAsMention()).append(" to transfer you the funds");
         }

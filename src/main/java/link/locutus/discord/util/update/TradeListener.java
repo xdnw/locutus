@@ -200,14 +200,13 @@ public class TradeListener {
                 }
                 aaMessage.append("\n- To retain color income, wait for confirmation from a gov member, leave ingame, make (or join) an alliance called e.g. `" + db.getGuild().getName() + "-<color>`, and send a Protectorate treaty. Disband the alliance after 5 days");
 
-                Role optOut = Roles.TREASURE_ALERT_OPT_OUT.toRole(db);
-                Role optIn = Roles.TREASURE_ALERT.toRole(db);
-                Role memberRole = Roles.MEMBER.toRole(db);
+                Role optOut = Roles.TREASURE_ALERT_OPT_OUT.toRole2(db);
+                Role optIn = Roles.TREASURE_ALERT.toRole2(db);
                 if (optIn != null) {
                     Guild guild = db.getGuild();
                     List<String> mentions = new ArrayList<>();
 
-                    Set<Member> members = new HashSet<>(guild.getMembersWithRoles(memberRole));
+                    Set<Member> members = Roles.MEMBER.getAll(db);
                     members.addAll(guild.getMembersWithRoles(optIn));
                     for (Member member : members) {
                         DBNation nation = DiscordUtil.getNation(member.getUser());

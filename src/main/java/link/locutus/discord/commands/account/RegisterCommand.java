@@ -78,13 +78,11 @@ public class RegisterCommand extends Command {
                     if (!Settings.INSTANCE.DISCORD.REGISTER_APPLICANTS.contains(author.getIdLong())) {
                         return usage();
                     } else {
-                        Role appRole = Roles.APPLICANT.toRole(guild);
-                        Role memberRole = Roles.MEMBER.toRole(guild);
                         Member mentionMember = guild.getMember(mention);
 
                         if (mentionMember == null) return "User is not in server.";
-                        if (appRole == null && memberRole == null) return "No applicant or member role exists.";
-                        if (!mentionMember.getRoles().contains(appRole) && !mentionMember.getRoles().contains(memberRole))
+                        if (Roles.APPLICANT.toRoles(guildDb).isEmpty() && Roles.MEMBER.toRoles(guildDb).isEmpty()) return "No applicant or member role exists.";
+                        if (!Roles.APPLICANT.has(mentionMember) && !Roles.MEMBER.has(mentionMember))
                             return "User does not have applicant role.";
                         if (DiscordUtil.getNation(mention) != null) return "User is already registered.";
                         DBNation mentionNation = DBNation.getById(nationId);

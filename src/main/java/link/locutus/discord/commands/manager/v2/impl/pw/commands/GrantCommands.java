@@ -880,12 +880,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1006,12 +1006,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1114,12 +1114,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1226,12 +1226,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1349,12 +1349,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1460,12 +1460,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1576,12 +1576,12 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
-        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
         if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
-        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
         if (selfRole == null) {
             throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
         }
@@ -1797,7 +1797,7 @@ public class GrantCommands {
                 blacklist.add(receiver.getId());
                 GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, user, blacklist);
 
-                Role role = Roles.ECON.toRole(db);
+                Role role = Roles.ECON.toRole2(db);
                 String econGovMention = role == null ? "" : role.getAsMention();
 
                 throw new IllegalArgumentException(status.getMessageJoined(true) + "\n" + econGovMention);
@@ -2838,9 +2838,9 @@ public class GrantCommands {
                         message.append("Current escrowed: `" + ResourceType.resourcesToString(checkEscrowed) + "`\n");
                         message.append("The `expected` and `new` should match, but something went wrong when deducting the balance.\n");
                         // econ role mention
-                        Role role = Roles.ECON.toRole(db);
+                        Role role = Roles.ECON.toRole2(db);
                         if (role != null) {
-//                            message.append(role.getAsMention());
+                            message.append(role.getAsMention());
                         }
                         return message.toString();
                     }

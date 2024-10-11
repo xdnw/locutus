@@ -1562,11 +1562,16 @@ public class AdminCommands {
     @Command(desc = "Set the discord roles the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
     public static String aliasRole(@Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
-        if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
-        }
-        if (alliance != null && !removeRole) {
-            throw new IllegalArgumentException("The role `" + locutusRole.name() + "` does not allow alliance specific mappings, please leave `alliance` blank");
+        if (alliance != null) {
+            if (!db.isAllianceId(alliance.getAlliance_id())) {
+                return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
+            }
+            if (locutusRole != null && !locutusRole.allowAlliance()) {
+                throw new IllegalArgumentException("The role `" + locutusRole.name() + "` does not allow alliance specific mappings, please leave `alliance` blank");
+            }
+            if (db.getAllianceIds().size() < 2) {
+                throw new IllegalArgumentException("Alliance specific roles are only supported when multiple alliances are registered to a guild. Please register more alliances or leave `alliance` blank");
+            }
         }
         StringBuilder response = new StringBuilder();
         boolean showGlobalMappingInfo = false;

@@ -16,6 +16,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
@@ -36,7 +37,7 @@ public enum InterviewQuestion implements Question {
             """, false) {
         @Override
         public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
-            Role role = Roles.INTERVIEWER.toRole(guild);
+            Role role = Roles.INTERVIEWER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
             if (role != null) {
                 message += "\nDon't be shy to ping an " + role.getAsMention() + " gov member if you want to walk through something with us!";
             }
@@ -75,8 +76,9 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
-                Role role = Roles.TEMP.toRole(guild);
-                if (role != null) {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                Role role = Roles.TEMP.toRole(me.getAlliance_id(), db);
+                if (role != null && !Roles.TEMP.has(author, guild)) {
                     Member member = guild.getMember(author);
                     assert member != null;
                     RateLimitUtil.queue(guild.addRoleToMember(member, role));
@@ -109,8 +111,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
-                Role ia = Roles.INTERVIEWER.toRole(guild);
-                if (ia != null) {
+                if (GuildKey.MEMBER_CAN_SET_BRACKET.getOrNull(Locutus.imp().getGuildDB(guild)) == Boolean.TRUE) {
                     String mention = author.getAsMention();
                     String msg = "Please use `" + Settings.commandPrefix(true) + "SetTaxRate " + mention + " 25/25` or `" + Settings.commandPrefix(true) + "SetTaxRate " + mention + " 50/50`";
                     channel.sendMessage(msg);
@@ -124,7 +125,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
-                Role ia = Roles.INTERVIEWER.toRole(guild);
+                Role ia = Roles.INTERVIEWER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
                 if (ia != null) {
                     String msg = ia.getAsMention() + "please discuss the importance of fighting in this game with " + author.getAsMention();
                     channel.sendMessage(msg);
@@ -139,7 +140,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
-                Role ia = Roles.INTERVIEWER.toRole(guild);
+                Role ia = Roles.INTERVIEWER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
                 if (ia != null) {
                     String msg = ia.getAsMention() + " please discuss why we want to create a positive community with " + author.getAsMention();
                     channel.sendMessage(msg);
@@ -159,7 +160,7 @@ public enum InterviewQuestion implements Question {
 
 
             }
-            Role ia = Roles.INTERVIEWER.toRole(guild);
+            Role ia = Roles.INTERVIEWER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));;
             if (ia != null) {
                 GuildDB db = Locutus.imp().getGuildDB(guild);
                 Set<Integer> aaIds = db.getAllianceIds();
@@ -179,11 +180,9 @@ public enum InterviewQuestion implements Question {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
                 if (!aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) {
-                    Role iaRole = Roles.INTERVIEWER.toRole(guild);
                     User sudoUser = sudoer.getUser();
                     if (sudoer.getPosition() > 2 && sudoUser != null) {
-                        Member sudoMember = guild.getMember(sudoUser);
-                        if (sudoMember != null && sudoMember.getRoles().contains(iaRole)) {
+                        if (Roles.INTERVIEWER.has(sudoUser, guild)) {
                             try {
                                 String result = new SetRank().onCommand(guild, channel, sudoUser, sudoer, me.getUser().getAsMention() + " MEMBER");
                                 if (result != null) {
@@ -193,7 +192,7 @@ public enum InterviewQuestion implements Question {
                                 e.printStackTrace();
                             }
                             Member member = guild.getMember(author);
-                            Role memberRole = Roles.MEMBER.toRole(guild);
+                            Role memberRole = Roles.MEMBER.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
                             if (member != null && memberRole != null) {
                                 RateLimitUtil.queue(guild.addRoleToMember(member, memberRole));
                             }
@@ -204,10 +203,8 @@ public enum InterviewQuestion implements Question {
                 }
             }
 
-            Role memberRole = Roles.MEMBER.toRole(guild);
-            if (memberRole != null) {
-                Member member = guild.getMember(author);
-                if (member == null || !member.getRoles().contains(memberRole)) return false;
+            if (!Roles.MEMBER.has(author, guild)) {
+                return false;
             }
             return true;
         }
@@ -369,7 +366,7 @@ public enum InterviewQuestion implements Question {
 
         @Override
         public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
-            Role econ = Roles.ECON.toRole(guild);
+            Role econ = Roles.ECON.toRole(me.getAlliance_id(), Locutus.imp().getGuildDB(guild));
             if (econ != null) {
                 message += " . Ping " + econ.getAsMention() + " to request funds";
             }

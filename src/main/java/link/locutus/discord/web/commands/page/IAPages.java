@@ -197,13 +197,10 @@ public class IAPages {
         List<DBNation> mentors = new ArrayList<>();
         Roles[] mentorRoles = new Roles[]{Roles.INTERVIEWER, Roles.MENTOR};
         for (Roles mentorRole : mentorRoles) {
-            Role discordRole = mentorRole.toRole(guild);
-            if (discordRole != null) {
-                for (Member member : guild.getMembersWithRoles(discordRole)) {
-                    DBNation nation = DiscordUtil.getNation(member.getUser());
-                    if (nation != null) {
-                        mentors.add(nation);
-                    }
+            for (Member member : mentorRole.getAll(db)) {
+                DBNation nation = DiscordUtil.getNation(member.getUser());
+                if (nation != null) {
+                    mentors.add(nation);
                 }
             }
         }

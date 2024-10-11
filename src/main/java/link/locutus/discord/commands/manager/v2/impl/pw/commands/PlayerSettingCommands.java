@@ -129,7 +129,7 @@ public class PlayerSettingCommands {
         Guild guild = db.getGuild();
         List<Role> optInDiscRoles = new ArrayList<>();
         for (Roles r : optInRoles) {
-            Role discR = r.toRole(guild);
+            Role discR = r.toRole2(guild);
             if (discR != null) {
                 optInDiscRoles.add(discR);
             }
@@ -138,7 +138,7 @@ public class PlayerSettingCommands {
         if (optInDiscRoles.isEmpty() && optInRoles.length > 0) {
             notes.add("No role `" + Arrays.stream(optInRoles).map(Roles::name).collect(Collectors.joining("`, `")) + "` is set. Have an admin use e.g. " + CM.role.setAlias.cmd.locutusRole(optInRoles[0].name()).discordRole("@someRole"));
         }
-        Role role = lcRole.toRole(guild);
+        Role role = lcRole.toRole2(guild);
         if (role == null) {
             // find role by name
             List<Role> roles = db.getGuild().getRolesByName(lcRole.name(), true);

@@ -17,10 +17,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Future;
 
 public class ClearRoles extends Command {
@@ -74,17 +71,34 @@ public class ClearRoles extends Command {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
 
-            Role memberRole = Roles.MEMBER.toRole(guild);
+            Map<Long, Role> memberRoles = Roles.MEMBER.toRoleMap(db);
+            if (memberRoles.isEmpty()) {
+                return "No member role found!";
+            }
 
             StringBuilder response = new StringBuilder();
 
             for (Member member : guild.getMembers()) {
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 List<Role> roles = member.getRoles();
-                if (roles.contains(memberRole)) {
-                    if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
-                        response.append("\nRemove member from " + member.getEffectiveName());
-                        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole));
+                if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
+                    for (Role role : roles) {
+                        if (memberRoles.containsKey(role.getIdLong())) {
+                            response.append("\nRemove member from " + member.getEffectiveName());
+                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                        }
+                    }
+                } else {
+                    Map<Role, Set<Long>> inverse = new HashMap<>();
+                    for (Map.Entry<Long, Role> entry : memberRoles.entrySet()) {
+                        inverse.computeIfAbsent(entry.getValue(), k -> new HashSet<>()).add(entry.getKey());
+                    }
+                    for (Role role : roles) {
+                        Set<Long> allowedAAIds = inverse.get(role);
+                        if (allowedAAIds != null && !allowedAAIds.contains(0) && !allowedAAIds.contains(nation.getAlliance_id())) {
+                            response.append("\nRemove member from " + member.getEffectiveName());
+                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                        }
                     }
                 }
             }

@@ -277,7 +277,7 @@ public class DiscordCommands {
             }
             if (pingRoles) {
                 for (Roles dept : roles) {
-                    Role role = dept.toRole(guild);
+                    Role role = dept.toRole2(guild);
                     if (role != null) {
                         if (toSend == null) toSend = io.create();
                         toSend.append("\n" + role.getAsMention());
@@ -300,7 +300,7 @@ public class DiscordCommands {
         RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
-            Role role = dept.toRole(channel.getGuild());
+            Role role = dept.toRole2(channel.getGuild());
             if (role != null) {
                 RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
             }
@@ -502,9 +502,8 @@ public class DiscordCommands {
     public String hasRole(User user, Roles role) {
         StringBuilder response = new StringBuilder();
         for (Guild other : user.getMutualGuilds()) {
-            Role discRole = role.toRole(other);
-            if (Objects.requireNonNull(other.getMember(user)).getRoles().contains(discRole)) {
-                response.append(user.getName()).append(" has ").append(role.name()).append(" | @").append(discRole.getName()).append(" on ").append(other).append("\n");
+            if (role.has(user, other)) {
+                response.append(user.getName()).append(" has ").append(role.name()).append(" on ").append(other).append("\n");
             }
         }
         return response.toString();

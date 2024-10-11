@@ -1198,7 +1198,7 @@ public class WebPWBindings extends WebBindingHelper {
         List<Roles> options = Arrays.asList(Roles.values);
         if (param.getAnnotation(RegisteredRole.class) != null) {
             options = new ArrayList<>(options);
-            options.removeIf(f -> f.toRole(guild) == null);
+            options.removeIf(f -> f.toRoles(db) == null);
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             GuildSetting key = obj.getKey();
@@ -1210,12 +1210,23 @@ public class WebPWBindings extends WebBindingHelper {
             String name = obj.name();
             names.add(name);
 
-            Role discordRole = obj.toRole(guild);
-            String sub = "";
+            Map<Long, Role> roleMap = obj.toRoleMap(db);
+            List<String> sub = new ArrayList<>();
+            Role discordRole = roleMap.get(0);
             if (discordRole != null) {
-                sub += "@" + discordRole.getName();
+                sub.add("@" + discordRole.getName());
             }
-            subtext.add(sub);
+            for (Map.Entry<Long, Role> entry : roleMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    Role role = entry.getValue();
+                    sub.add(PW.getName(entry.getKey(), true) + ": @" + role.getName());
+                }
+            }
+            if (!sub.isEmpty()) {
+                subtext.add(StringMan.join(sub, ", "));
+            } else {
+                subtext.add("");
+            }
         }, multiple);
     }
 

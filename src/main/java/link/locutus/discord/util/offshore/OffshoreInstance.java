@@ -1154,7 +1154,7 @@ public class OffshoreInstance {
                                 body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
                                 body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention() + "");
 
-                                Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
+                                Role adminRole = Roles.ADMIN.toRole2(senderDB.getGuild());
 
                                 RateLimitUtil.queueMessage(new DiscordChannelIO(alertChannel), msg -> {
                                     msg.embed("Banker withdraw limit exceeded", body.toString());

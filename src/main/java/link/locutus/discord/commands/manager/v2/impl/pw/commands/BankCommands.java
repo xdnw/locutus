@@ -2278,11 +2278,10 @@ public class BankCommands {
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("`usePastDepositors` is only for alliances");
                 }
-                Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
+                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
                 nations = new LinkedHashSet<>();
-                for (Member member : guild.getMembersWithRoles(role)) {
+                for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
                         nations.add(nation);
@@ -2430,11 +2429,10 @@ public class BankCommands {
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
                 }
-                Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
+                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
                 nations = new LinkedHashSet<>();
-                for (Member member : guild.getMembersWithRoles(role)) {
+                for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
                         nations.add(nation);
@@ -4213,9 +4211,9 @@ public class BankCommands {
                 if (channel != null) {
                     try {
                         DiscordUtil.createEmbedCommand(channel, title, body);
-                        Role adminRole = Roles.ECON.toRole(channel.getGuild());
+                        Role adminRole = Roles.ECON.toRole2(channel.getGuild());
                         if (adminRole == null) {
-                            adminRole = Roles.ADMIN.toRole(channel.getGuild());
+                            adminRole = Roles.ADMIN.toRole2(channel.getGuild());
                         }
                         Member owner = channel.getGuild().getOwner();
                         if (adminRole != null) {
@@ -4286,7 +4284,7 @@ public class BankCommands {
         }
         Boolean enabled = offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING);
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
-            Role role = Roles.ECON.toRole(offshoreDB);
+            Role role = Roles.ECON.toRole2(offshoreDB);
             String roleName = role == null ? "ECON" : role.getName();
             return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + GuildKey.PUBLIC_OFFSHORING.getCommandMention() + " is not enabled on that guild.";
         }

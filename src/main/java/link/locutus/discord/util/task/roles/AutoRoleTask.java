@@ -145,7 +145,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             Function<Integer, Boolean> previousAllowed = allowedAAs;
             allowedAAs = f -> previousAllowed.apply(f) || masked.contains(f);
         }
-        registeredRole = Roles.REGISTERED.toRole(guild);
+        registeredRole = Roles.REGISTERED.toRole2(guild);
 
         this.autoRoleMembersApps = GuildKey.AUTOROLE_MEMBER_APPS.getOrNull(db) == Boolean.TRUE && !autoRoleAllyGov;
         this.applicantRole = Roles.APPLICANT.toRole(guild);

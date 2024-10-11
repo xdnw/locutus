@@ -68,8 +68,8 @@ public class WarUpdateProcessor {
                 try {
                     bounty.toCard(channel, false);
 
-                    Role bountyRole = Roles.BOUNTY_ALERT.toRole(guild);
-                    Role optOut = Roles.BOUNTY_ALERT_OPT_OUT.toRole(guild);
+                    Role bountyRole = Roles.BOUNTY_ALERT.toRole2(guild);
+                    Role optOut = Roles.BOUNTY_ALERT_OPT_OUT.toRole2(guild);
                     if (bountyRole == null) return;
                     List<Member> members = guild.getMembersWithRoles(bountyRole);
                     StringBuilder mentions = new StringBuilder();

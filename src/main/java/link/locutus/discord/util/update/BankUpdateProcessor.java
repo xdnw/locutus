@@ -85,7 +85,7 @@ public class BankUpdateProcessor {
                                 if (isDeposit && offshore != null) {
                                     msg = msg.commandButton(CM.offshore.send.cmd, "offshore");
                                 }
-                                Role role = locrole.toRole(guild);
+                                Role role = locrole.toRole(aaId, guildDb);
                                 if (role != null) {
                                     msg.append(role.getAsMention());
                                 }

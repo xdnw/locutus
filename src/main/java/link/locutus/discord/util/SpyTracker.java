@@ -453,7 +453,7 @@ public class SpyTracker {
             }
             if (channel == null) continue;
             body.append("\n---");
-            Role role = Roles.ESPIONAGE_ALERTS.toRole(db);
+            Role role = Roles.ESPIONAGE_ALERTS.toRole2(db);
             if (role != null) body.append(role.getAsMention());
             new DiscordChannelIO(channel).send(body.toString());
         }

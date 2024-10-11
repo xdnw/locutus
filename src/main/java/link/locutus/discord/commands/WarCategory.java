@@ -112,7 +112,7 @@ public class WarCategory {
                             String warType = target.getAvg_infra() > 2000 && target.getAvg_infra() > attacker.getAvg_infra() ? "attrition" : "raid";
                             msg += ". Please declare a war of type `" + warType + "` with reason `counter`.";
 
-                            Role econRole = Roles.ECON.toRole(guild);
+                            Role econRole = Roles.ECON.toRole(attacker.getAlliance_id(), db);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
 
                             MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
@@ -656,7 +656,7 @@ public class WarCategory {
                             String warType = target.getAvg_infra() > 2000 && target.getAvg_infra() > attacker.getAvg_infra() ? "attrition" : "raid";
                             msg += ". You have been ordered to declare a war of type `" + warType + "` with reason `counter`.";
 
-                            Role econRole = Roles.ECON.toRole(guild);
+                            Role econRole = Roles.ECON.toRole(attacker.getAlliance_id(), db);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
                             MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
                             MessageChannel grantChannel = db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL);
@@ -1069,19 +1069,20 @@ public class WarCategory {
                                     upsert = upsert.setAllowed(perm);
                                 }
                                 RateLimitUtil.queue(upsert);
+                                RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
 
-                                RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
-                                        .deny(Permission.VIEW_CHANNEL));
+                                List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
 
-                                Role milcomRole = Roles.MILCOM.toRole(guild);
-                                if (milcomRole != null) {
-                                    RateLimitUtil.complete(useCat.upsertPermissionOverride(milcomRole)
-                                            .setAllowed(Permission.VIEW_CHANNEL));
+                                for (Role role : Roles.MILCOM.toRoles(db)) {
+                                    futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
+                                            .setAllowed(Permission.VIEW_CHANNEL)));
                                 }
-                                Role advisor = Roles.MILCOM_NO_PINGS.toRole(guild);
-                                if (advisor != null) {
-                                    RateLimitUtil.complete(useCat.upsertPermissionOverride(advisor)
-                                            .setAllowed(Permission.VIEW_CHANNEL));
+                                for (Role role : Roles.MILCOM_NO_PINGS.toRoles(db)) {
+                                    futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
+                                            .setAllowed(Permission.VIEW_CHANNEL)));
+                                }
+                                if (!futures.isEmpty()) {
+                                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
                                 }
                                 break;
                             }
