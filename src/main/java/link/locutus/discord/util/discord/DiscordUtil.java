@@ -191,6 +191,25 @@ public class DiscordUtil {
         });
     }
 
+    public static String toRoleString(Map<Long, Role> roleMap) {
+        List<String> sub = new ArrayList<>();
+        Role discordRole = roleMap.get(0);
+        if (discordRole != null) {
+            sub.add("@" + discordRole.getName());
+        }
+        for (Map.Entry<Long, Role> entry : roleMap.entrySet()) {
+            if (entry.getKey() != null) {
+                Role role = entry.getValue();
+                sub.add(PW.getName(entry.getKey(), true) + ": @" + role.getName());
+            }
+        }
+        if (!sub.isEmpty()) {
+            return StringMan.join(sub, ", ");
+        } else {
+            return "";
+        }
+    }
+
     public static Long getChannelId(Guild guild, String keyOrLong) {
         if (keyOrLong.charAt(0) == '<' && keyOrLong.charAt(keyOrLong.length() - 1) == '>') {
             keyOrLong = keyOrLong.substring(1, keyOrLong.length() - 1);

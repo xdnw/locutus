@@ -67,6 +67,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
@@ -1211,22 +1212,8 @@ public class WebPWBindings extends WebBindingHelper {
             names.add(name);
 
             Map<Long, Role> roleMap = obj.toRoleMap(db);
-            List<String> sub = new ArrayList<>();
-            Role discordRole = roleMap.get(0);
-            if (discordRole != null) {
-                sub.add("@" + discordRole.getName());
-            }
-            for (Map.Entry<Long, Role> entry : roleMap.entrySet()) {
-                if (entry.getKey() != null) {
-                    Role role = entry.getValue();
-                    sub.add(PW.getName(entry.getKey(), true) + ": @" + role.getName());
-                }
-            }
-            if (!sub.isEmpty()) {
-                subtext.add(StringMan.join(sub, ", "));
-            } else {
-                subtext.add("");
-            }
+            String sub = DiscordUtil.toRoleString(roleMap);
+            subtext.add(sub);
         }, multiple);
     }
 
