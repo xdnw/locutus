@@ -1678,24 +1678,25 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             throw new IllegalArgumentException(msg);
         }
 
-        if (Roles.ECON.has(banker, guild)) {
-            for (long accountId : channelAccountIds) {
-                accessTypeMap.put(accountId, AccessType.ECON);
+        Long allowedALlianceOr0OrNull = Roles.ECON.hasAlliance(banker, guild);
+        if (allowedALlianceOr0OrNull == null || allowedALlianceOr0OrNull != 0L) {
+            if (allowedALlianceOr0OrNull != null && channelAccountIds.contains(allowedALlianceOr0OrNull)) {
+                accessTypeMap.put(allowedALlianceOr0OrNull, AccessType.ECON);
             }
-        } else if (!aaIds.isEmpty()) {
-            for (Long aaId : channelAccountIds) {
-                if (Roles.ECON.has(banker, guild, aaId.intValue())) {
-                    accessTypeMap.put(aaId, AccessType.ECON);
+            if (!aaIds.isEmpty()) {
+                long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
+                if (withdrawAccount > 0) {
+                    accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
+                }
+            } else {
+                long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
+                if (withdrawAccount > 0) {
+                    accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
                 }
             }
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
-            if (withdrawAccount > 0) {
-                accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
-            }
-        } else {
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
-            if (withdrawAccount > 0) {
-                accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
+        } else if (allowedALlianceOr0OrNull == 0L) {
+            for (long accountId : channelAccountIds) {
+                accessTypeMap.put(accountId, AccessType.ECON);
             }
         }
         if (accessTypeMap.isEmpty()) {

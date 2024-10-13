@@ -391,6 +391,27 @@ public enum Roles {
         }
     }
 
+    public Long hasAlliance(User user, Guild guild) {
+        return hasAlliance(guild.getMember(user));
+    }
+
+    public Long hasAlliance(Member member) {
+        if (member == null) return null;
+        if (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID
+        || member.getIdLong() == Locutus.loader().getAdminUserId()
+        || member.isOwner()) return 0L;
+        GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
+        List<Role> roles = member.getRoles();
+        Map<Long, Role> map = db.getRoleMap(this);
+        Role serverRole = map.get(0L);
+        if (serverRole != null && roles.contains(serverRole)) return 0L;
+        DBNation nation = DiscordUtil.getNation(member.getIdLong());
+        if (nation == null) return null;
+        Role aaRole = map.get((long) nation.getAlliance_id());
+        if (aaRole != null && roles.contains(aaRole)) return (long) nation.getAlliance_id();
+        return null;
+    }
+
     public boolean has(User user, Guild server) {
         if (user == null) return false;
         if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;

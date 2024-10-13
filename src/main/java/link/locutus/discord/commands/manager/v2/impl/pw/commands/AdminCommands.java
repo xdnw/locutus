@@ -1562,7 +1562,7 @@ public class AdminCommands {
     @Command(desc = "Set the discord roles the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
     public static String aliasRole(@Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
-        if (alliance != null) {
+        if (alliance != null && !removeRole && discordRole != null) {
             if (!db.isAllianceId(alliance.getAlliance_id())) {
                 return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
             }

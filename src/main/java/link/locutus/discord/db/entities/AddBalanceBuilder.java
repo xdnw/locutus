@@ -414,4 +414,13 @@ public class AddBalanceBuilder {
         }
         return total;
     }
+
+    public Set<NationOrAllianceOrGuildOrTaxid> getAccounts() {
+        Set<NationOrAllianceOrGuildOrTaxid> accounts = new HashSet<>();
+        accounts.addAll(fundsToSendNations.keySet());
+        accounts.addAll(fundsToSendAAs.keySet());
+        accounts.addAll(fundsToSendGuilds.keySet());
+        accounts.addAll(fundsToSendBracket.keySet());
+        return accounts;
+    }
 }

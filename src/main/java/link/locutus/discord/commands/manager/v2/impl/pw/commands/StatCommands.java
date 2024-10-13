@@ -716,7 +716,8 @@ public class StatCommands {
                                          @Switch("t") boolean total,
                                      @Switch("j") boolean attachJson,
                                      @Switch("v") boolean attachCsv,
-                                     @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+                                     @Switch("s") @Timestamp Long snapshotDate,
+                                     @Switch("g") NationAttributeDouble groupBy) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
         int num1 = coalition1Nations.size();
@@ -739,31 +740,33 @@ public class StatCommands {
         if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         if (coalition1Nations.size() < 3 || coalition2Nations.size() < 3) return "Coalitions are too small to compare";
 
-        Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
-        Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
+        Function<DBNation, Integer> groupByInt = groupBy == null ? f -> f.getCities() : f -> (int) groupBy.apply(f).doubleValue();
 
-        for (DBNation n : coalition1Nations) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
-        for (DBNation n : coalition2Nations) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        Map<Integer, List<DBNation>> coalition1ByGroup = new HashMap<>();
+        Map<Integer, List<DBNation>> coalition2ByGroup = new HashMap<>();
 
-        int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
-        int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
+        for (DBNation n : coalition1Nations) coalition1ByGroup.computeIfAbsent(groupByInt.apply(n), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition2Nations) coalition2ByGroup.computeIfAbsent(groupByInt.apply(n), f -> new ArrayList<>()).add(n);
+
+        int min = Math.min(Collections.min(coalition1ByGroup.keySet()), Collections.min(coalition2ByGroup.keySet()));
+        int max = Math.max(Collections.max(coalition1ByGroup.keySet()), Collections.max(coalition2ByGroup.keySet()));
 
         DataTable data = new DataTable(Double.class, Double.class, String.class);
 
-        for (int cities = min; cities <= max; cities++) {
-            List<DBNation> natAtCity1 = coalition1ByCity.getOrDefault(cities, Collections.emptyList());
-            List<DBNation> natAtCity2 = coalition2ByCity.getOrDefault(cities, Collections.emptyList());
+        for (int groupAmt = min; groupAmt <= max; groupAmt++) {
+            List<DBNation> natAtCity1 = coalition1ByGroup.getOrDefault(groupAmt, Collections.emptyList());
+            List<DBNation> natAtCity2 = coalition2ByGroup.getOrDefault(groupAmt, Collections.emptyList());
             List<DBNation>[] coalitions = new List[]{natAtCity1, natAtCity2};
 
             for (int j = 0; j < coalitions.length; j++) {
                 List<DBNation> coalition = coalitions[j];
-                SimpleNationList natCityList = new SimpleNationList(coalition);
+                SimpleNationList natList = new SimpleNationList(coalition);
 
-                String name = j == 0 ? "" + cities : "";
+                String name = j == 0 ? "" + groupAmt : "";
 
                 double valueTotal = 0;
                 int count = 0;
-                Collection<DBNation> nations = natCityList.getNations();
+                Collection<DBNation> nations = natList.getNations();
                 for (DBNation nation : nations) {
                     if (nation.hasUnsetMil()) continue;
                     count++;
@@ -773,14 +776,15 @@ public class StatCommands {
                     valueTotal /= count;
                 }
 
-                data.add(cities + (j * 0.5d), valueTotal, name);
+                data.add(groupAmt + (j * 0.5d), valueTotal, name);
             }
         }
 
         int segments = 1;
         // Create new bar plot
         BarPlot plot = new BarPlot(data);
-        plot.getTitle().setText((total ? "Total" : "Average") + " " + metric.getName() + " by city count");
+        String groupName = groupBy == null ? "city" : groupBy.getName();
+        plot.getTitle().setText((total ? "Total" : "Average") + " " + metric.getName() + " by " + groupName);
 
         // Format plot
         plot.setInsets(new Insets2D.Double(20.0, 100.0, 40.0, 0.0));
@@ -828,22 +832,23 @@ public class StatCommands {
         msg.file("img.png", baos.toByteArray());
 
         plot.setInsets(new Insets2D.Double(20.0, 100.0, 40.0, 0.0));
-        plot.getTitle().setText("MMR by city count");
+        plot.getTitle().setText(metric.getName() + " by " + groupName);
 
         String response = """
-                > Each coalition is grouped by city count and color coded.
+                > Each coalition is grouped by {groupName} count and color coded.
                 > **RED** = {coalition1}
                 > **BLUE** = {coalition2}
                 """.replace("{coalition1}", coalition1.getFilter())
-                .replace("{coalition2}", coalition2.getFilter());
+                .replace("{coalition2}", coalition2.getFilter())
+                .replace("{groupName}", groupName);
 
         if (attachJson) {
-            JsonObject json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), "Cities", metric.getName(),
+            JsonObject json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), groupName, metric.getName(),
                     TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0L);
             msg.file("data.json", json.toString());
         }
         if (attachCsv) {
-            List<List<String>> rows = TimeNumericTable.toSheetRows(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, plot.getTitle().getText(), "Cities", metric.getName());
+            List<List<String>> rows = TimeNumericTable.toSheetRows(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, plot.getTitle().getText(), groupName, metric.getName());
             msg.file("data.csv", StringMan.toCsv(rows));
         }
 

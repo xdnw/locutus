@@ -2750,8 +2750,12 @@ public class GrantCommands {
         }
         // Require ECON_STAFF if receiver is not me
         if (receiver.getId() != me.getId()) {
-            if (!Roles.ECON_STAFF.has(author, db.getGuild())) {
+            Long allowed = Roles.ECON_STAFF.hasAlliance(author, db.getGuild());
+            if (allowed == null) {
                 return "You cannot withdraw escrowed resources for other nations. Missing role: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild());
+            }
+            if (allowed != 0 && allowed != (long) receiver.getAlliance_id()) {
+                return "You cannot withdraw escrowed outside " + PW.getMarkdownUrl(allowed.intValue(), true) + ". Missing role: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild());
             }
         }
         // Ensure none of amount is negative

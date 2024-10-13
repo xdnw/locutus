@@ -48,12 +48,7 @@ import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -902,8 +897,40 @@ public class UnsortedCommands {
             builder.buildWithConfirmation(channel, command);
             return null;
         }
-        boolean hasEcon = Roles.ECON.has(author, guild);
-        return builder.buildAndSend(me, hasEcon);
+        String errorMsg = handleAddbalanceAllianceScope(author, guild, accounts);
+        if (errorMsg != null) return errorMsg;
+        return builder.buildAndSend(me, true);
+    }
+
+    public static String handleAddbalanceAllianceScope(User author, Guild guild, Set<NationOrAllianceOrGuildOrTaxid> accounts) {
+        Long allowedAAs = Roles.ECON.hasAlliance(author, guild);
+        if (allowedAAs == null) return "Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(guild);
+
+        Set<NationOrAllianceOrGuildOrTaxid> noPerms = new HashSet<>();
+        for (NationOrAllianceOrGuildOrTaxid account : accounts) {
+            if (account.isAlliance() || account.isGuild()) {
+                if (allowedAAs != 0L) noPerms.add(account);
+            } else if (account.isTaxid()) {
+                if (allowedAAs != 0L) {
+                    TaxBracket bracket = account.asBracket();
+                    int aaId = bracket.getAlliance_id(true);
+                    if (aaId == 0) return "Tax bracket " + bracket.getId() + " has no alliance (Are any nations assigned?)";
+                    if (allowedAAs != (long) aaId) noPerms.add(account);
+                }
+            } else {
+                if (allowedAAs != (long) account.asNation().getAlliance_id()) noPerms.add(account);
+            }
+        }
+        if (noPerms.size() > 25) {
+            return "You do not have permission to add balance to " + noPerms.size() + " accounts, only " + PW.getMarkdownUrl(allowedAAs.intValue(), true);
+        }
+        if (!noPerms.isEmpty()) {
+            return "You do not have permission to add balance to " + noPerms.stream()
+                    .map(NationOrAllianceOrGuildOrTaxid::getQualifiedName)
+                    .collect(Collectors.joining(", "))
+                    + ". Only " + PW.getMarkdownUrl(allowedAAs.intValue(), true);
+        }
+        return null;
     }
 
     @Command(desc = "Add account balance using a google sheet of nation's and resource amounts\n" +
@@ -918,6 +945,10 @@ public class UnsortedCommands {
             builder.buildWithConfirmation(channel, command);
             return null;
         }
+        Set<NationOrAllianceOrGuildOrTaxid> accounts = builder.getAccounts();
+        String errorMsg = handleAddbalanceAllianceScope(author, guild, accounts);
+        if (errorMsg != null) return errorMsg;
+
         boolean hasEcon = Roles.ECON.has(author, guild);
         return builder.buildAndSend(me, hasEcon);
     }
