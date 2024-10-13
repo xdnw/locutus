@@ -406,7 +406,7 @@ public enum Roles {
         Role serverRole = map.get(0L);
         if (serverRole != null && roles.contains(serverRole)) return 0L;
         DBNation nation = DiscordUtil.getNation(member.getIdLong());
-        if (nation == null) return null;
+        if (nation == null || nation.getAlliance_id() == 0) return null;
         Role aaRole = map.get((long) nation.getAlliance_id());
         if (aaRole != null && roles.contains(aaRole)) return (long) nation.getAlliance_id();
         return null;
