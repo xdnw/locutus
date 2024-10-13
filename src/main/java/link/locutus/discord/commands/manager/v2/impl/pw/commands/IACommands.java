@@ -85,6 +85,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
+
 public class IACommands {
     @Command(desc = "Rename channels and set their topic (if empty) in a category to match the nation registered to the user added")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
@@ -1529,6 +1531,9 @@ public class IACommands {
     @IsAlliance
     public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalTaxRate) throws IOException {
         if (nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        String errorMsg = handleAddbalanceAllianceScope(author, db.getGuild(), (Set) nations);
+        if (errorMsg != null) return errorMsg;
+
         DBNation single = nations.size() == 1 ? nations.iterator().next() : null;
 
         boolean isGov = Roles.ECON_STAFF.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
@@ -1637,6 +1642,17 @@ public class IACommands {
         if ((nation.getAlliance_id() != allianceId || nation.getAlliance_id() != position.getAlliance_id()) && position != DBAlliancePosition.APPLICANT && position != DBAlliancePosition.REMOVE) {
             return "That nation is not in the alliance: " + PW.getName(allianceId, true);
         }
+
+        if (force) {
+            Long allowedAllianceId = Roles.hasAlliance(new Roles[]{Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, author, db.getGuild());
+            if (allowedAllianceId == null) {
+                throw new IllegalArgumentException("You do not have permission to set ranks");
+            }
+            if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
+                throw new IllegalArgumentException("You can only set rank for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
+            }
+        }
+
         // Cannot promote above your own permissions
         DBAlliancePosition myPosition = me.getAlliancePosition();
         DBAlliancePosition nationPosition = nation.getAlliancePosition();

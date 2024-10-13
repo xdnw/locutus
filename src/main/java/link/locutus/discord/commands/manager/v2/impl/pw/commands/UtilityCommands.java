@@ -87,6 +87,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.NationColor.COLOR_REVENUE_CAP;
+import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
 import static link.locutus.discord.util.math.ArrayUtil.memorize;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
@@ -1513,7 +1514,7 @@ public class UtilityCommands {
             "Expects columns, `nation` (or `leader` or `user`) and `bracket` or `internal` (for internal taxrates)")
     @RolePermission(Roles.ECON)
     @IsAlliance
-    public String setBracketBulk(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("f") boolean force) {
+    public String setBracketBulk(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet sheet, @Switch("f") boolean force) {
         sheet.loadValues(null, true);
         List<Object> nations = sheet.findColumn("nation");
         List<Object> leaders = sheet.findColumn("leader");
@@ -1603,7 +1604,6 @@ public class UtilityCommands {
             changes.add("Set " + nation.getName() + " internal tax rate " + fromStr + "to " + internal);
         }
 
-
         if (!force) {
             List<String> titleComponents = new ArrayList<>(Arrays.asList("Set"));
             if (!setBracket.isEmpty()) {
@@ -1647,6 +1647,12 @@ public class UtilityCommands {
 
         CompletableFuture<IMessageBuilder> msg = io.send((StringMan.join(errors, "\n") + "\n\nPlease wait...").trim());
         List<String> results = new ArrayList<>();
+
+        Set<DBNation> allNations = new HashSet<>();
+        allNations.addAll(setBracket.keySet());
+        allNations.addAll(setInternal.keySet());
+        String errorMsg = handleAddbalanceAllianceScope(author, db.getGuild(), (Set) allNations);
+        if (errorMsg != null) return errorMsg;
 
         AllianceList aaList = db.getAllianceList().subList(setBracket.keySet());
         for (Map.Entry<DBNation, TaxBracket> entry : setBracket.entrySet()) {

@@ -172,6 +172,20 @@ public enum Roles {
         return null;
     }
 
+    public static Long hasAlliance(Roles[] roles, User author, Guild guild) {
+        Long min = null;
+        for (Roles role : roles) {
+            Long alliance = role.hasAlliance(author, guild);
+            if (alliance != null) {
+                if (min == null || alliance < min) {
+                    min = alliance;
+                    if (min == 0) return 0L;
+                }
+            }
+        }
+        return min;
+    }
+
     public int getId() {
         return id;
     }

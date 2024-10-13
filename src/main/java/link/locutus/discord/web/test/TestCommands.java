@@ -25,6 +25,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.Webhook;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
@@ -83,7 +84,7 @@ public class TestCommands {
             "For adjusting whether amounts are internal, withdrawn or deposited.\n" +
             "Does not change overall or note balance unless it is shifted to `#ignore`")
     @RolePermission(value = Roles.ECON)
-    public String shiftFlow(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    public String shiftFlow(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, @Me User author,
                             DBNation nation,
                             DepositType noteFrom,
                             FlowType flowType,
@@ -105,6 +106,16 @@ public class TestCommands {
         if (alliance != null && !ids.contains(alliance.getId())) {
             throw new IllegalArgumentException("Alliance " + alliance.getName() + " is not registered to this guild: " + CM.settings_default.registerAlliance.cmd.toSlashMention());
         }
+        if (force) {
+            Long allowedAllianceId = Roles.ECON.hasAlliance(author, db.getGuild());
+            if (allowedAllianceId == null) {
+                throw new IllegalArgumentException("Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+            }
+            if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
+                throw new IllegalArgumentException("You can only shift deposit flow for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
+            }
+        }
+
         if (ids.isEmpty()) {
             fromId = db.getIdLong();
             fromUrl = DiscordUtil.getGuildName(db.getIdLong());

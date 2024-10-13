@@ -73,6 +73,14 @@ public class SetBracket extends Command {
         DBAlliance alliance = nation.getAlliance();
         if (!db.isAllianceId(alliance.getId())) return nation.getNation() + " is not in " + alliance;
 
+        Long allowedAllianceId = Roles.ECON.hasAlliance(author, db.getGuild());
+        if (allowedAllianceId == null) {
+            throw new IllegalArgumentException("Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
+            throw new IllegalArgumentException("You can only set bracket for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
+        }
+
         Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));
 
         if (args.size() == 1) {
