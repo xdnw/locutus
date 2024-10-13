@@ -336,6 +336,11 @@ public class DBNation implements NationOrAlliance {
         return ResourceType.convertedTotal(getRevenue());
     }
 
+    @Command(desc = "Daily revenue value of nation per city")
+    public double getRevenuePerCityConverted() {
+        return getRevenueConverted() / cities;
+    }
+
     @Command(desc = "Estimated daily Gross National Income (GNI)")
     public double estimateGNI() {
         double[] revenue = getRevenue();
