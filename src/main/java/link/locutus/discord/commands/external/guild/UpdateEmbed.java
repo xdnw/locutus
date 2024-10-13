@@ -70,6 +70,9 @@ public class UpdateEmbed extends Command {
                 return null;
             }
         }
+        if (!channel.isInteraction() && !Roles.INTERNAL_AFFAIRS.has(author, guild)) {
+            return "Missing: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
+        }
 
         if (message == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             return "This command can only be run when bound to a Locutus embed.";

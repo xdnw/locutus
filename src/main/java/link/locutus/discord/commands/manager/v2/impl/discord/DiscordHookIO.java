@@ -31,10 +31,21 @@ public class DiscordHookIO implements IMessageIO {
     private final IModalCallback modalCallback;
     private boolean originalDeleted;
     private IReplyCallback event;
+    private boolean isInteraction = false;
 
     public DiscordHookIO(InteractionHook hook, IModalCallback modalCallback) {
         this.hook = hook;
         this.modalCallback = modalCallback;
+    }
+
+    public DiscordHookIO setInteraction(boolean isInteraction) {
+        this.isInteraction = isInteraction;
+        return this;
+    }
+
+    @Override
+    public boolean isInteraction() {
+        return true;
     }
 
     @Override

@@ -353,7 +353,6 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Update a bot embed")
-    @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
         IMessageBuilder message = io.getMessage();
 
@@ -363,6 +362,9 @@ public class DiscordCommands {
             if (!requiredRole.has(user, guild)) {
                 return null;
             }
+        }
+        if (!io.isInteraction() && !Roles.INTERNAL_AFFAIRS.has(user, guild)) {
+            return "Missing: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
         }
 
         List<MessageEmbed> embeds = message.getEmbeds();

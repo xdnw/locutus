@@ -870,7 +870,7 @@ public final class Locutus extends ListenerAdapter {
                 args.put(key, value);
             }
 
-            DiscordHookIO io = new DiscordHookIO(hook, null);
+            DiscordHookIO io = new DiscordHookIO(hook, null).setInteraction(true);
 
             event.deferReply().queue();
             Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), event.getUser(), event.getMessage(), io, pair[1], args, true);
@@ -907,7 +907,7 @@ public final class Locutus extends ListenerAdapter {
             MessageEmbed embed = !embeds.isEmpty() ? embeds.get(0) : null;
 
             InteractionHook hook = event.getHook();
-            IMessageIO io = new DiscordHookIO(hook, event);
+            IMessageIO io = new DiscordHookIO(hook, event).setInteraction(true);
             IMessageIO ioToUse = io;
 
             try {

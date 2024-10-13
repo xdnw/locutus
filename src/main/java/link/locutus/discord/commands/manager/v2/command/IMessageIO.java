@@ -27,6 +27,10 @@ public interface IMessageIO {
         return send(create().append(message));
     }
 
+    default boolean isInteraction() {
+        return false;
+    }
+
     void setMessageDeleted();
 
     CompletableFuture<IMessageBuilder> send(IMessageBuilder builder);
