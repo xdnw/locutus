@@ -368,26 +368,20 @@ public enum Roles {
 
         if (member.isOwner()) return true;
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
+
         List<Role> roles = member.getRoles();
-        int myAA = -1;
         for (Role discordRole : roles) {
             if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
                 return true;
             }
-            Set<Integer> allianceIds = db.getRoleAllianceIds(this, discordRole);
-            if (allianceIds.isEmpty()) continue;
-            if (allianceIds.contains(0)) return true;
-            if (myAA == -1) {
-                DBNation nation = DiscordUtil.getNation(member.getIdLong());
-                if (nation != null) {
-                    myAA = nation.getAlliance_id();
-                } else {
-                    myAA = 0;
-                }
-            }
-            if (allianceIds.contains(myAA)) return true;
         }
-        return false;
+        Map<Long, Role> map = db.getRoleMap(this);
+        Role serverRole = map.get(0L);
+        if (serverRole != null && roles.contains(serverRole)) return true;
+        DBNation nation = DiscordUtil.getNation(member.getIdLong());
+        if (nation == null || nation.getAlliance_id() == 0) return false;
+        Role aaRole = map.get((long) nation.getAlliance_id());
+        return aaRole != null && roles.contains(aaRole);
     }
 
     public static boolean hasAny(User user, Guild guild, Roles... roles) {
