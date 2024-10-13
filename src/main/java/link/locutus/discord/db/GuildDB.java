@@ -1678,24 +1678,25 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             throw new IllegalArgumentException(msg);
         }
 
-        if (Roles.ECON.has(banker, guild)) {
-            for (long accountId : channelAccountIds) {
-                accessTypeMap.put(accountId, AccessType.ECON);
+        Long allowedALlianceOr0OrNull = Roles.ECON.hasAlliance(banker, guild);
+        if (allowedALlianceOr0OrNull == null || allowedALlianceOr0OrNull != 0L) {
+            if (allowedALlianceOr0OrNull != null && channelAccountIds.contains(allowedALlianceOr0OrNull)) {
+                accessTypeMap.put(allowedALlianceOr0OrNull, AccessType.ECON);
             }
-        } else if (!aaIds.isEmpty()) {
-            for (Long aaId : channelAccountIds) {
-                if (Roles.ECON.has(banker, guild, aaId.intValue())) {
-                    accessTypeMap.put(aaId, AccessType.ECON);
+            if (!aaIds.isEmpty()) {
+                long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
+                if (withdrawAccount > 0) {
+                    accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
+                }
+            } else {
+                long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
+                if (withdrawAccount > 0) {
+                    accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
                 }
             }
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
-            if (withdrawAccount > 0) {
-                accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
-            }
-        } else {
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
-            if (withdrawAccount > 0) {
-                accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
+        } else if (allowedALlianceOr0OrNull == 0L) {
+            for (long accountId : channelAccountIds) {
+                accessTypeMap.put(accountId, AccessType.ECON);
             }
         }
         if (accessTypeMap.isEmpty()) {
@@ -2690,17 +2691,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public Map<Member, UnmaskedReason> getMaskedNonMembers() {
         if (!hasAlliance()) return Collections.emptyMap();
 
-        List<Role> roles = new ArrayList<>();
-        roles.add(Roles.MEMBER.toRole(this));
-        roles.add(Roles.ECON_WITHDRAW_SELF.toRole(this));
-        roles.removeIf(Objects::isNull);
+        List<Roles> lcRoles = Arrays.asList(
+                Roles.MEMBER,
+                Roles.ECON_WITHDRAW_SELF
+        );
 
         Map<Member, UnmaskedReason> result = new HashMap<>();
 
         Set<Integer> allowedAAs = new HashSet<>(getAllianceIds());
         allowedAAs.addAll(getCoalition(OFFSHORE));
-        for (Role role : roles) {
-            List<Member> members = guild.getMembersWithRoles(role);
+
+        for (Roles lcRole : lcRoles) {
+            Set<Member> members = lcRole.getAll(this);
             for (Member member : members) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
                 if (nation == null) result.put(member, UnmaskedReason.NOT_REGISTERED);
@@ -3135,6 +3137,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             Role discordRole = guild.getRoleById(entry.getValue());
             if (discordRole != null) {
                 result.put(entry.getKey(), discordRole);
+            }
+        }
+        return result;
+    }
+
+    public Set<Integer> getRoleAllianceIds(Roles lcRole, Role discordRole) {
+        loadRoles();
+        Map<Long, Long> roleIds = roleToAccountToDiscord.get(lcRole);
+        if (roleIds == null) return Collections.emptySet();
+        Set<Integer> result = new HashSet<>();
+        for (Map.Entry<Long, Long> entry : roleIds.entrySet()) {
+            if (entry.getValue() == discordRole.getIdLong()) {
+                result.add(entry.getKey().intValue());
             }
         }
         return result;

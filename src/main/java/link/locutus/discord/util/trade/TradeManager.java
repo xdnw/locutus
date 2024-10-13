@@ -893,7 +893,7 @@ public class TradeManager {
         Member member = db.getGuild().getMember(user);
         if (member == null) return;
 
-        Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(db.getGuild());
+        Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole2(db.getGuild());
         if (pingOptOut != null && member.getRoles().contains(pingOptOut)) return;
 
         MessageChannel rssChannel = db.getResourceChannel(0);

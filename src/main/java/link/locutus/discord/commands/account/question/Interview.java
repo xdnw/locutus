@@ -108,14 +108,13 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
             return "Unable to find or create channel: " + reason;
         }
 
-        Role applicantRole = Roles.APPLICANT.toRole(db.getGuild());
+        Role applicantRole = Roles.APPLICANT.toRole(user, db);
         if (applicantRole != null) {
             Member member = guild.getMember(user);
             if (member == null || !member.getRoles().contains(applicantRole)) {
-                RateLimitUtil.queue(db.getGuild().addRoleToMember(user, applicantRole));
+                RateLimitUtil.queue(guild.addRoleToMember(user, applicantRole));
             }
         }
-
         return dChannel.getAsMention();
     }
 }

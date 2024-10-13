@@ -23,6 +23,8 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
 
+import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
+
 public class AddBalance extends Command {
 
     public AddBalance() {
@@ -157,7 +159,8 @@ public class AddBalance extends Command {
             builder.buildWithConfirmation(channel, cmd);
             return null;
         }
-
+        String errorMsg = handleAddbalanceAllianceScope(author, guild, builder.getAccounts());
+        if (errorMsg != null) return errorMsg;
         boolean hasEcon = Roles.ECON.has(author, guild);
         return builder.buildAndSend(me, hasEcon);
     }

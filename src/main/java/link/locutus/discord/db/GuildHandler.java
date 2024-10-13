@@ -143,12 +143,7 @@ public class GuildHandler {
     public void setupApplicants() {
         MessageChannel alertChannel = getDb().getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
-
-        Role appRole = Roles.APPLICANT.toRole(getGuild());
-        if (appRole == null) return;
-
-        List<Member> members = getGuild().getMembersWithRoles(appRole);
-
+        Set<Member> members = Roles.APPLICANT.getAll(db);
         for (Member member : members) {
             ByteBuffer meta = getDb().getMeta(member.getIdLong(), NationMeta.DISCORD_APPLICANT);
             if (meta == null) {
@@ -254,10 +249,7 @@ public class GuildHandler {
 
         MessageChannel alertChannel = db.getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
-
-        List<Role> roles = event.getRoles();
-        Role appRole = Roles.APPLICANT.toRole(guild);
-        if (!roles.contains(appRole)) return;
+        if (!Roles.APPLICANT.has(event.getMember())) return;
         User user = event.getUser();
         Long last = usersWithAppRole.get(user.getIdLong());
         long now = System.currentTimeMillis();
@@ -288,10 +280,10 @@ public class GuildHandler {
 
         db.setMeta(author.getIdLong(), NationMeta.DISCORD_APPLICANT, new byte[]{1});
 
-        Role interviewerRole = Roles.INTERVIEWER.toRole(guild);
-        if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(guild);
-        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(guild);
-        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(guild);
+        Role interviewerRole = Roles.INTERVIEWER.toRole(author, db);
+        if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(author, db);
+        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(author, db);
+        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(author, db);
 
         if (interviewerRole == null) return false;
         boolean mentionInterviewer = true;
@@ -1560,9 +1552,7 @@ public class GuildHandler {
         Function<DBNation, Boolean> dnr = getDb().getCanRaid();
 
         Guild alertGuild = (channel instanceof GuildMessageChannel) ? ((GuildMessageChannel) channel).getGuild() : guild;
-
-        Role milcomRole = Roles.MILCOM.toRole(alertGuild);
-        Role faRole = Roles.FOREIGN_AFFAIRS.toRole(alertGuild);
+        GuildDB db = Locutus.imp().getGuildDB(alertGuild);
 
         Set<Integer> aaIds = db.getAllianceIds();
         WarCategory warCat = db.getWarChannel();
@@ -1573,6 +1563,7 @@ public class GuildHandler {
             DBNation defender = war.getNation(false);
 
             if (offensive) {
+                Role faRole = Roles.FOREIGN_AFFAIRS.toRole(war.getAttacker_aa(), db);
                 if (defender != null && !dnr.apply(defender)) {
                     boolean violation = true;
                     {
@@ -1603,6 +1594,8 @@ public class GuildHandler {
                 }
             } else {
                 if (defender != null) {
+                    Role faRole = Roles.FOREIGN_AFFAIRS.toRole(war.getDefender_aa(), db);
+                    Role milcomRole = Roles.MILCOM.toRole(war.getDefender_aa(), db);
                     boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.active_m() < 2440 || (aaIds.contains(defender.getAlliance_id()) && defender.active_m() < 7200);
                     if (pingMilcom && milcomRole != null) {
                         if (pingMilcom && attacker != null && enemies.contains(attacker.getAlliance_id()) && attacker.getDef() >= 3) {
@@ -1860,6 +1853,8 @@ public class GuildHandler {
                                         String bankUrl = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + defender.getAlliance_id() + "&display=bank";
                                         tips.add("Deposit your excess money in the bank or it will be stolen: " + bankUrl + " (only $" + MathMan.format(unraidable) + " is unraidable)");
                                     }
+                                    Role faRole = Roles.FOREIGN_AFFAIRS.toRole(war.getDefender_aa(), db);
+                                    Role milcomRole = Roles.MILCOM.toRole(war.getDefender_aa(), db);
                                     if (faRole != null) {
                                         String enemyStr = "(Or mark as enemy " +
                                                 CM.coalition.create.cmd.alliances(attacker.getAlliance_id() + "").coalitionName(Coalition.ENEMIES.name()) + ")";
@@ -2212,7 +2207,7 @@ public class GuildHandler {
         .commandButton(CommandBehavior.UNPRESS, defInfoCmd, defInfoEmoji)
         .commandButton(CommandBehavior.UNPRESS, pending, emoji);
 
-        Role milcom = Roles.ENEMY_BEIGE_ALERT_AUDITOR.toRole(db.getGuild());
+        Role milcom = Roles.ENEMY_BEIGE_ALERT_AUDITOR.toRole2(db.getGuild());
         if (!allowed) {
             boolean sendMail = GuildKey.BEIGE_VIOLATION_MAIL.getOrNull(db) == Boolean.TRUE;
 
@@ -2582,7 +2577,7 @@ public class GuildHandler {
     public void onBlockade(NationBlockadedEvent event) {
         DBNation nation = event.getBlockadedNation();
         MessageChannel channel = getDb().getOrNull(GuildKey.BLOCKADED_ALERTS);
-        Role role = Roles.BLOCKADED_ALERT.toRole(guild);
+        Role role = Roles.BLOCKADED_ALERT.toRole2(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, null, "blockaded");
     }
 
@@ -2641,9 +2636,9 @@ public class GuildHandler {
             title = "Unblockaded";
         }
         MessageChannel channel = getDb().getOrNull(GuildKey.UNBLOCKADED_ALERTS);
-        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole(guild);
-        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole(guild);
-        Role escrowRole = blockaded ? null : Roles.ESCROW_GOV_ALERT.toRole(guild);
+        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole2(guild);
+        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole2(guild);
+        Role escrowRole = blockaded ? null : Roles.ESCROW_GOV_ALERT.toRole2(guild);
 
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, escrowRole, title);
 
@@ -2685,7 +2680,7 @@ public class GuildHandler {
                 }
                 if (positive) {
                     List<String> mentions = new ArrayList<>();
-                    Role econRole = Roles.ECON.toRole(getGuild());
+                    Role econRole = Roles.ECON.toRole(receiver.getAlliance_id(), getDb());
                     if (econRole != null) mentions.add(econRole.getAsMention());
                     User receiverUser = receiver.getUser();
                     if (receiverUser != null) mentions.add(receiverUser.getAsMention());

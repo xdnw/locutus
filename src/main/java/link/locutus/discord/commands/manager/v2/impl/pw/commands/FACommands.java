@@ -28,16 +28,14 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -372,11 +370,12 @@ public class FACommands {
                 .deny(Permission.VIEW_CHANNEL));
         RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
 
-        Role ambassador = Roles.FOREIGN_AFFAIRS.toRole(channel.getGuild());
-        if (ambassador != null) {
-            RateLimitUtil.complete(channel.upsertPermissionOverride(ambassador).grant(Permission.VIEW_CHANNEL));
+        Set<Role> roles = Roles.FOREIGN_AFFAIRS.toRoles(Locutus.imp().getGuildDB(channel.getGuild()));
+        List<CompletableFuture< PermissionOverride>> futures = new ArrayList<>();
+        for (Role r : roles) {
+            futures.add(RateLimitUtil.queue(channel.upsertPermissionOverride(r).grant(Permission.VIEW_CHANNEL)));
         }
-
+        if (!futures.isEmpty()) CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         if (mention) {
             RateLimitUtil.queue(channel.sendMessage(user.getAsMention()));
         }

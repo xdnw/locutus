@@ -260,7 +260,7 @@ public class GrantCmd extends Command {
         Member member = null;
 
         if (!flags.contains('f')) {
-            Role noGrants = Roles.TEMP.toRole(guild);
+            Role noGrants = Roles.TEMP.toRole2(guild);
             PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
             if (user != null) {
                 member = guild.getMemberById(user.getDiscordId());

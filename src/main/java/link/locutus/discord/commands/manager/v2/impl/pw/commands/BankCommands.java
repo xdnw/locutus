@@ -103,6 +103,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
+import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
 import static link.locutus.discord.util.PW.getUrl;
 import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToString;
 
@@ -1840,13 +1841,20 @@ public class BankCommands {
 
     @Command(desc = "Bulk shift resources in a nations holdings to another note category")
     @RolePermission(Roles.ECON)
-    public String shiftDeposits(@Me GuildDB db, @Me IMessageIO io, @Me DBNation me, DBNation nation, @Arg("The note to change FROM") DepositType from, @Arg("The new note to use") DepositType to, @Arg("Make the funds expire") @Default @Timestamp Long expireTime, @Arg("Make the funds decay") @Default @Timestamp Long decayTime) throws IOException {
+    public String shiftDeposits(@Me GuildDB db, @Me IMessageIO io, @Me User author, @Me DBNation me, DBNation nation, @Arg("The note to change FROM") DepositType from, @Arg("The new note to use") DepositType to, @Arg("Make the funds expire") @Default @Timestamp Long expireTime, @Arg("Make the funds decay") @Default @Timestamp Long decayTime) throws IOException {
         if (from == to) throw new IllegalArgumentException("From and to must be a different category.");
         if (expireTime != null && expireTime != 0 && to != DepositType.GRANT) {
             throw new IllegalArgumentException("The grant expiry time is only needed if converted to the grant category");
         }
         if (decayTime != null && decayTime != 0 && to != DepositType.GRANT) {
             throw new IllegalArgumentException("The grant decay time is only needed if converted to the grant category");
+        }
+        Long allowedAllianceId = Roles.ECON.hasAlliance(author, db.getGuild());
+        if (allowedAllianceId == null) {
+            throw new IllegalArgumentException("Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
+            throw new IllegalArgumentException("You can only shift deposits for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
         }
 
         String note = "#" + to.name().toLowerCase(Locale.ROOT);
@@ -1872,7 +1880,7 @@ public class BankCommands {
         long now = System.currentTimeMillis();
         if (from == DepositType.GRANT) {
             SimpleNationList nationList = new SimpleNationList(Collections.singleton(nation));
-            resetDeposits(db, me, io, null, nationList, false, true, true, true, false, true);
+            resetDeposits(db, me, io, author, db.getGuild(), null, nationList, false, true, true, true, false, true);
         } else {
             String noteFrom = "#" + from.name().toLowerCase(Locale.ROOT);
             db.subBalance(now, nation, me.getNation_id(), noteFrom, toAdd);
@@ -1885,7 +1893,7 @@ public class BankCommands {
             "Reset Options"
     })
     @RolePermission(Roles.ECON)
-    public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io,
+    public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me User author, @Me Guild guild,
                                 @Me JSONObject command,
                                 NationList nations,
                                 @Arg(value = "Do NOT reset grants", group = 0) @Switch("g") boolean ignoreGrants,
@@ -1906,6 +1914,9 @@ public class BankCommands {
         double[] totalLoan = ResourceType.getBuffer();
         double[] totalExpire = ResourceType.getBuffer();
         double[] totalEscrow = ResourceType.getBuffer();
+
+        String errorMsg = handleAddbalanceAllianceScope(author, guild, (Set) nations.getNations());
+        if (errorMsg != null) return errorMsg;
 
         for (DBNation nation : nations.getNations()) {
             Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
@@ -2278,11 +2289,10 @@ public class BankCommands {
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("`usePastDepositors` is only for alliances");
                 }
-                Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
+                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
                 nations = new LinkedHashSet<>();
-                for (Member member : guild.getMembersWithRoles(role)) {
+                for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
                         nations.add(nation);
@@ -2430,11 +2440,10 @@ public class BankCommands {
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
                 }
-                Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
+                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
                 nations = new LinkedHashSet<>();
-                for (Member member : guild.getMembersWithRoles(role)) {
+                for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
                         nations.add(nation);
@@ -4213,9 +4222,9 @@ public class BankCommands {
                 if (channel != null) {
                     try {
                         DiscordUtil.createEmbedCommand(channel, title, body);
-                        Role adminRole = Roles.ECON.toRole(channel.getGuild());
+                        Role adminRole = Roles.ECON.toRole2(channel.getGuild());
                         if (adminRole == null) {
-                            adminRole = Roles.ADMIN.toRole(channel.getGuild());
+                            adminRole = Roles.ADMIN.toRole2(channel.getGuild());
                         }
                         Member owner = channel.getGuild().getOwner();
                         if (adminRole != null) {
@@ -4286,7 +4295,7 @@ public class BankCommands {
         }
         Boolean enabled = offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING);
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
-            Role role = Roles.ECON.toRole(offshoreDB);
+            Role role = Roles.ECON.toRole2(offshoreDB);
             String roleName = role == null ? "ECON" : role.getName();
             return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + GuildKey.PUBLIC_OFFSHORING.getCommandMention() + " is not enabled on that guild.";
         }

@@ -263,7 +263,7 @@ public class AllianceListener {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 // get alert role
-                Role role = Roles.GROUND_MILITARIZE_ALERT.toRole(db);
+                Role role = Roles.GROUND_MILITARIZE_ALERT.toRole2(db);
 
                 String title = "Ground Militarization";
                 StringBuilder body = new StringBuilder();

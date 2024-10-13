@@ -71,10 +71,12 @@ public class BankPages {
             nations = Locutus.imp().getNationDB().getNations(db.getAllianceIds());
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
-            Role role = Roles.MEMBER.toRole(guild);
-            if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
+            Set<Member> members = Roles.MEMBER.getAll(db);
+            if (members.isEmpty() && Roles.MEMBER.toRoles(db).isEmpty()) {
+                throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
+            }
             nations = new ArrayList<>();
-            for (Member member : guild.getMembersWithRoles(role)) {
+            for (Member member : members) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
                 nations.add(nation);
             }

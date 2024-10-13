@@ -108,14 +108,11 @@ public interface NationOrAllianceOrGuildOrTaxid {
             if (aaList != null && !aaList.isEmpty()) {
                 nations.addAll(aaList.getNations(true, 0, true));
             } else {
-                Guild guild = db.getGuild();
-                Role role = Roles.MEMBER.toRole(guild);
-                if (role != null) {
-                    for (Member member : guild.getMembersWithRoles(role)) {
-                        DBNation nation = DiscordUtil.getNation(member.getUser());
-                        if (nation != null) {
-                            nations.add(nation);
-                        }
+                Set<Member> membersWithRole = Roles.MEMBER.getAll(db);
+                for (Member member : membersWithRole) {
+                    DBNation nation = DiscordUtil.getNation(member.getUser());
+                    if (nation != null) {
+                        nations.add(nation);
                     }
                 }
             }

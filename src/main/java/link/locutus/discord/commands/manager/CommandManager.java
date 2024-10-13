@@ -418,7 +418,7 @@ public class CommandManager {
     private boolean sendPermissionMessage(Command cmd, Guild msgGuild, User msgUser, IMessageIO channel) {
         Member member = msgGuild != null && msgUser != null ? msgGuild.getMember(msgUser) : null;
         {
-            Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
+            Role registeredRole = Roles.REGISTERED.toRole2(msgGuild);
             if (registeredRole == null) {
                 channel.sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole("").toSlashCommand() + "");
                 return true;
@@ -431,17 +431,13 @@ public class CommandManager {
             }
         }
         {
-            Role memberRole = Roles.MEMBER.toRole(msgGuild);
-            if (memberRole == null) {
-                channel.sendMessage("No member role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MEMBER @someRole`");
-                return true;
-            } else if (!member.getRoles().contains(memberRole)) {
-                channel.sendMessage("You do not have the role: " + memberRole.getName());
+            if (!Roles.MEMBER.has(member)) {
+                channel.sendMessage("Missing role " + Roles.MEMBER.toDiscordRoleNameElseInstructions(msgGuild));
                 return true;
             }
         }
         if (cmd.getCategories().contains(CommandCategory.ADMIN)) {
-            Role adminRole = Roles.ADMIN.toRole(msgGuild);
+            Role adminRole = Roles.ADMIN.toRole2(msgGuild);
             if (adminRole == null) {
                 if (!member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
                     channel.sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`");
@@ -454,45 +450,29 @@ public class CommandManager {
         }
         if (cmd.getCategories().contains(CommandCategory.GOV)) {
             if (cmd.getCategories().contains(CommandCategory.MILCOM)) {
-                Role milcomRole = Roles.MILCOM.toRole(msgGuild);
-                if (milcomRole == null) {
-                    channel.sendMessage("No milcom role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MILCOM (@someRole`");
-                    return true;
-                } else if (!member.getRoles().contains(milcomRole)) {
-                    channel.sendMessage("You do not have the role: " + milcomRole.getName());
+                if (!Roles.MILCOM.has(member)) {
+                    channel.sendMessage("You do not have the role: " + Roles.MILCOM.toDiscordRoleNameElseInstructions(msgGuild));
                     return true;
                 }
             }
 
             if (cmd.getCategories().contains(CommandCategory.ECON)) {
-                Role role = Roles.ECON.toRole(msgGuild);
-                if (role == null) {
-                    channel.sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.ECON + " @someRole`");
-                    return true;
-                } else if (!member.getRoles().contains(role)) {
-                    channel.sendMessage("You do not have the role: " + role.getName());
+                if (!Roles.ECON.has(member)) {
+                    channel.sendMessage("You do not have the role: " + Roles.ECON.toDiscordRoleNameElseInstructions(msgGuild));
                     return true;
                 }
             }
 
             if (cmd.getCategories().contains(CommandCategory.INTERNAL_AFFAIRS)) {
-                Role role = Roles.INTERNAL_AFFAIRS.toRole(msgGuild);
-                if (role == null) {
-                    channel.sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`");
-                    return true;
-                } else if (!member.getRoles().contains(role)) {
-                    channel.sendMessage("You do not have the role: " + role.getName());
+                if (!Roles.INTERNAL_AFFAIRS.has(member)) {
+                    channel.sendMessage("You do not have the role: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(msgGuild));
                     return true;
                 }
             }
 
             if (cmd.getCategories().contains(CommandCategory.FOREIGN_AFFAIRS)) {
-                Role role = Roles.FOREIGN_AFFAIRS.toRole(msgGuild);
-                if (role == null) {
-                    channel.sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`");
-                    return true;
-                } else if (!member.getRoles().contains(role)) {
-                    channel.sendMessage("You do not have the role: " + role.getName());
+                if (!Roles.FOREIGN_AFFAIRS.has(member)) {
+                    channel.sendMessage("You do not have the role: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(msgGuild));
                     return true;
                 }
             }

@@ -54,7 +54,7 @@ public class TradeSubscription {
     }
 
     public Role toRole(GuildDB db) {
-        return Roles.values[(int) user].toRole(db);
+        return Roles.values[(int) user].toRole2(db);
     }
 
     public String getPing(GuildDB db) {

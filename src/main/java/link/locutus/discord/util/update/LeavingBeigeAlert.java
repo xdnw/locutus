@@ -78,7 +78,7 @@ public class LeavingBeigeAlert {
 
         // db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)
 
-        Role beigeAlert = Roles.BEIGE_ALERT.toRole(db.getGuild());
+        Role beigeAlert = Roles.BEIGE_ALERT.toRole2(db.getGuild());
         if (beigeAlert == null) {
             if (throwError) throw new IllegalArgumentException("No BEIGE_ALERT role set");
             return false;
@@ -268,8 +268,8 @@ public class LeavingBeigeAlert {
                 Guild guild = db.getGuild();
 //                GuildMessageChannel optOutChannel = db.getOrNull(GuildKey.BEIGE_ALERT_CHANNEL, false);
 //                if (optOutChannel == null) continue;
-                Role beigeAlert = Roles.BEIGE_ALERT.toRole(guild);
-                Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
+                Role beigeAlert = Roles.BEIGE_ALERT.toRole2(guild);
+                Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole2(guild);
 
                 if (beigeAlert == null) continue;
 

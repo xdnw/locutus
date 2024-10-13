@@ -20,15 +20,13 @@ public class CounterGenerator {
     public static List<DBNation> generateCounters(GuildDB db, DBNation enemy, boolean requireOnDiscord, boolean allowAttackersWithMaxOffensives) {
         Set<DBNation> nations = new HashSet<>();
         Guild guild = db.getGuild();
-        Role role = Roles.MEMBER.toRole(guild);
 
         Set<Integer> allies = db.getAllies();
         AllianceList alliance = db.getAllianceList();
 
         if (requireOnDiscord || alliance == null || alliance.isEmpty() || allies.isEmpty()) {
-            if (role == null) throw new IllegalArgumentException("No member role setup");
-            List<Member> members = guild.getMembersWithRoles(role);
-            for (Member member : members) {
+            if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No member role setup");
+            for (Member member : Roles.MEMBER.getAll(db)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
                 if (nation != null && (allies == null || allies.contains(nation))) {
                     nations.add(nation);

@@ -274,16 +274,16 @@ public class IACategory {
         }
         RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 
-        Role interviewer = Roles.INTERVIEWER.toRole(guild);
+        Role interviewer = Roles.INTERVIEWER.toRole(user, db);
         if (interviewer != null) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(interviewer).grant(Permission.VIEW_CHANNEL));
         }
-        Role iaRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(guild);
+        Role iaRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(user, db);
         if (iaRole != null && interviewer == null) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
         }
 
-        Role iaRole2 = Roles.INTERNAL_AFFAIRS.toRole(guild);
+        Role iaRole2 = Roles.INTERNAL_AFFAIRS.toRole(user, db);
         if (iaRole2 != null && interviewer == null && iaRole2 != iaRole) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
         }
@@ -819,8 +819,7 @@ public class IACategory {
                     if (user == null) return false;
                     Member member = db.getGuild().getMember(user);
                     if (member == null) return false;
-                    Role role = Roles.ECON_WITHDRAW_SELF.toRole(db.getGuild());
-                    if (nation.getMeta(NationMeta.INTERVIEW_TRANSFER_SELF) == null && member.getRoles().contains(role)) {
+                    if (nation.getMeta(NationMeta.INTERVIEW_TRANSFER_SELF) == null && !Roles.ECON_WITHDRAW_SELF.has(member)) {
                         return true;
                     }
                 }
@@ -908,10 +907,9 @@ public class IACategory {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 User user = nation.getUser();
-                Role role = Roles.GRADUATED.toRole(db.getGuild());
-                if (role == null || user == null) return false;
+                if (user == null) return false;
                 Member member = db.getGuild().getMember(user);
-                return (member != null && !member.getRoles().contains(role));
+                return (member != null && !Roles.GRADUATED.has(member));
             }
         },
 

@@ -535,7 +535,7 @@ public class Grant {
                     continue;
                 }
             }
-            Role noGrants = Roles.TEMP.toRole(db);
+            Role noGrants = Roles.TEMP.toRole2(db);
             if (noGrants != null) {
                 net.dv8tion.jda.api.entities.Member member = receiver.getMember(db);
                 if (member != null && Roles.TEMP.has(member)) {

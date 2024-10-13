@@ -400,7 +400,7 @@ public class DBNation implements NationOrAlliance {
                 .append("\n\nRunning auto role task...");
         if (db != null) {
             try {
-                Role role = Roles.REGISTERED.toRole(db);
+                Role role = Roles.REGISTERED.toRole2(db);
                 if (role != null) {
                     try {
                         Member member = db.getGuild().getMember(user);

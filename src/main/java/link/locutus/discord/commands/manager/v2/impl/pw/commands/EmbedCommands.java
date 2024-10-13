@@ -492,7 +492,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             }
             db.getOrThrow(GuildKey.UNBLOCKADE_REQUESTS);
             db.getOrThrow(GuildKey.UNBLOCKADED_ALERTS);
-            if (Roles.UNBLOCKADED_ALERT.toRole(db) == null) {
+            if (Roles.UNBLOCKADED_ALERT.toRole2(db) == null) {
                 throw new IllegalArgumentException(Roles.UNBLOCKADED_ALERT.toDiscordRoleNameElseInstructions(db.getGuild()));
             }
 

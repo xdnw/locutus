@@ -78,17 +78,19 @@ public class MailListener {
             Logg.text("No channel found for mail `nation:" + event.getAuth().getNationId() + "` | " + event.getDefaultChannelId());
             return;
         }
+        DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(event.getMail().leader);
+
         String body = event.toEmbedString();
         DiscordChannelIO outputBuilder = new DiscordChannelIO(channel);
         IMessageBuilder builder = outputBuilder.create();
 
         Guild guild = channel.getGuild();
-        Role role = Roles.MAIL.toRole(guild);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        Role role = Roles.MAIL.toRole(receiver == null ? 0 : receiver.getAlliance_id(), db);
         if (role != null) {
             builder.append("^ " + role.getAsMention());
         }
         int authId = event.getAuth().getNationId();
-        DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(event.getMail().leader);
         if (receiver.getId() == authId) {
             body += "\n\nUse " + CM.mail.reply.cmd.toSlashMention() + " (with `sender:" + authId + "` and then the recipient) to reply to this message.";
         }
@@ -101,7 +103,7 @@ public class MailListener {
         builder.commandButton(CommandBehavior.UNPRESS, CM.mail.read.cmd.message_id(event.getMail().id + "").account(authId + ""), "Read");
         builder.send();
 
-        processCommands(Locutus.imp().getGuildDB(guild), guild, outputBuilder, event);
+        processCommands(db, guild, outputBuilder, event);
     }
 
     private LocalValueStore createLocals(GuildDB db, Guild guild, IMessageIO io, MailReceivedEvent event, String input) {

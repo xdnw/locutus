@@ -21,8 +21,10 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class WarCat extends Command {
     public WarCat() {
@@ -76,10 +78,13 @@ public class WarCat extends Command {
         Category category;
         if (categories.isEmpty()) {
             category = RateLimitUtil.complete(guild.createCategory(categoryName));
-            Role milcomRole = Roles.MILCOM.toRole(guild);
-            if (milcomRole != null) {
-                RateLimitUtil.complete(category.upsertPermissionOverride(milcomRole).grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE));
+            Set<Role> milcomRoles = Roles.MILCOM.toRoles(db);
+            List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
+            for (Role milcomRole : milcomRoles) {
+                futures.add(RateLimitUtil.queue(category.upsertPermissionOverride(milcomRole)
+                        .grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE)));
             }
+            if (!futures.isEmpty()) CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
             RateLimitUtil.queue(category.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
                     .deny(net.dv8tion.jda.api.Permission.VIEW_CHANNEL));
         } else {

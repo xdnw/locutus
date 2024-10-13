@@ -67,6 +67,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
@@ -1198,7 +1199,7 @@ public class WebPWBindings extends WebBindingHelper {
         List<Roles> options = Arrays.asList(Roles.values);
         if (param.getAnnotation(RegisteredRole.class) != null) {
             options = new ArrayList<>(options);
-            options.removeIf(f -> f.toRole(guild) == null);
+            options.removeIf(f -> f.toRoles(db) == null);
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             GuildSetting key = obj.getKey();
@@ -1210,11 +1211,8 @@ public class WebPWBindings extends WebBindingHelper {
             String name = obj.name();
             names.add(name);
 
-            Role discordRole = obj.toRole(guild);
-            String sub = "";
-            if (discordRole != null) {
-                sub += "@" + discordRole.getName();
-            }
+            Map<Long, Role> roleMap = obj.toRoleMap(db);
+            String sub = DiscordUtil.toRoleString(roleMap);
             subtext.add(sub);
         }, multiple);
     }

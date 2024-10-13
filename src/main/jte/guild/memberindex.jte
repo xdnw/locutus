@@ -147,7 +147,7 @@
         <div id="raid-out-5" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
     </div>
 </div>
-@if(Roles.ECON_GRANT_SELF.toRole(db.getGuild()) != null)
+@if(Roles.ECON_GRANT_SELF.has(author, db.getGuild()))
 <div class="bg-white container mt-3 rounded shadow py-1">
     <h2 class="">&#127974; Grants</h2>
     <hr>

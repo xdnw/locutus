@@ -427,8 +427,8 @@ public class NationUpdateProcessor {
                     msg = msg.embed(title, cardInfo);
 
                     Guild guild = guildDB.getGuild();
-                    Role bountyRole = Roles.BEIGE_ALERT.toRole(guild);
-                    Role bountyRoleOffline = Roles.ENEMY_ALERT_OFFLINE.toRole(guild);
+                    Role bountyRole = Roles.BEIGE_ALERT.toRole2(guild);
+                    Role bountyRoleOffline = Roles.ENEMY_ALERT_OFFLINE.toRole2(guild);
                     boolean checkDiscord = true;
                     if (bountyRole == null) {
                         bountyRole = bountyRoleOffline;
@@ -442,7 +442,7 @@ public class NationUpdateProcessor {
                     if (mode.pingUsers()) {
                         List<Member> members = guild.getMembersWithRoles(bountyRole);
 
-                        Role optOut = Roles.WAR_ALERT_OPT_OUT.toRole(guild);
+                        Role optOut = Roles.WAR_ALERT_OPT_OUT.toRole2(guild);
 
                         List<Map.Entry<DBNation, Member>> priority1 = new ArrayList<>(); // stronger with more cities no wars
                         List<Map.Entry<DBNation, Member>> priority2 = new ArrayList<>(); // stronger with no wars
@@ -558,7 +558,7 @@ public class NationUpdateProcessor {
                 Guild guild = guildDB.getGuild();
                 Set<Integer> ids = guildDB.getAllianceIds(false);
 
-                Role beigeAlert = Roles.BEIGE_ALERT.toRole(guild);
+                Role beigeAlert = Roles.BEIGE_ALERT.toRole2(guild);
                 if (beigeAlert == null) return;
 
                 List<Member> members = guild.getMembersWithRoles(beigeAlert);
@@ -567,7 +567,7 @@ public class NationUpdateProcessor {
                 double minScore = defender.getScore() / PW.WAR_RANGE_MAX_MODIFIER;
                 double maxScore = defender.getScore() / 0.75;
 
-                Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
+                Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole2(guild);
                 int membersInRange = 0;
 
                 Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();

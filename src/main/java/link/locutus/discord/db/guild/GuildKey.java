@@ -1937,13 +1937,17 @@ public class GuildKey {
             return "The channel to receive alerts when a member requests an interview";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requireFunction(db -> {
-        Role interviewerRole = Roles.INTERVIEWER.toRole(db.getGuild());
-        if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(db.getGuild());
-        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(db.getGuild());
-        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(db.getGuild());
-        if (interviewerRole == null) {
+        List<Roles> roles = Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS);
+        boolean hasAny = false;
+        for (Roles role : roles) {
+            if (!role.toRoles(db).isEmpty()) {
+                hasAny = true;
+                break;
+            }
+        }
+        if (!hasAny) {
             throw new IllegalArgumentException("Please use: " + CM.role.setAlias.cmd.toSlashMention() + " to set at least ONE of the following:\n" +
-                    StringMan.join(Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS), ", "));
+                    StringMan.join(roles, ", "));
         }
         // to name
     }, "Please set one of the roles:" + Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS)

@@ -382,11 +382,8 @@ public class IACommands {
                 } else if (!channel.canTalk(member)) {
                     warnings.computeIfAbsent(channel, f -> new HashSet<>()).add("User does not have permission to talk in channel: `" + DiscordUtil.getFullUsername(user) + "` | `" + user.getId() + "`");
                 } else if (!db.hasAlliance()) {
-                    Role memberRole = Roles.MEMBER.toRole(db);
-                    if (memberRole != null) {
-                        if (!member.getRoles().contains(memberRole)) {
-                            warnings.computeIfAbsent(channel, f -> new HashSet<>()).add("User is not a member: `" + DiscordUtil.getFullUsername(user) + "` | `" + user.getId() + "`");
-                        }
+                    if (!Roles.MEMBER.has(user, db.getGuild())) {
+                        warnings.computeIfAbsent(channel, f -> new HashSet<>()).add("User is not a member: `" + DiscordUtil.getFullUsername(user) + "` | `" + user.getId() + "`");
                     }
                 }
             }
@@ -794,7 +791,7 @@ public class IACommands {
     @Command(desc = "Opt out of beige alerts")
     @RolePermission(Roles.MEMBER)
     public String beigeAlertOptOut(@Me Member member, @Me DBNation me, @Me Guild guild) {
-        Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
+        Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole2(guild);
         if (role == null) {
             return WarCommands.beigeAlertMode(member.getUser(), me, NationMeta.BeigeAlertMode.NO_ALERTS);
         }
@@ -1168,9 +1165,6 @@ public class IACommands {
     @Command(desc = "Ranking of nations by how many advertisements they have registered (WIP)")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     public String adRanking(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, @Switch("u") boolean uploadFile) {
-        Role role = Roles.MEMBER.toRole(db);
-        if (role == null) throw new IllegalArgumentException("No member role is set via " + CM.role.setAlias.cmd.toSlashMention() + "");
-
         Map<DBNation, Integer> rankings = new HashMap<>();
 
         for (Member member : db.getGuild().getMembers()) {
@@ -1677,7 +1671,7 @@ public class IACommands {
                     if (nation.active_m() < 10000) {
                         int currentDemotions = demotions.getOrDefault(author.getIdLong(), 0);
                         if (currentDemotions > 2) {
-                            return "Please get an admin to demote multiple nations, or do so ingame. " + Roles.ADMIN.toRole(db.getGuild());
+                            return "Please get an admin to demote multiple nations, or do so ingame. " + Roles.ADMIN.toRole2(db.getGuild());
                         }
                         demotions.put(author.getIdLong(), currentDemotions + 1);
                     }
@@ -1750,13 +1744,23 @@ public class IACommands {
         StringBuilder response = new StringBuilder();
         if (discordUser != null && !doNotUpdateDiscord) {
             Member member = db.getGuild().getMember(discordUser);
-            Role role = Roles.MEMBER.toRole(db.getGuild());
-            if (member != null && role != null) {
+            if (member != null) {
                 try {
                     if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) {
-                        RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role));
+                        Role role = Roles.MEMBER.toRole(discordUser, db);
+                        if (role != null) {
+                            RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role));
+                        }
                     } else if (position == DBAlliancePosition.APPLICANT || position == DBAlliancePosition.REMOVE) {
-                        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                        Collection<Role> roles = Roles.MEMBER.toRoleMap(db).values();
+                        if (!roles.isEmpty()) {
+                            List<Role> currentRoles = member.getRoles();
+                            for (Role role : roles) {
+                                if (currentRoles.contains(role)) {
+                                    RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                                }
+                            }
+                        }
                     }
                 } catch (HierarchyException e) {
                     response.append(e.getMessage() + "\n");
@@ -2081,7 +2085,7 @@ public class IACommands {
         return "Done!\n- " + StringMan.join(response, "\n- ");
     }
 
-    private String channelMemberInfo(Set<Integer> aaIds, Role memberRole, Member member) {
+    private String channelMemberInfo(Set<Integer> aaIds, Set<Role> memberRoles, Member member) {
         DBNation nation = DiscordUtil.getNation(member.getUser());
 
         StringBuilder response = new StringBuilder(DiscordUtil.getFullUsername(member.getUser()));
@@ -2101,8 +2105,17 @@ public class IACommands {
                 response.append(" | inactive=" + TimeUtil.minutesToTime(nation.active_m()));
             }
         }
-        if (aaIds.isEmpty() && !member.getRoles().contains(memberRole)) {
-            response.append(" | No Member Role");
+        if (aaIds.isEmpty()) {
+            boolean hasAny = false;
+            for (Role role : member.getRoles()) {
+                if (memberRoles.contains(role)) {
+                    hasAny = true;
+                    break;
+                }
+            }
+            if (!hasAny) {
+                response.append(" | No Member Role");
+            }
         }
         return response.toString();
     }
@@ -2111,14 +2124,14 @@ public class IACommands {
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String channelMembers(@Me GuildDB db, MessageChannel channel) {
         Set<Integer> aaIds = db.getAllianceIds();
-        Role memberRole = Roles.MEMBER.toRole(db.getGuild());
+        Set<Role> memberRoles = Roles.MEMBER.toRoles(db);
 
         List<Member> members = (channel instanceof IMemberContainer) ? ((IMemberContainer) channel).getMembers() : Collections.emptyList();
         members.removeIf(f -> f.getUser().isBot() || f.getUser().isSystem());
 
         List<String> results = new ArrayList<>();
         for (Member member : members) {
-            results.add(channelMemberInfo(aaIds, memberRole, member));
+            results.add(channelMemberInfo(aaIds, memberRoles, member));
         }
         if (results.isEmpty()) return "No users found";
         return StringMan.join(results, "\n");
@@ -2128,7 +2141,7 @@ public class IACommands {
     @RolePermission(value = {Roles.ADMIN}, any = true)
     public String allChannelMembers(@Me GuildDB db) {
         Set<Integer> aaIds = db.getAllianceIds();
-        Role memberRole = Roles.MEMBER.toRole(db.getGuild());
+        Set<Role> memberRoles = Roles.MEMBER.toRoles(db);
 
         StringBuilder result = new StringBuilder();
 
@@ -2138,7 +2151,7 @@ public class IACommands {
                 result.append(GuildMessageChannel.getAsMention() + "\n");
 
                 for (Member member : GuildMessageChannel.getMembers()) {
-                    result.append(channelMemberInfo(aaIds, memberRole, member) + "\n");
+                    result.append(channelMemberInfo(aaIds, memberRoles, member) + "\n");
                 }
             }
         }
@@ -2277,7 +2290,7 @@ public class IACommands {
         GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) return "Unable to find or create channel (does a category called `interview` exist?)";
 
-        Role applicantRole = Roles.APPLICANT.toRole(db.getGuild());
+        Role applicantRole = Roles.APPLICANT.toRole(user, db);
         if (applicantRole != null) {
             Member member = db.getGuild().getMember(user);
             if (member == null || !member.getRoles().contains(applicantRole)) {
@@ -2519,14 +2532,13 @@ public class IACommands {
             nations.addAll(aaNations
                     .stream().filter(f -> f.getPositionEnum() == Rank.APPLICANT).toList());
             // add all nations without member role but in server
-            Role memberRole = Roles.MEMBER.toRole(guild);
-            if (memberRole != null) {
+            if (!Roles.MEMBER.toRoles(db).isEmpty()) {
                 for (DBNation nation : aaNations) {
                     User user = nation.getUser();
                     if (user == null) continue;
                     Member member = guild.getMember(user);
                     if (member == null) continue;
-                    if (!member.getRoles().contains(memberRole)) {
+                    if (!Roles.MEMBER.has(member)) {
                         nations.add(nation);
                     }
                 }

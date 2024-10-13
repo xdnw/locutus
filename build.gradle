@@ -91,6 +91,7 @@ repositories {
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
 }
 
+compileJava.options.compilerArgs.addAll('-Xmaxerrs', '1000')
 compileJava.options.compilerArgs.add '-parameters'
 compileTestJava.options.compilerArgs.add '-parameters'
 

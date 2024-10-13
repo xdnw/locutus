@@ -147,7 +147,7 @@ public class WarCommands {
         StringBuilder response = new StringBuilder("Set beige alert mode to " + mode + " via " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention());
         if (mode != NationMeta.BeigeAlertMode.NO_ALERTS) {
             for (Guild guild : user.getMutualGuilds()) {
-                Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
+                Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole2(guild);
                 Member member = guild.getMember(user);
                 if (role != null && member != null && member.getRoles().contains(role)) {
                     try {
@@ -176,8 +176,8 @@ public class WarCommands {
         if (!requiredStatus.getApplies().test(member)) {
             return "You are not online on discord. You can change this via: " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention();
         }
-        Role role = Roles.BEIGE_ALERT.toRole(db);
-        Role optOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(db);
+        Role role = Roles.BEIGE_ALERT.toRole2(db);
+        Role optOut = Roles.BEIGE_ALERT_OPT_OUT.toRole2(db);
         Set<Integer> allianceIds = db.getAllianceIds();
         try {
             LeavingBeigeAlert.testBeigeAlertAuto(db, member, role, optOut, allianceIds, true, false);
@@ -620,7 +620,7 @@ public class WarCommands {
                     }
                 }
             }
-            Role milcom = Roles.MILCOM.toRole(db);
+            Role milcom = Roles.MILCOM.toRole(me.getAlliance_id(), db);
             if (milcom != null) response.append(milcom.getAsMention());
         } else {
             response.append("Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP);

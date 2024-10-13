@@ -55,7 +55,7 @@ public class ChannelCommand extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.INTERNAL_AFFAIRS.toRole(server) != null;
+        return server != null && Roles.INTERNAL_AFFAIRS.toRoles(Locutus.imp().getGuildDB(server)) != null;
     }
 
     @Override
@@ -140,7 +140,7 @@ public class ChannelCommand extends Command {
             if (flags.contains('p')) {
                 StringBuilder pings = new StringBuilder();
                 for (Roles dept : roles) {
-                    Role role = dept.toRole(guild);
+                    Role role = dept.toRole2(guild);
                     if (role != null) {
                         pings.append(role.getAsMention());
                     }
@@ -163,7 +163,7 @@ public class ChannelCommand extends Command {
         RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
-            Role role = dept.toRole(channel.getGuild());
+            Role role = dept.toRole2(channel.getGuild());
             if (role != null) {
                 RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
             }
