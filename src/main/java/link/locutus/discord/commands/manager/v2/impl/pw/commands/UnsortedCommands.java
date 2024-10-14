@@ -918,7 +918,7 @@ public class UnsortedCommands {
                     if (allowedAAs != (long) aaId) noPerms.add(account);
                 }
             } else {
-                if (allowedAAs != (long) account.asNation().getAlliance_id()) noPerms.add(account);
+                if (allowedAAs != 0 && allowedAAs != (long) account.asNation().getAlliance_id()) noPerms.add(account);
             }
         }
         if (noPerms.size() > 25) {
