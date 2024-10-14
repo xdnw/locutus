@@ -590,7 +590,7 @@ public class ConflictManager {
                 }
                 if (endTurn == 0) return;
                 startMs = TimeUtil.getTimeFromTurn(startTurn);
-                endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn + 60);
+                endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
 
                 boolean[] allowedConflictOrdsArr = new boolean[conflictArr.length];
                 for (Conflict conflict : conflicts) {
@@ -1307,7 +1307,8 @@ public class ConflictManager {
     }
 
     public List<Conflict> getActiveConflicts() {
-        return conflictById.values().stream().filter(conflict -> conflict.getEndTurn() == Long.MAX_VALUE).toList();
+        long cutoff = TimeUtil.getTurn() - 60;
+        return conflictById.values().stream().filter(conflict -> conflict.getEndTurn() >= cutoff).toList();
     }
 
     public Conflict getConflict(String conflictName) {
