@@ -1337,7 +1337,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List the alliance rank changes of a nation or alliance members")
-    public static String leftAA(@Me IMessageIO io,
+    public static String leftAA(@Me IMessageIO io, @Me GuildDB db,
                          NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
                          @Default @Timestamp Long time,
@@ -1392,8 +1392,39 @@ public class UnsortedCommands {
         }
 
         IMessageBuilder msg = io.create();
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.DEPARTURES);
+        }
+        {
+            long now = System.currentTimeMillis();
+            StringBuilder response = new StringBuilder("Time\tNation\tActions\n");
+            for (AllianceChange r : removes) {
+                long diff = now - r.getDate();
+                String natStr = PW.getMarkdownUrl(r.getNationId(), false);
+                String fromStr = null;
+                String toStr = null;
+                if (r.getFromId() != 0) {
+                    fromStr = PW.getMarkdownUrl(r.getFromId(), true) + "\t" + r.getFromRank().name();
+                }
+                if (r.getToId() != 0) {
+                    toStr = PW.getMarkdownUrl(r.getToId(), true) + "\t" + r.getToRank().name();
+                }
+                List<String> actions = new ArrayList<>();
+                if (fromStr != null) actions.add("Left " + fromStr);
+                if (toStr != null) actions.add("Joined " + toStr);
+                String actionsStr = StringMan.join(actions, ", ");
 
-        if (sheet != null) {
+                String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
+                response.append(diffStr + "\t" + natStr + "\t" + actionsStr + "\n");
+            }
+            if (response.length() > 2000) {
+                msg.file("history.txt", response.toString());
+                msg.append("See attached `history.txt`");
+            } else {
+                msg.append(response.toString());
+            }
+        }
+        { // sheet
             List<String> header = new ArrayList<>(Arrays.asList(
                     "nation",
                     "from_aa",
@@ -1416,35 +1447,7 @@ public class UnsortedCommands {
 
             sheet.updateClearCurrentTab();
             sheet.updateWrite();
-
             sheet.attach(msg, "departures");
-        } else {
-            long now = System.currentTimeMillis();
-            StringBuilder response = new StringBuilder("Time\tNation\tFrom AA\tRank\tTo AA\tRank\n");
-            for (AllianceChange r : removes) {
-                long diff = now - r.getDate();
-                String natStr = PW.getMarkdownUrl(r.getNationId(), false);
-                String fromStr;
-                String toStr;
-                if (r.getFromId() != 0) {
-                    fromStr = PW.getMarkdownUrl(r.getFromId(), true) + "\t" + r.getFromRank().name();
-                } else {
-                    fromStr = "0\tNONE";
-                }
-                if (r.getToId() != 0) {
-                    toStr = PW.getMarkdownUrl(r.getToId(), true) + "\t" + r.getToRank().name();
-                } else {
-                    toStr = "0\tNONE";
-                }
-                String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
-                response.append(diffStr + "\t" + natStr + "\t" + fromStr + "\t" + toStr + "\n");
-            }
-            if (response.length() > 2000) {
-                msg.file("history.txt", response.toString());
-                msg.append("See attached `history.txt`");
-            } else {
-                msg.append("```csv\n" + response.toString() + "\n```");
-            }
         }
         if (listIds) {
             Set<Integer> ids = new LinkedHashSet<>();
