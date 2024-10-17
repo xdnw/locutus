@@ -514,6 +514,7 @@ public class Settings extends Config {
         "- Set to empty string to not use an ssl certificate",
         })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/fullchain.pem";
+
         public String PRIVKEY_PATH = "C:/Certbot/live/locutus.link/privkey.pem";
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
@@ -526,6 +527,9 @@ public class Settings extends Config {
         public boolean ENABLE_SSL = true;
         @Comment("If set to true, web content is not compressed/minified")
         public boolean MINIFY = true;
+
+        @Comment("How many days a session token is valid for before requiring re-authentication")
+        public int SESSION_TIMEOUT_DAYS = 30;
 
         @Comment("The port google sheets uses to validate your credentials")
         public int GOOGLE_SHEET_VALIDATION_PORT = 8889;

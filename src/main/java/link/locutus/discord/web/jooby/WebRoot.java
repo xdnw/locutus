@@ -4,6 +4,8 @@ package link.locutus.discord.web.jooby;
 import com.aayushatharva.brotli4j.Brotli4jLoader;
 import com.google.gson.JsonObject;
 import link.locutus.discord.Logg;
+import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.web.test.WebDB;
 import link.locutus.wiki.WikiGenHandler;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -26,6 +28,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -38,6 +41,7 @@ public class WebRoot {
     public static String REDIRECT = "https://locutus.link";
 
     private final PageHandler pageHandler;
+    private final WebDB webDB;
     private final File fileRoot;
     private final Javalin app;
 
@@ -59,7 +63,7 @@ public class WebRoot {
         return new DirectoryCodeResolver(Path.of("src/main/jte"));
     }
 
-    public WebRoot(int port, boolean ssl) {
+    public WebRoot(int port, boolean ssl) throws SQLException, ClassNotFoundException {
         if (Settings.INSTANCE.CLIENT_SECRET.isEmpty()) throw new IllegalArgumentException("Please set CLIENT_SECRET in " + Settings.INSTANCE.getDefaultFile());
         if (INSTANCE != null) throw new IllegalArgumentException("Already initialized");
         if (port > 0 && port != (ssl ? 443 : 80)) {
@@ -138,6 +142,7 @@ public class WebRoot {
         }).start(port);
 
         this.pageHandler = new PageHandler(this);
+        this.webDB = new WebDB();
 
         this.app.get("/test", new Handler() {
             @Override
@@ -237,6 +242,10 @@ public class WebRoot {
         this.app.get("/", ctx -> {
             pageHandler.handle(ctx);
         });
+    }
+
+    public static WebDB db() {
+        return INSTANCE.webDB;
     }
 
     public Javalin getApp() {

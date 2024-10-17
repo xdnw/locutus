@@ -9,7 +9,7 @@ public enum AttackTypeSubCategory {
     GROUND_TANKS_MUNITIONS_USED_UNNECESSARY("Ground attack with tanks and munitions when munitions were not needed for an immense triumph"),
     AIRSTRIKE_3_PLANE("Airstrike with 3 planes"),
     AIRSTRIKE_UNIT("Aristrike that killed units"),
-    NAVY_1_SHIP("Naval attack using 1 ship"),
+    NAVY_1_SHIP("Naval attack using 1 or 2 ships"),
     NAVY_KILL_UNITS("Naval attack which killed enemy units"),
     MISSILE("Missile launch"),
     NUKE("Nuke launch"),

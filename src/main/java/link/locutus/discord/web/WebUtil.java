@@ -2,6 +2,9 @@ package link.locutus.discord.web;
 
 import in.wilsonl.minifyhtml.Configuration;
 import in.wilsonl.minifyhtml.MinifyHtml;
+import io.javalin.http.Context;
+import io.javalin.http.Cookie;
+import io.javalin.http.SameSite;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.config.Settings;
@@ -15,12 +18,38 @@ import org.jsoup.Jsoup;
 import java.awt.Color;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.UUID;
 
 public class WebUtil {
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext) {
         return generateSearchableDropdown(param, objects, consumeObjectNamesValueSubtext, null);
+    }
+
+    public static UUID generateSecureUUID() {
+        SecureRandom random = new SecureRandom();
+        return new UUID(random.nextLong(), random.nextLong());
+    }
+
+    public static void setCookie(Context context, String key, String value, int duration) {
+        Cookie cookie = new Cookie(key, value);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        try {
+            URL url = new URL(Settings.INSTANCE.WEB.REDIRECT);
+            String domain = url.getHost();
+            cookie.setDomain("." + domain);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        cookie.setPath("/");
+        cookie.setSameSite(SameSite.STRICT);
+        cookie.setMaxAge(duration);
+
+        context.cookie(cookie);
     }
 
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext, Boolean multiple) {

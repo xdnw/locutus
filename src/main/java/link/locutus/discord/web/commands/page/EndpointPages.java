@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.PageHandler;
 import net.dv8tion.jda.api.entities.Guild;
 
@@ -41,10 +42,12 @@ public class EndpointPages extends PageHelper {
         boolean requireUser = queryMap.containsKey("user");
 
         try {
-            AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
-            if (auth != null && (auth.userId() != null || auth.nationId() != null)) {
+
+            DBAuthRecord auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
+            if (auth != null) {
                 Map<String, Object> data = auth.toMap();
-                Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+//                Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+                Guild guild = AuthBindings.guild(context, null, null, false);
                 if (guild != null) {
                     data.put("guild", guild.getIdLong());
                 }
@@ -60,9 +63,9 @@ public class EndpointPages extends PageHelper {
     @Command
     @NoForm
     public String logout(WebStore ws, Context context) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, false, false, false);
+        DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
-        AuthBindings.logout(context, false);
+        AuthBindings.logout(context, auth, false);
         if (auth != null) {
             Map<String, Object> data = auth.toMap();
             if (guild != null) {

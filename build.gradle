@@ -13,7 +13,7 @@ buildscript {
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-//        classpath 'org.jooq:jooq-codegen:3.17.5'
+        classpath 'org.jooq:jooq-codegen:3.19.13'
         classpath 'org.xerial:sqlite-jdbc:3.36.0.3'
         classpath 'com.gradleup.shadow:shadow-gradle-plugin:8.3.0'
     }
@@ -24,7 +24,7 @@ plugins {
     id "idea"
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
     id 'com.gradleup.shadow' version '8.3.0'
-    id "nu.studer.jooq" version "8.0"
+    id "nu.studer.jooq" version "9.0"
     id 'maven-publish'
     id "gg.jte.gradle" version "3.1.6"
 //    id "nebula.lint" version "19.0.3"
@@ -191,9 +191,9 @@ dependencies {
     implementation('org.hibernate:hibernate-core:6.1.5.Final')
     implementation('org.hibernate:hibernate-community-dialects:6.1.5.Final')
 
-    implementation('org.jooq:jooq:3.17.5')
-    implementation("org.jooq:jooq-meta:3.17.5")
-    implementation("org.jooq:jooq-codegen:3.17.5")
+    implementation('org.jooq:jooq:3.19.13')
+    implementation("org.jooq:jooq-meta:3.19.13")
+    implementation("org.jooq:jooq-codegen:3.19.13")
 
 
     implementation("com.theokanning.openai-gpt3-java:client:0.18.2")
@@ -230,9 +230,44 @@ configurations {
 }
 
 jooq {
-    version = "3.17.5"  // default (can be omitted)
+    version = "3.19.13"  // default (can be omitted)
     edition = JooqEdition.OSS  // default (can be omitted)
     configurations {
+//        schema {
+//            generateSchemaSourceOnCompilation = true
+//            generationTool {
+//                jdbc {
+//                    driver = 'org.sqlite.JDBC'
+//                    url = 'jdbc:sqlite::memory:'
+//                }
+//                generator {
+//                    name = 'org.jooq.codegen.DefaultGenerator'
+//                    database {
+//                        name = 'org.jooq.meta.extensions.ddl.DDLDatabase'
+//                        properties {
+//                            property {
+//                                key = 'scripts'
+//                                value = 'src/main/resources/schema.sql'
+//                            }
+//                            property {
+//                                key = 'sort'
+//                                value = 'semantic'
+//                            }
+//                        }
+//                    }
+//                    generate {
+//                        deprecated = false
+//                        records = true
+//                        immutablePojos = true
+//                        fluentSetters = true
+//                    }
+//                    target {
+//                        packageName = 'org.example.jooq'
+//                        directory = 'src/main/java'
+//                    }
+//                }
+//            }
+//        }
         bank {
             generateSchemaSourceOnCompilation = false; // default (can be omitted)
 
