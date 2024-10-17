@@ -270,7 +270,6 @@ jooq {
 //        }
         bank {
             generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
             generationTool {
                 jdbc {
                     driver = 'org.sqlite.JDBC'
