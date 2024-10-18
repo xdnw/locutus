@@ -75,7 +75,7 @@ public class DBNationSnapshot extends DBNation {
     public Map<Integer, DBCity> _getCitiesV3() {
         if (cityMap != null) return cityMap;
         Map<Integer, DBCity> cities = super._getCitiesV3();
-        return cities.entrySet().stream().filter(e -> e.getValue().created > snapshotDate).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return cities.entrySet().stream().filter(e -> e.getValue().created <= snapshotDate).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override
