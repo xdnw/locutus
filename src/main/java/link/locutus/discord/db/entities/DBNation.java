@@ -6411,8 +6411,20 @@ public class DBNation implements NationOrAlliance {
             "Cost reduction policies are not included")
     public double projectValue() {
         double value = 0;
-        for (Project project : getProjects()) {
-            value += project.getMarketValue();
+        for (Project project : Projects.values) {
+            if (hasProject(project)) {
+                value += project.getMarketValue();
+            }
+        }
+        return value;
+    }
+
+    @Command(desc = "Value of the buildings this nation has\n" +
+            "Cost reduction policies are not included")
+    public double buildingValue() {
+        double value = 0;
+        for (DBCity city : _getCitiesV3().values()) {
+            value += city.getBuildingMarketCost();
         }
         return value;
     }
