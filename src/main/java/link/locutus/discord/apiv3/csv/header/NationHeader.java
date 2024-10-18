@@ -202,7 +202,7 @@ public class NationHeader extends DataHeader<DBNation> {
         nationLoaded = 0;
     }
 
-    public DBNation getNation(boolean allowVm, boolean allowDeleted) {
+    public DBNationSnapshot getNation(boolean allowVm, boolean allowDeleted) {
         int nationId = this.nation_id.get();
         if (cached != null) {
             if (cached.getId() == nationId) {

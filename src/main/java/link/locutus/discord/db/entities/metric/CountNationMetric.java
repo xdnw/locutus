@@ -2,9 +2,12 @@ package link.locutus.discord.db.entities.metric;
 
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.column.NumberColumn;
+import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.db.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
@@ -23,6 +26,8 @@ public class CountNationMetric implements IAllianceMetric {
     private final Predicate<DBNation> filter;
     private final Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader;
     private Predicate<Integer> allianceFilter;
+    private boolean includeCities;
+    private Runnable finalizeTask;
 
 
     public CountNationMetric(Function<DBNation, Number> countNation, AllianceMetricMode mode) {
@@ -53,6 +58,11 @@ public class CountNationMetric implements IAllianceMetric {
         return this;
     }
 
+    public CountNationMetric includeCities() {
+        this.includeCities = true;
+        return this;
+    }
+
     @Override
     public Double apply(DBAlliance alliance) {
         if (allianceFilter != null && !allianceFilter.test(alliance.getId())) return null;
@@ -78,43 +88,100 @@ public class CountNationMetric implements IAllianceMetric {
 
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
-            @Override
-            public void accept(Long day, NationHeader header) {
-                Rank position = header.alliance_position.get();
-                if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
-                if (allianceId == 0) return;
-                if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
-                Integer vm_turns = header.vm_turns.get();
-                if (vm_turns == null || vm_turns > 0) return;
-                double amt;
-                if (getHeader != null) {
-                    amt = getHeader.apply(header).get().doubleValue();
-                } else {
-                    DBNation nation = header.getNation(false, true);
-                    if (filter != null && !filter.test(nation)) return;
-                    amt = countNation.apply(nation).doubleValue();
+        if (includeCities) {
+            Map<Integer, DBNationSnapshot> nationMap = new Int2ObjectOpenHashMap<>();
+
+            importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
+                @Override
+                public void accept(Long day, NationHeader header) {
+                    Rank position = header.alliance_position.get();
+                    if (position.id <= Rank.APPLICANT.id) return;
+                    int allianceId = header.alliance_id.get();
+                    if (allianceId == 0) return;
+                    if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
+                    Integer vm_turns = header.vm_turns.get();
+                    if (vm_turns == null || vm_turns > 0) return;
+                    DBNationSnapshot nation = header.getNation(false, true);
+                    if (nation != null) {
+                        nationMap.put(header.nation_id.get(), nation);
+                    }
                 }
-                countByAA.merge(allianceId, amt, Double::sum);
-                switch (mode) {
-                    case PER_NATION:
-                        countAllianceMetricModeByAA.merge(allianceId, 1, Integer::sum);
-                        break;
-                    case PER_CITY:
-                        int cities = header.cities.get();
-                        countAllianceMetricModeByAA.merge(allianceId, cities, Integer::sum);
-                        break;
-                    case TOTAL:
-                        countAllianceMetricModeByAA.put(allianceId, 1);
+            });
+
+            importer.setCityReader(metric, new BiConsumer<Long, CityHeader>() {
+                @Override
+                public void accept(Long day, CityHeader header) {
+                    int nationId = header.nation_id.get();
+                    DBNationSnapshot nation = nationMap.get(nationId);
+                    if (nation == null) return;
+                    DBCity city = header.getCity();
+                    nation.addCity(city);
                 }
-            }
-        });
+            });
+
+            finalizeTask = new Runnable() {
+                @Override
+                public void run() {
+                    for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
+                        DBNationSnapshot nation = entry.getValue();
+                        if (filter != null && !filter.test(nation)) continue;
+                        double amt = countNation.apply(nation).doubleValue();
+                        countByAA.merge(nation.getAlliance_id(), amt, Double::sum);
+                        switch (mode) {
+                            case PER_NATION:
+                                countAllianceMetricModeByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+                                break;
+                            case PER_CITY:
+                                countAllianceMetricModeByAA.merge(nation.getAlliance_id(), nation.getCities(), Integer::sum);
+                                break;
+                            case TOTAL:
+                                countAllianceMetricModeByAA.put(nation.getAlliance_id(), 1);
+                        }
+                    }
+
+                    nationMap.clear();
+                }
+            };
+        } else {
+            importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
+                @Override
+                public void accept(Long day, NationHeader header) {
+                    Rank position = header.alliance_position.get();
+                    if (position.id <= Rank.APPLICANT.id) return;
+                    int allianceId = header.alliance_id.get();
+                    if (allianceId == 0) return;
+                    if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
+                    Integer vm_turns = header.vm_turns.get();
+                    if (vm_turns == null || vm_turns > 0) return;
+                    double amt;
+                    if (getHeader != null) {
+                        amt = getHeader.apply(header).get().doubleValue();
+                    } else {
+                        DBNation nation = header.getNation(false, true);
+                        if (filter != null && !filter.test(nation)) return;
+                        amt = countNation.apply(nation).doubleValue();
+                    }
+                    countByAA.merge(allianceId, amt, Double::sum);
+                    switch (mode) {
+                        case PER_NATION:
+                            countAllianceMetricModeByAA.merge(allianceId, 1, Integer::sum);
+                            break;
+                        case PER_CITY:
+                            int cities = header.cities.get();
+                            countAllianceMetricModeByAA.merge(allianceId, cities, Integer::sum);
+                            break;
+                        case TOTAL:
+                            countAllianceMetricModeByAA.put(allianceId, 1);
+                    }
+                }
+            });
+        }
 
     }
 
     @Override
     public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
+        if (finalizeTask != null) finalizeTask.run();
         Map<Integer, Double> result = countByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (double) countAllianceMetricModeByAA.get(f.getKey())));
         countByAA.clear();
         countAllianceMetricModeByAA.clear();

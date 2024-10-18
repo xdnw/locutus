@@ -403,11 +403,11 @@ public class AllianceMetricCommands {
         }
         if (alliances.isEmpty()) return "No alliances found";
         Set<Integer> aaIds = new IntOpenHashSet(alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()));
-        Predicate<DBNation> filterFinal = filter == null ? aaIds::contains : f -> aaIds.contains(f.getAlliance_id()) && filter.test(f);
+        Predicate<DBNation> filterFinal = filter == null ? f -> aaIds.contains(f.getAlliance_id()) : f -> aaIds.contains(f.getAlliance_id()) && filter.test(f);
         List<IAllianceMetric> metrics = new ArrayList<>(List.of(new CountNationMetric(metric::apply,
                 null,
                 mode,
-                filterFinal).allianceFilter(aaIds::contains)));
+                filterFinal).allianceFilter(aaIds::contains).includeCities()));
         Predicate<Long> dayFilter = dayFilter(start, end);
 
         List<String> header = new ArrayList<>(List.of("date"));
