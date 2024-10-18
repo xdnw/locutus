@@ -20,6 +20,7 @@ public class DBNationSnapshot extends DBNation {
     public DBNationSnapshot(long date) {
         this.snapshotDate = date;
         this.beigeTimer = 0;
+        this.projects = 0;
     }
 
     @Override

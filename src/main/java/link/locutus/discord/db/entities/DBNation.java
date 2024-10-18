@@ -133,7 +133,7 @@ public class DBNation implements NationOrAlliance {
     private Rank rank;
     private int alliancePosition;
     private Continent continent;
-    private long projects;
+    protected long projects;
     private long cityTimer;
     private long projectTimer;
     protected long beigeTimer;
