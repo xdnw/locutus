@@ -28,6 +28,8 @@ public class CountNationMetric implements IAllianceMetric {
     private Predicate<Integer> allianceFilter;
     private boolean includeCities;
     private Runnable finalizeTask;
+    private boolean includeVM;
+    private boolean includeApplicants;
 
 
     public CountNationMetric(Function<DBNation, Number> countNation, AllianceMetricMode mode) {
@@ -94,14 +96,18 @@ public class CountNationMetric implements IAllianceMetric {
             importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
                 @Override
                 public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
-                    if (position.id <= Rank.APPLICANT.id) return;
+                    if (!includeApplicants) {
+                        Rank position = header.alliance_position.get();
+                        if (position.id <= Rank.APPLICANT.id) return;
+                    }
                     int allianceId = header.alliance_id.get();
                     if (allianceId == 0) return;
                     if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
-                    Integer vm_turns = header.vm_turns.get();
-                    if (vm_turns == null || vm_turns > 0) return;
-                    DBNationSnapshot nation = header.getNation(false, true);
+                    if (!includeVM) {
+                        Integer vm_turns = header.vm_turns.get();
+                        if (vm_turns == null || vm_turns > 0) return;
+                    }
+                    DBNationSnapshot nation = header.getNation(includeVM, true);
                     if (nation != null) {
                         nationMap.put(header.nation_id.get(), nation);
                     }
@@ -146,18 +152,22 @@ public class CountNationMetric implements IAllianceMetric {
             importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
                 @Override
                 public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
-                    if (position.id <= Rank.APPLICANT.id) return;
+                    if (!includeApplicants) {
+                        Rank position = header.alliance_position.get();
+                        if (position.id <= Rank.APPLICANT.id) return;
+                    }
                     int allianceId = header.alliance_id.get();
                     if (allianceId == 0) return;
                     if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
-                    Integer vm_turns = header.vm_turns.get();
-                    if (vm_turns == null || vm_turns > 0) return;
+                    if (!includeVM) {
+                        Integer vm_turns = header.vm_turns.get();
+                        if (vm_turns == null || vm_turns > 0) return;
+                    }
                     double amt;
                     if (getHeader != null) {
                         amt = getHeader.apply(header).get().doubleValue();
                     } else {
-                        DBNation nation = header.getNation(false, true);
+                        DBNation nation = header.getNation(includeVM, true);
                         if (filter != null && !filter.test(nation)) return;
                         amt = countNation.apply(nation).doubleValue();
                     }
@@ -191,5 +201,13 @@ public class CountNationMetric implements IAllianceMetric {
     @Override
     public List<AllianceMetricValue> getAllValues() {
         return null;
+    }
+
+    public void includeVM() {
+        this.includeVM = true;
+    }
+
+    public void includeApplicants() {
+        this.includeApplicants = true;
     }
 }

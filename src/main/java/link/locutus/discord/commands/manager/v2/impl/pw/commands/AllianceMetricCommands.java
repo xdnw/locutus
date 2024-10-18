@@ -390,24 +390,31 @@ public class AllianceMetricCommands {
         return "Done. " + changesDays.getKey() + " changes made for " + changesDays.getValue() + " days.";
     }
 
-    @Command(desc = "Get alliance attributes by day")
+    @Command(desc = "Get alliance attributes by day\n" +
+            "Applicants and VM nations are included ")
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
-    public String AlliancesDataByDay(@Me IMessageIO io, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Arg ("The alliances to include. Defaults to top 80") @Default Set<DBAlliance> alliances, @Default Predicate<DBNation> filter, @Switch("g") boolean graph) throws IOException, ParseException {
-        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 80);
-        if (graph && alliances.size() > 16) {
-            throw new IllegalArgumentException("Cannot graph more than 8 alliances.");
-        }
+    public String AlliancesDataByDay(@Me IMessageIO io, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Arg ("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances, @Default Predicate<DBNation> filter, @Switch("g") boolean graph,
+                                     @Switch("v") boolean includeVM, @Switch("a") boolean includeApps,
+                                     @Switch("c") boolean skipCityData) throws IOException, ParseException {
+        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 15);
         if (alliances.size() > 100) {
             alliances.removeIf(f -> f.getNations(true, 10080, true).isEmpty());
+        }
+        if (graph && alliances.size() > 16) {
+            throw new IllegalArgumentException("Cannot graph more than 8 alliances.");
         }
         if (alliances.isEmpty()) return "No alliances found";
         Set<Integer> aaIds = new IntOpenHashSet(alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()));
         Predicate<DBNation> filterFinal = filter == null ? f -> aaIds.contains(f.getAlliance_id()) : f -> aaIds.contains(f.getAlliance_id()) && filter.test(f);
-        List<IAllianceMetric> metrics = new ArrayList<>(List.of(new CountNationMetric(metric::apply,
+        CountNationMetric counter = new CountNationMetric(metric::apply,
                 null,
                 mode,
-                filterFinal).allianceFilter(aaIds::contains).includeCities()));
+                filterFinal).allianceFilter(aaIds::contains);
+        if (includeVM) counter.includeVM();
+        if (includeApps) counter.includeApplicants();
+        if (!skipCityData) counter.includeCities();
+        List<IAllianceMetric> metrics = new ArrayList<>(List.of(counter));
         Predicate<Long> dayFilter = dayFilter(start, end);
 
         List<String> header = new ArrayList<>(List.of("date"));
@@ -425,7 +432,6 @@ public class AllianceMetricCommands {
 
         CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
         AtomicLong timer = new AtomicLong(System.currentTimeMillis());
-        AtomicLong counter = new AtomicLong(0);
 
         DataDumpParser parser = Locutus.imp().getDataDumper(true);
         Map<Long, double[]> valuesByDay = new Long2ObjectOpenHashMap<>();
@@ -454,7 +460,7 @@ public class AllianceMetricCommands {
 
             if (System.currentTimeMillis() - timer.get() > 10000) {
                 timer.getAndSet(System.currentTimeMillis());
-                io.updateOptionally(msg, "Processing day " + counter.incrementAndGet() + "...");
+                io.updateOptionally(msg, "Processing day " + day + "...");
             }
         });
         IMessageBuilder msg2 = io.create().file("alliance_data.csv", stringWriter.toString().getBytes());
