@@ -908,7 +908,7 @@ public final class PW {
         long day = TimeUtil.getDay(snapshotDate);
         boolean loadCities = true;
         Predicate<Integer> allowedNations = f -> true;
-        Predicate<Integer> allowedAlliances = f -> f > 0;
+        Predicate<Integer> allowedAlliances = f -> true;
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
         ValueStore store = ph.createLocals(guild, null, null);
         Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
