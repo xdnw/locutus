@@ -7,14 +7,20 @@ import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.PageHandler;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EndpointPages extends PageHelper {
     private static final Gson gson = new Gson();
@@ -41,10 +47,12 @@ public class EndpointPages extends PageHelper {
         boolean requireUser = queryMap.containsKey("user");
 
         try {
-            AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
-            if (auth != null && (auth.userId() != null || auth.nationId() != null)) {
+
+            DBAuthRecord auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
+            if (auth != null) {
                 Map<String, Object> data = auth.toMap();
-                Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+//                Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+                Guild guild = AuthBindings.guild(context, null, null, false);
                 if (guild != null) {
                     data.put("guild", guild.getIdLong());
                 }
@@ -60,10 +68,11 @@ public class EndpointPages extends PageHelper {
     @Command
     @NoForm
     public String logout(WebStore ws, Context context) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, false, false, false);
+        DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
-        AuthBindings.logout(context, false);
+        AuthBindings.logout(context, auth, false);
         if (auth != null) {
+            if (guild == null) guild = auth.getDefaultGuild();
             Map<String, Object> data = auth.toMap();
             if (guild != null) {
                 data.put("guild", guild.getIdLong());
@@ -76,4 +85,38 @@ public class EndpointPages extends PageHelper {
             return gson.toJson(Map.of("success", false));
         }
     }
+
+    // Session
+    // Returns info about current session
+    @Command
+    @NoForm
+    public String session(WebStore ws, Context context) throws IOException {
+        DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
+        Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
+        if (auth != null) {
+            Map<String, Object> data = auth.toMap();
+            if (guild != null) {
+                data.put("guild", guild.getIdLong());
+            }
+            return gson.toJson(data);
+        } else {
+            return "{}";
+        }
+    }
+
+    private static final Map<UUID, Boolean> mailTokens = new ConcurrentHashMap<>();
+
+    @Command
+    public static String login_mail(WebStore ws, Context context, DBNation nation) throws IOException {
+        WebUtil.mailLogin(nation, false,true);
+        return "{}";
+    }
+
+    // Command Options
+    // Types
+
+    // Query placeholders
+    // Type
+    // Selection
+    // Fields
 }

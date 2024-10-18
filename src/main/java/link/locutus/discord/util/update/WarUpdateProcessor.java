@@ -583,7 +583,7 @@ public class WarUpdateProcessor {
             case NAVAL:
                 int attShips = (int) (root.getAtt_gas_used() / MilitaryUnit.SHIP.getConsumption()[ResourceType.GASOLINE.ordinal()]);
                 if (root.getDefcas1() == 0) {
-                    if (attShips == 1) {
+                    if (attShips <= 2) {
                         return AttackTypeSubCategory.NAVY_1_SHIP;
                     }
                     return AttackTypeSubCategory.NAVAL_MAX_VS_NONE;

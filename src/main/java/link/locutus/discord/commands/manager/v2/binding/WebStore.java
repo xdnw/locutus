@@ -12,6 +12,7 @@ import io.javalin.http.RedirectResponse;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -29,7 +30,7 @@ import static link.locutus.discord.web.commands.binding.AuthBindings.getDiscordA
 public class WebStore {
     private final ValueStore store;
     private final Context context;
-    private AuthBindings.Auth auth;
+    private DBAuthRecord auth;
     private boolean initAuth;
 
     public WebStore(ValueStore store) {
@@ -80,11 +81,11 @@ public class WebStore {
         return context;
     }
 
-    public AuthBindings.Auth auth() {
+    public DBAuthRecord auth() {
         return auth(false, false, false);
     }
 
-    public AuthBindings.Auth auth(boolean allowRedirect, boolean requireNation, boolean requireUser) {
+    public DBAuthRecord auth(boolean allowRedirect, boolean requireNation, boolean requireUser) {
         try {
             if (!initAuth) {
                 initAuth = true;
@@ -103,13 +104,13 @@ public class WebStore {
     }
 
     public DBNation getNation() {
-        AuthBindings.Auth tmp = auth();
+        DBAuthRecord tmp = auth();
         if (tmp == null) return null;
         return tmp.getNation(true);
     }
 
     public User getUser() {
-        AuthBindings.Auth tmp = auth();
+        DBAuthRecord tmp = auth();
         if (tmp == null) return null;
         return tmp.getUser(true);
     }

@@ -1,7 +1,6 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Config;
 
 import java.io.File;
@@ -506,14 +505,19 @@ public class Settings extends Config {
         @Comment("The cosmetic name of the web interface")
         public String INTERFACE_NAME = "Locutus";
 
+        @Comment("The url/ip/hostname for the backend")
+        public String BACKEND_DOMAIN = "https://locutus.link";
+
         @Comment("The url/ip/hostname for the web interface")
-        public String REDIRECT = "https://locutus.link";
+        public String FRONTEND_DOMAIN = "https://xdnw.github.io/lc_cmd_react";
+
         @Comment({"File location of the ssl certificate",
         "- Locutus expects a privkey.pem and a fullchain.pem in the directory",
         "- You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
         "- Set to empty string to not use an ssl certificate",
         })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/fullchain.pem";
+
         public String PRIVKEY_PATH = "C:/Certbot/live/locutus.link/privkey.pem";
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
@@ -526,6 +530,9 @@ public class Settings extends Config {
         public boolean ENABLE_SSL = true;
         @Comment("If set to true, web content is not compressed/minified")
         public boolean MINIFY = true;
+
+        @Comment("How many days a session token is valid for before requiring re-authentication")
+        public int SESSION_TIMEOUT_DAYS = 30;
 
         @Comment("The port google sheets uses to validate your credentials")
         public int GOOGLE_SHEET_VALIDATION_PORT = 8889;

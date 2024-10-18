@@ -43,7 +43,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
-import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.binding.*;
 import link.locutus.discord.web.commands.page.BankPages;
 import link.locutus.discord.web.commands.page.EconPages;
 import link.locutus.discord.web.commands.page.EndpointPages;
@@ -51,10 +51,6 @@ import link.locutus.discord.web.commands.page.GrantPages;
 import link.locutus.discord.web.commands.page.IAPages;
 import link.locutus.discord.web.commands.page.IndexPages;
 import link.locutus.discord.web.commands.page.NationListPages;
-import link.locutus.discord.web.commands.binding.DiscordWebBindings;
-import link.locutus.discord.web.commands.binding.JavalinBindings;
-import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
-import link.locutus.discord.web.commands.binding.WebPWBindings;
 import link.locutus.discord.web.commands.page.StatPages;
 import link.locutus.discord.web.commands.page.TestPages;
 import link.locutus.discord.web.commands.page.TradePages;
@@ -131,7 +127,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new AlliancePages(), "page");
         this.commands.registerSubCommands(new NationListPages(), "page");
 
-        this.commands.registerSubCommands(new EndpointPages(), "rest");
+        this.commands.registerSubCommands(new EndpointPages(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
@@ -553,9 +549,9 @@ public class PageHandler implements Handler {
         } else {
             ws = (WebStore) locals.getProvided(Key.of(WebStore.class));
         }
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, ctx);
+        DBAuthRecord auth = AuthBindings.getAuth(ws, ctx);
         if (auth != null) {
-            locals.addProvider(Key.of(AuthBindings.Auth.class, Me.class), auth);
+            locals.addProvider(Key.of(DBAuthRecord.class, Me.class), auth);
             User user = auth.getUser(true);
             DBNation nation = auth.getNation(true);
             if (user != null) {
@@ -644,7 +640,6 @@ public class PageHandler implements Handler {
         DISCORD_OAUTH,
         URL_AUTH,
         GUILD_ID,
-
         ;
 
         private String cookieId;

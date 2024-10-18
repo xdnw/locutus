@@ -31,9 +31,12 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.commands.search.SearchResult;
 import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
@@ -54,6 +57,7 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -73,16 +77,17 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
-    public Object index(WebStore ws, Context context) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, false, false);
+    public Object index(WebStore ws, Context context, @Default DBAuthRecord auth) throws IOException {
         if (auth == null) {
             return "Not logged in";
         }
         StringBuilder response = new StringBuilder();
         response.append("Index page:\n");
-        response.append("User: ").append(auth.userId()).append("\n");
-        response.append("nation: ").append(auth.nationId()).append("\n");
+        response.append("User: ").append(auth.getUserId()).append("\n");
+        response.append("nation: ").append(auth.getNationId()).append("\n");
         response.append("Valid: ").append(auth.isValid()).append("\n");
+        long expireDiff = auth.timestamp + TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS) - System.currentTimeMillis();
+        response.append("Expires: ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, expireDiff)).append("\n");
         Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
         response.append("Guild: ").append(guild).append("\n");
         return response.toString();
@@ -249,7 +254,7 @@ public class IndexPages extends PageHelper {
         if (user == null) {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, true, true);
+        DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, true, true);
         return "You are already registered";
     }
 
@@ -258,7 +263,7 @@ public class IndexPages extends PageHelper {
         Map<String, List<String>> queries = context.queryParamMap();
         boolean requireNation = queries.containsKey("nation");
         boolean requireUser = queries.containsKey("discord");
-        AuthBindings.Auth auth = AuthBindings.getAuth(ws, context, true, requireNation, requireUser);
+        DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
             String url = AuthBindings.getRedirect(context, true);

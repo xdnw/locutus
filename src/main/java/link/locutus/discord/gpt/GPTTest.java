@@ -1,7 +1,5 @@
 package link.locutus.discord.gpt;
 
-import ai.djl.MalformedModelException;
-import ai.djl.repository.zoo.ModelNotFoundException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.config.Settings;
@@ -13,7 +11,6 @@ import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import javax.security.auth.login.LoginException;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
@@ -24,7 +21,7 @@ public class GPTTest {
     public static void main(String[] args) throws SQLException, LoginException, InterruptedException, ClassNotFoundException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.WEB.PORT = 0;
-        Settings.INSTANCE.WEB.REDIRECT = "http://localhost";
+        Settings.INSTANCE.WEB.BACKEND_DOMAIN = "http://localhost";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
         Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS = 0;
