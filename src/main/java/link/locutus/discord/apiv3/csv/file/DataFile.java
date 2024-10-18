@@ -23,11 +23,7 @@ import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -327,7 +323,7 @@ public class DataFile<T, H extends DataHeader<T>> {
                 }
             }
             ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
-            Arrays.sort(shouldRead, (a, b) -> Integer.compare(a.getIndex(), b.getIndex()));
+            Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
             int numLines = SafeUtils.readIntBE(decompressed, index);
             index += 4;
 

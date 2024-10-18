@@ -511,10 +511,10 @@ public abstract class TimeNumericTable<T> {
         }
         if (numberFormat == TableNumberFormat.PERCENTAGE_ONE) {
             min = 0;
-            max = 1;
+            max = Math.min(max, 1);
         } else if (numberFormat == TableNumberFormat.PERCENTAGE_100) {
             min = 0;
-            max = 100;
+            max = Math.min(max, 100);
         }
         plot.getAxis(XYPlot.AXIS_Y).setRange(min, max);
 

@@ -1196,9 +1196,9 @@ public enum AllianceMetric implements IAllianceMetric {
             }
         });
 
-        for (IAllianceMetric metric : metrics) {
-            List<AllianceMetricValue> allValues = metric.getAllValues();
-        }
+//        for (IAllianceMetric metric : metrics) {
+//            List<AllianceMetricValue> allValues = metric.getAllValues();
+//        }
     }
 
     public static TimeNumericTable generateTable(AllianceMetric metric, long cutoffTurn, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {

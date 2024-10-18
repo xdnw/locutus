@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.refs;
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
+
 public class CM {
         public static class admin{
             public static class alliance{
@@ -1493,7 +1495,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="ocr")
+            @AutoRegister(clazz= DiscordCommands.class,method="ocr")
             public static class ocr extends CommandRef {
                 public static final ocr cmd = new ocr();
             public ocr discordImageUrl(String value) {
@@ -3258,7 +3260,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="viewFlow")
+            @AutoRegister(clazz=DiscordCommands.class,method="viewFlow")
             public static class flows extends CommandRef {
                 public static final flows cmd = new flows();
             public flows nation(String value) {
@@ -3402,7 +3404,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="shiftFlow")
+            @AutoRegister(clazz=DiscordCommands.class,method="shiftFlow")
             public static class shiftFlow extends CommandRef {
                 public static final shiftFlow cmd = new shiftFlow();
             public shiftFlow nation(String value) {
@@ -6101,7 +6103,7 @@ public class CM {
 
         }
         public static class modal{
-            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="modal")
+            @AutoRegister(clazz=DiscordCommands.class,method="modal")
             public static class create extends CommandRef {
                 public static final create cmd = new create();
             public create command(String value) {

@@ -403,8 +403,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("role"), "maskSheet", "mask_sheet");
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("audit"), "auditSheet", "sheet");
-        this.commands.registerMethod(new TestCommands(), List.of("deposits"), "viewFlow", "flows");
-        this.commands.registerMethod(new TestCommands(), List.of("deposits"), "shiftFlow", "shiftFlow");
+        this.commands.registerMethod(new DiscordCommands(), List.of("deposits"), "viewFlow", "flows");
+        this.commands.registerMethod(new DiscordCommands(), List.of("deposits"), "shiftFlow", "shiftFlow");
 
         this.commands.registerCommandsWithMapping(CM.class);
 

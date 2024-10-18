@@ -133,7 +133,7 @@ public class DBNation implements NationOrAlliance {
     private Rank rank;
     private int alliancePosition;
     private Continent continent;
-    private long projects;
+    protected long projects;
     private long cityTimer;
     private long projectTimer;
     protected long beigeTimer;
@@ -6406,6 +6406,56 @@ public class DBNation implements NationOrAlliance {
         }
         return modifier;
     }
+
+    @Command(desc = "Value of the projects this nation has\n" +
+            "Cost reduction policies are not included")
+    public double projectValue() {
+        double value = 0;
+        for (Project project : Projects.values) {
+            if (hasProject(project)) {
+                value += project.getMarketValue();
+            }
+        }
+        return value;
+    }
+
+    @Command(desc = "Value of the buildings this nation has\n" +
+            "Cost reduction policies are not included")
+    public double buildingValue() {
+        double value = 0;
+        for (DBCity city : _getCitiesV3().values()) {
+            value += city.getBuildingMarketCost();
+        }
+        return value;
+    }
+
+    @Command(desc = "Value of the land this nation has\n" +
+            "Cost reduction policies are not included")
+    public double landValue() {
+        double value = 0;
+        for (DBCity city : _getCitiesV3().values()) {
+            value += PW.City.Land.calculateLand(0, city.getLand());
+        }
+        return value;
+    }
+
+    @Command(desc = "Value of the infrastructure this nation has\n" +
+            "Cost reduction policies are not included")
+    public double infraValue() {
+        double value = 0;
+        for (DBCity city : _getCitiesV3().values()) {
+            value += PW.City.Infra.calculateInfra(0, city.getInfra());
+        }
+        return value;
+    }
+
+    // city value
+    @Command(desc = "Value of the cities this nation has\n" +
+            "Cost reduction policies are not included")
+    public double cityValue() {
+        return PW.City.cityCost(0, cities, false, false, false, false, false, false);
+    }
+
 
     /*
         // blitzkrieg = For the first 12 turns (24 hours) after switching, your nation does 10% more infrastructure damage and casualties in Ground Battles, Airstrikes, and Naval Battles.
