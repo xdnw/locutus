@@ -1,32 +1,77 @@
 package link.locutus.discord.web;
 
+import com.google.gson.JsonElement;
 import in.wilsonl.minifyhtml.Configuration;
 import in.wilsonl.minifyhtml.MinifyHtml;
-import io.javalin.http.Context;
-import io.javalin.http.Cookie;
-import io.javalin.http.SameSite;
+import io.javalin.http.*;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import link.locutus.discord.util.task.mail.Mail;
+import link.locutus.discord.util.task.mail.SearchMailTask;
+import link.locutus.discord.web.commands.binding.DBAuthRecord;
+import link.locutus.discord.web.jooby.WebRoot;
 import org.jsoup.Jsoup;
 
 import java.awt.Color;
+import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 public class WebUtil {
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext) {
         return generateSearchableDropdown(param, objects, consumeObjectNamesValueSubtext, null);
+    }
+
+    public static void mailLogin(DBNation nation, boolean backend, boolean allowExisting) throws IOException {
+        DBAuthRecord existing = null;
+        if (allowExisting) {
+            existing = WebRoot.db().get(nation.getNation_id());
+        }
+        if (existing == null) {
+            UUID uuid = WebUtil.generateSecureUUID();
+            existing = WebRoot.db().updateToken(uuid, nation.getNation_id(), null);
+        }
+        UUID uuid = existing.token;
+        String authUrl;
+        if (backend) {
+            authUrl = WebRoot.REDIRECT + "/page/login?token=" + uuid + "&nation=" + nation.getNation_id();
+        } else {
+            authUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login?token=" + uuid + "&nation=" + nation.getNation_id();
+        }
+        String title = "Login | timestamp:" + System.currentTimeMillis();
+        String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
+                MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
+
+        ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
+        JsonObject result = nation.sendMail(pool, title, body, true);
+        JsonElement success = result.get("success");
+        if (success != null && success.getAsBoolean()) {
+            List<Mail> mails = new SearchMailTask(Locutus.imp().getRootAuth(), title, true, true, false, null).call();
+            String mailUrl;
+            if (mails.size() > 0) {
+                mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mails.get(0).id;
+            } else {
+                mailUrl = Settings.INSTANCE.PNW_URL() + "/mail/inbox";
+            }
+            throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
+        } else {
+            throw new IllegalArgumentException("Could not send mail to nation: " + nation.getNation_id() + " | " + result);
+        }
     }
 
     public static UUID generateSecureUUID() {
@@ -39,7 +84,7 @@ public class WebUtil {
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         try {
-            URL url = new URL(Settings.INSTANCE.WEB.REDIRECT);
+            URL url = new URL(Settings.INSTANCE.WEB.BACKEND_DOMAIN);
             String domain = url.getHost();
             cookie.setDomain("." + domain);
         } catch (MalformedURLException e) {

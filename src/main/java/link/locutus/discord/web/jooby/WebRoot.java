@@ -2,11 +2,8 @@ package link.locutus.discord.web.jooby;
 
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
-import com.google.gson.JsonObject;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.web.test.WebDB;
-import link.locutus.wiki.WikiGenHandler;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
 import gg.jte.resolve.DirectoryCodeResolver;
@@ -30,7 +27,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,9 +63,9 @@ public class WebRoot {
         if (Settings.INSTANCE.CLIENT_SECRET.isEmpty()) throw new IllegalArgumentException("Please set CLIENT_SECRET in " + Settings.INSTANCE.getDefaultFile());
         if (INSTANCE != null) throw new IllegalArgumentException("Already initialized");
         if (port > 0 && port != (ssl ? 443 : 80)) {
-            REDIRECT = Settings.INSTANCE.WEB.REDIRECT + ":" + port;
+            REDIRECT = Settings.INSTANCE.WEB.BACKEND_DOMAIN + ":" + port;
         } else {
-            REDIRECT = Settings.INSTANCE.WEB.REDIRECT;
+            REDIRECT = Settings.INSTANCE.WEB.BACKEND_DOMAIN;
         }
         INSTANCE = this;
 
@@ -144,13 +140,6 @@ public class WebRoot {
         this.pageHandler = new PageHandler(this);
         this.webDB = new WebDB();
 
-        this.app.get("/test", new Handler() {
-            @Override
-            public void handle(@NotNull Context context) throws Exception {
-                pageHandler.handle(context);
-            }
-        });
-
         this.app.get("/bankrequests", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
@@ -182,6 +171,7 @@ public class WebRoot {
         });
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
+
         this.app.get("/logout", ctx -> pageHandler.logout(ctx));
 
         this.app.get("/sse/**", new SseHandler2(new Consumer<SseClient2>() {
@@ -230,10 +220,11 @@ public class WebRoot {
         this.app.post("/page/**", ctx -> {
             pageHandler.handle(ctx);
         });
-        this.app.get("/rest/**", ctx -> {
-            pageHandler.handle(ctx);
-        });
-        this.app.post("/rest/**", ctx -> {
+//        this.app.get("/api/**", ctx -> {
+//            pageHandler.handle(ctx);
+//        });
+        // Only post requests
+        this.app.post("/api/**", ctx -> {
             pageHandler.handle(ctx);
         });
 

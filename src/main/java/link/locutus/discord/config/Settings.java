@@ -1,7 +1,6 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Config;
 
 import java.io.File;
@@ -506,8 +505,12 @@ public class Settings extends Config {
         @Comment("The cosmetic name of the web interface")
         public String INTERFACE_NAME = "Locutus";
 
+        @Comment("The url/ip/hostname for the backend")
+        public String BACKEND_DOMAIN = "https://locutus.link";
+
         @Comment("The url/ip/hostname for the web interface")
-        public String REDIRECT = "https://locutus.link";
+        public String FRONTEND_DOMAIN = "https://xdnw.github.io/lc_cmd_react";
+
         @Comment({"File location of the ssl certificate",
         "- Locutus expects a privkey.pem and a fullchain.pem in the directory",
         "- You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",

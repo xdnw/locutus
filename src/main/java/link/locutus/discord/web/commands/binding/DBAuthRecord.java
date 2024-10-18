@@ -2,9 +2,11 @@ package link.locutus.discord.web.commands.binding;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.HashMap;
@@ -57,13 +59,15 @@ public class DBAuthRecord {
 
     public Map<String, Object> toMap() {
         Map<String, Object> data = new HashMap<>();
-        if (userId != 0) {
+        Long userId = getUserId();
+        if (userId != null) {
             data.put("user", userId);
             data.put("user_valid", (getUser(false) != null));
         }
-        if (nationId != 0) {
+        Integer nationId = getNationId();
+        if (nationId != null) {
             data.put("nation", nationId);
-            data.put("nation_valid", (isValid()));
+            data.put("nation_valid", (getNation(true) != null));
         }
         data.put("expires", (timestamp));
         return data;
@@ -105,5 +109,16 @@ public class DBAuthRecord {
 
     public Long getUserIdRaw() {
         return userId == 0 ? null : userId;
+    }
+
+    public Guild getDefaultGuild() {
+        DBNation nation = getNation(true);
+        if (nation != null) {
+            GuildDB db = nation.getGuildDB();
+            if (db != null) {
+                return db.getGuild();
+            }
+        }
+        return null;
     }
 }

@@ -253,6 +253,8 @@ public class AuthBindings extends WebBindingHelper {
             throw new IllegalArgumentException("Cannot require nation or user without allowing redirect");
         }
         boolean pageDesiresRedirect = false;
+        System.out.println("Path :|| REMOVE " + context.path());
+        boolean isBackend = true;
         List<String> errors = new ArrayList<>();
         DBAuthRecord record = null;
 
@@ -357,28 +359,10 @@ public class AuthBindings extends WebBindingHelper {
             if (nationIdFilter != null) {
                 DBNation nation = DBNation.getById(nationIdFilter);
                 if (nation != null) {
-                    UUID uuid = WebUtil.generateSecureUUID();
-                    String authUrl = WebRoot.REDIRECT + "/page/login?token=" + uuid + "&nation=" + nation.getNation_id();
-                    record = WebRoot.db().updateToken(uuid, nation.getNation_id(), null);
-                    String title = "Login | timestamp:" + System.currentTimeMillis();
-                    String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
-                            MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
-
-                    ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
-                    JsonObject result = nation.sendMail(pool, title, body, true);
-                    JsonElement success = result.get("success");
-                    if (success != null && success.getAsBoolean()) {
-                        List<Mail> mails = new SearchMailTask(Locutus.imp().getRootAuth(), title, true, true, false, null).call();
-
-                        String mailUrl;
-                        if (mails.size() > 0) {
-                            mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mails.get(0).id;
-                        } else {
-                            mailUrl = Settings.INSTANCE.PNW_URL() + "/mail/inbox";
-                        }
-                        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
-                    } else {
-                        errors.add("Could not send mail to nation: " + nationIdFilter + " | " + result);
+                    try {
+                        WebUtil.mailLogin(nation, isBackend, false);
+                    } catch (IllegalArgumentException e) {
+                        errors.add(e.getMessage());
                     }
                 } else {
                     errors.add("Could not find nation with id: " + nationIdFilter);
@@ -425,13 +409,6 @@ public class AuthBindings extends WebBindingHelper {
             context.cookie(PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), (int) TimeUnit.DAYS.toMinutes(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
         }
 
-        if (pageDesiresRedirect && allowRedirect) {
-            String redirect = getRedirect(context);
-            if (redirect != null) {
-                throw new RedirectResponse(HttpStatus.SEE_OTHER, redirect);
-            }
-            return null;
-        }
         if (record != null) {
             DBNation nation = record.getNation(true);
             User user = record.getUser(true);
@@ -443,6 +420,14 @@ public class AuthBindings extends WebBindingHelper {
             }
         }
 
+        if (pageDesiresRedirect && allowRedirect) {
+            String redirect = getRedirect(context);
+            if (redirect != null) {
+                throw new RedirectResponse(HttpStatus.SEE_OTHER, redirect);
+            }
+            return null;
+        }
+
         if (requireUser) {
             throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
         }
@@ -450,7 +435,6 @@ public class AuthBindings extends WebBindingHelper {
         if (allowRedirect) {
             String discordAuthUrl = getDiscordAuthUrl();
             String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
-
             String html = WebStore.render(f -> JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
             throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
         }

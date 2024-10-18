@@ -127,7 +127,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new AlliancePages(), "page");
         this.commands.registerSubCommands(new NationListPages(), "page");
 
-        this.commands.registerSubCommands(new EndpointPages(), "rest");
+        this.commands.registerSubCommands(new EndpointPages(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
