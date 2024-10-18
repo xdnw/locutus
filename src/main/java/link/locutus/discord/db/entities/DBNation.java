@@ -6437,6 +6437,13 @@ public class DBNation implements NationOrAlliance {
         return value;
     }
 
+    // city value
+    @Command(desc = "Value of the cities this nation has\n" +
+            "Cost reduction policies are not included")
+    public double cityValue() {
+        return PW.City.cityCost(0, cities, false, false, false, false, false, false);
+    }
+
 
     /*
         // blitzkrieg = For the first 12 turns (24 hours) after switching, your nation does 10% more infrastructure damage and casualties in Ground Battles, Airstrikes, and Naval Battles.

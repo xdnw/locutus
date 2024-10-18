@@ -391,7 +391,7 @@ public class AllianceMetricCommands {
     }
 
     @Command(desc = "Get alliance attributes by day\n" +
-            "Applicants and VM nations are included ")
+            "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.")
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
     public String AlliancesDataByDay(@Me IMessageIO io, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Arg ("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances, @Default Predicate<DBNation> filter, @Switch("g") boolean graph,
