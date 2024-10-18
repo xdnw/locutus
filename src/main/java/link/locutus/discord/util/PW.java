@@ -912,7 +912,7 @@ public final class PW {
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
         ValueStore store = ph.createLocals(guild, null, null);
         Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
-        try {   
+        try {
             Map<Integer, DBNation> nationMap = dumper.getNations(day, loadCities, includeVM, allowedNations, allowedAlliances, filter);
             return new ObjectOpenHashSet<>(nationMap.values());
         } catch (IOException | ParseException e) {

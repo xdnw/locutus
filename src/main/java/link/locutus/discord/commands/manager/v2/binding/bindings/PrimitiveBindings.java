@@ -213,6 +213,16 @@ public class PrimitiveBindings extends BindingHelper {
     @Timediff
     @Binding(types = {long.class,Long.class}, examples = {"5d", "1w10h3m25s", "timestamp:1682013943000"}, value = "A time difference or unix timestamp which will resolve as a difference relative to the current date")
     public static Long timediff(String argument) {
+        if (argument.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            format.setTimeZone(TimeZone.getTimeZone("UTC"));
+            try {
+                Date parsed = format.parse(argument);
+                return parsed.getTime() - System.currentTimeMillis();
+            } catch (ParseException e) {
+                throw new IllegalArgumentException("Invalid date: `" + argument + "`: " + e.getMessage());
+            }
+        }
         return TimeUtil.timeToSec(argument) * 1000;
     }
 
@@ -222,9 +232,13 @@ public class PrimitiveBindings extends BindingHelper {
         if (argument.equalsIgnoreCase("%epoch%")) {
             return 0L;
         }
+        if (argument.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            format.setTimeZone(TimeZone.getTimeZone("UTC"));
+            Date parsed = format.parse(argument);
+            return parsed.getTime();
+        }
         if (argument.contains("/")) {
-            long time = 0;
-            long date = 0;
             String[] split = argument.split("/");
             if (split.length == 3) {
                 if (split[2].length() == 2) {
