@@ -6407,6 +6407,37 @@ public class DBNation implements NationOrAlliance {
         return modifier;
     }
 
+    @Command(desc = "Value of the projects this nation has\n" +
+            "Cost reduction policies are not included")
+    public double projectValue() {
+        double value = 0;
+        for (Project project : getProjects()) {
+            value += project.getMarketValue();
+        }
+        return value;
+    }
+
+    @Command(desc = "Value of the land this nation has\n" +
+            "Cost reduction policies are not included")
+    public double landValue() {
+        double value = 0;
+        for (DBCity city : _getCitiesV3().values()) {
+            value += PW.City.Land.calculateLand(0, city.getLand());
+        }
+        return value;
+    }
+
+    @Command(desc = "Value of the infrastructure this nation has\n" +
+            "Cost reduction policies are not included")
+    public double infraValue() {
+        double value = 0;
+        for (DBCity city : _getCitiesV3().values()) {
+            value += PW.City.Infra.calculateInfra(0, city.getInfra());
+        }
+        return value;
+    }
+
+
     /*
         // blitzkrieg = For the first 12 turns (24 hours) after switching, your nation does 10% more infrastructure damage and casualties in Ground Battles, Airstrikes, and Naval Battles.
      */
