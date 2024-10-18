@@ -16206,16 +16206,6 @@ public class CM {
                 }
             }
         }
-        public static class web{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grants")
-            public static class grants extends CommandRef {
-                public static final grants cmd = new grants();
-            public grants nation(String value) {
-                return set("nation", value);
-            }
-
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="who")
         public static class who extends CommandRef {
             public static final who cmd = new who();

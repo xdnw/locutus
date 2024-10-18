@@ -2891,29 +2891,6 @@ public class GrantCommands {
             }
         }
     }
-
-    @WhitelistPermission
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public synchronized String grants(@Me GuildDB db, DBNation nation) {
-        String baseUrl = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
-        List<String> pages = Arrays.asList(
-                baseUrl + "infragrants/" + nation.getNation_id(),
-                baseUrl + "landgrants/" + nation.getNation_id(),
-                baseUrl + "citygrants/" + nation.getNation_id(),
-                baseUrl + "projectgrants/" + nation.getNation_id()
-        );
-        StringBuilder response = new StringBuilder();
-        response.append(nation.toMarkdown() + "\n");
-        response.append("color=" + nation.getColor() + "\n");
-        response.append("mmr[unit]=" + nation.getMMR() + "\n");
-        response.append("mmr[build]=" + nation.getMMRBuildingStr() + "\n");
-        response.append("timer[city]=" + nation.getCityTurns() + " timer[project]=" + nation.getProjectTurns() + "\n");
-        response.append("slots[project]=" + nation.getNumProjects() + "/" + nation.projectSlots() + "\n");
-        response.append("activity[turn]=" + MathMan.format(nation.avg_daily_login_turns() * 100) + "%\n");
-        response.append("activity[day]=" + MathMan.format(nation.avg_daily_login() * 100) + "%\n");
-        return response + "<" + StringMan.join(pages, ">\n<") + ">";
-    }
     //
     private Set<Integer> disabledNations = new HashSet<>();
 //

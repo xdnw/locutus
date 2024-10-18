@@ -10,6 +10,8 @@ import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class WebCommands {
@@ -19,6 +21,9 @@ public class WebCommands {
     public String web(@Me DBNation nation, @Me User user) {
         UUID uuid = WebUtil.generateSecureUUID();
         DBAuthRecord token = WebRoot.db().updateToken(uuid, nation.getId(), user.getIdLong());
-        return "<" + WebRoot.REDIRECT + "/page/login?token=" + token.getUUID() + ">";
+        List<String> urls = new ArrayList<>();
+        urls.add("**Frontend**: <" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login?token=" + uuid + "&nation=" + nation.getNation_id() + ">");
+        urls.add("**Backend**: <" + WebRoot.REDIRECT + "/page/login?token=" + token.getUUID() + ">");
+        return String.join("\n", urls);
     }
 }

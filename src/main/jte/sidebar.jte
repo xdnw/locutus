@@ -100,8 +100,14 @@ function createNestedList(jsonObject, parentElement, path = '') {
     parentElement.appendChild(ul);
     return ul;
 }
-createNestedList(JSON.parse(atob(sidebar.getAttribute("data-src"))), document.getElementById("sidebarlist"));
-sidebar.removeAttribute("data-src");
+
+function setupSidebar() {
+    const src = sidebar.getAttribute("data-src");
+    if (src) {
+        createNestedList(JSON.parse(atob(src)), document.getElementById("sidebarlist"));
+        sidebar.removeAttribute("data-src");
+    }
+}
 
 unhide_parent = (ele) => {
     if(ele.parentNode.parentNode.style.display=="none") {
@@ -126,4 +132,5 @@ function filtersearch() {
         }
     }
 }
+setupSidebar();
 </script>

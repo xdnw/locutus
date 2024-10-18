@@ -38,6 +38,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.commands.WebCommands;
 import link.locutus.discord.web.jooby.JteUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
@@ -253,6 +254,9 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");
+        }
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "costBulk", "cost");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militarizationTime", "militarization_time");
 
