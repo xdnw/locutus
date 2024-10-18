@@ -397,7 +397,6 @@ public class PageHandler implements Handler {
         return combined;
     }
 
-    @NotNull
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
         logger.info("Page method " + ctx.method());

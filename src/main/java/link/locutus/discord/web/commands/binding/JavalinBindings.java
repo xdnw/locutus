@@ -18,4 +18,9 @@ public class JavalinBindings extends BindingHelper {
     public WebStore webStore() {
         throw new IllegalStateException("No WebStore set in command locals");
     }
+
+    @Binding
+    public DBAuthRecord auth(Context context) {
+        throw new IllegalStateException("No DBAuthRecord set in command locals");
+    }
 }

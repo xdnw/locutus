@@ -156,7 +156,7 @@ public class WebRoot {
             }
         });
 
-        this.app.post("/bankcallback**", new Handler() {
+        this.app.post("/bankcallback*", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
                 if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
@@ -196,7 +196,7 @@ public class WebRoot {
 
         for (String cmd : Locutus.imp().getCommandManager().getV2().getCommands().getSubCommandIds()) {
             List<String> patterns = Arrays.asList(
-                    "/command/" + cmd + "/**",
+                    "/command/" + cmd + "/*",
                     "/command/" + cmd
             );
             for (String pattern : patterns) {
@@ -209,7 +209,8 @@ public class WebRoot {
             }
         }
 
-        this.app.get("/page/**", ctx -> {
+        this.app.get("/page/*", ctx -> {
+            System.out.println("Handle page " + ctx.path());
             long start = System.currentTimeMillis();
             pageHandler.handle(ctx);
             long diff = System.currentTimeMillis() - start;
@@ -217,14 +218,14 @@ public class WebRoot {
                 Logg.text("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
             }
         });
-        this.app.post("/page/**", ctx -> {
+        this.app.post("/page/*", ctx -> {
             pageHandler.handle(ctx);
         });
-//        this.app.get("/api/**", ctx -> {
+//        this.app.get("/api/*", ctx -> {
 //            pageHandler.handle(ctx);
 //        });
         // Only post requests
-        this.app.post("/api/**", ctx -> {
+        this.app.post("/api/*", ctx -> {
             pageHandler.handle(ctx);
         });
 
