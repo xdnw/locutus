@@ -742,12 +742,11 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(List.class, ResourceType.class).getType(), HtmlInput.class);
+            Key key = Key.of(TypeToken.getParameterized(Set.class, ResourceType.class).getType(), HtmlInput.class);
             addBinding(rootStore -> {
                 rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
                     ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
-                    List<ResourceType> options = Arrays.asList(ResourceType.values());
-
+                    Set<ResourceType> options = Set.of(ResourceType.values());
                     return multipleSelect(param, options, rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()), true);
                 }));
             });

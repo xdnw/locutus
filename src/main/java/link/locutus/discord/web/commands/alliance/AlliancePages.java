@@ -62,7 +62,7 @@ public class AlliancePages {
             }
             rows.add(row);
         }
-        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, title, header, ws.table(rows)));
+        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, title, header, ws.tableUnsafe(rows)));
     }
 
     @Command

@@ -151,7 +151,15 @@ public class WebStore {
         return Stream.of(elements).map(this::unsafe).toList();
     }
 
+    public List<Content> listUnsafe(Collection<String> myList) {
+        return myList.stream().map(this::unsafe).toList();
+    }
+
     public List<List<Content>> table(List<List<String>> table) {
         return table.stream().map(this::list).toList();
+    }
+
+    public List<List<Content>> tableUnsafe(List<List<String>> table) {
+        return table.stream().map(this::listUnsafe).toList();
     }
 }

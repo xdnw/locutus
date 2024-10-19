@@ -172,8 +172,6 @@ public class WebRoot {
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
 
-        this.app.get("/logout", ctx -> pageHandler.logout(ctx));
-
         this.app.get("/sse/**", new SseHandler2(new Consumer<SseClient2>() {
             @Override
             public void accept(SseClient2 sse) {

@@ -52,7 +52,7 @@
         @endif
         <li><hr class="dropdown-divider"></li>
         <li>
-            <a class="dropdown-item-text btn btn-sm btn-outline-danger border border-2 border-danger" href="${WebRoot.REDIRECT}/logout" aria-label="logout"><i class="bi bi-box-arrow-left"></i>&nbsp;Logout</a>
+            <a class="dropdown-item-text btn btn-sm btn-outline-danger border border-2 border-danger" href="${WebRoot.REDIRECT}/page/logout" aria-label="logout"><i class="bi bi-box-arrow-left"></i>&nbsp;Logout</a>
         </li>
     </ul>
 </div>

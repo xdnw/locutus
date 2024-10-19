@@ -5,7 +5,7 @@ function initCharts() {
         let isTime = container.getAttribute("time") + "" == "true";
         if (src != null) {
             (function(container) {
-                $.getJSON( src, function( data ) {
+                $.post(src, function(data) {
                     setupTimeChart(container, data, isTime);
                 });
             })(container);

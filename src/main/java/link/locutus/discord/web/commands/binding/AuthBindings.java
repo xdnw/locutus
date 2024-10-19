@@ -341,7 +341,7 @@ public class AuthBindings extends WebBindingHelper {
             }
         }
 
-        if ((record == null && record.getNationId() == null && requireNation) || isLoginPage) {
+        if (((record == null || record.getNationId() == null) && requireNation) || isLoginPage) {
             requireNation |= queryMap.containsKey("nation") || queryMap.containsKey("alliance");
             String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
             Integer nationIdFilter = null;

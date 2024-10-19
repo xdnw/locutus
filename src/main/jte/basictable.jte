@@ -4,6 +4,7 @@
 @param String title
 @param List<String> header
 @param List<List<gg.jte.Content>> rows
+
 @template.main(ws = ws, content = @`
 <table class="table">
     <thead>
@@ -17,7 +18,9 @@
     @for (List<gg.jte.Content> row : rows)
         <tr>
             @for(gg.jte.Content item : row)
-            <th>${item}</th>
+            <th>
+                ${item}
+            </th>
             @endfor
         </tr>
         @endfor

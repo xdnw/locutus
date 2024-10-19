@@ -1,13 +1,16 @@
 package link.locutus.discord.web.commands.page;
 
 import com.google.gson.Gson;
+import gg.jte.generated.precompiled.JteindexGenerated;
 import gg.jte.generated.precompiled.auth.JteunregisterGenerated;
+import gg.jte.generated.precompiled.auth.JtelogoutGenerated;
 import gg.jte.generated.precompiled.alliance.JteallianceindexGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.grant.JtenationGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
+import io.javalin.http.HandlerType;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -36,6 +39,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.commands.search.SearchResult;
@@ -82,16 +86,7 @@ public class IndexPages extends PageHelper {
         if (auth == null) {
             return "Not logged in";
         }
-        StringBuilder response = new StringBuilder();
-        response.append("Index page:\n");
-        response.append("User: ").append(auth.getUserId()).append("\n");
-        response.append("nation: ").append(auth.getNationId()).append("\n");
-        response.append("Valid: ").append(auth.isValid()).append("\n");
-        long expireDiff = auth.timestamp + TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS) - System.currentTimeMillis();
-        response.append("Expires: ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, expireDiff)).append("\n");
-        Guild guild = AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
-        response.append("Guild: ").append(guild).append("\n");
-        return response.toString();
+        return WebStore.render(f -> JteindexGenerated.render(f, null, ws));
     }
 
     @Command
@@ -251,7 +246,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object register(WebStore ws, Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+    public Object register(WebStore ws, Context context, @Default @Me User user) throws IOException {
         if (user == null) {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
@@ -341,9 +336,36 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object logout(Context context) throws IOException {
-        WebRoot.getInstance().getPageHandler().logout(context);
-        return "Logging out. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
+    public Object logout(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
+        if (auth == null) {
+            return "You are not logged in";
+        }
+        if (context.method() != HandlerType.POST) {
+            return WebStore.render(f -> JtelogoutGenerated.render(f, null, ws, auth));
+        } else {
+            AuthBindings.logout(context, auth, true);
+            return "Logging out. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
+        }
+    }
+
+    @Command
+    public Object unregister(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
+        if (auth == null) {
+            return "You are not logged in";
+        }
+        if (context.method() != HandlerType.POST) {
+            return WebStore.render(f -> JteunregisterGenerated.render(f, null, ws));
+        } else {
+            Integer nationId = auth.getNationId();
+            Long userId = auth.getUserId();
+            if (nationId == null || userId == null) {
+                return "You are not registered. On discord, use: " + CM.register.cmd.toString();
+            }
+            Locutus.imp().getDiscordDB().unregister(nationId, userId);
+            Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nationId);
+            AuthBindings.logout(context, auth, true);
+            return "Unregistering. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
+        }
     }
 
     @Command()

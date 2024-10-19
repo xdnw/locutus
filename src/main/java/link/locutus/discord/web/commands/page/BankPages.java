@@ -128,7 +128,7 @@ public class BankPages {
             rows.add(row);
         }
 
-        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, ws.table(rows)));
+        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Deposits", header, ws.tableUnsafe(rows)));
     }
 
     @Command

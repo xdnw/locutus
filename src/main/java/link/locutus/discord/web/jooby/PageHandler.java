@@ -628,13 +628,6 @@ public class PageHandler implements Handler {
         }
     }
 
-    public void logout(Context context) {
-        for (CookieType type : CookieType.values()) {
-            context.removeCookie(type.getCookieId());
-        }
-        context.redirect(WebRoot.REDIRECT);
-    }
-
     public enum CookieType {
         DISCORD_OAUTH,
         URL_AUTH,
