@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;

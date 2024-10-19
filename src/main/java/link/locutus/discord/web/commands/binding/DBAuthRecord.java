@@ -54,7 +54,7 @@ public class DBAuthRecord {
     }
 
     public boolean isExpired() {
-        return System.currentTimeMillis() - timestamp > TimeUnit.MINUTES.toDays(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
+        return System.currentTimeMillis() - timestamp > TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
     }
 
     public Map<String, Object> toMap() {

@@ -23,7 +23,7 @@
     <ul class="list-group">
         @for (Map.Entry<String, CommandCallable> entry : subcommands.entrySet())
             <li class="command list-group-item">
-                <b><a href="${endpoint}${entry.getKey()}">${entry.getKey()}</a></b><br>
+                <b><a href="${endpoint}${entry.getKey()}/">${entry.getKey()}</a></b><br>
                 <p>
                     Aliases: ${StringMan.getString(entry.getValue().aliases())}
                 </p>

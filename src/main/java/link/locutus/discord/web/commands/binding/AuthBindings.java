@@ -116,13 +116,7 @@ public class AuthBindings extends WebBindingHelper {
     @Me
     @Binding
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user) {
-        try {
-            Guild guild = guild(context, nation, user, true);
-            return guild;
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            throw e;
-        }
+        return guild(context, nation, user, true);
     }
 
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user, boolean allowRedirect) {
@@ -301,7 +295,7 @@ public class AuthBindings extends WebBindingHelper {
                     if (idStr != null) {
                         long discordId = Long.parseLong(idStr.getAsString());
                         UUID newUUID = WebUtil.generateSecureUUID();
-                        context.cookie(oAuthCookieId, newUUID.toString(), (int) TimeUnit.DAYS.toMinutes(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                        WebUtil.setCookie(context, PageHandler.CookieType.DISCORD_OAUTH.getCookieId(), newUUID.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
                         DBNation nationExisting = DiscordUtil.getNation(discordId);
                         Integer nationId = null;
                         if (nationExisting == null && record != null) {
@@ -327,15 +321,18 @@ public class AuthBindings extends WebBindingHelper {
         Map<String, List<String>> queryMap = context.queryParamMap();
         String path = context.path();
         boolean isLoginPage = path.contains("page/login");
-
         if (isLoginPage) {
             if (queryMap.containsKey("token")) {
                 String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
+                System.out.println("Has token " + token);
                 if (token != null) {
                     pageDesiresRedirect = true;
                     try {
                         UUID uuid = UUID.fromString(token);
-                        record = WebRoot.db().get(uuid);
+                        if (record == null || !record.getUUID().equals(uuid)) {
+                            record = WebRoot.db().get(uuid);
+                            WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), uuid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                        }
                     } catch (IllegalArgumentException e) {
                         e.printStackTrace();
                         errors.add("Invalid token: " + token);
@@ -344,7 +341,7 @@ public class AuthBindings extends WebBindingHelper {
             }
         }
 
-        if (requireNation || isLoginPage) {
+        if ((record == null && record.getNationId() == null && requireNation) || isLoginPage) {
             requireNation |= queryMap.containsKey("nation") || queryMap.containsKey("alliance");
             String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
             Integer nationIdFilter = null;
@@ -406,7 +403,7 @@ public class AuthBindings extends WebBindingHelper {
         if (record != null && record.isExpired()) {
             UUID verifiedUid = WebUtil.generateSecureUUID();
             record = WebRoot.db().updateToken(verifiedUid, record.getNationId(), record.getUserId());
-            context.cookie(PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), (int) TimeUnit.DAYS.toMinutes(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+            WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
         }
 
         if (record != null) {
@@ -425,7 +422,6 @@ public class AuthBindings extends WebBindingHelper {
             if (redirect != null) {
                 throw new RedirectResponse(HttpStatus.SEE_OTHER, redirect);
             }
-            return null;
         }
 
         if (requireUser) {
@@ -438,7 +434,7 @@ public class AuthBindings extends WebBindingHelper {
             String html = WebStore.render(f -> JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
             throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
         }
-        return null;
+        return record;
     }
 
     public static String setRedirect(Context context) {

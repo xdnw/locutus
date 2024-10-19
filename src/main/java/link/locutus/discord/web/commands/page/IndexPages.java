@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.page;
 
 import com.google.gson.Gson;
+import gg.jte.generated.precompiled.auth.JteunregisterGenerated;
 import gg.jte.generated.precompiled.alliance.JteallianceindexGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
@@ -77,7 +78,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
-    public Object index(WebStore ws, Context context, @Default DBAuthRecord auth) throws IOException {
+    public Object index(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth == null) {
             return "Not logged in";
         }
@@ -255,7 +256,7 @@ public class IndexPages extends PageHelper {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
         DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, true, true);
-        return "You are already registered";
+        return WebStore.render(f -> JteunregisterGenerated.render(f, null, ws));
     }
 
     @Command()

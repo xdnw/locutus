@@ -1,5 +1,7 @@
 package link.locutus.discord._main;
 
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.kobylynskyi.graphql.codegen.model.graphql.GraphQLRequestSerializer;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
@@ -175,6 +177,7 @@ public class PreLoader implements ILoader {
             return new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
         });
         this.apiV3 = add("PW-API V3", () -> {
+            GraphQLRequestSerializer.OBJECT_MAPPER.registerModule(new JavaTimeModule());
             ApiKeyPool v3Pool = ApiKeyPool.builder()
                     .addKey(Settings.INSTANCE.NATION_ID,
                             Settings.INSTANCE.API_KEY_PRIMARY,

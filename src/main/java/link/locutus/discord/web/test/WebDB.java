@@ -21,15 +21,17 @@ import static org.jooq.impl.DSL.asterisk;
 
 public class WebDB extends DBMainV3 {
 
-    private Map<UUID, DBAuthRecord> authByUUID = new ConcurrentHashMap<>();
-    private Map<Long, DBAuthRecord> authByUserId = new ConcurrentHashMap<>();
-    private Map<Integer, DBAuthRecord> authByNationId = new ConcurrentHashMap<>();
+    private final Map<UUID, DBAuthRecord> authByUUID = new ConcurrentHashMap<>();
+    private final Map<Long, DBAuthRecord> authByUserId = new ConcurrentHashMap<>();
+    private final Map<Integer, DBAuthRecord> authByNationId = new ConcurrentHashMap<>();
 
     public WebDB() throws SQLException, ClassNotFoundException {
         super(Settings.INSTANCE.DATABASE, "web", false);
+        load();
     }
 
     public DBAuthRecord get(UUID uuid) {
+        System.out.println("GET " + uuid + " | " + authByUUID.keySet());
         return authByUUID.get(uuid);
     }
 
@@ -49,7 +51,6 @@ public class WebDB extends DBMainV3 {
     public void createTables() {
         ctx().execute("CREATE TABLE IF NOT EXISTS `AUTH` (`least` BIGINT NOT NULL, `most` BIGINT NOT NULL, `NATION_ID` BIGINT, `USER_ID` BIGINT, `TIMESTAMP` BIGINT NOT NULL, PRIMARY KEY (`least`, `most`))");
         deleteOldTempAuth();
-        load();
     }
 
     private void load() {
@@ -61,6 +62,7 @@ public class WebDB extends DBMainV3 {
             UUID uuid = new UUID(big, small);
             long timestamp = row.get("TIMESTAMP", Long.class);
             DBAuthRecord record = new DBAuthRecord(userId, nationId, uuid, timestamp);
+            System.out.println("Loaded " + record + " | " + uuid);
             this.authByUUID.put(uuid, record);
             if (userId != null) {
                 this.authByUserId.put(userId, record);
@@ -69,13 +71,6 @@ public class WebDB extends DBMainV3 {
                 this.authByNationId.put(nationId, record);
             }
         });
-    }
-
-    public void removeToken(UUID uuid) {
-        long small = uuid.getLeastSignificantBits();
-        long big = uuid.getMostSignificantBits();
-        // delete from AUTH table
-        ctx().execute("DELETE FROM `AUTH` WHERE `least` = ? AND `most` = ?;", small, big);
     }
 
     public void removeToken(@Nullable UUID uuid, @Nullable Integer nationId, @Nullable Long userId) {
@@ -128,13 +123,12 @@ public class WebDB extends DBMainV3 {
     }
 
     public synchronized void addToken(UUID uuid, DBAuthRecord auth) {
-        long timestamp = System.currentTimeMillis();
         long small = uuid.getLeastSignificantBits();
         long big = uuid.getMostSignificantBits();
         Integer nationId = auth.getNationIdRaw();
         Long userId = auth.getUserIdRaw();
         removeToken(uuid, nationId, userId);
-        ctx().execute("INSERT OR REPLACE INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ", small, big, nationId, userId, timestamp);
+        ctx().execute("INSERT OR REPLACE INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ", small, big, nationId, userId, auth.timestamp);
         if (nationId != null) {
             authByNationId.put(nationId, auth);
         }

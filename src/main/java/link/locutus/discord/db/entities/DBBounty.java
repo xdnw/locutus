@@ -85,22 +85,13 @@ public class DBBounty {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-
         DBBounty dbBounty = (DBBounty) o;
-
-        if (date != dbBounty.date) return false;
-        if (nationId != dbBounty.nationId) return false;
-        if (amount != dbBounty.amount) return false;
-        return type == dbBounty.type;
+        return id == dbBounty.id;
     }
 
     @Override
     public int hashCode() {
-        int result = (int) (date ^ (date >>> 32));
-        result = 31 * result + nationId;
-        result = 31 * result + (type != null ? type.hashCode() : 0);
-        result = 31 * result + (int) (amount ^ (amount >>> 32));
-        return result;
+        return id;
     }
 
     @Override
