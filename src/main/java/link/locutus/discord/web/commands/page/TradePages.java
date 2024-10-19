@@ -29,8 +29,6 @@ public class TradePages {
             row.add(MarkupUtil.htmlUrl(MathMan.format(manager.getHigh(type)), PW.getTradeUrl(type, false)));
             rows.add(row);
         }
-
-        return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Trade Price", header, ws.table(rows)));
         return WebStore.render(f -> JtebasictableGenerated.render(f, null, ws, "Trade Price", header, ws.tableUnsafe(rows)));
     }
 
