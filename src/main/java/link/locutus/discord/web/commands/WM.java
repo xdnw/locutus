@@ -7,7 +7,6 @@ import link.locutus.discord.web.commands.page.EconPages;
 import link.locutus.discord.web.commands.page.GrantPages;
 import link.locutus.discord.web.commands.page.IAPages;
 import link.locutus.discord.web.commands.page.IndexPages;
-import link.locutus.discord.web.commands.page.NationListPages;
 import link.locutus.discord.web.commands.page.StatPages;
 import link.locutus.discord.web.commands.page.TestPages;
 import link.locutus.discord.web.commands.page.TradePages;
@@ -19,13 +18,6 @@ public class WM {
         public static final taxExpensesByTime cmd = new taxExpensesByTime();
         public taxExpensesByTime create(String start, String end, String nationFilter, String movingAverageTurns, String cumulative, String dontRequireTagged) {
             return createArgs("start", start, "end", end, "nationFilter", nationFilter, "movingAverageTurns", movingAverageTurns, "cumulative", cumulative, "dontRequireTagged", dontRequireTagged);
-        }
-    }
-    @AutoRegister(clazz= NationListPages.class,method="filter")
-    public static class filter extends CommandRef {
-        public static final filter cmd = new filter();
-        public filter create(String filter, String parentId) {
-            return createArgs("filter", filter, "parentId", parentId);
         }
     }
     @AutoRegister(clazz= TradePages.class,method="tradePriceByDay")
@@ -54,13 +46,6 @@ public class WM {
         public static final globalTierStats cmd = new globalTierStats();
         public globalTierStats create(String metrics, String topX, String groupBy, String total) {
             return createArgs("metrics", metrics, "topX", topX, "groupBy", groupBy, "total", total);
-        }
-    }
-    @AutoRegister(clazz= NationListPages.class,method="filters")
-    public static class filters extends CommandRef {
-        public static final filters cmd = new filters();
-        public filters create() {
-            return createArgs();
         }
     }
     @AutoRegister(clazz= StatPages.class,method="globalStats")
@@ -102,13 +87,6 @@ public class WM {
     public static class defensive extends CommandRef {
         public static final defensive cmd = new defensive();
         public defensive create() {
-            return createArgs();
-        }
-    }
-    @AutoRegister(clazz= NationListPages.class,method="filtersJson")
-    public static class filtersJson extends CommandRef {
-        public static final filtersJson cmd = new filtersJson();
-        public filtersJson create() {
             return createArgs();
         }
     }

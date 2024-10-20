@@ -37,5 +37,5 @@ bg-secondary border-dark
     @else
         <button cmd="${CM.announcement.archive.cmd.announcementId(announcement.id + "").archive("false").toSlashCommand(false)}" type="button" class="btn btn-danger">Unarchive</button>
     @endif
-    <a href="${WebRoot.REDIRECT}/announcementvariations/${announcement.id}" type="button" class="btn btn-primary">View Variations</a>
+    <a href="${WebRoot.REDIRECT}/page/announcementvariations/${announcement.id}" type="button" class="btn btn-primary">View Variations</a>
 </div>

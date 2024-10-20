@@ -48,9 +48,9 @@
         @for (Announcement.PlayerAnnouncement plrAnn : announcements)
             @template.alliance.playerannouncement(ws = ws, db = db, plrAnn = plrAnn, showFooter = true, showReceiver = false, includeDate = true)
         @endfor
-        <a class="btn btn-primary btn-sm" href="${WebRoot.REDIRECT}/announcements/-a">View All Announcements</a>
+        <a class="btn btn-primary btn-sm" href="${WebRoot.REDIRECT}/page/announcements/-a">View All Announcements</a>
         @if(Roles.ADMIN.has(author, guild))
-            <a class="btn btn-danger btn-sm" href="${WebRoot.REDIRECT}/manageannouncements">Manage Announcements</a>
+            <a class="btn btn-danger btn-sm" href="${WebRoot.REDIRECT}/page/manageannouncements">Manage Announcements</a>
         @endif
     </div>
     <div class="bg-lightcontainer mt-3 rounded shadow py-1">
@@ -76,7 +76,6 @@
     @endfor
         </div>
     </div>
-}
 <div class="bg-white container mt-3 rounded shadow py-1">
     <h2 class="">&#127975; ATM</h2>
     <hr>
@@ -159,10 +158,10 @@
         @endif
     </p>
     <div class="list-group">
-    <a href="${WebRoot.REDIRECT}/infragrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>
-    <a href="${WebRoot.REDIRECT}/landgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>
-    <a href="${WebRoot.REDIRECT}/citygrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>
-    <a href="${WebRoot.REDIRECT}/projectgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#128508; Project grants</a>
+    <a href="${WebRoot.REDIRECT}/page/infragrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>
+    <a href="${WebRoot.REDIRECT}/page/landgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>
+    <a href="${WebRoot.REDIRECT}/page/citygrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>
+    <a href="${WebRoot.REDIRECT}/page/projectgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#128508; Project grants</a>
     </div>
 </div>
 @endif

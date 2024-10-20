@@ -149,8 +149,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
                     int nationId = rs.getInt("nation_id");
 
-                    byte[] keyBytes = new BigInteger(key, 16).toByteArray();
-                    byte[] botKeyBytes = botKey == null ? null : new BigInteger(botKey, 16).toByteArray();
+                    byte[] keyBytes = SQLUtil.hexStringToByteArray(key);
+                    byte[] botKeyBytes = botKey == null ? null : SQLUtil.hexStringToByteArray(botKey);
 
                     // insert into API_KEYS3
                     try (PreparedStatement stmt2 = prepareQuery("INSERT OR REPLACE INTO API_KEYS3 VALUES (?, ?, ?, ?)")) {
@@ -172,7 +172,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void addApiKey(int nationId, String key) {
-        byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
+        byte[] keyId = SQLUtil.hexStringToByteArray(key);
         update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, keyId);
@@ -181,7 +181,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void addBotKey(int nationId, String key) {
-        byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
+        byte[] keyId = SQLUtil.hexStringToByteArray(key);
         update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `bot_key`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, keyId);
@@ -194,8 +194,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             addApiKey(nationId, key);
             return;
         }
-        byte[] keyId = new BigInteger(key, 16).toByteArray();
-        byte[] botId = new BigInteger(botKey, 16).toByteArray();
+        byte[] keyId = SQLUtil.hexStringToByteArray(key);
+        byte[] botId = SQLUtil.hexStringToByteArray(botKey);
         update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`, `bot_key`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, keyId);
@@ -218,8 +218,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     byte[] botKeyId = getBytes(rs, "bot_key");
                     // byte[] to hex string
 
-                    String key = new BigInteger(keyId).toString(16).toLowerCase(Locale.ROOT);
-                    String botKey = botKeyId == null ? null : new BigInteger(botKeyId).toString(16).toLowerCase(Locale.ROOT);
+                    String key = SQLUtil.byteArrayToHexString(keyId);
+                    String botKey = botKeyId == null ? null : SQLUtil.byteArrayToHexString(botKeyId);
                     return new ApiKeyPool.ApiKey(nationId, key, botKey);
                 }
             }
@@ -241,7 +241,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     public void deleteApiKey(String key) {
         update("UPDATE API_KEYS3 SET api_key = NULL, `date_updated` = ? WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, System.currentTimeMillis());
-            stmt.setBytes(2, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
+            stmt.setBytes(2, SQLUtil.hexStringToByteArray(key));
 
         });
     }
@@ -249,7 +249,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     public void deleteBotKey(String key) {
         update("UPDATE API_KEYS3 SET bot_key = NULL, `date_updated` = ? WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, System.currentTimeMillis());
-            stmt.setBytes(2, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
+            stmt.setBytes(2, SQLUtil.hexStringToByteArray(key));
 
         });
     }
@@ -262,7 +262,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             return Settings.INSTANCE.NATION_ID;
         }
         try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS3 WHERE api_key = ?")) {
-            byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
+            byte[] keyId = SQLUtil.hexStringToByteArray(key);
             stmt.setBytes(1, keyId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

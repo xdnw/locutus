@@ -45,7 +45,6 @@ public class BankPages {
     @Command
     @RolePermission(Roles.ECON)
     public Object memberDeposits(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
-        if (true) return nation2 + "<br><br>" + author + "<br><br>" + guild;
         Set<Long> tracked = db.getTrackedBanks();
 
         List<String> header = new ArrayList<>(Arrays.asList(
@@ -87,8 +86,6 @@ public class BankPages {
 
         List<List<String>> rows = new ArrayList<>();
         for (DBNation nation : nations) {
-            long start2 = System.currentTimeMillis();
-
             List<String> row = new ArrayList<>(header);
             Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, true);
 

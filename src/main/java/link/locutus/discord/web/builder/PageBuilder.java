@@ -78,4 +78,8 @@ public class PageBuilder {
     public String build() {
         return WebStore.render(f -> JtemainGenerated.render(f, null, ws, ws.unsafe(output.toString()), title, navbar));
     }
+
+    public boolean isEmpty() {
+        return output.length() == 0;
+    }
 }

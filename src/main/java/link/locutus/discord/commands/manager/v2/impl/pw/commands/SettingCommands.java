@@ -150,6 +150,8 @@ public class SettingCommands {
 
                 return response.toString();
             }
+        } else if (key == null) {
+            throw new IllegalArgumentException("Please set a value for `key`");
         }
         if (!key.hasPermission(db, author, null)) return "No permission for modify that key.";
         if (!key.allowed(db, true)) return "This guild does not have permission to set this key.";

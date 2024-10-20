@@ -2,6 +2,9 @@ package link.locutus.discord.web.jooby;
 
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
+import io.javalin.community.ssl.SslPlugin;
+import io.javalin.compression.CompressionStrategy;
+import io.javalin.config.SizeUnit;
 import link.locutus.discord.Logg;
 import link.locutus.discord.web.test.WebDB;
 import gg.jte.ContentType;
@@ -9,7 +12,6 @@ import gg.jte.TemplateEngine;
 import gg.jte.resolve.DirectoryCodeResolver;
 import gg.jte.watcher.DirectoryWatcher;
 import io.javalin.Javalin;
-import io.javalin.community.ssl.SSLPlugin;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.http.staticfiles.Location;
@@ -24,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -32,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class WebRoot {
     public static String REDIRECT = "https://locutus.link";
@@ -76,7 +81,7 @@ public class WebRoot {
         staticFileMap.put("/js", "/js");
         staticFileMap.put("/img", "/");
 
-        SSLPlugin plugin = new SSLPlugin(conf -> {
+        SslPlugin plugin = !ssl ? null : new SslPlugin(conf -> {
             if (Settings.INSTANCE.WEB.PRIVKEY_PASSWORD.isEmpty()) {
                 conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH);
             } else {
@@ -89,7 +94,6 @@ public class WebRoot {
 
         this.jteEngine = createTemplateEngine();
         this.jteResolver = createResolver();
-        JavalinJte.init(jteEngine);
         {
             DirectoryWatcher watcher = new DirectoryWatcher(jteEngine, jteResolver);
             watcher.start(templates -> {
@@ -102,18 +106,44 @@ public class WebRoot {
         Logg.text("Starting on port " + port);
 //        BrotliLoader.isBrotliAvailable();
         this.app = Javalin.create(config -> {
+            config.fileRenderer(new JavalinJte());
+            // default
+            config.http.generateEtags = true;
+            config.http.maxRequestSize = 1024 * 1024 * 1024; // 1gb
+            config.http.asyncTimeout = 60_000; // 60 seconds
+            config.jetty.multipartConfig.cacheDirectory("c:/temp");
+            config.jetty.multipartConfig.maxFileSize(100, SizeUnit.MB);
+            config.jetty.multipartConfig.maxInMemoryFileSize(10, SizeUnit.MB);
+            config.jetty.multipartConfig.maxTotalRequestSize(1, SizeUnit.GB);
+
             if (ssl) {
-                config.plugins.register(plugin);
+                config.registerPlugin(plugin);
             }
-            config.plugins.enableDevLogging(); // Approach 1
 //            config.enableCorsForOrigin();
+            config.bundledPlugins.enableDevLogging();
+            Function<String, String> getDomain = (String path) -> {
+                try {
+                    return new URL(path).getHost();
+                } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+            System.out.println("Domain: " + getDomain.apply(Settings.INSTANCE.WEB.FRONTEND_DOMAIN));
+            config.bundledPlugins.enableCors(cors -> {
+                cors.addRule(f -> f.allowHost(
+                        getDomain.apply(Settings.INSTANCE.WEB.BACKEND_DOMAIN),
+                        getDomain.apply(Settings.INSTANCE.WEB.FRONTEND_DOMAIN),
+                        "localhost",
+                        "127.0.0.1"));
+            });
+
             // check if brotli available
             if (Brotli4jLoader.isAvailable()) {
                 Logg.text("Using brotli");
-                config.compression.brotliAndGzip();
+                config.http.brotliAndGzipCompression();
             } else {
                 Logg.text("Using gzip");
-                config.compression.gzipOnly();
+                config.http.gzipOnlyCompression();
             }
             for (Map.Entry<String, String> entry : staticFileMap.entrySet()) {
                 config.staticFiles.add(new Consumer<StaticFileConfig>() {
@@ -203,9 +233,13 @@ public class WebRoot {
                 });
                 this.app.post(pattern, ctx -> {
                     pageHandler.handle(ctx);
+                    ctx.status(200);
                 });
             }
         }
+        this.app.get("/command/", ctx -> {
+            pageHandler.handle(ctx);
+        });
 
         this.app.get("/page/*", ctx -> {
             System.out.println("Handle page " + ctx.path());
@@ -218,6 +252,7 @@ public class WebRoot {
         });
         this.app.post("/page/*", ctx -> {
             pageHandler.handle(ctx);
+            ctx.status(200);
         });
 //        this.app.get("/api/*", ctx -> {
 //            pageHandler.handle(ctx);
@@ -225,6 +260,7 @@ public class WebRoot {
         // Only post requests
         this.app.post("/api/*", ctx -> {
             pageHandler.handle(ctx);
+            ctx.status(200);
         });
 
         this.fileRoot = new File("files");

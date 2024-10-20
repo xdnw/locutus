@@ -25,6 +25,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -40,14 +41,13 @@ public class AssignBuild extends Command {
     }
     public static String build(@Me IMessageIO io, GuildDB db, DBNation me, int cities, String arg) throws InterruptedException, ExecutionException, IOException {
         JavaCity to = null;
-
         if (arg.contains("/city/")) {
             throw new IllegalArgumentException("Not implemented.");
         } else if (arg.charAt(0) == '{') {
             CityBuild build = new Gson().fromJson(arg, CityBuild.class);
             to = new JavaCity(build);
         } else {
-            String category = arg.toLowerCase();
+            String category = arg.toLowerCase(Locale.ROOT);
             Map<String, List<CityBuildRange>> builds = db.getBuilds();
             if (!builds.containsKey(category)) {
                 throw new IllegalArgumentException("No category for: " + category + ". Available categories are: " + StringMan.getString(db.getBuilds().keySet()));

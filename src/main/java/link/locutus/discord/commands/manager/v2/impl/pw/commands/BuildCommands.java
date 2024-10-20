@@ -17,10 +17,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -47,6 +44,7 @@ public class BuildCommands {
     @Command(desc = "Add a build to a category with the specified city ranges")
     @RolePermission(Roles.ECON)
     public String add(@Me GuildDB db, String category, CityRanges ranges, CityBuild build) {
+        category = category.toLowerCase(Locale.ROOT);
         List<CityBuildRange> existingRanges = db.getBuilds().getOrDefault(category, new ArrayList<>());
         for (Map.Entry<Integer, Integer> range : ranges.getRanges()) {
             db.addBuild(category, range.getKey(), range.getValue(), build.toCompressedString());
@@ -66,6 +64,7 @@ public class BuildCommands {
     @Command(desc = "Delete a build registered in a specific category with the provided min-cities")
     @RolePermission(Roles.ECON)
     public String delete(@Me GuildDB db, String category, int minCities) {
+        category = category.toLowerCase(Locale.ROOT);
         Map<String, List<CityBuildRange>> builds = db.getBuilds();
         if (!builds.containsKey(category)) {
             return "No builds found in category: `" + category + "`. Options: " + StringMan.getString(builds.keySet());

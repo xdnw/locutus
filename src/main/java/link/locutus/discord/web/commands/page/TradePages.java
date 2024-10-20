@@ -36,7 +36,6 @@ public class TradePages {
     public Object tradePriceByDay(WebStore ws, TradeManager manager, Set<ResourceType> resources, int days) {
         String query = StringMan.join(resources, ",") + "/" + days;
         String endpoint = "/api/tradepricebydayjson/" + query;
-
         String title = "Trade Price By Day";
         return WebStore.render(f -> JtetradepriceGenerated.render(f, null, ws, title, endpoint));
     }

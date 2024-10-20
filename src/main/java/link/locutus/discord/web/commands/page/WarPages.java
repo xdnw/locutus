@@ -247,6 +247,10 @@ public class WarPages {
             builder.spoiler("Ally Applicants (" + allyApps.size() + ")", table.buildTableHtml("", allyApps));
         }
 
+        if (builder.isEmpty()) {
+            return "No uncountered wars";
+        }
+
         return builder.buildWithContainer();
     }
 }

@@ -2632,7 +2632,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
 
         update("INSERT OR REPLACE INTO `BUILDS`(`category`, `min`, `max`, `build`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, category);
+            stmt.setString(1, category.toLowerCase());
             stmt.setInt(2, min);
             stmt.setInt(3, max);
             stmt.setString(4, build);
@@ -2646,7 +2646,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return;
         }
 
-        update("DELETE FROM `BUILDS` WHERE `category` = ? AND `min` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("DELETE FROM `BUILDS` WHERE LOWER(`category`) = LOWER(?) AND `min` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, category);
             stmt.setInt(2, min);
         });
@@ -2660,7 +2660,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         try (PreparedStatement stmt = prepareQuery("select * FROM BUILDS")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String category = rs.getString("category");
+                    String category = rs.getString("category").toLowerCase();
                     int min = rs.getInt("min");
                     int max = rs.getInt("max");
                     String buildJson = rs.getString("build");

@@ -31,7 +31,7 @@
                 @endfor
             @endif
             @if(db.getOffshore() != null)
-                <a href="/${guild.getIdLong()}/bankindex" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View Bank</a>
+                <a href="/page/bankindex" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View Bank</a>
             @endif
             </div>
         </div>

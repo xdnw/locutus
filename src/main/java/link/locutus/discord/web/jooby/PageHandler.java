@@ -3,8 +3,7 @@ package link.locutus.discord.web.jooby;
 import com.google.common.hash.Hashing;
 import gg.jte.generated.precompiled.JtealertGenerated;
 import gg.jte.generated.precompiled.JteerrorGenerated;
-import io.javalin.http.Header;
-import io.javalin.http.RedirectResponse;
+import io.javalin.http.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -50,15 +49,12 @@ import link.locutus.discord.web.commands.page.EndpointPages;
 import link.locutus.discord.web.commands.page.GrantPages;
 import link.locutus.discord.web.commands.page.IAPages;
 import link.locutus.discord.web.commands.page.IndexPages;
-import link.locutus.discord.web.commands.page.NationListPages;
 import link.locutus.discord.web.commands.page.StatPages;
 import link.locutus.discord.web.commands.page.TestPages;
 import link.locutus.discord.web.commands.page.TradePages;
 import link.locutus.discord.web.commands.page.WarPages;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import com.google.gson.JsonObject;
-import io.javalin.http.Context;
-import io.javalin.http.Handler;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.jetbrains.annotations.NotNull;
@@ -125,8 +121,6 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new BankPages(), "page");
         this.commands.registerSubCommands(new TradePages(), "page");
         this.commands.registerSubCommands(new AlliancePages(), "page");
-        this.commands.registerSubCommands(new NationListPages(), "page");
-
         this.commands.registerSubCommands(new EndpointPages(), "api");
 
         this.commands.registerCommands(new TestPages());
@@ -431,6 +425,8 @@ public class PageHandler implements Handler {
             ArgumentStack stack = createStack(ctx);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
+            boolean isPost = ctx.method() == HandlerType.POST;
+
             switch (path.toLowerCase(Locale.ROOT)) {
                 case "command" -> {
                     stack.consumeNext();
@@ -447,22 +443,26 @@ public class PageHandler implements Handler {
                     ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }
-                // case "page" ->
                 default -> {
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandCallable cmd = commands.getCallable(args, true);
                     if (cmd == null) {
                         throw new IllegalArgumentException("No page found for `/" + StringMan.join(args, " ") + "`");
                     }
-                    boolean run = !ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && (param.getUserParameters().isEmpty() || param.getAnnotation(NoForm.class) != null));
+                    boolean run = isPost || (cmd instanceof ParametricCallable param && (param.getAnnotation(NoForm.class) != null));//!ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && (param.getUserParameters().isEmpty() || param.getAnnotation(NoForm.class) != null));
                     Object result;
                     if (cmd instanceof ParametricCallable parametric && run) {
                         Map<String, String> queryMap;
                         if (!args.isEmpty()) {
                             queryMap = parametric.formatArgumentsToMap(stack.getStore(), args);
                         } else {
-                            queryMap = parseQueryMap(ctx.queryParamMap());
-                            queryMap.remove("code");
+                            Map<String, List<String>> queryParams = ctx.queryParamMap();
+                            if (queryParams.isEmpty()) {
+                                queryMap = parseQueryMap(ctx.formParamMap());
+                            } else {
+                                queryMap = parseQueryMap(queryParams);
+                                queryMap.remove("code");
+                            }
                         }
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
                         Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
@@ -480,6 +480,7 @@ public class PageHandler implements Handler {
                 }
             }
         } catch (Throwable e) {
+            System.out.println("Throwable " + e.getMessage());
             handleErrors(e, ctx);
         }
     }

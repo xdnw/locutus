@@ -10,14 +10,14 @@
 @param User user
 @template.main(ws = ws, title = db.getGuild().getName() + " Bank Index", content = @`
     <h2>Member Pages</h2>
-    <a class="m-1 btn btn-primary btn-lg" href="${db.getGuild().getIdLong()}/deposits">View Your Deposits</a>
+    <a class="m-1 btn btn-primary btn-lg" href="/command/deposits/check">View Your Deposits</a>
     @if(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && Roles.ECON_WITHDRAW_SELF.has(user, guild))
-        <a class="m-1 btn btn-primary btn-lg" href="/${db.getGuild().getIdLong()}/withdrawaa">Withdraw your deposits</a>
+        <a class="m-1 btn btn-primary btn-lg" href="/command/transfer/self">Withdraw your deposits</a>
     @endif
 
     @if(Roles.ECON.has(user, db.getGuild()))
         <h2>Econ Gov Pages</h2>
-        <a class="m-1 btn btn-primary btn-lg" href="/${db.getGuild().getIdLong()}/memberdeposits">View Member Deposits</a>
-        <a class="m-1 btn btn-primary btn-lg" href="/${db.getGuild().getIdLong()}/withdrawaa">Send From Offshore</a>
+        <a class="m-1 btn btn-primary btn-lg" href="/page/memberdeposits">View Member Deposits</a>
+        <a class="m-1 btn btn-primary btn-lg" href="/command/transfer/resources">Send From Offshore</a>
     @endif
 `, navbar = null)

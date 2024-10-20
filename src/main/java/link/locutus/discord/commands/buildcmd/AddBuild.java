@@ -20,6 +20,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -56,7 +57,7 @@ public class AddBuild extends Command {
         int jsonStart = content.indexOf('{');
         if (jsonStart != -1) {
             // add a build
-            String category = args.get(0).toLowerCase();
+            String category = args.get(0).toLowerCase(Locale.ROOT);
             String minStr = args.get(1);
             String maxStr = args.get(2).split("\\r?\\n")[0];
             if (!MathMan.isInteger(minStr)) {

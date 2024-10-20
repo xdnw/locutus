@@ -68,19 +68,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IndexPages extends PageHelper {
-
-    @Command
-    public Object bank(@Me GuildDB db, WebStore ws, Context context, @Me DBNation nation) throws IOException {
-       return "Your nation is " + nation.getId();
-    }
-
-    @Command
-    public Object argTypes() {
-        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-        ValueStore<Object> store = manager.getStore();
-        return "Arg types stub";
-    }
-
     @Command
     public Object index(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth == null) {
@@ -428,17 +415,17 @@ public class IndexPages extends PageHelper {
         boolean finalIsFightingActives = isFightingActives;
         return WebStore.render(f -> JtememberindexGenerated.render(f, null, ws, db.getGuild(), db, finalNation, author, deposits, finalCheckupResult, cities, finalIsFightingActives, offensiveWars, defensiveWars, warCards, recommendedAttack, announcements));
     }
-
-    @Command()
-    @RolePermission(Roles.MEMBER)
-    public Object allianceIndex(WebStore ws, @Me User user, int allianceId) {
-        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-        GuildDB db = alliance.getGuildDB();
-        Guild guild = db != null ? db.getGuild() : null;
-
-        String url = alliance.getUrl();
-        Set<DBNation> nations = alliance.getNations();
-
-        return WebStore.render(f -> JteallianceindexGenerated.render(f, null, ws, db, guild, alliance, user));
-    }
+//
+//    @Command()
+//    @RolePermission(Roles.MEMBER)
+//    public Object allianceIndex(WebStore ws, @Me User user, int allianceId) {
+//        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
+//        GuildDB db = alliance.getGuildDB();
+//        Guild guild = db != null ? db.getGuild() : null;
+//
+//        String url = alliance.getUrl();
+//        Set<DBNation> nations = alliance.getNations();
+//
+//        return WebStore.render(f -> JteallianceindexGenerated.render(f, null, ws, db, guild, alliance, user));
+//    }
 }

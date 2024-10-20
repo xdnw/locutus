@@ -10,6 +10,6 @@
 @param DBAlliance alliance
 @param User user
 @template.main(ws = ws, content = @`
-    <a class="m-1 btn btn-primary btn-lg" href="allianceleaves/${alliance.getId()}">View Rank Changes</a>
-    <a class="m-1 btn btn-primary btn-lg" href="alliancewars/${alliance.getId()}">View Rank Changes</a>
+    <a class="m-1 btn btn-primary btn-lg" href="/page/allianceleaves/${alliance.getId()}">View Rank Changes</a>
+    <a class="m-1 btn btn-primary btn-lg" href="/page/alliancewars/${alliance.getId()}">View Rank Changes</a>
 `, title = alliance.getName() + " Alliance Index", navbar = null)
