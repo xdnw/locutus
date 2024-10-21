@@ -356,7 +356,7 @@ public class PoliticsAndWarV3 {
                 if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
                     remove = true;
                 }
-                if (badKey++ < 4 && pool.size() > 1) {
+                if (remove && badKey++ < 4 && pool.size() > 1) {
                     if (remove) pool.removeKey(pair);
                     continue;
                 }
