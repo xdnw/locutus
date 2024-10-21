@@ -40,6 +40,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     private final boolean allow_switch_after_infra;
     private final boolean allow_switch_after_land_or_project;
     private final boolean allow_all;
+    private final boolean includeInfra;
+    private final int includeLand;
 
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getBytes("build"), rs.getBoolean("only_new_cities"),
@@ -52,7 +54,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getLong("expire"),
                 rs.getLong("decay"),
                 rs.getBoolean("allow_ignore"),
-                rs.getLong("repeatable")
+                rs.getLong("repeatable"),
+                rs.getBoolean("include_infra"),
+                rs.getInt("include_land")
         );
     }
 
@@ -63,7 +67,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                          boolean allow_switch_after_infra,
                          boolean allow_switch_after_land_or_project,
                          boolean allow_all, long expiryOrZero, long decayOrZero, boolean allowIgnore,
-                         long repeatable_time
+                         long repeatable_time,
+                            boolean includeInfra, int includeLand
     ) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable_time);
         this.build = build == null || build.length == 0 ? null : build;
@@ -74,6 +79,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         this.allow_switch_after_infra = allow_switch_after_infra;
         this.allow_switch_after_land_or_project = allow_switch_after_land_or_project;
         this.allow_all = allow_all;
+        this.includeInfra = includeInfra;
+        this.includeLand = includeLand;
     }
 
     @Override
@@ -88,10 +95,16 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         if (mmr != null) {
             message.append("MMR: `" + String.format("%04d", mmr) + "`\n");
         }
-        message.append("Allow Switch After Days: `" + allow_switch_after_days + "`\n");
-        message.append("Allow Switch After Offensive: `" + allow_switch_after_offensive + "`\n");
-        message.append("Allow Switch After Infra: `" + allow_switch_after_infra + "`\n");
+        if (allow_switch_after_days > 0) message.append("Allow Switch After Days: `" + allow_switch_after_days + "`\n");
+        if (allow_switch_after_offensive) message.append("Allow Switch After Offensive: `" + allow_switch_after_offensive + "`\n");
+        if (allow_switch_after_infra) message.append("Allow Switch After Infra: `" + allow_switch_after_infra + "`\n");
         message.append("Allow All: `" + allow_all + "`\n");
+        if (includeInfra) {
+            message.append("Include Infra: `true`\n");
+        }
+        if (includeLand > 0) {
+            message.append("Include Land: `" + includeLand + "`\n");
+        }
 
         return message.toString();
     }
@@ -102,7 +115,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 build != null ? JavaCity.fromBytes(build).toJson() : null).mmr(
                 mmr == null ? null : mmr.toString()).only_new_cities(
                 onlyNewCities ? "true" : null).allow_after_days(
-                allow_switch_after_days >0 ? allow_switch_after_days + "" : null).allow_after_offensive(
+                allow_switch_after_days > 0 ? allow_switch_after_days + "" : null).allow_after_offensive(
                 allow_switch_after_offensive ? "true" : null).allow_after_infra(
                 allow_switch_after_infra ? "true" : null).allow_all(
                 allow_all ? "true" : null).allow_after_land_or_project(
@@ -118,7 +131,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 allowExpire).decayTime(
                 allowDecay).allowIgnore(
                 allowIgnore).repeatable_time(
-                repeatable).toString();
+                repeatable)
+                .include_infra(includeInfra ? "true" : null)
+                .include_land(includeLand > 0 ? includeLand + "" : null).toString();
     }
 
     @Override
@@ -134,6 +149,12 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         }
         if (allow_switch_after_offensive) {
             result.append(" | damaged=allow");
+        }
+        if (includeInfra) {
+            result.append(" | infra");
+        }
+        if (includeLand > 0) {
+            result.append(" | land=" + includeLand);
         }
         return result.toString();
     }
@@ -154,6 +175,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         list.add("allow_switch_after_infra");
         list.add("allow_switch_after_land_or_project");
         list.add("allow_all");
+        list.add("include_infra");
+        list.add("include_land");
         return list;
     }
 
@@ -167,6 +190,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         stmt.setBoolean(22, allow_switch_after_infra);
         stmt.setBoolean(23, allow_switch_after_land_or_project);
         stmt.setBoolean(24, allow_all);
+        stmt.setBoolean(25, includeInfra);
+        stmt.setInt(26, includeLand);
     }
 
     @Override
@@ -205,7 +230,31 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 build = city.toCityBuild();
             }
         } else {
+            if (this.build != null) {
+                throw new IllegalArgumentException("This template has a build set, you cannot specify a value");
+            }
             build = parse(getDb(), receiver, value, CityBuild.class);
+            List<String> errors = new ArrayList<>();
+            if (this.mmr != null) {
+                if (build.getImpBarracks() != mmr.getBarracks()) {
+                    errors.add("Barracks must be " + mmr.getBarracks() + ", not " + build.getImpBarracks());
+                }
+                if (build.getImpFactory() != mmr.getFactory()) {
+                    errors.add("Factories must be " + mmr.getFactory() + ", not " + build.getImpFactory());
+                }
+                if (build.getImpHangars() != mmr.getHangar()) {
+                    errors.add("Hangars must be " + mmr.getHangar() + ", not " + build.getImpHangars());
+                }
+                if (build.getImpDrydock() != mmr.getDrydock()) {
+                    errors.add("Drydocks must be " + mmr.getDrydock() + ", not " + build.getImpDrydock());
+                }
+            }
+            if (includeLand > 0 && build.getLand() != null && build.getLand() > includeLand) {
+                errors.add("Land must be less than or equal to " + includeLand + ", not " + build.getLand());
+            }
+        }
+        if (includeLand > 0) {
+            build.setLand((double) includeLand);
         }
 
         Set<Integer> grantTo = getCitiesToGrantTo(receiver);
@@ -295,6 +344,19 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 return true;
             }
         }));
+        if (template == null || template.includeLand > 0) {
+            list.add(new Grant.Requirement("Build must NOT have more than 5000 land", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation receiver) {
+                    for (CityBuild value : parsed.values()) {
+                        if (value.getLand() != null && value.getLand() > 5000) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }));
+        }
 
         if (template == null || template.onlyNewCities) {
             list.add(new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
@@ -431,8 +493,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             CityBuild build = builds.get(entry.getKey());
             if (build == null) continue;
             JavaCity to = new JavaCity(build);
-
-            to.calculateCost(from, cost, false, false);
+            to.calculateCost(from, cost, includeInfra, includeLand > 0);
         }
         return cost;
     }

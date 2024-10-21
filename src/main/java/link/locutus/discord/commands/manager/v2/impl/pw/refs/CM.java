@@ -4861,6 +4861,14 @@ public class CM {
                     return set("repeatable_time", value);
                 }
 
+                public build include_infra(String value) {
+                    return set("include_infra", value);
+                }
+
+                public build include_land(String value) {
+                    return set("include_land", value);
+                }
+
                 public build force(String value) {
                     return set("force", value);
                 }

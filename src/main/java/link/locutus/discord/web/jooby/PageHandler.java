@@ -439,10 +439,14 @@ public class PageHandler implements Handler {
                     }
 
                     cmd.validatePermissions(stack.getStore(), permisser);
-                    String endpoint = WebRoot.REDIRECT + "/sse/" + cmd.getFullPath("/");
+                    String prefix = cmd instanceof ParametricCallable ? "sse" : "command";
+                    String endpoint = WebRoot.REDIRECT + "/" + prefix + "/" + cmd.getFullPath("/");
+                    if (!endpoint.endsWith("/")) endpoint += "/";
                     ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }
+                // page
+                // api
                 default -> {
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandCallable cmd = commands.getCallable(args, true);

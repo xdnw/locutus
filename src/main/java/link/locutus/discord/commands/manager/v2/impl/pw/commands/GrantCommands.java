@@ -996,6 +996,11 @@ public class GrantCommands {
                                           @Switch("ignore") boolean allowIgnore,
                                       @Arg("If the template can be sent to the same receiver multiple times")
                                           @Switch("repeat") @Timediff Long repeatable_time,
+                                      @Arg("If the build grant includes infra")
+                                            @Switch("infra") boolean include_infra,
+                                        @Arg("The amount of land to include in the build\n" +
+                                                "Defaults to none")
+                                            @Switch("land") Integer include_land,
                                       @Switch("f") boolean force) {
 
         name = name.toUpperCase(Locale.ROOT).trim();
@@ -1022,7 +1027,14 @@ public class GrantCommands {
 
         BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), buildBytes, only_new_cities, mmr == null ? -1 : mmr.toNumber(),
                 allow_after_days == null ? 0 : allow_after_days,
-                allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable_time == null ? -1 : repeatable_time);
+                allow_after_offensive, allow_after_infra,
+                allow_after_land_or_project,
+                allow_all, expireTime == null ? 0 : expireTime,
+                decayTime == null ? 0 : decayTime,
+                allowIgnore,
+                repeatable_time == null ? -1 : repeatable_time,
+                include_infra,
+                include_land != null ? include_land : 0);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());

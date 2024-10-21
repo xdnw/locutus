@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -69,6 +70,7 @@ import java.util.stream.Collectors;
 
 public class IndexPages extends PageHelper {
     @Command
+    @NoForm
     public Object index(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth == null) {
             return "Not logged in";
@@ -242,6 +244,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
+    @NoForm
     public Object login(WebStore ws, Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation, @Default String token) throws IOException {
         Map<String, List<String>> queries = context.queryParamMap();
         boolean requireNation = queries.containsKey("nation");
@@ -279,6 +282,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
+    @NoForm
     public Object guildselect(WebStore ws, Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
         if (user == null && nation == null) {
             new Exception().printStackTrace();

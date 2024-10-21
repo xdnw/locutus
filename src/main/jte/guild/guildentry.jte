@@ -24,7 +24,9 @@
         </div>
         <div class="row">
             <div class="col">
-            <a href="/page/setguild/${guild.getIdLong()}" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">Set Guild</a>
+                <form action="/page/setguild/${guild.getIdLong()}" method="POST">
+                    <button type="submit" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">Set Guild</button>
+                </form>
             @if(db.isValidAlliance())
                 @for (DBAlliance alliance : db.getAllianceList().getAlliances())
                     <a href="https://politicsandwar.com/alliance/id=${alliance.getAlliance_id()}" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View ${alliance.getQualifiedName()} 🡕</a>

@@ -243,7 +243,7 @@ public class WebUtil {
         }
 
         UUID uuid = UUID.randomUUID();
-        return wrapLabel(param, uuid, prefix + "<" + tag + " type='" + type + "' id=\"" + uuid + "\" name='" + param.getName() + "' " + valueStr + " " + (param.isOptional() || param.isFlag() ? "" : "required") + " " + attributesStr + " class=\"" + clazz + "\" " + (close ? "/" : "") + ">" + suffix + (close ? "</" + tag + ">" : ""), type.inline);
+        return wrapLabel(param, uuid, prefix + "<" + tag + " type='" + type + "' id=\"" + uuid + "\" name='" + param.getName() + "' " + valueStr + " " + (param.isOptional() || param.isFlag() ? "" : "required") + " " + attributesStr + " class=\"" + clazz + "\" " + (close ? "" : "/") + ">" + suffix + (close ? "</" + tag + ">" : ""), type.inline);
     }
 
     public static String createInput(String tag, InputType type, ParameterData param, String... attributes) {

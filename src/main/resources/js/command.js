@@ -273,7 +273,7 @@ function executeCommandFromArgMapWithDomain(domain, form, outDiv, sse) {
 
     console.log("Serialized " + serialized + " | " + args + " | " + serialize(args));
 
-    domain = domain + "?" + serialize(args);
+//    domain = domain + "?" + serialize(args);
 
     if (sse) {
         var submitButtons = form.querySelectorAll("button[type=submit]");
@@ -284,7 +284,29 @@ function executeCommandFromArgMapWithDomain(domain, form, outDiv, sse) {
             createEventSource(domain, outDiv);
         }
     } else {
-        location.href = domain;
+            if (outDiv) {
+                $.post(domain, args, function(response) {
+                    console.log('Success:', response);
+                    outDiv.innerHTML = JSON.stringify(response, null, 2);
+                }).fail(function(error) {
+                    console.error('Error:', error);
+                });
+            } else {
+                var tempForm = document.createElement("form");
+                tempForm.method = "POST";
+                tempForm.action = domain;
+                for (var key in args) {
+                    if (args.hasOwnProperty(key)) {
+                        var hiddenField = document.createElement("input");
+                        hiddenField.type = "hidden";
+                        hiddenField.name = key;
+                        hiddenField.value = args[key];
+                        tempForm.appendChild(hiddenField);
+                    }
+                }
+                document.body.appendChild(tempForm);
+                tempForm.submit();
+            }
     }
     return false;
 }

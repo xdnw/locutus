@@ -372,7 +372,7 @@ public class WebPWBindings extends WebBindingHelper {
                 "    \"imp_drydock\": 3\n" +
                 "}";
         String placeholder = "placeholder='" + hint + "'";
-        return WebUtil.createInput("textarea", WebUtil.InputType.textarea, param, placeholder);
+        return WebUtil.createInputWithClass("textarea", WebUtil.InputType.textarea, param, null, true, placeholder);
     }
 
     @HtmlInput
