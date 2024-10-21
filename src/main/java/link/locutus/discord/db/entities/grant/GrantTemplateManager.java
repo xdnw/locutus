@@ -213,7 +213,13 @@ public class GrantTemplateManager {
                 "`expire` BIGINT NOT NULL, " +
                 "`decay` BIGINT NOT NULL, " +
                 "`repeatable` BIGINT NOT NULL, " +
-                "`allow_ignore` BOOLEAN NOT NULL)";
+                "`allow_ignore` BOOLEAN NOT NULL," +
+                "`include_infra` BOOLEAN NOT NULL," +
+                "`include_land` INTEGER NOT NULL)";
+        // update, add include_infra and include_land
+        String updateBuildInfra = "ALTER TABLE `GRANT_TEMPLATE_BUILD` ADD COLUMN `include_infra` BOOLEAN NOT NULL DEFAULT 0";
+        String updateBuildLand = "ALTER TABLE `GRANT_TEMPLATE_BUILD` ADD COLUMN `include_land` BOOLEAN NOT NULL DEFAULT 0";
+
         String raws = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RAWS` " +
                 "(`enabled` INTEGER NOT NULL, " +
                 "`days` BIGINT NOT NULL, " +
@@ -255,6 +261,8 @@ public class GrantTemplateManager {
         db.executeStmt(land);
         db.executeStmt(infra);
         db.executeStmt(build);
+        db.executeStmt(updateBuildInfra, true);
+        db.executeStmt(updateBuildLand, true);
         db.executeStmt(raws);
         db.executeStmt(grants_sent);
 
