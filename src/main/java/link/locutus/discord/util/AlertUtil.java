@@ -20,6 +20,7 @@ import com.google.common.cache.CacheBuilder;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
@@ -230,5 +231,16 @@ public class AlertUtil {
         Map.Entry<String, String> keyVal = StringMan.stacktraceToString(e);
         String body = "**" + keyVal.getKey() + "**\n" + keyVal.getValue();
         error(title, body);
+    }
+
+    public static void alertGuild(GuildDB db, String msg) {
+        TextChannel channel = db.getNotifcationChannel();
+        if (channel != null) {
+            try {
+                RateLimitUtil.queue(channel.sendMessage(msg));
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

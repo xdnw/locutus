@@ -2,7 +2,13 @@ package link.locutus.discord.apiv1.core;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.RateLimitUtil;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.util.*;
 
@@ -80,7 +86,37 @@ public class ApiKeyPool {
             this.valid = valid;
         }
 
+        public void unsetMailKey() {
+            Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+            if (nationId == null) return;
+            DBNation nation = DBNation.getById(nationId);
+            if (nation == null) return;
+            GuildDB db = nation.getGuildDB();
+            if (db == null) return;
+            List<String> apiKeys = GuildKey.API_KEY.getOrNull(db);
+            if (apiKeys == null || !apiKeys.contains(key)) return;
+            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+            AlertUtil.alertGuild(db, "The `RECRUIT_MESSAGE_OUTPUT` has been unset because the `API_KEY` set does NOT support sending game mail. You MUST use a DIFFERENT key.\n" +
+                    CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + "\n" +
+                    CM.settings_default.registerApiKey.cmd.toSlashMention());
+        }
+
         public void deleteApiKey() {
+            for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+                List<String> apiKeys = GuildKey.API_KEY.getOrNull(db);
+                if (apiKeys == null || apiKeys.isEmpty()) continue;
+                if (apiKeys.contains(key)) {
+                    apiKeys = new ArrayList<>(apiKeys);
+                    apiKeys.remove(key);
+                    if (apiKeys.isEmpty()) {
+                        db.deleteInfo(GuildKey.API_KEY);
+                    } else {
+                        db.setInfoRaw(GuildKey.API_KEY, apiKeys);
+                    }
+                    AlertUtil.alertGuild(db, "An `API_KEY` has been removed because it is no longer valid. Please enter a new key and ensure the required scopes/whitelist are set.\n" +
+                            CM.settings_default.registerApiKey.cmd.toSlashMention());
+                }
+            }
             setValid(false);
             Locutus.imp().getDiscordDB().deleteApiKey(key);
             if (this.botKey != null && !botKey.isEmpty()) {
