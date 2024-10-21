@@ -350,10 +350,14 @@ public class PoliticsAndWarV3 {
             } catch (Throwable e) {
                 boolean remove = false;
                 if (e.getMessage().contains("The bot key you provided is not valid.")) {
-                    pair.deleteBotKey();
+                    pair.deleteApiKey();
                     remove = true;
                 }
                 if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
+                    remove = true;
+                }
+                if (e.getMessage().contains("This API key cannot be used for this API endpoint, it will only work for API v3.")) {
+                    pair.unsetMailKey();
                     remove = true;
                 }
                 if (remove && badKey++ < 4 && pool.size() > 1) {
