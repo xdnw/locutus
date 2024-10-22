@@ -1,4 +1,5 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
+@import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
 @import link.locutus.discord.user.Roles
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
@@ -24,8 +25,11 @@
     <div class="bg-light border border-dark rounded rounded-start-0 p-3">
         <div class="tab-content" id="js-pills-content-1">
             <div class="tab-pane fade show active" id="profile-pill-pane" role="tabpanel" aria-labelledby="profile-pill" tabindex="0">
+                On discord, use the Locutus command <kbd>${CM.web.cmd.toSlashCommand(false)}</kbd>
+                <hr/>
+                Or Click Here To Login
                 <a class="btn fw-bold btn-sm btn-outline-success border-2 rounded" href="${discordUrl}" role="button">
-                    <i class="bi bi-discord"></i> Click Here To Login
+                    <i class="bi bi-discord"></i>Discord OAuth Login
                 </a>
                 <hr/>
                 <h5>What is discord?</h5>
@@ -48,4 +52,10 @@
             </div>
         </div>
     </div>
+    <hr>
+    <h4>You can view limited subset of pages without Login</h4>
+    <ul>
+        <li><a href="/page/">View Pages</a></li>
+        <li><a href="/command/">View Commands</a></li>
+    </ul>
 `, navbar = null)
