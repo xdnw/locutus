@@ -20,10 +20,8 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
@@ -67,7 +65,7 @@ public class BankPages {
         Collection<DBNation> nations;
 
         if (db.hasAlliance()) {
-            nations = Locutus.imp().getNationDB().getNations(db.getAllianceIds());
+            nations = Locutus.imp().getNationDB().getNationsByAlliance(db.getAllianceIds());
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
             Set<Member> members = Roles.MEMBER.getAll(db);

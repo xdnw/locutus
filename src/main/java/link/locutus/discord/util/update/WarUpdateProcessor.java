@@ -74,7 +74,7 @@ public class WarUpdateProcessor {
                     List<Member> members = guild.getMembersWithRoles(bountyRole);
                     StringBuilder mentions = new StringBuilder();
 
-                    DBNation enemy = Locutus.imp().getNationDB().getNation(bounty.getNationId());
+                    DBNation enemy = Locutus.imp().getNationDB().getNationById(bounty.getNationId());
                     if (enemy == null || enemy.getDef() >= 3 || enemy.getVm_turns() != 0 || enemy.isBeige()) return;
 
                     double minScore = enemy.getScore() / PW.WAR_RANGE_MAX_MODIFIER;
@@ -179,8 +179,8 @@ public class WarUpdateProcessor {
     public void onAttack(AttackEvent event) {
         AbstractCursor root = event.getAttack();
         int nationId = root.getAttacker_id();
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNationById(root.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNationById(root.getDefender_id());
 
         if (attacker == null || defender == null) {
             return;
@@ -604,8 +604,8 @@ public class WarUpdateProcessor {
 
         Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new HashSet<>();
 
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNationById(root.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNationById(root.getDefender_id());
 
         switch (root.getAttack_type()) {
             case GROUND: {
@@ -867,8 +867,8 @@ public class WarUpdateProcessor {
 
     public static void processLegacy(DBWar previous, DBWar current) throws IOException {
         try {
-            DBNation attacker = Locutus.imp().getNationDB().getNation(current.getAttacker_id());
-            DBNation defender = Locutus.imp().getNationDB().getNation(current.getDefender_id());
+            DBNation attacker = Locutus.imp().getNationDB().getNationById(current.getAttacker_id());
+            DBNation defender = Locutus.imp().getNationDB().getNationById(current.getDefender_id());
 
             if (defender != null && defender.getAlliance_id() == 0 && defender.active_m() > 10000) return;
 

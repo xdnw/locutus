@@ -256,7 +256,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public static DBNation getById(int nationId) {
-        return Locutus.imp().getNationDB().getNation(nationId);
+        return Locutus.imp().getNationDB().getNationById(nationId);
     }
 
     public static DBNation getOrCreate(int nationId) {
@@ -4810,7 +4810,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public int isReroll(boolean fetchUid) {
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
@@ -5763,7 +5763,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public long getRerollDate() {
-        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         int previousNationId = -1;
         for (DBNation nation : nations) {
             if (nation.getNation_id() < nation_id) {

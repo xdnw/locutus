@@ -16,7 +16,6 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -70,7 +69,7 @@ public class Inflows extends Command {
 
         Set<Integer> self;
         String selfName;
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         Function<Integer, String> nationNameFunc = i -> {
             DBNation nation = nations.get(i);
             return nation == null ? Integer.toString(i) : nation.getNation();
@@ -98,7 +97,7 @@ public class Inflows extends Command {
         } else {
             self = Collections.singleton(nationId);
 
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
             selfName = nation == null ? Integer.toString(nationId) : nation.getNation();
 
             allTransfers.addAll(Locutus.imp().getBankDB().getNationTransfers(nationId, cutoffMs));

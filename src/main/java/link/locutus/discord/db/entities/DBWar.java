@@ -166,7 +166,7 @@ public class DBWar {
         if (lc == null) return 0;
         NationDB natDb = lc.getNationDB();
         if (natDb == null) return 0;
-        DBNation nation = natDb.getNation(nationId);
+        DBNation nation = natDb.getNationById(nationId);
         return nation == null ? 0 : nation.getCities();
     }
 
@@ -232,8 +232,8 @@ public class DBWar {
     }
 
     public Map.Entry<Integer, Integer> getMap(List<AbstractCursor> attacks) {
-        DBNation attacker = Locutus.imp().getNationDB().getNation(getAttacker_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(getDefender_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNationById(getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNationById(getDefender_id());
 
         if (attacker == null || defender == null) {
             return new AbstractMap.SimpleEntry<>(0, 0);
@@ -375,7 +375,7 @@ public class DBWar {
 
     public DBNation getNation(Boolean attacker) {
         if (attacker == null) return null;
-        return Locutus.imp().getNationDB().getNation(attacker ? getAttacker_id() : getDefender_id());
+        return Locutus.imp().getNationDB().getNationById(attacker ? getAttacker_id() : getDefender_id());
     }
 
     public CounterStat getCounterStat() {

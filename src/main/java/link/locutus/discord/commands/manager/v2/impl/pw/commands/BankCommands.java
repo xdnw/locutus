@@ -29,13 +29,11 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.GuildOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -104,7 +102,6 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
-import static link.locutus.discord.util.PW.getUrl;
 import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToString;
 
 public class BankCommands {
@@ -803,7 +800,7 @@ public class BankCommands {
         Map<Integer, Integer> offensivesByNation = new HashMap<>();
         Map<Integer, Integer> defensivesByNation = new HashMap<>();
 
-        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allyIds);
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance(allyIds);
         nations.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 10000 || f.getPosition() <= 1);
         List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
@@ -2277,13 +2274,13 @@ public class BankCommands {
         if (nations == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
-                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
+                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(aaIds));
                 if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
 
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(includePastDepositors);
                     for (int id : ids) {
-                        DBNation nation = Locutus.imp().getNationDB().getNation(id);
+                        DBNation nation = Locutus.imp().getNationDB().getNationById(id);
                         if (nation != null) nations.add(nation);
                     }
                 }
@@ -2428,13 +2425,13 @@ public class BankCommands {
         if (nations == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
-                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
+                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(aaIds));
                 if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
 
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(includePastDepositors);
                     for (int id : ids) {
-                        DBNation nation = Locutus.imp().getNationDB().getNation(id);
+                        DBNation nation = Locutus.imp().getNationDB().getNationById(id);
                         if (nation != null) nations.add(nation);
                     }
                 }

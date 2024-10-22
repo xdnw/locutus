@@ -83,7 +83,7 @@ public class NationUpdateProcessor {
         long inactive1d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1440);
         long turnNow = TimeUtil.getTurn();
 
-        for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNations().entrySet()) {
+        for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsByAlliance().entrySet()) {
             DBNation nation = entry.getValue();
             if (nation.lastActiveMs() < inactive7d || nation.getPosition() <= Rank.APPLICANT.id || nation.getLeaving_vm() > turnNow) continue;
             int aaId = nation.getAlliance_id();
@@ -453,7 +453,7 @@ public class NationUpdateProcessor {
                             PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
                             if (pnwUser == null) continue;
 
-                            DBNation attacker = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
+                            DBNation attacker = Locutus.imp().getNationDB().getNationById(pnwUser.getNationId());
                             if (attacker == null) continue;
 
                             OnlineStatus status = member.getOnlineStatus();
@@ -750,7 +750,7 @@ public class NationUpdateProcessor {
             int nationId = entry.getKey();
             AllianceChange change = entry.getValue();
             if (change.getDate() < cutoff) continue;
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
             if (nation == null) continue;
 
             if (nation.getAlliance_id() == alliance.getAlliance_id()) continue;

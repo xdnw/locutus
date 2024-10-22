@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
@@ -12,7 +11,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
@@ -21,7 +19,6 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -32,10 +29,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static link.locutus.discord.util.math.ArrayUtil.MathOperator.*;
 
 public class PlayerSettingCommands {
 
@@ -268,7 +262,7 @@ public class PlayerSettingCommands {
                     url = "" + Settings.INSTANCE.PNW_URL() + "/" + type + "/id=" + sub.allianceOrNation;
                 }
             } else if (sub.type == BankDB.BankSubType.NATION) {
-                DBNation nation = Locutus.imp().getNationDB().getNation(sub.allianceOrNation);
+                DBNation nation = Locutus.imp().getNationDB().getNationById(sub.allianceOrNation);
                 url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + sub.allianceOrNation;
                 name = String.format("[%s](%s)",
                         nation == null ? sub.allianceOrNation : nation.getNation(), url);

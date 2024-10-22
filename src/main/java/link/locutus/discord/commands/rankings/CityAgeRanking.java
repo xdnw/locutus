@@ -10,7 +10,6 @@ import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -29,7 +28,7 @@ public class CityAgeRanking extends Command {
         int min = Integer.parseInt(args.get(0));
         int max = Integer.parseInt(args.get(1));
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         nations.entrySet().removeIf(e -> {
             int cities = e.getValue().getCities();
             return cities < min || cities > max;

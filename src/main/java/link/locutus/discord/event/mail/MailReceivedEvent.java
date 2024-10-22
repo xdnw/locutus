@@ -7,7 +7,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.test.IACategory;
@@ -88,7 +87,7 @@ public class MailReceivedEvent extends Event {
 
     public String toEmbedString() {
         StringBuilder body = new StringBuilder();
-        DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
+        DBNation nation = Locutus.imp().getNationDB().getNationById(mail.nationId);
         if (nation != null) {
             body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
             User user = nation.getUser();

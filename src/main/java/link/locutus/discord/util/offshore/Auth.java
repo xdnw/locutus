@@ -137,7 +137,7 @@ public class Auth {
     }
 
     public DBNation getNation() {
-        return Locutus.imp().getNationDB().getNation(nationId);
+        return Locutus.imp().getNationDB().getNationById(nationId);
     }
 
     public int getAllianceId() {

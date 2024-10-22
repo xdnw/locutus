@@ -3,6 +3,7 @@ package link.locutus.discord.util.discord;
 import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -21,20 +22,11 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.sheet.SpreadSheet;
 import com.google.common.base.Charsets;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -54,12 +46,7 @@ import org.json.JSONObject;
 import org.jsoup.internal.StringUtil;
 
 import java.awt.Color;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,9 +57,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -80,13 +65,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static link.locutus.discord.util.MathMan.parseFilter;
-import static link.locutus.discord.util.MathMan.parseStringFilter;
 
 public class DiscordUtil {
     public static Color BACKGROUND_COLOR = Color.decode("#36393E");
@@ -833,7 +814,7 @@ public class DiscordUtil {
         }
         Integer id = parseNationId(arg);
         if (id != null) {
-            DBNation nation = Locutus.imp().getNationDB().getNation(id);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(id);
             if (nation == null && allowDeleted) {
                 nation = new DBNation();
                 nation.setNation_id(id);
@@ -893,7 +874,7 @@ public class DiscordUtil {
                 return (int) id;
             }
         }
-        DBNation nation = Locutus.imp().getNationDB().getNation(arg);
+        DBNation nation = Locutus.imp().getNationDB().getNationById(arg);
         if (nation != null) {
             return nation.getNation_id();
         }
@@ -1120,7 +1101,7 @@ public class DiscordUtil {
     }
 
     public static Set<Integer> parseAllianceIds(Guild guild, String aa, boolean allowCoalitions) {
-        Set<Integer> aaIds = new HashSet<>();
+        Set<Integer> aaIds = new IntOpenHashSet();
         for (String aaName : aa.split(",")) {
             aaName = aaName.trim();
             Integer aaId = null;

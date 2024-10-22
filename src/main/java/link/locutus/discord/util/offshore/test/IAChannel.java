@@ -44,7 +44,7 @@ public class IAChannel {
         if (nation == null) {
             String[] split = channel.getName().split("-");
             if (MathMan.isInteger(split[split.length - 1])) {
-                Locutus.imp().getNationDB().getNation(Integer.parseInt(split[split.length - 1]));
+                Locutus.imp().getNationDB().getNationById(Integer.parseInt(split[split.length - 1]));
             }
         }
         return nation;

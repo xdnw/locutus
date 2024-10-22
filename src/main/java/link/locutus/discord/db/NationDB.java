@@ -80,7 +80,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class NationDB extends DBMainV2 implements SyncableDatabase {
+public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnapshot {
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, DBAlliance> alliancesById = new Int2ObjectOpenHashMap<>();
@@ -99,6 +99,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     public NationDB() throws SQLException, ClassNotFoundException {
         super("nations");
     }
+
 
     public ReportManager getReportManager() {
         return reportManager;
@@ -230,7 +231,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public boolean updateNationUnits(int nationId, long timestamp, Map<MilitaryUnit, Integer> losses, Consumer<Event> eventConsumer) {
-        DBNation nation = getNation(nationId);
+        DBNation nation = getNationById(nationId);
         if (nation != null) {
             long lastUpdatedMs = nation.getLastFetchedUnitsMs();
             if (lastUpdatedMs < timestamp) {
@@ -248,7 +249,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public boolean setNationActive(int nationId, long active, Consumer<Event> eventConsumer) {
-        DBNation nation = getNation(nationId);
+        DBNation nation = getNationById(nationId);
         if (nation != null) {
             if (nation.lastActiveMs() < active) {
                 DBNation previous = eventConsumer == null ? null : new DBNation(nation);
@@ -906,7 +907,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
         if (runEvents) {
             Locutus.imp().runEventsAsync(events -> {
-                List<Nation> filtered = nationActiveData.stream().filter(f -> getNation(f.getId()) != null).toList();
+                List<Nation> filtered = nationActiveData.stream().filter(f -> getNationById(f.getId()) != null).toList();
                 Locutus.imp().getNationDB().updateNations(filtered, events, -1);
             });
         }
@@ -1102,7 +1103,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> natEntry : citiesByNation.entrySet()) {
                 int natId = natEntry.getKey();
-                DBNation nation = getNation(natId);
+                DBNation nation = getNationById(natId);
                 if (nation != null && nation.getVm_turns() > 0) continue;
                 Object cities = natEntry.getValue();
                 synchronized (cities) {
@@ -1197,7 +1198,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     private int estimateCities(Set<Integer> nationIds) {
         int estimatedCitiesToFetch = 0;
         for (int nationId : nationIds) {
-            DBNation nation = getNation(nationId);
+            DBNation nation = getNationById(nationId);
             if (nation == null) estimatedCitiesToFetch++;
             else estimatedCitiesToFetch += nation.getCities();
         }
@@ -1753,7 +1754,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
             Set<Integer> dirtyNationCities = new HashSet<>();
             for (SNationContainer nation : nations) {
-                DBNation existing = getNation(nation.getNationid());
+                DBNation existing = getNationById(nation.getNationid());
                 if (existing == null) {
                     existing = new DBNation(nation);
                     synchronized (nationsById) {
@@ -1854,7 +1855,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             List<Integer> result = new ArrayList<>();
             while (result.size() < amt) {
                 lastNewNationId++;
-                if (getNation(lastNewNationId) != null) continue;
+                if (getNationById(lastNewNationId) != null) continue;
                 if (ignoreIds.contains(lastNewNationId)) continue;
                 result.add(lastNewNationId);
             }
@@ -1920,7 +1921,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         long cutoff = System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2);
         for (int id : currentNations) {
             if (!fetched.contains(id)) {
-                DBNation nation = getNation(id);
+                DBNation nation = getNationById(id);
                 if (nation != null && nation.getDate() < cutoff) {
                     deleted.add(id);
                 }
@@ -2020,7 +2021,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 }
             }
             updateNation(nation, eventConsumer, (prev, curr) -> nationChanges.put(curr, prev), timestamp);
-            DBNation dbNat = getNation(nation.getId());
+            DBNation dbNat = getNationById(nation.getId());
             if (dbNat != null) nations.add(dbNat);
             return false;
         };
@@ -2066,7 +2067,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     private void updateNation(Nation nation, Consumer<Event> eventConsumer, BiConsumer<DBNation, DBNation> nationsToSave, long timestamp) {
         dirtyNations.remove(nation.getId());
 
-        DBNation existing = getNation(nation.getId());
+        DBNation existing = getNationById(nation.getId());
         Consumer<Event> eventHandler;
         if (existing == null) {
             eventHandler = null;
@@ -2127,7 +2128,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public DBNation getNation(int id) {
+    public DBNation getNationById(int id) {
         synchronized (nationsById) {
             return nationsById.get(id);
         }
@@ -2908,7 +2909,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public DBNation getNation(String nameOrLeader) {
+    public DBNation getNationById(String nameOrLeader) {
         synchronized (nationsById) {
             for (DBNation nation : nationsById.values()) {
                 if (nation.getNation().equalsIgnoreCase(nameOrLeader)) {
@@ -2955,7 +2956,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         return getFirstNationMatching(f -> f.getLeader().equalsIgnoreCase(leader));
     }
 
-    public Map<Integer, DBNation> getNations() {
+    public Map<Integer, DBNation> getNationsByAlliance() {
         synchronized (nationsById) {
             return new Int2ObjectOpenHashMap<>(nationsById);
         }
@@ -2987,7 +2988,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             }
         }
     }
-    public Set<DBNation> getNations(Set<Integer> alliances) {
+    
+    @Override
+    public Set<DBNation> getNationsByAlliance(Set<Integer> alliances) {
         if (alliances.isEmpty()) {
             return new LinkedHashSet<>();
         }
@@ -4279,7 +4282,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                     return rs.getInt("amount");
                 }
             }
-            DBNation dbNation = getNation(nationId);
+            DBNation dbNation = getNationById(nationId);
             return dbNation != null ? dbNation.getUnits(unit) : 0;
         } catch (SQLException e) {
             e.printStackTrace();

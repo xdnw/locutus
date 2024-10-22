@@ -45,14 +45,14 @@ public class InactiveAlliances extends Command {
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
             group = "*";
-            nations = (Locutus.imp().getNationDB().getNations().values());
+            nations = (Locutus.imp().getNationDB().getNationsByAlliance().values());
         } else {
             group = args.get(0);
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, group);
             if (alliances == null || alliances.isEmpty()) {
                 return "Invalid aa/coalition: " + group;
             }
-            nations = Locutus.imp().getNationDB().getNations(alliances);
+            nations = Locutus.imp().getNationDB().getNationsByAlliance(alliances);
         }
         nations.removeIf(n -> n.getPosition() <= 1);
 

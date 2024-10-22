@@ -64,7 +64,7 @@ public class MMRByScoreSheet extends Command {
         for (int column = 0; column < args.size(); column++) {
             String arg = args.get(column);
             Set<Integer> aaIds = DiscordUtil.parseAllianceIds(null, arg);
-            Set<DBNation> nations = Locutus.imp().getNationDB().getNations(aaIds);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
             nations.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > minutesInactive);
 
 

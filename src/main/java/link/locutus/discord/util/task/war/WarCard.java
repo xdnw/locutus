@@ -67,7 +67,7 @@ public class WarCard {
 
     public WarNation toWarNation(boolean attacker) {
         return toWarNation(attacker, id -> {
-            DBNation nation = Locutus.imp().getNationDB().getNation(id);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(id);
             return nation == null ? null : new DBNation(nation);
         });
     }
@@ -511,7 +511,7 @@ public class WarCard {
         int allianceId = attacker ? war.getAttacker_aa() : war.getDefender_aa();
         String alliance = PW.getName(allianceId, true);
 
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
         String active_m = "";
         String markdown1 = "";
         String markdown2 = "";

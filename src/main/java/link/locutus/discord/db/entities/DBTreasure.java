@@ -4,15 +4,11 @@ import com.politicsandwar.graphql.model.Treasure;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -50,7 +46,7 @@ public class DBTreasure {
 
     public double getMaxNationScore() {
         DBNation maxNation = null;
-        for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
             if (maxNation == null || maxNation.getScore() < nation.getScore()) {
                 maxNation = nation;
             }

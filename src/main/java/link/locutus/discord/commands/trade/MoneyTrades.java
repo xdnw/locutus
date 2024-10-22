@@ -9,7 +9,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PW;
@@ -17,7 +16,6 @@ import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.HashMap;
 import java.util.List;
@@ -92,7 +90,7 @@ public class MoneyTrades extends Command {
         StringBuilder response = new StringBuilder("Your net inflows from:");
         for (Map.Entry<Integer, Map<ResourceType, Long>> entry : netInflows.entrySet()) {
             Integer clientId = entry.getKey();
-            DBNation client = Locutus.imp().getNationDB().getNation(clientId);
+            DBNation client = Locutus.imp().getNationDB().getNationById(clientId);
             String name = PW.getName(clientId, false);
             if (flags.contains('a')) {
                 response.append("\n**" + name);

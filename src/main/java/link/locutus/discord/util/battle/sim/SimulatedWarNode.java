@@ -5,7 +5,6 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -89,7 +88,7 @@ public class SimulatedWarNode {
                 if (attackerId == null) {
                     throw new IllegalArgumentException("Invalid attacker: " + args[1]);
                 }
-                attacker = Locutus.imp().getNationDB().getNation(attackerId);
+                attacker = Locutus.imp().getNationDB().getNationById(attackerId);
                 // attacker
                 // defender
             case 1:
@@ -110,7 +109,7 @@ public class SimulatedWarNode {
                     if (defenderId == null) {
                         throw new IllegalArgumentException( "Invalid defender or war link: " + args[0]);
                     }
-                    defender = Locutus.imp().getNationDB().getNation(defenderId);
+                    defender = Locutus.imp().getNationDB().getNationById(defenderId);
 
                     return new SimulatedWarNode(new WarNation(attacker), new WarNation(defender), type, 60, true);
                 }
@@ -233,8 +232,8 @@ public class SimulatedWarNode {
         int aggId = war.getAttacker_id();
         int defId = war.getDefender_id();
 
-        aggressor = new WarNation(Locutus.imp().getNationDB().getNation(aggId));
-        defender = new WarNation(Locutus.imp().getNationDB().getNation(defId));
+        aggressor = new WarNation(Locutus.imp().getNationDB().getNationById(aggId));
+        defender = new WarNation(Locutus.imp().getNationDB().getNationById(defId));
 
         List<AbstractCursor> attacks = war.getAttacks2(true);
         Map.Entry<Integer, Integer> resistance = war.getResistance(attacks);

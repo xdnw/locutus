@@ -50,17 +50,17 @@ public class UnitRanking extends Command {
         Collection<DBNation> nations;
         if (args.isEmpty()) {
             group = "*";
-            nations = (Locutus.imp().getNationDB().getNations().values());
+            nations = (Locutus.imp().getNationDB().getNationsByAlliance().values());
         } else {
             group = args.get(0);
             if (group.equals("*")) {
-                nations = (Locutus.imp().getNationDB().getNations().values());
+                nations = (Locutus.imp().getNationDB().getNationsByAlliance().values());
             } else {
                 Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, group);
                 if (alliances == null || alliances.isEmpty()) {
                     return "Invalid aa/coalition: " + group;
                 }
-                nations = Locutus.imp().getNationDB().getNations(alliances);
+                nations = Locutus.imp().getNationDB().getNationsByAlliance(alliances);
             }
             if (args.size() == 2) {
                 unit = MilitaryUnit.get(args.get(1));

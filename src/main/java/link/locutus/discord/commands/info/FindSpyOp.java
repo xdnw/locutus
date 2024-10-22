@@ -82,7 +82,7 @@ public class FindSpyOp extends Command {
             DBSpyUpdate update = entry.getKey();
             long diff = entry.getValue();
 
-            DBNation attacker = Locutus.imp().getNationDB().getNation(update.nation_id);
+            DBNation attacker = Locutus.imp().getNationDB().getNationById(update.nation_id);
             if (attacker == null || !attacker.isInSpyRange(defender) || attacker.getNation_id() == defender.getNation_id())
                 continue;
 

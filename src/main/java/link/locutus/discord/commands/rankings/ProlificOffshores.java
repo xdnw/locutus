@@ -2,7 +2,6 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -15,7 +14,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -56,7 +54,7 @@ public class ProlificOffshores extends Command {
 
         Map<Integer, Long> aaCount = new HashMap<>();
         Map<Integer, Long> aaCount1City = new HashMap<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int aaId = entry.getValue().getAlliance_id();
             aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));

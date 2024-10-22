@@ -134,7 +134,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (selection.toLowerCase(Locale.ROOT).contains(name)) {
             throw new IllegalArgumentException("Selection cannot reference itself: `" + selection + "`");
         }
-        db.getSheetManager().addSelectionAlias(name, instance.getType(), selection);
+        db.getSheetManager().addSelectionAlias(name, instance.getType(), selection, null);
         return "Added selection `" + name + "`: `" + selection + "`. Use it with `$" + name + "` or `select:" + name + "`\n" +
                 "- Rename: " + CM.selection_alias.rename.cmd.toSlashMention() + "\n" +
                 "- Remove: " + CM.selection_alias.remove.cmd.toSlashMention() + "\n" +
@@ -164,7 +164,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         return template;
     }
 
-    public SelectionAlias getOrCreateSelection(GuildDB db, String selection, boolean save, AtomicBoolean createdFlag) {
+    public SelectionAlias getOrCreateSelection(GuildDB db, String selection, String modifier, boolean save, AtomicBoolean createdFlag) {
         outer:
         for (Map.Entry<String, SelectionAlias<T>> entry : db.getSheetManager().getSelectionAliases(getType()).entrySet()) {
             SelectionAlias alias = entry.getValue();
@@ -175,9 +175,9 @@ public abstract class Placeholders<T> extends BindingHelper {
         String name = getNextSelectionName(db);
         SelectionAlias result;
         if (save) {
-            result = db.getSheetManager().addSelectionAlias(name, getType(), selection);
+            result = db.getSheetManager().addSelectionAlias(name, getType(), selection, modifier);
         } else {
-            result = new SelectionAlias(name, getType(), selection);
+            result = new SelectionAlias(name, getType(), selection, modifier);
         }
         createdFlag.set(true);
         return result;
@@ -342,8 +342,8 @@ public abstract class Placeholders<T> extends BindingHelper {
     protected abstract Set<T> parseSingleElem(ValueStore store, String input);
     protected abstract Predicate<T> parseSingleFilter(ValueStore store, String input);
 
-    public Set<T> deserializeSelection(ValueStore store, String input) {
-        return parseSet(store, input);
+    public Set<T> deserializeSelection(ValueStore store, String input, String modifier) {
+        return parseSet(store, input, modifier);
     }
 
     private static Triple<String, MathOperation, String> opSplit(String input) {
@@ -356,7 +356,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         return null;
     }
 
-    private Predicate<T> getSingleFilter(ValueStore store, String input) {
+    protected Predicate<T> getSingleFilter(ValueStore store, String input) {
         TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, false, true);
         if (placeholder == null) {
             throw throwUnknownCommand(input);
@@ -386,7 +386,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         };
     }
 
-    private String wrapHashLegacy(String input) {
+    protected String wrapHashLegacy(String input) {
         return StringMan.wrapHashFunctions(input, new Predicate<String>() {
             @Override
             public boolean test(String s) {
@@ -407,6 +407,10 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     public Set<T> parseSet(Guild guild, User author, DBNation nation, String input) {
         return parseSet(createLocals(guild, author, nation), input);
+    }
+
+    public Set<T> parseSet(ValueStore store2, String input, String modifier) {
+        return parseSet(store2, input);
     }
 
     @Binding(value = "A comma separated list of items")

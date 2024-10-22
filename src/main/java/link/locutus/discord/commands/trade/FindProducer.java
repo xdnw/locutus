@@ -81,7 +81,7 @@ public class FindProducer extends Command {
         if (args.size() >= 2) {
             nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, args.get(1), false, false));
         } else {
-            nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+            nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         }
         if (args.size() == 1 || args.get(0).equalsIgnoreCase("*")) {
             int topX = 80;
@@ -134,7 +134,7 @@ public class FindProducer extends Command {
         RankBuilder<String> ranks;
         if (listAlliances) {
             NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
-                DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
+                DBNation nation = Locutus.imp().getNationDB().getNationById(entry.getKey());
                 if (nation != null) {
                     builder.put(nation.getAlliance_id(), entry.getValue());
                 }

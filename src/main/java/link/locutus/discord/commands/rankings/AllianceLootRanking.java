@@ -53,7 +53,7 @@ public class AllianceLootRanking extends Command {
         }
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         Map<Integer, Map<ResourceType, Double>> byAlliance = new HashMap<>();
 
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks()

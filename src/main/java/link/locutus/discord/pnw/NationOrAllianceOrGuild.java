@@ -8,7 +8,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 
 import java.util.AbstractMap;
 import java.util.HashSet;
@@ -120,7 +119,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
             GuildDB db = asGuild();
             Set<Integer> ids = db.getAllianceIds();
             if (!ids.isEmpty()) {
-                nations.addAll(Locutus.imp().getNationDB().getNations(ids));
+                nations.addAll(Locutus.imp().getNationDB().getNationsByAlliance(ids));
             }
             Guild guild = db.getGuild();
             for (Member member : guild.getMembers()) {

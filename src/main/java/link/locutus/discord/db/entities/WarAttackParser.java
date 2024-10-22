@@ -1,7 +1,6 @@
 package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
@@ -69,7 +68,7 @@ public class WarAttackParser {
             args.add("*");
         }
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         Map<Integer, DBWar> warMap = null;
 
         if (args.size() == 3 || args.size() == 4) {

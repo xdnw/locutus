@@ -43,16 +43,7 @@ import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.binding.*;
-import link.locutus.discord.web.commands.page.BankPages;
-import link.locutus.discord.web.commands.page.EconPages;
-import link.locutus.discord.web.commands.page.EndpointPages;
-import link.locutus.discord.web.commands.page.GrantPages;
-import link.locutus.discord.web.commands.page.IAPages;
-import link.locutus.discord.web.commands.page.IndexPages;
-import link.locutus.discord.web.commands.page.StatPages;
-import link.locutus.discord.web.commands.page.TestPages;
-import link.locutus.discord.web.commands.page.TradePages;
-import link.locutus.discord.web.commands.page.WarPages;
+import link.locutus.discord.web.commands.page.*;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.Guild;
@@ -398,7 +389,8 @@ public class PageHandler implements Handler {
             handleCommand(ctx);
         } catch (Throwable e) {
             e.printStackTrace();
-            throw e;
+            String errorMessage = "<html><body><h1>Error</h1><pre>" + StringMan.stripApiKey(e.getMessage()) + "</pre></body></html>";
+            ctx.status(500).html(errorMessage);
         }
     }
 
@@ -443,6 +435,7 @@ public class PageHandler implements Handler {
                     String endpoint = WebRoot.REDIRECT + "/" + prefix + "/" + cmd.getFullPath("/");
                     if (!endpoint.endsWith("/")) endpoint += "/";
                     ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
+                    ctx.status(200);
                     break;
                 }
                 // page
@@ -476,6 +469,7 @@ public class PageHandler implements Handler {
                     }
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
                         ctx.result(WebUtil.minify(result.toString()));
+                        ctx.status(200);
                     } else if (result != null) {
                         throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
                     } else {
@@ -503,14 +497,9 @@ public class PageHandler implements Handler {
                 ctx.result(WebUtil.minify(msg));
                 return;
             }
-            e.printStackTrace();
-            System.out.println("Redirect " + redirectResponse.getMessage());
-            ctx.redirect(redirectResponse.getMessage());
-            ctx.result("Redirecting to " + MarkupUtil.htmlUrl(msg, msg) + ". If you are not redirected, click the link.");
-            ctx.header(Header.CACHE_CONTROL, "no-cache");
+            PageHelper.redirect(ctx, redirectResponse.getMessage());
             return;
         }
-
         e.printStackTrace();
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);

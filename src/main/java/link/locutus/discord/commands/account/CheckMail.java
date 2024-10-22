@@ -69,7 +69,7 @@ public class CheckMail extends Command {
         Map<DBNation, Map<Mail, List<String>>> results = new LinkedHashMap<>();
 
         SearchMailTask task = new SearchMailTask(me.getAuth(true), query, checkUnread, checkRead, readContent, (mail, strings) -> {
-            DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(mail.nationId);
             if (nation != null) {
                 results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
             }

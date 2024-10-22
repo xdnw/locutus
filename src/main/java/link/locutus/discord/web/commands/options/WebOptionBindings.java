@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.options;
 
-import com.google.gson.JsonArray;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -10,8 +9,6 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.HtmlOptions;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
@@ -27,12 +24,10 @@ import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.scheduler.TriFunction;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -40,7 +35,6 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.awt.*;
@@ -483,7 +477,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getDBNation() {
         return new WebOption(DBNation.class).setQueryMap((db, user, nation) -> {
             List<Map<String, String>> data = new ArrayList<>();
-            for (DBNation n : Locutus.imp().getNationDB().getNations().values()) {
+            for (DBNation n : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
                 data.add(Map.of(
                         "key", n.getId() + "",
                         "text", n.getName()

@@ -88,7 +88,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -617,7 +616,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 while (rs.next()) {
                     long nationId = rs.getInt("id");
                     if (nationId < Integer.MAX_VALUE) {
-                        DBNation nation = Locutus.imp().getNationDB().getNation((int) nationId);
+                        DBNation nation = Locutus.imp().getNationDB().getNationById((int) nationId);
                         byte[] data = rs.getBytes("meta");
                         result.put(nation, data);
                     }
@@ -2378,7 +2377,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
 
         if (topX > 0) {
-            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNations().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
+            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNationsByAlliance().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
             for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
                 if (entry.getKey() == 0) continue;
                 if (topX-- <= 0) break;

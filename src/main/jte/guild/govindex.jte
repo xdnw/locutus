@@ -51,19 +51,19 @@
 
     </h2>
     <hr>
-    <p class="lead">
-        Grants are funds provided by the alliance to help you grow your nation. Debt from grants can expire after a period of time (typically 60 days, see the note when accepting a grant)<br><br>
-        <b>note: </b>This interface can only approve <i>some</i> grants.
-        @if(db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL) != null)
-        If you would like more general assistance or advice, please <a href="https://discord.com/channels/${db.getIdLong()}/${(db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL)).getIdLong()}">open a ticket on discord.</a>
-        @endif
-    </p>
-    <div class="list-group">
-    <a href="${WebRoot.REDIRECT}/page/infragrants" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>
-    <a href="${WebRoot.REDIRECT}/page/landgrants" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>
-    <a href="${WebRoot.REDIRECT}/page/citygrants" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>
-    <a href="${WebRoot.REDIRECT}/page/projectgrants" class="link-primary list-group-item bg-light">&#128508; Project grants</a>
-    </div>
+<%--    <p class="lead">--%>
+<%--        Grants are funds provided by the alliance to help you grow your nation. Debt from grants can expire after a period of time (typically 60 days, see the note when accepting a grant)<br><br>--%>
+<%--        <b>note: </b>This interface can only approve <i>some</i> grants.--%>
+<%--        @if(db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL) != null)--%>
+<%--        If you would like more general assistance or advice, please <a href="https://discord.com/channels/${db.getIdLong()}/${(db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL)).getIdLong()}">open a ticket on discord.</a>--%>
+<%--        @endif--%>
+<%--    </p>--%>
+<%--    <div class="list-group">--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/infragrants" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/landgrants" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/citygrants" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/projectgrants" class="link-primary list-group-item bg-light">&#128508; Project grants</a>--%>
+<%--    </div>--%>
 </div>
 @endif
 `)

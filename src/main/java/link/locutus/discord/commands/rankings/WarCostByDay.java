@@ -113,7 +113,7 @@ public class WarCostByDay extends Command {
             args.add("*");
         }
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
 
         if (args.size() == 3) {
             if (!MathMan.isInteger(args.get(2))) {

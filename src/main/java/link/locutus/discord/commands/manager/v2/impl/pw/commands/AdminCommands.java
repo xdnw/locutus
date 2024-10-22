@@ -1785,7 +1785,7 @@ public class AdminCommands {
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
-        JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNation(Locutus.loader().getNationId()));
+        JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
         return response.toString();
     }
 
@@ -2532,7 +2532,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncUid(boolean all) throws IOException {
         if (all) {
-            Collection<DBNation> nations = Locutus.imp().getNationDB().getNations().values();
+            Collection<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance().values();
             for (DBNation nation : nations) {
                 if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty()) continue;
                 BigInteger uid = new GetUid(nation, false).call();
@@ -2543,7 +2543,7 @@ public class AdminCommands {
                 if (entry.getValue().size() <= 1) continue;
 
                 for (int nationId : entry.getValue()) {
-                    DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+                    DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
                     if (nation != null) {
                         new GetUid(nation, false).call();
                     }

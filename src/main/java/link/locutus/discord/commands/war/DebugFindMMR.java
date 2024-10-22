@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -37,7 +36,7 @@ public class DebugFindMMR extends Command {
         if (cities == null) return "Invalid city count: `" + args.get(1) + "`";
 
         List<String> found = new ArrayList<>();
-        for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
             if (nation.getCities() != cities || nation.hasUnsetMil()) continue;
 
             int reqSoldiers = (mmr.charAt(0) - '0') * cities * Buildings.BARRACKS.getUnitCap();

@@ -85,12 +85,12 @@ public class CounterSpy extends Command {
             DBWar war = Locutus.imp().getWarDb().getWar(warId);
 
             int counterId = war.getAttacker_id();
-            DBNation counter = Locutus.imp().getNationDB().getNation(counterId);
+            DBNation counter = Locutus.imp().getNationDB().getNationById(counterId);
 
             int defenderId;
             if (counter.getAlliance_id() == me.getAlliance_id() || (guild != null && Locutus.imp().getGuildDB(guild).getAllies().contains(counter.getAlliance_id()))) {
                 counterId = (war.getDefender_id());
-                counter = Locutus.imp().getNationDB().getNation(counterId);
+                counter = Locutus.imp().getNationDB().getNationById(counterId);
                 defenderId = (war.getAttacker_id());
             } else {
                 defenderId = (war.getDefender_id());
@@ -116,7 +116,7 @@ public class CounterSpy extends Command {
             toCounter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, false);
         } else {
             if (me.getAlliance_id() == 0) return usage("You are not in an alliance", channel);
-            toCounter = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
+            toCounter = Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(me.getAlliance_id()));
         }
         toCounter.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.active_m() > TimeUnit.DAYS.toMinutes(2));
 

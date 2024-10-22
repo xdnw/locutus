@@ -15,7 +15,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
@@ -108,7 +107,7 @@ public class RegisterCommand extends Command {
                 return "No permission.";
             }
 
-            Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+            Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
             Map<String, DBNation> byLeader = new HashMap<>();
             for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
                 byLeader.put(entry.getValue().getLeader().toLowerCase(), entry.getValue());

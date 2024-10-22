@@ -404,6 +404,16 @@ public class CustomSheetCommands {
                     continue;
                 }
                 String typeStr = tabName.substring(0, index);
+                String typeModifier = null;
+                if (typeStr.contains("(")) {
+                    int end = typeStr.indexOf(")");
+                    if (end == -1) {
+                        errors.add(TAB_TYPE.replace("{tab_name}", tabName) + " (2)");
+                        continue;
+                    }
+                    typeModifier = typeStr.substring(end + 1);
+                    typeStr = typeStr.substring(0, end + 1);
+                }
                 if (typeStr != null && !typeStr.isEmpty() && !typeStr.contains(",") && !typeStr.contains("#") && !typeStr.contains("(") && !typeStr.contains(" ")) {
                     Class type;
                     try {
@@ -417,7 +427,7 @@ public class CustomSheetCommands {
                     Placeholders ph = phMap.get(type);
 
                     AtomicBoolean createdSelection = new AtomicBoolean();
-                    selection = ph.getOrCreateSelection(db, selectionStr, saveSheet, createdSelection);
+                    selection = ph.getOrCreateSelection(db, selectionStr, typeModifier, saveSheet, createdSelection);
 
                     if (createdSelection.get() && saveSheet) {
                         errors.add("Created and saved `" + selectionStr + "` as `" + selection.getName() + "` for type: `" + PlaceholdersMap.getClassName(selection.getType()) + "`. You may use this alias in commands and sheets\n" +

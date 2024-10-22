@@ -122,7 +122,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         allowedAAs = null;
         Integer topX = db.getOrNull(GuildKey.AUTOROLE_TOP_X);
         if (topX != null) {
-            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNations().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
+            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNationsByAlliance().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
             List<Integer> topAAIds = new ArrayList<>(aas.keySet());
             if (topAAIds.size() > topX) {
                 topAAIds = topAAIds.subList(0, topX);
@@ -303,7 +303,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                             if (user == null) {
                                 continue;
                             }
-                            DBNation nation = Locutus.imp().getNationDB().getNation(user.getNationId());
+                            DBNation nation = Locutus.imp().getNationDB().getNationById(user.getNationId());
                             if (nation == null) {
                                 continue;
                             }

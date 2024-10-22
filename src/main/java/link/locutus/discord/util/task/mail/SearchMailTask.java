@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
@@ -103,7 +102,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
                         String leader = columns.get(3).text();
                         int nationId = Integer.parseInt(columns.get(3).getElementsByTag("a").first().attr("href").split("=")[1]);
                         if (allowFilter != null) {
-                            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+                            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
                             if (nation == null || !allowFilter.test(nation)) continue;
                         }
 

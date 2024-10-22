@@ -107,7 +107,7 @@ public class CounterSheet extends Command {
         Set<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, allies);
         for (DBWar war : defWars) {
             if (!war.isActive()) continue;
-            DBNation enemy = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+            DBNation enemy = Locutus.imp().getNationDB().getNationById(war.getAttacker_id());
             if (enemy == null) continue;
 
             if (!enemyAAs.contains(enemy.getAlliance_id())) {
@@ -115,7 +115,7 @@ public class CounterSheet extends Command {
                 if (stat.type == CounterType.IS_COUNTER || stat.type == CounterType.ESCALATION) continue;
             }
 
-            DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+            DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
             if (defender == null) continue;
             if (flags.contains('a') && defender.getPosition() <= 1) continue;
             if (flags.contains('i') && defender.active_m() > 4880) continue;
@@ -125,7 +125,7 @@ public class CounterSheet extends Command {
         }
 
         if (flags.contains('e')) {
-            for (DBNation enemy : Locutus.imp().getNationDB().getNations(enemyAAs)) {
+            for (DBNation enemy : Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs)) {
                 enemies.putIfAbsent(enemy, new ArrayList<>());
             }
         }
@@ -212,7 +212,7 @@ public class CounterSheet extends Command {
             Rank rank = null;
 
             for (DBWar war : wars) {
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+                DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
                 if (defender == null) {
                     continue;
                 }
@@ -279,7 +279,7 @@ public class CounterSheet extends Command {
             for (int i = 0; i < wars.size(); i++) {
                 DBWar war = wars.get(i);
                 String url = war.toUrl();
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+                DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
                 String warStr = defender.getNation() + "|" + defender.getAllianceName();
                 row.add(MarkupUtil.sheetUrl(warStr, url));
             }

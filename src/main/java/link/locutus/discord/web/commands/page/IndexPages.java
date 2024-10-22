@@ -4,10 +4,8 @@ import com.google.gson.Gson;
 import gg.jte.generated.precompiled.JteindexGenerated;
 import gg.jte.generated.precompiled.auth.JteunregisterGenerated;
 import gg.jte.generated.precompiled.auth.JtelogoutGenerated;
-import gg.jte.generated.precompiled.alliance.JteallianceindexGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
-import gg.jte.generated.precompiled.grant.JtenationGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
 import io.javalin.http.HandlerType;
@@ -27,7 +25,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -36,11 +33,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.commands.search.SearchResult;
@@ -63,7 +57,6 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -73,7 +66,9 @@ public class IndexPages extends PageHelper {
     @NoForm
     public Object index(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth == null) {
-            return "Not logged in";
+            String discordAuthUrl = AuthBindings.getDiscordAuthUrl();
+            String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
+            return WebStore.render(f -> gg.jte.generated.precompiled.auth.JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
         }
         return WebStore.render(f -> JteindexGenerated.render(f, null, ws));
     }
@@ -134,7 +129,7 @@ public class IndexPages extends PageHelper {
         recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "page/", f));
 
 
-        for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
             double val = 0;
             if ((nation.getNation_id() + "").equals(termLow)) {
                 val = 200;
@@ -335,7 +330,7 @@ public class IndexPages extends PageHelper {
             return WebStore.render(f -> JtelogoutGenerated.render(f, null, ws, auth));
         } else {
             AuthBindings.logout(context, auth, true);
-            return "Logging out. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
+            return null;
         }
     }
 
@@ -361,6 +356,7 @@ public class IndexPages extends PageHelper {
 
     @Command()
     @RolePermission(Roles.MEMBER)
+    @NoForm
     public Object guildMemberIndex(WebStore ws, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default DBNation nation) throws IOException {
         if (nation == null) nation = me;
         if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.MILCOM.has(author, guild)) {

@@ -100,12 +100,22 @@ public class SheetBindings extends BindingHelper {
             Set<Class<?>> types = phM.getTypes();
             for (Class type : types) {
                 String typeName = PlaceholdersMap.getClassName(type);
-                String prefix = typeName.toLowerCase(Locale.ROOT) + ":";
-                if (!name.startsWith(prefix)) continue;
-                String filter = name.substring(prefix.length());
+                String prefixRegex = typeName.toLowerCase(Locale.ROOT) + ":(\\w+)|" + typeName.toLowerCase(Locale.ROOT) + ":";
+                if (!name.startsWith(typeName) && !name.matches(prefixRegex + ".*")) {
+                    continue;
+                }
+                List<String> split = StringMan.split(name, ":", 2);
+                String typeNameAndModifier = split.get(0);
+                String modifier = null;
+                if (typeNameAndModifier.contains("(")) {
+                    int start = typeNameAndModifier.indexOf("(");
+                    int end = typeNameAndModifier.lastIndexOf(")");
+                    modifier = typeNameAndModifier.substring(start + 1, end);
+                }
+                String filter = split.get(1);
                 Placeholders parser = phM.get(type);
                 parser.parseSet(store, filter);
-                return new SelectionAlias<>("", type, filter);
+                return new SelectionAlias<>("", type, filter, modifier);
             }
         }
         Set<String> options = manager.getSelectionAliasNames();

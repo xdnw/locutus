@@ -11,7 +11,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -53,12 +52,12 @@ public class Reroll extends Command {
         if (id == null) {
             return "Invalid nation`" + arg0 + "`";
         }
-        me = Locutus.imp().getNationDB().getNation(id);
+        me = Locutus.imp().getNationDB().getNationById(id);
         if (me == null) {
             return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.commandPrefix(true) + "sync ?)";
         }
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();

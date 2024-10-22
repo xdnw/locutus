@@ -12,13 +12,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
 
@@ -71,7 +66,7 @@ public class Sudo extends Command implements Noformat {
             if (nationId == null) {
                 return "Invalid nation: `" + arg0 + "`";
             }
-            nation = Locutus.imp().getNationDB().getNation(nationId);
+            nation = Locutus.imp().getNationDB().getNationById(nationId);
         } else {
             nation = DiscordUtil.getNation(user);
             if (nation == null) {

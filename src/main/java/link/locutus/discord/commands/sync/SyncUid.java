@@ -11,7 +11,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.task.multi.GetUid;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -36,7 +35,7 @@ public class SyncUid extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        Collection<DBNation> nations = Locutus.imp().getNationDB().getNations().values();
+        Collection<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance().values();
 
         if (!args.isEmpty() && args.get(0).equalsIgnoreCase("true")) {
             int i = 0;
@@ -51,7 +50,7 @@ public class SyncUid extends Command {
                 if (entry.getValue().size() <= 1) continue;
 
                 for (int nationId : entry.getValue()) {
-                    DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+                    DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
                     if (nation != null) {
                         new GetUid(nation, false).call();
                     }

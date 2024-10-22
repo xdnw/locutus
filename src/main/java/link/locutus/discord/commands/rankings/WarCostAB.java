@@ -6,43 +6,31 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CoalitionWarStatus;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarAttackParser;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import retrofit2.http.HEAD;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class WarCostAB extends Command {
     public WarCostAB() {
@@ -155,8 +143,8 @@ public class WarCostAB extends Command {
         }
 
         DBNation nation = null;
-        if (aaIds.contains(warUrl.getAttacker_aa())) nation = Locutus.imp().getNationDB().getNation(warUrl.getAttacker_id());
-        else if (aaIds.contains(warUrl.getDefender_aa())) nation = Locutus.imp().getNationDB().getNation(warUrl.getDefender_id());
+        if (aaIds.contains(warUrl.getAttacker_aa())) nation = Locutus.imp().getNationDB().getNationById(warUrl.getAttacker_id());
+        else if (aaIds.contains(warUrl.getDefender_aa())) nation = Locutus.imp().getNationDB().getNationById(warUrl.getDefender_id());
         else {
             return;
         }

@@ -49,12 +49,12 @@ public class CustomBounty {
     public Set<DBNation> getNations() {
         Set<DBNation> nations = new HashSet<>();
         for (int id  : this.nations) {
-            DBNation nation = Locutus.imp().getNationDB().getNation(id);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(id);
             if (nation != null) {
                 nations.add(nation);
             }
         }
-        nations.addAll(Locutus.imp().getNationDB().getNations(alliances));
+        nations.addAll(Locutus.imp().getNationDB().getNationsByAlliance(alliances));
 
 //        if (!nations.isEmpty()) {
 //            Predicate<DBNation> cached = filter.toCached(10000);

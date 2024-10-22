@@ -1300,7 +1300,7 @@ public class IACommands {
         }
         Map<DBNation, Map<Mail, List<String>>> results = new LinkedHashMap<>();
         SearchMailTask task = new SearchMailTask(auth, search_for, !skip_unread, check_read, read_content, (mail, strings) -> {
-            DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(mail.nationId);
             if (nation != null) {
                 results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
             }

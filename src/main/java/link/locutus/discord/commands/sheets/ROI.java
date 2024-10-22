@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -170,7 +169,7 @@ public class ROI extends Command {
             if (!Roles.ECON.has(author, guildDb.getGuild())) {
                 return "You do not have the role: " + Roles.ECON;
             }
-            Set<DBNation> nations = Locutus.imp().getNationDB().getNations(aaIds);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
             try {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
@@ -189,7 +188,7 @@ public class ROI extends Command {
             int cityId = Integer.parseInt(args.get(0).split("=")[1]);
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             int nationId = cityEntry.getNationId();
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
             cityEntry.update(true);
             JavaCity from = cityEntry.toJavaCity(nation);
             roi(nation, Integer.MAX_VALUE, Integer.MAX_VALUE, from, days, roiMap, 500);

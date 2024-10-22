@@ -23,7 +23,6 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
@@ -1141,7 +1140,7 @@ public final class PW {
             String name = Locutus.imp().getNationDB().getAllianceName((int) nationOrAllianceId);
             return name != null ? name : nationOrAllianceId + "";
         } else if (Math.abs(nationOrAllianceId) < Integer.MAX_VALUE) {
-            DBNation nation = Locutus.imp().getNationDB().getNation((int) nationOrAllianceId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById((int) nationOrAllianceId);
             return nation != null ? nation.getNation() : nationOrAllianceId + "";
         } else {
             Guild guild = Locutus.imp().getDiscordApi().getGuildById(Math.abs(nationOrAllianceId));
@@ -1158,7 +1157,7 @@ public final class PW {
             name = name != null ? name : nationOrAllianceId + "";
         } else {
             type = "nation";
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationOrAllianceId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationOrAllianceId);
             name = nation != null ? nation.getNation() : nationOrAllianceId + "";
         }
         String url = "" + Settings.INSTANCE.PNW_URL() + "/" + type + "/id=" + nationOrAllianceId;
@@ -1174,7 +1173,7 @@ public final class PW {
             name = name != null ? name : nationOrAllianceId + "";
         } else {
             type = "nation";
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationOrAllianceId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationOrAllianceId);
             name = nation != null ? nation.getNation() : nationOrAllianceId + "";
         }
         return "" + Settings.INSTANCE.PNW_URL() + "/" + type + "/id=" + nationOrAllianceId;

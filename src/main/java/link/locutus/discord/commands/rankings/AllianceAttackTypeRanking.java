@@ -68,7 +68,7 @@ public class AllianceAttackTypeRanking extends Command {
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
         for (AbstractCursor attack : attacks) {
-            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_id());
+            DBNation nat = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
             totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
 

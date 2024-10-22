@@ -41,10 +41,13 @@
     </tr>
     <tr>
         <td>Guild</td>
-        @if (guild != null)
-        <td>${guild.toString()}</td>
-        @else
-        <td><a href="/page/guildselect" class="btn btn-primary">Select Guild</a></td>
-        @endif
+        <td>
+            @if (guild != null)
+            ${guild.toString()}
+            <a href="/page/guildselect" class="btn btn-primary">Switch</a>
+            @else
+            <a href="/page/guildselect" class="btn btn-primary">Select</a>
+            @endif
+        </td>
     </tr>
 </table>

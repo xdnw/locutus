@@ -75,7 +75,7 @@ public class IntelOp extends Command {
             if (dnr != null) topX = dnr;
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -102,7 +102,7 @@ public class IntelOp extends Command {
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PW.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);

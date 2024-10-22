@@ -9,35 +9,15 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.battle.sim.SimulatedWar;
-import link.locutus.discord.util.battle.sim.SimulatedWarNode;
-import link.locutus.discord.apiv1.domains.War;
-import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
-import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class Counter extends Command {
     public Counter() {
@@ -92,16 +72,16 @@ public class Counter extends Command {
             if (counterId == null) {
                 return "Invalid `war-url` or `nation`:`" + arg0 + "`";
             }
-            counter = Locutus.imp().getNationDB().getNation(counterId);
+            counter = Locutus.imp().getNationDB().getNationById(counterId);
         } else {
             int warId = Integer.parseInt(arg0.split("=")[1].replaceAll("/", ""));
             DBWar war = Locutus.imp().getWarDb().getWar(warId);
             int counterId = war.getAttacker_id();
-            counter = Locutus.imp().getNationDB().getNation(counterId);
+            counter = Locutus.imp().getNationDB().getNationById(counterId);
 
             if (counter.getAlliance_id() == me.getAlliance_id() || (guild != null && Locutus.imp().getGuildDB(guild).getCoalition("allies").contains(counter.getAlliance_id()))) {
                 counterId = (war.getDefender_id());
-                counter = Locutus.imp().getNationDB().getNation(counterId);
+                counter = Locutus.imp().getNationDB().getNationById(counterId);
                 defenderId = (war.getAttacker_id());
             } else {
                 defenderId = (war.getDefender_id());
@@ -114,7 +94,7 @@ public class Counter extends Command {
                 Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
                 Set<Integer> allies = Locutus.imp().getGuildDB(guild).getCoalition("allies");
                 if (!aaIds.isEmpty()) allies.addAll(aaIds);
-                counterWith = Locutus.imp().getNationDB().getNations(allies);
+                counterWith = Locutus.imp().getNationDB().getNationsByAlliance(allies);
             } else {
                 try {
                     counterWith = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);

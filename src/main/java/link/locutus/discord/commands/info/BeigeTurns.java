@@ -11,7 +11,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Set;
@@ -44,7 +43,7 @@ public class BeigeTurns extends Command {
         if (nationId == null) {
             return "Invalid nation: " + nationId;
         }
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
         return nation.getBeigeTurns() + " turns";
     }
 }

@@ -16,11 +16,9 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
@@ -63,7 +61,6 @@ import java.awt.*;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -290,7 +287,7 @@ public class PWCompleter extends BindingHelper {
             return completeUser(guild, input, true);
         }
 
-        List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
 
         return options.stream().map(f -> Map.entry(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
@@ -314,7 +311,7 @@ public class PWCompleter extends BindingHelper {
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
-        List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
 
         options = StringMan.getClosest(input, options, NationOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
@@ -347,7 +344,7 @@ public class PWCompleter extends BindingHelper {
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
-        List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
             for (Guild other : user.getMutualGuilds()) {
@@ -388,7 +385,7 @@ public class PWCompleter extends BindingHelper {
         }
         AllianceList aaList = db.getAllianceList();
 
-        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
             for (Guild guild : user.getMutualGuilds()) {

@@ -59,8 +59,8 @@ public class CombatantSheet extends Command {
 
         Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliances, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
         wars.removeIf(w -> {
-            DBNation n1 = Locutus.imp().getNationDB().getNation(w.getAttacker_id());
-            DBNation n2 = Locutus.imp().getNationDB().getNation(w.getDefender_id());
+            DBNation n1 = Locutus.imp().getNationDB().getNationById(w.getAttacker_id());
+            DBNation n2 = Locutus.imp().getNationDB().getNationById(w.getDefender_id());
             if (n1 == null || n2 == null) {
                 return true;
             }
@@ -185,8 +185,8 @@ public class CombatantSheet extends Command {
         int i = 0;
         for (WarCard warcard : warcards) {
             DBWar war = warcard.getWar();
-            DBNation n1 = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
-            DBNation n2 = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+            DBNation n1 = Locutus.imp().getNationDB().getNationById(war.getAttacker_id());
+            DBNation n2 = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
             WarNation attacker = warcard.toWarNation(true);
             WarNation defender = warcard.toWarNation(false);
 

@@ -5,6 +5,8 @@ import com.aayushatharva.brotli4j.Brotli4jLoader;
 import io.javalin.community.ssl.SslPlugin;
 import io.javalin.compression.CompressionStrategy;
 import io.javalin.config.SizeUnit;
+import io.javalin.http.Header;
+import io.javalin.http.HttpStatus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.web.test.WebDB;
 import gg.jte.ContentType;
@@ -233,7 +235,6 @@ public class WebRoot {
                 });
                 this.app.post(pattern, ctx -> {
                     pageHandler.handle(ctx);
-                    ctx.status(200);
                 });
             }
         }
@@ -252,7 +253,6 @@ public class WebRoot {
         });
         this.app.post("/page/*", ctx -> {
             pageHandler.handle(ctx);
-            ctx.status(200);
         });
 //        this.app.get("/api/*", ctx -> {
 //            pageHandler.handle(ctx);
@@ -260,7 +260,6 @@ public class WebRoot {
         // Only post requests
         this.app.post("/api/*", ctx -> {
             pageHandler.handle(ctx);
-            ctx.status(200);
         });
 
         this.fileRoot = new File("files");

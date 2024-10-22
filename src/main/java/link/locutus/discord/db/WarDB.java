@@ -33,7 +33,6 @@ import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
-import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
@@ -44,7 +43,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
@@ -1433,8 +1431,8 @@ public class WarDB extends DBMainV2 {
     }
 
     public CounterStat updateCounter(DBWar war, Consumer<Event> eventConsumer) {
-        DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNationById(war.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
         if (war.getAttacker_aa() == 0 || war.getDefender_aa() == 0) {
             CounterStat stat = new CounterStat();
             stat.type = CounterType.UNCONTESTED;

@@ -6,7 +6,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.WarType;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.sql.ResultSet;
@@ -107,7 +106,7 @@ public class DBBounty {
 
     @Command(desc = "Get the nation this bounty is for")
     public DBNation getNation() {
-        return Locutus.imp().getNationDB().getNation(nationId);
+        return Locutus.imp().getNationDB().getNationById(nationId);
     }
 
 

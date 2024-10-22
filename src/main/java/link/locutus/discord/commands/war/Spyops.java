@@ -181,7 +181,7 @@ public class Spyops extends Command {
 
         Function<Integer, Boolean> isInvolved = integer -> {
             if (integer == attacker.getNation_id()) return true;
-            DBNation nation = Locutus.imp().getNationDB().getNation(integer);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(integer);
             return nation != null && allies.contains(nation.getAlliance_id());
         };
 
@@ -198,7 +198,7 @@ public class Spyops extends Command {
                 } else {
                     continue;
                 }
-                DBNation nation = Locutus.imp().getNationDB().getNation(other);
+                DBNation nation = Locutus.imp().getNationDB().getNationById(other);
                 if (nation != null) {
                     nations.add(nation);
                 }

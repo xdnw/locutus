@@ -16,7 +16,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -24,7 +23,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -39,7 +37,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -517,7 +514,7 @@ public enum ResourceType {
 
         String name = input.split("You successfully gathered intelligence about ")[1].split("\\. Your spies discovered that")[0];
         Locutus lc = Locutus.imp();
-        DBNation nation = lc == null ? null : lc.getNationDB().getNation(name);
+        DBNation nation = lc == null ? null : lc.getNationDB().getNationById(name);
 
         return new AbstractMap.SimpleEntry<>(nation, resourceOutput);
     }

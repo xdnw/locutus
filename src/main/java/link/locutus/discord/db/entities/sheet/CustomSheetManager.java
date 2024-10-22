@@ -34,7 +34,10 @@ public class CustomSheetManager {
     }
 
     public void createTables() {
-        db.executeStmt("CREATE TABLE IF NOT EXISTS `SELECTION_ALIAS` (`name` VARCHAR PRIMARY KEY COLLATE NOCASE, `type` VARCHAR NOT NULL COLLATE NOCASE, `selection` VARCHAR NOT NULL)");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS `SELECTION_ALIAS` (`name` VARCHAR PRIMARY KEY COLLATE NOCASE, `type` VARCHAR NOT NULL COLLATE NOCASE, `selection` VARCHAR NOT NULL, `modifier` VARCHAR NOT NULL)");
+        String addModifier = "ALTER TABLE `SELECTION_ALIAS` ADD COLUMN `modifier` VARCHAR NOT NULL DEFAULT ''";
+        db.executeStmt(addModifier);
+
         db.executeStmt("CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET` (`name` VARCHAR PRIMARY KEY, url VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET_TABS` (`sheet` VARCHAR NOT NULL, `tab` VARCHAR NOT NULL, `selector` VARCHAR NOT NULL, `template` VARCHAR NOT NULL, PRIMARY KEY (`sheet`, `tab`))");
@@ -145,6 +148,7 @@ public class CustomSheetManager {
                         while (rs.next()) {
                             String name = rs.getString("name");
                             String typeStr = rs.getString("type");
+                            String modifier = rs.getString("modifier");
                             Class typeFinal = null;
                             for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
                                 if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(typeStr)) {
@@ -156,7 +160,7 @@ public class CustomSheetManager {
                                 return;
                             }
                             String selection = rs.getString("selection");
-                            SelectionAlias alias = new SelectionAlias(name, typeFinal, selection);
+                            SelectionAlias alias = new SelectionAlias(name, typeFinal, selection, modifier);
                             customSelections.computeIfAbsent(typeFinal, t -> new ConcurrentHashMap<>()).put(name.toLowerCase(Locale.ROOT), alias);
                         }
                     });
@@ -198,9 +202,16 @@ public class CustomSheetManager {
 
     public <T> SelectionAlias<T> getSelectionAlias(String name, boolean allowInline) {
         Class requiredTypeOrNull = null;
+
+        String modifier = null;
         if (name.contains(":")) {
             String[] split = name.split(":", 2);
             String prefix = split[0];
+            if (prefix.contains("(")) {
+                int index = prefix.indexOf("(");
+                modifier = prefix.substring(index + 1, prefix.length() - 1);
+                prefix = prefix.substring(0, index);
+            }
             requiredTypeOrNull = Locutus.cmd().getV2().getPlaceholders().parseType(prefix);
             if (requiredTypeOrNull != null) {
                 name = split[1];
@@ -214,7 +225,7 @@ public class CustomSheetManager {
             }
             // parse inline
             if (allowInline) {
-                return new SelectionAlias<>("", requiredTypeOrNull, name);
+                return new SelectionAlias<>("", requiredTypeOrNull, name, modifier);
             }
         } else {
             for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
@@ -238,15 +249,16 @@ public class CustomSheetManager {
         });
     }
 
-    public SelectionAlias addSelectionAlias(String name, Class type, String selection) {
+    public SelectionAlias addSelectionAlias(String name, Class type, String selection, String modifierOrNull) {
         name = name.toLowerCase(Locale.ROOT);
         String finalName = name;
-        db.update("INSERT INTO SELECTION_ALIAS(name, type, selection) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("INSERT INTO SELECTION_ALIAS(name, type, selection, modifier) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, finalName);
             stmt.setString(2, PlaceholdersMap.getClassName(type));
             stmt.setString(3, selection);
+            stmt.setString(4, modifierOrNull);
         });
-        SelectionAlias alias = new SelectionAlias(name, type, selection);
+        SelectionAlias alias = new SelectionAlias(name, type, selection, modifierOrNull);
         getSelectionAliases().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, alias);
         return alias;
     }

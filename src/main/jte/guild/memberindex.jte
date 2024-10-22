@@ -146,24 +146,24 @@
         <div id="raid-out-5" class="bg-light border border-top-0 mx-1 mb-1 slide" style="display:none"></div>
     </div>
 </div>
-@if(Roles.ECON_GRANT_SELF.has(author, db.getGuild()))
-<div class="bg-white container mt-3 rounded shadow py-1">
-    <h2 class="">&#127974; Grants</h2>
-    <hr>
-    <p class="lead">
-        Grants are funds provided by the alliance to help you grow your nation. Debt from grants can expire after a period of time (typically 60 days, see the note when accepting a grant)<br><br>
-        <b>note: </b>This interface can only approve <i>some</i> grants.
-        @if(db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL) != null)
-        If you would like more general assistance or advice, please <a href="https://discord.com/channels/${db.getIdLong()}/${((GuildMessageChannel) db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL)).getIdLong()}">open a ticket on discord.</a>
-        @endif
-    </p>
-    <div class="list-group">
-    <a href="${WebRoot.REDIRECT}/page/infragrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>
-    <a href="${WebRoot.REDIRECT}/page/landgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>
-    <a href="${WebRoot.REDIRECT}/page/citygrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>
-    <a href="${WebRoot.REDIRECT}/page/projectgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#128508; Project grants</a>
-    </div>
-</div>
-@endif
+<%--@if(Roles.ECON_GRANT_SELF.has(author, db.getGuild()))--%>
+<%--<div class="bg-white container mt-3 rounded shadow py-1">--%>
+<%--    <h2 class="">&#127974; Grants</h2>--%>
+<%--    <hr>--%>
+<%--    <p class="lead">--%>
+<%--        Grants are funds provided by the alliance to help you grow your nation. Debt from grants can expire after a period of time (typically 60 days, see the note when accepting a grant)<br><br>--%>
+<%--        <b>note: </b>This interface can only approve <i>some</i> grants.--%>
+<%--        @if(db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL) != null)--%>
+<%--        If you would like more general assistance or advice, please <a href="https://discord.com/channels/${db.getIdLong()}/${((GuildMessageChannel) db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL)).getIdLong()}">open a ticket on discord.</a>--%>
+<%--        @endif--%>
+<%--    </p>--%>
+<%--    <div class="list-group">--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/infragrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/landgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/citygrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>--%>
+<%--    <a href="${WebRoot.REDIRECT}/page/projectgrants/${nation.getNation_id()}" class="link-primary list-group-item bg-light">&#128508; Project grants</a>--%>
+<%--    </div>--%>
+<%--</div>--%>
+<%--@endif--%>
 @endif
 `)

@@ -66,7 +66,7 @@ public class MultiReport {
 
         for (Map.Entry<Integer, Map<BigInteger, Long>> entry : diffMap.entrySet()) {
             int nationId = entry.getKey();
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
 
             String name;
             if (nation == null) name = nationId + "";
@@ -205,7 +205,7 @@ public class MultiReport {
 
     public MultiReport(int nationId) {
         this.nationId = nationId;
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
         try {
             if (nation != null) {
                 new GetUid(nation, true).call();

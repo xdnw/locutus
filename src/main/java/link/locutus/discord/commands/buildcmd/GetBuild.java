@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.buildcmd;
 
 import com.google.api.client.util.Lists;
-import com.google.common.collect.Maps;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -10,7 +9,6 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -21,9 +19,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -104,7 +100,7 @@ public class GetBuild extends Command {
         if (id == null) {
             return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
         }
-        DBNation nation = Locutus.imp().getNationDB().getNation(id);
+        DBNation nation = Locutus.imp().getNationDB().getNationById(id);
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }

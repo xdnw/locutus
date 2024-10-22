@@ -1076,7 +1076,7 @@ public class IACheckup {
         boolean hasEnemies = false;
         boolean hasRaids = false;
         if (!enemyAAs.isEmpty()) {
-            for (DBNation enemy : Locutus.imp().getNationDB().getNations(enemyAAs)) {
+            for (DBNation enemy : Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs)) {
                 if (enemy.getScore() >= score * 1.25 || enemy.getScore() <= minScore) continue;
                 if (enemy.getVm_turns() != 0) continue;
                 if (enemy.getCities() > nation.getCities() * 1.5) continue;
@@ -1090,7 +1090,7 @@ public class IACheckup {
             }
         }
         if ((enemyAAs.isEmpty() && nation.getOff() < 4) || nation.getOff() < 2) {
-            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNations().entrySet()) {
+            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsByAlliance().entrySet()) {
                 DBNation enemy = entry.getValue();
                 if (enemy.getScore() >= maxScore || enemy.getScore() <= minScore) continue;
                 if (enemy.getVm_turns() != 0) continue;

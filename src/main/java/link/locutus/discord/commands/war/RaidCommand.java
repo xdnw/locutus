@@ -142,7 +142,7 @@ public class RaidCommand extends Command {
                 iterator.remove();
             } else if ((next.charAt(0) == '-' || next.charAt(0) == '+') && MathMan.isInteger(next.substring(1))) {
                 int topX = Integer.parseInt(next.substring(1));
-                Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNations().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
+                Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNationsByAlliance().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
                 for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
                     if (entry.getKey() == 0) continue;
                     if (topX-- <= 0) break;
@@ -213,7 +213,7 @@ public class RaidCommand extends Command {
 
         if (beigeTurns > 0) vm = Math.max(vm, beigeTurns);
 
-        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations().values());
+        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         Set<DBNation> nations;
 
         switch (args.size()) {
@@ -231,7 +231,7 @@ public class RaidCommand extends Command {
                             return nation.getPosition() > 1;
                         }
                     });
-                    nations.addAll(Locutus.imp().getNationDB().getNations(enemyAAs));
+                    nations.addAll(Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs));
                 } else if (aa.equalsIgnoreCase("*")) {
                     nations = new LinkedHashSet<>(allNations);
                 } else {

@@ -120,7 +120,7 @@ public class CustomSheet {
 
             Future<?> future = executor.submit(() -> {
                 try {
-                    Set<Object> selection = ph.deserializeSelection(store, alias.getSelection());
+                    Set<Object> selection = ph.deserializeSelection(store, alias.getSelection(), alias.getModifier());
                     List<String> columns = template.getColumns();
                     List<Object> header = new ArrayList<>(columns);
                     for (int i = 0; i < header.size(); i++) {

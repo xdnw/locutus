@@ -344,7 +344,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     public static Set<DBAlliance> getTopX(int topX, boolean checkTreaty) {
         Set<DBAlliance> results = new LinkedHashSet<>();
-        Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNations().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
+        Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNationsByAlliance().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
         for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
             if (entry.getKey() == 0) continue;
             if (topX-- <= 0) break;
@@ -699,7 +699,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public Set<DBNation> getNations() {
-        return Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+        return Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(allianceId));
     }
 
     public DBNation getMembersTotal() {

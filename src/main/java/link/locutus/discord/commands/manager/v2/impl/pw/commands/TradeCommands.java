@@ -736,7 +736,7 @@ public class TradeCommands {
 
             for (int nationId : new int[]{buyer, seller}) {
                 if (!nationIds.contains(nationId)) continue;
-                DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+                DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
                 if (nation == null) continue;
                 if (groupByAlliance && nation.getAlliance_id() == 0) continue;
                 int groupId = groupBy.apply(nation);
@@ -1029,7 +1029,7 @@ public class TradeCommands {
         StringBuilder response = new StringBuilder("Your net inflows from:");
         for (Map.Entry<Integer, Map<ResourceType, Long>> entry : netInflows.entrySet()) {
             Integer clientId = entry.getKey();
-            DBNation client = Locutus.imp().getNationDB().getNation(clientId);
+            DBNation client = Locutus.imp().getNationDB().getNationById(clientId);
             String name = PW.getName(clientId, false);
             if (addBalance) {
                 response.append("\n**" + name);

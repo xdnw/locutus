@@ -5,7 +5,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
@@ -356,7 +355,7 @@ public class IACategory {
         String[] split = channel.getName().split("-");
         if (MathMan.isInteger(split[split.length - 1])) {
             int nationId = Integer.parseInt(split[split.length - 1]);
-            nation = Locutus.imp().getNationDB().getNation(nationId);
+            nation = Locutus.imp().getNationDB().getNationById(nationId);
             if (nation != null) {
                 user = nation.getUser();
             }
@@ -793,7 +792,7 @@ public class IACategory {
                     return true;
                 }
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null && nation.getOff() < 5) {
-                    Set<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
+                    Set<DBNation> enemies = Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(0));
                     enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * PW.WAR_RANGE_MAX_MODIFIER || f.getScore() < nation.getScore() * 0.75 || f.active_m() < 10000);
                     int raids = Math.min(4, enemies.size());
                     if (nation.getOff() < raids) return true;

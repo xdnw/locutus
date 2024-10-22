@@ -1418,10 +1418,10 @@ public class GuildHandler {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
             if (root.getAttack_type() == AttackType.VICTORY) {
-                DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
+                DBNation attacker = Locutus.imp().getNationDB().getNationById(root.getAttacker_id());
                 handleLostWars(attacker, aaIds, root, memberNation);
 
-                DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
+                DBNation defender = Locutus.imp().getNationDB().getNationById(root.getDefender_id());
                 handleWonWars(defender, aaIds, root, memberNation);
 
             }
@@ -2125,8 +2125,8 @@ public class GuildHandler {
         MessageChannel channelViolation = db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS);
         if (channelAllowed == null && channelViolation == null) return;
 
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNationById(root.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNationById(root.getDefender_id());
         if (!enemies.contains(defender.getAlliance_id())) return;
 
         DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
@@ -2431,7 +2431,7 @@ public class GuildHandler {
                 Set<Integer> aaIds = db.getAllianceIds();
                 if (aaIds.isEmpty()) return;
 
-                Set<DBNation> members = Locutus.imp().getNationDB().getNations(aaIds);
+                Set<DBNation> members = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
                 members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
                 members.removeIf(f -> f.active_m() > 2880);
                 members.removeIf(f -> f.getVm_turns() > 0);

@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class AlliancePages {
@@ -40,7 +39,7 @@ public class AlliancePages {
             ArrayList<String> row = new ArrayList<>();
 
             int nationId = change.getNationId();
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
 
             row.add(TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(change.getDate())));
             row.add(MarkupUtil.htmlUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));

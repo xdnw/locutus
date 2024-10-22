@@ -18,24 +18,22 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.SheetTemplate;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -100,8 +98,8 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     @Override
-    public Set<DBNation> deserializeSelection(ValueStore store, String input) {
-        Set<DBNation> superSet = super.deserializeSelection(store, input);
+    public Set<DBNation> deserializeSelection(ValueStore store, String input, String modifier) {
+        Set<DBNation> superSet = super.deserializeSelection(store, input, modifier);
         List<Function<DBNation, Double>> sortCriteria = List.of(
                 n -> (double) n.getAlliance_id(),
                 n -> (double) n.getCities(),
@@ -243,28 +241,41 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
-    public static Set<DBNation> getByRole(Guild guild, String name, Role role) {
+    public static Set<DBNation> getByRole(Guild guild, String name, Role role, INationSnapshot snapshot) {
         if (role == null) throw new IllegalArgumentException("Invalid role: `" + name + "`");
         List<Member> members = guild.getMembersWithRoles(role);
         Set<DBNation> nations = new LinkedHashSet<>();
         for (Member member : members) {
-            DBNation nation = DBNation.getByUser(member.getUser());
+            DBNation nation = snapshot.getNationByUser(member.getUser());
             if (nation != null) nations.add(nation);
         }
         return nations;
     }
 
     @Override
+    public Set<DBNation> parseSet(ValueStore store2, String input, String modifier) {
+        INationSnapshot snapshot = getSnapshot(modifier);
+        input = wrapHashLegacy(input);
+        return ArrayUtil.resolveQuery(input,
+                f -> parseSingleElem(store2, f, snapshot),
+                s -> getSingleFilter(store2, s));
+    }
+
+    @Override
     public Set<DBNation> parseSingleElem(ValueStore store, String name) {
+        return parseSingleElem(store, name, Locutus.imp().getNationDB());
+    }
+
+    public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot) {
         Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
         if (selection != null) return selection;
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {
-            return new ObjectArraySet<>(Locutus.imp().getNationDB().getNations().values());
+            return new ObjectArraySet<>(snapshot.getAllNations());
         } else if (name.contains("tax_id=")) {
             int taxId = PW.parseTaxId(name);
-            return Locutus.imp().getNationDB().getNationsByBracket(taxId);
+            return snapshot.getNationsByBracket(taxId);
         } else if (SpreadSheet.isSheet(nameLower)) {
             Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
                     s -> switch (s.toLowerCase(Locale.ROOT)) {
@@ -273,8 +284,8 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> PWBindings.nation(null, input);
-                            case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                            case 0 -> snapshot.getNationByName(input);
+                            case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
                     });
@@ -282,16 +293,16 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         }  else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
-            Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
+            Set<DBNation> allianceMembers = snapshot.getNationsByAlliance(alliances);
             return allianceMembers;
             // role
         } else if (nameLower.startsWith("<@&") && guild != null) {
             Role role = DiscordUtil.getRole(guild, name);
-            return getByRole(guild, name, role);
+            return getByRole(guild, name, role, snapshot);
         } else if (nameLower.startsWith("<@") || nameLower.startsWith("<!@")) {
             User user = DiscordUtil.getUser(nameLower);
             if (user != null) {
-                DBNation nation = DiscordUtil.getNation(user);
+                DBNation nation = snapshot.getNationByUser(user);
                 if (nation == null) {
                     throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
                 }
@@ -302,7 +313,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             if (id > Integer.MAX_VALUE && guild != null) {
                 User user = Locutus.imp().getDiscordApi().getUserById(id);
                 if (user != null) {
-                    DBNation nation = DiscordUtil.getNation(user);
+                    DBNation nation = snapshot.getNationByUser(user);
                     if (nation == null) {
                         throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
                     }
@@ -310,29 +321,33 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                 }
                 Role role = DiscordUtil.getRole(guild, name);
                 if (role != null) {
-                    return getByRole(guild, name, role);
+                    return getByRole(guild, name, role, snapshot);
                 }
             }
-            DBNation nation = DBNation.getById((int) id);
+            DBNation nation = snapshot.getNationById((int) id);
             if (nation != null) return Set.of(nation);
-            DBAlliance alliance = DBAlliance.get((int) id);
-            if (alliance != null) return alliance.getNations();
+            Set<DBNation> nations = snapshot.getNationsByAlliance((int) id);
+            if (!nations.isEmpty()) {
+                return nations;
+            }
+//            DBAlliance alliance = DBAlliance.get((int) id);
+//            if (alliance != null) return alliance.getNations();
         }
 
         Set<DBNation> nations = new LinkedHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
+        DBNation nation = containsAA ? null : snapshot.getNationByName(name);
         if (nation == null || containsAA) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
                 Role role = guild != null ? DiscordUtil.getRole(guild, name) : null;
                 if (role != null) {
-                    return getByRole(guild, name, role);
+                    return getByRole(guild, name, role, snapshot);
                 } else if (name.contains("#")) {
                     String[] split = name.split("#");
                     PNWUser user = Locutus.imp().getDiscordDB().getUser(null, split[0], name);
                     if (user != null) {
-                        nation = Locutus.imp().getNationDB().getNation(user.getNationId());
+                        nation = snapshot.getNationById(user.getNationId());
                     }
                     if (nation == null) {
                         throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
@@ -341,7 +356,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                     throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
                 }
             } else {
-                Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
+                Set<DBNation> allianceMembers = snapshot.getNationsByAlliance(alliances);
                 nations.addAll(allianceMembers);
             }
         } else {
@@ -352,6 +367,10 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     @Override
     public Predicate<DBNation> parseSingleFilter(ValueStore store, String name) {
+        return parseSingleFilter(store, name, Locutus.imp().getNationDB());
+    }
+
+    public Predicate<DBNation> parseSingleFilter(ValueStore store, String name, INationSnapshot snapshot) {
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {
@@ -367,8 +386,8 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> Locutus.imp().getNationDB().getNation(input);
-                            case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                            case 0 -> snapshot.getNationByName(input);
+                            case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
                     });
@@ -386,7 +405,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             return f -> f.getTax_id() == taxId;
         }
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
+        DBNation nation = containsAA ? null : snapshot.getNationByName(name);
         if (nation == null) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
@@ -403,7 +422,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                     String[] split = name.split("#");
                     PNWUser user = Locutus.imp().getDiscordDB().getUser(null, split[0], name);
                     if (user != null) {
-                        nation = Locutus.imp().getNationDB().getNation(user.getNationId());
+                        nation = snapshot.getNationById(user.getNationId());
                     }
                     if (nation == null) {
                         throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");

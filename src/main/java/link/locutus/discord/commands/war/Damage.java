@@ -74,7 +74,7 @@ public class Damage extends Command {
             nations = new HashSet<>();
             for (DBWar war : me.getActiveWars()) {
                 if (war.getAttacker_id() != me.getNation_id() && war.getAttacker_aa() != 0) {
-                    nations.addAll(Locutus.imp().getNationDB().getNations(Collections.singleton(war.getAttacker_aa())));
+                    nations.addAll(Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(war.getAttacker_aa())));
                 }
             }
         } else {

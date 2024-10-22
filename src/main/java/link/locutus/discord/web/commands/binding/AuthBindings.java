@@ -1,39 +1,31 @@
 package link.locutus.discord.web.commands.binding;
 
 import com.google.common.hash.Hashing;
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
 import gg.jte.generated.precompiled.auth.JtepickerGenerated;
-import gg.jte.generated.precompiled.data.Jtetable_dataGenerated;
 import io.javalin.http.Context;
-import io.javalin.http.Cookie;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.mail.Mail;
-import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WM;
+import link.locutus.discord.web.commands.page.PageHelper;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.web.test.WebDB;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.http.HttpHeaders;
@@ -50,12 +42,8 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -155,7 +143,7 @@ public class AuthBindings extends WebBindingHelper {
             WebRoot.db().removeToken(auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
         }
         if (redirect) {
-            context.redirect(WebRoot.REDIRECT);
+            PageHelper.redirect(context, WebRoot.REDIRECT);
         }
     }
 
@@ -374,9 +362,9 @@ public class AuthBindings extends WebBindingHelper {
             // Please select your nation
             List<DBNation> nations;
             if (allianceIdFilter != null) {
-                nations = new ArrayList<>(Locutus.imp().getNationDB().getNations(allianceIdFilter));
+                nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance(allianceIdFilter));
             } else {
-                nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+                nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
             }
             // Sort nations by lasst_active (descending)
             nations.sort((o1, o2) -> Long.compare(o2.lastActiveMs(), o1.lastActiveMs()));

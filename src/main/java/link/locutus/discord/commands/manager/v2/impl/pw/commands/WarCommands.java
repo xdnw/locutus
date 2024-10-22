@@ -11,7 +11,6 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -344,7 +343,7 @@ public class WarCommands {
         boolean dms = false;
 
         RaidCommand cmd = new RaidCommand();
-        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations().values());
+        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         if (vmTurns == null) vmTurns = 0;
         if (defensiveSlots == null) defensiveSlots = -1;
         boolean active = activeTimeCutoff != null && activeTimeCutoff <= 60;
@@ -441,7 +440,7 @@ public class WarCommands {
             if (dnrTopX == null) dnrTopX = 0;
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -468,7 +467,7 @@ public class WarCommands {
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNationsByAlliance(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.active_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PW.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / PW.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
@@ -646,7 +645,7 @@ public class WarCommands {
                              @Switch("r") @Default("5") Integer numResults) throws IOException {
         if (allies == null) {
             allies = new HashSet<>();
-            allies.addAll(Locutus.imp().getNationDB().getNations(db.getAllies(true)));
+            allies.addAll(Locutus.imp().getNationDB().getNationsByAlliance(db.getAllies(true)));
         }
         if (allies.isEmpty()) {
             return "No allies were provided (See: " + CM.coalition.create.cmd.toSlashMention() + " with " + Coalition.ALLIES + ")";
@@ -1587,7 +1586,7 @@ public class WarCommands {
                              @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
-            counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(db.getAllianceIds()));
+            counterWith = new HashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(db.getAllianceIds()));
         }
         counterWith.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.active_m() > TimeUnit.DAYS.toMinutes(2));
 
@@ -1741,7 +1740,7 @@ public class WarCommands {
 
         Function<Integer, Boolean> isInvolved = integer -> {
             if (integer == me.getNation_id()) return true;
-            DBNation nation = Locutus.imp().getNationDB().getNation(integer);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(integer);
             return nation != null && allies.contains(nation.getAlliance_id());
         };
 
@@ -2105,7 +2104,7 @@ public class WarCommands {
         if (dnrTopX == null) dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (dnrTopX == null) dnrTopX = 0;
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
 
 
         Set<Integer> allies = db.getAllies();
@@ -3148,8 +3147,8 @@ public class WarCommands {
 
         });
         wars.removeIf(w -> {
-            DBNation n1 = Locutus.imp().getNationDB().getNation(w.getAttacker_id());
-            DBNation n2 = Locutus.imp().getNationDB().getNation(w.getDefender_id());
+            DBNation n1 = Locutus.imp().getNationDB().getNationById(w.getAttacker_id());
+            DBNation n2 = Locutus.imp().getNationDB().getNationById(w.getDefender_id());
             if (n1 == null || n2 == null) {
                 return true;
             }
@@ -3271,8 +3270,8 @@ public class WarCommands {
         int i = 0;
         for (WarCard warcard : warcards) {
             DBWar war = warcard.getWar();
-            DBNation n1 = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
-            DBNation n2 = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+            DBNation n1 = Locutus.imp().getNationDB().getNationById(war.getAttacker_id());
+            DBNation n2 = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
             WarNation attacker = warcard.toWarNation(true);
             WarNation defender = warcard.toWarNation(false);
 
@@ -4089,7 +4088,7 @@ public class WarCommands {
         Set<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, alliesIds);
         for (DBWar war : defWars) {
             if (!war.isActive()) continue;
-            DBNation enemy = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+            DBNation enemy = Locutus.imp().getNationDB().getNationById(war.getAttacker_id());
             if (enemy == null) continue;
 
             if (!enemyAAs.contains(enemy.getAlliance_id())) {
@@ -4097,7 +4096,7 @@ public class WarCommands {
                 if (stat.type == CounterType.IS_COUNTER || stat.type == CounterType.ESCALATION) continue;
             }
 
-            DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+            DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
             if (defender == null) continue;
             if (excludeApplicants && defender.getPosition() <= 1) continue;
             if (excludeInactives && defender.active_m() > 4880) continue;
@@ -4107,7 +4106,7 @@ public class WarCommands {
         }
 
         if (includeAllEnemies) {
-            for (DBNation enemy : Locutus.imp().getNationDB().getNations(enemyAAs)) {
+            for (DBNation enemy : Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs)) {
                 enemies.putIfAbsent(enemy, new ArrayList<>());
             }
         }
@@ -4195,7 +4194,7 @@ public class WarCommands {
             Rank rank = null;
 
             for (DBWar war : wars) {
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+                DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
                 if (defender == null) {
                     continue;
                 }
@@ -4262,7 +4261,7 @@ public class WarCommands {
             for (int i = 0; i < wars.size(); i++) {
                 DBWar war = wars.get(i);
                 String url = war.toUrl();
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+                DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
                 String warStr = defender.getNation() + "|" + defender.getAllianceName();
                 row.add(MarkupUtil.sheetUrl(warStr, url));
             }
@@ -4434,7 +4433,7 @@ public class WarCommands {
                     aaIds = new HashSet<>(Arrays.asList(me.getAlliance_id()));
                     counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 0, true));
                 } else {
-                    counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
+                    counterWith = new HashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(allies));
                 }
             } else {
                 counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 0, true));

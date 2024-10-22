@@ -249,8 +249,8 @@ public class WarCategory {
 
 
             int participantId = to.getAttacker_id() == targetId ? to.getDefender_id() : to.getAttacker_id();
-            DBNation target = Locutus.imp().getNationDB().getNation(targetId);
-            DBNation participant = Locutus.imp().getNationDB().getNation(participantId);
+            DBNation target = Locutus.imp().getNationDB().getNationById(targetId);
+            DBNation participant = Locutus.imp().getNationDB().getNationById(participantId);
 
             boolean create = false;
             if (isActive(target) && isActive(participant) && participant.getPosition() > 1 && (to.getDefender_id() == participantId || target.getPosition() > 1)) {
@@ -304,7 +304,7 @@ public class WarCategory {
         String[] split = channelName.split("-");
         if (MathMan.isInteger(split[split.length - 1])) {
             int targetId = Integer.parseInt(split[split.length - 1]);
-            DBNation target = Locutus.imp().getNationDB().getNation(targetId);
+            DBNation target = Locutus.imp().getNationDB().getNationById(targetId);
             if (target != null) {
                 return get(target, true, false);
             } else {
@@ -332,7 +332,7 @@ public class WarCategory {
         if (!reason.isActive()) return reason;
         for (DBWar war : wars) {
             int attackerId = war.getAttacker_id() == nation.getNation_id() ? war.getDefender_id() : war.getAttacker_id();
-            DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
+            DBNation attacker = Locutus.imp().getNationDB().getNationById(attackerId);
             if (attacker != null) {
                 reason = getActiveReason(attacker);
                 if (reason.isActive()) return reason;
@@ -388,8 +388,8 @@ public class WarCategory {
         boolean value = room.target.getNation_id() == attack.getAttacker_id();
         boolean change = attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH || (attack.getSuccess() != SuccessType.UTTER_FAILURE && !value);
 
-        DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
-        DBNation defender = Locutus.imp().getNationDB().getNation(defenderId);
+        DBNation attacker = Locutus.imp().getNationDB().getNationById(attackerId);
+        DBNation defender = Locutus.imp().getNationDB().getNationById(defenderId);
 
         String name1 = attacker.getNationUrlMarkup(true) + (attacker.getAlliance_id() != 0 ? (" of " + attacker.getAllianceUrlMarkup(true)) : "");
         String name2 = defender.getNationUrlMarkup(true) + (defender.getAlliance_id() != 0 ? (" of " + defender.getAllianceUrlMarkup(true)) : "");
@@ -838,7 +838,7 @@ public class WarCategory {
                 Set<DBWar> wars = target.getActiveWars();
                 for (DBWar war : wars) {
                     boolean defensive = war.getAttacker_id() == target.getNation_id();
-                    DBNation participant = Locutus.imp().getNationDB().getNation(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
+                    DBNation participant = Locutus.imp().getNationDB().getNationById(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
 
                     if (participant != null && (participants.contains(participant) || participant.active_m() < 2880)) {
                         String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
@@ -1189,7 +1189,7 @@ public class WarCategory {
 
         public void updateParticipants(DBWar from, DBWar to, boolean ping) {
             int assignedId = to.getAttacker_id() == target.getNation_id() ? to.getDefender_id() : to.getAttacker_id();
-            DBNation nation = Locutus.imp().getNationDB().getNation(assignedId);
+            DBNation nation = Locutus.imp().getNationDB().getNationById(assignedId);
             if (nation == null) return;
 
             User user = nation.getUser();
@@ -1412,7 +1412,7 @@ public class WarCategory {
         for (Map.Entry<Integer, List<DBWar>> entry : byTarget.entrySet()) {
             List<DBWar> currentWars = entry.getValue();
             int targetId = entry.getKey();
-            DBNation targetNation = Locutus.imp().getNationDB().getNation(targetId);
+            DBNation targetNation = Locutus.imp().getNationDB().getNationById(targetId);
 
             WarCatReason enemyReason = getActiveReason(targetNation);
             if (targetNation != null) {
@@ -1517,7 +1517,7 @@ public class WarCategory {
                     if (byTarget.containsKey(targetId)) continue;
 
                     // delete because no active wars
-                    DBNation target = Locutus.imp().getNationDB().getNation(targetId);
+                    DBNation target = Locutus.imp().getNationDB().getNationById(targetId);
                     WarRoom room = null;
                     if (target != null) {
                         room = get(target, create, false);

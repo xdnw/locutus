@@ -11,15 +11,12 @@ import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,7 +28,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -60,7 +56,7 @@ public class AllianceList {
     }
 
     public Set<DBNation> getNations() {
-        return Locutus.imp().getNationDB().getNations(ids);
+        return Locutus.imp().getNationDB().getNationsByAlliance(ids);
     }
 
     public Set<DBNation> getNations(boolean removeVM, int removeInactiveM, boolean removeApps) {

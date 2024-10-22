@@ -47,7 +47,7 @@ public class ListMultisByAlliance extends Command {
         NationDB nationDB = Locutus.imp().getNationDB();
 
         String[] lines = Objects.requireNonNull(FileUtil.readFile("/debug/nonreferrals.txt")).split("\\r?\\n");
-        Map<Integer, DBNation> referredNations = new HashMap<>(Locutus.imp().getNationDB().getNations());
+        Map<Integer, DBNation> referredNations = new HashMap<>(Locutus.imp().getNationDB().getNationsByAlliance());
         Map<String, DBNation> nationsByName = new HashMap<>();
         for (Map.Entry<Integer, DBNation> entry : referredNations.entrySet()) {
             nationsByName.putIfAbsent(entry.getValue().getNation(), entry.getValue());
@@ -93,7 +93,7 @@ public class ListMultisByAlliance extends Command {
 
         for (Map.Entry<Integer, Set<Integer>> entry : multisByNation.entrySet()) {
             Integer nationId = entry.getKey();
-            DBNation nation = nationDB.getNation(nationId);
+            DBNation nation = nationDB.getNationById(nationId);
             if (nation == null || entry.getValue().isEmpty()) continue;
             if (verified.contains(nationId)) continue;
 

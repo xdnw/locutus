@@ -255,7 +255,7 @@ public class PlaceholdersMap {
                 SelectionAlias<T> selection = db.getSheetManager().getSelectionAlias(inputAlias, type);
                 if (selection != null) {
                     String query = selection.getSelection();
-                    return instance.parseSet(store, query);
+                    return instance.parseSet(store, query, selection.getModifier());
                 }
                 if (throwError) {
                     Map<String, SelectionAlias<T>> options = db.getSheetManager().getSelectionAliases(type);
@@ -334,7 +334,7 @@ public class PlaceholdersMap {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
         DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
         if (input.equalsIgnoreCase("*") && allowStar) {
-            return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNations().values());
+            return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         }
         if (MathMan.isInteger(input)) {
             long id = Long.parseLong(input);
@@ -408,7 +408,7 @@ public class PlaceholdersMap {
             String inputLower = input.toLowerCase(Locale.ROOT);
             String best = null;
             double bestScore = Double.MAX_VALUE;
-            for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+            for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
                 String name = nation.getName();
                 double score = StringMan.distanceWeightedQwertSift4(name.toLowerCase(Locale.ROOT), inputLower);
                 if (score < bestScore) {
@@ -804,7 +804,7 @@ public class PlaceholdersMap {
                             throw new IllegalArgumentException("No coalition server found, please have the bot owner set one in the `config.yaml`");
                         }
                         for (String coalition : db.getCoalitionNames()) {
-                            lists.add(new SimpleNationList(Locutus.imp().getNationDB().getNations(db.getCoalition(coalition))).setFilter(filterName));
+                            lists.add(new SimpleNationList(Locutus.imp().getNationDB().getNationsByAlliance(db.getCoalition(coalition))).setFilter(filterName));
                         }
                     } else {
                         NationPlaceholders placeholders = (NationPlaceholders) get(DBNation.class);

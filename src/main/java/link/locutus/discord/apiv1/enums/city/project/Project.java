@@ -31,7 +31,7 @@ public interface Project {
     @Command(desc = "Get number of projects for a set of nations")
     default int getCount(@NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
-        if (all == null) all = Locutus.imp().getNationDB().getNations().values();
+        if (all == null) all = Locutus.imp().getNationDB().getNationsByAlliance().values();
         int count = 0;
         for (DBNation nation : all) {
             count += get(nation);
@@ -42,7 +42,7 @@ public interface Project {
     @Command(desc = "Get average attribute for nations with this project")
     default double getAvg(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
-        if (all == null) all = Locutus.imp().getNationDB().getNations().values();
+        if (all == null) all = Locutus.imp().getNationDB().getNationsByAlliance().values();
         double total = 0;
         int count = 0;
         for (DBNation nation : all) {
@@ -56,7 +56,7 @@ public interface Project {
     @Command(desc = "Get total attribute for nations with this project")
     default double getTotal(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
-        if (all == null) all = Locutus.imp().getNationDB().getNations().values();
+        if (all == null) all = Locutus.imp().getNationDB().getNationsByAlliance().values();
         double total = 0;
         int count = 0;
         for (DBNation nation : all) {

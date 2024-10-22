@@ -102,7 +102,7 @@ public class TradeRanking extends Command {
 
             for (int nationId : new int[]{buyer, seller}) {
                 if (!nationIds.contains(nationId)) continue;
-                DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+                DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
                 if (nation == null) continue;
                 if (isAA && nation.getAlliance_id() == 0) continue;
                 int groupId = groupBy.apply(nation);

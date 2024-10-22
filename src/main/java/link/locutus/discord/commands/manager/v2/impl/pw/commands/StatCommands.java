@@ -1871,8 +1871,8 @@ public class StatCommands {
                 new Predicate<AbstractCursor>() {
                     @Override
                     public boolean test(AbstractCursor n) {
-                        DBNation nat1 = Locutus.imp().getNationDB().getNation(n.getAttacker_id());
-                        DBNation nat2 = Locutus.imp().getNationDB().getNation(n.getAttacker_id());
+                        DBNation nat1 = Locutus.imp().getNationDB().getNationById(n.getAttacker_id());
+                        DBNation nat2 = Locutus.imp().getNationDB().getNationById(n.getAttacker_id());
                         return nat1 != null && nat2 != null && (nationsByAA.containsKey(nat1.getAlliance_id()) || nationsByAA.containsKey(nat2.getAlliance_id()));
                     }
                 },
@@ -2814,7 +2814,7 @@ public class StatCommands {
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
         for (AbstractCursor attack : attacks) {
-            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_id());
+            DBNation nat = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
             totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
 

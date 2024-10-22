@@ -440,7 +440,7 @@ public class UnsortedCommands {
 
         String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
         Set<Integer> self = new HashSet<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         Function<Integer, String> nationNameFunc = i -> {
             DBNation nation = nations.get(i);
             return nation == null ? Integer.toString(i) : nation.getNation();
@@ -1235,7 +1235,7 @@ public class UnsortedCommands {
                                @Arg("Include inactive nations (2 days)")
                                @Switch("i") boolean includeInactive,
                                @Switch("d") @Timestamp Long snapshotDate) {
-        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values()).setFilter("*");
+        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNationsByAlliance().values()).setFilter("*");
         Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild, false);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
 
@@ -1282,7 +1282,7 @@ public class UnsortedCommands {
         RankBuilder<String> ranks;
         if (!listByNation) {
             NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
-                DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
+                DBNation nation = Locutus.imp().getNationDB().getNationById(entry.getKey());
                 if (nation != null) {
                     builder.put(nation.getAlliance_id(), entry.getValue());
                 }
@@ -1361,7 +1361,7 @@ public class UnsortedCommands {
         if (ignoreInactives || ignoreVM || ignoreMembers) {
             Predicate<AllianceChange> finalIsAllowed = isAllowed;
             isAllowed = f -> {
-                DBNation nation = Locutus.imp().getNationDB().getNation(f.getNationId());
+                DBNation nation = Locutus.imp().getNationDB().getNationById(f.getNationId());
                 if (nation == null) return false;
                 if (ignoreInactives && nation.active_m() > 10080) return false;
                 if (ignoreVM && nation.getVm_turns() != 0) return false;
@@ -2297,7 +2297,7 @@ public class UnsortedCommands {
 
         Map<Integer, Long> aaCount = new HashMap<>();
         Map<Integer, Long> aaCount1City = new HashMap<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int aaId = entry.getValue().getAlliance_id();
             aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));

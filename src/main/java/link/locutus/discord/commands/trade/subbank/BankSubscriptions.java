@@ -9,12 +9,10 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Date;
 import java.util.List;
@@ -56,7 +54,7 @@ public class BankSubscriptions extends Command {
                     url = "" + Settings.INSTANCE.PNW_URL() + "/" + type + "/id=" + sub.allianceOrNation;
                 }
             } else if (sub.type == BankDB.BankSubType.NATION) {
-                DBNation nation = Locutus.imp().getNationDB().getNation(sub.allianceOrNation);
+                DBNation nation = Locutus.imp().getNationDB().getNationById(sub.allianceOrNation);
                 url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + sub.allianceOrNation;
                 name = String.format("[%s](%s)",
                         nation == null ? sub.allianceOrNation : nation.getNation(), url);

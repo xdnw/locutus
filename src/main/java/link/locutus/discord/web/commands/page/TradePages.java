@@ -4,6 +4,7 @@ import gg.jte.generated.precompiled.JtebasictableGenerated;
 import gg.jte.generated.precompiled.trade.JtetradepriceGenerated;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TradePages {
     @Command
+    @NoForm
     public Object tradePrice(WebStore ws, TradeManager manager) {
         List<String> header = new ArrayList<>(Arrays.asList("Resource", "Low", "High"));
         List<List<String>> rows = new ArrayList<>();

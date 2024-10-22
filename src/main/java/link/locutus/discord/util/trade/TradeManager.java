@@ -5,7 +5,6 @@ import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -18,7 +17,6 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.trade.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
@@ -37,13 +35,9 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.text.ParseException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -414,8 +408,8 @@ public class TradeManager {
             int receiver = transfer.getReceiver();
 
             if (byAA) {
-                DBNation senNation = Locutus.imp().getNationDB().getNation(sender);
-                DBNation recNation = Locutus.imp().getNationDB().getNation(receiver);
+                DBNation senNation = Locutus.imp().getNationDB().getNationById(sender);
+                DBNation recNation = Locutus.imp().getNationDB().getNationById(receiver);
                 sender = senNation == null ? 0 : senNation.getAlliance_id();
                 receiver = recNation == null ? 0 : recNation.getAlliance_id();
             }
@@ -481,8 +475,8 @@ public class TradeManager {
             int receiver = offer.getBuyer();
 
             if (byAA) {
-                DBNation senNation = Locutus.imp().getNationDB().getNation(sender);
-                DBNation recNation = Locutus.imp().getNationDB().getNation(receiver);
+                DBNation senNation = Locutus.imp().getNationDB().getNationById(sender);
+                DBNation recNation = Locutus.imp().getNationDB().getNationById(receiver);
                 sender = senNation == null ? 0 : senNation.getAlliance_id();
                 receiver = recNation == null ? 0 : recNation.getAlliance_id();
             }

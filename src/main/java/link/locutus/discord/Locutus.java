@@ -346,7 +346,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Auth getRootAuth() {
-        Auth auth = getNationDB().getNation(loader.getNationId()).getAuth(true);
+        Auth auth = getNationDB().getNationById(loader.getNationId()).getAuth(true);
         if (auth != null) auth.setApiKey(loader.getApiKey());
         return auth;
     }
@@ -671,7 +671,7 @@ public final class Locutus extends ListenerAdapter {
         try {
             new TurnChangeEvent(lastTurn, currentTurn).post();
 
-            for (DBNation nation : getNationDB().getNations().values()) {
+            for (DBNation nation : getNationDB().getNationsByAlliance().values()) {
                 nation.processTurnChange(lastTurn, currentTurn, Event::post);
             }
 
