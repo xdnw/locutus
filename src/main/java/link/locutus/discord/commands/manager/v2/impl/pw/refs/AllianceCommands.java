@@ -137,6 +137,11 @@ public class AllianceCommands {
             public static final getRevenue cmd = new getRevenue();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getRevenueConverted")
+        public static class getRevenueConverted extends CommandRef {
+            public static final getRevenueConverted cmd = new getRevenueConverted();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getScore")
         public static class getScore extends CommandRef {
             public static final getScore cmd = new getScore();

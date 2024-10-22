@@ -47,6 +47,11 @@ public class NationCommands {
             public static final avg_daily_login_week cmd = new avg_daily_login_week();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="buildingValue")
+        public static class buildingValue extends CommandRef {
+            public static final buildingValue cmd = new buildingValue();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="canBeDeclaredOnByScore")
         public static class canBeDeclaredOnByScore extends CommandRef {
             public static final canBeDeclaredOnByScore cmd = new canBeDeclaredOnByScore();
@@ -125,6 +130,11 @@ public class NationCommands {
         public cityUrl index(String value) {
             return set("index", value);
         }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="cityValue")
+        public static class cityValue extends CommandRef {
+            public static final cityValue cmd = new cityValue();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="correctAllianceMMR")
@@ -472,6 +482,10 @@ public class NationCommands {
             return set("forceGSA", value);
         }
 
+        public getBuyInfraCost forceBDA(String value) {
+            return set("forceBDA", value);
+        }
+
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getBuyLandCost")
         public static class getBuyLandCost extends CommandRef {
@@ -494,6 +508,10 @@ public class NationCommands {
 
         public getBuyLandCost forceGSA(String value) {
             return set("forceGSA", value);
+        }
+
+        public getBuyLandCost forceBDA(String value) {
+            return set("forceBDA", value);
         }
 
         }
@@ -562,6 +580,14 @@ public class NationCommands {
         public static class getCityMax extends CommandRef {
             public static final getCityMax cmd = new getCityMax();
         public getCityMax attribute(String value) {
+            return set("attribute", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getCityMin")
+        public static class getCityMin extends CommandRef {
+            public static final getCityMin cmd = new getCityMin();
+        public getCityMin attribute(String value) {
             return set("attribute", value);
         }
 
@@ -800,9 +826,9 @@ public class NationCommands {
             public static final getMMR cmd = new getMMR();
 
         }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMMRBuildingArr")
-        public static class getMMRBuildingArr extends CommandRef {
-            public static final getMMRBuildingArr cmd = new getMMRBuildingArr();
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMMRBuildingDecimal")
+        public static class getMMRBuildingDecimal extends CommandRef {
+            public static final getMMRBuildingDecimal cmd = new getMMRBuildingDecimal();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMMRBuildingStr")
@@ -987,6 +1013,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getRevenueConverted")
         public static class getRevenueConverted extends CommandRef {
             public static final getRevenueConverted cmd = new getRevenueConverted();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getRevenuePerCityConverted")
+        public static class getRevenuePerCityConverted extends CommandRef {
+            public static final getRevenuePerCityConverted cmd = new getRevenuePerCityConverted();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getScore")
@@ -1420,6 +1451,11 @@ public class NationCommands {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="infraValue")
+        public static class infraValue extends CommandRef {
+            public static final infraValue cmd = new infraValue();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="isAllianceColor")
         public static class isAllianceColor extends CommandRef {
             public static final isAllianceColor cmd = new isAllianceColor();
@@ -1591,6 +1627,11 @@ public class NationCommands {
             public static final isVerified cmd = new isVerified();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="landValue")
+        public static class landValue extends CommandRef {
+            public static final landValue cmd = new landValue();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="lastBankDeposit")
         public static class lastBankDeposit extends CommandRef {
             public static final lastBankDeposit cmd = new lastBankDeposit();
@@ -1639,6 +1680,11 @@ public class NationCommands {
             public static final maxCityInfra cmd = new maxCityInfra();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="maxCityLand")
+        public static class maxCityLand extends CommandRef {
+            public static final maxCityLand cmd = new maxCityLand();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="maxWarBountyValue")
         public static class maxWarBountyValue extends CommandRef {
             public static final maxWarBountyValue cmd = new maxWarBountyValue();
@@ -1680,6 +1726,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="projectSlots")
         public static class projectSlots extends CommandRef {
             public static final projectSlots cmd = new projectSlots();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="projectValue")
+        public static class projectValue extends CommandRef {
+            public static final projectValue cmd = new projectValue();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="raidBountyValue")

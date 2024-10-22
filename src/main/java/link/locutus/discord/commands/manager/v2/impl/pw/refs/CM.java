@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.refs;
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
-
 public class CM {
         public static class admin{
             public static class alliance{
@@ -15,9 +13,6 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="apiUsageStats")
             public static class apiUsageStats extends CommandRef {
                 public static final apiUsageStats cmd = new apiUsageStats();
-            public apiUsageStats cached(String value) {
-                return set("cached", value);
-            }
 
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="removeInvalidOffshoring")
@@ -711,6 +706,13 @@ public class CM {
 
                 }
             }
+            public static class bounty{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="bountyAlertOptOut")
+                public static class opt_out extends CommandRef {
+                    public static final opt_out cmd = new opt_out();
+
+                }
+            }
             public static class enemy{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="enemyAlertOptOut")
                 public static class optout extends CommandRef {
@@ -1246,6 +1248,30 @@ public class CM {
                 }
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="militarizationTime")
+                public static class militarization_time extends CommandRef {
+                    public static final militarization_time cmd = new militarization_time();
+                public militarization_time alliance(String value) {
+                    return set("alliance", value);
+                }
+
+                public militarization_time start_time(String value) {
+                    return set("start_time", value);
+                }
+
+                public militarization_time end_time(String value) {
+                    return set("end_time", value);
+                }
+
+                public militarization_time attach_json(String value) {
+                    return set("attach_json", value);
+                }
+
+                public militarization_time attach_csv(String value) {
+                    return set("attach_csv", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceRanking")
                 public static class ranking extends CommandRef {
                     public static final ranking cmd = new ranking();
@@ -1495,7 +1521,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz= DiscordCommands.class,method="ocr")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="ocr")
             public static class ocr extends CommandRef {
                 public static final ocr cmd = new ocr();
             public ocr discordImageUrl(String value) {
@@ -2412,6 +2438,10 @@ public class CM {
                 return set("governmentSupportAgency", value);
             }
 
+            public cost domestic_affairs(String value) {
+                return set("domestic_affairs", value);
+            }
+
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="optimalBuild")
             public static class optimalBuild extends CommandRef {
@@ -2925,6 +2955,14 @@ public class CM {
                 return set("showParticipants", value);
             }
 
+            public info hideDeleted(String value) {
+                return set("hideDeleted", value);
+            }
+
+            public info showIds(String value) {
+                return set("showIds", value);
+            }
+
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="listConflicts")
             public static class list extends CommandRef {
@@ -3260,7 +3298,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=DiscordCommands.class,method="viewFlow")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="viewFlow")
             public static class flows extends CommandRef {
                 public static final flows cmd = new flows();
             public flows nation(String value) {
@@ -3404,7 +3442,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=DiscordCommands.class,method="shiftFlow")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="shiftFlow")
             public static class shiftFlow extends CommandRef {
                 public static final shiftFlow cmd = new shiftFlow();
             public shiftFlow nation(String value) {
@@ -4186,6 +4224,10 @@ public class CM {
                 return set("gov_support_agency", value);
             }
 
+            public city domestic_affairs(String value) {
+                return set("domestic_affairs", value);
+            }
+
             public city bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -4398,6 +4440,10 @@ public class CM {
                 return set("gov_support_agency", value);
             }
 
+            public infra domestic_affairs(String value) {
+                return set("domestic_affairs", value);
+            }
+
             public infra bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -4480,6 +4526,10 @@ public class CM {
 
             public land gov_support_agency(String value) {
                 return set("gov_support_agency", value);
+            }
+
+            public land domestic_affairs(String value) {
+                return set("domestic_affairs", value);
             }
 
             public land bypass_checks(String value) {
@@ -4620,6 +4670,10 @@ public class CM {
 
             public project gov_support_agency(String value) {
                 return set("gov_support_agency", value);
+            }
+
+            public project domestic_affairs(String value) {
+                return set("domestic_affairs", value);
             }
 
             public project bypass_checks(String value) {
@@ -5328,10 +5382,6 @@ public class CM {
                 public static final disable cmd = new disable();
             public disable template(String value) {
                 return set("template", value);
-            }
-
-            public disable force(String value) {
-                return set("force", value);
             }
 
             }
@@ -6111,7 +6161,7 @@ public class CM {
 
         }
         public static class modal{
-            @AutoRegister(clazz=DiscordCommands.class,method="modal")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="modal")
             public static class create extends CommandRef {
                 public static final create cmd = new create();
             public create command(String value) {
@@ -6970,6 +7020,10 @@ public class CM {
 
             public cost governmentSupportAgency(String value) {
                 return set("governmentSupportAgency", value);
+            }
+
+            public cost domesticAffairs(String value) {
+                return set("domesticAffairs", value);
             }
 
             public cost nations(String value) {
@@ -11825,8 +11879,12 @@ public class CM {
                 return set("receivers", value);
             }
 
-            public getIngameNationTransfers timeframe(String value) {
-                return set("timeframe", value);
+            public getIngameNationTransfers start_time(String value) {
+                return set("start_time", value);
+            }
+
+            public getIngameNationTransfers end_time(String value) {
+                return set("end_time", value);
             }
 
             public getIngameNationTransfers sheet(String value) {
@@ -12109,6 +12167,30 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="ActivitySheetDate")
+            public static class activity_date extends CommandRef {
+                public static final activity_date cmd = new activity_date();
+            public activity_date nations(String value) {
+                return set("nations", value);
+            }
+
+            public activity_date start_time(String value) {
+                return set("start_time", value);
+            }
+
+            public activity_date end_time(String value) {
+                return set("end_time", value);
+            }
+
+            public activity_date by_turn(String value) {
+                return set("by_turn", value);
+            }
+
+            public activity_date sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="dayChangeSheet")
             public static class daychange extends CommandRef {
                 public static final daychange cmd = new daychange();
@@ -12117,6 +12199,78 @@ public class CM {
             }
 
             public daychange sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="WarDecSheetDate")
+            public static class declares_date extends CommandRef {
+                public static final declares_date cmd = new declares_date();
+            public declares_date nations(String value) {
+                return set("nations", value);
+            }
+
+            public declares_date off(String value) {
+                return set("off", value);
+            }
+
+            public declares_date def(String value) {
+                return set("def", value);
+            }
+
+            public declares_date start_time(String value) {
+                return set("start_time", value);
+            }
+
+            public declares_date end_time(String value) {
+                return set("end_time", value);
+            }
+
+            public declares_date split_off_def(String value) {
+                return set("split_off_def", value);
+            }
+
+            public declares_date by_turn(String value) {
+                return set("by_turn", value);
+            }
+
+            public declares_date sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="DepositSheetDate")
+            public static class deposits_date extends CommandRef {
+                public static final deposits_date cmd = new deposits_date();
+            public deposits_date nations(String value) {
+                return set("nations", value);
+            }
+
+            public deposits_date deposit(String value) {
+                return set("deposit", value);
+            }
+
+            public deposits_date withdraw(String value) {
+                return set("withdraw", value);
+            }
+
+            public deposits_date start_time(String value) {
+                return set("start_time", value);
+            }
+
+            public deposits_date end_time(String value) {
+                return set("end_time", value);
+            }
+
+            public deposits_date split_deposit_withdraw(String value) {
+                return set("split_deposit_withdraw", value);
+            }
+
+            public deposits_date by_turn(String value) {
+                return set("by_turn", value);
+            }
+
+            public deposits_date sheet(String value) {
                 return set("sheet", value);
             }
 
@@ -13161,8 +13315,24 @@ public class CM {
                     return set("alliances", value);
                 }
 
+                public AlliancesDataByDay filter(String value) {
+                    return set("filter", value);
+                }
+
                 public AlliancesDataByDay graph(String value) {
                     return set("graph", value);
+                }
+
+                public AlliancesDataByDay includeVM(String value) {
+                    return set("includeVM", value);
+                }
+
+                public AlliancesDataByDay includeApps(String value) {
+                    return set("includeApps", value);
+                }
+
+                public AlliancesDataByDay skipCityData(String value) {
+                    return set("skipCityData", value);
                 }
 
                 }
@@ -13374,8 +13544,20 @@ public class CM {
                 return set("total", value);
             }
 
+            public attributeTierGraph attachJson(String value) {
+                return set("attachJson", value);
+            }
+
+            public attributeTierGraph attachCsv(String value) {
+                return set("attachCsv", value);
+            }
+
             public attributeTierGraph snapshotDate(String value) {
                 return set("snapshotDate", value);
+            }
+
+            public attributeTierGraph groupBy(String value) {
+                return set("groupBy", value);
             }
 
             }
@@ -16213,6 +16395,11 @@ public class CM {
 
                 }
             }
+        }
+        @AutoRegister(clazz=link.locutus.discord.web.commands.WebCommands.class,method="web")
+        public static class web extends CommandRef {
+            public static final web cmd = new web();
+
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="who")
         public static class who extends CommandRef {

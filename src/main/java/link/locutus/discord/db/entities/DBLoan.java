@@ -82,6 +82,17 @@ public class DBLoan {
         return loanDate;
     }
 
+    public String getSenderQualifiedName() {
+        return (isAlliance ? "AA:" : "" )+ PW.getName(nationOrAllianceId, isAlliance);
+    }
+
+    public String getReceiverQualifiedName() {
+        if (this.loanerGuildOrAA > Integer.MAX_VALUE) {
+            return "guild:" + DiscordUtil.getGuildName((int) this.loanerGuildOrAA);
+        }
+        return PW.getName(this.loanerNation, false);
+    }
+
     public String getLineString(boolean showReceiver, boolean showSender) {
 //        return #").append(loan.loanId).append(" ").append(loan.status)
 //                .append("updated:" + DiscordUtil.timestamp(loan.date_submitted, null))

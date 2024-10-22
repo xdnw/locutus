@@ -49,6 +49,8 @@ import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
@@ -68,6 +70,9 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.sheet.GoogleDoc;
+import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
@@ -105,33 +110,33 @@ public class WebPWBindings extends WebBindingHelper {
      */
 //Missing: Key{type=java.util.Set<link.locutus.discord.apiv1.enums.NationColor>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
     @HtmlInput
-    @Binding(types = {Set.class, NationColor.class})
+    @Binding(types = {Set.class, NationColor.class}, multiple = true)
     public String NationColorSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(NationColor.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
 
     @HtmlInput
-    @Binding(types = {Set.class, ResourceType.class})
+    @Binding(types = {Set.class, ResourceType.class}, multiple = true)
     public String ResourceTypeSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(ResourceType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
     @HtmlInput
-    @Binding(types = {Set.class, SuccessType.class})
+    @Binding(types = {Set.class, SuccessType.class}, multiple = true)
     public String SuccessTypeSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(SuccessType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
     @HtmlInput
-    @Binding(types = {Set.class, TreatyType.class})
+    @Binding(types = {Set.class, TreatyType.class}, multiple = true)
     public String TreatyTypeSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(TreatyType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
     @HtmlInput
-    @Binding(types = {Set.class, GuildSetting.class})
+    @Binding(types = {Set.class, GuildSetting.class}, multiple = true)
     public String GuildSettingSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(GuildKey.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
     @HtmlInput
-    @Binding(types = {Set.class, AutoAuditType.class})
+    @Binding(types = {Set.class, AutoAuditType.class}, multiple = true)
     public String AutoAuditTypeSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(AutoAuditType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
@@ -150,14 +155,6 @@ public class WebPWBindings extends WebBindingHelper {
         Map<Integer, Conflict> conflicts = manager.getConflictMap();
         Set<Map.Entry<Integer, Conflict>> options = conflicts.entrySet();
         return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s.getValue().getName(), s.getKey() + ""));
-    }
-
-    @HtmlInput
-    @Binding(types = {Set.class, Conflict.class})
-    public String Conflicts(ConflictManager manager, @Default ParameterData param) {
-        Map<Integer, Conflict> conflicts = manager.getConflictMap();
-        Set<Map.Entry<Integer, Conflict>> options = conflicts.entrySet();
-        return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s.getValue().getName(), s.getKey() + ""), true);
     }
 
     @HtmlInput
@@ -1235,6 +1232,10 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= TaxBracket.class)
     public String bracket(@Me GuildDB db, ParameterData param) {
+        return bracket(db, param, false);
+    }
+
+    public String bracket(@Me GuildDB db, ParameterData param, boolean multiple) {
         Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
@@ -1242,7 +1243,7 @@ public class WebPWBindings extends WebBindingHelper {
             names.add(alliance.getName() + "- " + obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
             subtext.add("#" + obj.taxId + " (" + obj.getNations().size() + " nations)");
             values.add("tax_id=" + obj.taxId);
-        });
+        }, multiple);
     }
 
     @HtmlInput
@@ -1264,4 +1265,158 @@ public class WebPWBindings extends WebBindingHelper {
             subtext.add(obj.simpleDesc());
         });
     }
+
+    //Missing: Key{type=class link.locutus.discord.apiv1.enums.WarCostByDayMode, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types= WarCostByDayMode.class)
+    public String warCostByDayMode(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(WarCostByDayMode.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+    }
+    //Missing: Key{type=class link.locutus.discord.db.entities.MMRDouble, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // pattern = 4 decimal numbers (or whole numbers) separated by /
+    @HtmlInput
+    @Binding(types= MMRDouble.class)
+    public String mmrDouble(ParameterData param) {
+        String pattern = "([0-9]+(\\.[0-9]{1,4})?)/([0-9]+(\\.[0-9]{1,4})?)/([0-9]+(\\.[0-9]{1,4})?)/([0-9]+(\\.[0-9]{1,4})?)";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
+    //Missing: Key{type=class link.locutus.discord.db.entities.MMRInt, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // four whole numbers, no separator
+    @HtmlInput
+    @Binding(types= MMRInt.class)
+    public String mmrInt(ParameterData param) {
+        String pattern = "[0-9]{4}";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
+    //Missing: Key{type=class link.locutus.discord.db.guild.SheetKey, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // enum
+    @HtmlInput
+    @Binding(types= SheetKey.class)
+    public String sheetKey(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(SheetKey.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+    }
+
+    //Missing: Key{type=class link.locutus.discord.util.sheet.GoogleDoc, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // https://docs.google.com/document/d/([a-zA-Z0-9-_]{30,})/.*
+    // document:([a-zA-Z0-9-_]{30,})
+    @HtmlInput
+    @Binding(types= GoogleDoc.class)
+    public String googleDoc(ParameterData param) {
+        String pattern = "https://docs\\.google\\.com/document/d/([a-zA-Z0-9-_]{30,})/.*|document:([a-zA-Z0-9-_]{30,})";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
+    //Missing: Key{type=class link.locutus.discord.db.entities.MMRMatcher, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // [0-9xX\.]{4}
+    @HtmlInput
+    @Binding(types= MMRMatcher.class)
+    public String mmrMatcher(ParameterData param) {
+        String pattern = "[0-9xX\\.]{4}";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
+    //Missing: Key{type=class link.locutus.discord.util.sheet.SpreadSheet, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // https://docs.google.com/spreadsheets/d/([a-zA-Z0-9-_]{30,})/.*
+    // sheet:([a-zA-Z0-9-_]{30,})(,[a-zA-Z0-9-_]+)?
+    @HtmlInput
+    @Binding(types= SpreadSheet.class)
+    public String spreadSheet(ParameterData param) {
+        String pattern = "https://docs\\.google\\.com/spreadsheets/d/([a-zA-Z0-9-_]{30,})/.*|sheet:([a-zA-Z0-9-_]{30,})(,[a-zA-Z0-9-_]+)?";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
+    //Missing: Key{type=class link.locutus.discord.util.sheet.templates.TransferSheet, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // same as spreadsheet
+    @HtmlInput
+    @Binding(types= TransferSheet.class)
+    public String transferSheet(ParameterData param) {
+        return spreadSheet(param);
+    }
+
+    //Missing: Key{type=class link.locutus.discord.db.entities.DBCity, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    // https://politicsandwar.com/city/id=([0-9]+)
+    @HtmlInput
+    @Binding(types= DBCity.class)
+    public String city(ParameterData param) {
+        String pattern = "https://politicsandwar\\.com/city/id=([0-9]+)";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
+    //Missing: Key{type=class link.locutus.discord.db.entities.DBLoan, annotationTypes=[interface link.locutus.discord.commands.manager.v2.binding.annotation.GuildLoan, interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types= DBLoan.class)
+    public String loan(ParameterData param, GuildDB db, LoanManager loanManager) {
+        List<DBLoan> options = loanManager.getLoans();
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getLineString(false, false));
+            String sub = obj.getSenderQualifiedName() + " -> " + obj.getReceiverQualifiedName();
+            subtext.add(sub);
+            values.add(obj.loanId + "");
+        });
+    }
+
+    @HtmlInput
+    @Binding(types = {Set.class, DomesticPolicy.class}, multiple = true)
+    public String domesticPolicy(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(DomesticPolicy.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()), true);
+    }
+    @HtmlInput
+    @Binding(types = {Set.class, GuildDB.class}, multiple = true)
+    public String guildDB(ParameterData param, @Me User user) {
+        List<Guild> options = user.getMutualGuilds();
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getName());
+            subtext.add(obj.getId());
+            values.add(obj.getId());
+        }, true);
+    }
+//    Missing: Key{type=java.util.Set<link.locutus.discord.db.conflict.Conflict>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types = {Set.class, Conflict.class}, multiple = true)
+    public String conflict(ParameterData param, ConflictManager manager) {
+        List<Conflict> options = new ArrayList<>(manager.getConflictMap().values());
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getName());
+            subtext.add(obj.getId() + " | " + obj.getSide(true).getName() + " vs " + obj.getSide(false).getName());
+            values.add(obj.getId());
+        }, true);
+    }
+//    Missing: Key{type=java.util.Set<link.locutus.discord.db.entities.DBTreasure>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types = {Set.class, DBTreasure.class}, multiple = true)
+    public String treasure(ParameterData param) {
+        Collection<DBTreasure> options = Locutus.imp().getNationDB().getTreasuresByName().values();
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getName());
+            List<String> sub = new ArrayList<>();
+            if (obj.getColor() != null) {
+                sub.add(obj.getColor().name());
+            }
+            DBNation nation = obj.getNation();
+            if (nation != null) {
+                sub.add(nation.getName());
+            }
+            if (obj.getContinent() != null) {
+                sub.add(obj.getContinent().name());
+            }
+            sub.add(obj.getDaysRemaining() + "d");
+            subtext.add(StringMan.join(sub, " | "));
+            values.add(obj.getId());
+        }, true);
+    }
+//    Missing: Key{type=java.util.Set<link.locutus.discord.db.entities.TaxBracket>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types = {Set.class, TaxBracket.class}, multiple = true)
+    public String taxBracket(ParameterData param, @Me GuildDB db) {
+        return bracket(db, param, true);
+    }
+//    Missing: Key{type=java.util.Set<link.locutus.discord.gpt.imps.EmbeddingType>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+    @HtmlInput
+    @Binding(types = {Set.class, EmbeddingType.class}, multiple = true)
+    public String embeddingType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(EmbeddingType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()), true);
+    }
+
 }
