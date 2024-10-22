@@ -356,7 +356,7 @@ public class PlaceholdersMap {
                 if (db != null) {
                     Role role = db.getGuild().getRoleById(id);
                     if (role != null) {
-                        return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+                        return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role, Locutus.imp().getNationDB());
                     }
                 } else {
                     DBNation nation = DiscordUtil.getNation(id);
@@ -382,7 +382,7 @@ public class PlaceholdersMap {
         if (input.startsWith("coalition:")) input = input.substring("coalition:".length());
         if (input.startsWith("<@&") && db != null) {
             Role role = db.getGuild().getRoleById(input.substring(3, input.length() - 1));
-            return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+            return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role, Locutus.imp().getNationDB());
         }
         Set<Integer> coalition = db.getCoalition(input);
         if (!coalition.isEmpty()) {
@@ -393,7 +393,7 @@ public class PlaceholdersMap {
             String finalInput = input;
             Role role = db.getGuild().getRoles().stream().filter(f -> f.getName().equalsIgnoreCase(finalInput)).findFirst().orElse(null);
             if (role != null) {
-                return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+                return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role, Locutus.imp().getNationDB());
             }
             for (Member member : db.getGuild().getMembers()) {
                 User user = member.getUser();
@@ -2247,8 +2247,7 @@ public class PlaceholdersMap {
             }
 
             @Override
-            public Set<Transaction2> deserializeSelection(ValueStore store, String input) {
-                // index of {
+            public Set<Transaction2> deserializeSelection(ValueStore store, String input, String modifier) {
                 String type = input.substring(0, input.indexOf("{"));
                 input = input.substring(input.indexOf("{"));
 

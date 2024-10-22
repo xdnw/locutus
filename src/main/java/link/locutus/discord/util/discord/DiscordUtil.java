@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
@@ -802,6 +803,10 @@ public class DiscordUtil {
     }
 
     public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader) {
+        return parseNation(Locutus.imp().getNationDB(), arg, allowDeleted, useLeader);
+    }
+
+    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean useLeader) {
         String argLower = arg.toLowerCase();
         if (argLower.contains("/alliance/") || argLower.startsWith("aa:") || argLower.startsWith("alliance:")) return null;
         if (arg.startsWith("leader:")) {
@@ -809,12 +814,12 @@ public class DiscordUtil {
             useLeader = true;
         }
         if (useLeader) {
-            DBNation nation = Locutus.imp().getNationDB().getNationByLeader(arg);
+            DBNation nation = snapshot.getNationByLeader(arg);
             if (nation != null) return nation;
         }
-        Integer id = parseNationId(arg);
+        Integer id = parseNationId(snapshot, arg);
         if (id != null) {
-            DBNation nation = Locutus.imp().getNationDB().getNationById(id);
+            DBNation nation = snapshot.getNationById(id);
             if (nation == null && allowDeleted) {
                 nation = new DBNation();
                 nation.setNation_id(id);
@@ -834,6 +839,10 @@ public class DiscordUtil {
     }
 
     public static Integer parseNationId(String arg) {
+        return parseNationId(Locutus.imp().getNationDB(), arg);
+    }
+
+    public static Integer parseNationId(INationSnapshot snapshot, String arg) {
         if (arg.isEmpty()) return null;
         boolean checkUser = false;
         if (arg.charAt(0) == '"' && arg.charAt(arg.length() - 1) == '"') {
@@ -866,15 +875,15 @@ public class DiscordUtil {
             long id = Long.parseLong(arg);
             DBNation nation;
             if (id > Integer.MAX_VALUE) {
-                nation = getNation(id);
+                nation = snapshot.getNationByUser(id);
             } else {
-                nation = DBNation.getById((int) id);
+                nation = snapshot.getNationById((int) id);
             }
             if (nation != null) {
                 return (int) id;
             }
         }
-        DBNation nation = Locutus.imp().getNationDB().getNationById(arg);
+        DBNation nation = snapshot.getNationByNameOrLeader(arg);
         if (nation != null) {
             return nation.getNation_id();
         }
@@ -885,7 +894,7 @@ public class DiscordUtil {
         List<User> discordUsers = checkUser ? Locutus.imp().getDiscordApi().getUsersByName(arg, true) : null;
         User discordUser = discordUsers != null && !discordUsers.isEmpty() ? discordUsers.get(0) : null;
         if (discordUser != null) {
-            nation = DiscordUtil.getNation(discordUser);
+            nation = snapshot.getNationByUser(discordUser);
             if (nation != null) return nation.getId();
         }
         if (!MathMan.isInteger(arg)) {

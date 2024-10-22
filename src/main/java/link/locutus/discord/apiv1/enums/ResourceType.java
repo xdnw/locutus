@@ -514,7 +514,7 @@ public enum ResourceType {
 
         String name = input.split("You successfully gathered intelligence about ")[1].split("\\. Your spies discovered that")[0];
         Locutus lc = Locutus.imp();
-        DBNation nation = lc == null ? null : lc.getNationDB().getNationById(name);
+        DBNation nation = lc == null ? null : lc.getNationDB().getNationByNameOrLeader(name);
 
         return new AbstractMap.SimpleEntry<>(nation, resourceOutput);
     }

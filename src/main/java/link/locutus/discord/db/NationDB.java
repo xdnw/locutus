@@ -2916,15 +2916,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    public DBNation getNationById(String nameOrLeader) {
+    @Override
+    public DBNation getNationByName(String name) {
         synchronized (nationsById) {
             for (DBNation nation : nationsById.values()) {
-                if (nation.getNation().equalsIgnoreCase(nameOrLeader)) {
-                    return nation;
-                }
-            }
-            for (DBNation nation : nationsById.values()) {
-                if (nation.getLeader().equalsIgnoreCase(nameOrLeader)) {
+                if (nation.getNation().equalsIgnoreCase(name)) {
                     return nation;
                 }
             }
@@ -2953,10 +2949,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         }
         return result;
-    }
-
-    public DBNation getNationByName(String name) {
-        return getFirstNationMatching(f -> f.getNation().equalsIgnoreCase(name));
     }
 
     public DBNation getNationByLeader(String leader) {

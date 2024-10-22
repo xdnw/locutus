@@ -6,10 +6,8 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv3.csv.file.CitiesFile;
-import link.locutus.discord.apiv3.csv.file.DataFile;
+import link.locutus.discord.apiv3.csv.file.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
-import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
@@ -50,6 +48,10 @@ public class DataDumpParser {
         this.nationDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS);
         this.nationDict = new Dictionary(nationDir);
         this.cityDict = new Dictionary(cityDir);
+    }
+
+    public NationsFileSnapshot getSnapshotDelegate(long day, boolean loadCities) throws IOException, ParseException {
+        return new NationsFileSnapshot(this, day, loadCities);
     }
 
     public Map<Integer, DBNation> getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, Predicate<DBNation> nationFilter) throws IOException, ParseException {

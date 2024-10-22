@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllowEmpty;
@@ -12,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -20,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
@@ -32,6 +35,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -44,6 +48,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -252,6 +257,24 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return nations;
     }
 
+    private INationSnapshot getSnapshot(String modifier) {
+        if (modifier != null && !modifier.isEmpty()) {
+            DataDumpParser parser = Locutus.imp().getDataDumper(true);
+            try {
+                long timestamp = PrimitiveBindings.timestamp(modifier);
+                long day = TimeUtil.getDay(timestamp);
+                if (day != TimeUtil.getDay()) {
+                    return parser.getSnapshotDelegate(day, true);
+                }
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return Locutus.imp().getNationDB();
+    }
+
     @Override
     public Set<DBNation> parseSet(ValueStore store2, String input, String modifier) {
         INationSnapshot snapshot = getSnapshot(modifier);
@@ -284,7 +307,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByName(input);
+                            case 0 -> snapshot.getNationByInput(input);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -336,7 +359,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
         Set<DBNation> nations = new LinkedHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : snapshot.getNationByName(name);
+        DBNation nation = containsAA ? null : snapshot.getNationByInput(name);
         if (nation == null || containsAA) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
@@ -386,7 +409,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByName(input);
+                            case 0 -> snapshot.getNationByInput(input);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -405,7 +428,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             return f -> f.getTax_id() == taxId;
         }
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : snapshot.getNationByName(name);
+        DBNation nation = containsAA ? null : snapshot.getNationByInput(name);
         if (nation == null) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {

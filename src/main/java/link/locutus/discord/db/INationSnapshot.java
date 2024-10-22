@@ -3,6 +3,7 @@ package link.locutus.discord.db;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.Set;
@@ -27,13 +28,23 @@ public interface INationSnapshot {
 
     DBNation getNationByLeader(String input);
 
-    DBNation getNationByName(String input); // PWBindings.nation(null, input);
-    // DiscordUtil.parseNation(name, true)
+    DBNation getNationByName(String input);
+
+    default DBNation getNationByNameOrLeader(String input) {
+        DBNation nation = getNationByName(input);
+        if (nation == null) {
+            nation = getNationByLeader(input);
+        }
+        return nation;
+    }
+
+    default DBNation getNationByInput(String input) {
+        return DiscordUtil.parseNation(this, input, true, false);
+    }
 
     Set<DBNation> getAllNations();
 
     Set<DBNation> getNationsByBracket(int taxId);
 
     Set<DBNation> getNationsByAlliance(int id);
-//    DiscordUtil.getNation(
 }

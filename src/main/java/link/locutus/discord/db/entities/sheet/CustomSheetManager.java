@@ -36,7 +36,7 @@ public class CustomSheetManager {
     public void createTables() {
         db.executeStmt("CREATE TABLE IF NOT EXISTS `SELECTION_ALIAS` (`name` VARCHAR PRIMARY KEY COLLATE NOCASE, `type` VARCHAR NOT NULL COLLATE NOCASE, `selection` VARCHAR NOT NULL, `modifier` VARCHAR NOT NULL)");
         String addModifier = "ALTER TABLE `SELECTION_ALIAS` ADD COLUMN `modifier` VARCHAR NOT NULL DEFAULT ''";
-        db.executeStmt(addModifier);
+        db.executeStmt(addModifier, true);
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET` (`name` VARCHAR PRIMARY KEY, url VARCHAR NOT NULL)");
