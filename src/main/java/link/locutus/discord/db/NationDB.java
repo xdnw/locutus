@@ -100,6 +100,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         super("nations");
     }
 
+    @Override
+    public Set<DBNation> getAllNations() {
+        synchronized (nationsById) {
+            return new ObjectArraySet<>(nationsById.values());
+        }
+    }
 
     public ReportManager getReportManager() {
         return reportManager;
@@ -2128,6 +2134,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    @Override
     public DBNation getNationById(int id) {
         synchronized (nationsById) {
             return nationsById.get(id);
@@ -2988,7 +2995,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         }
     }
-    
+
+    @Override
+    public Set<DBNation> getNationsByAlliance(int id) {
+        if (id == 0) {
+            return getNationsMatching(f -> f.getAlliance_id() == 0);
+        }
+        synchronized (nationsByAlliance) {
+            Map<Integer, DBNation> nations = nationsByAlliance.get(id);
+            if (nations == null) {
+                return new LinkedHashSet<>();
+            }
+            return new ObjectOpenHashSet<>(nations.values());
+        }
+    }
+
     @Override
     public Set<DBNation> getNationsByAlliance(Set<Integer> alliances) {
         if (alliances.isEmpty()) {

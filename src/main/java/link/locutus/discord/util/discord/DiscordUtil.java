@@ -1232,10 +1232,6 @@ public class DiscordUtil {
         return 0;
     }
 
-    public static Set<DBNation> getNationsByAA(int alliance_id) {
-        return DBAlliance.getOrCreate(alliance_id).getNations();
-    }
-
     public static String getFullUsername(User user) {
         return user.getName() + getDiscriminator(user);
     }
