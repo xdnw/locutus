@@ -253,6 +253,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 errors.add("Land must be less than or equal to " + includeLand + ", not " + build.getLand());
             }
         }
+        build.setInfraNeeded(new JavaCity(build).getRequiredInfra());
+
         if (includeLand > 0) {
             build.setLand((double) includeLand);
         }
