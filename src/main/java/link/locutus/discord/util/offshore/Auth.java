@@ -82,8 +82,7 @@ public class Auth {
             login(false);
             String result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
             if (result.contains("<!--Logged Out-->")) {
-                logout();
-                msCookieManager = new CookieManager();
+                msCookieManager.getCookieStore().removeAll();
                 login(true);
                 result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
                 if (result.contains("<!--Logged Out-->")) {
@@ -99,7 +98,6 @@ public class Auth {
 
     public void login(boolean force) throws IOException {
         if (!force && loggedIn) return;
-
         synchronized (this)
         {
             Map<String, String> userPass = new HashMap<>();

@@ -6,6 +6,8 @@ import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
 import org.eclipse.jetty.util.UrlEncoded;
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
 import org.springframework.web.client.HttpClientErrorException;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -197,129 +199,52 @@ public final class FileUtil {
     }
 
     public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
-        StringJoiner sj = new StringJoiner("&");
-        for (Map.Entry<String, String> entry : arguments.entrySet())
-            sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "="
-                    + URLEncoder.encode(entry.getValue(), "UTF-8"));
-        byte[] out = sj.toString().getBytes(StandardCharsets.UTF_8);
-        return readStringFromURL(priority, urlStr, out, post ? RequestType.POST : RequestType.GET, msCookieManager, apply);
-    }
 
-    public static <T> T get(Future<T> myFuture) {
-        try {
-            return myFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            Throwable cause = e.getCause();
-            if (cause != null && cause instanceof RuntimeException run) throw run;
-            throw new RuntimeException(e);
-        }
-    }
+        Supplier<String> jsoupTask = () -> {
+            try {
+                Connection connection = Jsoup.connect(urlStr).method(post ? Connection.Method.POST : Connection.Method.GET);
 
-    public enum RequestType {
-        GET,
-        POST,
-    }
-
-    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(8);
-    private static AtomicInteger requestOrder = new AtomicInteger();
-
-    private static long getPriority(int priority) {
-        return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
-    }
-
-    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
-        Supplier<String> fetch = new Supplier<String>() {
-            @Override
-            public String get() {
-//                System.out.println("Requesting " + urlStr + " at " + now + " with priority " + priority + " ( last: " + (now - lastRead) + " ). Queue size: " + pageRequestQueue.size());
-                try {
-                    URL url = new URL(urlStr);
-                    URLConnection con = url.openConnection();
-                    HttpURLConnection http = (HttpURLConnection) con;
-
-                    if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
-                        for (HttpCookie cookie : msCookieManager.getCookieStore().getCookies()) {
-                            http.addRequestProperty("Cookie", cookie.toString());
-                        }
-                        // While joining the Cookies, use ',' or ';' as needed. Most of the servers are using ';'
-//            http.setRequestProperty("Cookie",
-//                    StringMan.join(msCookieManager.getCookieStore().getCookies(), ";"));
-                    }
-
-                    http.setUseCaches(false);
-                    http.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
-                    http.setRequestProperty("dnt", "1");
-                    http.setRequestProperty("Connection", "keep-alive");
-                    http.setRequestProperty("Referer", urlStr);
-                    http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-                    http.setRequestProperty("User-Agent", Settings.USER_AGENT);
-                    if (dataBinary != null && dataBinary.length != 0 && type == RequestType.POST) {
-                        http.setRequestMethod("POST");
-                    } else if (type != RequestType.POST && dataBinary == null) {
-                        http.setRequestMethod("GET");
-                    }
-                    http.setDoOutput(true);
-                    http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-                    int length = dataBinary != null ? dataBinary.length : 0;
-                    http.setFixedLengthStreamingMode(length);
-                    http.setInstanceFollowRedirects(false);
-
-                    if (apply != null) apply.accept(http);
-
-                    http.connect();
-                    if (dataBinary != null) {
-                        try (OutputStream os = http.getOutputStream()) {
-                            os.write(dataBinary);
-                        }
-                    }
-
-                    try (InputStream is = http.getInputStream()) {
-                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                        int nRead;
-                        byte[] data = new byte[8192];
-                        while ((nRead = is.read(data, 0, data.length)) != -1) {
-                            buffer.write(data, 0, nRead);
-                        }
-
-                        buffer.flush();
-                        byte[] bytes = buffer.toByteArray();
-
-                        Map<String, List<String>> headerFields = http.getHeaderFields();
-                        List<String> cookiesHeader = headerFields.get(COOKIES_HEADER);
-                        if (cookiesHeader != null && msCookieManager != null) {
-                            for (String cookie : cookiesHeader) {
-                                msCookieManager.getCookieStore().add(null, HttpCookie.parse(cookie).get(0));
-                            }
-                        }
-
-
-                        return new String(bytes, StandardCharsets.UTF_8);
-                    } catch (IOException e) {
-                        check409Error(http);
-                        try (InputStream is = http.getErrorStream()) {
-                            if (is != null) {
-                                String error = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                                throw new IOException(StringMan.stripApiKey(e.getMessage()) + ":\n" + error);
-                            }
-                        }
-                        Logg.text("Error Reading " + urlStr + "\n " + StringMan.stacktraceToString(e));
-                        throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
+                // Add arguments to the request
+                if (arguments != null) {
+                    connection.data(arguments);
                 }
+
+                // Add cookies to the request
+                if (msCookieManager != null) {
+                    for (HttpCookie cookie : msCookieManager.getCookieStore().getCookies()) {
+                        connection.cookie(cookie.getName(), cookie.getValue());
+                    }
+                }
+
+                // Apply additional settings to the connection
+                if (apply != null) {
+                    apply.accept((HttpURLConnection) connection.request().url().openConnection());
+                }
+
+                // Execute the request and get the response
+                Connection.Response response = connection.execute();
+
+                // Store cookies from the response
+                if (msCookieManager != null) {
+                    for (Map.Entry<String, String> cookie : response.cookies().entrySet()) {
+                        msCookieManager.getCookieStore().add(null, new HttpCookie(cookie.getKey(), cookie.getValue()));
+                    }
+                }
+
+                return response.body();
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         };
+
         PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(new Supplier<String>() {
             @Override
             public String get() {
                 int backoff = 4000;
                 while (true) {
                     try {
-                        String result = fetch.get();
+                        String result = jsoupTask.get();
                         return result;
                     } catch (RuntimeException e) {
                         Throwable cause = e;
@@ -345,5 +270,27 @@ public final class FileUtil {
             }
         }, getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
         return task;
+    }
+
+    public static <T> T get(Future<T> myFuture) {
+        try {
+            return myFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause != null && cause instanceof RuntimeException run) throw run;
+            throw new RuntimeException(e);
+        }
+    }
+
+    public enum RequestType {
+        GET,
+        POST,
+    }
+
+    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(8);
+    private static AtomicInteger requestOrder = new AtomicInteger();
+
+    private static long getPriority(int priority) {
+        return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
     }
 }
