@@ -202,7 +202,8 @@ public final class FileUtil {
 
         Supplier<String> jsoupTask = () -> {
             try {
-                Connection connection = Jsoup.connect(urlStr).method(post ? Connection.Method.POST : Connection.Method.GET);
+                Connection connection = Jsoup.connect(urlStr).method(post ? Connection.Method.POST : Connection.Method.GET)
+                        .ignoreContentType(true);
 
                 // Add arguments to the request
                 if (arguments != null) {
