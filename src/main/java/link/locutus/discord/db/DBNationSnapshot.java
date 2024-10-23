@@ -79,6 +79,11 @@ public class DBNationSnapshot extends DBNation {
     }
 
     @Override
+    public double getTreasureBonusPct() {
+        return 0;
+    }
+
+    @Override
     public Set<DBBounty> getBounties() {
         throw unsupported();
     }

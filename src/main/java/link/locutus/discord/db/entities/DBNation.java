@@ -3304,7 +3304,6 @@ public class DBNation implements NationOrAlliance {
     public Map<Integer, JavaCity> getCityMap(boolean updateIfOutdated, boolean updateNewCities, boolean force) {
         Map<Integer, DBCity> cityObj = _getCitiesV3();
         if (cityObj == null) cityObj = Collections.emptyMap();
-
         if (nation_id > 0 && getSnapshot() == null) {
             if (updateNewCities && cityObj.size() != cities) force = true;
             if (updateIfOutdated && estimateScore() != this.score) force = true;
