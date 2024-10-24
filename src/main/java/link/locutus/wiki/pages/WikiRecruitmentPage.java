@@ -37,6 +37,9 @@ public class WikiRecruitmentPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.settings_recruit.RECRUIT_MESSAGE_DELAY.cmd),
                 "# Send a test message",
                 commandMarkdownSpoiler(CM.mail.recruit.cmd),
+                "# Configure a message to send new applicants",
+                commandMarkdownSpoiler(CM.settings_recruit.MAIL_NEW_APPLICANTS.cmd),
+                commandMarkdownSpoiler(CM.settings_recruit.MAIL_NEW_APPLICANTS_TEXT.cmd),
                 """
                 # Other recruitment strategies
                 - Members inviting their friends to the game
