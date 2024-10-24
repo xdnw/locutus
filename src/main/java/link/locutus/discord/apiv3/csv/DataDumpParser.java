@@ -50,6 +50,14 @@ public class DataDumpParser {
         this.cityDict = new Dictionary(cityDir);
     }
 
+    public File getNationDir() {
+        return nationDir;
+    }
+
+    public File getCityDir() {
+        return cityDir;
+    }
+
     public NationsFileSnapshot getSnapshotDelegate(long day, boolean loadCities) throws IOException, ParseException {
         return new NationsFileSnapshot(this, day, loadCities);
     }

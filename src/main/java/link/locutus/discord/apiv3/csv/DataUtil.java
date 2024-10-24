@@ -1,9 +1,14 @@
 package link.locutus.discord.apiv3.csv;
 
 import com.politicsandwar.graphql.model.WarAttack;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
+import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -12,15 +17,20 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
+import net.jpountz.lz4.LZ4BlockInputStream;
+import net.jpountz.lz4.LZ4BlockOutputStream;
 
 import javax.security.auth.login.LoginException;
-import java.io.IOException;
+import java.io.*;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.Collection;
@@ -30,9 +40,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class DataUtil {
@@ -40,6 +52,155 @@ public class DataUtil {
 
     public DataUtil(DataDumpParser parser) {
         this.parser = parser;
+    }
+
+    /**
+     * Get the VM ranges for each nation, using a cached file
+     * @param updateAfterDay Update if the cache day is below this (use Long.MAX_VALUE to force update)
+     * @return Map of nation id to the last day they were present
+     * @throws IOException
+     * @throws ParseException
+     */
+    public Map<Integer, List<Map.Entry<Integer, Integer>>> getCachedVmRanged(long minDay, boolean addCurrentStatus) throws IOException, ParseException {
+        File file = new File(parser.getNationDir(), "vm_ranges.bin");
+        long currentDay = TimeUtil.getDay();
+
+        // Read the first long (8 bytes) to get the day created
+        long fileDay = -1;
+        if (file.exists()) {
+            try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
+                fileDay = dis.readLong();
+            } catch (FileNotFoundException e) {
+                fileDay = -1; // File does not exist, force recreation
+            }
+        }
+
+        if (fileDay == -1 || fileDay != currentDay && (fileDay < minDay || minDay < 0)) {
+            // Recreate the ranges
+            Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = getVMRanges(f -> true, f -> true, true);
+
+            // Write the new ranges to the file
+            try (DataOutputStream dos = new DataOutputStream(new LZ4BlockOutputStream(new BufferedOutputStream(new FileOutputStream(file), Character.MAX_VALUE)))) {
+                dos.writeLong(currentDay); // Write the current day
+                for (Map.Entry<Integer, List<Map.Entry<Integer, Integer>>> entry : ranges.entrySet()) {
+                    IOUtil.writeVarInt(dos, entry.getKey());
+                    IOUtil.writeVarInt(dos, entry.getValue().size());
+                    for (Map.Entry<Integer, Integer> range : entry.getValue()) {
+                        IOUtil.writeVarInt(dos, range.getKey());
+                        IOUtil.writeVarInt(dos, range.getValue());
+                    }
+                }
+            }
+
+            return ranges;
+        }
+
+        // Read the ranges from the file
+        Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = new Int2ObjectOpenHashMap<>();
+        try (DataInputStream dis = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
+            dis.readLong(); // Skip the day created
+            while (dis.available() > 0) {
+                int key = IOUtil.readVarInt(dis);
+                int size = IOUtil.readVarInt(dis);
+                List<Map.Entry<Integer, Integer>> list = new ObjectArrayList<>(size);
+                for (int i = 0; i < size; i++) {
+                    int rangeKey = IOUtil.readVarInt(dis);
+                    int rangeValue = IOUtil.readVarInt(dis);
+                    list.add(Map.entry(rangeKey, rangeValue));
+                }
+                ranges.put(key, list);
+            }
+        }
+
+        if (addCurrentStatus) {
+            for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
+                if (nation.getVm_turns() > 0) {
+                    List<Map.Entry<Integer, Integer>> existing = ranges.computeIfAbsent(nation.getNation_id(), k -> new ObjectArrayList<>());
+                    if (!existing.isEmpty() && existing.get(existing.size() - 1).getValue() == Integer.MAX_VALUE) {
+                        continue;
+                    }
+                    existing.add(Map.entry((int) currentDay, Integer.MAX_VALUE));
+                }
+            }
+        }
+
+        return ranges;
+    }
+
+    public Map<Integer, List<Map.Entry<Integer, Integer>>> getVMRanges(Predicate<Long> allowDays, Predicate<Integer> nationIds, boolean addCurrentStatus) throws IOException, ParseException {
+        List<Long> days = parser.getDays(true, false).reversed();
+        Map<Integer, Long> dateCreated = new Int2LongOpenHashMap();
+
+        Set<Integer> lastPresentIds = new IntOpenHashSet();
+        Set<Integer> newPresentIds = new IntOpenHashSet();
+        Map<Integer, Long> missing = new Int2LongOpenHashMap();
+
+        if (addCurrentStatus) {
+            for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
+                if (nation.getVm_turns() > 0) {
+                    missing.put(nation.getNation_id(), Long.MAX_VALUE);
+                    dateCreated.put(nation.getNation_id(), nation.getDate());
+                }
+            }
+        }
+
+        long twoDays = TimeUnit.DAYS.toMillis(2);
+
+        Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = new Int2ObjectOpenHashMap<>();
+
+        long lastDay = Long.MAX_VALUE;
+        for (long day : days) {
+            if (!allowDays.test(day)) continue;
+
+            Set<Integer> newFinal = newPresentIds;
+
+            long timestamp = TimeUtil.getTimeFromDay(day);
+
+            parser.withNationFile(day, file -> {
+                NationHeader header = file.getHeader();
+                try {
+                    file.reader().required(header.nation_id, header.date_created).read(new Consumer<NationHeader>() {
+                        @Override
+                        public void accept(NationHeader header) {
+                            int nationId = header.nation_id.get();
+                            if (nationIds.test(nationId)) {
+                                newFinal.add(nationId);
+                                if (!dateCreated.containsKey(nationId)) {
+                                    dateCreated.put(nationId, header.date_created.get());
+                                }
+                            }
+                        }
+                    });
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            for (int id : lastPresentIds) {
+                if (!newPresentIds.contains(id)) {
+                    long created = dateCreated.get(id);
+                    if (created >= timestamp - twoDays) continue;
+                    missing.put(id, lastDay);
+                }
+            }
+
+            for (int id : newPresentIds) {
+                Long missingDay = missing.remove(id);
+                if (missingDay != null) {
+                    Map.Entry<Integer, Integer> range = Map.entry((int) day, (int) Math.min(Integer.MAX_VALUE, missingDay));
+                    vmRanges.computeIfAbsent(id, k -> new ObjectArrayList<>()).add(range);
+                }
+            }
+
+            Set<Integer> tmp = lastPresentIds;
+            lastPresentIds = newPresentIds;
+            newPresentIds = tmp;
+            newPresentIds.clear();
+
+            lastDay = day;
+        }
+
+        return vmRanges;
     }
 
     public Map<Long, Map<Integer, Byte>> backCalculateCityCounts() throws IOException, ParseException {
