@@ -530,13 +530,22 @@ public class GuildHandler {
             title += "/" + channel.getIdLong();
         }
         String message = """
-                Hey {leader}, we use DISCORD to coordinate with our members. So please join our discord server.
-                Discord is a texting application that you can install from playstore or open in your browser!
-                
-                <a href=\"https://discord.com/download\">Download Discord</a>""";
+                Hey {leader}, we use DISCORD to coordinate with our members. So please join our discord server.<br>
+                Discord is a texting application that you can install from playstore or open in your browser!<br>
+                <a href=\"https://discord.com/download\">Download Discord</a><br>""";
         if (invite != null && !invite.isEmpty()) {
-            message += "\n\nOnce you have discord installed, click the link below to join our server:\n" +
+            message += "<br><br>Once you have discord installed, click the link below to join our server:<br>" +
                     "<a href=\"{invite}\">Join Discord</a>";
+        }
+        String newMessage = GuildKey.MAIL_NEW_APPLICANTS_TEXT.getOrNull(db);
+        if (newMessage != null && !newMessage.isEmpty()) {
+            message = newMessage;
+            if (!newMessage.contains("<br>") && !newMessage.contains("<br/>") && !newMessage.contains("<br />")) {
+                message = MarkupUtil.markdownToHTML(message);
+            }
+        }
+
+        if (invite != null && !invite.isEmpty()) {
             message = message.replace("{invite}", invite);
         }
 
