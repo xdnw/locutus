@@ -487,12 +487,17 @@ public class GuildHandler {
         }
     }
 
-    private void onNewApplicant(DBNation current) {
+    private void onNewApplicant(DBNation previous, DBNation current) {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
 
             // New applicant
-            if (current.getPositionEnum() == Rank.APPLICANT && aaIds.contains(current.getAlliance_id()) && !aaIds.contains(current.getAlliance_id()) && current.active_m() < 2880) {
+            if (current.getPositionEnum() == Rank.APPLICANT
+                    && aaIds.contains(current.getAlliance_id())
+                    && (previous == null || !aaIds.contains(previous.getAlliance_id())) && current.active_m() < 2880) {
+
+                sendApplicantMail(current);
+
                 MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     String type = "New Applicant Ingame";
@@ -507,6 +512,53 @@ public class GuildHandler {
                 }
             }
         }
+    }
+
+    public void sendApplicantMail(DBNation nation) {
+        if (GuildKey.MAIL_NEW_APPLICANTS.getOrNull(db) != Boolean.TRUE) return;
+        DBAlliance alliance = nation.getAlliance();
+        if (alliance == null) return;
+        ApiKeyPool mailKey = db.getMailKey();
+        if (mailKey == null) return;
+
+        String invite = alliance.getDiscord_link();
+
+        String title = "Joining " + alliance.getName();
+        MessageChannel channel = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+        if (channel == null) channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
+        if (channel != null) {
+            title += "/" + channel.getIdLong();
+        }
+        String message = """
+                Hey {leader}, we use DISCORD to coordinate with our members. So please join our discord server.
+                Discord is a texting application that you can install from playstore or open in your browser!
+                
+                <a href=\"https://discord.com/download\">Download Discord</a>""";
+        if (invite != null && !invite.isEmpty()) {
+            message += "\n\nOnce you have discord installed, click the link below to join our server:\n" +
+                    "<a href=\"{invite}\">Join Discord</a>";
+            message = message.replace("{invite}", invite);
+        }
+
+        NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        if (message.contains("%") || message.contains("{")) {
+            try {
+                message = formatter.format2(guild, null, null, message, nation, false);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
+            }
+        }
+
+        String finalTitle = title;
+        String finalMsg = message;
+        Locutus.imp().getExecutor().submit(() -> {
+            try {
+                nation.sendMail(mailKey, finalTitle, finalMsg, false);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     @Subscribe
@@ -552,7 +604,7 @@ public class GuildHandler {
         DBNation current = event.getCurrent();
         DBNation previous = event.getPrevious();
 
-        onNewApplicant(current);
+        onNewApplicant(previous, current);
         autoRoleMemberApp(current);
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
@@ -2406,7 +2458,7 @@ public class GuildHandler {
 
     @Subscribe
     public void onNationCreate(NationCreateEvent event) {
-        onNewApplicant(event.getCurrent());
+        onNewApplicant(event.getPrevious(), event.getCurrent());
     }
 
     public void onGlobalNationCreate(NationCreateEvent event) {
