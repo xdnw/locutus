@@ -413,8 +413,10 @@ public class PageHandler implements Handler {
     }
 
     private void handleCommand(Context ctx) {
+        WebStore ws = null;
         try {
             ArgumentStack stack = createStack(ctx);
+            ws = stack.getStore().getProvided(WebStore.class);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
             boolean isPost = ctx.method() == HandlerType.POST;
@@ -434,8 +436,7 @@ public class PageHandler implements Handler {
                     String prefix = cmd instanceof ParametricCallable ? "sse" : "command";
                     String endpoint = WebRoot.REDIRECT + "/" + prefix + "/" + cmd.getFullPath("/");
                     if (!endpoint.endsWith("/")) endpoint += "/";
-                    ctx.result(WebUtil.minify(cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), endpoint, true)));
-                    ctx.status(200);
+                    ctx.result(WebUtil.minify(cmd.toHtml(ws, stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }
                 // page
@@ -463,13 +464,12 @@ public class PageHandler implements Handler {
                         }
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
                         Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
-                        result = wrap(stack.getStore().getProvided(WebStore.class), cmdResult, ctx);
+                        result = wrap(ws, cmdResult, ctx);
                     } else {
-                        result = cmd.toHtml(stack.getStore().getProvided(WebStore.class), stack.getPermissionHandler(), false);
+                        result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
                     }
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
                         ctx.result(WebUtil.minify(result.toString()));
-                        ctx.status(200);
                     } else if (result != null) {
                         throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
                     } else {
@@ -479,11 +479,11 @@ public class PageHandler implements Handler {
             }
         } catch (Throwable e) {
             System.out.println("Throwable " + e.getMessage());
-            handleErrors(e, ctx);
+            handleErrors(e, ws, ctx);
         }
     }
 
-    private void handleErrors(Throwable e, Context ctx) {
+    private void handleErrors(Throwable e, WebStore ws, Context ctx) {
         while (e.getCause() != null) {
             Throwable tmp = e.getCause();
             if (tmp == e) break;
@@ -497,7 +497,7 @@ public class PageHandler implements Handler {
                 ctx.result(WebUtil.minify(msg));
                 return;
             }
-            PageHelper.redirect(ctx, redirectResponse.getMessage());
+            PageHelper.redirect(ws, ctx, redirectResponse.getMessage());
             return;
         }
         e.printStackTrace();
@@ -581,6 +581,7 @@ public class PageHandler implements Handler {
     }
 
     public void sseCmdPage(SseClient2 sse) throws IOException {
+        WebStore ws = null;
         try {
             Context ctx = sse.ctx;
             String pathStr = ctx.path();
@@ -588,6 +589,7 @@ public class PageHandler implements Handler {
             List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
             path.remove("command");
             LocalValueStore locals = setupLocals(null, ctx, path);
+            ws = (WebStore) locals.getProvided(WebStore.class);
             CommandCallable cmd = commands.getCallable(path);
             if (cmd == null) {
                 sseMessage(sse, "Command not found: " + path, false);
@@ -618,7 +620,7 @@ public class PageHandler implements Handler {
             response.addProperty("value", redirect);
             sse.sendEvent(response);
         } catch (Throwable e) {
-            handleErrors(e, sse.ctx);
+            handleErrors(e, ws, sse.ctx);
         }
     }
 

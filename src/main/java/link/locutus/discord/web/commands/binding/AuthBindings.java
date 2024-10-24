@@ -135,7 +135,7 @@ public class AuthBindings extends WebBindingHelper {
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
 
-    public static void logout(Context context, @Nullable DBAuthRecord auth, boolean redirect) {
+    public static void logout(WebStore ws, Context context, @Nullable DBAuthRecord auth, boolean redirect) {
         for (PageHandler.CookieType type : PageHandler.CookieType.values()) {
             context.removeCookie(type.getCookieId());
         }
@@ -143,7 +143,7 @@ public class AuthBindings extends WebBindingHelper {
             WebRoot.db().removeToken(auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
         }
         if (redirect) {
-            PageHelper.redirect(context, WebRoot.REDIRECT);
+            PageHelper.redirect(ws, context, WebRoot.REDIRECT);
         }
     }
 

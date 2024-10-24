@@ -132,7 +132,7 @@ public class EndpointPages extends PageHelper {
     public String logout(WebStore ws, Context context) throws IOException {
         DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
-        AuthBindings.logout(context, auth, false);
+        AuthBindings.logout(ws, context, auth, false);
         if (auth != null) {
             if (guild == null) guild = auth.getDefaultGuild();
             Map<String, Object> data = auth.toMap();

@@ -6,6 +6,7 @@ import gg.jte.generated.precompiled.guild.ia.JtementorsGenerated;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
@@ -51,6 +52,7 @@ public class IAPages {
     @Command()
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
+    @NoForm
     public String iaChannels(WebStore ws, @Me GuildDB db, @Me DBNation me, @Me User author) throws ExecutionException, InterruptedException {
         IACategory iaCat = db.getIACategory();
         iaCat.load();
@@ -154,6 +156,7 @@ public class IAPages {
     @Command()
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
+    @NoForm
     public Object memberAuditIndex(WebStore ws, @Me GuildDB db) throws IOException {
         AllianceList alliance = db.getAllianceList();
         IACheckup checkup = new IACheckup(db, alliance, true);
@@ -193,6 +196,7 @@ public class IAPages {
     @Command()
     @IsAlliance
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    @NoForm
     public Object mentorIndex(WebStore ws, IACategory iaCat, @Me Guild guild, @Me GuildDB db, @Me DBNation me) throws IOException {
         List<DBNation> mentors = new ArrayList<>();
         Roles[] mentorRoles = new Roles[]{Roles.INTERVIEWER, Roles.MENTOR};
