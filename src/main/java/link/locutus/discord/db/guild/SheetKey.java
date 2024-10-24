@@ -65,5 +65,6 @@ public enum SheetKey {
     ACTIVITY_SHEET_TURN,
     SPY_FREE,
     DEPARTURES,
+    VM_HISTORY,
 
 }

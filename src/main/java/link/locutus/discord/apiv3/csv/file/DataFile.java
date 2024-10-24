@@ -285,55 +285,57 @@ public class DataFile<T, H extends DataHeader<T>> {
         }
 
         public void read(Consumer<H> onEachRow) throws IOException {
-            List<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
-            for (ColumnInfo<T, Object> col : allColumns) {
-                col.setIndex(-1, -1);
-                col.setCachedValue(null);
-            }
-            header.clear();
-            byte[] decompressed = cachedBytes.get();
-            if (decompressed == null) {
-                File binFile = getCompressedFile(true, false);
-                decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
-                cachedBytes = new SoftReference<>(decompressed);
-            }
-            int index = 0;
-            int size = SafeUtils.readIntBE(decompressed, index);
-            index += 4;
-            int rowBytes = 0;
-            for (int i = 0; i < size; i++) {
-                boolean hasIndex = decompressed[index++] != 0;
-                if (hasIndex) {
-                    ColumnInfo<T, Object> column = allColumns.get(i);
-                    column.setIndex(i, rowBytes);
-                    rowBytes += column.getBytes();
+            synchronized (DataFile.this) {
+                List<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
+                for (ColumnInfo<T, Object> col : allColumns) {
+                    col.setIndex(-1, -1);
+                    col.setCachedValue(null);
                 }
-            }
+                header.clear();
+                byte[] decompressed = cachedBytes.get();
+                if (decompressed == null) {
+                    File binFile = getCompressedFile(true, false);
+                    decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
+                    cachedBytes = new SoftReference<>(decompressed);
+                }
+                int index = 0;
+                int size = SafeUtils.readIntBE(decompressed, index);
+                index += 4;
+                int rowBytes = 0;
+                for (int i = 0; i < size; i++) {
+                    boolean hasIndex = decompressed[index++] != 0;
+                    if (hasIndex) {
+                        ColumnInfo<T, Object> column = allColumns.get(i);
+                        column.setIndex(i, rowBytes);
+                        rowBytes += column.getBytes();
+                    }
+                }
 
-            Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
-            for (ColumnInfo<T, Object> column : requiredColumns) {
-                if (column.getIndex() == -1) {
-                    throw new IllegalArgumentException("Required column `" + column.getName() + "` is missing in " + filePart);
-                }
-                presetAndSpecified.add(column);
-            }
-            for (ColumnInfo<T, Object> column : optionalColumns) {
-                if (column.getIndex() != -1) {
+                Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
+                for (ColumnInfo<T, Object> column : requiredColumns) {
+                    if (column.getIndex() == -1) {
+                        throw new IllegalArgumentException("Required column `" + column.getName() + "` is missing in " + filePart);
+                    }
                     presetAndSpecified.add(column);
                 }
-            }
-            ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
-            Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
-            int numLines = SafeUtils.readIntBE(decompressed, index);
-            index += 4;
-
-            for (int i = 0; i < numLines; i++) {
-                header.setOffset(index);
-                for (ColumnInfo<T, Object> column : shouldRead) {
-                    column.setCachedValue(column.read(decompressed, index + column.getOffset()));
+                for (ColumnInfo<T, Object> column : optionalColumns) {
+                    if (column.getIndex() != -1) {
+                        presetAndSpecified.add(column);
+                    }
                 }
-                onEachRow.accept(header);
-                index += rowBytes;
+                ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
+                Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
+                int numLines = SafeUtils.readIntBE(decompressed, index);
+                index += 4;
+
+                for (int i = 0; i < numLines; i++) {
+                    header.setOffset(index);
+                    for (ColumnInfo<T, Object> column : shouldRead) {
+                        column.setCachedValue(column.read(decompressed, index + column.getOffset()));
+                    }
+                    onEachRow.accept(header);
+                    index += rowBytes;
+                }
             }
         }
     }

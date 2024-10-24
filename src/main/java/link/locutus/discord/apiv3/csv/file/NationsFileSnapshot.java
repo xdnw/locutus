@@ -1,20 +1,106 @@
 package link.locutus.discord.apiv3.csv.file;
 
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.db.DBNationSnapshot;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class NationsFileSnapshot implements INationSnapshot {
-    private final Map<Integer, DBNation> nations;
+    private final Map<Integer, DBNationSnapshot> nations;
+    private final long day;
+    private final DataDumpParser dumper;
+    private final boolean loadCities;
 
     public NationsFileSnapshot(DataDumpParser dumper, long day, boolean loadCities) throws IOException, ParseException {
+        this.day = day;
+        this.dumper = dumper;
+        this.loadCities = loadCities;
         this.nations = dumper.getNations(day, loadCities, true, f -> true, f -> true, f -> true);
+    }
+
+    public NationsFileSnapshot loadVm(@Nullable Set<Integer> nationIds) throws IOException, ParseException {
+        Set<Integer> missing = new IntOpenHashSet();
+        if (nationIds != null) {
+            for (int id : nationIds) {
+                if (!nations.containsKey(id)) {
+                    missing.add(id);
+                }
+            }
+            if (missing.isEmpty()) return this;
+        }
+
+        long start = System.currentTimeMillis();
+        Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = dumper.getUtil().getCachedVmRanged(day + 1, false);
+        System.out.println(":||REMove fetch vm ranges: " + ( - start + (start = System.currentTimeMillis())) + "ms");
+        if (nationIds == null) {
+            missing = dumper.getUtil().getVMNations(vmRanges, (int) day);
+            System.out.println(":||REMove VM Nations: " + ( - start + (start = System.currentTimeMillis())) + "ms");
+            missing.removeIf(nations::containsKey);
+        }
+
+        long timestamp = TimeUtil.getTimeFromDay(day);
+        long dayTurn = TimeUtil.getTurn(timestamp);
+
+        Map<Integer, Long> leavingVm = new Int2LongOpenHashMap();
+        Map<Integer, Set<Integer>> nationsByDay = new Int2ObjectOpenHashMap<>();
+        for (int id : missing) {
+            List<Map.Entry<Integer, Integer>> ranges = vmRanges.get(id);
+            if (ranges == null) continue;
+            for (Map.Entry<Integer, Integer> range : ranges) {
+                int startDay = range.getKey();
+                int endDay = range.getValue();
+                if (startDay <= day && endDay >= day) {
+                    nationsByDay.computeIfAbsent(startDay, k -> new IntOpenHashSet()).add(id);
+                    long vmEnd;
+                    if (endDay == Integer.MAX_VALUE) {
+                        DBNation nation = DBNation.getById(id);
+                        if (nation != null) {
+                            vmEnd = Math.max(dayTurn, nation.getLeaving_vm());
+                        } else {
+                            vmEnd = dayTurn;
+                        }
+                    } else {
+                        vmEnd = TimeUtil.getTurn(TimeUtil.getTimeFromDay((long) endDay));
+                    }
+                    leavingVm.put(id, vmEnd);
+                }
+            }
+        }
+
+        System.out.println(":||REMove process missing: " + ( - start + (start = System.currentTimeMillis())) + "ms");
+        System.out.println("Num snapshots to check " + nationsByDay.size());
+
+        for (Map.Entry<Integer, Set<Integer>> entry : nationsByDay.entrySet()) {
+            Set<Integer> ids = entry.getValue();
+            int fetchDay = entry.getKey();
+            long enteredVm = TimeUtil.getTurn(TimeUtil.getTimeFromDay((long) fetchDay));
+            Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay, loadCities, true, f -> ids.contains(f), f -> true, null);
+            for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
+                int nationId = entry2.getKey();
+                DBNationSnapshot nation = entry2.getValue();
+                // update VM turns
+                nation.setSnapshotDate(timestamp);
+                nation.setLeaving_vmRaw(leavingVm.get(nationId));
+                nation.setEntered_vm(enteredVm);
+                nations.put(nationId, nation);
+            }
+        }
+
+        System.out.println(":||REMove load snapshots: " + ( - start + (start = System.currentTimeMillis())) + "ms");
+        return this;
     }
 
     @Override

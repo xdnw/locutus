@@ -2318,16 +2318,45 @@ public class UtilityCommands {
 
 
     @Command(desc = "Get the VM history of a set of nations")
-    public static String vmHistory(@Me IMessageIO io, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException {
+    public static String vmHistory(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).getUtil().getCachedVmRanged(Long.MAX_VALUE, true);
-        Map<Integer, List<String>> rangesMsg = new HashMap<>();
 
         Function<Integer, String> dayToString = day -> {
             if (day == Integer.MAX_VALUE) return "Present";
             return TimeUtil.DD_MM_YYYY.format(new Date(TimeUtil.getTimeFromDay(day)));
         };
 
+        if (sheet == null && nations.size() > 5) {
+            sheet = SpreadSheet.create(db, SheetKey.VM_HISTORY);
+        }
+        if (sheet != null) {
+            List<String> header = new ArrayList<>(Arrays.asList("nation", "from", "to"));
+            sheet.setHeader(header);
+            boolean hasData = false;
+            for (DBNation nation : nations) {
+                int nationId = nation.getNation_id();
+                List<Map.Entry<Integer, Integer>> ranges = vmRanges.get(nationId);
+                if (ranges != null && !ranges.isEmpty()) {
+                    hasData = true;
+                    for (Map.Entry<Integer, Integer> range : ranges) {
+                        ArrayList<Object> row = new ArrayList<>();
+                        row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+                        row.add(dayToString.apply(range.getKey()));
+                        row.add(dayToString.apply(range.getValue()));
+                        sheet.addRow(row);
+                    }
+                }
+            }
+            sheet.updateClearCurrentTab();
+            sheet.updateWrite();
+            IMessageBuilder msg = io.create();
+            if (!hasData) msg.append("No VM history found");
+            sheet.attach(msg, "vm_history").send();
+            return null;
+        }
+
+        Map<Integer, List<String>> rangesMsg = new HashMap<>();
         for (DBNation nation : nations) {
             List<Map.Entry<Integer, Integer>> range = vmRanges.get(nation.getNation_id());
             if (range == null || range.isEmpty()) {

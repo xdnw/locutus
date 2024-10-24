@@ -61,7 +61,8 @@ public class DataUtil {
      * @throws IOException
      * @throws ParseException
      */
-    public Map<Integer, List<Map.Entry<Integer, Integer>>> getCachedVmRanged(long minDay, boolean addCurrentStatus) throws IOException, ParseException {
+    public synchronized Map<Integer, List<Map.Entry<Integer, Integer>>> getCachedVmRanged(long minDay, boolean addCurrentStatus) throws IOException, ParseException {
+        long start = System.currentTimeMillis();
         File file = new File(parser.getNationDir(), "vm_ranges.bin");
         long currentDay = TimeUtil.getDay();
 
@@ -69,48 +70,68 @@ public class DataUtil {
         long fileDay = -1;
         if (file.exists()) {
             try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
+                System.out.println("Load from file");
                 fileDay = dis.readLong();
             } catch (FileNotFoundException e) {
                 fileDay = -1; // File does not exist, force recreation
             }
         }
 
+        System.out.println(":||Remove vm cache 1 " + ( - start + (start = System.currentTimeMillis())));
+
         if (fileDay == -1 || fileDay != currentDay && (fileDay < minDay || minDay < 0)) {
+            System.out.println("Is not cached");
             // Recreate the ranges
             Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = getVMRanges(f -> true, f -> true, true);
+            List<Integer> nationIdsSorted = new ObjectArrayList<>(ranges.keySet());
+            nationIdsSorted.sort(Integer::compareTo);
+
+            System.out.println(":||Remove vm cache 2 " + ( - start + (start = System.currentTimeMillis())));
 
             // Write the new ranges to the file
-            try (DataOutputStream dos = new DataOutputStream(new LZ4BlockOutputStream(new BufferedOutputStream(new FileOutputStream(file), Character.MAX_VALUE)))) {
-                dos.writeLong(currentDay); // Write the current day
-                for (Map.Entry<Integer, List<Map.Entry<Integer, Integer>>> entry : ranges.entrySet()) {
-                    IOUtil.writeVarInt(dos, entry.getKey());
-                    IOUtil.writeVarInt(dos, entry.getValue().size());
-                    for (Map.Entry<Integer, Integer> range : entry.getValue()) {
-                        IOUtil.writeVarInt(dos, range.getKey());
-                        IOUtil.writeVarInt(dos, range.getValue());
+            try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), Character.MAX_VALUE)) {
+                new DataOutputStream(bos).writeLong(currentDay); // Write the current day
+                try (DataOutputStream dos = new DataOutputStream(new LZ4BlockOutputStream(bos))) {
+                    IOUtil.writeVarInt(dos, nationIdsSorted.size());
+                    for (int nationId : nationIdsSorted) {
+                        List<Map.Entry<Integer, Integer>> natRanges = ranges.get(nationId);
+                        IOUtil.writeVarInt(dos, nationId);
+                        IOUtil.writeVarInt(dos, natRanges.size());
+                        for (Map.Entry<Integer, Integer> range : natRanges) {
+                            IOUtil.writeVarInt(dos, range.getKey());
+                            IOUtil.writeVarInt(dos, range.getValue());
+                        }
                     }
                 }
             }
 
+            System.out.println(":||Remove vm cache 3 " + ( - start + (start = System.currentTimeMillis())));
+
             return ranges;
         }
 
+        System.out.println(":||Remove vm cache 4 " + ( - start + (start = System.currentTimeMillis())));
         // Read the ranges from the file
         Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = new Int2ObjectOpenHashMap<>();
-        try (DataInputStream dis = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
-            dis.readLong(); // Skip the day created
-            while (dis.available() > 0) {
-                int key = IOUtil.readVarInt(dis);
-                int size = IOUtil.readVarInt(dis);
-                List<Map.Entry<Integer, Integer>> list = new ObjectArrayList<>(size);
-                for (int i = 0; i < size; i++) {
-                    int rangeKey = IOUtil.readVarInt(dis);
-                    int rangeValue = IOUtil.readVarInt(dis);
-                    list.add(Map.entry(rangeKey, rangeValue));
+        try (FastBufferedInputStream fbis = new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)) {
+            fbis.skip(8); // Skip the first 8 bytes
+            try (DataInputStream dis = new DataInputStream(new LZ4BlockInputStream(fbis))) {
+                int numNations = IOUtil.readVarInt(dis);
+                for (int i = 0; i < numNations; i++) {
+                    int nationId = IOUtil.readVarInt(dis);
+                    int size = IOUtil.readVarInt(dis);
+                    List<Map.Entry<Integer, Integer>> list = new ObjectArrayList<>(size);
+                    for (int j = 0; j < size; j++) {
+                        int rangeKey = IOUtil.readVarInt(dis);
+                        int rangeValue = IOUtil.readVarInt(dis);
+                        list.add(Map.entry(rangeKey, rangeValue));
+                    }
+                    ranges.put(nationId, list);
                 }
-                ranges.put(key, list);
             }
         }
+
+        System.out.println(":||Remove vm cache 5 " + ( - start + (start = System.currentTimeMillis())));
 
         if (addCurrentStatus) {
             for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
@@ -124,7 +145,25 @@ public class DataUtil {
             }
         }
 
+        System.out.println(":||Remove vm cache 6 " + ( - start + (start = System.currentTimeMillis())));
+
         return ranges;
+    }
+
+    public Set<Integer> getVMNations(Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges, int day) {
+        Set<Integer> result = new IntOpenHashSet();
+        for (Map.Entry<Integer, List<Map.Entry<Integer, Integer>>> entry : vmRanges.entrySet()) {
+            int nationId = entry.getKey();
+            for (Map.Entry<Integer, Integer> range : entry.getValue()) {
+                int startDay = range.getKey();
+                int endDay = range.getValue();
+                if (startDay < day && endDay > day) {
+                    result.add(nationId);
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     public Map<Integer, List<Map.Entry<Integer, Integer>>> getVMRanges(Predicate<Long> allowDays, Predicate<Integer> nationIds, boolean addCurrentStatus) throws IOException, ParseException {

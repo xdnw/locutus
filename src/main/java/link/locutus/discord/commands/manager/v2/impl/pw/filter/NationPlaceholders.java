@@ -35,6 +35,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -261,10 +262,12 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         if (modifier != null && !modifier.isEmpty()) {
             DataDumpParser parser = Locutus.imp().getDataDumper(true);
             try {
-                long timestamp = PrimitiveBindings.timestamp(modifier);
-                long day = TimeUtil.getDay(timestamp);
-                if (day != TimeUtil.getDay()) {
-                    return parser.getSnapshotDelegate(day, true);
+                List<String> args = StringMan.split(modifier, ",");
+                Long timestamp = args.size() > 0 ? PrimitiveBindings.timestamp(args.get(0)) : null;
+                Long day = timestamp != null ? TimeUtil.getDay(timestamp) : null;
+                boolean includeVm = args.size() > 1 ? PrimitiveBindings.Boolean(args.get(1)) : false;
+                if (day != null && day != TimeUtil.getDay()) {
+                    return parser.getSnapshotDelegate(day, true, includeVm);
                 }
             } catch (ParseException e) {
                 throw new RuntimeException(e);

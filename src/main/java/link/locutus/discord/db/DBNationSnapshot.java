@@ -14,13 +14,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DBNationSnapshot extends DBNation {
-    private final long snapshotDate;
+    private long snapshotDate;
     private Map<Integer, DBCity> cityMap;
 
     public DBNationSnapshot(long date) {
         this.snapshotDate = date;
         this.beigeTimer = 0;
         this.projects = 0;
+    }
+
+    public void setSnapshotDate(long snapshotDate) {
+        this.snapshotDate = snapshotDate;
     }
 
     @Override

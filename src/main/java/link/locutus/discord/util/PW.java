@@ -27,6 +27,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.DBNationSnapshot;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
@@ -912,7 +913,7 @@ public final class PW {
         ValueStore store = ph.createLocals(guild, null, null);
         Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
         try {
-            Map<Integer, DBNation> nationMap = dumper.getNations(day, loadCities, includeVM, allowedNations, allowedAlliances, filter);
+            Map<Integer, DBNationSnapshot> nationMap = dumper.getNations(day, loadCities, includeVM, allowedNations, allowedAlliances, filter);
             return new ObjectOpenHashSet<>(nationMap.values());
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);

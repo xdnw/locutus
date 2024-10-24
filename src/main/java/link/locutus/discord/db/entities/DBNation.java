@@ -2959,6 +2959,14 @@ public class DBNation implements NationOrAlliance {
         this.leaving_vm = leaving_vm;
     }
 
+    public void setLeaving_vmRaw(long leaving_vm) {
+        this.leaving_vm = leaving_vm;
+    }
+
+    public void setEntered_vm(long entered_vm) {
+        this.entered_vm = entered_vm;
+    }
+
     @Command(desc = "If nation color is beige")
     public boolean isBeige() {
         return getColor() == NationColor.BEIGE;

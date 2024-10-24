@@ -22,6 +22,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -58,11 +59,13 @@ public class DataDumpParser {
         return cityDir;
     }
 
-    public NationsFileSnapshot getSnapshotDelegate(long day, boolean loadCities) throws IOException, ParseException {
-        return new NationsFileSnapshot(this, day, loadCities);
+    public NationsFileSnapshot getSnapshotDelegate(long day, boolean loadCities, boolean loadVm) throws IOException, ParseException {
+        NationsFileSnapshot snapshot = new NationsFileSnapshot(this, day, loadCities);
+        if (loadVm) snapshot.loadVm(null);
+        return snapshot;
     }
 
-    public Map<Integer, DBNation> getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, Predicate<DBNation> nationFilter) throws IOException, ParseException {
+    public Map<Integer, DBNationSnapshot> getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, @Nullable Predicate<DBNation> nationFilter) throws IOException, ParseException {
         load();
         NationsFile nationsFile = getNearestNationFile(day);
         CitiesFile citiesFile = getNearestCityFile(day);
