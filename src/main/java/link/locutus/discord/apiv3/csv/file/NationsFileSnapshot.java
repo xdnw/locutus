@@ -3,10 +3,14 @@ package link.locutus.discord.apiv3.csv.file;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.db.DBNationSnapshot;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.TimeUtil;
 
 import javax.annotation.Nullable;
@@ -15,6 +19,8 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -83,20 +89,31 @@ public class NationsFileSnapshot implements INationSnapshot {
         System.out.println(":||REMove process missing: " + ( - start + (start = System.currentTimeMillis())) + "ms");
         System.out.println("Num snapshots to check " + nationsByDay.size());
 
+        ExecutorService executor = Locutus.imp().getExecutor();
+        List<Future<?>> tasks = new ObjectArrayList<>();
         for (Map.Entry<Integer, Set<Integer>> entry : nationsByDay.entrySet()) {
             Set<Integer> ids = entry.getValue();
             int fetchDay = entry.getKey();
             long enteredVm = TimeUtil.getTurn(TimeUtil.getTimeFromDay((long) fetchDay));
-            Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay, loadCities, true, f -> ids.contains(f), f -> true, null);
-            for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
-                int nationId = entry2.getKey();
-                DBNationSnapshot nation = entry2.getValue();
-                // update VM turns
-                nation.setSnapshotDate(timestamp);
-                nation.setLeaving_vmRaw(leavingVm.get(nationId));
-                nation.setEntered_vm(enteredVm);
-                nations.put(nationId, nation);
-            }
+            tasks.add(executor.submit(() -> {
+                try {
+                    Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay, loadCities, true, f -> ids.contains(f), f -> true, null);
+                    for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
+                        int nationId = entry2.getKey();
+                        DBNationSnapshot nation = entry2.getValue();
+                        // update VM turns
+                        nation.setSnapshotDate(timestamp);
+                        nation.setLeaving_vmRaw(leavingVm.get(nationId));
+                        nation.setEntered_vm(enteredVm);
+                        nations.put(nationId, nation);
+                    }
+                } catch (IOException | ParseException e) {
+                    e.printStackTrace();
+                }
+            }));
+        }
+        for (Future<?> task : tasks) {
+            FileUtil.get(task);
         }
 
         System.out.println(":||REMove load snapshots: " + ( - start + (start = System.currentTimeMillis())) + "ms");
