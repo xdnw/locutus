@@ -37,7 +37,7 @@ public class WebUtil {
         return generateSearchableDropdown(param, objects, consumeObjectNamesValueSubtext, null);
     }
 
-    public static void mailLogin(DBNation nation, boolean backend, boolean allowExisting) throws IOException {
+    public static String mailLogin(DBNation nation, boolean backend, boolean allowExisting) throws IOException {
         DBAuthRecord existing = null;
         if (allowExisting) {
             existing = WebRoot.db().get(nation.getNation_id());
@@ -68,7 +68,7 @@ public class WebUtil {
             } else {
                 mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/";
             }
-            throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
+            return mailUrl;
         } else {
             throw new IllegalArgumentException("Could not send mail to nation: " + nation.getNation_id() + " | " + result);
         }

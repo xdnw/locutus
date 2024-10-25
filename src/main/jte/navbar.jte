@@ -1,3 +1,4 @@
+@import link.locutus.discord.web.commands.WM
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.config.Settings
 @import link.locutus.discord.web.jooby.WebRoot
@@ -15,16 +16,18 @@
                         <i class="bi bi-moon-stars-fill" style="color:gray"></i>
                     </a>
                     <div class="d-inline text-truncate mt-1">
+                        @if (ws != null)
                         @for (Map.Entry<String, String> entry : ws.getPathLinks().entrySet())
                             <span class="mx-1">/</span>
                             <a href="${entry.getValue()}/" class="simple-link fw-bold">${entry.getKey()}</a>
                         @endfor
+                        @endif
                     </div>
                 </div>
             </div>
             <div class="col p-0">
-                <form class="d-flex" role="search" id="navbar-search-form" onsubmit="return navsearch()">
-                    <input id="navbar-search" class="form-control rounded-end-0" type="search" placeholder="Search pages..." aria-label="Search">
+                <form class="d-flex" role="search" id="navbar-search-form" action="${WM.page.search.cmd.toPageUrl()}" method="post">
+                    <input id="navbar-search" class="form-control rounded-end-0" type="search" placeholder="Search pages..." aria-label="Search" name="term">
                     <button type="submit" class="btn btn-light text-nowrap rounded-start-0"><i class="bi bi-search"></i></button>
                 </form>
             </div>

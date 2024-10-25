@@ -21,11 +21,5 @@
     ${content}
 </div>
 @template.footer()
-<script>
-function navsearch() {
-    window.location.href = "${WebRoot.REDIRECT}/page/search/" + document.getElementById("navbar-search").value;
-    return false;
-}
-</script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.javalin.http.Context;
+import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -168,11 +169,11 @@ public class EndpointPages extends PageHelper {
 
     private static final Map<UUID, Boolean> mailTokens = new ConcurrentHashMap<>();
 
-    @Command
-    public static String login_mail(WebStore ws, Context context, DBNation nation) throws IOException {
-        WebUtil.mailLogin(nation, false,true);
-        return "{}";
-    }
+//    @Command
+//    public static String login_mail(WebStore ws, Context context, DBNation nation) throws IOException {
+//        String mailUrl = WebUtil.mailLogin(nation, false,true);
+//        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
+//    }
 
     // Command Options
     // Types

@@ -42,12 +42,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -125,7 +120,7 @@ public class AuthBindings extends WebBindingHelper {
                 throw new RedirectResponse(HttpStatus.SEE_OTHER, WebRoot.REDIRECT + "/page/login");
             }
 
-            throw new RedirectResponse(HttpStatus.SEE_OTHER, WM.guildselect.cmd.toPageUrl());
+            throw new RedirectResponse(HttpStatus.SEE_OTHER, WM.page.guildselect.cmd.toPageUrl());
         }
         return null;
     }
@@ -237,6 +232,7 @@ public class AuthBindings extends WebBindingHelper {
         boolean pageDesiresRedirect = false;
         System.out.println("Path :|| REMOVE " + context.path());
         boolean isBackend = true;
+
         List<String> errors = new ArrayList<>();
         DBAuthRecord record = null;
 
@@ -308,7 +304,10 @@ public class AuthBindings extends WebBindingHelper {
 
         Map<String, List<String>> queryMap = context.queryParamMap();
         String path = context.path();
-        boolean isLoginPage = path.contains("page/login");
+        boolean isLoginPage = switch (path.toLowerCase(Locale.ROOT)) {
+            case "/page/login", "/page/login/" -> true;
+            default -> false;
+        };
         if (isLoginPage) {
             if (queryMap.containsKey("token")) {
                 String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
@@ -348,7 +347,8 @@ public class AuthBindings extends WebBindingHelper {
                 DBNation nation = DBNation.getById(nationIdFilter);
                 if (nation != null) {
                     try {
-                        WebUtil.mailLogin(nation, isBackend, false);
+                        String mailUrl = WebUtil.mailLogin(nation, isBackend, false);
+                        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
                     } catch (IllegalArgumentException e) {
                         errors.add(e.getMessage());
                     }
@@ -357,34 +357,13 @@ public class AuthBindings extends WebBindingHelper {
                 }
             }
 
-            String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
-            Set<Integer> allianceIdFilter = null;
-            if (!allianceStr.isEmpty()) {
-                allianceIdFilter = PW.parseAlliances(null, allianceStr);
-            }
-            // Please select your nation
-            List<DBNation> nations;
-            if (allianceIdFilter != null) {
-                nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance(allianceIdFilter));
-            } else {
-                nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
-            }
-            // Sort nations by lasst_active (descending)
-            nations.sort((o1, o2) -> Long.compare(o2.lastActiveMs(), o1.lastActiveMs()));
-            // Name,Url
-            List<String> nationNames = nations.stream().map(DBNation::getNation).toList();
-            List<Integer> nationIds = nations.stream().map(DBNation::getId).toList();
-
-            JsonArray nationArray = new JsonArray();
-            for (String name : nationNames) {
-                nationArray.add(name);
-            }
-            JsonArray nationIdArray = new JsonArray();
-            for (Integer id : nationIds) {
-                nationIdArray.add(id);
-            }
             if (requireNation) {
-                String html = WebStore.render(f -> JtenationpickerGenerated.render(f, null, ws, errors, nationArray, nationIdArray));
+                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
+                Set<Integer> allianceIdFilter = null;
+                if (!allianceStr.isEmpty()) {
+                    allianceIdFilter = PW.parseAlliances(null, allianceStr);
+                }
+                String html = nationPicker(ws, errors, allianceIdFilter);
                 throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
             } else {
                 allowRedirect = true;
@@ -426,6 +405,33 @@ public class AuthBindings extends WebBindingHelper {
             throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
         }
         return record;
+    }
+
+    public static String nationPicker(WebStore ws, List<String> errors, Set<Integer> allianceIdFilter) {
+        // Please select your nation
+        List<DBNation> nations;
+        if (allianceIdFilter != null) {
+            nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance(allianceIdFilter));
+        } else {
+            nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        }
+        // Sort nations by lasst_active (descending)
+        nations.sort((o1, o2) -> Long.compare(o2.lastActiveMs(), o1.lastActiveMs()));
+        // Name,Url
+        List<String> nationNames = nations.stream().map(DBNation::getNation).toList();
+        List<Integer> nationIds = nations.stream().map(DBNation::getId).toList();
+
+        JsonArray nationArray = new JsonArray();
+        for (String name : nationNames) {
+            nationArray.add(name);
+        }
+        JsonArray nationIdArray = new JsonArray();
+        for (Integer id : nationIds) {
+            nationIdArray.add(id);
+        }
+
+        String html = WebStore.render(f -> JtenationpickerGenerated.render(f, null, ws, errors, nationArray, nationIdArray));
+        throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
     }
 
     public static String setRedirect(Context context) {
