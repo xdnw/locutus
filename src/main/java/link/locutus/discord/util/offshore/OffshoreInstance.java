@@ -1539,10 +1539,18 @@ public class OffshoreInstance {
     }
 
     private TransferResult createTransfer(PoliticsAndWarV3 api, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
-        Bankrec result = api.transferFromBank(ResourceType.resourcesToArray(transfer), receiver, note);
-        double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
-        String amtStr = ResourceType.resourcesToString(amt);
-        return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
+        try {
+            Bankrec result = api.transferFromBank(ResourceType.resourcesToArray(transfer), receiver, note);
+            double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
+            String amtStr = ResourceType.resourcesToString(amt);
+            return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
+        } catch (HttpClientErrorException.Unauthorized e) {
+            return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            String msg = e.getMessage();
+            return categorize(receiver, transfer, note, StringMan.stripApiKey(msg));
+        }
     }
 
     public TransferResult transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
