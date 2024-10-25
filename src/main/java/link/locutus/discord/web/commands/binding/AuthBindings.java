@@ -318,7 +318,10 @@ public class AuthBindings extends WebBindingHelper {
                         UUID uuid = UUID.fromString(token);
                         if (record == null || !record.getUUID().equals(uuid)) {
                             record = WebRoot.db().get(uuid);
-                            WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), uuid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                            if (record != null) {
+                                isLoginPage = false;
+                                WebUtil.setCookie(context, PageHandler.CookieType.URL_AUTH.getCookieId(), uuid.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                            }
                         }
                     } catch (IllegalArgumentException e) {
                         e.printStackTrace();

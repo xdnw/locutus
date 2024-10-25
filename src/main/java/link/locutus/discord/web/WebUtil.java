@@ -66,7 +66,7 @@ public class WebUtil {
             if (mails.size() > 0) {
                 mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mails.get(0).id;
             } else {
-                mailUrl = Settings.INSTANCE.PNW_URL() + "/mail/inbox";
+                mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/";
             }
             return mailUrl;
         } else {
