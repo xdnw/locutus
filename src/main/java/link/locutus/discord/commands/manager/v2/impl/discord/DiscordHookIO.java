@@ -185,7 +185,7 @@ public class DiscordHookIO implements IMessageIO {
         UUID id = casted.getId();
         String idPair = id + " " + casted.getTitle();
         Modal modal = Modal.create(idPair, casted.getTitle())
-                .addActionRows(ActionRow.partitionOf(inputs))
+                .addComponents(ActionRow.partitionOf(inputs))
                 .build();
 
 //        modalCallback.replyModal(modal).complete();

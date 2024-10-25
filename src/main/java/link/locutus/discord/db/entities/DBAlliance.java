@@ -377,7 +377,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     public synchronized Map<Integer, TaxBracket> getTaxBrackets(long cacheFor) {
         long now = System.currentTimeMillis();
-        if (cacheFor > 0 && (now - BRACKETS_TIME_UPDATED < cacheFor)) {
+        if (cacheFor > 0 && (now - BRACKETS_TIME_UPDATED < cacheFor) && BRACKETS_CACHED != null) {
             boolean isOutdated = false;
             for (int id : listUsedTaxIds()) {
                 if (!BRACKETS_CACHED.containsKey(id)) {
@@ -386,6 +386,16 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 }
             }
             if (!isOutdated) return BRACKETS_CACHED;
+        }
+        if (cacheFor == Long.MAX_VALUE) {
+            Map<Integer, TaxBracket> brackets = new LinkedHashMap<>();
+            for (DBNation nation : getNations()) {
+                int taxId = nation.getTax_id();
+                if (taxId != 0) {
+                    brackets.put(taxId, new TaxBracket(taxId, allianceId, "#" + taxId, -1, -1, 0L));
+                }
+            }
+            return brackets;
         }
         PoliticsAndWarV3 api = getApi(AlliancePermission.TAX_BRACKETS);
         if (api == null) {
@@ -417,7 +427,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (!toUpdate.isEmpty()) {
             Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(toUpdate, f));
         }
-
 
         return Collections.unmodifiableMap(BRACKETS_CACHED);
     }

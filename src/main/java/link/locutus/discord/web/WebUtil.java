@@ -49,9 +49,9 @@ public class WebUtil {
         UUID uuid = existing.token;
         String authUrl;
         if (backend) {
-            authUrl = WebRoot.REDIRECT + "/page/login?token=" + uuid + "&nation=" + nation.getNation_id();
+            authUrl = WebRoot.REDIRECT + "/page/login?token=" + uuid;
         } else {
-            authUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login?token=" + uuid + "&nation=" + nation.getNation_id();
+            authUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login?token=" + uuid;
         }
         String title = "Login | timestamp:" + System.currentTimeMillis();
         String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +

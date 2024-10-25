@@ -497,7 +497,7 @@ public class PageHandler implements Handler {
                 ctx.result(WebUtil.minify(msg));
                 return;
             }
-            PageHelper.redirect(ws, ctx, redirectResponse.getMessage());
+            PageHelper.redirect(ws, ctx, redirectResponse.getMessage(), false);
             return;
         }
         e.printStackTrace();
