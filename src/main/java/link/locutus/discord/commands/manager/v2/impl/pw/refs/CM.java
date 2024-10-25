@@ -8664,6 +8664,22 @@ public class CM {
             }
         }
         public static class settings_recruit{
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MAIL_NEW_APPLICANTS", field="MAIL_NEW_APPLICANTS")
+            public static class MAIL_NEW_APPLICANTS extends CommandRef {
+                public static final MAIL_NEW_APPLICANTS cmd = new MAIL_NEW_APPLICANTS();
+            public MAIL_NEW_APPLICANTS enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MAIL_NEW_APPLICANTS_TEXT", field="MAIL_NEW_APPLICANTS_TEXT")
+            public static class MAIL_NEW_APPLICANTS_TEXT extends CommandRef {
+                public static final MAIL_NEW_APPLICANTS_TEXT cmd = new MAIL_NEW_APPLICANTS_TEXT();
+            public MAIL_NEW_APPLICANTS_TEXT message(String value) {
+                return set("message", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="RECRUIT_MESSAGE_CONTENT", field="RECRUIT_MESSAGE_CONTENT")
             public static class RECRUIT_MESSAGE_CONTENT extends CommandRef {
                 public static final RECRUIT_MESSAGE_CONTENT cmd = new RECRUIT_MESSAGE_CONTENT();

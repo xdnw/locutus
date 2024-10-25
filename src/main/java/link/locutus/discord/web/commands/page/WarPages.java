@@ -3,6 +3,7 @@ package link.locutus.discord.web.commands.page;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -52,6 +53,7 @@ public class WarPages {
 //    }
 
     @Command(desc = "Wars which are currently uncountered")
+    @NoForm
     @RolePermission(Roles.MILCOM)
     public String counter(WebStore ws, @Me GuildDB db) {
         Set<Integer> offshore = db.getCoalition(Coalition.OFFSHORE);

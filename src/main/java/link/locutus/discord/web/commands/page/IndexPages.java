@@ -211,6 +211,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
+    @NoForm
     public Object guildindex(WebStore ws, @Me GuildDB db, @Me User user, ArgumentStack stack) {
         CommandGroup commands = Locutus.imp().getCommandManager().getV2().getCommands();
         CommandGroup pages = WebRoot.getInstance().getPageHandler().getCommands();
@@ -230,9 +231,10 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
+    @NoForm
     public Object register(WebStore ws, Context context, @Default @Me User user) throws IOException {
         if (user == null) {
-            return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
+            return PageHelper.redirect(ws, context, AuthBindings.getDiscordAuthUrl());
         }
         DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, true, true);
         return WebStore.render(f -> JteunregisterGenerated.render(f, null, ws));
@@ -249,7 +251,7 @@ public class IndexPages extends PageHelper {
             // return and redirect
             String url = AuthBindings.getRedirect(context, true);
             if (url != null) {
-                return PageHelper.redirect(context, url);
+                return PageHelper.redirect(ws, context, url);
             }
             Map<String, Object> result = new HashMap<>();
             if (nation != null) {
@@ -271,9 +273,9 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object setguild(Context context, Guild guild) {
+    public Object setguild(WebStore ws, Context context, Guild guild) {
         AuthBindings.setGuild(context, guild);
-        return PageHelper.redirect(context, AuthBindings.getRedirect(context, true));
+        return PageHelper.redirect(ws, context, AuthBindings.getRedirect(context, true));
     }
 
     @Command()
@@ -329,12 +331,13 @@ public class IndexPages extends PageHelper {
         if (context.method() != HandlerType.POST) {
             return WebStore.render(f -> JtelogoutGenerated.render(f, null, ws, auth));
         } else {
-            AuthBindings.logout(context, auth, true);
+            AuthBindings.logout(ws, context, auth, true);
             return null;
         }
     }
 
     @Command
+    @NoForm
     public Object unregister(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth == null) {
             return "You are not logged in";
@@ -349,7 +352,7 @@ public class IndexPages extends PageHelper {
             }
             Locutus.imp().getDiscordDB().unregister(nationId, userId);
             Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nationId);
-            AuthBindings.logout(context, auth, true);
+            AuthBindings.logout(ws, context, auth, true);
             return "Unregistering. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
         }
     }
