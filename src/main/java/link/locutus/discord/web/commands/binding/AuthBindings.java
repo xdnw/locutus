@@ -138,7 +138,7 @@ public class AuthBindings extends WebBindingHelper {
             WebRoot.db().removeToken(auth.getUUID(), auth.getNationIdRaw(), auth.getUserIdRaw());
         }
         if (redirect) {
-            PageHelper.redirect(ws, context, WebRoot.REDIRECT);
+            PageHelper.redirect(ws, context, WebRoot.REDIRECT, false);
         }
     }
 

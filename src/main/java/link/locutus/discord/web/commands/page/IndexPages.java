@@ -237,7 +237,7 @@ public class IndexPages extends PageHelper {
     @NoForm
     public Object register(WebStore ws, Context context, @Default @Me User user) throws IOException {
         if (user == null) {
-            return PageHelper.redirect(ws, context, AuthBindings.getDiscordAuthUrl());
+            return PageHelper.redirect(ws, context, AuthBindings.getDiscordAuthUrl(), false);
         }
         DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, true, true);
         return WebStore.render(f -> JteunregisterGenerated.render(f, null, ws));
@@ -270,10 +270,9 @@ public class IndexPages extends PageHelper {
         boolean requireUser = queries.containsKey("discord");
         DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, requireNation, requireUser);
         if (auth != null) {
-            // return and redirect
             String url = AuthBindings.getRedirect(context, true);
             if (url != null) {
-                return PageHelper.redirect(ws, context, url);
+                return PageHelper.redirect(ws, context, url, true);
             }
             Map<String, Object> result = new HashMap<>();
             if (nation != null) {
@@ -297,7 +296,7 @@ public class IndexPages extends PageHelper {
     @Command()
     public Object setguild(WebStore ws, Context context, Guild guild) {
         AuthBindings.setGuild(context, guild);
-        return PageHelper.redirect(ws, context, AuthBindings.getRedirect(context, true));
+        return PageHelper.redirect(ws, context, AuthBindings.getRedirect(context, true), false);
     }
 
     @Command()

@@ -7,7 +7,10 @@ import io.javalin.compression.CompressionStrategy;
 import io.javalin.config.SizeUnit;
 import io.javalin.http.Header;
 import io.javalin.http.HttpStatus;
+import io.javalin.http.servlet.JavalinServletContext;
 import link.locutus.discord.Logg;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.test.WebDB;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -171,6 +174,14 @@ public class WebRoot {
 
         this.pageHandler = new PageHandler(this);
         this.webDB = new WebDB();
+
+//        // Disabled. Client doesn't reliably send referrer info
+//        app.beforeMatched(ctx -> {
+//            if (WebUtil.isThirdPartyRequest(ctx)) {
+//                ctx.result("Requests from third party links are not allowed");
+//                ((JavalinServletContext) ctx).getTasks().clear();
+//            }
+//        });
 
         this.app.get("/bankrequests", new Handler() {
             @Override
