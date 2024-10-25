@@ -106,7 +106,7 @@ public class CommandRef {
     }
 
     public String toPageUrl() {
-        return WebRoot.REDIRECT + "/page/" + path.replace(" ", "/");
+        return WebRoot.REDIRECT + "/" + path.replace(" ", "/");
     }
 
     public String toCommandUrl() {

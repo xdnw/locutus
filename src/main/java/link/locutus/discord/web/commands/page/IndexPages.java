@@ -3,8 +3,10 @@ package link.locutus.discord.web.commands.page;
 import com.google.gson.Gson;
 import gg.jte.generated.precompiled.JteindexGenerated;
 import gg.jte.generated.precompiled.auth.JteunregisterGenerated;
+import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
 import gg.jte.generated.precompiled.auth.JtelogoutGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
+import gg.jte.generated.precompiled.auth.JtenationpickedGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
@@ -35,6 +37,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.commands.search.SearchResult;
@@ -238,6 +241,25 @@ public class IndexPages extends PageHelper {
         }
         DBAuthRecord auth = AuthBindings.getAuth(ws, context, true, true, true);
         return WebStore.render(f -> JteunregisterGenerated.render(f, null, ws));
+    }
+
+    @Command()
+    @NoForm
+    public Object login_mail(WebStore ws, Context context, @Default Integer nationId, @Default Integer allianceId) throws IOException {
+        DBNation nation = nationId == null ? null : DBNation.getById(nationId);
+        if (context.method() != HandlerType.POST || nation == null) {
+            List<String> errors = null;
+            if (nationId != null) {
+                if (nation != null) {
+                    return WebStore.render(f -> JtenationpickedGenerated.render(f, null, ws, nation));
+                }
+                errors = List.of("nation: " + nationId + " not found");
+            }
+            Set<Integer> allianceIdFilter = allianceId == null ? null : Set.of(allianceId);
+            return AuthBindings.nationPicker(ws, errors, allianceIdFilter);
+        }
+        String mailUrl = WebUtil.mailLogin(nation, true,true);
+        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
     }
 
     @Command()

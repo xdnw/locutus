@@ -1,6 +1,7 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.user.Roles
 @import link.locutus.discord.db.GuildDB
+@import link.locutus.discord.web.commands.WM
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.User
 @import link.locutus.discord.db.entities.DBAlliance
@@ -13,6 +14,15 @@
 @param JsonArray nationNames
 @param JsonArray nationIds
 @template.main(ws = ws, title = "Select your nation", content = @`
+@if (errors != null && !errors.isEmpty())
+    <div class="alert alert-danger" role="alert">
+        <ul>
+            @for (String error : errors)
+                <li>${error}</li>
+            @endfor
+        </ul>
+    </div>
+@endif
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clusterize.js/0.19.0/clusterize.min.js" integrity="sha512-sCslfbDbPoJepZJxo6S3mdJwYYt0SX+C9G1SYez6/yGuXcPrZXM9tqZQMpujvMZlujVve98JSzimWbYAlQzvFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/clusterize.js/0.19.0/clusterize.min.css" integrity="sha512-8KLHxyeJ2I3BzL2ma1RZxwT1cc/U5Rz/uJg+G25tCrQ8sFfPz3MfJdKZegZDPijTxK2A3+b4kAXvzyK/OLLU5A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <div class="container-flex rounded shadow bg-lightp-1">

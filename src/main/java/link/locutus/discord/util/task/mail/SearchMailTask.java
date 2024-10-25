@@ -71,6 +71,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
                     throw new IllegalArgumentException("Captcha");
                 }
                 Document dom = Jsoup.parse(html);
+                System.out.println(dom);
 
 
                 Elements tables = dom.getElementsByClass("nationtable");
@@ -94,7 +95,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
                     if (skipUnread && !recRead) continue;
 
-                    if (unread && checkUnread || !unread && checkRead) {
+                    if ((unread && checkUnread || !unread && checkRead) && columns.size() > 3) {
                         String url = columns.get(2).getElementsByTag("a").first().attr("href");
                         int msgId = Integer.parseInt(url.split("=")[1]);
 

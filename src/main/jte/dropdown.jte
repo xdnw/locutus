@@ -4,7 +4,7 @@
 @import link.locutus.discord.web.commands.binding.AuthBindings
 @import link.locutus.discord.web.jooby.WebRoot
 @param WebStore ws
-@if (ws.getNation() == null && ws.getUser() == null)
+@if (ws == null || (ws.getNation() == null && ws.getUser() == null))
 <div class="dropstart">
     <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
         Login

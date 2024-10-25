@@ -61,7 +61,7 @@ public class WebDB extends DBMainV3 {
             Long userId = row.get("USER_ID", Long.class);
             UUID uuid = new UUID(big, small);
             long timestamp = row.get("TIMESTAMP", Long.class);
-            DBAuthRecord record = new DBAuthRecord(userId, nationId, uuid, timestamp);
+            DBAuthRecord record = new DBAuthRecord(userId == null ? 0 : userId, nationId == null ? 0 : nationId, uuid, timestamp);
             System.out.println("Loaded " + record + " | " + uuid);
             this.authByUUID.put(uuid, record);
             if (userId != null) {
@@ -117,7 +117,7 @@ public class WebDB extends DBMainV3 {
 
     public synchronized DBAuthRecord updateToken(UUID uuid, @Nullable Integer nation, @Nullable Long userId) {
         removeToken(uuid, nation, userId);
-        DBAuthRecord record = new DBAuthRecord(userId, nation, uuid, System.currentTimeMillis());
+        DBAuthRecord record = new DBAuthRecord(userId == null ? 0 : userId, nation == null ? 0 : nation, uuid, System.currentTimeMillis());
         addToken(uuid, record);
         return record;
     }

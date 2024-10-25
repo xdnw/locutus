@@ -8,11 +8,14 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.AllianceCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.NationCommands;
 import link.locutus.discord.commands.sync.*;
 import link.locutus.discord.db.*;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.GetUid;
+import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.wiki.WikiGenHandler;
 import link.locutus.discord.Locutus;
@@ -281,8 +284,11 @@ public class AdminCommands {
     public String savePojos() throws IOException {
         CommandManager2 manager = Locutus.cmd().getV2();
         manager.getCommands().savePojo(null, CM.class, "CM");
-        manager.getNationPlaceholders().getCommands().savePojo(null, CM.class, "NationCommands");
-        manager.getAlliancePlaceholders().getCommands().savePojo(null, CM.class, "AllianceCommands");
+        manager.getNationPlaceholders().getCommands().savePojo(null, NationCommands.class, "NationCommands");
+        manager.getAlliancePlaceholders().getCommands().savePojo(null, AllianceCommands.class, "AllianceCommands");
+        if (WebRoot.getInstance() != null) {
+            WebRoot.getInstance().getPageHandler().getCommands().savePojo(null, WM.class, "WM");
+        }
         return "Done!";
     }
     @Command
