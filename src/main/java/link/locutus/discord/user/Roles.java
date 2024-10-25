@@ -365,8 +365,8 @@ public enum Roles {
     public boolean has(Member member) {
         if (member == null) return false;
         if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
-
         if (member.isOwner()) return true;
+        if (member.hasPermission(Permission.ADMINISTRATOR)) return true;
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
 
         List<Role> roles = member.getRoles();
