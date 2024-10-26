@@ -2,23 +2,34 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.Example;
 import link.locutus.discord.web.jooby.WebRoot;
 import org.json.JSONObject;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 public class CommandRef {
     private final Map<String, String> arguments = new LinkedHashMap<>();
     private final String path;
+    private List<Example> examples;
 
     public CommandRef() {
         String[] split = getClass().getName().split("\\$");
         split = Arrays.copyOfRange(split, 1, split.length);
         path = String.join(" ", split);
+    }
+
+    public List<Example> getExamples() {
+        return examples == null ? Collections.emptyList() : examples;
+    }
+
+    public void addExample(CommandRef root, String label, String desc) {
+        if (label.length() > 25) {
+            throw new IllegalArgumentException("Example label is too long: " + label);
+        }
+        if (arguments.isEmpty()) throw new IllegalArgumentException("Cannot add empty example to root command");
+        if (!root.arguments.isEmpty()) throw new IllegalArgumentException("Cannot add example to non-root command");
+        root.examples.add(new Example(this, label, desc));
     }
 
     public String getPath() {
