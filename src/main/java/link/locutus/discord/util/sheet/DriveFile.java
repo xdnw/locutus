@@ -15,6 +15,8 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.Permission;
+import com.google.api.services.drive.model.Revision;
+import com.google.api.services.drive.model.RevisionList;
 import link.locutus.discord.config.Settings;
 
 import java.io.*;
@@ -81,6 +83,15 @@ public class DriveFile {
     public DriveFile(String fileId) throws GeneralSecurityException, IOException {
         this.service = createService();
         this.fileId = fileId;
+    }
+
+    public void purgeVersionHistory() throws IOException {
+        // List all revisions of the file
+        RevisionList revisions = service.revisions().list(fileId).execute();
+        for (Revision revision : revisions.getRevisions()) {
+            // Delete each revision
+            service.revisions().delete(fileId, revision.getId()).execute();
+        }
     }
 
     public String getId() {

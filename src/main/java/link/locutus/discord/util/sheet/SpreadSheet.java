@@ -389,9 +389,9 @@ public class SpreadSheet {
             @Override
             public void initialize(final HttpRequest httpRequest) throws IOException {
                 credentials.initialize(httpRequest);
-//                httpRequest.setConnectTimeout(10_000);
-//                httpRequest.setReadTimeout(10_000);
-                httpRequest.setNumberOfRetries(3);
+                httpRequest.setConnectTimeout(240_000);
+                httpRequest.setReadTimeout(240_000);
+//                httpRequest.setNumberOfRetries(3);
             }
         };
         return new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, credentials)
@@ -957,27 +957,25 @@ public class SpreadSheet {
         }
 
         try {
+            List<String> tabNamesList = new ArrayList<>(tabNames);
             // Prepare the ranges for batch request
-            List<String> ranges = tabNames.stream()
+            List<String> ranges = tabNamesList.stream()
                     .map(tab -> tab + "!1:1")
                     .collect(Collectors.toList());
 
             // Create the batch request
             Sheets.Spreadsheets.Values.BatchGet request = service.spreadsheets().values().batchGet(spreadsheetId)
-                    .setRanges(ranges);
+                    .setRanges(ranges)
+                    .setFields("valueRanges.values");
 
             // Execute the batch request
             BatchGetValuesResponse response = request.execute();
 
             // Process the response
             List<ValueRange> valueRanges = response.getValueRanges();
-            for (ValueRange valueRange : valueRanges) {
-                String range = valueRange.getRange();
-                String tabName = range.split("!")[0];
-                if (tabName.startsWith("'") && tabName.endsWith("'")) {
-                    tabName = tabName.substring(1, tabName.length() - 1);
-                }
-                List<List<Object>> values = valueRange.getValues();
+            for (int i = 0; i < tabNamesList.size(); i++) {
+                String tabName = tabNamesList.get(i);
+                List<List<Object>> values = valueRanges.get(i).getValues();
                 headers.put(tabName, values != null ? values : Collections.emptyList());
             }
         } catch (IOException e) {
