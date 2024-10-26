@@ -151,7 +151,7 @@ public class GoogleDoc {
         return doc;
     }
 
-    private static final PassiveExpiringMap<String, GoogleDoc> CACHE = new PassiveExpiringMap<String, GoogleDoc>(5, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<String, GoogleDoc> CACHE = new PassiveExpiringMap<>(5, TimeUnit.MINUTES);
 
     private Docs service;
     private StringBuilder content;

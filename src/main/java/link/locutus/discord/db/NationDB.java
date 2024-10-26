@@ -1,5 +1,7 @@
 package link.locutus.discord.db;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
@@ -61,6 +63,7 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
@@ -2888,10 +2891,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
         return result;
     }
+
+    private final Cache<Long, Map<Continent, Double>> radiationCache =
+            CacheBuilder.newBuilder()
+                    .expireAfterWrite(10, TimeUnit.MINUTES)
+                    .build();
+
     public Map<Continent, Double> getRadiationByTurn(long turn) {
+        Map<Continent, Double> cachedResult = radiationCache.getIfPresent(turn);
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+
         Map<Continent, Double> result = new Object2ObjectOpenHashMap<>();
         try (PreparedStatement stmt = getConnection().prepareStatement("SELECT continent, radiation FROM RADIATION_BY_TURN where turn = ?")) {
-            stmt.setLong(1,turn);
+            stmt.setLong(1, turn);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     Continent continent = Continent.values[(rs.getInt(1))];
@@ -2899,12 +2913,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     result.put(continent, radiation);
                 }
             }
+            radiationCache.put(turn, result);
             return result;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
+
     public synchronized void addRadiationByTurn(Continent continent, long turn, double radiation) {
         try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)")) {
             stmt.setInt(1, continent.ordinal());
