@@ -7,6 +7,7 @@ import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
 import gg.jte.generated.precompiled.auth.JtelogoutGenerated;
 import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.auth.JtenationpickedGenerated;
+import gg.jte.generated.precompiled.auth.JtepickerGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
@@ -71,7 +72,7 @@ public class IndexPages extends PageHelper {
         if (auth == null) {
             String discordAuthUrl = AuthBindings.getDiscordAuthUrl();
             String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
-            return WebStore.render(f -> gg.jte.generated.precompiled.auth.JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
+            return WebStore.render(f -> JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
         }
         return WebStore.render(f -> JteindexGenerated.render(f, null, ws));
     }
@@ -301,14 +302,11 @@ public class IndexPages extends PageHelper {
 
     @Command()
     @NoForm
-    public Object guildselect(WebStore ws, Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
+    public Object guildselect(WebStore ws, Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
         if (user == null && nation == null) {
-            new Exception().printStackTrace();
-            User user2 = (User) store.getProvided(Key.of(User.class, Me.class), false);
-            DBNation nation2 = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-            String user2Str = user2 == null ? "null" : user2.getName();
-            String nation2Str = nation2 == null ? "null" : nation2.getName();
-            return "You are not logged in | " + user2Str + " | " + nation2Str;
+            String discordAuthUrl = AuthBindings.getDiscordAuthUrl();
+            String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
+            return WebStore.render(f -> JtepickerGenerated.render(f, null, ws, discordAuthUrl, mailAuthUrl));
         }
         JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
         String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
