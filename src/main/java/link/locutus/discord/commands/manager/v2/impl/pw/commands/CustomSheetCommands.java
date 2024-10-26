@@ -390,11 +390,12 @@ public class CustomSheetCommands {
         Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs = new LinkedHashMap<>();
 
         Map<Integer, String> tabs = sheet.fetchTabs();
+
+
+        Map<String, SelectionAlias> customTabsToFetch = new LinkedHashMap<>();
         for (Map.Entry<Integer, String> entry : tabs.entrySet()) {
             String tabName = entry.getValue();
             SelectionAlias selection;
-            SheetTemplate template = null;
-
             try {
                 selection = SheetBindings.selectionAlias(true, manager, store, tabName);
             } catch (IllegalArgumentException e) {
@@ -446,11 +447,19 @@ public class CustomSheetCommands {
                     continue;
                 }
             }
+            customTabsToFetch.put(tabName, selection);
+        }
+
+        Map<String, List<List<Object>>> headerRows = sheet.fetchHeaderRows(customTabsToFetch.keySet());
+        for (Map.Entry<String, List<List<Object>>> entry : headerRows.entrySet()) {
+            String tabName = entry.getKey();
+            SelectionAlias selection = customTabsToFetch.get(tabName);
 
             Placeholders ph = phMap.get(selection.getType());
 
-            List<List<Object>> row = sheet.fetchRange(tabName, "1:1");
+            List<List<Object>> row = entry.getValue();
             List<String> header = row == null || row.isEmpty() ? null : row.get(0).stream().map(o -> o == null ? "" : o.toString()).toList();
+            SheetTemplate template = null;
             if (header == null || header.isEmpty()) {
                 errors.add("Tab `" + tabName + "` has no header row");
             } else {
@@ -460,9 +469,10 @@ public class CustomSheetCommands {
             if (template == null) {
                 continue;
             }
-
             customTabs.put(tabName, Map.entry(selection, template));
         }
+
+
         if (customTabs.isEmpty()) {
             errors.add("No tabs found. No tabs will be updated");
             return "**Result**:\n- " + StringMan.join(errors, "\n- ");

@@ -2,12 +2,9 @@ package link.locutus.discord.util.sheet;
 
 import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.services.sheets.v4.model.AddSheetRequest;
-import com.google.api.services.sheets.v4.model.CellData;
-import com.google.api.services.sheets.v4.model.DeleteSheetRequest;
-import com.google.api.services.sheets.v4.model.ExtendedValue;
-import com.google.api.services.sheets.v4.model.Sheet;
-import com.google.api.services.sheets.v4.model.SheetProperties;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.services.sheets.v4.model.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -30,19 +27,6 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.SheetsScopes;
-import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetRequest;
-import com.google.api.services.sheets.v4.model.BatchUpdateSpreadsheetResponse;
-import com.google.api.services.sheets.v4.model.ClearValuesRequest;
-import com.google.api.services.sheets.v4.model.ClearValuesResponse;
-import com.google.api.services.sheets.v4.model.GridCoordinate;
-import com.google.api.services.sheets.v4.model.GridRange;
-import com.google.api.services.sheets.v4.model.Request;
-import com.google.api.services.sheets.v4.model.RowData;
-import com.google.api.services.sheets.v4.model.Spreadsheet;
-import com.google.api.services.sheets.v4.model.SpreadsheetProperties;
-import com.google.api.services.sheets.v4.model.UpdateCellsRequest;
-import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
-import com.google.api.services.sheets.v4.model.ValueRange;
 import com.opencsv.CSVWriter;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
@@ -400,8 +384,19 @@ public class SpreadSheet {
 
     private static Sheets getServiceAPI() throws GeneralSecurityException, IOException {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        return  new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+        Credential credentials = getCredentials(HTTP_TRANSPORT);
+        HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+            @Override
+            public void initialize(final HttpRequest httpRequest) throws IOException {
+                credentials.initialize(httpRequest);
+//                httpRequest.setConnectTimeout(10_000);
+//                httpRequest.setReadTimeout(10_000);
+                httpRequest.setNumberOfRetries(3);
+            }
+        };
+        return new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, credentials)
                 .setApplicationName(APPLICATION_NAME)
+                .setHttpRequestInitializer(requestInitializer)
                 .build();
     }
 
@@ -953,6 +948,43 @@ public class SpreadSheet {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Map<String, List<List<Object>>> fetchHeaderRows(Set<String> tabNames) {
+        Map<String, List<List<Object>>> headers = new LinkedHashMap<>();
+        if (service == null) {
+            throw new IllegalStateException("Google Sheets service is not initialized.");
+        }
+
+        try {
+            // Prepare the ranges for batch request
+            List<String> ranges = tabNames.stream()
+                    .map(tab -> tab + "!1:1")
+                    .collect(Collectors.toList());
+
+            // Create the batch request
+            Sheets.Spreadsheets.Values.BatchGet request = service.spreadsheets().values().batchGet(spreadsheetId)
+                    .setRanges(ranges);
+
+            // Execute the batch request
+            BatchGetValuesResponse response = request.execute();
+
+            // Process the response
+            List<ValueRange> valueRanges = response.getValueRanges();
+            for (ValueRange valueRange : valueRanges) {
+                String range = valueRange.getRange();
+                String tabName = range.split("!")[0];
+                if (tabName.startsWith("'") && tabName.endsWith("'")) {
+                    tabName = tabName.substring(1, tabName.length() - 1);
+                }
+                List<List<Object>> values = valueRange.getValues();
+                headers.put(tabName, values != null ? values : Collections.emptyList());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch header rows", e);
+        }
+
+        return headers;
     }
 
     public void updateClearCurrentTab() throws IOException {
