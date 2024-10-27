@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 public class TreatyUpdateProcessor {
 
@@ -62,13 +63,14 @@ public class TreatyUpdateProcessor {
         Set<Treaty> treaties = new HashSet<>();
         treaties.addAll(fromAA.getTreaties().values());
         treaties.addAll(toAA.getTreaties().values());
-        byte[] img = null;
-        try {
-            img = ImageUtil.generateTreatyGraph(treaties);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-
+        Supplier<byte[]> imgSupplier = () -> {
+            try {
+                return ImageUtil.generateTreatyGraph(treaties);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        };
         if (previous == null) {
             title += " " + current.getType();
         } else if (current == null) {
@@ -97,7 +99,6 @@ public class TreatyUpdateProcessor {
         body.append("\n");
 
         String finalTitle = title + (maxRank == Integer.MAX_VALUE ? "" : " | rank #" + maxRank);
-        byte[] finalImg = img;
         AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -123,8 +124,9 @@ public class TreatyUpdateProcessor {
                 }
                 DiscordChannelIO io = new DiscordChannelIO(channel);
                 IMessageBuilder msg = io.create().embed(finalTitle, finalBody.toString().trim());
-                if (finalImg != null) {
-                    msg.image("treaties.png", finalImg);
+                byte[] img = imgSupplier.get();
+                if (img != null) {
+                    msg.image("treaties.png", img);
                 }
                 msg.sendWhenFree();
             }

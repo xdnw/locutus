@@ -675,7 +675,7 @@ public class OffshoreInstance {
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
 //                return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSIT + " but attempted to do " + depositType);
-                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You are only authorized for the note `" + DepositType.DEPOSIT + "` but attempted to use `" + depositType + "`");
+                return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You are only authorized for the note `" + DepositType.DEPOSIT + "` but attempted to use `" + depositType + "`.");
             }
         }
 
