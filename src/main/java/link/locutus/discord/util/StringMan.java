@@ -307,20 +307,28 @@ public class StringMan {
     }
 
     public static String stacktraceToString(StackTraceElement[] elems) {
+        return stacktraceToString(elems, Integer.MAX_VALUE, f -> true);
+    }
+
+    public static String stacktraceToString(StackTraceElement[] elems, int maxLines, Predicate<String> allowLine) {
         StringBuilder body = new StringBuilder();
+        int len = 0;
         for (StackTraceElement elem : elems) {
-            body.append(elem.toString() + "\n");
+            String line = elem.toString();
+            if (!allowLine.test(line)) continue;
+            if (len++ >= maxLines) break;
+            body.append(line).append("\n");
         }
         return body.toString().trim();
     }
 
     public static Map.Entry<String, String> stacktraceToString(Throwable e) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
+        return stacktraceToString(e, Integer.MAX_VALUE, f -> true);
+    }
 
+    public static Map.Entry<String, String> stacktraceToString(Throwable e, int maxLines, Predicate<String> allowLine) {
         String title = e.getMessage();
-        String body = sw.toString();
+        String body = stacktraceToString(e.getStackTrace(), maxLines, allowLine);
         return new AbstractMap.SimpleEntry<>(title, body);
     }
 

@@ -23,6 +23,7 @@ import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 
 import java.io.IOException;
@@ -356,7 +357,7 @@ public class PWGPTHandler {
         }
 
         // to json
-        String json = new Gson().toJson(configurationMap);
+        String json = WebUtil.GSON.toJson(configurationMap);
         nation.setMeta(NationMeta.GPT_SOURCES, json);
 
         Set<Integer> excludeSourceIds = excludeSources == null ? null : excludeSources.stream().map(f -> f.source_id).collect(Collectors.toSet());
@@ -376,7 +377,7 @@ public class PWGPTHandler {
         if (jsonBuffer == null) {
             return getSources(guild, allowRoot);
         }
-        Map<String, List<String>> configuration = new Gson().fromJson(new String(jsonBuffer.array()), new TypeToken<Map<String, List<String>>>(){}.getType());
+        Map<String, List<String>> configuration = WebUtil.GSON.fromJson(new String(jsonBuffer.array()), new TypeToken<Map<String, List<String>>>(){}.getType());
         Set<EmbeddingType> excludeTypes = configuration.containsKey("types") ? configuration.get("types").stream().map(EmbeddingType::valueOf).collect(Collectors.toSet()) : null;
         Set<String> includeWikiCategories = configuration.containsKey("allow_wiki") ? new HashSet<>(configuration.get("allow_wiki")) : null;
         Set<String> excludeWikiCategories = configuration.containsKey("deny_wiki") ? new HashSet<>(configuration.get("deny_wiki")) : null;

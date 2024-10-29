@@ -15,6 +15,7 @@ import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -72,7 +73,7 @@ public class AddBuild extends Command {
             String buildJson = content.substring(jsonStart, jsonEnd + 1);
 
             try {
-                CityBuild gson = new Gson().fromJson(buildJson, CityBuild.class);
+                CityBuild gson = WebUtil.GSON.fromJson(buildJson, CityBuild.class);
                 int min = Integer.parseInt(minStr);
                 int max = Integer.parseInt(maxStr);
                 Locutus.imp().getGuildDB(guild).addBuild(category, min, max, buildJson);

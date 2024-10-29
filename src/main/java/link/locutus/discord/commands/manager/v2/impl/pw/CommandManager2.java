@@ -38,6 +38,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WebCommands;
 import link.locutus.discord.web.jooby.JteUtil;
 import link.locutus.discord.web.test.TestCommands;
@@ -139,12 +140,11 @@ public class CommandManager2 {
             }
             phRoot.add(t.getSimpleName(), json);
         }
-        Gson gson = new Gson();
         JsonObject result = new JsonObject();
         result.add("commands", cmdJson);
         result.add("placeholders", phRoot);
-        result.add("keys", gson.toJsonTree(keysData));
-        result.add("options", gson.toJsonTree(optionsData));
+        result.add("keys", WebUtil.GSON.toJsonTree(keysData));
+        result.add("options", WebUtil.GSON.toJsonTree(optionsData));
         return result;
     }
 

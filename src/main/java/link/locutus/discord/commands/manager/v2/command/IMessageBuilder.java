@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
@@ -120,7 +121,7 @@ public interface IMessageBuilder {
             // convert keys to lowercase
             arguments = arguments.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(Locale.ROOT),
                     Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
-            String argumentJson = arguments.isEmpty() ? null : new Gson().toJson(arguments);
+            String argumentJson = arguments.isEmpty() ? null : WebUtil.GSON.toJson(arguments);
             CM.modal.create attach = CM.modal.create.cmd.command(path).arguments(StringMan.join(promptFor, ",")).defaults(argumentJson);
             return commandButton(behavior, attach, message);
         }

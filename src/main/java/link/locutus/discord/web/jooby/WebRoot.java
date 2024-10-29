@@ -32,16 +32,16 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import static link.locutus.discord.web.WebUtil.getPortOrSchemeDefault;
 
 public class WebRoot {
     public static String REDIRECT = "https://locutus.link";
@@ -109,7 +109,7 @@ public class WebRoot {
         }
 
         Logg.text("Starting on port " + port);
-//        BrotliLoader.isBrotliAvailable();
+
         this.app = Javalin.create(config -> {
             config.fileRenderer(new JavalinJte());
             // default
@@ -124,22 +124,20 @@ public class WebRoot {
             if (ssl) {
                 config.registerPlugin(plugin);
             }
-//            config.enableCorsForOrigin();
             config.bundledPlugins.enableDevLogging();
-            Function<String, String> getDomain = (String path) -> {
-                try {
-                    return new URL(path).getHost();
-                } catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
-                }
-            };
-            System.out.println("Domain: " + getDomain.apply(Settings.INSTANCE.WEB.FRONTEND_DOMAIN));
+
             config.bundledPlugins.enableCors(cors -> {
-                cors.addRule(f -> f.allowHost(
-                        getDomain.apply(Settings.INSTANCE.WEB.BACKEND_DOMAIN),
-                        getDomain.apply(Settings.INSTANCE.WEB.FRONTEND_DOMAIN),
-                        "localhost",
-                        "127.0.0.1"));
+                cors.addRule(f -> {
+                        f.allowCredentials = true;
+                        f.allowHost(
+                                Settings.INSTANCE.WEB.BACKEND_DOMAIN,
+                        Settings.INSTANCE.WEB.FRONTEND_DOMAIN,
+                        "http://localhost",
+                        "http://localhost:" + getPortOrSchemeDefault(Settings.INSTANCE.WEB.FRONTEND_DOMAIN),
+                        "http://127.0.0.1",
+                        "http://127.0.0.1:" + getPortOrSchemeDefault(Settings.INSTANCE.WEB.FRONTEND_DOMAIN)
+                        );
+                });
             });
 
             // check if brotli available
@@ -270,6 +268,7 @@ public class WebRoot {
 //        });
         // Only post requests
         this.app.post("/api/*", ctx -> {
+            ctx.contentType(io.javalin.http.ContentType.APPLICATION_JSON);
             pageHandler.handle(ctx);
         });
 

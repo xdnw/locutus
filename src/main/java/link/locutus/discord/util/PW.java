@@ -36,6 +36,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -1005,7 +1006,7 @@ public final class PW {
 
     public static Map<ResourceType, Double> adapt(AllianceBankContainer bank) {
         Map<ResourceType, Double> totals = new LinkedHashMap<ResourceType, Double>();
-        String json = new Gson().toJson(bank);
+        String json = WebUtil.GSON.toJson(bank);
         JsonObject obj = new JsonParser().parse(json).getAsJsonObject();
         for (ResourceType type : ResourceType.values) {
             JsonElement amt = obj.get(type.name().toLowerCase());
@@ -1403,7 +1404,7 @@ public final class PW {
         if (arg.charAt(0) != '{' && arg.charAt(arg.length() - 1) != '}') {
             arg = "{" + arg + "}";
         }
-        Map<E, V> result = new Gson().fromJson(arg, type);
+        Map<E, V> result = WebUtil.GSON.fromJson(arg, type);
         if (result.containsKey(null)) {
             throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
         }
@@ -1441,7 +1442,7 @@ public final class PW {
             }
         }
         Type type = new TypeToken<Map<String, String>>() {}.getType();
-        Map<String, String> result = new Gson().fromJson(arg, type);
+        Map<String, String> result = WebUtil.GSON.fromJson(arg, type);
         if (result.containsKey(null)) {
             throw new IllegalArgumentException("Invalid type specified in map: `" + arg + "`");
         }

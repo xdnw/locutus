@@ -22,7 +22,7 @@ public class WebCommands {
         UUID uuid = WebUtil.generateSecureUUID();
         DBAuthRecord token = WebRoot.db().updateToken(uuid, nation.getId(), user.getIdLong());
         List<String> urls = new ArrayList<>();
-//        urls.add("**Frontend**: <" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login?token=" + uuid + "&nation=" + nation.getNation_id() + ">");
+        urls.add("**Frontend**: <" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + uuid + ">");
         urls.add("**Backend**: <" + WebRoot.REDIRECT + "/page/login?token=" + token.getUUID() + ">");
         return String.join("\n", urls);
     }

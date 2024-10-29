@@ -1,6 +1,7 @@
 package link.locutus.discord.gpt.pw;
 
 import com.google.gson.Gson;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 
@@ -47,9 +48,8 @@ public class WikiPagePW {
     public Map<String, Object> getPageData(IEmbeddingDatabase embeddings) throws IOException {
         Map<String, Object> map = PWWikiUtil.getPageJson(name);
         if (map == null) return null;
-        Gson gson = new Gson();
         this.categories = new LinkedHashSet<>((List<String>) map.get("categories"));
-        String json = gson.toJson(map);
+        String json = WebUtil.GSON.toJson(map);
         this.hash = embeddings.getHash(json);
         return map;
     }

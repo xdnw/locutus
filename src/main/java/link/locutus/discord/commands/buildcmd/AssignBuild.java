@@ -19,6 +19,7 @@ import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -44,7 +45,7 @@ public class AssignBuild extends Command {
         if (arg.contains("/city/")) {
             throw new IllegalArgumentException("Not implemented.");
         } else if (arg.charAt(0) == '{') {
-            CityBuild build = new Gson().fromJson(arg, CityBuild.class);
+            CityBuild build = WebUtil.GSON.fromJson(arg, CityBuild.class);
             to = new JavaCity(build);
         } else {
             String category = arg.toLowerCase(Locale.ROOT);

@@ -69,7 +69,7 @@ public class DBAuthRecord {
             data.put("nation", nationId);
             data.put("nation_valid", (getNation(true) != null));
         }
-        data.put("expires", (timestamp));
+        data.put("expires", timestamp + "");
         return data;
     }
 

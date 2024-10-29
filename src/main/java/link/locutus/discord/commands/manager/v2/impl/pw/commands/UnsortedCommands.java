@@ -73,6 +73,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -292,7 +293,6 @@ public class UnsortedCommands {
         sheet.setHeader(header);
 
         boolean includeUnknownRate = false;
-        Gson gson = new Gson();
         for (TaxBracket bracket : brackets) {
             header.clear();
             if (bracket.rssRate < 0 || bracket.moneyRate < 0) {
@@ -308,8 +308,8 @@ public class UnsortedCommands {
             Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, false, false);
             double[] tax = depositsByCat.getOrDefault(DepositType.TAX, ResourceType.getBuffer());
             double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSIT, ResourceType.getBuffer());
-            header.add(gson.toJson(ResourceType.resourcesToMap(tax)));
-            header.add(gson.toJson(ResourceType.resourcesToMap(deposits)));
+            header.add(WebUtil.GSON.toJson(ResourceType.resourcesToMap(tax)));
+            header.add(WebUtil.GSON.toJson(ResourceType.resourcesToMap(deposits)));
             header.add(String.format("%.2f", ResourceType.convertedTotal(tax)));
             header.add(String.format("%.2f", ResourceType.convertedTotal(ResourceType.add(depositsByCat.values()))));
 

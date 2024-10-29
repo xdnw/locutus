@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.binding;
 
-import com.google.common.hash.Hashing;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -17,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class AuthBindings extends WebBindingHelper {
@@ -125,7 +124,6 @@ public class AuthBindings extends WebBindingHelper {
         return null;
     }
 
-    private static Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
     public static final String AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize";
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
@@ -152,7 +150,7 @@ public class AuthBindings extends WebBindingHelper {
         return AUTHORIZE_URL + "?" + query;
     }
 
-    private static JsonObject getUser(String accessToken) throws IOException {
+    public static JsonObject getUser(String accessToken) throws IOException {
         CloseableHttpClient client = HttpClients.custom().build();
 
         HttpUriRequest request = RequestBuilder.get()
@@ -172,17 +170,18 @@ public class AuthBindings extends WebBindingHelper {
         return null;
     }
 
-    public static String getAccessToken(String code) throws IOException {
+    public static String getAccessToken(String code, String redirect) throws IOException {
+        if (redirect == null) redirect = WebRoot.REDIRECT;
+        System.out.println(":||remove getAccessToken " + redirect + " | " + code);
         CloseableHttpClient client = HttpClients.custom().build();
 
-        System.out.println("Redirect " + WebRoot.REDIRECT);
         HttpUriRequest request = RequestBuilder.post()
                 .setUri(TOKEN_URL)
                 .setHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .addParameter("grant_type", "authorization_code")
                 .addParameter("client_id", Settings.INSTANCE.APPLICATION_ID + "")
                 .addParameter("client_secret", Settings.INSTANCE.CLIENT_SECRET)
-                .addParameter("redirect_uri", WebRoot.REDIRECT)
+                .addParameter("redirect_uri", redirect)
                 .addParameter("code", code)
                 .addParameter("scope", "identify guilds")
                 .build();
@@ -190,30 +189,9 @@ public class AuthBindings extends WebBindingHelper {
         CloseableHttpResponse response = client.execute(request);
         String json = new String(response.getEntity().getContent().readAllBytes());
         JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        System.out.println(":||Remove Access token " + obj);
         JsonElement accessToken = obj.get("access_token");
-        System.out.println("Get access token " + obj);
         return accessToken == null ? null : accessToken.getAsString();
-    }
-
-
-
-//    private static void addAccessToken(String accessToken, JsonObject userInfo, boolean updateDB) {
-//        JsonElement userIdStr = userInfo.get("id");
-//        if (userIdStr != null) {
-//            long userId = Long.parseLong(userIdStr.getAsString());
-//            tokenToUserMap.put(userId, new AbstractMap.SimpleEntry<>(accessToken, userInfo));
-//            String hash = hash(userId + accessToken);
-//            tokenHashes.put(hash, userId);
-//            if (updateDB) {
-//                webDb.addToken(userId, accessToken, userInfo);
-//            }
-//        }
-//    }
-
-    private static String hash(String key) {
-        return Hashing.sha256()
-                .hashString(key.toString(), StandardCharsets.UTF_8)
-                .toString();
     }
 
     public static DBAuthRecord getAuth(WebStore ws, Context ctx) {
@@ -223,6 +201,19 @@ public class AuthBindings extends WebBindingHelper {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    public static DBAuthRecord generateAuthRecord(Context context, long userId, Integer previousNationId) {
+        UUID newUUID = WebUtil.generateSecureUUID();
+        DBNation nationExisting = DiscordUtil.getNation(userId);
+        Integer nationId = null;
+        if (nationExisting == null && previousNationId != null && DBNation.getById(previousNationId) != null) {
+            nationId = previousNationId;
+            String fullDiscriminator = DiscordUtil.getUserName(userId);
+            PNWUser pnwUser = new PNWUser(nationId, userId, fullDiscriminator);
+            Locutus.imp().getDiscordDB().addUser(pnwUser);
+        }
+        return WebRoot.db().updateToken(newUUID, nationId, userId);
     }
 
     public static DBAuthRecord getAuth(WebStore ws, Context context, boolean allowRedirect, boolean requireNation, boolean requireUser) throws IOException {
@@ -236,69 +227,72 @@ public class AuthBindings extends WebBindingHelper {
         List<String> errors = new ArrayList<>();
         DBAuthRecord record = null;
 
-        Map<String, String> cookies = context.cookieMap();
+        String header = context.header("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7); // Strip "Bearer " prefix
+            UUID uuid = UUID.fromString(token);
+            record = WebRoot.db().get(uuid);
+        }
 
-        String oAuthCookieId = PageHandler.CookieType.DISCORD_OAUTH.getCookieId();
-        String uuidStr = cookies.get(oAuthCookieId);
-        if (uuidStr == null) {
-            String setCookie = context.res().getHeader("Set-Cookie");
-            if (setCookie != null && !setCookie.isEmpty()) {
-                List<HttpCookie> httpCookies = HttpCookie.parse(setCookie);
-                for (HttpCookie cookie : httpCookies) {
-                    if (cookie.getName().equals(oAuthCookieId)) {
-                        uuidStr = cookie.getValue();
-                        break;
+        if (record == null) {
+            Map<String, String> cookies = context.cookieMap();
+            String oAuthCookieId = PageHandler.CookieType.DISCORD_OAUTH.getCookieId();
+            String uuidStr = cookies.get(oAuthCookieId);
+            if (uuidStr == null) {
+                String setCookie = context.res().getHeader("Set-Cookie");
+                if (setCookie != null && !setCookie.isEmpty()) {
+                    List<HttpCookie> httpCookies = HttpCookie.parse(setCookie);
+                    for (HttpCookie cookie : httpCookies) {
+                        if (cookie.getName().equals(oAuthCookieId)) {
+                            uuidStr = cookie.getValue();
+                            break;
+                        }
                     }
                 }
             }
-        }
-        if (uuidStr != null) {
-            try {
-                UUID uuid = UUID.fromString(uuidStr);
-                if (uuid != null) {
+            if (uuidStr != null) {
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    if (uuid != null) {
+                        record = WebRoot.db().get(uuid);
+                    }
+                } catch (IllegalArgumentException e) {
+                    context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
+                    uuidStr = null;
+                    errors.add("Invalid cookie: " + uuidStr);
+                }
+            }
+
+            if (record == null || record.getUserId() == null) {
+                Map<String, List<String>> queries = context.queryParamMap();
+                List<String> code = queries.get("code");
+                if (code != null && code.size() == 1) {
+                    pageDesiresRedirect = true;
+                    String codeSingle = code.get(0);
+                    new Exception().printStackTrace();
+                    String access_token = getAccessToken(codeSingle, null);
+                    if (access_token != null) {
+                        JsonObject user = getUser(access_token);
+                        JsonElement idStr = user.get("id");
+                        if (idStr != null) {
+                            Integer previousNationId = record == null ? null : record.getNationIdRaw();
+                            record = generateAuthRecord(context, Long.parseLong(idStr.getAsString()), previousNationId);
+                            WebUtil.setCookie(context, PageHandler.CookieType.DISCORD_OAUTH.getCookieId(), record.getUUID().toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
+                        } else {
+                            System.out.println("Invalid user " + user);
+                            errors.add("Invalid user: " + user);
+                        }
+                    }
+                }
+            }
+            {
+                // if command auth exists
+                String commandAuth = cookies.get(PageHandler.CookieType.URL_AUTH.getCookieId());
+                System.out.println(":||remove Command cookies " + commandAuth + " | " + cookies);
+                if (commandAuth != null) {
+                    UUID uuid = UUID.fromString(commandAuth);
                     record = WebRoot.db().get(uuid);
                 }
-            } catch (IllegalArgumentException e) {
-                context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
-                uuidStr = null;
-                errors.add("Invalid cookie: " + uuidStr);
-            }
-        }
-
-        if (record == null || record.getUserId() == null) {
-            Map<String, List<String>> queries = context.queryParamMap();
-            List<String> code = queries.get("code");
-            if (code != null && code.size() == 1) {
-                pageDesiresRedirect = true;
-                String codeSingle = code.get(0);
-                new Exception().printStackTrace();
-                String access_token = getAccessToken(codeSingle);
-                if (access_token != null) {
-                    JsonObject user = getUser(access_token);
-                    JsonElement idStr = user.get("id");
-                    if (idStr != null) {
-                        long discordId = Long.parseLong(idStr.getAsString());
-                        UUID newUUID = WebUtil.generateSecureUUID();
-                        WebUtil.setCookie(context, PageHandler.CookieType.DISCORD_OAUTH.getCookieId(), newUUID.toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
-                        DBNation nationExisting = DiscordUtil.getNation(discordId);
-                        Integer nationId = null;
-                        if (nationExisting == null && record != null) {
-                            nationId = record.getNationId();
-                        }
-                        record = WebRoot.db().updateToken(newUUID, nationId, discordId);
-                    } else {
-                        System.out.println("Invalid user " + user);
-                        errors.add("Invalid user: " + user);
-                    }
-                }
-            }
-        }
-        {
-            // if command auth exists
-            String commandAuth = cookies.get(PageHandler.CookieType.URL_AUTH.getCookieId());
-            if (commandAuth != null) {
-                UUID uuid = UUID.fromString(commandAuth);
-                record = WebRoot.db().get(uuid);
             }
         }
 
@@ -434,28 +428,24 @@ public class AuthBindings extends WebBindingHelper {
         throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
     }
 
-    public static String setRedirect(Context context) {
-        String fingerprint = (context.ip() + context.userAgent());
-        String hash = Hashing.sha256().hashString(fingerprint, StandardCharsets.UTF_8).toString();
-        ORIGINAL_PAGE.put(hash, context.url());
-        return hash;
-    }
-
     public static String getRedirect(Context context) {
         return getRedirect(context, false);
     }
+
+    public static void setRedirect(Context context, String url) {
+        String id = PageHandler.CookieType.REDIRECT.getCookieId();
+        WebUtil.setCookie(context, id, url, (int) 60);
+    }
+
     public static String getRedirect(Context context, boolean indexDefault) {
-        String redirect = context.queryParam("redirect");
-        if (redirect == null || redirect.isEmpty()) {
-            String fingerprint = (context.ip() + context.userAgent());
-            String hash = Hashing.sha256().hashString(fingerprint, StandardCharsets.UTF_8).toString();
-            redirect = ORIGINAL_PAGE.remove(hash);
+        String redirect = context.cookie(PageHandler.CookieType.REDIRECT.getCookieId());
+        if (redirect != null) {
             if (redirect != null && (redirect.contains("login") || redirect.contains("logout"))) {
                 redirect = null;
             }
-            if (indexDefault && redirect == null) {
-                redirect = WebRoot.REDIRECT;
-            }
+        }
+        if (indexDefault && redirect == null) {
+            redirect = WebRoot.REDIRECT;
         }
         return redirect;
     }

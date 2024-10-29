@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -181,7 +182,7 @@ public class DiscordChannelIO implements IMessageIO {
             Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.get(id);
             if (defaults != null && !defaultsStr.isEmpty()) {
                 // map to json google
-                defaultsStr = new Gson().toJson(defaults);
+                defaultsStr = WebUtil.GSON.toJson(defaults);
                 IModalBuilder.DEFAULT_VALUES.refresh(id);
             }
         } catch (ExecutionException e) {

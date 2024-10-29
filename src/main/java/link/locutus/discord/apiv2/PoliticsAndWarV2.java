@@ -21,6 +21,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
+import link.locutus.discord.web.WebUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -31,7 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final String baseUrl;
-    private final Gson gson;
     private final JsonParser parser;
     private final ApiKeyPool pool;
     private final QueryExecutor legacyV1;
@@ -46,13 +46,8 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     public PoliticsAndWarV2(ApiKeyPool pool, boolean test, boolean cache) {
         this.pool = pool;
         this.baseUrl = "https://" + (test ? "test." : "") + "politicsandwar.com/api/v2/";
-        this.gson = new Gson();
         this.parser = new JsonParser();
         this.legacyV1 = new QueryExecutor(cache, test, 50, 60000);
-    }
-
-    public Gson getGson() {
-        return gson;
     }
 
     public <T> T get(PagePriority priority, QueryURLV2 url, Type typeOf) {
@@ -65,7 +60,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
 
     public <T> T get(PagePriority priority, QueryURLV2 url, Type typeOf, String arg, String query) {
         String json = read(priority, url, arg, query, true);
-        return gson.fromJson(json, typeOf);
+        return WebUtil.GSON.fromJson(json, typeOf);
     }
 
     public JsonElement getJson(PagePriority priority, QueryURLV2 url) {
@@ -120,7 +115,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         String json = read(PagePriority.API_KEY_STATS, QueryURLV2.BANK_RECORDS, Locutus.loader().getNationId() + "", null, false);
         Type type = new TypeToken<ApiRecord>() {
         }.getType();
-        return getGson().fromJson(json, type);
+        return WebUtil.GSON.fromJson(json, type);
     }
 
     public List<BankRecord> getBankRecords(int nationId, boolean priority) {

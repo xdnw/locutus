@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -21,7 +22,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.*;
 
 public abstract class Command {
-    private static final Gson gson = new Gson();
     public final Set<Long> WHITELIST_USERS = new HashSet<>();
     private final List<String> aliases;
     private final Set<CommandCategory> categories;
@@ -72,7 +72,7 @@ public abstract class Command {
         } else {
             result.put("err_msg", str);
         }
-        return gson.toJsonTree(result).getAsJsonObject();
+        return WebUtil.GSON.toJsonTree(result).getAsJsonObject();
     }
 
     public Set<CommandCategory> getCategories() {

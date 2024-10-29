@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
+import link.locutus.discord.commands.manager.v2.command.WebOptions;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
@@ -65,16 +66,11 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Guild.class)
     public WebOption getGuild() {
         return new WebOption(Guild.class).setQueryMap((guild, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withIcon().withText().withSubtext();
             for (Guild g : Locutus.imp().getDiscordApi().getGuilds()) {
-                data.add(Map.of(
-                        "icon", g.getIconUrl(),
-                        "key", g.getId(),
-                        "text", g.getName(),
-                        "subtext", g.getDescription()
-                ));
+                data.addWithIcon(g.getId(), g.getName(), g.getDescription(), g.getIconUrl());
             }
-            return data;
+            return data.build();
         });
     }
 //Category

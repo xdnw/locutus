@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw.json;
 
 import com.google.gson.Gson;
+import link.locutus.discord.web.WebUtil;
 
 public class CityBuildRange {
     private final CityBuild gson;
@@ -11,7 +12,7 @@ public class CityBuildRange {
     public CityBuildRange(int min, int max, String buildJson) {
         this.min = min;
         this.max = max;
-        this.gson = new Gson().fromJson(buildJson, CityBuild.class);
+        this.gson = WebUtil.GSON.fromJson(buildJson, CityBuild.class);
         this.build = buildJson;
     }
 

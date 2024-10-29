@@ -25,6 +25,7 @@ import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.web.WebUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -156,7 +157,7 @@ public enum ResourceType {
 //        for (Map.Entry<String, String> entry : post.entrySet()) {
 //            entry.setValue("\"" + entry.getValue() + "\"");
 //        }
-        return new Gson().toJson(post);
+        return WebUtil.GSON.toJson(post);
     }
 
     public static Map<ResourceType, Double> parseResources(String arg) {

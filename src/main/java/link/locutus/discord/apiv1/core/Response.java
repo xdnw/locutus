@@ -7,13 +7,13 @@ import link.locutus.discord.apiv1.domains.Alliances;
 import link.locutus.discord.apiv1.domains.Entity;
 import link.locutus.discord.apiv1.domains.Nations;
 import link.locutus.discord.apiv1.domains.Wars;
+import link.locutus.discord.web.WebUtil;
 
 import java.lang.reflect.Type;
 
 public class Response<T extends Entity> {
 
     private final String jsonStr;
-    private final Gson gson = new Gson();
     private final T t;
     private final String url;
 
@@ -43,6 +43,6 @@ public class Response<T extends Entity> {
                 throw new PoliticsAndWarAPIException("Unsuccessful API request. Error Received: " + jsonObject.get("message").getAsString(), url);
         }
         Type type = TypeToken.get(t.getClass()).getType();
-        return gson.fromJson(jsonStr, type);
+        return WebUtil.GSON.fromJson(jsonStr, type);
     }
 }

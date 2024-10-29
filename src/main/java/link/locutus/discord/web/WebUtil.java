@@ -1,5 +1,6 @@
 package link.locutus.discord.web;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import in.wilsonl.minifyhtml.Configuration;
 import in.wilsonl.minifyhtml.MinifyHtml;
@@ -26,6 +27,8 @@ import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Collection;
@@ -33,6 +36,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class WebUtil {
+    public static final Gson GSON = new Gson();
+
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext) {
         return generateSearchableDropdown(param, objects, consumeObjectNamesValueSubtext, null);
     }
@@ -74,6 +79,20 @@ public class WebUtil {
         }
     }
 
+    public static int getPortOrSchemeDefault(String url) {
+        try {
+            URL obj = new URL(url);
+            int result = obj.getPort();
+            if (result == -1) {
+                return obj.getProtocol().equals("https") ? 443 : 80;
+            } else {
+                return result;
+            }
+        } catch (MalformedURLException e) {
+            return 443;
+        }
+    }
+
     public static UUID generateSecureUUID() {
         SecureRandom random = new SecureRandom();
         return new UUID(random.nextLong(), random.nextLong());
@@ -82,12 +101,11 @@ public class WebUtil {
     public static void setCookie(Context context, String key, String value, int duration) {
         Cookie cookie = new Cookie(key, value);
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setSecure(context.scheme().equals("https"));
         try {
-            URL url = new URL(Settings.INSTANCE.WEB.BACKEND_DOMAIN);
-            String domain = url.getHost();
+            String domain = new URI(Settings.INSTANCE.WEB.BACKEND_DOMAIN).getHost();
             cookie.setDomain("." + domain);
-        } catch (MalformedURLException e) {
+        } catch (URISyntaxException e) {
             e.printStackTrace();
         }
         cookie.setPath("/");
@@ -95,6 +113,20 @@ public class WebUtil {
         cookie.setMaxAge(duration);
 
         context.cookie(cookie);
+    }
+
+    public static void setCookieViaHeader(Context context, String key, String value, int duration, boolean secure, String domain) {
+        String newCookie = key + "=" + value + "; Max-Age=" + duration + "; Path=/; ";
+        if (secure) {
+            newCookie += (context.scheme().equals("https") ? "Secure; " : "") + "HttpOnly; ";
+            newCookie += "SameSite=Strict;";
+        } else {
+            newCookie += "SameSite=Lax;";
+        }
+        if (domain != null) {
+            newCookie += " Domain=" + domain.replaceFirst("^https?://", "") + ";";
+        }
+        context.res().addHeader("Set-Cookie", newCookie);
     }
 
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext, Boolean multiple) {

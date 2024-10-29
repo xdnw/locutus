@@ -8,6 +8,7 @@ import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.WebUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -356,7 +357,7 @@ public class PWWikiUtil {
         file.getParentFile().mkdirs();
         file.createNewFile();
         FileWriter writer = new FileWriter(file);
-        new Gson().toJson(pagesToSave, writer);
+        WebUtil.GSON.toJson(pagesToSave, writer);
         writer.close();
         System.out.println("Write sitemap " + file.getAbsolutePath());
     }
@@ -395,9 +396,8 @@ public class PWWikiUtil {
 
         // Load sitemap.json
         System.out.println("Loading " + file.getAbsolutePath());
-        Gson gson = new Gson();
         FileReader reader = new FileReader(filename);
-        Map<String, String> sitemap = gson.fromJson(reader, LinkedHashMap.class);
+        Map<String, String> sitemap = WebUtil.GSON.fromJson(reader, LinkedHashMap.class);
         reader.close();
         System.out.println(sitemap);
         return sitemap;
@@ -450,7 +450,7 @@ public class PWWikiUtil {
     public static Map<String, Object> getPageJson(String pageName) throws IOException {
         File file = getPageFile(pageName);
         try (FileReader reader = new FileReader(file)) {
-            return new Gson().fromJson(reader, Map.class);
+            return WebUtil.GSON.fromJson(reader, Map.class);
         } catch (IOException e) {
             e.printStackTrace();
             return null;

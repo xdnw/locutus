@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
@@ -11,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriFunction;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
@@ -23,8 +25,8 @@ import java.util.function.Predicate;
 public class WebOption {
     private Key key;
     private boolean allowCompletions;
-    private JsonArray options;
-    private TriFunction<GuildDB, User, DBNation, JsonArray> queryOptions;
+    private List<String> options;
+    private TriFunction<GuildDB, User, DBNation, Map<String, Object>> queryOptions;
     private List<String> compositeTypes;
     private boolean requiresGuild;
     private boolean requiresNation;
@@ -101,60 +103,26 @@ public class WebOption {
     }
 
     public WebOption setOptions(String[] options) {
-        this.options = new JsonArray();
+        this.options = new ObjectArrayList<>();
         for (String o : options) this.options.add(o);
         return this;
     }
 
     public WebOption setOptions(Class<? extends Enum<?>> enumClass) {
-        this.options = new JsonArray();
+        this.options = new ObjectArrayList<>();
         for (Enum<?> e : enumClass.getEnumConstants()) this.options.add(e.name());
         return this;
     }
 
-    public WebOption setOptions(JsonArray arr) {
-        this.options = arr;
-        return this;
-    }
-
-    public WebOption addOption(Map<String, String> data) {
-        if (this.options == null) this.options = new JsonArray();
-        JsonObject obj = new JsonObject();
-        for (Map.Entry<String, String> entry : data.entrySet()) {
-            obj.addProperty(entry.getKey(), entry.getValue());
-        }
-        this.options.add(obj);
-        return this;
-    }
-
-    public WebOption addOption(JsonObject obj) {
-        if (this.options == null) this.options = new JsonArray();
-        this.options.add(obj);
-        return this;
-    }
 
     public WebOption setOptions(List<String> options) {
-        this.options = new JsonArray();
-        for (String o : options) this.options.add(o);
+        this.options = options;
         return this;
     }
 
-    public WebOption setQuery(TriFunction<GuildDB, User, DBNation, JsonArray> queryOptions) {
-        this.queryOptions = queryOptions;
-        return this;
-    }
-
-    public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, List<Map<String, String>>> queryOptions) {
+    public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions) {
         this.queryOptions = (guild, user, nation) -> {
-            JsonArray arr = new JsonArray();
-            for (Map<String, String> map : queryOptions.apply(guild, user, nation)) {
-                JsonObject obj = new JsonObject();
-                for (Map.Entry<String, String> entry : map.entrySet()) {
-                    if (entry.getValue() != null) obj.addProperty(entry.getKey(), entry.getValue());
-                }
-                arr.add(obj);
-            }
-            return arr;
+            return queryOptions.apply(guild, user, nation).build();
         };
         return this;
     }
@@ -170,7 +138,7 @@ public class WebOption {
         return this;
     }
 
-    public JsonArray getOptions() {
+    public List<String> getOptions() {
         return options;
     }
 
@@ -189,10 +157,10 @@ public class WebOption {
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
         if (options != null) {
-            json.add("options", options);
+            json.add("options", WebUtil.GSON.toJsonTree(options));
         }
         if (compositeTypes != null) {
-            json.add("composite", new Gson().toJsonTree(compositeTypes));
+            json.add("composite", WebUtil.GSON.toJsonTree(compositeTypes));
         }
         if (isAllowQuery()) {
             json.addProperty("query", true);

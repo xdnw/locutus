@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -26,7 +27,7 @@ public class StringMessageBuilder extends AMessageBuilder {
         StringMessageBuilder msg = new StringMessageBuilder(guild);
         JsonObject bodyJson = null;
         try {
-            bodyJson = new Gson().fromJson(body, JsonObject.class);
+            bodyJson = WebUtil.GSON.fromJson(body, JsonObject.class);
             boolean contains = false;
             for (String required : new String[]{"content", "embeds", "tables", "attachments"}) {
                 if (bodyJson.has(required)) {

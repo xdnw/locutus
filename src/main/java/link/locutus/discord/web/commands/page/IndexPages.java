@@ -286,11 +286,11 @@ public class IndexPages extends PageHelper {
                 result.put("guild", current.getId());
             }
             throw new RedirectResponse(HttpStatus.SEE_OTHER, url);
-//            return new Gson().toJson(result);
+//            return WebUtil.GSON.toJson(result);
         } else {
             Map<String, String> result = new HashMap<>();
             result.put("error", "You are not logged in, add `nation` or `discord` to the query string to require login");
-            return new Gson().toJson(result);
+            return WebUtil.GSON.toJson(result);
         }
     }
 

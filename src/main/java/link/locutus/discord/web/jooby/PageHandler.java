@@ -4,6 +4,7 @@ import com.google.common.hash.Hashing;
 import gg.jte.generated.precompiled.JtealertGenerated;
 import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.*;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -88,12 +89,13 @@ public class PageHandler implements Handler {
         new SheetBindings().register(store);
 //        new StockBinding().register(store);
 
-        new DiscordWebBindings().register(store);
         new JavalinBindings().register(store);
+        new AuthBindings().register(store);
+
+        //
+        new DiscordWebBindings().register(store);
         new WebPWBindings().register(store);
         new PrimitiveWebBindings().register(store);
-
-        new AuthBindings().register(store);
 
         this.validators = new ValidatorStore();
         new PrimitiveValidators().register(validators);
@@ -112,6 +114,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new BankPages(), "page");
         this.commands.registerSubCommands(new TradePages(), "page");
         this.commands.registerSubCommands(new AlliancePages(), "page");
+
         this.commands.registerSubCommands(new EndpointPages(), "api");
 
         this.commands.registerCommands(new TestPages());
@@ -192,6 +195,8 @@ public class PageHandler implements Handler {
         resultObj.addProperty("success", success);
         sse.sendEvent(resultObj);
     }
+
+
 
     /**
      * From argument list
@@ -416,6 +421,7 @@ public class PageHandler implements Handler {
         WebStore ws = null;
         try {
             ArgumentStack stack = createStack(ctx);
+            System.out.println(":||remove Path " + ctx.path());
             ws = stack.getStore().getProvided(WebStore.class);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
@@ -432,7 +438,6 @@ public class PageHandler implements Handler {
                         throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
                     }
 
-                    cmd.validatePermissions(stack.getStore(), permisser);
                     String prefix = cmd instanceof ParametricCallable ? "sse" : "command";
                     String endpoint = WebRoot.REDIRECT + "/" + prefix + "/" + cmd.getFullPath("/");
                     if (!endpoint.endsWith("/")) endpoint += "/";
@@ -456,14 +461,20 @@ public class PageHandler implements Handler {
                         } else {
                             Map<String, List<String>> queryParams = ctx.queryParamMap();
                             if (queryParams.isEmpty()) {
+                                System.out.println(":||remove Query params are empty");
+                                for (Map.Entry<String, List<String>> entry : ctx.formParamMap().entrySet()) {
+                                    System.out.println(":||remove Query params form " + entry.getKey() + " | " + entry.getValue());
+                                }
                                 queryMap = parseQueryMap(ctx.formParamMap());
                             } else {
+                                System.out.println(":||remove Query params are not empty " + queryParams);
                                 queryMap = parseQueryMap(queryParams);
                                 queryMap.remove("code");
                             }
                         }
+                        System.out.println(":||remove Query map " + queryMap);
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
-                        Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
+                        Object cmdResult = parametric.call(null, stack.getStore(), parsed);
                         result = wrap(ws, cmdResult, ctx);
                     } else {
                         result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
@@ -501,16 +512,22 @@ public class PageHandler implements Handler {
             return;
         }
         e.printStackTrace();
-
+        if (ctx.path().startsWith("/api/")) {
+            Map.Entry<String, String> errorMsg = StringMan.stacktraceToString(e, 10, f -> f.startsWith("link.locutus."));
+            String msg = WebUtil.GSON.toJson(Map.of("success", false,
+                    "message", errorMsg.getKey() + "\n" + errorMsg.getValue()));
+            System.out.println(":||REMOVE RETURNSMG " + msg);
+            ctx.result(msg);
+            return;
+        }
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
-
         ctx.result(WebUtil.minify(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue()))));
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx) {
         String contentType = ctx.header("Content-Type");
-        if (contentType == null || contentType.contains("text/html")) {
-            if (call instanceof String) {
+        if (call instanceof String) {
+            if (contentType == null || contentType.contains("text/html")) {
                 String str = (String) call;
                 str = str.trim();
                 if (str.isEmpty()) return str;
@@ -529,6 +546,9 @@ public class PageHandler implements Handler {
                 String finalStr = str;
                 return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
             }
+        } else if (call instanceof Map || call instanceof List) {
+            ctx.header("Content-Type", "application/json");
+            return WebUtil.GSON.toJson(call);
         }
         return call;
     }
@@ -624,35 +644,49 @@ public class PageHandler implements Handler {
         }
     }
 
+    private Object call(ParametricCallable cmd, WebStore ws, Context context, List<String> values) {
+        ArgumentStack stack = new ArgumentStack(values, (LocalValueStore<?>) ws.store(), validators, permisser);
+        Object[] parsed = cmd.parseArguments(stack);
+        return cmd.call(null, ws.store(), parsed);
+    }
+
+    public Object call(ParametricCallable cmd, WebStore ws, Context context, Object value) {
+        Map<String, Object> combined;
+        if (value == null) combined = Collections.emptyMap();
+        else if (value instanceof Map map) {
+            combined = (Map) map;
+        }
+        else if (value instanceof String myString) {
+            List<String> args = new ObjectArrayList<>(1);
+            args.add(myString);
+            return call(cmd, ws, context, args);
+        } else if (value instanceof List myList) {
+            return call(cmd, ws, context, new ObjectArrayList<>((List<String>) myList));
+        } else {
+            throw new IllegalArgumentException("Invalid value: " + value + " | " + value.getClass().getSimpleName());
+        }
+        Object[] parsed = cmd.parseArgumentMap2(combined, ws.store(), validators, permisser, true);
+        return cmd.call(null, ws.store(), parsed);
+    }
+
     public enum CookieType {
-        DISCORD_OAUTH,
-        URL_AUTH,
-        GUILD_ID,
+        DISCORD_OAUTH("lc_discord"),
+        URL_AUTH("lc_token"),
+        GUILD_ID("lc_guild"),
+        REDIRECT("lc_redirect"),
+        URL_AUTH_SET("lc_token_exists"),
         ;
 
-        private String cookieId;
+        private final String cookieId;
 
         // set cookie id
-        CookieType() {
-            cookieId = getCookieId(this);
+        CookieType(String cookieId) {
+            this.cookieId = cookieId;
         }
 
         public String getCookieId() {
             return cookieId;
         }
-
-        private String getCookieId(CookieType type) {
-            StringBuilder key = new StringBuilder(COOKIE_ID);
-            key.append(Settings.INSTANCE.BOT_TOKEN.hashCode());
-            if (type != CookieType.DISCORD_OAUTH) {
-                key.append(type.name());
-            }
-
-            return Hashing.sha256()
-                    .hashString(key.toString(), StandardCharsets.UTF_8)
-                    .toString();
-        }
-
     }
 
     public static String COOKIE_ID = "LCTS";

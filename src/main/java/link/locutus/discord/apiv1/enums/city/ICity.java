@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.web.WebUtil;
 
 import java.util.AbstractMap;
 import java.util.HashMap;
@@ -98,7 +99,7 @@ public interface ICity {
             json.put(building.nameSnakeCase(), amt + "");
         }
 
-        return new Gson().toJson(json);
+        return WebUtil.GSON.toJson(json);
     }
 
     default Map.Entry<Integer, Integer> getMissileDamage(Predicate<Project> hasProject) {

@@ -34,10 +34,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLEncoder;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -232,7 +229,7 @@ public class ImageUtil {
 
     public static boolean isDiscordImage(String url) {
         try {
-            URL parsedUrl = new URL(url);
+            URI parsedUrl = new URI(url);
             String host = parsedUrl.getHost();
             return SUPPORTED_DOMAINS.stream().anyMatch(host::endsWith);
         } catch (Exception e) {

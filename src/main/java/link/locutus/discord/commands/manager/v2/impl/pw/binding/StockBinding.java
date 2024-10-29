@@ -13,6 +13,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
@@ -68,7 +69,7 @@ public class StockBinding extends BindingHelper {
         stock = stock.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         Type type = new TypeToken<Map<String, Double>>() {
         }.getType();
-        Map<String, Double> resultStr = new Gson().fromJson(stock, type);
+        Map<String, Double> resultStr = WebUtil.GSON.fromJson(stock, type);
         Map<Exchange, Double> result = new LinkedHashMap<>();
         for (Map.Entry<String, Double> entry : resultStr.entrySet()) {
             Exchange exchange = db.getExchange(entry.getKey());

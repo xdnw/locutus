@@ -24,6 +24,7 @@ import link.locutus.discord.util.task.ia.IACheckup;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -144,11 +145,9 @@ public class IAPages {
                 avatarUrls.put(id + "", user.getAvatarId());
             }
         }
-        Gson gson = new Gson();
-
-        JsonElement avatarsJson = gson.toJsonTree(avatarUrls);
-        JsonElement usersJson = gson.toJsonTree(usernames);
-        JsonElement messagesJson = gson.toJsonTree(messagesMap);
+        JsonElement avatarsJson = WebUtil.GSON.toJsonTree(avatarUrls);
+        JsonElement usersJson = WebUtil.GSON.toJsonTree(usernames);
+        JsonElement messagesJson = WebUtil.GSON.toJsonTree(messagesMap);
 
         return WebStore.render(f -> JteiachannelsGenerated.render(f, null, ws, db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels));
     }

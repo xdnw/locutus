@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.annotations.SerializedName;
 import link.locutus.discord.apiv1.domains.City;
+import link.locutus.discord.web.WebUtil;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -182,7 +183,7 @@ public class CityBuild {
         if (parseShorthand) {
             buildJson = parseShorthand(buildJson);
         }
-        CityBuild build = new Gson().fromJson(buildJson, CityBuild.class);
+        CityBuild build = WebUtil.GSON.fromJson(buildJson, CityBuild.class);
         JsonParser parser = new JsonParser();
         JsonObject json = parser.parse(buildJson).getAsJsonObject();
         JsonElement land = json.get("land");
@@ -664,7 +665,7 @@ public class CityBuild {
     }
 
     public String toCompressedString() {
-        return new Gson().toJson(this);
+        return WebUtil.GSON.toJson(this);
     }
 
     @Override

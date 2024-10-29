@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.web.WebUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -13,19 +14,17 @@ import java.util.Map;
 
 public class PlayerGPTConfig {
     public Map<String, Map<String, String>> getConfiguration(DBNation nation) {
-        Gson gson = new Gson();
         ByteBuffer gptOptBuf = nation.getMeta(NationMeta.GPT_OPTIONS);
         Map<String, Map<String, String>> gptOptions = new HashMap<>();
         if (gptOptBuf != null) {
             String json = new String(gptOptBuf.array(), StandardCharsets.UTF_8);
-            gptOptions = gson.fromJson(json, new TypeToken<Map<String, Map<String, String>>>(){}.getType());
+            gptOptions = WebUtil.GSON.fromJson(json, new TypeToken<Map<String, Map<String, String>>>(){}.getType());
         }
         return gptOptions;
     }
 
     public void setOptions(DBNation nation, Map<String, Map<String, String>> options) {
-        Gson gson = new Gson();
-        String json = gson.toJson(options);
+        String json = WebUtil.GSON.toJson(options);
         byte[] data = json.getBytes(StandardCharsets.UTF_8);
         nation.setMeta(NationMeta.GPT_OPTIONS, data);
     }
