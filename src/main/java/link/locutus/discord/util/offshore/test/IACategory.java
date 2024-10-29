@@ -284,7 +284,7 @@ public class IACategory {
 
         Role iaRole2 = Roles.INTERNAL_AFFAIRS.toRole(user, db);
         if (iaRole2 != null && interviewer == null && iaRole2 != iaRole) {
-            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole2).grant(Permission.VIEW_CHANNEL));
         }
 
         RateLimitUtil.queue(channel.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
