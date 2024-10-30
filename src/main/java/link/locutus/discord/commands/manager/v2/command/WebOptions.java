@@ -70,6 +70,13 @@ public class WebOptions {
         return this;
     }
 
+    public WebOptions addWithColor(Object key, String text, String color) {
+        this.key.add(key);
+        this.text.add(text);
+        this.color.add(color);
+        return this;
+    }
+
     public Map<String, Object> build() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("key", key);
