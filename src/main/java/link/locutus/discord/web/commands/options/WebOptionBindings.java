@@ -341,13 +341,9 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Treaty.class)
     public WebOption getTreaty() {
         return new WebOption(Treaty.class).setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText().withSubtext();
             for (Treaty treaty : Locutus.imp().getNationDB().getTreaties()) {
-                data.add(Map.of(
-                        "key", treaty.getId() + "",
-                        "text", treaty.toLineString(),
-                        "subtext", treaty.getTurnsRemaining() + ""
-                ));
+                data.add(treaty.getId(), treaty.toLineString(), treaty.getTurnsRemaining() + "");
             }
             return data;
         });
@@ -356,15 +352,11 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBBan.class)
     public WebOption getDBBan() {
         return new WebOption(DBBan.class).setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText().withSubtext();
             Map<Integer, DBBan> bans = Locutus.imp().getNationDB().getBansByNation();
             for (Map.Entry<Integer, DBBan> entry : bans.entrySet()) {
                 DBBan ban = entry.getValue();
-                data.add(Map.of(
-                        "key", entry.getKey() + "",
-                        "text", PW.getName(ban.nation_id, false),
-                        "subtext", ban.reason
-                ));
+                data.add(entry.getKey(), PW.getName(ban.nation_id, false), ban.reason);
             }
             return data;
         });
@@ -379,13 +371,10 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = AGrantTemplate.class)
     public WebOption getAGrantTemplate() {
         return new WebOption(AGrantTemplate.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText();
             GrantTemplateManager manager = db.getGrantTemplateManager();
             for (AGrantTemplate template : manager.getTemplates()) {
-                data.add(Map.of(
-                        "key", template.getName() + "",
-                        "text", template.getType().name() + ":" + template.getName()
-                ));
+                data.add(template.getName(), template.getType().name() + ":" + template.getName());
             }
             return data;
         });
@@ -394,15 +383,12 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Newsletter.class)
     public WebOption getNewsletter() {
         return new WebOption(Newsletter.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText();
             NewsletterManager manager = db.getNewsletterManager();
             if (manager != null) {
                 for (Map.Entry<Integer, Newsletter> entry : manager.getNewsletters().entrySet()) {
                     Newsletter newsletter = entry.getValue();
-                    data.add(Map.of(
-                            "key", entry.getKey() + "",
-                            "text", newsletter.getName()
-                    ));
+                    data.add(entry.getKey(), newsletter.getName());
                 }
             }
             return data;
@@ -412,12 +398,9 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBNation.class)
     public WebOption getDBNation() {
         return new WebOption(DBNation.class).setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText();
             for (DBNation n : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
-                data.add(Map.of(
-                        "key", n.getId() + "",
-                        "text", n.getName()
-                ));
+                data.add(n.getId(), n.getName());
             }
             return data;
         });
@@ -426,12 +409,9 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBAlliance.class)
     public WebOption getDBAlliance() {
         return new WebOption(DBAlliance.class).setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText();
             for (DBAlliance aa : Locutus.imp().getNationDB().getAlliances()) {
-                data.add(Map.of(
-                        "key", "AA:" + aa.getId(),
-                        "text", aa.getName()
-                ));
+                data.add("AA:" + aa.getId(), aa.getName());
             }
             return data;
         });
@@ -440,12 +420,9 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = GuildDB.class)
     public WebOption getGuildDB() {
         return new WebOption(GuildDB.class).setRequiresUser().setQueryMap((db, user, nation) -> {
-            List<Map<String, String>> data = new ArrayList<>();
+            WebOptions data = new WebOptions().withText();
             for (Guild guild : user.getMutualGuilds()) {
-                data.add(Map.of(
-                        "key", guild.getId(),
-                        "text", guild.getName()
-                ));
+                data.add(guild.getId(), guild.getName());
             }
             return data;
         });
