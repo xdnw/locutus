@@ -1739,32 +1739,32 @@ public class UnsortedCommands {
                 stockpile = new HashMap<>();
             } else {
                 stockpile = memberResources2.get(nation);
-                if (stockpile == null) {
-                    if (!aaList.isInAlliance(nation)) {
-                        errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), note.toString()).addMessage( "No stockpile information available (not in the guild's alliance)"));
-                    } else {
-                        errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INVALID_API_KEY, nation, new HashMap<>(), note.toString()).addMessage( "No stockpile information available (are you sure a valid api key is set?)"));
-                    }
-                    continue;
-                }
-                if (ResourceType.convertedTotal(stockpile) < 0) {
-                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, new HashMap<>(), note.toString()).addMessage( "Alliance information access is disabled from their **account** page"));
-                    continue;
-                }
-                Map<ResourceType, Double> toSendCurrent = new HashMap<>();
-                for (ResourceType type : resourcesPerCity.keySet()) {
-                    double required = resourcesPerCity.getOrDefault(type, 0d) * nation.getCities();
-                    double current = stockpile.getOrDefault(type, 0d);
-                    if (required > current) {
-                        toSendCurrent.put(type, required - current);
-                    }
-                }
-                if (!toSendCurrent.isEmpty()) {
-                    fundsToSendNations.put(nation, toSendCurrent);
+            }
+            if (stockpile == null) {
+                if (!aaList.isInAlliance(nation)) {
+                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), note.toString()).addMessage( "No stockpile information available (not in the guild's alliance)"));
                 } else {
-                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, nation, new HashMap<>(), note.toString()).addMessage( "No funds need to be sent"));
-                    continue;
+                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INVALID_API_KEY, nation, new HashMap<>(), note.toString()).addMessage( "No stockpile information available (are you sure a valid api key is set?)"));
                 }
+                continue;
+            }
+            if (ResourceType.convertedTotal(stockpile) < 0) {
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, new HashMap<>(), note.toString()).addMessage( "Alliance information access is disabled from their **account** page"));
+                continue;
+            }
+            Map<ResourceType, Double> toSendCurrent = new HashMap<>();
+            for (ResourceType type : resourcesPerCity.keySet()) {
+                double required = resourcesPerCity.getOrDefault(type, 0d) * nation.getCities();
+                double current = stockpile.getOrDefault(type, 0d);
+                if (required > current) {
+                    toSendCurrent.put(type, required - current);
+                }
+            }
+            if (!toSendCurrent.isEmpty()) {
+                fundsToSendNations.put(nation, toSendCurrent);
+            } else {
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, nation, new HashMap<>(), note.toString()).addMessage( "No funds need to be sent"));
+                continue;
             }
         }
 
