@@ -154,6 +154,23 @@ public class WebOption {
         return allowCompletions;
     }
 
+    public Map<String, Object> getQueryOptions(GuildDB guild, User user, DBNation nation) {
+        if (queryOptions == null) return null;
+        return queryOptions.apply(guild, user, nation);
+    }
+
+    public boolean isRequiresGuild() {
+        return requiresGuild;
+    }
+
+    public boolean isRequiresNation() {
+        return requiresNation;
+    }
+
+    public boolean isRequiresUser() {
+        return requiresUser;
+    }
+
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
         if (options != null) {

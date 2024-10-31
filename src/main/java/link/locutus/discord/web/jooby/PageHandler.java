@@ -1,6 +1,5 @@
 package link.locutus.discord.web.jooby;
 
-import com.google.common.hash.Hashing;
 import gg.jte.generated.precompiled.JtealertGenerated;
 import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.*;
@@ -12,17 +11,14 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.HtmlOptions;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.DenyPermission;
@@ -34,7 +30,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -44,6 +39,7 @@ import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.binding.*;
+import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import com.google.gson.JsonObject;
@@ -54,21 +50,14 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PageHandler implements Handler {
+    private final Map<String, WebOption> queryOptions;
+
     private Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
     private final WebRoot root;
 
@@ -166,6 +155,30 @@ public class PageHandler implements Handler {
             }
         }
 
+        this.queryOptions = getQueryOptions();
+    }
+
+    public WebOption getQueryOption(String name) {
+        return queryOptions.get(name);
+    }
+
+    public Set<String> getQueryOptionNames() {
+        return queryOptions.keySet();
+    }
+
+    private Map<String, WebOption> getQueryOptions() {
+        SimpleValueStore<Object> store = new SimpleValueStore<>();
+        new WebOptionBindings().register(store);
+        Map<String, WebOption> result = new ConcurrentHashMap<>();
+
+        for (Parser optionParser : store.getParsers().values()) {
+            WebOption option = (WebOption) optionParser.apply(store, null);
+            if (option.isAllowQuery()) {
+                result.put(option.getName(), option);
+            }
+        }
+
+        return result;
     }
 
     public CommandGroup getCommands() {

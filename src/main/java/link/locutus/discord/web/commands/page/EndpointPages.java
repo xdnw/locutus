@@ -17,7 +17,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -29,6 +31,8 @@ import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.IOException;
 import java.util.*;
@@ -50,37 +54,36 @@ public class EndpointPages extends PageHelper {
     }
 
     @Command
-    public Map<String, Object> input_options(String type) {
-        System.out.println(":||remove Get option " + type);
-        // InputOptions {
-        //    icon?: string[];
-        //    key: string[];
-        //    text?: string[];
-        //    subtext?: string[];
-        //    color?: string[];
-        //    success?: string;
-        //    message?: string;
-        //}
-        Map<String, Object> result = new LinkedHashMap<>();
-        List<String> exampleForTesting = Arrays.asList(
-                "banana",
-                "apple",
-                "orange",
-                "grape",
-                "kiwi",
-                "mango",
-                "strawberry",
-                "blueberry",
-                "raspberry",
-                "blackberry",
-                "watermelon",
-                "cantaloupe",
-                "honeydew",
-                "papaya",
-                "pineapple"
-        );
-        result.put("key", exampleForTesting);
-        return result;
+    public Map<String, Object> login_mail(Context context, DBNation nation, @Me @Default AuthBindings auth) throws IOException {
+        if (auth != null) {
+            return Map.of("success", false, "message", "Already logged in");
+        }
+        String mailUrl = WebUtil.mailLogin(nation, false,true);
+        return Map.of("success", true, "url", mailUrl);
+    }
+
+    @Command
+    public Map<String, Object> input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
+        PageHandler ph = WebRoot.getInstance().getPageHandler();
+        WebOption option = ph.getQueryOption(type);
+        if (option == null) {
+            return Map.of("success", false, "message", "Invalid option type (" + type + "). available options: " + ph.getQueryOptionNames());
+        }
+        if (option.isRequiresGuild() && db == null) {
+            return Map.of("success", false, "message", option.getName() + " requires a guild. Please select a guild.");
+        }
+        if (option.isRequiresNation() && nation == null) {
+            return Map.of("success", false, "message", option.getName() + " requires a nation. Please select a nation.");
+        }
+        if (option.isRequiresUser() && user == null) {
+            return Map.of("success", false, "message", option.getName() + " requires a user. Please select a user.");
+        }
+        try {
+            return option.getQueryOptions(db, user, nation);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("success", false, "message", "Failed to get options for " + option.getName() + ": " + e.getMessage());
+        }
     }
 
     @Command
@@ -122,36 +125,32 @@ public class EndpointPages extends PageHelper {
     }
 
     @Command
-    public Map<String, Object> query(Context context, WebStore ws, Map<String, Object> queries) throws IOException {
-        DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
-        if (auth != null) {
-            System.out.println(":||remove " + auth.getUserIdRaw() + " | " + auth.getNationIdRaw());
-        } else {
-            System.out.println(":||remove NOOO AUTHH");
-        }
-        System.out.println(":||remove Call queries " + queries);
-        System.out.println(":||remove " + context.header("Authorization"));
-
+    public List<Map<String, Object>> query(Context context, WebStore ws, List<Map.Entry<String, Map<String, Object>>> queries) throws IOException {
         PageHandler handler = WebRoot.getInstance().getPageHandler();
         CommandGroup commands = handler.getCommands();
         CommandCallable apiCommands = commands.get("api");
 
-        Map<String, Object> result = new ConcurrentHashMap<>();
+        List<Map<String, Object>> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
 
-        for (Map.Entry<String, Object> entry : queries.entrySet()) {
+        for (int i = 0; i < queries.size(); i++) {
+            Map.Entry<String, Map<String, Object>> entry = queries.get(i);
             String key = entry.getKey();
-            Object value = entry.getValue();
-
+            Map<String, Object> value = entry.getValue();
             List<String> path = key.contains("/") ? StringMan.split(key, "/") : List.of(key);
             CommandCallable callable = apiCommands.getCallable(path);
+            String error;
             if (callable instanceof ParametricCallable cmd) {
-                Object componentData =  handler.call(cmd, ws, context, value);
-                result.put(key, componentData);
-                System.out.println(":||Remove Component data " + componentData);
+                try {
+                    result.set(i, (Map<String, Object>) handler.call(cmd, ws, context, value));
+                    continue;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    error = e.getMessage();
+                }
             } else {
-                result.computeIfAbsent("errors", k -> new ArrayList<>());
-                ((List<String>) result.get("errors")).add("Invalid command: " + key);
+                error = "Invalid command: " + key;
             }
+            result.set(i, Map.of("success", false, "message", error));
         }
         return result;
     }
