@@ -292,20 +292,38 @@ public enum Roles {
     }
 
     public Set<Long> getAllowedAccounts(User user, GuildDB db) {
-        Set<Integer> aaIds = db.getAllianceIds();
-        Set<Long> allowed = new HashSet<>();
-        if (aaIds.isEmpty()) {
-            if (has(user, db.getGuild())) {
-                allowed.add(db.getIdLong());
+        if (user == null || db == null) return Collections.emptySet();
+        boolean hasAdmin = false;
+        Member member = null;
+        if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) hasAdmin = true;
+        else if (user.getIdLong() == Locutus.loader().getAdminUserId()) hasAdmin = true;
+        else {
+            member = db.getGuild().getMember(user);
+            if (member != null) {
+                hasAdmin = has(member);
+            }
+        }
+        if (hasAdmin) {
+            Set<Long> allowed = new HashSet<>();
+            allowed.add(0L);
+            allowed.addAll(db.getAllianceIds().stream().map(Integer::longValue).collect(Collectors.toSet()));
+            return allowed;
+        } else {
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<Long> allowed = new HashSet<>();
+            if (aaIds.isEmpty()) {
+                if (has(member)) {
+                    allowed.add(db.getIdLong());
+                }
+                return allowed;
+            }
+            for (Integer aaId : aaIds) {
+                if (has(member, aaId)) {
+                    allowed.add(aaId.longValue());
+                }
             }
             return allowed;
         }
-        for (Integer aaId : aaIds) {
-            if (has(user, db.getGuild(), aaId)) {
-                allowed.add(aaId.longValue());
-            }
-        }
-        return allowed;
     }
 
     public String getDesc() {
@@ -407,6 +425,7 @@ public enum Roles {
         if (member == null) return null;
         if (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID
         || member.getIdLong() == Locutus.loader().getAdminUserId()
+        || member.hasPermission(Permission.ADMINISTRATOR)
         || member.isOwner()) return 0L;
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
         List<Role> roles = member.getRoles();
