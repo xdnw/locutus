@@ -54,7 +54,7 @@ public class EndpointPages extends PageHelper {
     }
 
     @Command
-    public Map<String, Object> login_mail(Context context, DBNation nation, @Me @Default AuthBindings auth) throws IOException {
+    public Map<String, Object> login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth != null) {
             return Map.of("success", false, "message", "Already logged in");
         }

@@ -10,13 +10,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.Function;
@@ -118,6 +112,7 @@ public class CustomSheet {
                 continue;
             }
 
+            Map<String, Integer> maxErrors = new HashMap<>();
             Future<?> future = executor.submit(() -> {
                 try {
                     Set<Object> selection = ph.deserializeSelection(store, alias.getSelection(), alias.getModifier());
@@ -156,11 +151,20 @@ public class CustomSheet {
                             try {
                                 String value1 = function.apply(o);
                                 header.set(i, value1 == null ? "" : value1);
-                            } catch (Exception e) {
-                                String column = columns.get(i);
-                                String elemStr = ph.getName(o);
-                                errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(e.getMessage()));
-                                header.set(i, "");
+                            } catch (Throwable e) {
+                                while (e.getCause() != null && e.getCause() != e) {
+                                    e = e.getCause();
+                                }
+                                int currentErrors = maxErrors.merge(tabName, 1, Integer::sum);
+                                if (currentErrors == 25) {
+                                    errors.add("[Tab: `" + tabName + "`] Too many errors, skipping the rest.");
+                                } else if (currentErrors < 25) {
+                                    e.printStackTrace();
+                                    String column = columns.get(i);
+                                    String elemStr = ph.getName(o);
+                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(e.getMessage()));
+                                    header.set(i, "");
+                                }
                             }
                         }
                         sheet.addRow(tabName, header);

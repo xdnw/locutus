@@ -86,7 +86,6 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
 
     default Set<DBNation> getMemberDBNations() {
         Set<DBNation> nations = new HashSet<>();
-
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();

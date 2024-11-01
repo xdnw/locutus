@@ -1640,6 +1640,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return new Treaty(result);
     }
 
+    @Command
     public double getCities() {
         return getMemberDBNations().stream().mapToDouble(DBNation::getCities).sum();
     }
