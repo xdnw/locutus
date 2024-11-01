@@ -37,6 +37,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
@@ -1050,40 +1051,7 @@ public class TradeCommands {
         return response.toString().trim();
     }
 
-    @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds")
-    @RolePermission(Roles.ECON)
-    @IsAlliance
-    public static String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
-        Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
-        if (offshoreDb == null || offshoreDb.getKey() != db) throw new IllegalArgumentException("This command must be run in the offshore server");
-        if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKey.OFFSHORE_DEPOSITS);
-        }
-
-        channel.send("Please wait...");
-
-        OffshoreInstance offshore = db.getOffshore();
-        offshore.sync();
-        Map<ResourceType, Double> stockpile = db.getAllianceList().getStockpile();
-        Set<Long> coalitions = new LinkedHashSet<>(db.getCoalitionRaw(Coalition.OFFSHORING));
-        coalitions.remove(db.getIdLong());
-        for (int id : db.getAllianceIds()) {
-            coalitions.remove((long) id);
-        }
-        coalitions.removeIf(f -> Locutus.imp().getGuildDB(f) == null && Locutus.imp().getGuildDBByAA(f.intValue()) == null);
-
-        String title = "Compare Stockpile to Deposits (" + coalitions.size() + ")";
-        StringBuilder body = new StringBuilder();
-        Set<Long> aaIds = coalitions.stream().filter(f -> f.intValue() == f).collect(Collectors.toSet());
-        Set<Long> corpIds = coalitions.stream().filter(f -> f.intValue() != f).collect(Collectors.toSet());
-        body.append("Alliances: " + StringMan.join(aaIds, ",")).append("\n");
-        body.append("Corporations: " + StringMan.join(corpIds, ",")).append("\n");
-        body.append("Stockpile: `" + ResourceType.resourcesToString(stockpile) + "`\n");
-        body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(stockpile))).append("\n");
-
-        List<String> errors = new ArrayList<>();
-        Set<Long> testedIds = new HashSet<>();
-
+    public static void generateSheet(OffshoreInstance offshore, SpreadSheet sheet, Set<Long> coalitions, double[] allDeposits, List<String> errors) {
         List<String> header = new ArrayList<>(Arrays.asList(
                 "name",
                 "id",
@@ -1095,7 +1063,7 @@ public class TradeCommands {
         }
         sheet.setHeader(header);
 
-        double[] allDeposits = ResourceType.getBuffer();
+        Set<Long> testedIds = new HashSet<>();
         for (Long coalition : coalitions) {
             GuildDB otherDb;
             if (coalition > Integer.MAX_VALUE) {
@@ -1141,6 +1109,47 @@ public class TradeCommands {
 
             }
         }
+    }
+
+    public static Set<Long> getOffshoreCoalitions(GuildDB db) {
+        Set<Long> coalitions = ArrayUtil.sort(db.getCoalitionRaw(Coalition.OFFSHORING), true);
+        coalitions.remove(db.getIdLong());
+        for (int id : db.getAllianceIds()) {
+            coalitions.remove((long) id);
+        }
+        coalitions.removeIf(f -> Locutus.imp().getGuildDB(f) == null && Locutus.imp().getGuildDBByAA(f.intValue()) == null);
+        return coalitions;
+    }
+
+    @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public static String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+        Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
+        if (offshoreDb == null || offshoreDb.getKey() != db) throw new IllegalArgumentException("This command must be run in the offshore server");
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.OFFSHORE_DEPOSITS);
+        }
+
+        channel.send("Please wait...");
+
+        OffshoreInstance offshore = db.getOffshore();
+        offshore.sync();
+        Map<ResourceType, Double> stockpile = db.getAllianceList().getStockpile();
+
+        Set<Long> coalitions = getOffshoreCoalitions(db);
+        String title = "Compare Stockpile to Deposits (" + coalitions.size() + ")";
+        StringBuilder body = new StringBuilder();
+        Set<Long> aaIds = ArrayUtil.sort(coalitions.stream().filter(f -> f.intValue() == f).collect(Collectors.toSet()), true);
+        Set<Long> corpIds = ArrayUtil.sort(coalitions.stream().filter(f -> f.intValue() != f).collect(Collectors.toSet()), true);
+        body.append("Alliances: " + StringMan.join(aaIds, ",")).append("\n");
+        body.append("Corporations: " + StringMan.join(corpIds, ",")).append("\n");
+        body.append("Stockpile: `" + ResourceType.resourcesToString(stockpile) + "`\n");
+        body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(stockpile))).append("\n");
+
+        double[] allDeposits = ResourceType.getBuffer();
+        List<String> errors = new ArrayList<>();
+        generateSheet(offshore, sheet, coalitions, allDeposits, errors);
 
         sheet.updateClearCurrentTab();
         sheet.updateWrite();

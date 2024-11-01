@@ -63,6 +63,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -74,6 +75,7 @@ public class OffshoreInstance {
 
     public static final boolean DISABLE_TRANSFERS = false;
     private final int allianceId;
+    private final AtomicInteger transfersThisSession = new AtomicInteger();
 
     private GuildDB guildDBCached;
 
@@ -1539,18 +1541,28 @@ public class OffshoreInstance {
     }
 
     private TransferResult createTransfer(PoliticsAndWarV3 api, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
+        TransferResult txResult;
         try {
             Bankrec result = api.transferFromBank(ResourceType.resourcesToArray(transfer), receiver, note);
             double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
             String amtStr = ResourceType.resourcesToString(amt);
-            return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
+            txResult = new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
         } catch (HttpClientErrorException.Unauthorized e) {
-            return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
+            txResult = new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
         } catch (RuntimeException e) {
             e.printStackTrace();
             String msg = e.getMessage();
-            return categorize(receiver, transfer, note, StringMan.stripApiKey(msg));
+            txResult = categorize(receiver, transfer, note, StringMan.stripApiKey(msg));
         }
+        TransferStatus status = txResult.getStatus();
+        if (status == TransferStatus.SUCCESS || status == TransferStatus.SENT_TO_ALLIANCE_BANK || status == TransferStatus.OTHER) {
+            transfersThisSession.incrementAndGet();
+        }
+        return txResult;
+    }
+
+    public int getTransfersThisSession() {
+        return transfersThisSession.get();
     }
 
     public TransferResult transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {

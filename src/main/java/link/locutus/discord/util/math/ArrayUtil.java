@@ -581,6 +581,15 @@ public class ArrayUtil {
         };
     }
 
+    public static <T extends Number> Set<T> sort(Set<T> unsorted, boolean ascending) {
+        List<T> sorted = new ArrayList<>(unsorted);
+        Comparator<T> keyComparator = ascending ?
+                Comparator.comparingDouble(Number::doubleValue) :
+                (o1, o2) -> Double.compare(o2.doubleValue(), o1.doubleValue());
+        sorted.sort(keyComparator);
+        return new LinkedHashSet<>(sorted);
+    }
+
     public static <T> Map<T, String> sortStringMap(Map<T, String> unsorted, boolean ascendingAlphabetValues) {
         Comparator<String> valueComparator = ascendingAlphabetValues ?
                 Comparator.comparing(String::toString) :
