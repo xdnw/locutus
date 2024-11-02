@@ -174,8 +174,7 @@ public interface CommandCallable {
         String path = (parentPath + " " + name).trim();
         if (this instanceof CommandGroup group) {
             if (!name.isEmpty()) output.append(indentStr).append("public static class ").append(name).append("{\n");
-            List<CommandCallable> subCommands = new ArrayList<>(new HashSet<>(group.getSubcommands().values()));
-            subCommands.sort(Comparator.comparing(CommandCallable::getPrimaryCommandId));
+            List<CommandCallable> subCommands = new ArrayList<>(new LinkedHashSet<>(group.getSubcommandsSorted().values()));
             for (CommandCallable callable : subCommands) {
                 callable.generatePojo(path, output, indent + 4);
             }

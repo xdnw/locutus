@@ -481,7 +481,7 @@ public class Auth {
                 }
                 String alert = PW.getAlert(dom);
                 if (alert == null || alert.isEmpty()) {
-                    System.out.println(result);;
+                    System.out.println(":||REmove no alert found setrank " + result);;
                 }
                 throw new IllegalArgumentException("No token found: " + PW.getAlert(dom));
             }

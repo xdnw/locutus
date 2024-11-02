@@ -141,4 +141,8 @@ public class WebDB extends DBMainV3 {
     public void deleteOldTempAuth() {
         ctx().execute("DELETE FROM `AUTH` WHERE `TIMESTAMP` < ?;", getCutoff());
     }
+
+    public Set<UUID> getAuthKeys() {
+        return authByUUID.keySet();
+    }
 }

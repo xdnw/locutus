@@ -43,6 +43,11 @@ public class WebUtil {
     }
 
     public static String mailLogin(DBNation nation, boolean backend, boolean allowExisting) throws IOException {
+        ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
+        return mailLogin(pool, nation, backend, allowExisting);
+    }
+
+    public static String mailLogin(ApiKeyPool pool, DBNation nation, boolean backend, boolean allowExisting) throws IOException {
         DBAuthRecord existing = null;
         if (allowExisting) {
             existing = WebRoot.db().get(nation.getNation_id());
@@ -56,13 +61,12 @@ public class WebUtil {
         if (backend) {
             authUrl = WebRoot.REDIRECT + "/page/login?token=" + uuid;
         } else {
-            authUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login?token=" + uuid;
+            authUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + uuid;
         }
         String title = "Login | timestamp:" + System.currentTimeMillis();
         String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
                 MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
 
-        ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
         JsonObject result = nation.sendMail(pool, title, body, true);
         JsonElement success = result.get("success");
         if (success != null && success.getAsBoolean()) {

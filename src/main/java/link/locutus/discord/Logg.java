@@ -21,12 +21,10 @@ public class Logg {
     private static final boolean DEBUG = true;
 
     public static void text(Object obj) {
-//        System.out.println(obj);
         LOGGER.error(obj);
     }
 
     public static void text(String msg, Object... obj) {
-//        System.out.println(String.format(msg, obj));
         LOGGER.error(msg, obj);
     }
 

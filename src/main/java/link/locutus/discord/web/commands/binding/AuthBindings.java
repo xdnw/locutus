@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
@@ -102,6 +103,10 @@ public class AuthBindings extends WebBindingHelper {
     }
 
     public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user, boolean allowRedirect) {
+        if (nation != null && user == null) {
+            GuildDB db = nation.getGuildDB();
+            if (db != null) return db.getGuild();
+        }
         String guildCookieId = PageHandler.CookieType.GUILD_ID.getCookieId();
         String guildStr = context.cookie(guildCookieId);
         String message = null;
@@ -172,7 +177,6 @@ public class AuthBindings extends WebBindingHelper {
 
     public static String getAccessToken(String code, String redirect) throws IOException {
         if (redirect == null) redirect = WebRoot.REDIRECT;
-        System.out.println(":||remove getAccessToken " + redirect + " | " + code);
         CloseableHttpClient client = HttpClients.custom().build();
 
         HttpUriRequest request = RequestBuilder.post()
@@ -189,7 +193,6 @@ public class AuthBindings extends WebBindingHelper {
         CloseableHttpResponse response = client.execute(request);
         String json = new String(response.getEntity().getContent().readAllBytes());
         JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-        System.out.println(":||Remove Access token " + obj);
         JsonElement accessToken = obj.get("access_token");
         return accessToken == null ? null : accessToken.getAsString();
     }
@@ -221,7 +224,6 @@ public class AuthBindings extends WebBindingHelper {
             throw new IllegalArgumentException("Cannot require nation or user without allowing redirect");
         }
         boolean pageDesiresRedirect = false;
-        System.out.println("Path :|| REMOVE " + context.path());
         boolean isBackend = true;
 
         List<String> errors = new ArrayList<>();
@@ -279,7 +281,6 @@ public class AuthBindings extends WebBindingHelper {
                             record = generateAuthRecord(context, Long.parseLong(idStr.getAsString()), previousNationId);
                             WebUtil.setCookie(context, PageHandler.CookieType.DISCORD_OAUTH.getCookieId(), record.getUUID().toString(), (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS));
                         } else {
-                            System.out.println("Invalid user " + user);
                             errors.add("Invalid user: " + user);
                         }
                     }
@@ -288,7 +289,6 @@ public class AuthBindings extends WebBindingHelper {
             {
                 // if command auth exists
                 String commandAuth = cookies.get(PageHandler.CookieType.URL_AUTH.getCookieId());
-                System.out.println(":||remove Command cookies " + commandAuth + " | " + cookies);
                 if (commandAuth != null) {
                     UUID uuid = UUID.fromString(commandAuth);
                     record = WebRoot.db().get(uuid);
@@ -305,7 +305,6 @@ public class AuthBindings extends WebBindingHelper {
         if (isLoginPage) {
             if (queryMap.containsKey("token")) {
                 String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
-                System.out.println("Has token " + token);
                 if (token != null) {
                     pageDesiresRedirect = true;
                     try {

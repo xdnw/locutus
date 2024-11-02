@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.json.JSONObject;
 
@@ -19,6 +20,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -27,7 +29,7 @@ public class CommandGroup implements ICommandGroup {
     private final ValidatorStore validators;
     private final CommandCallable parent;
     private final List<String> aliases;
-    private final Map<String, CommandCallable> subcommands = new LinkedHashMap<>();
+    private final Map<String, CommandCallable> subcommands = new ConcurrentHashMap<>();
     private String help, desc;
 
     public CommandGroup(CommandCallable parent, String[] aliases, ValueStore store, ValidatorStore validators) {
@@ -40,7 +42,8 @@ public class CommandGroup implements ICommandGroup {
     @Override
     public JsonObject toJson(PermissionHandler permHandler, boolean includeReturnType) {
         JsonObject root = new JsonObject();
-        for (Map.Entry<String, CommandCallable> entry : subcommands.entrySet()) {
+
+        for (Map.Entry<String, CommandCallable> entry : getSubcommandsSorted().entrySet()) {
             root.add(entry.getKey(), entry.getValue().toJson(permHandler, includeReturnType));
         }
         return root;

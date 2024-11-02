@@ -256,6 +256,7 @@ public class CommandManager2 {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");
+            getCommands().registerMethod(new WebCommands(), List.of("mail"), "mailLogin", "web_login");
         }
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "costBulk", "cost");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militarizationTime", "militarization_time");

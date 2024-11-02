@@ -57,17 +57,35 @@ public class DBAuthRecord {
         return System.currentTimeMillis() - timestamp > TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
     }
 
-    public Map<String, Object> toMap() {
+    /**
+     * Convert this record to a map for JSON serialization
+     * @param includeExtras include names and icons
+     * @return
+     */
+    public Map<String, Object> toMap(boolean includeExtras) {
         Map<String, Object> data = new HashMap<>();
         Long userId = getUserId();
         if (userId != null) {
             data.put("user", userId);
-            data.put("user_valid", (getUser(false) != null));
+            User user = DiscordUtil.getUser(userId);
+            data.put("user_valid", (user != null));
+            if (user != null) {
+                data.put("user_name", DiscordUtil.getFullUsername(user));
+                data.put("user_icon", user.getEffectiveAvatarUrl());
+            }
         }
         Integer nationId = getNationId();
         if (nationId != null) {
             data.put("nation", nationId);
-            data.put("nation_valid", (getNation(true) != null));
+            DBNation nation = DBNation.getById(nationId);
+            data.put("nation_valid", (nation != null));
+            if (nation != null) {
+                data.put("nation_name", nation.getName());
+                if (nation.getAlliance_id() != 0) {
+                    data.put("alliance", nation.getAlliance_id());
+                    data.put("alliance_name", nation.getAllianceName());
+                }
+            }
         }
         data.put("expires", timestamp + "");
         return data;

@@ -50,10 +50,8 @@ public class NationsFileSnapshot implements INationSnapshot {
 
         long start = System.currentTimeMillis();
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = dumper.getUtil().getCachedVmRanged(day + 1, false);
-        System.out.println(":||REMove fetch vm ranges: " + ( - start + (start = System.currentTimeMillis())) + "ms");
         if (nationIds == null) {
             missing = dumper.getUtil().getVMNations(vmRanges, (int) day);
-            System.out.println(":||REMove VM Nations: " + ( - start + (start = System.currentTimeMillis())) + "ms");
             missing.removeIf(nations::containsKey);
         }
 
@@ -86,9 +84,6 @@ public class NationsFileSnapshot implements INationSnapshot {
             }
         }
 
-        System.out.println(":||REMove process missing: " + ( - start + (start = System.currentTimeMillis())) + "ms");
-        System.out.println("Num snapshots to check " + nationsByDay.size());
-
         ExecutorService executor = Locutus.imp().getExecutor();
         List<Future<?>> tasks = new ObjectArrayList<>();
         for (Map.Entry<Integer, Set<Integer>> entry : nationsByDay.entrySet()) {
@@ -116,7 +111,6 @@ public class NationsFileSnapshot implements INationSnapshot {
             FileUtil.get(task);
         }
 
-        System.out.println(":||REMove load snapshots: " + ( - start + (start = System.currentTimeMillis())) + "ms");
         return this;
     }
 

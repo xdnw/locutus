@@ -70,23 +70,17 @@ public class DataUtil {
         long fileDay = -1;
         if (file.exists()) {
             try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
-                System.out.println("Load from file");
                 fileDay = dis.readLong();
             } catch (FileNotFoundException e) {
                 fileDay = -1; // File does not exist, force recreation
             }
         }
 
-        System.out.println(":||Remove vm cache 1 " + ( - start + (start = System.currentTimeMillis())));
-
         if (fileDay == -1 || fileDay != currentDay && (fileDay < minDay || minDay < 0)) {
-            System.out.println("Is not cached");
             // Recreate the ranges
             Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = getVMRanges(f -> true, f -> true, true);
             List<Integer> nationIdsSorted = new ObjectArrayList<>(ranges.keySet());
             nationIdsSorted.sort(Integer::compareTo);
-
-            System.out.println(":||Remove vm cache 2 " + ( - start + (start = System.currentTimeMillis())));
 
             // Write the new ranges to the file
             try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file), Character.MAX_VALUE)) {
@@ -105,13 +99,9 @@ public class DataUtil {
                 }
             }
 
-            System.out.println(":||Remove vm cache 3 " + ( - start + (start = System.currentTimeMillis())));
-
             return ranges;
         }
 
-        System.out.println(":||Remove vm cache 4 " + ( - start + (start = System.currentTimeMillis())));
-        // Read the ranges from the file
         Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = new Int2ObjectOpenHashMap<>();
         try (FastBufferedInputStream fbis = new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)) {
             fbis.skip(8); // Skip the first 8 bytes
@@ -131,8 +121,6 @@ public class DataUtil {
             }
         }
 
-        System.out.println(":||Remove vm cache 5 " + ( - start + (start = System.currentTimeMillis())));
-
         if (addCurrentStatus) {
             for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
                 if (nation.getVm_turns() > 0) {
@@ -144,8 +132,6 @@ public class DataUtil {
                 }
             }
         }
-
-        System.out.println(":||Remove vm cache 6 " + ( - start + (start = System.currentTimeMillis())));
 
         return ranges;
     }
@@ -337,7 +323,6 @@ public class DataUtil {
 
                     if (att instanceof VictoryCursor victory) {
 //                        victory.att.setInfra_destroyed_value(cost);
-//                        System.out.println("Save $" + att.getInfra_destroyed_value());
 //                        Locutus.imp().getWarDb().saveAttacks(List.of(att));
                     }
 

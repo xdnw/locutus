@@ -2,14 +2,16 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.util.math.ArrayUtil;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public interface ICommandGroup extends CommandCallable {
     Map<String, CommandCallable> getSubcommands();
+
+    default Map<String, CommandCallable> getSubcommandsSorted() {
+        return ArrayUtil.sortMap(getSubcommands(), Comparator.comparing(CommandCallable::getPrimaryCommandId));
+    }
 
     default Set<String> getSubCommandIds() {
         return getSubcommands().keySet();
@@ -17,7 +19,7 @@ public interface ICommandGroup extends CommandCallable {
 
     default Set<String> primarySubCommandIds() {
         Map<CommandCallable, String> reverse = new HashMap<>();
-        getSubcommands().forEach((k, v) -> reverse.putIfAbsent(v, k));
+        getSubcommandsSorted().forEach((k, v) -> reverse.putIfAbsent(v, k));
         return new HashSet<>(reverse.values());
     }
 }

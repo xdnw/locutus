@@ -42,7 +42,6 @@ public class JavalinBindings extends BindingHelper {
 
     @Binding
     public Map<String, Object> jsonMap(String input) {
-        System.out.println(":||remove Input " + input);
         return WebUtil.GSON.fromJson(input, Map.class);
     }
 

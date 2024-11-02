@@ -54,6 +54,15 @@ public class EndpointPages extends PageHelper {
     }
 
     @Command
+    public Map<String, Object> set_guild(Context context, @Me @Default User user, Guild guild, @Me @Default DBAuthRecord auth) {
+        if (user == null) return Map.of("success", false, "message", "No user found, please login via discord");
+        String id = guild.getId();
+        String name = guild.getName();
+        String icon = guild.getIconUrl();
+        return Map.of("success", true, "value", Map.of("id", id, "name", name, "icon", icon));
+    }
+
+    @Command
     public Map<String, Object> login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth != null) {
             return Map.of("success", false, "message", "Already logged in");
@@ -111,7 +120,7 @@ public class EndpointPages extends PageHelper {
         if (auth == null) {
             return Map.of("success", false, "message", "No auth record found");
         }
-        AuthBindings.logout(ws, context, auth, true);
+        AuthBindings.logout(ws, context, auth, false);
         List<String> cookiesToRemove = Arrays.asList(
                 URL_AUTH.getCookieId(),
                 URL_AUTH_SET.getCookieId()
@@ -215,13 +224,14 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @NoForm
-    public Map<String, Object> session(WebStore ws, Context context) throws IOException {
-        DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
+    public Map<String, Object> session(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
         if (auth != null) {
-            Map<String, Object> data = auth.toMap();
+            Map<String, Object> data = auth.toMap(true);
             if (guild != null) {
                 data.put("guild", guild.getIdLong());
+                data.put("guild_name", guild.getName());
+                data.put("guild_icon", guild.getIconUrl());
             }
             return data;
         } else {
