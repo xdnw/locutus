@@ -361,7 +361,7 @@ public class CustomSheetCommands {
     @Command(desc = "Generate or update a spreadsheet from a url\n" +
             "Each tab must be a valid selection, prefixed by the type e.g. `nation:*`\n" +
             "The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String auto(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
         CustomSheetManager manager = db.getSheetManager();
         PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();

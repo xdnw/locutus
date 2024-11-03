@@ -2404,7 +2404,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get the in-game resources a member nation has")
-    @RolePermission(Roles.ECON)
+    @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS, Roles.ECON_STAFF, Roles.MILCOM}, any = true)
     public Map<ResourceType, Double> getStockpile(ValueStore store, @Me GuildDB db) {
         if (!db.isAllianceId(alliance_id)) {
             throw new IllegalArgumentException("Nation " + nation + " is not member of " + db.getGuild() + " alliance: " + db.getAllianceIds());
