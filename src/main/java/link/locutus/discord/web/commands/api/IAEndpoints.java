@@ -81,14 +81,14 @@ public class IAEndpoints {
         return Map.of("success", true);
     }
 
-    @Command
-    @RolePermission
-    public Map<String, Object> balance(@Me GuildDB db, @Me DBNation nation) {
-//        balance: {
-//            breakdown: {[key: string]: number[]}
-//            total: number[]
-//            escrow: number[]
-//            can_withdraw: boolean
-//        }
-    }
+//    @Command
+//    @RolePermission
+//    public Map<String, Object> balance(@Me GuildDB db, @Me DBNation nation) {
+////        balance: {
+////            breakdown: {[key: string]: number[]}
+////            total: number[]
+////            escrow: number[]
+////            can_withdraw: boolean
+////        }
+//    }
 }
