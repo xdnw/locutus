@@ -1,9 +1,11 @@
 package link.locutus.discord.web.commands;
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.web.commands.api.EndpointPages;
+
 public class WM {
         public static class api{
-            @AutoRegister(clazz=link.locutus.discord.web.commands.page.EndpointPages.class,method="login")
+            @AutoRegister(clazz= EndpointPages.class,method="login")
             public static class login extends CommandRef {
                 public static final login cmd = new login();
             public login nation(String value) {
@@ -19,17 +21,17 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.page.EndpointPages.class,method="logout")
+            @AutoRegister(clazz= EndpointPages.class,method="logout")
             public static class logout extends CommandRef {
                 public static final logout cmd = new logout();
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.page.EndpointPages.class,method="session")
+            @AutoRegister(clazz= EndpointPages.class,method="session")
             public static class session extends CommandRef {
                 public static final session cmd = new session();
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.page.EndpointPages.class,method="tradePriceByDayJson")
+            @AutoRegister(clazz= EndpointPages.class,method="tradePriceByDayJson")
             public static class tradePriceByDayJson extends CommandRef {
                 public static final tradePriceByDayJson cmd = new tradePriceByDayJson();
             public tradePriceByDayJson resources(String value) {

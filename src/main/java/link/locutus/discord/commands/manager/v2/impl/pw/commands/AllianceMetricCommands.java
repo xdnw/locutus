@@ -362,7 +362,7 @@ public class AllianceMetricCommands {
         };
     }
 
-    @Command()
+    @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots")
     public void metricByGroup(@Me IMessageIO io, @Me GuildDB db,
                                 Set<NationAttributeDouble> metrics,
                                 NationList nations,
@@ -378,7 +378,7 @@ public class AllianceMetricCommands {
         table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
     }
 
-    @Command
+    @Command(desc = "Generate and save the alliance metrics over a period of time, using nation and city snapshots to calculate the metrics")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String saveMetrics(Set<AllianceMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end, @Switch("o") boolean overwrite, @Switch("t") boolean saveAllTurns) throws IOException, ParseException {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");

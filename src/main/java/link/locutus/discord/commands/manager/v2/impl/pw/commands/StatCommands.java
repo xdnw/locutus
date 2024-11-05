@@ -2625,7 +2625,8 @@ public class StatCommands {
         sheet.addRow(row);
     }
 
-    @Command
+    @Command(desc = "List the potential alliance merges over a period of time\n" +
+            "Determined by finding alliances where a large percent of members leave to join another alliance")
     @RolePermission(Roles.ADMIN)
     public void listMerges(
             @Me GuildDB db,

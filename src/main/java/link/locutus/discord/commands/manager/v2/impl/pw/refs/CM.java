@@ -449,11 +449,6 @@ public class CM {
                     public static final syncCities cmd = new syncCities();
 
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncInfraLand")
-                public static class syncInfraLand extends CommandRef {
-                    public static final syncInfraLand cmd = new syncInfraLand();
-
-                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncLootFromAttacks")
                 public static class syncLootFromAttacks extends CommandRef {
                     public static final syncLootFromAttacks cmd = new syncLootFromAttacks();
@@ -5568,14 +5563,6 @@ public class CM {
                 public static final nation_placeholder cmd = new nation_placeholder();
             public nation_placeholder command(String value) {
                 return set("command", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="query")
-            public static class query extends CommandRef {
-                public static final query cmd = new query();
-            public query input(String value) {
-                return set("input", value);
             }
 
             }

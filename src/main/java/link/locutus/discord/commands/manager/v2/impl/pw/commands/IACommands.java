@@ -212,6 +212,73 @@ public class IACommands {
         return null;
     }
 
+    @Command(desc = "Sort the channels in a set of categories based on sorting rules in a spreadsheet\n" +
+            "The channels must be in the form `{nation}-{nation_id}`\n" +
+            "The sheet must have columns: `category` and `filter`\n" +
+            "If a nation matches multiple filters, it will prioritize its current category, then the next free category (max channels 50 per category)\n" +
+            "Add a channel filter to only sort channels for those nations")
+    public String sortChannelsSheetRules(@Me GuildDB db, @Me Guild guild, @Me User author, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    SpreadSheet sheet,
+     @Arg("Optional filter to only sort channels for those nations")
+         @Default NationFilter filter,
+     @Switch("w") boolean warn_on_filter_fail,
+     @Switch("f") boolean force) {
+        sheet.loadValues(null, true);
+        List<Object> category = sheet.findColumn("category");
+        List<Object> filters = sheet.findColumn("filter");
+        if (category == null) {
+            throw new IllegalArgumentException("Sheet must have column: `category`");
+        }
+        if (filters == null) {
+            throw new IllegalArgumentException("Sheet must have column: `filter`");
+        }
+        List<String> errors = new ArrayList<>();
+        Map<Category, NationFilter> filterMap = new LinkedHashMap<>();
+        int min = Math.min(category.size(), filters.size());
+        for (int i = 0; i < min; i++) {
+            Object categoryObj = category.get(i);
+            String categoryStr = categoryObj == null ? null : categoryObj.toString();
+            if (categoryStr == null || categoryStr.isEmpty()) {
+                errors.add("[Row:" + (i + 2) + "] Missing category");
+                continue;
+            }
+            Category cat = DiscordBindings.category(guild, categoryStr, null);
+            if (cat == null) {
+                errors.add("[Row:" + (i + 2) + "] Category not found: `" + categoryStr + "`");
+                continue;
+            }
+            Object filterObj = filters.get(i);
+            String filterStr = filterObj == null ? null : filterObj.toString();
+            if (filterStr == null || filterStr.isEmpty()) {
+                errors.add("[Row:" + (i + 2) + "] Missing filter");
+                continue;
+            }
+            try {
+                NationFilter nationFilter = new NationFilterString(filterStr, guild, author, me);
+                filterMap.put(cat, nationFilter);
+            } catch (IllegalArgumentException e) {
+                errors.add("[Row:" + (i + 2) + "] Error Resolving filter " + e.getMessage());
+            }
+        }
+        Function<DBNation, Set<Category>> catFunc = nation -> {
+            Set<Category> categories = new LinkedHashSet<>();
+            for (Map.Entry<Category, NationFilter> entry : filterMap.entrySet()) {
+                if (entry.getValue().test(nation)) {
+                    categories.add(entry.getKey());
+                }
+            }
+            return categories.isEmpty() ? null : categories;
+        };
+        IMessageBuilder msg = sortChannels(db, guild, io, command, filterMap.keySet(), catFunc, filter, warn_on_filter_fail, force);
+        if (!errors.isEmpty()) {
+            msg = msg.append("\nCategory Name Errors:\n" + StringMan.join(errors, "\n"));
+        }
+        msg.send();
+        return null;
+    }
+
+
+
     @Command(desc = "Sort the channels in a set of categories into new categories based on the category name\n" +
             "The channels must be in the form `{nation}-{nation_id}`\n" +
             "Receiving categories must resolve to a nation filter: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>\n" +
@@ -260,7 +327,7 @@ public class IACommands {
         }
 
         Function<DBNation, Set<Category>> catFunc = nation -> {
-            Set<Category> categories = new HashSet<>();
+            Set<Category> categories = new LinkedHashSet<>();
             for (Map.Entry<Category, NationFilter> entry : filters.entrySet()) {
                 if (entry.getValue().test(nation)) {
                     categories.add(entry.getKey());

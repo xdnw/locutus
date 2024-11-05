@@ -1639,7 +1639,10 @@ public class GrantCommands {
 
 
     // grant_template send <template> <receiver> <partial> <expire>
-    @Command
+    @Command(desc = "Attempt to send a grant template to a nation if they are eligable\n" +
+            "Reports the missing requirements if the grant cannot be sent\n" +
+            "You must create templates in order to use this command\n" +
+            "Alternatively use the non template grant commands to send funds if you don't need access controls")
     public String templateSend(@Me GuildDB db, @Me User user, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
@@ -2752,7 +2755,7 @@ public class GrantCommands {
 //
 //    }
 
-    @Command
+    @Command(desc = "Send a nation funds from their escrowed balance, if they have any")
     @HasOffshore
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount,
