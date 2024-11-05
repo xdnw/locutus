@@ -279,7 +279,7 @@ public class AdminCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Regenerate the static command classes")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String savePojos() throws IOException {
         CommandManager2 manager = Locutus.cmd().getV2();
@@ -291,7 +291,7 @@ public class AdminCommands {
         }
         return "Done!";
     }
-    @Command
+    @Command(desc = "Run the militarization alerts task")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String runMilitarizationAlerts() {
         AllianceListener.runMilitarizationAlerts();
@@ -570,7 +570,7 @@ public class AdminCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers")
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
     public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -641,14 +641,14 @@ public class AdminCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Run the escalation alerts task")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String checkActiveConflicts() {
         WarUpdateProcessor.checkActiveConflicts();
         return "Done! (see console)";
     }
 
-    @Command
+    @Command(desc = "Fetch and update the bans from the API")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncBans(@Default("false") boolean discordBans) throws SQLException {
         Locutus.imp().getNationDB().updateBans(Event::post);
@@ -775,7 +775,7 @@ public class AdminCommands {
         }
     }
 
-    @Command
+    @Command(desc = "Generate and save the wiki pages for the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String dumpWiki(@Default String pathRelative) throws IOException, InvocationTargetException, IllegalAccessException {
         if (pathRelative == null) pathRelative = "../locutus.wiki";
@@ -787,7 +787,7 @@ public class AdminCommands {
     }
 
 
-    @Command
+    @Command(desc = "Fetch and update the treasure data from the API")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncTreasures() {
         Locutus.imp().getNationDB().updateTreasures(Event::post);
@@ -865,7 +865,7 @@ public class AdminCommands {
         return "Done! Imported " + count + "/" + lines.length + " users from " + url;
     }
 
-    @Command
+    @Command(desc = "Fetch updated wars from the API")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncWars(@Switch("c") boolean updateCityCounts) throws IOException, ParseException {
         if (updateCityCounts) {
@@ -876,7 +876,14 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command
+    @Command(desc = "Reload the bot's config.yaml file")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String reloadConfig() {
+        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+        return "Done!";
+    }
+
+    @Command(desc = "Remove all guild settings that correspond to channels the bot cannot access")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {
         Map<GuildDB, List<GuildSetting>> toUnset = new LinkedHashMap<>();
@@ -917,13 +924,14 @@ public class AdminCommands {
     }
 
 
-    @Command
+    @Command(desc = "Terminate running tasks and attempt to stop the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
     public void stop(boolean save) {
         Locutus.imp().stop();
     }
 
-    @Command
+    @Command(desc = "Run the guild referral task for the nations in the alliance, and apply rewards\n" +
+            "Only works if those are configured")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncReferrals(@Me GuildDB db) {
         if (!db.isValidAlliance()) return "Not in an alliance";
@@ -1463,7 +1471,8 @@ public class AdminCommands {
         return StringMan.join(response, "\n").trim();
     }
 
-    @Command
+    @Command(desc = "Send a direct message on discord to the nations specified\n" +
+            "If they are not registered, then no message will be sent")
     @RolePermission(value = Roles.MAIL, root = true)
     public String dm(@Me User author, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command, Set<DBNation> nations, String message, @Switch("f") boolean force) {
         if (nations.size() > 500) {
@@ -1717,7 +1726,7 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command()
+    @Command(desc = "Print the usage stats the api for your alliance to console")
     @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me DBAlliance alliance) {
@@ -1816,7 +1825,8 @@ public class AdminCommands {
         return "Deleted " + deleted + " channels";
     }
 
-    @Command
+    @Command(desc = "List guilds which have not sent a recent message\n" +
+            "Note: Deprecated. Not reliable if message content intent is disabled")
     @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredGuilds(boolean checkMessages) {
@@ -1897,7 +1907,7 @@ public class AdminCommands {
 
     }
 
-    @Command
+    @Command(desc = "Make the bot leave the server with the specified ID")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String leaveServer(long guildId) {
         GuildDB db = Locutus.imp().getGuildDB(guildId);
@@ -1907,7 +1917,7 @@ public class AdminCommands {
         return "Leaving " + guild.getName();
     }
 
-    @Command
+    @Command(desc = "List accounts with the offshore which are inactive, as well as details about last owner/alliance activity and last transfer info")
     @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredOffshores() {
@@ -2024,7 +2034,7 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command()
+    @Command(desc = "List the owners of the guilds Locutus is connected to")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listGuildOwners() {
         ArrayList<GuildDB> guilds = new ArrayList<>(Locutus.imp().getGuildDatabases().values());
@@ -2043,27 +2053,15 @@ public class AdminCommands {
         return result.toString();
     }
 
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncInfraLand() throws IOException, ParseException {
-        List<Event> events = new ArrayList<>();
-        Locutus.imp().getNationDB().updateAllCities(events::add);
-        if (events.size() > 0) {
-            Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events) event.post();;
-            });
-        }
-        return "Updated city infra land. " + events.size() + " changes detected";
-    }
 
-    @Command()
+    @Command(desc = "Calculate this turns alliance metrics for the top alliances (default 80) and save them")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncMetrics(@Default("80") int topX) throws IOException, ParseException {
         AllianceMetric.update(topX);
         return "Updated metrics for top " + topX + " alliances";
     }
 
-    @Command()
+    @Command(desc = "Fetch and update the cities of all nations using the API, and run associated events")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCities(NationDB db) throws IOException, ParseException {
         StringBuilder result = new StringBuilder();
@@ -2122,7 +2120,9 @@ public class AdminCommands {
 //    }
 
 
-    @Command()
+    @Command(desc = "Fetch and update nations from the API\n" +
+            "If no nations are specified, then all will be fetched\n" +
+            "Note: This does not update cities")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncNations(NationDB db, @Default Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
         if (dirtyNations) {
@@ -2143,7 +2143,9 @@ public class AdminCommands {
         return "Updated " + updatedIds.size() + " nations. " + events.size() + " changes detected";
     }
 
-    @Command()
+    @Command(desc = "Fetch and update bank records\n" +
+            "If no alliance is specified, only public bank records are fetched\n" +
+            "Alliance records are restricted by API limitations, typically 14 days, regardless of the timestamp specified")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncBanks(@Me GuildDB db, @Me IMessageIO channel, @Default DBAlliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
         if (alliance != null) {
@@ -2159,14 +2161,14 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command()
+    @Command(desc = "Recalculate blockade flags for all nations, and run associated events")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncBlockades() throws IOException, ParseException {
         Locutus.imp().getWarDb().syncBlockades();
         return "Done!";
     }
 
-    @Command(aliases = {"syncforum", "syncforums"})
+    @Command(desc = "Fetch and save forum post topic names, optionally for a specific section id/section name")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncForum(@Default Integer sectionId, @Default String sectionName) throws IOException, ParseException, SQLException {
         ForumDB forumDB = Locutus.imp().getForumDb();
@@ -2222,14 +2224,14 @@ public class AdminCommands {
         return result.toString().trim();
     }
 
-    @Command
+    @Command(desc = "Recalculate bans of nations sharing the same network concurrently")
     @RolePermission(value = Roles.ADMIN, root = true)
     public synchronized String importLinkedBans() throws IOException {
         Locutus.imp().getNationDB().importMultiBans();
         return "Done";
     }
 
-    @Command
+    @Command(desc = "List players currently sharing a network or an active ban")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired, @Switch("f") boolean forceUpdate) throws IOException {
         if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
@@ -2352,7 +2354,7 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Recalculate the alliance and nation loots from the attacks stored in the database")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncLootFromAttacks() {
         int found = 0;
@@ -2382,7 +2384,10 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command
+    @Command(desc = "Global toggles for conditional message settings\n" +
+            "setMeta = If nation meta is set so that multiple messages cannot be sent to the same person, or to older nations\n" +
+            "sendMessages = If message sending is enabled\n" +
+            "run = Force send the messages now to applicable nations")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String conditionalMessageSettings(boolean setMeta, boolean sendMessages, boolean run) {
         GuildCustomMessageHandler messageHandler = Locutus.imp().getMessageHandler();
@@ -2642,7 +2647,6 @@ public class AdminCommands {
         return "Done!";
     }
 
-//    SyncBanks
     @Command(desc = "Force a fetch and update of banks from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncOffshore(DBAlliance alliance) throws IOException {

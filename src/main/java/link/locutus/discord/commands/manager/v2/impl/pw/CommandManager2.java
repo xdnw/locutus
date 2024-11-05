@@ -254,10 +254,11 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");
-            getCommands().registerMethod(new WebCommands(), List.of("mail"), "mailLogin", "web_login");
-        }
+        getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");
+        getCommands().registerMethod(new WebCommands(), List.of("mail"), "mailLogin", "web_login");
+        getCommands().registerMethod(new IACommands(), List.of("channel", "sort"), "sortChannelsSheetRules", "category_rule_sheet");
+
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "costBulk", "cost");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "militarizationTime", "militarization_time");
 
@@ -586,7 +587,6 @@ public class CommandManager2 {
             this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
             this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
-            this.commands.registerMethod(help, List.of("help"), "query", "query");
 
             GPTCommands gptCommands = new GPTCommands();
 

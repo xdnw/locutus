@@ -53,14 +53,7 @@ public class HelpCommands {
 //
 //    }
 
-    @Command
-    public String query(ValueStore store, @Me GuildDB db, @Me User user, @Me IMessageIO io, String input) throws IOException {
-        return "Not implemented";
-//        String result = getGPT().generateSolution(store, db, user, input);
-//        return result;
-    }
-
-    @Command
+    @Command(desc = "Check a message for moderation to see if it is flagged")
     public void moderation_check(@Me IMessageIO io, String input) throws IOException {
         List<String> inputs = List.of(input);
         List<ModerationResult> results = getGPT().getHandler().getModerator().moderate(inputs);
@@ -77,7 +70,7 @@ public class HelpCommands {
         msg.send();
     }
 
-    @Command
+    @Command(desc = "Display help information for a command argument type")
     public void argument(@Me IMessageIO io, Parser argument, @Switch("s") boolean skipOptionalArgs) {
         Key key = argument.getKey();
         String title = "`" + key.toSimpleString() + "`";

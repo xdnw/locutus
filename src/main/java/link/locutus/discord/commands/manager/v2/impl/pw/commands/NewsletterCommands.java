@@ -35,18 +35,30 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class NewsletterCommands {
+
+    public static void main(String[] args) {
+        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+        Settings.WEB.CHAT_EXPORTER exportSettings = Settings.INSTANCE.WEB.CHAT_EXPORTER;
+        Set<Long> channels = new LinkedHashSet<>(exportSettings.NEWS_CHANNELS);
+
+        // C:\DCE-CLI\DiscordChatExporter.Cli.exe export -t TOKEN -c CHANNEL -f Json --after "2019-09-17 23:34" --utc -o "TODO"
+        // if I want media
+        // --media --reuse-media --media-dir "TODO"
+        String exeFile = exportSettings.LOCATION;
+        List<String> command = Arrays.asList("export");
+
+        // Fetch last export date
+        // for each channel
+        // fetch the name of the channel (else, unknown)
+        // Export the channel
+        // aggregate it with the existing one
+        // set the new export date
+    }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
     @Command(desc = "Create a new newsletter with a name\n" +

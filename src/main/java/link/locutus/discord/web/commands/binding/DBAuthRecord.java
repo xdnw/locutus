@@ -86,7 +86,15 @@ public class DBAuthRecord {
                     data.put("alliance_name", nation.getAllianceName());
                 }
             }
+            if (userId != null) {
+                PNWUser registeredNation = Locutus.imp().getDiscordDB().getUserFromDiscordId(userId);
+                if (registeredNation != null) {
+                    data.put("registered", true);
+                    data.put("registered_nation", registeredNation.getNationId());
+                }
+            }
         }
+
         data.put("expires", timestamp + "");
         return data;
     }

@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.entities.ApiRecord;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;

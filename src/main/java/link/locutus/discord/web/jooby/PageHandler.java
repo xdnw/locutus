@@ -11,8 +11,6 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.HtmlOptions;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -38,6 +36,9 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
+import link.locutus.discord.web.commands.api.EndpointPages;
+import link.locutus.discord.web.commands.api.IAEndpoints;
+import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.binding.*;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
@@ -105,6 +106,8 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new AlliancePages(), "page");
 
         this.commands.registerSubCommands(new EndpointPages(), "api");
+        this.commands.registerSubCommands(new TradeEndpoints(), "api");
+        this.commands.registerSubCommands(new IAEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);

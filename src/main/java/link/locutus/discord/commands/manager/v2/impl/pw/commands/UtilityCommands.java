@@ -398,7 +398,7 @@ public class UtilityCommands {
 //        return response.toString();
 //    }
 
-    @Command
+    @Command(desc = "List all possible offshore alliances in the game")
     @RolePermission(value = {Roles.ADMIN}, root = true)
     public String listOffshores() {
         StringBuilder response = new StringBuilder();
@@ -687,8 +687,7 @@ public class UtilityCommands {
         }
     }
 
-    @Command(aliases = {"nap", "napdown"})
-
+    @Command(desc = "Get a list a recent global war Non Aggression Pacts")
     public String nap(@Default("false") boolean listExpired) {
         Map<Long, String> naps = new LinkedHashMap<>();
         naps.put(238332L * 7200 * 1000, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
@@ -2134,7 +2133,7 @@ public class UtilityCommands {
         return response.toString();
     }
 
-    @Command(aliases = {"setloot"})
+    @Command(desc = "Set the recorded last-loot for a nation")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String setLoot(DBNation nation, Map<ResourceType, Double> resources, @Default("ESPIONAGE") NationLootType type, @Default("1") double fraction) {
         resources = PW.multiply(resources, 1d / fraction);
