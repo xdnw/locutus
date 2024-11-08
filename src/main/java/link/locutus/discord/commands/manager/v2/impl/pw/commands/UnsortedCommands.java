@@ -45,6 +45,7 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarParser;
+import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.GPTUtil;
@@ -2250,7 +2251,7 @@ public class UnsortedCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(author, subject, message, replacementInfo, sendTo.getFilter(), allowCreation);
+        int annId = db.addAnnouncement(AnnounceType.INVITE, author, subject, message, replacementInfo, sendTo.getFilter(), allowCreation);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(message, entry.getValue());
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);

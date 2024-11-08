@@ -5,8 +5,11 @@ import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.util.MarkupUtil;
 import gg.jte.generated.precompiled.auth.JteredirectGenerated;
 import gg.jte.generated.precompiled.auth.JteredirectjsGenerated;
+import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
+
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Map;
 
 public class PageHelper {
     public static String redirect(WebStore ws, Context context, String url, boolean useJs) {
@@ -25,5 +28,13 @@ public class PageHelper {
             context.header("cache-control", "no-store");
             return WebStore.render(f -> JteredirectGenerated.render(f, null, ws, urlObj));
         }
+    }
+
+    public static WebSuccess error(String message) {
+        return new WebSuccess(false, message);
+    }
+
+    public static WebSuccess success() {
+        return new WebSuccess(true, null);
     }
 }

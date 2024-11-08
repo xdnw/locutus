@@ -36,14 +36,13 @@ public class PlayerSettingCommands {
     @Command(desc = "View an announcement you have access to")
     @RolePermission(Roles.MEMBER)
     @Ephemeral
-    public String viewAnnouncement(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, int ann_id, @Switch("d") boolean document, @Switch("n") DBNation nation) throws IOException {
+    public String viewAnnouncement(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, int ann_id, @Switch("n") DBNation nation) throws IOException {
         if (nation == null) nation = me;
         if (nation.getId() != me.getId() && !Roles.INTERNAL_AFFAIRS.has(user, db.getGuild())) {
             throw new IllegalArgumentException("Missing role: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         Announcement parent = db.getAnnouncement(ann_id);
-        boolean isInvite = StringUtils.countMatches(parent.replacements, ",") == 2 && !parent.replacements.contains("|") && !parent.replacements.contains("\n");
-        AnnounceType type = isInvite ? AnnounceType.INVITE : document ? AnnounceType.DOCUMENT : AnnounceType.MESSAGE;
+        AnnounceType type = parent.type;
         if (type == AnnounceType.INVITE) {
             String[] split = parent.replacements.split(",");
             if (!parent.replacements.isEmpty() && split.length > 0 && MathMan.isInteger(split[0])) {
@@ -82,7 +81,7 @@ public class PlayerSettingCommands {
                 body.append("`Archived`\n");
             }
             String content = announcement.getContent();
-            if (document && content.startsWith("https://docs.google.com/document/d/")) {
+            if (type == AnnounceType.DOCUMENT && content.startsWith("https://docs.google.com/document/d/")) {
                 content = content.split("\n")[0];
             }
             body.append(">>> " + content);

@@ -40,8 +40,11 @@ import link.locutus.discord.web.commands.api.EndpointPages;
 import link.locutus.discord.web.commands.api.IAEndpoints;
 import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.binding.*;
+import link.locutus.discord.web.commands.binding.value_types.CacheType;
+import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
+import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.Guild;
@@ -50,6 +53,7 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -159,6 +163,14 @@ public class PageHandler implements Handler {
         }
 
         this.queryOptions = getQueryOptions();
+        printApiPages();
+    }
+
+    private void printApiPages() {
+        CommandGroup api = (CommandGroup) commands.get("api");
+        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
+            System.out.println(TsEndpointGenerator.generate(cmd));
+        }
     }
 
     public WebOption getQueryOption(String name) {
@@ -442,9 +454,10 @@ public class PageHandler implements Handler {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
             boolean isPost = ctx.method() == HandlerType.POST;
+            boolean isApi = false;
 
             switch (path.toLowerCase(Locale.ROOT)) {
-                case "command" -> {
+                case "command": {
                     stack.consumeNext();
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandManager2 manager = Locutus.cmd().getV2();
@@ -461,8 +474,9 @@ public class PageHandler implements Handler {
                     break;
                 }
                 // page
-                // api
-                default -> {
+                case "api":
+                    isApi = true;
+                default: {
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandCallable cmd = commands.getCallable(args, true);
                     if (cmd == null) {
@@ -491,7 +505,7 @@ public class PageHandler implements Handler {
                         System.out.println(":||remove Query map " + queryMap);
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
                         Object cmdResult = parametric.call(null, stack.getStore(), parsed);
-                        result = wrap(ws, cmdResult, ctx);
+                        result = wrap(ws, cmdResult, ctx, isApi);
                     } else {
                         result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
                     }
@@ -540,7 +554,7 @@ public class PageHandler implements Handler {
         ctx.result(WebUtil.minify(WebStore.render(f -> JteerrorGenerated.render(f, null, new WebStore(null, ctx), entry.getKey(), entry.getValue()))));
     }
 
-    private Object wrap(WebStore ws, Object call, Context ctx) {
+    private Object wrap(WebStore ws, Object call, Context ctx, boolean isApi) {
         String contentType = ctx.header("Content-Type");
         if (call instanceof String) {
             if (contentType == null || contentType.contains("text/html")) {
@@ -562,7 +576,7 @@ public class PageHandler implements Handler {
                 String finalStr = str;
                 return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
             }
-        } else if (call instanceof Map || call instanceof List) {
+        } else if (isApi) {
             ctx.header("Content-Type", "application/json");
             return WebUtil.GSON.toJson(call);
         }

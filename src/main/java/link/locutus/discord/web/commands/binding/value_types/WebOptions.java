@@ -1,18 +1,21 @@
-package link.locutus.discord.commands.manager.v2.command;
+package link.locutus.discord.web.commands.binding.value_types;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class WebOptions {
-    private List<String> icon;
-    private List<Object> key;
-    private List<String> text;
-    private List<String> subtext;
-    private List<String> color;
+public class WebOptions extends WebSuccess {
+    public List<Object> key;
+    public @Nullable List<String> icon;
+    public @Nullable List<String> text;
+    public @Nullable List<String> subtext;
+    public @Nullable List<String> color;
 
     public WebOptions() {
+        super(true, null);
         this.key = new ArrayList<>();
     }
 

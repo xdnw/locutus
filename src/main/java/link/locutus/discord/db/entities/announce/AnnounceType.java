@@ -88,6 +88,8 @@ public enum AnnounceType {
 
     ;
 
+    public static final AnnounceType[] values = values();
+
     public boolean isValid(GuildDB db, Announcement original, Announcement.PlayerAnnouncement current) {
         return true;
     }

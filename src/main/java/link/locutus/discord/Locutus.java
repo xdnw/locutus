@@ -581,7 +581,19 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Nation", () -> {
-                runEventsAsync(events -> getNationDB().updateAllNations(events, true));
+                runEventsAsync(events -> {
+                    getNationDB().updateAllNations(events, true);
+                    boolean hasUnknownAA = false;
+                    for (DBNation nation : getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getVm_turns() == 0)) {
+                        if (DBAlliance.get(nation.getAlliance_id()) == null) {
+                            hasUnknownAA = true;
+                            break;
+                        }
+                    }
+                    if (hasUnknownAA) {
+                        getNationDB().updateAlliances(null, events);
+                    }
+                });
             }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Nation (Active)", () -> {

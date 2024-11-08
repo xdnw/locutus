@@ -32,7 +32,7 @@ public class ParameterData {
         String webType = binding.getWebTypeStr();
         arg.addProperty("type", webType);
         if (defaultValue != null && defaultValue.length != 0) {
-            arg.addProperty("default", getDefaultValueString());
+            arg.addProperty("def", getDefaultValueString());
         }
         ArgChoice choiceAnn = getAnnotation(ArgChoice.class);
         if (choiceAnn != null) {

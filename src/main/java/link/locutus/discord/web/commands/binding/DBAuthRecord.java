@@ -6,6 +6,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.commands.binding.value_types.WebSession;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -62,40 +63,39 @@ public class DBAuthRecord {
      * @param includeExtras include names and icons
      * @return
      */
-    public Map<String, Object> toMap(boolean includeExtras) {
-        Map<String, Object> data = new HashMap<>();
+    public WebSession toMap() {
+        WebSession data = new WebSession();
         Long userId = getUserId();
         if (userId != null) {
-            data.put("user", userId);
+            data.user = userId + "";
             User user = DiscordUtil.getUser(userId);
-            data.put("user_valid", (user != null));
+            data.user_valid = (user != null);
             if (user != null) {
-                data.put("user_name", DiscordUtil.getFullUsername(user));
-                data.put("user_icon", user.getEffectiveAvatarUrl());
+                data.user_name = DiscordUtil.getFullUsername(user);
+                data.user_icon = user.getEffectiveAvatarUrl();
             }
         }
         Integer nationId = getNationId();
         if (nationId != null) {
-            data.put("nation", nationId);
+            data.nation = nationId;
             DBNation nation = DBNation.getById(nationId);
-            data.put("nation_valid", (nation != null));
+            data.nation_valid = (nation != null);
             if (nation != null) {
-                data.put("nation_name", nation.getName());
+                data.nation_name = nation.getName();
                 if (nation.getAlliance_id() != 0) {
-                    data.put("alliance", nation.getAlliance_id());
-                    data.put("alliance_name", nation.getAllianceName());
+                    data.alliance = nation.getAlliance_id();
+                    data.alliance_name = nation.getAllianceName();
                 }
             }
             if (userId != null) {
                 PNWUser registeredNation = Locutus.imp().getDiscordDB().getUserFromDiscordId(userId);
                 if (registeredNation != null) {
-                    data.put("registered", true);
-                    data.put("registered_nation", registeredNation.getNationId());
+                    data.registered = true;
+                    data.registered_nation = registeredNation.getNationId();
                 }
             }
         }
-
-        data.put("expires", timestamp + "");
+        data.expires = timestamp;
         return data;
     }
 

@@ -33,6 +33,7 @@ import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class WebUtil {

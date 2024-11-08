@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -12,17 +14,7 @@ import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBBounty;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.LootEntry;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -31,7 +23,6 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -249,13 +240,83 @@ public class RaidCommand extends Command {
             return "Invalid AA or Coalition (case sensitive): " + aa + ". @see also: `!coalitions`";
         }
 
-        return onCommand2(channel, user, db, me, nations, allNations, weakground, dms, vm, slots, beige, useDnr, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBank, ignoreCity, results);
+        return onCommand2(channel, user, db, me, nations, weakground, dms, vm, slots, beige, useDnr, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBank, ignoreCity, results);
     }
 
-    public String onCommand2(IMessageIO channel, User user, GuildDB db, DBNation me, Set<DBNation> nations, Set<DBNation> allNations, boolean weakground,
+    public String onCommand2(IMessageIO channel, User user, GuildDB db, DBNation me, Set<DBNation> nations, boolean weakground,
                              boolean dms, int vm, int slots, boolean beige,
                              boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
                              long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) throws ExecutionException, InterruptedException {
+        if (dms) {
+            channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel()));
+        }
+        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
+
+        List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = getNations(db, me, nations, weakground, vm, slots, beige, useDnr, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBank, ignoreCity, numResults);
+
+        if (nationNetValues.isEmpty()) {
+            channel.sendMessage("No results. Try using " + CM.war.find.raid.cmd.targets("*").numResults("15") + " or " +
+                    CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("10")
+                    +" (and plan raids out). Ping milcom for (assistance");
+            return null;
+        }
+
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        for (Map.Entry<DBNation, Map.Entry<Double, Double>> entry : nationNetValues) {
+            DBNation nation = entry.getKey();
+            // formatter.format(entry.getValue()) // net loot
+
+            Map.Entry<Double, Double> valueEst = entry.getValue();
+            String moneyStr = "\nweighted $" + MathMan.formatSig(valueEst.getKey()) + "/actual $" + MathMan.formatSig(valueEst.getValue()) + "";
+            response.append(moneyStr + " | " + nation.toMarkdown(true, true, true, false, false));
+        }
+
+        IMessageIO finalChannel = channel;
+        Locutus.imp().getExecutor().submit(() -> {
+            try {
+                IMessageBuilder msg = msgFuture.get();
+                if (msg != null && msg.getId() > 0) {
+                    finalChannel.delete(msg.getId());
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        });
+
+        if (db.isAllyOfRoot()) {
+            StringBuilder warnings = new StringBuilder();
+            if (me.getAvg_infra() > 1000 && me.getCities() > 7) {
+                warnings.append("- You have high infra (>1000) which will likely be lost to counters.\n");
+            }
+            if (me.getSoldiers() == 0) {
+                warnings.append("- You do not have any soldiers, which should be used for raiding as other units aren't cost effective.\n");
+            }
+            if (me.getTanks() != 0) {
+                warnings.append("- We don't recommend raiding with tanks because they are unable to loot nations with any cost efficiency.\n");
+            }
+            if (beige) {
+                warnings.append("- Set a reminder for yourself to hit nations on beige. You can declare during turn change\n");
+            }
+            if (me.getWarPolicy() != WarPolicy.PIRATE) {
+                warnings.append("- Using the pirate policy will increase loot by 40%\n");
+            }
+            if (warnings.length() != 0) {
+                response.append("\n```").append(warnings.toString().trim()).append("```");
+            }
+        }
+
+        if (beige) {
+            me.setMeta(NationMeta.INTERVIEW_RAID_BEIGE, (byte) 1);
+        }
+
+        channel.send(response.toString());
+        return null;
+    }
+
+    public static List<Map.Entry<DBNation, Map.Entry<Double, Double>>> getNations(GuildDB db, DBNation me, Set<DBNation> nations, boolean weakground,
+                                                                           int vm, int slots, boolean beige,
+                                                                           boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
+                                                                           long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) {
         Set<Integer> enemyAAs = db.getCoalition("enemies");
 
         if (weakground) nations.removeIf(f -> f.getGroundStrength(true, true) > me.getGroundStrength(true, true) * 0.4);
@@ -267,11 +328,7 @@ public class RaidCommand extends Command {
                         nation.getShips() > me.getShips() + 2);
 
 
-        if (dms) {
-            channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel()));
-        }
 
-        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
 
         double minScore = score * PW.WAR_RANGE_MIN_MODIFIER;
         double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
@@ -280,7 +337,7 @@ public class RaidCommand extends Command {
 
         Function<DBNation, Boolean> canRaidDNR = db.getCanRaid();
 
-        List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = new ArrayList<>();
+        List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = new ObjectArrayList<>();
 
         Map<Integer, Double> allianceScores = new HashMap<>();
 
@@ -511,68 +568,13 @@ public class RaidCommand extends Command {
 
         nationNetValues.sort((o1, o2) -> Double.compare(o2.getValue().getKey(), o1.getValue().getKey()));
 
-        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        nationNetValues.removeIf(f -> f.getKey().isBeige() && beigeTurns != -1 && beigeTurns != Integer.MAX_VALUE && f.getKey().getBeigeTurns() >= beigeTurns);
 
-        for (Map.Entry<DBNation, Map.Entry<Double, Double>> entry : nationNetValues) {
-            DBNation nation = entry.getKey();
-            if (nation.isBeige() && beigeTurns != -1 && beigeTurns != Integer.MAX_VALUE) {
-                if (nation.getBeigeTurns() >= beigeTurns) continue;
-            }
-            if (count++ == numResults) break;
-
-            // formatter.format(entry.getValue()) // net loot
-
-            Map.Entry<Double, Double> valueEst = entry.getValue();
-            String moneyStr = "\nweighted $" + MathMan.formatSig(valueEst.getKey()) + "/actual $" + MathMan.formatSig(valueEst.getValue()) + "";
-            response.append(moneyStr + " | " + nation.toMarkdown(true, true, true, false, false));
+        // cap nationNetValues at numResults
+        if (nationNetValues.size() > numResults) {
+            nationNetValues = nationNetValues.subList(0, numResults);
         }
 
-        IMessageIO finalChannel = channel;
-        Locutus.imp().getExecutor().submit(() -> {
-            try {
-                IMessageBuilder msg = msgFuture.get();
-                if (msg != null && msg.getId() > 0) {
-                    finalChannel.delete(msg.getId());
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        });
-
-        if (count == 0) {
-            channel.sendMessage("No results. Try using " + CM.war.find.raid.cmd.targets("*").numResults("15") + " or " +
-                    CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("10")
-                    +" (and plan raids out). Ping milcom for (assistance");
-            return null;
-        }
-
-        if (db.isAllyOfRoot()) {
-            StringBuilder warnings = new StringBuilder();
-            if (me.getAvg_infra() > 1000 && me.getCities() > 7) {
-                warnings.append("- You have high infra (>1000) which will likely be lost to counters.\n");
-            }
-            if (me.getSoldiers() == 0) {
-                warnings.append("- You do not have any soldiers, which should be used for raiding as other units aren't cost effective.\n");
-            }
-            if (me.getTanks() != 0) {
-                warnings.append("- We don't recommend raiding with tanks because they are unable to loot nations with any cost efficiency.\n");
-            }
-            if (beige) {
-                warnings.append("- Set a reminder for yourself to hit nations on beige. You can declare during turn change\n");
-            }
-            if (me.getWarPolicy() != WarPolicy.PIRATE) {
-                warnings.append("- Using the pirate policy will increase loot by 40%\n");
-            }
-            if (warnings.length() != 0) {
-                response.append("\n```").append(warnings.toString().trim()).append("```");
-            }
-        }
-
-        if (beige) {
-            me.setMeta(NationMeta.INTERVIEW_RAID_BEIGE, (byte) 1);
-        }
-
-        channel.send(response.toString());
-        return null;
+        return nationNetValues;
     }
 }

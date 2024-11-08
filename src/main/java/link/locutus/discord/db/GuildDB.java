@@ -946,9 +946,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             executeStmt(query.toString());
         }
         {
-            String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL, `allow_creation` BOOLEAN NOT NULL)";
+            String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `type` INTEGER NOT NULL, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL, `allow_creation` BOOLEAN NOT NULL)";
             executeStmt(query);
-//            executeStmt("ALTER TABLE ANNOUNCEMENTS2 ADD COLUMN allow_creation BOOLEAN NOT NULL DEFAULT 0");
+            executeStmt("ALTER TABLE ANNOUNCEMENTS2 ADD COLUMN `type` INTEGER NOT NULL DEFAULT 0");
 
             String query2 = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS_PLAYER2` (`receiver` INT NOT NULL, `ann_id` INT NOT NULL, `active` BOOLEAN NOT NULL, `diff` BLOB NOT NULL, PRIMARY KEY(receiver, ann_id), FOREIGN KEY(ann_id) REFERENCES ANNOUNCEMENTS2(ann_id))";
             executeStmt(query2);
@@ -1158,17 +1158,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
-    public int addAnnouncement(User sender, String title, String content, String replacements, String filter, boolean allowCreation) {
-        String query = "INSERT INTO `ANNOUNCEMENTS2`(`sender`, `active`, `title`, `content`, `replacements`, `filter`, `date`, `allow_creation`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
+    public int addAnnouncement(AnnounceType type, User sender, String title, String content, String replacements, String filter, boolean allowCreation) {
+        String query = "INSERT INTO `ANNOUNCEMENTS2`(`type`, `sender`, `active`, `title`, `content`, `replacements`, `filter`, `date`, `allow_creation`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setLong(1, sender.getIdLong());
-            stmt.setBoolean(2, true);
-            stmt.setString(3, title);
-            stmt.setString(4, content);
-            stmt.setString(5, replacements);
-            stmt.setString(6, filter);
-            stmt.setLong(7, System.currentTimeMillis());
-            stmt.setBoolean(8, allowCreation);
+            stmt.setInt(1, type.ordinal());
+            stmt.setLong(2, sender.getIdLong());
+            stmt.setBoolean(3, true);
+            stmt.setString(4, title);
+            stmt.setString(5, content);
+            stmt.setString(6, replacements);
+            stmt.setString(7, filter);
+            stmt.setLong(8, System.currentTimeMillis());
+            stmt.setBoolean(9, allowCreation);
             stmt.executeUpdate();
 
             try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {

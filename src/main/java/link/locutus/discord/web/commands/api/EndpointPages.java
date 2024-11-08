@@ -1,31 +1,24 @@
 package link.locutus.discord.web.commands.api;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.javalin.http.Context;
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.command.WebOption;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
+import link.locutus.discord.web.commands.binding.value_types.*;
 import link.locutus.discord.web.commands.page.PageHelper;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -42,80 +35,86 @@ import static link.locutus.discord.web.jooby.PageHandler.CookieType.URL_AUTH_SET
 public class EndpointPages extends PageHelper {
 
     @Command
-    public Map<String, Object> set_token(Context context, UUID token) {
+    @ReturnType(WebSuccess.class)
+    public WebSuccess set_token(Context context, UUID token) {
         DBAuthRecord record = WebRoot.db().get(token);
-        if (record == null) return Map.of("success", false, "message", "Invalid token");
+        if (record == null) return error("Invalid token");
         int keepAlive = (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
         WebUtil.setCookieViaHeader(context, URL_AUTH.getCookieId(), token.toString(), keepAlive, true, null);
-        return Map.of("success", true);
+        return success();
     }
 
     @Command
-    public Map<String, Object> set_guild(Context context, @Me @Default User user, Guild guild, @Me @Default DBAuthRecord auth) {
-        if (user == null) return Map.of("success", false, "message", "No user found, please login via discord");
+    @ReturnType(SetGuild.class)
+    public WebSuccess set_guild(Context context, @Me @Default User user, Guild guild, @Me @Default DBAuthRecord auth) {
+        if (user == null) return error("No user found, please login via discord");
         String id = guild.getId();
         String name = guild.getName();
         String icon = guild.getIconUrl();
-        return Map.of("success", true, "value", Map.of("id", id, "name", name, "icon", icon));
+        return new SetGuild(id, name, icon);
     }
 
     @Command
-    public Map<String, Object> login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
+    @ReturnType(WebUrl.class)
+    public WebSuccess login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth != null) {
-            return Map.of("success", false, "message", "Already logged in");
+            return error("Already logged in");
         }
         String mailUrl = WebUtil.mailLogin(nation, false,true);
-        return Map.of("success", true, "url", mailUrl);
+        return new WebUrl(mailUrl);
     }
 
     @Command
-    public Map<String, Object> input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
+    @ReturnType(value = WebOptions.class, cache = CacheType.LocalStorage, duration = 30)
+    public WebSuccess input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
         PageHandler ph = WebRoot.getInstance().getPageHandler();
         WebOption option = ph.getQueryOption(type);
         if (option == null) {
-            return Map.of("success", false, "message", "Invalid option type (" + type + "). available options: " + ph.getQueryOptionNames());
+            return error("Invalid option type (" + type + "). available options: " + ph.getQueryOptionNames());
         }
         if (option.isRequiresGuild() && db == null) {
-            return Map.of("success", false, "message", option.getName() + " requires a guild. Please select a guild.");
+            return error(option.getName() + " requires a guild. Please select a guild.");
         }
         if (option.isRequiresNation() && nation == null) {
-            return Map.of("success", false, "message", option.getName() + " requires a nation. Please select a nation.");
+            return error(option.getName() + " requires a nation. Please select a nation.");
         }
         if (option.isRequiresUser() && user == null) {
-            return Map.of("success", false, "message", option.getName() + " requires a user. Please select a user.");
+            return error(option.getName() + " requires a user. Please select a user.");
         }
         try {
             return option.getQueryOptions(db, user, nation);
         } catch (Exception e) {
             e.printStackTrace();
-            return Map.of("success", false, "message", "Failed to get options for " + option.getName() + ": " + e.getMessage());
+            return error("Failed to get options for " + option.getName() + ": " + e.getMessage());
         }
     }
 
     @Command
-    public Map<String, Object> set_oauth_code(Context context, @Me @Default DBNation me, String code) throws IOException {
+    @ReturnType(WebSuccess.class)
+    public WebSuccess set_oauth_code(Context context, @Me @Default DBNation me, String code) throws IOException {
         String access_token = AuthBindings.getAccessToken(code, Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/oauth2");
         if (access_token == null) {
-            return Map.of("success", false, "message", "Cannot fetch access_token from OAuth2 code");
+            return error("Cannot fetch access_token from OAuth2 code");
         }
         JsonObject user = AuthBindings.getUser(access_token);
         if (user == null) {
-            return Map.of("success", false, "message", "Fetched access_token successfully, but failed to fetch user using it");
+            return error("Fetched access_token successfully, but failed to fetch user using it");
         }
         JsonElement idStr = user.get("id");
         if (idStr == null) {
-            return Map.of("success", false, "message", "Fetched access_token and user, but failed to fetch ID from user");
+            return error("Fetched access_token and user, but failed to fetch ID from user");
         }
         DBAuthRecord record = AuthBindings.generateAuthRecord(context, Long.parseLong(idStr.getAsString()), me == null ? null : me.getNation_id());
         int keepAlive = (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
         WebUtil.setCookieViaHeader(context, URL_AUTH.getCookieId(), record.getUUID().toString(), keepAlive, true, null);
-        return Map.of("success", true);
+        return success();
     }
 
     @Command
-    public Map<String, Object> logout(WebStore ws, Context context, @Me @Default DBAuthRecord auth) {
+    @ReturnType(WebSuccess.class)
+    public WebSuccess logout(WebStore ws, Context context, @Me @Default DBAuthRecord auth) {
         if (auth == null) {
-            return Map.of("success", false, "message", "No auth record found");
+            return error("No auth record found");
         }
         AuthBindings.logout(ws, context, auth, false);
         List<String> cookiesToRemove = Arrays.asList(
@@ -127,16 +126,17 @@ public class EndpointPages extends PageHelper {
             removeCookieStrings.add(cookie + "=; Max-Age=0; Path=/; HttpOnly");
         }
         context.header("Set-Cookie", StringMan.join(removeCookieStrings, ", "));
-        return Map.of("success", true);
+        return success();
     }
 
     @Command
-    public List<Map<String, Object>> query(Context context, WebStore ws, List<Map.Entry<String, Map<String, Object>>> queries) throws IOException {
+    @ReturnType(WebBulkQuery.class)
+    public WebBulkQuery query(Context context, WebStore ws, List<Map.Entry<String, Map<String, Object>>> queries) throws IOException {
         PageHandler handler = WebRoot.getInstance().getPageHandler();
         CommandGroup commands = handler.getCommands();
         CommandCallable apiCommands = commands.get("api");
 
-        List<Map<String, Object>> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
+        List<WebSuccess> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
 
         for (int i = 0; i < queries.size(); i++) {
             Map.Entry<String, Map<String, Object>> entry = queries.get(i);
@@ -147,7 +147,7 @@ public class EndpointPages extends PageHelper {
             String error;
             if (callable instanceof ParametricCallable cmd) {
                 try {
-                    result.set(i, (Map<String, Object>) handler.call(cmd, ws, context, value));
+                    result.set(i, (WebSuccess) handler.call(cmd, ws, context, value));
                     continue;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -156,125 +156,69 @@ public class EndpointPages extends PageHelper {
             } else {
                 error = "Invalid command: " + key;
             }
-            result.set(i, Map.of("success", false, "message", error));
+            result.set(i, error(error));
         }
-        return result;
+        return new WebBulkQuery(result);
     }
 
     @Command
-    public Map<String, Object> session(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
+    @ReturnType(value = WebSession.class, cache = CacheType.LocalStorage)
+    public Object session(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
         if (auth != null) {
-            Map<String, Object> data = auth.toMap(true);
+            WebSession data = auth.toMap();
             if (guild != null) {
-                data.put("guild", guild.getIdLong());
-                data.put("guild_name", guild.getName());
-                data.put("guild_icon", guild.getIconUrl());
+                data.setGuild(guild);
             }
             return data;
         } else {
-            return Map.of("success", false, "message", "No session record found");
+            return error("No session record found");
         }
     }
 
     @Command
-    public Map<String, Object> unregister(@Me @Default DBAuthRecord auth, boolean confirm) {
+    @ReturnType(WebValue.class)
+    public WebSuccess unregister(@Me @Default DBAuthRecord auth, boolean confirm) {
         if (auth == null) {
-            return Map.of("success", false, "message", "No auth record found");
+            return error("No auth record found");
         }
         Long discordId = auth.getUserId();
         Integer nationId = auth.getNationId();
         if (discordId == null) {
-            return Map.of("success", false, "message", "No user found");
+            return error("No user found");
         }
         if (nationId == null) {
-            return Map.of("success", false, "message", "No nation found");
+            return error("No nation found");
         }
         if (!confirm) {
-            return Map.of("success", false, "message", "Please confirm to unregister");
+            return error("Please confirm to unregister");
         }
         Locutus.imp().getDiscordDB().unregister(nationId, discordId);
-        return Map.of("success", true, "value", auth.getUUID().toString());
+        return new WebValue(auth.getUUID().toString());
     }
 
     @Command
-    public Map<String, Object> register(@Me @Default DBAuthRecord auth, boolean confirm) {
+    @ReturnType(WebSuccess.class)
+    public WebSuccess register(@Me @Default DBAuthRecord auth, boolean confirm) {
         if (auth == null) {
-            return Map.of("success", false, "message", "No auth record found");
+            return error("No auth record found");
         }
         Long discordId = auth.getUserId();
         Integer nationId = auth.getNationId();
         if (nationId == null) {
-            return Map.of("success", false, "message", "No nation found");
+            return error("No nation found");
         }
         if (discordId == null) {
-            return Map.of("success", false, "message", "No user found");
+            return error("No user found");
         }
         if (DBNation.getById(nationId) == null) {
-            return Map.of("success", false, "message", "Nation with that ID was not found");
+            return error("Nation with that ID was not found");
         }
         if (!confirm) {
-            return Map.of("success", false, "message", "Please confirm to register");
+            return error("Please confirm to register");
         }
         String userName = DiscordUtil.getUserName(discordId);
         Locutus.imp().getDiscordDB().addUser(new PNWUser(nationId, discordId, userName));
-        return Map.of("success", true);
+        return success();
     }
-
-//    @Command
-//    @NoForm
-//    public Map<String, Object> login(WebStore ws, Context context, @Default Integer nation, @Default Long user, @Default String token) throws IOException {
-//        Map<String, String> queryMap = PageHandler.parseQueryMap(context.queryParamMap());
-//        boolean requireNation = queryMap.containsKey("nation");
-//        boolean requireUser = queryMap.containsKey("user");
-//        try {
-//            DBAuthRecord auth = AuthBindings.getAuth(ws, context, requireNation || requireUser, requireNation, requireUser);
-//            if (auth != null) {
-//                Map<String, Object> data = auth.toMap();
-//                Guild guild = AuthBindings.guild(context, null, null, false);
-//                if (guild != null) {
-//                    data.put("guild", guild.getIdLong());
-//                }
-//                return data;
-//            }
-//            return Collections.emptyMap();
-//        } catch (RedirectResponse response) {
-//            Map<String, Object> data = Map.of("action", "redirect", "value", response.getMessage());
-//            return data;
-//        }
-//    }
-//
-//    @Command
-//    @NoForm
-//    public Map<String, Object> logout(WebStore ws, Context context) throws IOException {
-//        DBAuthRecord auth = AuthBindings.getAuth(ws, context, false, false, false);
-//        Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
-//        AuthBindings.logout(ws, context, auth, false);
-//        if (auth != null) {
-//            if (guild == null) guild = auth.getDefaultGuild();
-//            Map<String, Object> data = auth.toMap();
-//            if (guild != null) {
-//                data.put("guild", guild.getIdLong());
-//            }
-//            data.put("success", true);
-//            data.put("message", "Logged out");
-//            return data;
-//        } else {
-//            return Collections.emptyMap();
-//        }
-//    }
-
-//    @Command
-//    public static String login_mail(WebStore ws, Context context, DBNation nation) throws IOException {
-//        String mailUrl = WebUtil.mailLogin(nation, false,true);
-//        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
-//    }
-
-    // Command Options
-    // Types
-
-    // Query placeholders
-    // Type
-    // Selection
-    // Fields
 }

@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.AllianceCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.NationCommands;
 import link.locutus.discord.commands.sync.*;
 import link.locutus.discord.db.*;
+import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.GetUid;
@@ -1131,7 +1132,7 @@ public class AdminCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(author, subject, announcement, replacements, sendTo.getFilter(), false);
+        int annId = db.addAnnouncement(AnnounceType.MESSAGE, author, subject, announcement, replacements, sendTo.getFilter(), false);
         output.append("\n\nAnnouncement ID: " + annId);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(announcement, entry.getValue());
@@ -2134,6 +2135,7 @@ public class AdminCommands {
             updatedIds = db.updateNations(nations.stream().map(DBNation::getId).toList(), events::add);
         } else {
             updatedIds = db.updateAllNations(events::add, true);
+            db.updateAlliances(null, events::add);
         }
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {

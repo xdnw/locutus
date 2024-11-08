@@ -9,13 +9,16 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.web.commands.ReturnType;
+import link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class TradeEndpoints {
     @Command
-    public Map<String, Object> tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, Set<ResourceType> resources, @Range(min = 1) int days) {
+    @ReturnType(TradePriceByDayJson.class)
+    public TradePriceByDayJson tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, Set<ResourceType> resources, @Range(min = 1) int days) {
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
         if (resources.isEmpty()) {
@@ -28,7 +31,7 @@ public class TradeEndpoints {
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
 
-        JsonArray labels = new JsonArray();
+        List<String> labels = new ObjectArrayList<>();
 
         for (ResourceType type : resources) {
             labels.add(type.name());
@@ -45,15 +48,15 @@ public class TradeEndpoints {
             maxDay = Collections.max(averages.keySet());
         }
 
-        Map<String, Object> obj = new LinkedHashMap<>();
-        List data = new ObjectArrayList();
+        TradePriceByDayJson result = new TradePriceByDayJson();
+        List<List<Number>> data = new ObjectArrayList();
 
         LongArrayList timestampsJson = new LongArrayList();
         for (long day = minDay; day <= maxDay; day++) {
             long time = TimeUtil.getTimeFromDay(day);
             timestampsJson.add(time / 1000L);
         }
-        data.add(timestampsJson);
+        data.add((List) timestampsJson);
 
         for (ResourceType type : resources) {
             Map<Long, Double> avgByDay = avgByRss.get(type);
@@ -62,13 +65,13 @@ public class TradeEndpoints {
                 Double price = avgByDay.getOrDefault(day, 0d);
                 rssData.add(price);
             }
-            data.add(rssData);
+            data.add((List) rssData);
         }
 
-        obj.put("x", "Time");
-        obj.put("y", "Price Per Unit ($)");
-        obj.put("labels", labels);
-        obj.put("data", data);
-        return obj;
+        result.x = "Time";
+        result.y = "Price Per Unit ($)";
+        result.labels = labels;
+        result.data = data;
+        return result;
     }
 }

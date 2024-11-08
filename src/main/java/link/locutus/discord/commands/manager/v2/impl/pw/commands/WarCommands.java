@@ -343,7 +343,6 @@ public class WarCommands {
         boolean dms = false;
 
         RaidCommand cmd = new RaidCommand();
-        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
         if (vmTurns == null) vmTurns = 0;
         if (defensiveSlots == null) defensiveSlots = -1;
         boolean active = activeTimeCutoff != null && activeTimeCutoff <= 60;
@@ -359,7 +358,7 @@ public class WarCommands {
         if (numResults == null) numResults = 5;
         if (beigeTurns == null) beigeTurns = -1;
 
-        String result = cmd.onCommand2(channel, user, db, me, targets, allNations, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
+        String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
         return result;
     }
     @Command(desc = "List your wars you are allowed to beige\n" +

@@ -30,6 +30,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
@@ -1366,7 +1367,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         if (title == null) title = "Document";
 
         String announcement = original.readHtml();
-        int annId = db.addAnnouncement(author, title, announcement, replacements, sendTo.getFilter(), true);
+        int annId = db.addAnnouncement(AnnounceType.DOCUMENT, author, title, announcement, replacements, sendTo.getFilter(), true);
 
         List<String> replacementLines = Announcement.getReplacements(replacements);
         Collection<DBNation> nations = sendTo.getNations();

@@ -1,9 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -13,9 +10,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.web.WebUtil;
-import net.dv8tion.jda.api.entities.Guild;
+import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -26,7 +22,7 @@ public class WebOption {
     private Key key;
     private boolean allowCompletions;
     private List<String> options;
-    private TriFunction<GuildDB, User, DBNation, Map<String, Object>> queryOptions;
+    private TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions;
     private List<String> compositeTypes;
     private boolean requiresGuild;
     private boolean requiresNation;
@@ -122,7 +118,7 @@ public class WebOption {
 
     public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions) {
         this.queryOptions = (guild, user, nation) -> {
-            return queryOptions.apply(guild, user, nation).build();
+            return queryOptions.apply(guild, user, nation);
         };
         return this;
     }
@@ -154,7 +150,7 @@ public class WebOption {
         return allowCompletions;
     }
 
-    public Map<String, Object> getQueryOptions(GuildDB guild, User user, DBNation nation) {
+    public WebOptions getQueryOptions(GuildDB guild, User user, DBNation nation) {
         if (queryOptions == null) return null;
         return queryOptions.apply(guild, user, nation);
     }

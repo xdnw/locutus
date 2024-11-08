@@ -23,9 +23,11 @@ public class Announcement {
     public final long date;
     public boolean active;
     public boolean allowCreation;
+    public AnnounceType type;
 
-    public Announcement(int id, long sender, long date, String title, String body, String replacements, String filter, boolean active, boolean allowCreation) {
+    public Announcement(int id, AnnounceType type, long sender, long date, String title, String body, String replacements, String filter, boolean active, boolean allowCreation) {
         this.id = id;
+        this.type = type;
         this.date = date;
         this.sender = sender;
         this.title = title;
@@ -38,6 +40,7 @@ public class Announcement {
 
     public Announcement(ResultSet rs) throws SQLException {
         id = rs.getInt("ann_id");
+        type = AnnounceType.values[rs.getInt("type")];
         sender = rs.getLong("sender");
         active = rs.getBoolean("active");
         title = rs.getString("title");
