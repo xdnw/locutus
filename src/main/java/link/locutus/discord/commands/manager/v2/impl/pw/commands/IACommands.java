@@ -1723,7 +1723,7 @@ public class IACommands {
         // Cannot promote above your own permissions
         DBAlliancePosition myPosition = me.getAlliancePosition();
         DBAlliancePosition nationPosition = nation.getAlliancePosition();
-        if (!Roles.ADMIN.hasOnRoot(author)) {
+        if (!Roles.ADMIN.hasOnRoot(author) || !force) {
             if (me.getAlliance_id() != allianceId || myPosition == null || !db.isAllianceId(myPosition.getAlliance_id())) {
                 if (position.hasAnyOfficerPermissions()) {
                     return "You do not have permission to grant permissions you currently do not posses in the alliance";
@@ -1762,7 +1762,7 @@ public class IACommands {
             }
         }
         // Cannot promote to leader, or any leader perms -> done
-        if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
+        if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && (!Roles.ADMIN.hasOnRoot(author) ||!force)) {
             return "You cannot promote to leadership positions (do this ingame)";
         }
         if ((nationPosition != null && nationPosition.hasAnyAdminPermission()) || nation.getPositionEnum().id >= Rank.HEIR.id) {
