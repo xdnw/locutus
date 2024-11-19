@@ -325,7 +325,7 @@ public class WarCommands {
             "Defaults to 7d inactive")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
     public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me IMessageIO channel,
-                       @Default("*") Set<DBNation> targets,
+                       @Default Set<DBNation> targets,
                        @Switch("r") @Default("5") Integer numResults,
                        @Switch("a") @Timediff Long activeTimeCutoff,
                        @Switch("w") boolean weakground,
@@ -357,6 +357,7 @@ public class WarCommands {
         double minLoot = Double.NEGATIVE_INFINITY;
         if (numResults == null) numResults = 5;
         if (beigeTurns == null) beigeTurns = -1;
+        if (targets == null) targets = Locutus.imp().getNationDB().getAllNations();
 
         String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
         return result;

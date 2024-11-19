@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.db.DBNationSnapshot;
@@ -135,7 +136,7 @@ public class NationsFileSnapshot implements INationSnapshot {
 
     @Override
     public Set<DBNation> getAllNations() {
-        return Set.copyOf(nations.values());
+        return new ObjectOpenHashSet<>(nations.values());
     }
 
     @Override

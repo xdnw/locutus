@@ -119,5 +119,18 @@ public class Announcement {
         public String getContent() {
             return StringMan.getDiffVariant(getParent().body, diff);
         }
+
+        @Override
+        public String toString() {
+            return "PlayerAnnouncement{" +
+                    "db=" + db +
+                    ", parent=" + parent +
+                    ", parentInitialized=" + parentInitialized +
+                    ", ann_id=" + ann_id +
+                    ", diff=" + Arrays.toString(diff) +
+                    ", receiverNation=" + receiverNation +
+                    ", active=" + active +
+                    '}';
+        }
     }
 }

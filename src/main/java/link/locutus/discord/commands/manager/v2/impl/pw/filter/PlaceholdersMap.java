@@ -19,6 +19,7 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -31,20 +32,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.SelectionAlias;
-import link.locutus.discord.db.entities.SheetTemplate;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBBan;
-import link.locutus.discord.db.entities.DBBounty;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.DBTreasure;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.UserWrapper;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.AllianceList;
@@ -65,6 +53,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -134,6 +123,7 @@ public class PlaceholdersMap {
     public static Placeholders<BankDB.TaxDeposit> TAX_DEPOSITS = null;
     public static Placeholders<GuildSetting> SETTINGS = null;
     public static Placeholders<Conflict> CONFLICTS = null;
+    public static Placeholders<TextChannelWrapper> CHANNELS = null;
 
     // --------------------------------------------------------------------
 
@@ -178,6 +168,7 @@ public class PlaceholdersMap {
         this.placeholders.put(DBCity.class, createCities());
         this.placeholders.put(TaxBracket.class, createBrackets());
         this.placeholders.put(UserWrapper.class, createUsers());
+        this.placeholders.put(TextChannelWrapper.class, createChannels());
         this.placeholders.put(Transaction2.class, createTransactions());
         this.placeholders.put(DBTrade.class, createTrades());
         this.placeholders.put(IAttack.class, createAttacks());
@@ -896,7 +887,7 @@ public class PlaceholdersMap {
             return Set.of(PWBindings.cityUrl(input));
         }
         NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
-        Set<DBNation> nations = nationPlaceholders.parseSingleElem(store, input);
+        Set<DBNation> nations = nationPlaceholders.parseSingleElem(store, input, false);
         Set<DBCity> cities = new LinkedHashSet<>();
         for (DBNation nation : nations) {
             cities.addAll(nation._getCitiesV3().values());
@@ -936,6 +927,27 @@ public class PlaceholdersMap {
             Long id = f.getUserId();
             return id != null ? guild.getMemberById(id) : null;
         }).filter(Objects::nonNull).map(UserWrapper::new).collect(Collectors.toSet());
+    }
+
+    private Set<TextChannelWrapper> parseChannelSingle(Guild guild, String input) {
+        if (input.equals("*")) {
+            return guild.getTextChannels().stream().map(TextChannelWrapper::new).collect(Collectors.toSet());
+        }
+        TextChannel channel = DiscordBindings.textChannel(guild, input);
+        return Set.of(new TextChannelWrapper(channel));
+    }
+
+    private Predicate<TextChannelWrapper> parseChannelPredicate(Guild guild, String input) {
+        if (input.equals("*")) return f -> true;
+        Long channelId = DiscordUtil.getChannelId(guild, input);
+        if (channelId != null) {
+            return f -> f.getId() == channelId;
+        }
+        String inputFinal = input.startsWith("#") ? input.substring(1) : input;
+        return f -> {
+            TextChannel channel = f.getChannel();
+            return channel != null && channel.getName().equalsIgnoreCase(inputFinal);
+        };
     }
 
     private Predicate<UserWrapper> parseUserPredicate(Guild guild, String input) {
@@ -1109,6 +1121,95 @@ public class PlaceholdersMap {
 
     }
 
+    private Placeholders<TextChannelWrapper> createChannels() {
+        return new SimplePlaceholders<TextChannelWrapper>(TextChannelWrapper.class, store, validators, permisser,
+                "A discord channel",
+                (ThrowingTriFunction<Placeholders<TextChannelWrapper>, ValueStore, String, Set<TextChannelWrapper>>) (inst, store, input) -> {
+                    Set<TextChannelWrapper> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
+                    GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+                    Guild guild = db.getGuild();
+                    if (SpreadSheet.isSheet(input)) {
+                        Set<TextChannel> channels = SpreadSheet.parseSheet(input, List.of("channel"), true, (type, str) -> DiscordBindings.textChannel(guild, str));
+                        return channels.stream().map(TextChannelWrapper::new).collect(Collectors.toSet());
+                    }
+                    return parseChannelSingle(guild, input);
+                }, (ThrowingTriFunction<Placeholders<TextChannelWrapper>, ValueStore, String, Predicate<TextChannelWrapper>>) (inst, store, input) -> {
+            if (input.equalsIgnoreCase("*")) return f -> true;
+
+            GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+            Guild guild = db.getGuild();
+
+            if (SpreadSheet.isSheet(input)) {
+                Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("channel"), true,
+                        (type, str) -> DiscordUtil.getChannelId(guild, str));
+                return f -> sheet.contains(f.getId());
+            }
+            return parseChannelPredicate(guild, input);
+        }, new Function<TextChannelWrapper, String>() {
+            @Override
+            public String apply(TextChannelWrapper channelWrapper) {
+                return channelWrapper.getMention();
+            }
+        }) {
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                return new LinkedHashSet<>(List.of(
+                        new SelectorInfo("#CHANNEL", "#general", "Discord channel name"),
+                        new SelectorInfo("CHANNEL_ID", "123456789012345678", "Discord channel id"),
+                        new SelectorInfo("*", null, "All guild channels")
+                ));
+            }
+
+            @Override
+            public Set<String> getSheetColumns() {
+                return Set.of("channel");
+            }
+
+            @NoFormat
+            @Command(desc = "Add an alias for a selection of channels")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<TextChannelWrapper> channels) {
+                return _addSelectionAlias(this, command, db, name, channels, "channels");
+            }
+
+            @NoFormat
+            @Command(desc = "Add columns to a channel sheet")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+                                     @Default TypedFunction<TextChannelWrapper, String> a,
+                                     @Default TypedFunction<TextChannelWrapper, String> b,
+                                     @Default TypedFunction<TextChannelWrapper, String> c,
+                                     @Default TypedFunction<TextChannelWrapper, String> d,
+                                     @Default TypedFunction<TextChannelWrapper, String> e,
+                                     @Default TypedFunction<TextChannelWrapper, String> f,
+                                     @Default TypedFunction<TextChannelWrapper, String> g,
+                                     @Default TypedFunction<TextChannelWrapper, String> h,
+                                     @Default TypedFunction<TextChannelWrapper, String> i,
+                                     @Default TypedFunction<TextChannelWrapper, String> j,
+                                     @Default TypedFunction<TextChannelWrapper, String> k,
+                                     @Default TypedFunction<TextChannelWrapper, String> l,
+                                     @Default TypedFunction<TextChannelWrapper, String> m,
+                                     @Default TypedFunction<TextChannelWrapper, String> n,
+                                     @Default TypedFunction<TextChannelWrapper, String> o,
+                                     @Default TypedFunction<TextChannelWrapper, String> p,
+                                     @Default TypedFunction<TextChannelWrapper, String> q,
+                                     @Default TypedFunction<TextChannelWrapper, String> r,
+                                     @Default TypedFunction<TextChannelWrapper, String> s,
+                                     @Default TypedFunction<TextChannelWrapper, String> t,
+                                     @Default TypedFunction<TextChannelWrapper, String> u,
+                                     @Default TypedFunction<TextChannelWrapper, String> v,
+                                     @Default TypedFunction<TextChannelWrapper, String> w,
+                                     @Default TypedFunction<TextChannelWrapper, String> x) throws GeneralSecurityException, IOException {
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
+            }
+        };
+
+    }
+
     private Placeholders<DBCity> createCities() {
         return new SimplePlaceholders<DBCity>(DBCity.class, store, validators, permisser,
                 "A city",
@@ -1257,7 +1358,7 @@ public class PlaceholdersMap {
             return Set.of(bracket);
         }
         NationPlaceholders natFormat = (NationPlaceholders) get(DBNation.class);
-        Set<DBNation> nations = natFormat.parseSingleElem(store, input);
+        Set<DBNation> nations = natFormat.parseSingleElem(store, input, false);
         Set<TaxBracket> brackets = new ObjectOpenHashSet<>();
         Set<Integer> ids = new IntOpenHashSet();
         for (DBNation nation : nations) {

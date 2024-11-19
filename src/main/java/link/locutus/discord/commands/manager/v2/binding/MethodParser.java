@@ -96,8 +96,8 @@ public class MethodParser<T> implements Parser<T> {
     }
 
     public T apply(ValueStore store, Object t) {
+        long start = System.currentTimeMillis();
         try {
-
             Object[] args = new Object[params.size()];
             for (int i = 0; i < params.size(); i++) {
                 Key paramKey = params.get(i);
@@ -149,6 +149,11 @@ public class MethodParser<T> implements Parser<T> {
                 throw (RuntimeException) e.getCause();
             }
             throw new RuntimeException(e);
+        } finally {
+            long diff = System.currentTimeMillis() - start;
+            if (diff > 10) {
+                Logg.text("MethodParser.apply took " + diff + "ms for " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
+            }
         }
     }
 

@@ -530,9 +530,9 @@ public class DBNation implements NationOrAlliance {
 
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @Command(desc = "Get the Audit result raw value")
-    public Object getAuditResult(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+    public String getAuditResult(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
         Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
-        return result == null ? null : result.getKey();
+        return result == null ? null : result.getKey() + "";
     }
 
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
@@ -1766,7 +1766,8 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) throws IOException {
-        return getNetDeposits(db, tracked, useTaxBase, offset, true, updateThreshold, cutOff, priority);
+        boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
+        return getNetDeposits(db, tracked, useTaxBase, offset, includeGrants, updateThreshold, cutOff, priority);
     }
 
     public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long cutOff, boolean priority) throws IOException {
@@ -1784,11 +1785,17 @@ public class DBNation implements NationOrAlliance {
     @Command
     @RolePermission(Roles.ECON_STAFF)
     public double getNetDepositsConverted(@Me GuildDB db) throws IOException {
-        return getNetDepositsConverted(db, 0);
+        return getNetDepositsConverted(db, -1);
     }
 
     public double getNetDepositsConverted(GuildDB db, long updateThreshold) throws IOException {
         return ResourceType.convertedTotal(getNetDeposits(db, updateThreshold, false));
+    }
+
+    @Command(desc = "Net nation deposits with their alliance guild divided by their city count")
+    @RolePermission(Roles.ECON)
+    public double getDepositValuePerCity(@Me GuildDB db) throws IOException {
+        return getNetDepositsConverted(db) / cities;
     }
 
     public List<Transaction2> getTransactions(boolean priority) {
@@ -3016,11 +3023,11 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public Map.Entry<Integer, Integer> getAllTimeOffDefWars() {
+    public int[] getAllTimeOffDefWars() {
         Set<DBWar> wars = getWars();
         int off = (int) wars.stream().filter(f -> f.getAttacker_id() == nation_id).count();
         int def = (int) wars.stream().filter(f -> f.getDefender_id() == nation_id).count();
-        return new AbstractMap.SimpleEntry<>(off, def);
+        return new int[]{off, def};
     }
 
     @Command(desc = "All time wars involved in")
@@ -3951,7 +3958,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Sheet lookup")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    public Object cellLookup(SpreadSheet sheet, String tabName, String columnSearch, String columnOutput, String search) {
+    public String cellLookup(SpreadSheet sheet, String tabName, String columnSearch, String columnOutput, String search) {
         List<List<Object>> values = sheet.loadValues(tabName, false);
         if (values == null) return null;
         int searchIndex = SheetUtil.getIndex(columnSearch) - 1;
@@ -3964,7 +3971,8 @@ public class DBNation implements NationOrAlliance {
                 if (cellSearch == null) continue;
                 cellSearch = cellSearch.toString();
                 if (search.equals(cellSearch)) {
-                    return row.get(outputIndex);
+                    Object value = row.get(outputIndex);
+                    return value == null ? null : value.toString();
                 }
             }
         }
@@ -4981,30 +4989,10 @@ public class DBNation implements NationOrAlliance {
         return total / (double) cities.size();
     }
 
-    @Command(desc = "Net nation deposits with their alliance guild divided by their city count")
-    @RolePermission(Roles.ECON)
-    public double getAllianceDepositValuePerCity() throws IOException {
-        return getAllianceDepositValue() / cities;
-    }
-
-    @Command(desc = "Net nation deposits with their alliance guild")
-    @RolePermission(Roles.ECON)
-    public double getAllianceDepositValue() throws IOException {
-        GuildDB db = Locutus.imp().getGuildDBByAA(alliance_id);
-        if (db == null) return 0;
-        boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
-        double[] depo = getNetDeposits(db, includeGrants, -1, false);
-        return ResourceType.convertedTotal(depo);
-    }
-
     @Command(desc = "If on the correct MMR for their alliance (if one is set)")
     @RolePermission(Roles.MEMBER)
-    public boolean correctAllianceMMR() {
+    public boolean correctAllianceMMR(@Me GuildDB db) {
         if (getPosition() <= 1 || getVm_turns() > 0) return true;
-
-        GuildDB db = Locutus.imp().getGuildDBByAA(alliance_id);
-        if (db == null) return true;
-
         return db.hasRequiredMMR(this);
     }
 

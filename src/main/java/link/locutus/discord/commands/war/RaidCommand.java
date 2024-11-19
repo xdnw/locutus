@@ -359,7 +359,7 @@ public class RaidCommand extends Command {
 //                    if (dnr.contains(enemy.getAlliance_id())) continue;
 //                    if (enemy.active_m() < 10000 && dnr_active.contains(enemy.getAlliance_id())) continue;
 //                    if ((enemy.active_m() < 10000 || enemy.getPosition() > 1) && dnr_member.contains(enemy.getAlliance_id())) continue;
-            if ((ignoreAlliances.contains(enemy.getAlliance_id()) == !includeAlliances) && (includeAlliances || enemy.getPosition() > 1))
+            if ((ignoreAlliances.contains(enemy.getAlliance_id()) != includeAlliances) && (includeAlliances || enemy.getPosition() > 1))
                 continue;
             if (attackingWars.containsKey(enemy.getNation_id())) continue;
             if (!active && enemy.active_m() < minutesInactive) continue;

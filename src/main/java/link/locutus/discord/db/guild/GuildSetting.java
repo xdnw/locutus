@@ -613,9 +613,9 @@ public abstract class GuildSetting<T> {
         return getOrNull(db, checkDelegate) != null;
     }
 
-    @Command(desc = "The setting value")
+//    @Command(desc = "The setting value")
     @RolePermission(Roles.ADMIN)
-    public T getValue(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+    public T getValueString(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
         return getOrNull(db, checkDelegate);
     }
 

@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -49,7 +50,7 @@ public class UserWrapper {
     @Command(desc = "If this member has all roles")
     public boolean hasAllRoles(@NoFormat Set<Role> roles) {
         Member member = getMember();
-        return member != null && new ObjectArraySet<>(member.getRoles()).containsAll(roles);
+        return member != null && new ObjectOpenHashSet<>(member.getRoles()).containsAll(roles);
     }
 
     @Command(desc = "If this member has any roles")

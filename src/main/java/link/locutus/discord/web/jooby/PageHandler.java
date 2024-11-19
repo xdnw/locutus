@@ -28,6 +28,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -40,15 +41,16 @@ import link.locutus.discord.web.commands.api.EndpointPages;
 import link.locutus.discord.web.commands.api.IAEndpoints;
 import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.binding.*;
-import link.locutus.discord.web.commands.binding.value_types.CacheType;
-import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
+import link.locutus.discord.web.jooby.adapter.ReusableAvroSerializer;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -62,14 +64,16 @@ import java.util.logging.Logger;
 
 public class PageHandler implements Handler {
     private final Map<String, WebOption> queryOptions;
+    private final Schema schema;
 
-    private Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
+    private final Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
     private final WebRoot root;
 
     private final CommandGroup commands;
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
+    private final ReusableAvroSerializer serializer;
 
     public PageHandler(WebRoot root) {
         this.root = root;
@@ -163,13 +167,47 @@ public class PageHandler implements Handler {
         }
 
         this.queryOptions = getQueryOptions();
-        printApiPages();
+        boolean isDebug = Settings.INSTANCE.WEB.FRONTEND_DOMAIN.startsWith("http://localhost");
+
+        this.schema = generateSchema();
+        this.serializer = new ReusableAvroSerializer(schema);
+
+        // If debugging, print all api pages
+        if (isDebug) {
+            try {
+                TsEndpointGenerator.saveSchema(getSchema(), !Settings.INSTANCE.WEB.MINIFY, null);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+//            printApiPages();
+            // generateTsEndpoint
+        }
+    }
+
+    public Schema getSchema() {
+        return schema;
+    }
+
+    public ReusableAvroSerializer getSerializer() {
+        return serializer;
+    }
+
+    private Schema generateSchema() {
+        CommandGroup api = (CommandGroup) commands.get("api");
+        Set<Class<?>> schemaClasses = new LinkedHashSet<>();
+        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
+            Method method = cmd.getMethod();
+            ReturnType returnType = method.getAnnotation(ReturnType.class);
+            if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
+            Class<?> clazz = returnType.value();
+        }
+        return TsEndpointGenerator.generateSchema(schemaClasses);
     }
 
     private void printApiPages() {
         CommandGroup api = (CommandGroup) commands.get("api");
         for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
-            System.out.println(TsEndpointGenerator.generate(cmd));
+            System.out.println(TsEndpointGenerator.generateTsEndpoint(cmd));
         }
     }
 
@@ -503,16 +541,26 @@ public class PageHandler implements Handler {
                             }
                         }
                         System.out.println(":||remove Query map " + queryMap);
+                        long start = System.currentTimeMillis();
                         Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
+                        System.out.println(":||remove Parse time " + (-start + (start = System.currentTimeMillis())));
                         Object cmdResult = parametric.call(null, stack.getStore(), parsed);
+                        System.out.println(":||remove Call time " + ( - start + (start = System.currentTimeMillis())));
                         result = wrap(ws, cmdResult, ctx, isApi);
+                        System.out.println(":||remove Wrap time " + ( - start + (start = System.currentTimeMillis())));
                     } else {
                         result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
                     }
-                    if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
-                        ctx.result(WebUtil.minify(result.toString()));
-                    } else if (result != null) {
-                        throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
+                    if (result != null) {
+                        if (result instanceof byte[] bytes) {
+                            System.out.println("Returning bytes");
+                            ctx.result(bytes);
+                            ctx.header("Content-Type", "application/octet-stream");
+                        } else if (!(result instanceof String) || !result.toString().isEmpty()) {
+                            ctx.result(WebUtil.minify(result.toString()));
+                        } else {
+                            throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
+                        }
                     } else {
                         throw new IllegalArgumentException("Null result for : " + path);
                     }
@@ -555,8 +603,23 @@ public class PageHandler implements Handler {
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx, boolean isApi) {
-        String contentType = ctx.header("Content-Type");
+        if (isApi) {
+            if (call instanceof byte[] bytes) {
+                return bytes;
+            } else {
+                System.out.println("Serializing " + call.getClass() + " | " + ctx.path() + " | " + ctx.formParamMap());
+                if (call instanceof GenericRecord record) {
+                    try {
+                        return serializer.serialize((GenericRecord) call);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                throw new IllegalArgumentException("Not a valid api response: " + call);
+            }
+        }
         if (call instanceof String) {
+            String contentType = ctx.header("Content-Type");
             if (contentType == null || contentType.contains("text/html")) {
                 String str = (String) call;
                 str = str.trim();
@@ -576,9 +639,6 @@ public class PageHandler implements Handler {
                 String finalStr = str;
                 return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
             }
-        } else if (isApi) {
-            ctx.header("Content-Type", "application/json");
-            return WebUtil.GSON.toJson(call);
         }
         return call;
     }

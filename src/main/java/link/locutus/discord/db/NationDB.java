@@ -106,7 +106,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     @Override
     public Set<DBNation> getAllNations() {
         synchronized (nationsById) {
-            return new ObjectArraySet<>(nationsById.values());
+            return new ObjectOpenHashSet<>(nationsById.values());
         }
     }
 
@@ -2797,7 +2797,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (treasuresByNation) {
             Set<DBTreasure> treasures = treasuresByNation.get(nationId);
             if (treasures == null) return Collections.emptySet();
-            return new ObjectArraySet<>(treasures);
+            return new ObjectOpenHashSet<>(treasures);
         }
     }
 

@@ -11,6 +11,7 @@ import io.javalin.http.servlet.JavalinServletContext;
 import link.locutus.discord.Logg;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.binding.value_types.*;
 import link.locutus.discord.web.test.WebDB;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -278,6 +279,31 @@ public class WebRoot {
             pageHandler.handle(ctx);
         });
     }
+
+//    private void registerClasses(Fury fury) {
+////        fury.register(CacheType.class, "CacheType");
+////        fury.register(SetGuild.class, "SetGuild");
+////        fury.register(TradePriceByDayJson.class, "TradePriceByDayJson");
+////        fury.register(WebAnnouncement.class, "WebAnnouncement");
+////        fury.register(WebAnnouncements.class, "WebAnnouncements");
+////        fury.register(WebAudit.class, "WebAudit");
+////        fury.register(WebAudits.class, "WebAudits");
+////        fury.register(WebBalance.class, "WebBalance");
+////        fury.register(WebBankAccess.class, "WebBankAccess");
+////        fury.register(WebBulkQuery.class, "WebBulkQuery");
+//////        fury.register(WebMyWar.class, "WebMyWar");
+//////        fury.register(WebMyWars.class, "WebMyWars");
+////        fury.register(WebOptions.class, "WebOptions");
+////        fury.register(WebSession.class, "WebSession");
+////        fury.register(WebSuccess.class, "WebSuccess");
+////        fury.register(WebInt.class, "WebSuccessInt");
+////        fury.register(WebTable.class, "WebTable");
+////        fury.register(WebTarget.class, "WebTarget");
+////        fury.register(WebTargets.class, "WebTargets");
+////        fury.register(WebTransferResult.class, "WebTransferResult");
+////        fury.register(WebUrl.class, "WebUrl");
+//        fury.register(WebValue.class, "WebValue");
+//    }
 
     public static WebDB db() {
         return INSTANCE.webDB;

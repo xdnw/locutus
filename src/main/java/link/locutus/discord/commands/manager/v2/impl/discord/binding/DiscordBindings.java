@@ -187,7 +187,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel", value = "A discord guild channel name or mention")
-    public TextChannel textChannel(@Me Guild guild, String input) {
+    public static TextChannel textChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + null);
         if (!(channel instanceof TextChannel))

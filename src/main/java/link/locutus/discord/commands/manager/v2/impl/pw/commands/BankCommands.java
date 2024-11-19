@@ -2148,7 +2148,7 @@ public class BankCommands {
             return "Transfer too large. Please specify a smaller amount";
         }
 
-        Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(author, receiver, channel.getIdLong());
+        Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), false);
 
         // Filter allowed ids by access type
 
@@ -2179,6 +2179,7 @@ public class BankCommands {
         TransferResult result;
         try {
             result = offshore.transferFromNationAccountWithRoleChecks(
+                    me,
                     author,
                     nationAccount,
                     allianceAccount,
@@ -2851,27 +2852,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)", groups = {
-        "Optional: Specify timeframe",
-        "Display Options",
-    })
-    @RolePermission(value = Roles.ECON)
-    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user,
-                               @AllowDeleted NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
-                               @Arg(value = "Only show transactions after this time", group = 0)
-                               @Default("%epoch%") @Timestamp long timeframe,
-                               @Arg(value = "Do NOT include the tax record resources below the internal tax rate\n" +
-                                       "Default: False", group = 1)
-                               @Default("false") boolean useTaxBase,
-                               @Arg(value = "Include balance offset records (i.e. from commands)\n" +
-                                       "Default: True", group = 1)
-                               @Default("true") boolean useOffset,
-                               @Switch("s") SpreadSheet sheet,
-                               @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
-
-        if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
-
+    public static List<Transaction2> getRecords(GuildDB db, User user, boolean useTaxBase, boolean useOffset, long timeframe, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, boolean onlyOffshoreTransfers) {
         List<Transaction2> transactions = new ArrayList<>();
         if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
@@ -2899,7 +2880,7 @@ public class BankCommands {
             }
 
             if (onlyOffshoreTransfers) {
-                if (offshore == null) return "This alliance does not have an offshore account";
+                if (offshore == null) throw new IllegalArgumentException("This alliance does not have an offshore account");
                 Set<Long> offshoreAAs = db.getOffshore().getOffshoreAAs();
                 transactions.removeIf(f -> f.sender_type == 1 || f.receiver_type == 1);
                 transactions.removeIf(f -> f.tx_id != -1 && f.sender_id != 0 && f.receiver_id != 0 && !offshoreAAs.contains(f.sender_id) && !offshoreAAs.contains(f.receiver_id));
@@ -2918,9 +2899,31 @@ public class BankCommands {
                 transactions.addAll(db.getTransactionsById(otherDB.getGuild().getIdLong(), 3));
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
-
+            throw new IllegalArgumentException("Not implemented");
         }
+        return transactions;
+    }
 
+    @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)", groups = {
+        "Optional: Specify timeframe",
+        "Display Options",
+    })
+    @RolePermission(value = Roles.ECON)
+    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user,
+                               @AllowDeleted NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
+                               @Arg(value = "Only show transactions after this time", group = 0)
+                               @Default("%epoch%") @Timestamp long timeframe,
+                               @Arg(value = "Do NOT include the tax record resources below the internal tax rate\n" +
+                                       "Default: False", group = 1)
+                               @Default("false") boolean useTaxBase,
+                               @Arg(value = "Include balance offset records (i.e. from commands)\n" +
+                                       "Default: True", group = 1)
+                               @Default("true") boolean useOffset,
+                               @Switch("s") SpreadSheet sheet,
+                               @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
+        if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
+        List<Transaction2> transactions = getRecords(db, user, useTaxBase, useOffset, timeframe, nationOrAllianceOrGuild, onlyOffshoreTransfers);
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }
@@ -3089,6 +3092,7 @@ public class BankCommands {
             if (result == null) {
                 try {
                     result = offshore.transferFromNationAccountWithRoleChecks(
+                            me,
                             user,
                             depositsAccount,
                             useOffshoreAccount,

@@ -1076,12 +1076,13 @@ public class DiscordUtil {
 //    }
 
     public static Set<DBNation> parseNations(Guild guild, User user, DBNation nation, String input, boolean ignoreErrors, boolean allowDeleted) {
+        long start = System.currentTimeMillis();
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        System.out.println(":||Remove get placeholders" + (-start + (start = System.currentTimeMillis())));
         LocalValueStore store = placeholders.createLocals(guild, user, nation);
-        Set<DBNation> set = placeholders.parseSet(store, input);
-        if (!allowDeleted) {
-            set.removeIf(f -> !f.isValid());
-        }
+        System.out.println(":||Remove create store" + (-start + (start = System.currentTimeMillis())));
+        Set<DBNation> set = placeholders.parseSet(store, input, null, allowDeleted);
+        System.out.println(":||Remove parse set" + (-start + (start = System.currentTimeMillis())));
         if (set.isEmpty() && !ignoreErrors) {
             throw new IllegalArgumentException("No nations found for input: `" + input + "`");
         }

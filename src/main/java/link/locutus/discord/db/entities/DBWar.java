@@ -231,6 +231,18 @@ public class DBWar {
         return new AbstractMap.SimpleEntry<>(result[0], result[1]);
     }
 
+    public Map.Entry<Boolean, Boolean> getFortified(List<AbstractCursor> attacks) {
+        boolean[] result = {false, false};
+        for (AbstractCursor attack : attacks) {
+            if (attack.getAttack_type() == AttackType.FORTIFY) {
+                result[attack.getAttacker_id() == getAttacker_id() ? 0 : 1] = true;
+            } else if (attack.getAttack_type() != AttackType.PEACE) {
+                result[attack.getAttacker_id() == getAttacker_id() ? 0 : 1] = false;
+            }
+        }
+        return Map.entry(result[0], result[1]);
+    }
+
     public Map.Entry<Integer, Integer> getMap(List<AbstractCursor> attacks) {
         DBNation attacker = Locutus.imp().getNationDB().getNationById(getAttacker_id());
         DBNation defender = Locutus.imp().getNationDB().getNationById(getDefender_id());

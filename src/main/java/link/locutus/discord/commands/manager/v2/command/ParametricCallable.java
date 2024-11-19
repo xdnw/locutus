@@ -958,7 +958,7 @@ public class ParametricCallable implements ICommand {
                 }
             }
             String key = annotation.annotationType().getSimpleName().replace("Permission", "").toLowerCase(Locale.ROOT);
-            if (annJson.isEmpty()) {
+            if (annJson.size() == 0) {
                 annotationsObj.addProperty(key, true);
             } else {
                 annotationsObj.add(key, annJson);
@@ -971,7 +971,7 @@ public class ParametricCallable implements ICommand {
         for (ParameterData param : userParameters) {
             arguments.add(param.getName(), param.toJson());
         }
-        if (!arguments.isEmpty()) {
+        if (arguments.size() != 0) {
             command.add("arguments", arguments);
         }
         return command;
