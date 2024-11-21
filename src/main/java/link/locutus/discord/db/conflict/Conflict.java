@@ -1,5 +1,6 @@
 package link.locutus.discord.db.conflict;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -320,7 +321,7 @@ public class Conflict {
         return entries;
     }
 
-    public synchronized byte[] getGraphPsonGzip(ConflictManager manager) {
+    public synchronized byte[] getGraphPsonGzip(ConflictManager manager)  {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         root.put("name", getName());
         root.put("start", TimeUtil.getTimeFromTurn(turnStart));
@@ -358,7 +359,11 @@ public class Conflict {
         coalitions.add(coalition2.toGraphMap(manager, metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
 
         root.put("coalitions", coalitions);
-        return graphStatsGzip = JteUtil.compress(JteUtil.toBinary(root));
+        try {
+            return graphStatsGzip = JteUtil.compress(manager.getSerializer().writeValueAsBytes(root));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Map<String, Object> warsVsAllianceJson() {
@@ -438,9 +443,11 @@ public class Conflict {
                 root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
                 root.put("war_web", warsVsAllianceJson());
                 root.put("update_ms", System.currentTimeMillis());
-                byte[] compressed = JteUtil.compress(JteUtil.toBinary(root));
+                byte[] compressed = JteUtil.compress(manager.getSerializer().writeValueAsBytes(root));
                 flatStatsGzip = compressed;
                 return compressed;
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
             } finally {
                 dirtyJson = false;
             }
