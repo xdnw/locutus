@@ -1,19 +1,24 @@
 package link.locutus.discord.web.jooby.adapter;
 
-import link.locutus.discord.commands.manager.v2.binding.Key;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonObject;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
-import org.apache.avro.Schema;
-import org.apache.avro.compiler.specific.SpecificCompiler;
-import org.apache.avro.reflect.ReflectData;
+import link.locutus.discord.web.commands.options.WebOptionBindings;
+import link.locutus.discord.web.jooby.PageHandler;
+import link.locutus.discord.web.jooby.WebRoot;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -21,169 +26,166 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 
 public class TsEndpointGenerator {
-    public static void main(String[] args) throws IOException {
-        List<Class<?>> classesToRegister = (Arrays.asList(
-                CacheType.class,
-                SetGuild.class,
-                TradePriceByDayJson.class,
-                WebAnnouncement.class,
-                WebAnnouncements.class,
-                WebAudit.class,
-                WebAudits.class,
-                WebBalance.class,
-                WebBankAccess.class,
-                WebBulkQuery.class,
-                WebInt.class,
-//                WebMyWar.class,
-//                WebMyWars.class,
-                WebOptions.class,
-                WebSession.class,
-                WebSuccess.class,
-//                WebTable.class,
-                WebTarget.class,
-                WebTargets.class,
-                WebTransferResult.class,
-                WebUrl.class,
-                WebValue.class
-        ));
-        Schema schema = generateSchema(classesToRegister);
-        saveSchema(schema, true, null);
-        loadSchema(null);
-
-        //
-    }
-    public static void saveSchema(Schema schema, boolean pretty, File file) throws IOException {
-        if (file == null) {
-            file = new File("../lc_cmd_react/src/assets/schema.avsc");
+    public static void writeFiles(PageHandler handler, File outputDir) throws IOException {
+        if (outputDir == null) {
+            outputDir = new File("../lc_cmd_react/src/");
         }
-        if (!file.exists()) {
-            throw new IllegalArgumentException("Output does not exist: " + file.getAbsolutePath());
+        CommandGroup api = (CommandGroup) handler.getCommands().get("api");
+        {
+            File endpointFile = new File(outputDir, "components/api/endpoints.tsx");
+            String header = """
+                    import {CacheType} from "@/components/cmd/DataContext.tsx";
+                    import React, {ReactNode} from "react";
+                    import type * as ApiTypes from "@/components/api/apitypes.d.ts";
+                    import {useForm, useDisplay, ApiEndpoint, combine, CommonEndpoint} from "@/components/api/endpoint.tsx";
+                    """;
+            String constants = generateEndpointConstants(api);
+            Files.write(endpointFile.toPath(), (header + constants).getBytes());
         }
-        Files.write(file.toPath(), schema.toString(pretty).getBytes());
-    }
-
-    public static void loadSchema(File avscFile) throws IOException {
-        if (avscFile == null) {
-            avscFile = new File("../lc_cmd_react/src/assets/schema.avsc");
+        {
+            // generateTsPlaceholderBuilder (unused)
         }
-        if (!avscFile.exists()) {
-            throw new IllegalArgumentException("Output does not exist: " + avscFile.getAbsolutePath());
-        }
-        Schema schema2 = new Schema.Parser().parse(new File("../lc_cmd_react/src/assets/schema.avsc"));
-        // Create a SpecificCompiler instance
-        SpecificCompiler compiler = new SpecificCompiler(schema2);
+        if (false){
+            CommandManager2 cmdInst = Locutus.cmd().getV2();
+            SimpleValueStore<Object> store = new SimpleValueStore<>();
+            new WebOptionBindings().register(store);
+            Map<String, Object> json = cmdInst.toJson(store, cmdInst.getPermisser());
+            byte[] data = handler.getSerializer().writeValueAsBytes(json);
 
-        // Set the output directory for the generated classes
-        File outputDir = new File("src/main/tmp/");
-
-        // Compile the schema to generate the Java classes
-        compiler.compileToDestination(null, outputDir);
-
-        Set<String> permittedPackages = Set.of(
-                "link.locutus.discord.web.commands.binding.value_types",
-                "org.apache.avro"
-        );
-
-        // Iterate files, and if they have the correct package, move them to `/src/main/java`
-        // Packages in sub directories should be permitted e.g. org.apache.avro.reflect
-        // The package name can be found by reading the first few lines of the generated file (until a line with `package ...` is found)
-        // Print any files that are not in the permitted packages and do NOT copy them
-        File moveTo = new File("src/main/java");
-
-        Files.walk(outputDir.toPath())
-        .filter(Files::isRegularFile)
-        .forEach(file -> {
-            try {
-                List<String> lines = Files.readAllLines(file);
-                Optional<String> packageLine = lines.stream()
-                        .filter(line -> line.startsWith("package "))
-                        .findFirst();
-
-                if (packageLine.isPresent()) {
-                    String packageName = packageLine.get().substring(8, packageLine.get().indexOf(';')).trim();
-                    boolean isPermitted = permittedPackages.stream().anyMatch(packageName::startsWith);
-
-                    if (isPermitted) {
-                        Path targetPath = moveTo.toPath().resolve(outputDir.toPath().relativize(file));
-                        Files.createDirectories(targetPath.getParent());
-                        Files.move(file, targetPath);
-                    } else {
-                        System.out.println("File not in permitted package: " + file + " (" + packageName + ")");
-                        // delete file
-                        Files.delete(file);
-                    }
-                } else {
-                    System.out.println("No package declaration found in file: " + file);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+            File commandsFile = new File(outputDir, "assets/commands.msgpack");
+            if (!commandsFile.exists()) {
+                commandsFile.getParentFile().mkdirs();
+                commandsFile.createNewFile();
             }
-        });
-    }
+            Files.write(commandsFile.toPath(), data);
 
-
-    public static Schema generateSchema(Collection<Class<?>> classes) {
-        Set<Class<?>> processedClasses = new LinkedHashSet<>();
-        List<Schema> schemas = new ArrayList<>();
-        for (Class<?> clazz : classes) {
-            if (!processedClasses.contains(clazz)) {
-                processedClasses.add(clazz);
-                schemas.add(ReflectData.get().getSchema(clazz));
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(json);
+            File jsonFile = new File(outputDir, "assets/commands.json");
+            if (!jsonFile.exists()) {
+                jsonFile.getParentFile().mkdirs();
+                jsonFile.createNewFile();
             }
+            Files.write(jsonFile.toPath(), jsonString.getBytes());
         }
-        return Schema.createUnion(schemas);
     }
 
-    public static void generateTsType(Class clazz) {
-        /*
-            string():
-            array<T extends TypeDescription>(def: T):
-            map<T1 extends TypeDescription, T2 extends TypeDescription>(key: T1, value: T2):
-            set<T_1 extends TypeDescription>(key: T_1):
-            bool():
-            object<T_2 extends {
-                [key: string]: TypeDescription;
-            }>(tag: string, props?: T_2 | undefined):
-            uint8()
-            uint16()
-            uint32()
-            uint64()
-            int8()
-            int16()
-            int32()
-            int64()
-            float()
-            double()
-            binary()
-            date()
-            timestamp()
-
-
-
-            const WebSessionType = Type.object('WebSession', {
-                user: Type.string(),
-                user_name: Type.string(),
-                user_icon: Type.string(),
-                user_valid: Type.bool(),
-                nation: Type.uint16(),
-                nation_name: Type.string(),
-                alliance: Type.uint16(),
-                alliance_name: Type.string(),
-                nation_valid: Type.bool(),
-                expires: Type.uint16(),
-                guild: Type.string(),
-                guild_name: Type.string(),
-                guild_icon: Type.string(),
-                registered: Type.bool(),
-                registered_nation: Type.uint16(),
-            });
-         */
+    private static String generateEndpointConstants(CommandGroup api) {
+        StringBuilder output = new StringBuilder();
+        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
+            output.append(TsEndpointGenerator.generateTsEndpoint(cmd)).append("\n\n");
+        }
+        return output.toString();
     }
+
+//    public static void saveSchema(Schema schema, boolean pretty, File file) throws IOException {
+//        if (file == null) {
+//            file = new File("../lc_cmd_react/src/assets/schema.avsc");
+//        }
+//        if (!file.exists()) {
+//            throw new IllegalArgumentException("Output does not exist: " + file.getAbsolutePath());
+//        }
+//        Files.write(file.toPath(), schema.toString(pretty).getBytes());
+//    }
+//
+//    public static Schema loadSchema(File avscFile) throws IOException {
+//        if (avscFile == null) {
+//            avscFile = new File("../lc_cmd_react/src/assets/schema.avsc");
+//        }
+//        if (!avscFile.exists()) {
+//            throw new IllegalArgumentException("Output does not exist: " + avscFile.getAbsolutePath());
+//        }
+//        return new Schema.Parser().parse(new File("../lc_cmd_react/src/assets/schema.avsc"));
+//    }
+//
+//    public static void compileSchema(File avscFile) throws IOException {
+//        Schema schema = loadSchema(avscFile);
+//        // Create a SpecificCompiler instance
+//        SpecificCompiler compiler = new SpecificCompiler(schema);
+//
+//        // Set the output directory for the generated classes
+//        File outputDir = new File("src/main/tmp/");
+//        // delete contents of dir before compile
+//        Runnable deleteOutput = new Runnable() {
+//            @Override
+//            public void run() {
+//                if (outputDir.exists()) {
+//                    File[] files = outputDir.listFiles();
+//                    if (files != null) {
+//                        for (File f : files) {
+//                            f.delete();
+//                        }
+//                    }
+//                } else {
+//                    outputDir.mkdirs();
+//                }
+//            }
+//        };
+//        deleteOutput.run();
+//
+//        // Compile the schema to generate the Java classes
+//        compiler.compileToDestination(null, outputDir);
+//
+//        Set<String> permittedPackages = Set.of(
+//                "link.locutus.discord.web.commands.binding.value_types",
+//                "org.apache.avro"
+//        );
+//
+//        // Iterate files, and if they have the correct package, move them to `/src/main/java`
+//        // Packages in sub directories should be permitted e.g. org.apache.avro.reflect
+//        // The package name can be found by reading the first few lines of the generated file (until a line with `package ...` is found)
+//        // Print any files that are not in the permitted packages and do NOT copy them
+//        File moveTo = new File("src/main/java");
+//
+//        Files.walk(outputDir.toPath())
+//        .filter(Files::isRegularFile)
+//        .forEach(file -> {
+//            try {
+//                List<String> lines = Files.readAllLines(file);
+//                Optional<String> packageLine = lines.stream()
+//                        .filter(line -> line.startsWith("package "))
+//                        .findFirst();
+//
+//                if (packageLine.isPresent()) {
+//                    String packageName = packageLine.get().substring(8, packageLine.get().indexOf(';')).trim();
+//                    boolean isPermitted = permittedPackages.stream().anyMatch(packageName::startsWith);
+//
+//                    if (isPermitted) {
+//                        Path targetPath = moveTo.toPath().resolve(outputDir.toPath().relativize(file));
+//                        System.out.println("Moving file: " + file + " to " + targetPath);
+////                        Files.createDirectories(targetPath.getParent());
+////                        Files.move(file, targetPath);
+//                    } else {
+//                        System.out.println("File not in permitted package: " + file + " (" + packageName + ")");
+//                        // delete file
+////                        Files.delete(file);
+//                    }
+//                } else {
+//                    System.out.println("No package declaration found in file: " + file);
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        });
+////        deleteOutput.run();
+//    }
+//
+//
+//    public static Schema generateSchema(Collection<Class<?>> classes) {
+//        Set<Class<?>> processedClasses = new LinkedHashSet<>();
+//        List<Schema> schemas = new ArrayList<>();
+//        for (Class<?> clazz : classes) {
+//            if (!processedClasses.contains(clazz)) {
+//                processedClasses.add(clazz);
+//                schemas.add(ReflectData.get().getSchema(clazz));
+//            }
+//        }
+//        return Schema.createUnion(schemas);
+//    }
 
     public static String generateTsEndpoint(ParametricCallable cmd) {
         Method method = cmd.getMethod();
@@ -217,7 +219,7 @@ public class TsEndpointGenerator {
         }
 
         String tsDef = """
-                export const {constName} = {
+                export const {constName}: CommonEndpoint<ApiTypes.{typeName}, {argValues}, {argValuesAllOptional}> = {
                     endpoint: new ApiEndpoint<ApiTypes.{typeName}>(
                         "{constNameLower}",
                         "{path}",

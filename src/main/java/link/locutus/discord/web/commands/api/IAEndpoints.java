@@ -265,7 +265,7 @@ public class IAEndpoints extends PageHelper {
                 min_loot, beige_turns,
                 false, false, num_results
         );
-        List<WebTarget> targets = new ArrayList<>();
+        List<WebTarget> targets = new ObjectArrayList<>();
         for (Map.Entry<DBNation, Map.Entry<Double, Double>> entry : raidResult) {
             DBNation nation = entry.getKey();
             double expected = entry.getValue().getKey();
@@ -297,7 +297,7 @@ public class IAEndpoints extends PageHelper {
         if (counterChance.size() > num_results) {
             counterChance = counterChance.subList(0, num_results);
         }
-        List<WebTarget> targets = new ArrayList<>();
+        List<WebTarget> targets = new ObjectArrayList<>();
         for (Map.Entry<DBNation, Double> entry : counterChance) {
             DBNation nation = entry.getKey();
             double strength = entry.getValue();
@@ -359,40 +359,40 @@ public class IAEndpoints extends PageHelper {
         return new WebMyWars(db, nation, offensives, defensives, isFightingActives);
     }
 
-    public WebTargets war(@Me GuildDB db, @Me DBNation me,
-            @Default("*") Set<DBNation> nations,
-                          @Default("8") int num_results,
-                          @Arg("Include inactive nations in the search\n" +
-                                  "Defaults to false")
-                          @Switch("i") boolean includeInactives,
-                          @Arg("Include applicants in the search\n" +
-                                  "Defaults to false")
-                          @Switch("a") boolean includeApplicants,
-                          @Arg("Only list targets with offensive wars they are winning")
-                          @Switch("p") boolean onlyPriority,
-                          @Arg("Only list targets weaker than you")
-                          @Switch("w") boolean onlyWeak,
-                          @Arg("Sort by easiest targets")
-                          @Switch("e") boolean onlyEasy,
-                          @Arg("Only list targets with less cities than you")
-                          @Switch("c") boolean onlyLessCities,
-                          @Arg("Include nations much stronger than you in the search\n" +
-                                  "Defaults to false")
-                          @Switch("s") boolean includeStrong) {
-        // inactives
-        // applicants
-        // priority
-        // waek
-        // easy
-        // onlylesscities
-        // includestrong
-
-    }
-
-    @Command
-    @IsMemberIngameOrDiscord
-    @ReturnType(WebMyEnemies.class)
-    public WebMyEnemies enemies(@Me GuildDB db) {
-
-    }
+//    public WebTargets war(@Me GuildDB db, @Me DBNation me,
+//            @Default("*") Set<DBNation> nations,
+//                          @Default("8") int num_results,
+//                          @Arg("Include inactive nations in the search\n" +
+//                                  "Defaults to false")
+//                          @Switch("i") boolean includeInactives,
+//                          @Arg("Include applicants in the search\n" +
+//                                  "Defaults to false")
+//                          @Switch("a") boolean includeApplicants,
+//                          @Arg("Only list targets with offensive wars they are winning")
+//                          @Switch("p") boolean onlyPriority,
+//                          @Arg("Only list targets weaker than you")
+//                          @Switch("w") boolean onlyWeak,
+//                          @Arg("Sort by easiest targets")
+//                          @Switch("e") boolean onlyEasy,
+//                          @Arg("Only list targets with less cities than you")
+//                          @Switch("c") boolean onlyLessCities,
+//                          @Arg("Include nations much stronger than you in the search\n" +
+//                                  "Defaults to false")
+//                          @Switch("s") boolean includeStrong) {
+//        // inactives
+//        // applicants
+//        // priority
+//        // waek
+//        // easy
+//        // onlylesscities
+//        // includestrong
+//
+//    }
+//
+//    @Command
+//    @IsMemberIngameOrDiscord
+//    @ReturnType(WebMyEnemies.class)
+//    public WebMyEnemies enemies(@Me GuildDB db) {
+//
+//    }
 }

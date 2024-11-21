@@ -9,6 +9,6 @@ public class WebAnnouncements {
     public List<WebAnnouncement> values;
 
     public WebAnnouncements() {
-        this.values = new ArrayList<>();
+        this.values = new ObjectArrayList<>();
     }
 }

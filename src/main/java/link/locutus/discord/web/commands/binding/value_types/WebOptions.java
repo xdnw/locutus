@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.ArrayList;
@@ -17,29 +18,29 @@ public class WebOptions {
 
     public WebOptions(boolean numeric) {
         if (numeric) {
-            this.key_numeric = new ArrayList<>();
+            this.key_numeric = new ObjectArrayList<>();
         } else {
-            this.key_string = new ArrayList<>();
+            this.key_string = new ObjectArrayList<>();
         }
     }
 
     public WebOptions withIcon() {
-        this.icon = new ArrayList<>();
+        this.icon = new ObjectArrayList<>();
         return this;
     }
 
     public WebOptions withText() {
-        this.text = new ArrayList<>();
+        this.text = new ObjectArrayList<>();
         return this;
     }
 
     public WebOptions withSubtext() {
-        this.subtext = new ArrayList<>();
+        this.subtext = new ObjectArrayList<>();
         return this;
     }
 
     public WebOptions withColor() {
-        this.color = new ArrayList<>();
+        this.color = new ObjectArrayList<>();
         return this;
     }
 

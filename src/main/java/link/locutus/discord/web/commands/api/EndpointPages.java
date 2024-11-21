@@ -121,7 +121,7 @@ public class EndpointPages extends PageHelper {
                 URL_AUTH.getCookieId(),
                 URL_AUTH_SET.getCookieId()
         );
-        List<String> removeCookieStrings = new ArrayList<>();
+        List<String> removeCookieStrings = new ObjectArrayList<>();
         for (String cookie : cookiesToRemove) {
             removeCookieStrings.add(cookie + "=; Max-Age=0; Path=/; HttpOnly");
         }
@@ -136,7 +136,7 @@ public class EndpointPages extends PageHelper {
         CommandGroup commands = handler.getCommands();
         CommandCallable apiCommands = commands.get("api");
 
-        List<Object> result = new ArrayList<>(Collections.nCopies(queries.size(), null));
+        List<Object> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
 
         for (int i = 0; i < queries.size(); i++) {
             Map.Entry<String, Map<String, Object>> entry = queries.get(i);

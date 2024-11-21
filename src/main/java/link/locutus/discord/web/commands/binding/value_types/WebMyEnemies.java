@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +13,7 @@ public class WebMyEnemies {
 
     public WebMyEnemies() {
         this.alliance_ids = new IntArrayList();
-        this.alliances = new ArrayList<>();
-        this.commands = new ArrayList<>();
+        this.alliances = new ObjectArrayList<>();
+        this.commands = new ObjectArrayList<>();
     }
 }

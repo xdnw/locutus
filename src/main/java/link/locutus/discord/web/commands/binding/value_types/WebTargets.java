@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ public class WebTargets {
     public WebTarget self;
 
     public WebTargets(DBNation self) {
-        this.targets = new ArrayList<>();
+        this.targets = new ObjectArrayList<>();
         this.self = new WebTarget(self, 0, 0, 1);
     }
 }
