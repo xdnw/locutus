@@ -9,6 +9,7 @@ import com.opencsv.CSVWriter;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
@@ -748,6 +749,45 @@ public class StringMan {
             return new JsonPrimitive((Boolean) obj);
         } else {
             return new JsonPrimitive(obj.toString());
+        }
+    }
+
+    public static Object toSerializable(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        if (obj.getClass() == String.class) {
+            return obj.toString();
+        }
+        if (obj instanceof Enum<?> emum) {
+            return emum.name();
+        }
+        if (obj.getClass().isArray()) {
+            List<Object> arr = new ObjectArrayList<>();
+            for (int i = 0; i < Array.getLength(obj); i++) {
+                arr.add(toSerializable(Array.get(obj, i)));
+            }
+            return arr;
+        } else if (obj instanceof Collection<?>) {
+            List<Object> arr = new ObjectArrayList();
+            for (Object element : (Collection<?>) obj) {
+                arr.add(toSerializable(element));
+            }
+            return arr;
+        } else if (obj instanceof Map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
+                result.put(entry.getKey().toString(), toSerializable(entry.getValue()));
+            }
+            return result;
+        } else if (obj instanceof Class) {
+            return ((Class<?>) obj).getSimpleName();
+        } else if (obj instanceof Number) {
+            return (Number) obj;
+        } else if (obj instanceof Boolean) {
+            return (Boolean) obj;
+        } else {
+            return obj.toString();
         }
     }
 

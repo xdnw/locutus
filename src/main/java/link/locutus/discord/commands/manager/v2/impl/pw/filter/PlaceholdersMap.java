@@ -1165,47 +1165,47 @@ public class PlaceholdersMap {
             public Set<String> getSheetColumns() {
                 return Set.of("channel");
             }
-
-            @NoFormat
-            @Command(desc = "Add an alias for a selection of channels")
-            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<TextChannelWrapper> channels) {
-                return _addSelectionAlias(this, command, db, name, channels, "channels");
-            }
-
-            @NoFormat
-            @Command(desc = "Add columns to a channel sheet")
-            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<TextChannelWrapper, String> a,
-                                     @Default TypedFunction<TextChannelWrapper, String> b,
-                                     @Default TypedFunction<TextChannelWrapper, String> c,
-                                     @Default TypedFunction<TextChannelWrapper, String> d,
-                                     @Default TypedFunction<TextChannelWrapper, String> e,
-                                     @Default TypedFunction<TextChannelWrapper, String> f,
-                                     @Default TypedFunction<TextChannelWrapper, String> g,
-                                     @Default TypedFunction<TextChannelWrapper, String> h,
-                                     @Default TypedFunction<TextChannelWrapper, String> i,
-                                     @Default TypedFunction<TextChannelWrapper, String> j,
-                                     @Default TypedFunction<TextChannelWrapper, String> k,
-                                     @Default TypedFunction<TextChannelWrapper, String> l,
-                                     @Default TypedFunction<TextChannelWrapper, String> m,
-                                     @Default TypedFunction<TextChannelWrapper, String> n,
-                                     @Default TypedFunction<TextChannelWrapper, String> o,
-                                     @Default TypedFunction<TextChannelWrapper, String> p,
-                                     @Default TypedFunction<TextChannelWrapper, String> q,
-                                     @Default TypedFunction<TextChannelWrapper, String> r,
-                                     @Default TypedFunction<TextChannelWrapper, String> s,
-                                     @Default TypedFunction<TextChannelWrapper, String> t,
-                                     @Default TypedFunction<TextChannelWrapper, String> u,
-                                     @Default TypedFunction<TextChannelWrapper, String> v,
-                                     @Default TypedFunction<TextChannelWrapper, String> w,
-                                     @Default TypedFunction<TextChannelWrapper, String> x) throws GeneralSecurityException, IOException {
-                return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        a, b, c, d, e, f, g, h, i, j,
-                        k, l, m, n, o, p, q, r, s, t,
-                        u, v, w, x);
-            }
+//
+//            @NoFormat
+//            @Command(desc = "Add an alias for a selection of channels")
+//            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+//            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<TextChannelWrapper> channels) {
+//                return _addSelectionAlias(this, command, db, name, channels, "channels");
+//            }
+//
+//            @NoFormat
+//            @Command(desc = "Add columns to a channel sheet")
+//            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+//            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+//                                     @Default TypedFunction<TextChannelWrapper, String> a,
+//                                     @Default TypedFunction<TextChannelWrapper, String> b,
+//                                     @Default TypedFunction<TextChannelWrapper, String> c,
+//                                     @Default TypedFunction<TextChannelWrapper, String> d,
+//                                     @Default TypedFunction<TextChannelWrapper, String> e,
+//                                     @Default TypedFunction<TextChannelWrapper, String> f,
+//                                     @Default TypedFunction<TextChannelWrapper, String> g,
+//                                     @Default TypedFunction<TextChannelWrapper, String> h,
+//                                     @Default TypedFunction<TextChannelWrapper, String> i,
+//                                     @Default TypedFunction<TextChannelWrapper, String> j,
+//                                     @Default TypedFunction<TextChannelWrapper, String> k,
+//                                     @Default TypedFunction<TextChannelWrapper, String> l,
+//                                     @Default TypedFunction<TextChannelWrapper, String> m,
+//                                     @Default TypedFunction<TextChannelWrapper, String> n,
+//                                     @Default TypedFunction<TextChannelWrapper, String> o,
+//                                     @Default TypedFunction<TextChannelWrapper, String> p,
+//                                     @Default TypedFunction<TextChannelWrapper, String> q,
+//                                     @Default TypedFunction<TextChannelWrapper, String> r,
+//                                     @Default TypedFunction<TextChannelWrapper, String> s,
+//                                     @Default TypedFunction<TextChannelWrapper, String> t,
+//                                     @Default TypedFunction<TextChannelWrapper, String> u,
+//                                     @Default TypedFunction<TextChannelWrapper, String> v,
+//                                     @Default TypedFunction<TextChannelWrapper, String> w,
+//                                     @Default TypedFunction<TextChannelWrapper, String> x) throws GeneralSecurityException, IOException {
+//                return Placeholders._addColumns(this, command,db, io, author, sheet,
+//                        a, b, c, d, e, f, g, h, i, j,
+//                        k, l, m, n, o, p, q, r, s, t,
+//                        u, v, w, x);
+//            }
         };
 
     }

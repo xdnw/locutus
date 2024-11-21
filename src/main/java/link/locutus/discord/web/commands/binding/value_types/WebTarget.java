@@ -3,8 +3,6 @@ package link.locutus.discord.web.commands.binding.value_types;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBNation;
 
-import java.util.Map;
-
 public class WebTarget {
 
     public int id;
@@ -12,6 +10,7 @@ public class WebTarget {
     public int alliance_id;
     public String alliance;
     public double avg_infra;
+    public int cities;
     public int soldier;
     public int tank;
     public int aircraft;
@@ -21,7 +20,7 @@ public class WebTarget {
     public int spies;
     public int position;
     public long active_ms;
-    public NationColor color;
+    public int color_id;
     public int beige_turns;
     public int off;
     public int def;
@@ -36,6 +35,7 @@ public class WebTarget {
         this.alliance_id = nation.getAlliance_id();
         this.alliance = nation.getAllianceName();
         this.avg_infra = nation.getAvg_infra();
+        this.cities = nation.getCities();
         this.soldier = nation.getSoldiers();
         this.tank = nation.getTanks();
         this.aircraft = nation.getAircraft();
@@ -43,9 +43,9 @@ public class WebTarget {
         this.missile = nation.getMissiles();
         this.nuke = nation.getNukes();
         this.spies = nation.getSpies();
-        this.position = nation.getPositionEnum().id;
+        this.position = nation.getPositionEnum().ordinal();
         this.active_ms = nation.lastActiveMs();
-        this.color = nation.getColor();
+        this.color_id = nation.getColor().ordinal();
         this.beige_turns = nation.getColor() == NationColor.BEIGE ? nation.getBeigeTurns() : 0;
         this.off = nation.getOff();
         this.def = nation.getDef();

@@ -136,7 +136,7 @@ public class EndpointPages extends PageHelper {
         CommandGroup commands = handler.getCommands();
         CommandCallable apiCommands = commands.get("api");
 
-        List<WebSuccess> result = new ArrayList<>(Collections.nCopies(queries.size(), null));
+        List<Object> result = new ArrayList<>(Collections.nCopies(queries.size(), null));
 
         for (int i = 0; i < queries.size(); i++) {
             Map.Entry<String, Map<String, Object>> entry = queries.get(i);
@@ -147,7 +147,7 @@ public class EndpointPages extends PageHelper {
             String error;
             if (callable instanceof ParametricCallable cmd) {
                 try {
-                    result.set(i, (WebSuccess) handler.call(cmd, ws, context, value));
+                    result.set(i, handler.call(cmd, ws, context, value));
                     continue;
                 } catch (Exception e) {
                     e.printStackTrace();

@@ -10,6 +10,9 @@ import link.locutus.discord.util.StringMan;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class ParameterData {
     private Type type;
@@ -22,34 +25,32 @@ public class ParameterData {
     private String desc;
     private int group = -1;
 
-    public JsonObject toJson() {
-        JsonObject arg = new JsonObject();
-        arg.addProperty("name", getName());
-        if (optional) arg.addProperty("optional", true);
-        if (isFlag()) arg.addProperty("flag", getFlag());
-        if (this.desc != null && !desc.isEmpty()) arg.addProperty("desc", desc);
-        if (group != -1) arg.addProperty("group", group);
+    public Map<String, Object> toJson() {
+        Map<String, Object> arg = new LinkedHashMap<>();
+        arg.put("name", getName());
+        if (optional) arg.put("optional", true);
+        if (isFlag()) arg.put("flag", getFlag());
+        if (this.desc != null && !desc.isEmpty()) arg.put("desc", desc);
+        if (group != -1) arg.put("group", group);
         String webType = binding.getWebTypeStr();
-        arg.addProperty("type", webType);
+        arg.put("type", webType);
         if (defaultValue != null && defaultValue.length != 0) {
-            arg.addProperty("def", getDefaultValueString());
+            arg.put("def", getDefaultValueString());
         }
         ArgChoice choiceAnn = getAnnotation(ArgChoice.class);
         if (choiceAnn != null) {
-            JsonArray choices = new JsonArray();
-            for (String choice : choiceAnn.value()) choices.add(choice);
-            arg.add("choices", choices);
+            arg.put("choices", Arrays.asList(choiceAnn.value()));
         }
         Range range = getAnnotation(Range.class);
         if (range != null) {
             if (range.min() != Double.NEGATIVE_INFINITY)
-                arg.addProperty("min", range.min());
+                arg.put("min", range.min());
             if (range.max() != Double.POSITIVE_INFINITY)
-                arg.addProperty("max", range.max());
+                arg.put("max", range.max());
         }
         Filter filter = getAnnotation(Filter.class);
         if (filter != null) {
-            arg.addProperty("filter", filter.value());
+            arg.put("filter", filter.value());
         }
         return arg;
     }

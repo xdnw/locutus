@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class WebMyWar {
+    public int id;
     public WebTarget target;
     public Map<String, String> beigeReasons;
 
@@ -29,15 +31,19 @@ public class WebMyWar {
     public int att_map;
     public int def_map;
 
-    public int iron_dome;
-    public int vts;
+    public boolean iron_dome;
+    public boolean vds;
 
-    public int att_fortified;
-    public int def_fortified;
+    public boolean att_fortified;
+    public boolean def_fortified;
 
     public WebMyWar(GuildDB db, DBNation self, DBNation enemy, DBWar war, boolean isOffensive, Set<BeigeReason> reasons) {
+        this.id = war.getWarId();
+        this.target = new WebTarget(enemy, 0, 0, 0);
+        iron_dome = enemy.hasProject(Projects.IRON_DOME);
+        vds = enemy.hasProject(Projects.VITAL_DEFENSE_SYSTEM);
+
         double loot = enemy.lootTotal() * war.getWarType().lootModifier();
-        target = new WebTarget(enemy, 0, loot, 0);
         this.beigeReasons = new LinkedHashMap<>();
         if (reasons != null) {
             for (BeigeReason reason : reasons) {
@@ -61,42 +67,7 @@ public class WebMyWar {
         this.def_res = res.getValue();
         this.peace = war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE ? 1 : war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE ? -1 : 0;
         Map.Entry<Boolean, Boolean> fortified = war.getFortified(attacks);
-
-
-        /*
-        ground strength
-        // MAP
-        // resistance
-
-        war id
-                @if(nation.hasProject(Projects.MISSILE_LAUNCH_PAD) && enemy.hasProject(Projects.IRON_DOME))
-            <p>IRON_DOME (50% chance to thwart missiles)</p>
-        @endif
-        @if(nation.hasProject(Projects.NUCLEAR_RESEARCH_FACILITY) && enemy.hasProject(Projects.VITAL_DEFENSE_SYSTEM))
-            <p>VITAL_DEFENSE_SYSTEM (20% chance to thwart nukes)</p>
-        @endif
-        @if(warCard.attackerFortified)
-
-        @endif
-        @if(warCard.defenderFortified)
-
-        @endif
-        @if(warCard.blockaded == nation.getNation_id())
-
-        @endif
-        @if(warCard.blockaded == enemy.getNation_id())
-
-        @endif
-        @if(warCard.groundControl == nation.getNation_id())
-
-        @endif
-        @if(warCard.groundControl == enemy.getNation_id())
-
-        @endif
-        @if(warCard.airSuperiority == nation.getNation_id())
-
-        @endif
-        @if(warCard.airSuperiority == enemy.getNation_id())
-         */
+        this.att_fortified = fortified.getKey();
+        this.def_fortified = fortified.getValue();
     }
 }

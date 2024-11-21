@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.db.entities.DBNation;
 
+import java.util.Map;
+
 public class ProviderParser<T> implements Parser<T> {
     private final Key<T> key;
     private final T value;
@@ -43,7 +45,7 @@ public class ProviderParser<T> implements Parser<T> {
     }
 
     @Override
-    public JsonObject toJson() {
+    public Map<String, Object> toJson() {
         throw new UnsupportedOperationException();
     }
 }

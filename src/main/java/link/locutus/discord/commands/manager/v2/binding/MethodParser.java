@@ -16,9 +16,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.api.client.util.Preconditions.checkNotNull;
@@ -229,15 +227,13 @@ public class MethodParser<T> implements Parser<T> {
     }
 
     @Override
-    public JsonObject toJson() {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("desc", desc);
+    public Map<String, Object> toJson() {
+        Map<String, Object> obj = new LinkedHashMap<>();
+        obj.put("desc", desc);
         Binding binding = getKey().getBinding();
         String[] examples = binding.examples();
         if (examples != null && examples.length > 0) {
-            JsonArray array = new JsonArray();
-            for (String example : examples) array.add(example);
-            obj.add("examples", array);
+            obj.put("examples", examples);
         }
         return obj;
     }

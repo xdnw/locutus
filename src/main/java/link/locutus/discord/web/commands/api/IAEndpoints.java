@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.api;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
@@ -10,7 +11,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildKey;
@@ -312,26 +315,84 @@ public class IAEndpoints extends PageHelper {
         return result;
     }
 
-//    @Command
-//    @IsMemberIngameOrDiscord
-//    @ReturnType(WebTable.class)
-//    public Object records(@Me GuildDB db, @Me @Default User user, @Me DBNation me, @Default DBNation nation) {
-//        if (nation == null) nation = me;
-//        else if (nation.getId() != me.getId() && user == null || !Roles.ECON_STAFF.has(user, db.getGuild())) {
-//            throw new IllegalArgumentException("You can only view your own bank records.");
-//        }
-//        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, 0, nation, false);
-//        List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
-//        return new WebTable(cells);
-//    }
+    @Command
+    @IsMemberIngameOrDiscord
+    @ReturnType(WebTable.class)
+    public Object records(@Me GuildDB db, @Me @Default User user, @Me DBNation me, @Default DBNation nation) {
+        if (nation == null) nation = me;
+        else if (nation.getId() != me.getId() && user == null || !Roles.ECON_STAFF.has(user, db.getGuild())) {
+            throw new IllegalArgumentException("You can only view your own bank records.");
+        }
+        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, 0, nation, false);
+        List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
+        return new WebTable(cells);
+    }
 
-//    @Command
-//    @IsMemberIngameOrDiscord
-//    @ReturnType(WebMyWars.class)
-//    public WebSuccess my_wars(@Me DBNation nation) {
-//        return new WebMyWars(nation);
-//    }
+    @Command
+    @IsMemberIngameOrDiscord
+    @ReturnType(WebMyWars.class)
+    public WebMyWars my_wars(@Me GuildDB db, @Me DBNation nation) {
+        int myWars = nation.getNumWars();
+        for (DBNation other : Locutus.imp().getNationDB().getAllNations()) {
+            int otherWars = other.getNumWars();
+            if (otherWars > myWars) {
+                nation = other;
+                myWars = otherWars;
+                if (myWars == 9) break;
+            }
+        }
+        Set<DBWar> wars = nation.getActiveWars();
+        List<DBWar> offensives = new ObjectArrayList<>();
+        List<DBWar> defensives = new ObjectArrayList<>();
+        boolean isFightingActives = false;
+        for (DBWar war : wars) {
+            DBNation enemy;
+            if (war.getAttacker_id() == nation.getId()) {
+                offensives.add(war);
+                enemy = war.getNation(false);
+            } else {
+                defensives.add(war);
+                enemy = war.getNation(true);
+            }
+            isFightingActives |= enemy != null && enemy.active_m() < 1440;
+        }
+        return new WebMyWars(db, nation, offensives, defensives, isFightingActives);
+    }
 
+    public WebTargets war(@Me GuildDB db, @Me DBNation me,
+            @Default("*") Set<DBNation> nations,
+                          @Default("8") int num_results,
+                          @Arg("Include inactive nations in the search\n" +
+                                  "Defaults to false")
+                          @Switch("i") boolean includeInactives,
+                          @Arg("Include applicants in the search\n" +
+                                  "Defaults to false")
+                          @Switch("a") boolean includeApplicants,
+                          @Arg("Only list targets with offensive wars they are winning")
+                          @Switch("p") boolean onlyPriority,
+                          @Arg("Only list targets weaker than you")
+                          @Switch("w") boolean onlyWeak,
+                          @Arg("Sort by easiest targets")
+                          @Switch("e") boolean onlyEasy,
+                          @Arg("Only list targets with less cities than you")
+                          @Switch("c") boolean onlyLessCities,
+                          @Arg("Include nations much stronger than you in the search\n" +
+                                  "Defaults to false")
+                          @Switch("s") boolean includeStrong) {
+        // inactives
+        // applicants
+        // priority
+        // waek
+        // easy
+        // onlylesscities
+        // includestrong
 
+    }
 
+    @Command
+    @IsMemberIngameOrDiscord
+    @ReturnType(WebMyEnemies.class)
+    public WebMyEnemies enemies(@Me GuildDB db) {
+
+    }
 }
