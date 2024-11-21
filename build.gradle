@@ -103,6 +103,8 @@ def operatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
 def currentArchitecture = DefaultNativePlatform.getCurrentArchitecture()
 
 dependencies {
+    implementation 'org.msgpack:msgpack-core:0.9.8'
+    implementation 'org.msgpack:jackson-dataformat-msgpack:0.9.8'
     implementation 'org.lz4:lz4-java:1.8.0'
     implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
     implementation 'org.jgrapht:jgrapht-core:1.5.2'
