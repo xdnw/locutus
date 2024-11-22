@@ -4,8 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.jpson.PSON;
-import com.jpson.PsonEncoder;
-import com.jpson.PsonOptions;
 import gg.jte.TemplateOutput;
 import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
@@ -44,9 +42,14 @@ public class JteUtil {
         }
     }
 
-    public static byte[] toBinary(Map<String, Object> map) {
+    public static byte[] toPsonBinary(Map<String, Object> map) {
         return PSON.encode(map);
     }
+
+    public static Object fromPsonBinary(byte[] bytes) {
+        return PSON.decode(bytes);
+    }
+
     public static byte[] compress(String b64String) {
         return compress(b64String.getBytes(StandardCharsets.UTF_8));
     }
