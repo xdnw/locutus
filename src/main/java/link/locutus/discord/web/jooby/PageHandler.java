@@ -41,6 +41,7 @@ import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.api.EndpointPages;
 import link.locutus.discord.web.commands.api.IAEndpoints;
+import link.locutus.discord.web.commands.api.StatEndpoints;
 import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.binding.*;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
@@ -116,6 +117,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new EndpointPages(), "api");
         this.commands.registerSubCommands(new TradeEndpoints(), "api");
         this.commands.registerSubCommands(new IAEndpoints(), "api");
+        this.commands.registerSubCommands(new StatEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
@@ -521,7 +523,7 @@ public class PageHandler implements Handler {
                             if (queryParams.isEmpty()) {
                                 System.out.println(":||remove Query params are empty");
                                 for (Map.Entry<String, List<String>> entry : ctx.formParamMap().entrySet()) {
-                                    System.out.println(":||remove Query params form " + entry.getKey() + " | " + entry.getValue());
+                                    System.out.println(":||remove Query params form " + entry.getKey() + " | " + entry.getValue() + " | " + entry.getValue().size());
                                 }
                                 queryMap = parseQueryMap(ctx.formParamMap());
                             } else {

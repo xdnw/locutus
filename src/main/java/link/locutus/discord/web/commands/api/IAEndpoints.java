@@ -325,7 +325,7 @@ public class IAEndpoints extends PageHelper {
         }
         List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, 0, nation, false);
         List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
-        return new WebTable(cells);
+        return new WebTable(cells, null);
     }
 
     @Command
