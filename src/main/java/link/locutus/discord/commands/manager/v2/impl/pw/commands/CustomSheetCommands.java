@@ -440,6 +440,7 @@ public class CustomSheetCommands {
                     if (tab == null) {
                         errors.add(TAB_TYPE.replace("{tab_name}", tabName) + "\nNote: A saved sheet was found for this url, but no tab was registered to `" + tabName + "`." +
                                 "Create a tab with " + CM.sheet_custom.add_tab.cmd.toSlashMention());
+                        continue;
                     }
                     selection = tab.getKey();
                 } else {
