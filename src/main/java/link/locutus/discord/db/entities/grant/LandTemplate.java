@@ -187,7 +187,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
         list.add(new Grant.Requirement("Land granted must NOT exceed: " + (template == null ? "`{level}`" : template.level), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return finalParsed == null || template == null || finalParsed.longValue() <= template.level;
+                return template == null || finalParsed == null || finalParsed.longValue() <= template.level;
             }
         }));
 

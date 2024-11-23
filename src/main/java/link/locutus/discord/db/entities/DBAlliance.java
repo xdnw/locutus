@@ -6,15 +6,22 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -23,6 +30,8 @@ import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
@@ -41,6 +50,7 @@ import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
 import org.springframework.web.client.HttpClientErrorException;
@@ -105,6 +115,30 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public double getTreasureBonus() {
         int num = getNumTreasures();
         return num == 0 ? 0 : (Math.sqrt(num * 4) * 0.01);
+    }
+
+    @Command(desc = "Get value of an alliance metric at a date")
+    public double getMetricAt(ValueStore store, AllianceMetric metric, @Timestamp long date) {
+        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, "metric" + date);
+        NationDB db = Locutus.imp().getNationDB();
+        long turn = TimeUtil.getTurn(date);
+        return scoped.getMap(this,
+                (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Double>>)
+                        f -> {
+            Set<Integer> aaIds = new IntOpenHashSet(f.size());
+            for (DBAlliance alliance : f) aaIds.add(alliance.allianceId);
+            Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = db.getAllianceMetrics(aaIds, metric, turn);
+            Map<DBAlliance, Double> result = new Object2ObjectOpenHashMap<>();
+            for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
+                DBAlliance aa = entry.getKey();
+                for (Map.Entry<AllianceMetric, Map<Long, Double>> entry2 : entry.getValue().entrySet()) {
+                    entry2.getValue().forEach((k, v) -> {
+                        result.put(aa, v);
+                    });
+                }
+            }
+            return result;
+        });
     }
 
     @Override
