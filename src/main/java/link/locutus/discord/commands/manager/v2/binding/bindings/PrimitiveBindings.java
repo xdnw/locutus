@@ -238,13 +238,14 @@ public class PrimitiveBindings extends BindingHelper {
             Date parsed = format.parse(argument);
             return parsed.getTime();
         }
-        if (argument.contains("/")) {
-            String[] split = argument.split("/");
+        if (argument.contains("/") || argument.contains(".")) {
+            String[] split = argument.split("[/.]");
             if (split.length == 3) {
+                String full = split[0] + "/" + split[1] + "/" + split[2];
                 if (split[2].length() == 2) {
-                    return TimeUtil.parseDate(TimeUtil.DD_MM_YY, argument, false);
+                    return TimeUtil.parseDate(TimeUtil.DD_MM_YY, full, false);
                 } else {
-                    return TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, argument, false);
+                    return TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, full, false);
                 }
             } else {
                 throw new IllegalArgumentException("Invalid time format: " + argument);

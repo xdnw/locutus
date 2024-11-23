@@ -137,6 +137,7 @@ public class CustomSheet {
                             Function<Object, String> function = ph.getFormatFunction(store, column, true);
                             functions.add(function);
                         } catch (IllegalArgumentException e) {
+                            e.printStackTrace();
                             errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`] " + StringMan.stripApiKey(e.getMessage()));
                             functions.add(null);
                         }
