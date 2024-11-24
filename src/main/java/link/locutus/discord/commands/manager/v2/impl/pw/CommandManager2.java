@@ -417,7 +417,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new UtilityCommands(), List.of("treaty"), "nap", "gw_nap");
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "v2", "set_v2");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "setV2", "set_v2");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "savePojos", "pojos");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "list"), "hasSameNetworkAsBan", "multis");
