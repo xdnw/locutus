@@ -328,10 +328,10 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             int taxId = PW.parseTaxId(name);
             return snapshot.getNationsByBracket(taxId);
         } else if (SpreadSheet.isSheet(nameLower)) {
-            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
+            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader", "{nation}", "{leader}", "{id}"), true,
                     s -> switch (s.toLowerCase(Locale.ROOT)) {
-                        case "nation" -> 0;
-                        case "leader" -> 1;
+                        case "nation", "{nation}", "{id}" -> 0;
+                        case "leader", "{leader}" -> 1;
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {

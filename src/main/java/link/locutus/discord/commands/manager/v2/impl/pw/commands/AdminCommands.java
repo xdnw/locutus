@@ -2833,5 +2833,10 @@ public class AdminCommands {
         return "Done!";
     }
 
+    @Command(desc = "Set the v2 flag")
+    public String setV2(boolean value) {
+        Settings.USE_V2 = value;
+        return "Done! Set v2 to " + value;
+    }
 
 }

@@ -510,8 +510,9 @@ public final class Locutus extends ListenerAdapter {
         return pusher;
     }
 
+    private final Object warUpdateLock = new Object();
+
     public void initRepeatingTasks() {
-        Object warUpdateLock = new Object();
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
             taskTrack.addTask("Turn Change", new CaughtTask() {
@@ -558,7 +559,6 @@ public final class Locutus extends ListenerAdapter {
                     runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
                 }
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
-
         } else {
 //            taskTrack.addTask("Nation (Active)", () -> {
 //                try {
@@ -569,18 +569,25 @@ public final class Locutus extends ListenerAdapter {
 //            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Treaty", () -> {
+                if (Settings.USE_V2) return;
                 runEventsAsync(getNationDB()::updateTreaties);
             }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Bank", () -> {
+                if (Settings.USE_V2) return;
                 runEventsAsync(f -> getBankDB().updateBankRecs(false, f));
             }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Nation (Recent)", () -> {
+                if (Settings.USE_V2) return;
                 runEventsAsync(getNationDB()::updateRecentNations);
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Nation", () -> {
+                if (Settings.USE_V2) {
+                    runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
+                    return;
+                }
                 runEventsAsync(events -> {
                     getNationDB().updateAllNations(events, true);
                     boolean hasUnknownAA = false;
@@ -597,18 +604,25 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Nation (Active)", () -> {
+                if (Settings.USE_V2) return;
                 getNationDB().getActive(false, true);
             }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Outdated Cities", () -> {
+                if (Settings.USE_V2) return;
                 runEventsAsync(f -> getNationDB().updateDirtyCities(false, f));
             }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS, TimeUnit.SECONDS);
 
-            taskTrack.addTask("Outdated Cities", () -> {
+            taskTrack.addTask("All Cities", () -> {
+                if (Settings.USE_V2) {
+                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+                    return;
+                }
                 runEventsAsync(f -> getNationDB().updateAllCities(f));
             }, Settings.INSTANCE.TASKS.ALL_CITIES_SECONDS, TimeUnit.SECONDS);
 
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
+                if (Settings.USE_V2) return;
                 SpyUpdater spyUpdate = new SpyUpdater();
                 taskTrack.addTask("Spy Tracker", () -> {
                     spyUpdate.run();
@@ -630,31 +644,42 @@ public final class Locutus extends ListenerAdapter {
 
             taskTrack.addTask("All War/Attack", () -> {
                 synchronized (warUpdateLock) {
-                    runEventsAsync(getWarDb()::updateAllWars);
-                    runEventsAsync(getWarDb()::updateAttacks);
+                    if (Settings.USE_V2) {
+                        runEventsAsync(getWarDb()::updateAllWarsV2);
+                        runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
+                    } else {
+                        runEventsAsync(getWarDb()::updateAllWars);
+                        runEventsAsync(getWarDb()::updateAttacks);
+                    }
                 }
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
             checkMailTasks();
 
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
-                taskTrack.addTask("Bounties", () -> Locutus.imp().getWarDb().updateBountiesV3(),
-                        Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
+                taskTrack.addTask("Bounties", () -> {
+                    if (Settings.USE_V2) return;
+                    Locutus.imp().getWarDb().updateBountiesV3()
+                },
+                Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
             if (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0) {
                 taskTrack.addTask("Treasure", () -> {
+                    if (Settings.USE_V2) return;
                     runEventsAsync(Locutus.imp().getNationDB()::updateTreasures);
                 }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
                 taskTrack.addTask("Baseball", () -> {
+                    if (Settings.USE_V2) return;
                     runEventsAsync(getBaseballDB()::updateGames);
                 }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
             }
 
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
                 taskTrack.addTask("Trade", () -> {
+                            if (Settings.USE_V2) return;
                             runEventsAsync(getTradeManager()::updateTradeList);
                         },
                         Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS, TimeUnit.SECONDS);
@@ -662,6 +687,7 @@ public final class Locutus extends ListenerAdapter {
 
             if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
                 taskTrack.addTask("Discord User Id", () -> {
+                            if (Settings.USE_V2) return;
                             Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false);
                         },
                         Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
@@ -693,26 +719,33 @@ public final class Locutus extends ListenerAdapter {
             }
 
             {
-                // Update all nations
+                if (!Settings.USE_V2) {
+                    {
+                        runEventsAsync(events -> getNationDB().updateAllNations(events, true));
+                    }
+                    {
+                        runEventsAsync(events -> getNationDB().updateAlliances(null, events));
+                    }
+                    runEventsAsync(getNationDB()::updateTreaties);
+                    try {
+                        runEventsAsync(getNationDB()::updateBans);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
 
-                {
-                    runEventsAsync(events -> getNationDB().updateAllNations(events, true));
+                    getNationDB().saveAllCities(); // TODO save all cities
+
+                    getTradeManager().updateColorBlocs(); // TODO move to configurable task
+                } else {
+                    runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
+                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+                    synchronized (warUpdateLock) {
+                        runEventsAsync(getWarDb()::updateAllWarsV2);
+                        runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
+                    }
+                    runEventsAsync(getNationDB()::deleteExpiredTreaties);
                 }
-                {
-                    runEventsAsync(events -> getNationDB().updateAlliances(null, events));
-                }
 
-                runEventsAsync(getNationDB()::deleteExpiredTreaties);
-                runEventsAsync(getNationDB()::updateTreaties);
-                try {
-                    runEventsAsync(getNationDB()::updateBans);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-
-                getNationDB().saveAllCities(); // TODO save all cities
-
-                getTradeManager().updateColorBlocs(); // TODO move to configurable task
             }
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {
