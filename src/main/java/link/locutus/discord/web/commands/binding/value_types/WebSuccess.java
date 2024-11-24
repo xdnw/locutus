@@ -2,7 +2,7 @@ package link.locutus.discord.web.commands.binding.value_types;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class WebSuccess {
+public final class WebSuccess {
     public boolean success;
     public @Nullable String message;
 

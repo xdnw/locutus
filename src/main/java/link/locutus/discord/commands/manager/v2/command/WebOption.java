@@ -167,28 +167,28 @@ public class WebOption {
         return requiresUser;
     }
 
-    public JsonObject toJson() {
-        JsonObject json = new JsonObject();
+    public Map<String, Object> toJson() {
+        Map<String, Object> json = new LinkedHashMap<>();
         if (options != null) {
-            json.add("options", WebUtil.GSON.toJsonTree(options));
+            json.put("options", options);
         }
         if (compositeTypes != null) {
-            json.add("composite", WebUtil.GSON.toJsonTree(compositeTypes));
+            json.put("composite", compositeTypes);
         }
         if (isAllowQuery()) {
-            json.addProperty("query", true);
+            json.put("query", true);
         }
         if (isAllowCompletions()) {
-            json.addProperty("completions", true);
+            json.put("completions", true);
         }
         if (requiresGuild) {
-            json.addProperty("guild", true);
+            json.put("guild", true);
         }
         if (requiresNation) {
-            json.addProperty("nation", true);
+            json.put("nation", true);
         }
         if (requiresUser) {
-            json.addProperty("user", true);
+            json.put("user", true);
         }
         return json;
     }

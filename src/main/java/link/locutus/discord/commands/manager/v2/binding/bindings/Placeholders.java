@@ -454,7 +454,6 @@ public abstract class Placeholders<T> extends BindingHelper {
                             }
                         }
                     }
-                    ;
                 } else {
                     hasCurlyBracket = true;
                     // Find the matching closing curly brace

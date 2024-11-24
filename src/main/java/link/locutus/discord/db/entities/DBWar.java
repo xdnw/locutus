@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.util.MarkupUtil;
@@ -231,6 +232,18 @@ public class DBWar {
         return new AbstractMap.SimpleEntry<>(result[0], result[1]);
     }
 
+    public Map.Entry<Boolean, Boolean> getFortified(List<AbstractCursor> attacks) {
+        boolean[] result = {false, false};
+        for (AbstractCursor attack : attacks) {
+            if (attack.getAttack_type() == AttackType.FORTIFY) {
+                result[attack.getAttacker_id() == getAttacker_id() ? 0 : 1] = true;
+            } else if (attack.getAttack_type() != AttackType.PEACE) {
+                result[attack.getAttacker_id() == getAttacker_id() ? 0 : 1] = false;
+            }
+        }
+        return Map.entry(result[0], result[1]);
+    }
+
     public Map.Entry<Integer, Integer> getMap(List<AbstractCursor> attacks) {
         DBNation attacker = Locutus.imp().getNationDB().getNationById(getAttacker_id());
         DBNation defender = Locutus.imp().getNationDB().getNationById(getDefender_id());
@@ -327,6 +340,7 @@ public class DBWar {
         return warId;
     }
 
+    @Command
     public long getDate() {
         return date;
     }

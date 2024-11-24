@@ -36,7 +36,7 @@ public interface CommandCallable {
 
     List<String> aliases();
 
-    JsonObject toJson(PermissionHandler permHandler, boolean includeReturnType);
+    Map<String, Object> toJson(PermissionHandler permHandler, boolean includeReturnType);
 
     default void validatePermissions(ValueStore store, PermissionHandler permisser) throws IllegalArgumentException {
 

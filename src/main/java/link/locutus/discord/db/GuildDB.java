@@ -1256,6 +1256,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         });
     }
 
+    public void setAllAnnouncementsActive(int nation_id, boolean active) {
+        update("UPDATE ANNOUNCEMENTS_PLAYER2 SET active = ? WHERE receiver = ?", new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setBoolean(1, active);
+                stmt.setInt(2, nation_id);
+            }
+        });
+    }
+
     public Map<Announcement, List<Announcement.PlayerAnnouncement>> getAllPlayerAnnouncements(boolean allowArchived) {
         List<Announcement> announcements = getAnnouncements();
         Map<Integer, Announcement> announcementsById = new LinkedHashMap<>();
@@ -1554,19 +1564,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return null;
     }
 
-    public long getMemberWithdrawAccount(User banker, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError) {
-        if (!Roles.MEMBER.has(banker, guild)) {
+    public long getMemberWithdrawAccount(DBNation bankerNation, User banker, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError, boolean ignoreChannels) {
+        boolean noNeedDiscord = GuildKey.NO_DISCORD_CAN_BANK.getOrNull(this) == Boolean.TRUE;
+        boolean hasMember = false;
+        if (banker != null) {
+            hasMember = Roles.MEMBER.has(banker, guild);
+        }
+        if (bankerNation != null && !hasMember && !noNeedDiscord && isAllianceId(bankerNation.getId())) {
+            hasMember = true;
+        }
+
+        if (!hasMember) {
             if (throwError) throw new IllegalArgumentException("You must have the member role to withdraw resources: " + Roles.MEMBER.toDiscordRoleNameElseInstructions(guild));
             return 0;
         }
 
-        if (!Roles.ECON_WITHDRAW_SELF.has(banker, guild)) {
+        boolean hasWithdraw = noNeedDiscord && hasMember;
+        if (!hasWithdraw && banker != null) {
+            hasWithdraw = Roles.ECON_WITHDRAW_SELF.has(banker, guild);
+        }
+        if (!hasWithdraw) {
             if (throwError) throw new IllegalArgumentException("You must have the withdraw role to withdraw resources: " + Roles.ECON_WITHDRAW_SELF.toDiscordRoleNameElseInstructions(guild));
             return 0;
         }
 
         Set<Integer> aaIds = getAllianceIds();
-        DBNation bankerNation = DiscordUtil.getNation(banker);
         if (bankerNation != null) {
             if (getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                 if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
@@ -1574,45 +1596,50 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                         throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildKey.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + GuildKey.MEMBER_CAN_WITHDRAW.getCommandObj(this, true) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
                     }
                 } else if (aaIds.isEmpty()) {
-                    if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
-                        MessageChannel defaultChannel = getResourceChannel(0);
-                        if (defaultChannel == null) {
-                            throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
-                        } else {
-                            throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                    if (!ignoreChannels) {
+                        if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
+                            MessageChannel defaultChannel = getResourceChannel(0);
+                            if (defaultChannel == null) {
+                                throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                            } else {
+                                throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                            }
                         }
                     }
                     return getIdLong();
                 } else {
                     int aaId = bankerNation.getAlliance_id();
-                    if (!channelWithdrawAccounts.contains((long) aaId)) {
-                        String footer = "";
-                        if (!channelWithdrawAccounts.isEmpty()) {
-                            if (GuildKey.NON_AA_MEMBERS_CAN_BANK.getOrNull(this) == Boolean.TRUE) {
-                                return channelWithdrawAccounts.iterator().next();
-                            }
-                            if (!isAllianceId(aaId)) {
-                                footer = "\nTo allow non members to bank, see: " + GuildKey.NON_AA_MEMBERS_CAN_BANK.getCommandMention();
-                            }
-                        }
-                        if (throwError) {
-                            if (channelWithdrawAccounts.isEmpty()) {
-                                MessageChannel defaultChannel = getResourceChannel(aaId);
-                                if (defaultChannel == null) {
-                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
-                                } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
-                                    throw new IllegalArgumentException("Please use the resource channel (1): " + defaultChannel.getAsMention() + footer);
+                    if (!ignoreChannels) {
+                        if (!channelWithdrawAccounts.contains((long) aaId)) {
+                            String footer = "";
+                            if (!channelWithdrawAccounts.isEmpty()) {
+                                if (GuildKey.NON_AA_MEMBERS_CAN_BANK.getOrNull(this) == Boolean.TRUE) {
+                                    return channelWithdrawAccounts.iterator().next();
+                                }
+                                if (!isAllianceId(aaId)) {
+                                    footer = "\nTo allow non members to bank, see: " + GuildKey.NON_AA_MEMBERS_CAN_BANK.getCommandMention();
                                 }
                             }
-                            if (getResourceChannel(aaId) == null) {
-                                throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
+                            if (throwError) {
+                                if (channelWithdrawAccounts.isEmpty()) {
+                                    MessageChannel defaultChannel = getResourceChannel(aaId);
+                                    if (defaultChannel == null) {
+                                        throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
+                                    } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
+                                        throw new IllegalArgumentException("Please use the resource channel (1): " + defaultChannel.getAsMention() + footer);
+                                    }
+                                }
+                                if (getResourceChannel(aaId) == null) {
+                                    throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
+                                }
+                                if (channelWithdrawAccounts.isEmpty()) {
+                                    throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId + footer);
+                                }
+                                throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")" + footer);
                             }
-                            if (channelWithdrawAccounts.isEmpty()) {
-                                throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId + footer);
-                            }
-                            throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")" + footer);
                         }
-                    } else if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
+                    }
+                    if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
                         if (throwError) {
                             throw new IllegalArgumentException("You cannot withdraw as you are not a member in game (only applicant)");
                         }
@@ -1631,16 +1658,28 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         } else if (throwError) {
             String msg = "You need the econ role to withdraw to other nations";
             MessageChannel channel = getResourceChannel(aaIds.isEmpty() ? 0 : bankerNation.getAlliance_id());
-            if (channel != null && (messageChannelIdOrNull == null || messageChannelIdOrNull != channel.getIdLong())) msg += ". The channel for alliance withdrawals is: " + channel.getAsMention();
+            if (!ignoreChannels && channel != null && (messageChannelIdOrNull == null || messageChannelIdOrNull != channel.getIdLong())) msg += ". The channel for alliance withdrawals is: " + channel.getAsMention();
             throw new IllegalArgumentException(msg);
         }
         return 0L;
     }
 
-    public Map<Long, AccessType> getAllowedBankAccountsOrThrow(User banker, NationOrAlliance receiver, Long messageChannelIdOrNull) {
+    public Map<Long, AccessType> getAllowedBankAccountsOrThrow(DBNation bankerNation, User banker, NationOrAlliance receiver, Long messageChannelIdOrNull, boolean ignoreChannel) {
+
         Map<Long, AccessType> accessTypeMap = new LinkedHashMap<>();
         Set<Integer> aaIds = getAllianceIds();
-        Set<Long> channelAccountIds = getResourceChannelAccounts(messageChannelIdOrNull);
+        Set<Long> channelAccountIds;
+        if (ignoreChannel) {
+            if (aaIds.isEmpty()) {
+                channelAccountIds = new HashSet<>(Set.of(getIdLong()));
+            } else {
+                channelAccountIds = new HashSet<>();
+                for (Integer aaId : aaIds) channelAccountIds.add(aaId.longValue());
+            }
+        } else {
+            channelAccountIds = getResourceChannelAccounts(messageChannelIdOrNull);
+        }
+
         boolean isResourceChannel = channelAccountIds != null;
         boolean requireAdmin = false;
         if (channelAccountIds == null || channelAccountIds.isEmpty()) {
@@ -1653,43 +1692,45 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         }
 
-        if (!aaIds.isEmpty()) {
-            channelAccountIds.removeIf(f -> !aaIds.contains(f.intValue()));
-        } else {
-            channelAccountIds.removeIf(f -> f != getIdLong());
-        }
-        if (channelAccountIds.isEmpty()) {
-            MessageChannel defaultChannel = getResourceChannel(0);
-            MessageChannel channelForAA = receiver.isAlliance() || receiver.isNation() ? getResourceChannel(receiver.getAlliance_id()) : null;
-            String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
-                    " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
-                    " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee Also: " + CM.settings.info.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
+        if (!ignoreChannel) {
+            if (!aaIds.isEmpty()) {
+                channelAccountIds.removeIf(f -> !aaIds.contains(f.intValue()));
+            } else {
+                channelAccountIds.removeIf(f -> f != getIdLong());
+            }
+            if (channelAccountIds.isEmpty()) {
+                MessageChannel defaultChannel = getResourceChannel(0);
+                MessageChannel channelForAA = receiver.isAlliance() || receiver.isNation() ? getResourceChannel(receiver.getAlliance_id()) : null;
+                String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
+                        " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
+                        " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
+                        "\nSee Also: " + CM.settings.info.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
 
-            if (defaultChannel != null || channelForAA != null) {
-                msg += "\n";
+                if (defaultChannel != null || channelForAA != null) {
+                    msg += "\n";
+                }
+                if (defaultChannel != null) {
+                    msg += "\nDefault withdraw channel: " + defaultChannel.getAsMention();
+                }
+                if (channelForAA != null && (defaultChannel == null || channelForAA.getIdLong() != defaultChannel.getIdLong())) {
+                    msg += "\nWithdraw channel for alliance: " + channelForAA.getAsMention();
+                }
+                throw new IllegalArgumentException(msg);
             }
-            if (defaultChannel != null) {
-                msg += "\nDefault withdraw channel: " + defaultChannel.getAsMention();
-            }
-            if (channelForAA != null && (defaultChannel == null || channelForAA.getIdLong() != defaultChannel.getIdLong())) {
-                msg += "\nWithdraw channel for alliance: " + channelForAA.getAsMention();
-            }
-            throw new IllegalArgumentException(msg);
         }
 
-        Long allowedALlianceOr0OrNull = Roles.ECON.hasAlliance(banker, guild);
+        Long allowedALlianceOr0OrNull = banker != null ? Roles.ECON.hasAlliance(banker, guild) : null;
         if (allowedALlianceOr0OrNull == null || allowedALlianceOr0OrNull != 0L) {
             if (allowedALlianceOr0OrNull != null && channelAccountIds.contains(allowedALlianceOr0OrNull)) {
                 accessTypeMap.put(allowedALlianceOr0OrNull, AccessType.ECON);
             }
             if (!aaIds.isEmpty()) {
-                long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
+                long withdrawAccount = getMemberWithdrawAccount(bankerNation, banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty(), ignoreChannel);
                 if (withdrawAccount > 0) {
                     accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
                 }
             } else {
-                long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
+                long withdrawAccount = getMemberWithdrawAccount(bankerNation, banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty(), ignoreChannel);
                 if (withdrawAccount > 0) {
                     accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
                 }
@@ -3174,7 +3215,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     ///
 
-    @Command
     public TextChannel getNotifcationChannel() {
         TextChannel sendTo = guild.getSystemChannel();
         if (sendTo != null && !sendTo.canTalk()) sendTo = null;

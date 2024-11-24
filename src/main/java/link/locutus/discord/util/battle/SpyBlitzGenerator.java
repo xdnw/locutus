@@ -279,9 +279,9 @@ public class SpyBlitzGenerator {
         double strength = (nation.getAircraftPct() + nation.getTankPct()) / 2d;
         double login = nation.avg_daily_login_week();
         double login_dc = nation.login_daychange();
-        Map.Entry<Integer, Integer> allTimeWars = nation.getAllTimeOffDefWars();
-        double off_def_ratio = (double) allTimeWars.getKey() / (double) allTimeWars.getKey();
-        int totalOff = allTimeWars.getKey();
+        int[] allTimeWars = nation.getAllTimeOffDefWars();
+        double off_def_ratio = (double) allTimeWars[0] / (double) allTimeWars[1];
+        int totalOff = allTimeWars[0];
 
         ByteBuffer spyOpsDay = nation.getMeta(NationMeta.SPY_OPS_DAY);
 

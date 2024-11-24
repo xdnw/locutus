@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -201,6 +202,22 @@ public class PermissionBinding extends BindingHelper {
     @RolePermission
     public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
         return checkRole(guild, perm, user, null);
+    }
+
+    @Binding("Has membership ingame, or on discord")
+    @IsMemberIngameOrDiscord
+    public static boolean checkMembership(@Me GuildDB db, IsMemberIngameOrDiscord perm, @Me @Default User user, @Me @Default DBNation me) {
+        if (me != null) {
+            if (me.getPositionEnum().id > Rank.APPLICANT.id && db.isAllianceId(me.getAlliance_id())) {
+                return true;
+            }
+        }
+        if (user != null) {
+            if (Roles.MEMBER.has(user, db.getGuild())) {
+                return true;
+            }
+        }
+        throw new IllegalCallerException("You are not a member of " + db.getGuild() + " or its in-game alliance");
     }
 
     public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user, Integer allianceId) {

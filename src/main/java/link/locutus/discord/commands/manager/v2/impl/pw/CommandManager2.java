@@ -55,6 +55,7 @@ import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static link.locutus.discord.util.StringMan.isQuote;
 
@@ -66,10 +67,10 @@ public class CommandManager2 {
     private final PlaceholdersMap placeholders;
     private PWGPTHandler pwgptHandler;
 
-    public JsonObject toJson(ValueStore htmlOptionsStore, PermissionHandler permHandler) {
-        JsonObject cmdJson = commands.toJson(permHandler, false);
+    public Map<String, Object> toJson(ValueStore htmlOptionsStore, PermissionHandler permHandler) {
+        Map<String, Object> cmdJson = commands.toJson(permHandler, false);
 
-        Map<String, JsonObject> keysData = new LinkedHashMap<>();
+        Map<String, Map<String, Object>> keysData = new LinkedHashMap<>();
         Set<String> checkedOptions = new HashSet<>();
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
@@ -86,7 +87,7 @@ public class CommandManager2 {
         }
         for (Parser parser : parsers) {
             Key key = parser.getKey();
-            JsonObject typeJson = parser.toJson();
+            Map<String, Object> typeJson = parser.toJson();
             keysData.put(key.toSimpleString(), typeJson);
             Key optionsKey = key.append(HtmlOptions.class);
             Parser optionParser = htmlOptionsStore.get(optionsKey);
@@ -123,28 +124,28 @@ public class CommandManager2 {
             }
         }
 
-        JsonObject phRoot = new JsonObject();
+        Map<String, Object> phRoot = new LinkedHashMap<>();
         for (Class<?> t : placeholders.getTypes()) {
             Placeholders<?> ph = placeholders.get(t);
-            JsonObject json = new JsonObject();
+            Map<String, Object> json = new LinkedHashMap<>();
 
-            JsonObject bindings = ph.getCommands().toJson(permHandler, true);
-            json.add("commands", bindings);
+            Map<String, Object> bindings = ph.getCommands().toJson(permHandler, true);
+            json.put("commands", bindings);
 
             Set<SelectorInfo> selectors = ph.getSelectorInfo();
-            JsonArray arr = JteUtil.createArrayObj(selectors.stream().map(f -> JteUtil.createArrayObj(f.format(), f.example(), f.desc())));
-            json.add("selectors", arr);
+            List<String[]> arr = selectors.stream().map(f -> new String[]{f.format(), f.example(), f.desc()}).toList();
+            json.put("selectors", arr);
             Set<String> columns = ph.getSheetColumns();
             if (!columns.isEmpty()) {
-                json.add("columns", JteUtil.createArrayCol(columns));
+                json.put("columns", columns);
             }
-            phRoot.add(t.getSimpleName(), json);
+            phRoot.put(t.getSimpleName(), json);
         }
-        JsonObject result = new JsonObject();
-        result.add("commands", cmdJson);
-        result.add("placeholders", phRoot);
-        result.add("keys", WebUtil.GSON.toJsonTree(keysData));
-        result.add("options", WebUtil.GSON.toJsonTree(optionsData));
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("commands", cmdJson);
+        result.put("placeholders", phRoot);
+        result.put("keys", keysData);
+        result.put("options", optionsData);
         return result;
     }
 
@@ -416,6 +417,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new UtilityCommands(), List.of("treaty"), "nap", "gw_nap");
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "v2", "set_v2");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "savePojos", "pojos");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "list"), "hasSameNetworkAsBan", "multis");

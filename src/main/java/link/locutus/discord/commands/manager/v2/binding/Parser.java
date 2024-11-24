@@ -10,6 +10,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public interface Parser<T> {
     T apply(ArgumentStack arg);
@@ -98,5 +99,5 @@ public interface Parser<T> {
         return result.toString();
     }
 
-    JsonObject toJson();
+    Map<String, Object> toJson();
 }

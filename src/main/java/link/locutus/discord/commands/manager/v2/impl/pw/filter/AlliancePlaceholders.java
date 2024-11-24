@@ -200,8 +200,13 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (SpreadSheet.isSheet(input)) {
-            return SpreadSheet.parseSheet(input, List.of("alliance"), true,
-                    s -> s.equalsIgnoreCase("alliance") ? 0 : null,
+            return SpreadSheet.parseSheet(input, List.of("alliance", "{name}", "{id}", "{getname}", "{getid}"), true,
+                    s -> {
+                        return switch (s.toLowerCase()) {
+                            case "alliance", "{name}", "{id}", "{getname}", "{getid}" -> 0;
+                            default -> null;
+                        };
+                    },
                     (type, str) -> PWBindings.alliance(str));
         }
         return parseIds(guild, input, true);

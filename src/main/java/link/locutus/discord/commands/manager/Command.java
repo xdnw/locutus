@@ -52,29 +52,6 @@ public abstract class Command {
         };
     }
 
-    public static JsonElement j(String str) {
-        return new JsonPrimitive(str);
-    }
-
-    public static JsonElement success(String str) {
-        return success(str, true);
-    }
-
-    public static JsonElement error(String str) {
-        return success(str, false);
-    }
-
-    public static JsonElement success(String str, boolean value) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("success", value);
-        if (value) {
-            result.put("message", str);
-        } else {
-            result.put("err_msg", str);
-        }
-        return WebUtil.GSON.toJsonTree(result).getAsJsonObject();
-    }
-
     public Set<CommandCategory> getCategories() {
         return categories;
     }

@@ -680,7 +680,14 @@ public class IACommands {
         }
 
         String title = "Message " + message.getIdLong();
-        response.append("```" + DiscordUtil.trimContent(message.getContentRaw()).replaceAll("`", "\\`") + "```\n\n");
+        String content = DiscordUtil.trimContent(message.getContentRaw()).replaceAll("`", "\\`");
+        String contentWrapped;
+        if (content.isEmpty()) {
+            contentWrapped = "Error: Failed to fetch message content. Ensure it it was either sent by the bot or mentions it";
+        } else {
+            contentWrapped = "```" + content + "```";
+        }
+        response.append(contentWrapped + "\n\n");
 
         if (!reactionsByUser.isEmpty()) {
             for (Map.Entry<User, List<String>> entry : reactionsByUser.entrySet()) {

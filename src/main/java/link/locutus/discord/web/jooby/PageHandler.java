@@ -1,5 +1,7 @@
 package link.locutus.discord.web.jooby;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gg.jte.generated.precompiled.JtealertGenerated;
 import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.*;
@@ -28,6 +30,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -38,10 +41,9 @@ import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.api.EndpointPages;
 import link.locutus.discord.web.commands.api.IAEndpoints;
+import link.locutus.discord.web.commands.api.StatEndpoints;
 import link.locutus.discord.web.commands.api.TradeEndpoints;
 import link.locutus.discord.web.commands.binding.*;
-import link.locutus.discord.web.commands.binding.value_types.CacheType;
-import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
@@ -51,25 +53,31 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
+import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class PageHandler implements Handler {
     private final Map<String, WebOption> queryOptions;
 
-    private Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
+    private final Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
     private final WebRoot root;
 
     private final CommandGroup commands;
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
+    private final ObjectMapper serializer;
 
     public PageHandler(WebRoot root) {
         this.root = root;
@@ -112,6 +120,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new EndpointPages(), "api");
         this.commands.registerSubCommands(new TradeEndpoints(), "api");
         this.commands.registerSubCommands(new IAEndpoints(), "api");
+        this.commands.registerSubCommands(new StatEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
@@ -163,15 +172,39 @@ public class PageHandler implements Handler {
         }
 
         this.queryOptions = getQueryOptions();
-        printApiPages();
-    }
+        boolean isDebug = Settings.INSTANCE.WEB.FRONTEND_DOMAIN.startsWith("http://localhost");
 
-    private void printApiPages() {
-        CommandGroup api = (CommandGroup) commands.get("api");
-        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
-            System.out.println(TsEndpointGenerator.generate(cmd));
+        this.serializer = new ObjectMapper(new MessagePackFactory());
+
+        if (isDebug) {
+            writeTsFiles();
         }
     }
+
+    public ObjectMapper getSerializer() {
+        return serializer;
+    }
+
+    //    private Schema generateSchema() {
+//        CommandGroup api = (CommandGroup) commands.get("api");
+//        Set<Class<?>> schemaClasses = new LinkedHashSet<>();
+//        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
+//            Method method = cmd.getMethod();
+//            ReturnType returnType = method.getAnnotation(ReturnType.class);
+//            if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
+//            Class<?> clazz = returnType.value();
+//        }
+//        return TsEndpointGenerator.generateSchema(schemaClasses);
+//    }
+
+    private void writeTsFiles() {
+        try {
+            TsEndpointGenerator.writeFiles(this, null);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     public WebOption getQueryOption(String name) {
         return queryOptions.get(name);
@@ -263,14 +296,14 @@ public class PageHandler implements Handler {
 
                 if (cmd instanceof ParametricCallable) {
                     LocalValueStore locals = stack.getStore();
-                    Map<String, String> fullCmdStr = parseQueryMap(ctx.queryParamMap());
+                    Map<String, Object> fullCmdStr = parseQueryMap(ctx.queryParamMap(), null);
                     locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
                     setupLocals(locals, ctx, null);
 
                     ParametricCallable parametric = (ParametricCallable) cmd;
 
-                    Object[] parsed = parametric.parseArgumentMap(fullCmdStr, stack);
+                    Object[] parsed = parametric.parseArgumentMap2(fullCmdStr, stack.getStore(), validators, permisser, false);
                     Object result = parametric.call(null, stack.getStore(), parsed);
                     if (result != null) {
                         String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
@@ -384,16 +417,20 @@ public class PageHandler implements Handler {
 //        }
 //    }
 
-    public static Map<String, String> parseQueryMap( Map<String, List<String>> queryMap) {
+    public static Map<String, Object> parseQueryMap( Map<String, List<String>> queryMap, Set<String> allowList) {
         Map<String, List<String>> post = new HashMap<>(queryMap);
         post.entrySet().removeIf(f -> f.getValue().isEmpty() || (f.getValue().size() == 1 && f.getValue().get(0).isEmpty()));
 
         Set<String> toJson = new HashSet<>();
-        post.entrySet().removeIf(f -> f.getValue().isEmpty() || (f.getValue().size() == 1 && f.getValue().get(0).isEmpty()));
-        Map<String, String> combined = new LinkedHashMap<>();
+
+        Map<String, Object> combined = new LinkedHashMap<>();
         for (Map.Entry<String, List<String>> entry : post.entrySet()) {
             String key = entry.getKey();
             List<String> values = entry.getValue();
+            if (allowList != null && allowList.contains(key)) {
+                combined.put(key, values);
+                continue;
+            }
             for (String value : values) {
                 if (key.contains(".")) {
                     String[] split = key.split("\\.", 2);
@@ -401,10 +438,10 @@ public class PageHandler implements Handler {
                     value = split[1] + ":" + value;
                     toJson.add(key);
                 }
-                String existing = combined.get(key);
-                if (existing != null) {
+                Object existing = combined.get(key);
+                if (existing instanceof String) {
                     combined.put(key, existing + "," + value);
-                } else {
+                } else if (values.size() == 1) {
                     combined.put(key, value);
                 }
             }
@@ -446,6 +483,7 @@ public class PageHandler implements Handler {
     }
 
     private void handleCommand(Context ctx) {
+        boolean isApi = false;
         WebStore ws = null;
         try {
             ArgumentStack stack = createStack(ctx);
@@ -454,7 +492,6 @@ public class PageHandler implements Handler {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
             boolean isPost = ctx.method() == HandlerType.POST;
-            boolean isApi = false;
 
             switch (path.toLowerCase(Locale.ROOT)) {
                 case "command": {
@@ -485,34 +522,60 @@ public class PageHandler implements Handler {
                     boolean run = isPost || (cmd instanceof ParametricCallable param && (param.getAnnotation(NoForm.class) != null));//!ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && (param.getUserParameters().isEmpty() || param.getAnnotation(NoForm.class) != null));
                     Object result;
                     if (cmd instanceof ParametricCallable parametric && run) {
-                        Map<String, String> queryMap;
+
+                        Map<String, Object> queryMap;
+                        // where type = List<String>
+                        Set<String> allowList = parametric.getUserParameters().stream().filter(f -> {
+                            Type type = f.getType();
+                            if (type instanceof ParameterizedType pType) {
+                                Type rawType = pType.getRawType();
+                                if (rawType instanceof Class<?> clazz) {
+                                    if (clazz == List.class) {
+                                        Type argType = pType.getActualTypeArguments()[0];
+                                        if (argType instanceof Class<?> argClazz) {
+                                            return argClazz == String.class;
+                                        }
+                                    }
+                                }
+                            }
+                            return false;
+                        }).map(ParameterData::getName).collect(Collectors.toSet());
                         if (!args.isEmpty()) {
-                            queryMap = parametric.formatArgumentsToMap(stack.getStore(), args);
+                            queryMap = (Map) parametric.formatArgumentsToMap(stack.getStore(), args);
                         } else {
                             Map<String, List<String>> queryParams = ctx.queryParamMap();
                             if (queryParams.isEmpty()) {
                                 System.out.println(":||remove Query params are empty");
                                 for (Map.Entry<String, List<String>> entry : ctx.formParamMap().entrySet()) {
-                                    System.out.println(":||remove Query params form " + entry.getKey() + " | " + entry.getValue());
+                                    System.out.println(":||remove Query params form " + entry.getKey() + " | " + entry.getValue() + " | " + entry.getValue().size());
                                 }
-                                queryMap = parseQueryMap(ctx.formParamMap());
+                                queryMap = parseQueryMap(ctx.formParamMap(), allowList);
                             } else {
                                 System.out.println(":||remove Query params are not empty " + queryParams);
-                                queryMap = parseQueryMap(queryParams);
+                                queryMap = parseQueryMap(queryParams, allowList);
                                 queryMap.remove("code");
                             }
                         }
                         System.out.println(":||remove Query map " + queryMap);
-                        Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
+                        long start = System.currentTimeMillis();
+                        Object[] parsed = parametric.parseArgumentMap2(queryMap, stack.getStore(), validators, permisser, true);
+                        System.out.println(":||remove Parse time " + (-start + (start = System.currentTimeMillis())));
                         Object cmdResult = parametric.call(null, stack.getStore(), parsed);
+                        System.out.println(":||remove Call time " + ( - start + (start = System.currentTimeMillis())));
                         result = wrap(ws, cmdResult, ctx, isApi);
+                        System.out.println(":||remove Wrap time " + ( - start + (start = System.currentTimeMillis())));
                     } else {
                         result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
                     }
-                    if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
-                        ctx.result(WebUtil.minify(result.toString()));
-                    } else if (result != null) {
-                        throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
+                    if (result != null) {
+                        if (result instanceof byte[] bytes) {
+                            ctx.result(bytes);
+                            ctx.header("Content-Type", "application/msgpack");
+                        } else if (!(result instanceof String) || !result.toString().isEmpty()) {
+                            ctx.result(WebUtil.minify(result.toString()));
+                        } else {
+                            throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
+                        }
                     } else {
                         throw new IllegalArgumentException("Null result for : " + path);
                     }
@@ -520,11 +583,11 @@ public class PageHandler implements Handler {
             }
         } catch (Throwable e) {
             System.out.println("Throwable " + e.getMessage());
-            handleErrors(e, ws, ctx);
+            handleErrors(e, ws, ctx, isApi);
         }
     }
 
-    private void handleErrors(Throwable e, WebStore ws, Context ctx) {
+    private void handleErrors(Throwable e, WebStore ws, Context ctx, boolean isApi) {
         while (e.getCause() != null) {
             Throwable tmp = e.getCause();
             if (tmp == e) break;
@@ -541,13 +604,19 @@ public class PageHandler implements Handler {
             PageHelper.redirect(ws, ctx, redirectResponse.getMessage(), false);
             return;
         }
-        e.printStackTrace();
-        if (ctx.path().startsWith("/api/")) {
+        if (isApi) {
             Map.Entry<String, String> errorMsg = StringMan.stacktraceToString(e, 10, f -> f.startsWith("link.locutus."));
-            String msg = WebUtil.GSON.toJson(Map.of("success", false,
-                    "message", errorMsg.getKey() + "\n" + errorMsg.getValue()));
-            System.out.println(":||REMOVE RETURNSMG " + msg);
-            ctx.result(msg);
+            Map<String, Serializable> raw = Map.of("success", false,
+                    "message", errorMsg.getKey() + "\n" + errorMsg.getValue());
+            try {
+                byte[] data = serializer.writeValueAsBytes(raw);
+                ctx.result(data);
+                ctx.header("Content-Type", "application/msgpack");
+            } catch (JsonProcessingException ex) {
+                ex.printStackTrace();
+                ctx.result("Internal server error");
+                throw new RuntimeException(ex);
+            }
             return;
         }
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
@@ -555,8 +624,19 @@ public class PageHandler implements Handler {
     }
 
     private Object wrap(WebStore ws, Object call, Context ctx, boolean isApi) {
-        String contentType = ctx.header("Content-Type");
+        if (isApi) {
+            if (call instanceof byte[] bytes) {
+                return bytes;
+            } else {
+                try {
+                    return serializer.writeValueAsBytes(call);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
         if (call instanceof String) {
+            String contentType = ctx.header("Content-Type");
             if (contentType == null || contentType.contains("text/html")) {
                 String str = (String) call;
                 str = str.trim();
@@ -576,9 +656,6 @@ public class PageHandler implements Handler {
                 String finalStr = str;
                 return WebStore.render(f -> JtealertGenerated.render(f, null, ws, "Response", finalStr));
             }
-        } else if (isApi) {
-            ctx.header("Content-Type", "application/json");
-            return WebUtil.GSON.toJson(call);
         }
         return call;
     }
@@ -659,9 +736,9 @@ public class PageHandler implements Handler {
 
             String redirectBase = WebRoot.REDIRECT + "/command/" + cmd.getFullPath("/").toLowerCase() + "/";
 
-            Map<String, String> combined = parseQueryMap(ctx.queryParamMap());
+            Map<String, Object> combined = parseQueryMap(ctx.queryParamMap(), null);
             ParametricCallable parametric = (ParametricCallable) cmd;
-            List<String> orderedArgs = parametric.orderArgumentMap(combined, false);
+            List<String> orderedArgs = parametric.orderArgumentMap((Map) combined, false);
 
             String redirect = redirectBase + StringMan.join(orderedArgs, "/");
 
@@ -670,7 +747,7 @@ public class PageHandler implements Handler {
             response.addProperty("value", redirect);
             sse.sendEvent(response);
         } catch (Throwable e) {
-            handleErrors(e, ws, sse.ctx);
+            handleErrors(e, ws, sse.ctx, false);
         }
     }
 

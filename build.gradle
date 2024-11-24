@@ -27,6 +27,7 @@ plugins {
     id "nu.studer.jooq" version "9.0"
     id 'maven-publish'
     id "gg.jte.gradle" version "3.1.6"
+    id 'cz.habarta.typescript-generator' version '3.2.1263'
 //    id "nebula.lint" version "19.0.3"
 }
 
@@ -43,8 +44,43 @@ version '1.0-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(22))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
+}
+
+
+generateTypeScript {
+    jsonLibrary = 'jackson2'
+    classes = [
+            'link.locutus.discord.web.commands.binding.value_types.CacheType',
+            'link.locutus.discord.web.commands.binding.value_types.SetGuild',
+            'link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson',
+            'link.locutus.discord.web.commands.binding.value_types.TransactionType',
+            'link.locutus.discord.web.commands.binding.value_types.WebAnnouncement',
+            'link.locutus.discord.web.commands.binding.value_types.WebAnnouncements',
+            'link.locutus.discord.web.commands.binding.value_types.WebAudit',
+            'link.locutus.discord.web.commands.binding.value_types.WebAudits',
+            'link.locutus.discord.web.commands.binding.value_types.WebBalance',
+            'link.locutus.discord.web.commands.binding.value_types.WebBankAccess',
+            'link.locutus.discord.web.commands.binding.value_types.WebBulkQuery',
+            'link.locutus.discord.web.commands.binding.value_types.WebInt',
+            'link.locutus.discord.web.commands.binding.value_types.WebMyWar',
+            'link.locutus.discord.web.commands.binding.value_types.WebMyWars',
+            'link.locutus.discord.web.commands.binding.value_types.WebOptions',
+            'link.locutus.discord.web.commands.binding.value_types.WebSession',
+            'link.locutus.discord.web.commands.binding.value_types.WebSuccess',
+            'link.locutus.discord.web.commands.binding.value_types.WebTable',
+            'link.locutus.discord.web.commands.binding.value_types.WebTarget',
+            'link.locutus.discord.web.commands.binding.value_types.WebTargets',
+            'link.locutus.discord.web.commands.binding.value_types.WebTransferResult',
+            'link.locutus.discord.web.commands.binding.value_types.WebUrl',
+            'link.locutus.discord.web.commands.binding.value_types.WebValue',
+    ]
+    outputKind = 'module'
+    nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
+    nullabilityDefinition = 'undefinedInlineUnion'
+    // set output file
+    outputFile = file('../lc_cmd_react/src/components/api/apitypes.d.ts')
 }
 
 publishing {

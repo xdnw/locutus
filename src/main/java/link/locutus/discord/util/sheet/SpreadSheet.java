@@ -5,6 +5,7 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.sheets.v4.model.*;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -139,8 +140,10 @@ public class SpreadSheet {
         return toAdd;
     }
 
-    public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions, boolean includeHeader) throws IOException {
-        List<Object> header = new ArrayList<>(Arrays.asList(
+    public static List<List<Object>> generateTransactionsListCells(List<Transaction2> transactions, boolean includeHeader, boolean ascending) {
+        List<List<Object>> cells = new ObjectArrayList<>();
+
+        List<Object> header = new ObjectArrayList<>(Arrays.asList(
                 "id",
                 "type",
                 "date",
@@ -157,10 +160,14 @@ public class SpreadSheet {
         }
 
         if (includeHeader) {
-            this.setHeader(header);
+            cells.add(new ObjectArrayList<>(header));
         }
 
-        Collections.sort(transactions, Comparator.comparingLong(o -> o.tx_datetime));
+        if (ascending) {
+            Collections.sort(transactions, Comparator.comparingLong(o -> o.tx_datetime));
+        } else {
+            Collections.sort(transactions, (o1, o2) -> Long.compare(o2.tx_datetime, o1.tx_datetime));
+        }
         for (Transaction2 record : transactions) {
             String type;
             if (record.tx_id == -1) {
@@ -185,9 +192,18 @@ public class SpreadSheet {
                 header.set(i++, record.resources[value.ordinal()]);
             }
 
-            this.addRow(null, header);
+            cells.add(new ObjectArrayList<>(header));
         }
 
+        return cells;
+    }
+
+    public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions, boolean includeHeader) throws IOException {
+        List<List<Object>> cells = generateTransactionsListCells(transactions, includeHeader, true);
+        if (includeHeader) {
+            this.valuesByTab.clear();
+        }
+        this.getCachedValues(null).addAll(cells);
         this.updateClearTab(null);
         try {
             this.updateWrite();

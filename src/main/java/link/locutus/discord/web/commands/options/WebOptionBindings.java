@@ -66,7 +66,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Guild.class)
     public WebOption getGuild() {
         return new WebOption(Guild.class).setQueryMap((guild, user, nation) -> {
-            WebOptions data = new WebOptions().withIcon().withText().withSubtext();
+            WebOptions data = new WebOptions(false).withIcon().withText().withSubtext();
             for (Guild g : Locutus.imp().getDiscordApi().getGuilds()) {
                 data.addWithIcon(g.getId(), g.getName(), g.getDescription(), g.getIconUrl());
             }
@@ -77,7 +77,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Category.class)
     public WebOption getCategory() {
         return new WebOption(Category.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             for (Category c : db.getGuild().getCategories()) {
                 data.add(c.getId(), c.getName());
             }
@@ -88,7 +88,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Role.class)
     public WebOption getRole() {
         return new WebOption(Role.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText().withColor();
+            WebOptions data = new WebOptions(false).withText().withColor();
             for (Role r : db.getGuild().getRoles()) {
                 data.addWithColor(r.getId(), r.getName(), String.format("#%06X", (0xFFFFFF & r.getColorRaw())));
             }
@@ -99,7 +99,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = TextChannel.class)
     public WebOption getTextChannel() {
         return new WebOption(TextChannel.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText().withSubtext();
+            WebOptions data = new WebOptions(false).withText().withSubtext();
             Member member = null;
             if (user != null) {
                 member = db.getGuild().getMember(user);
@@ -122,7 +122,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Member.class)
     public WebOption getMember() {
         return new WebOption(Member.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             for (Member m : db.getGuild().getMembers()) {
                 data.add(m.getId(), m.getEffectiveName());
             }
@@ -144,7 +144,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = User.class)
     public WebOption getUser() {
         return new WebOption(User.class).setQueryMap((guild, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             for (User u : Locutus.imp().getDiscordApi().getUsers()) {
                 data.add(u.getId(), u.getName());
             }
@@ -157,7 +157,7 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(TaxBracket.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             if (!db.isValidAlliance()) throw new IllegalArgumentException("No alliance is registered. See " + CM.settings_default.registerAlliance.cmd.toSlashMention());
             Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(120));
-            WebOptions data = new WebOptions().withText().withSubtext();
+            WebOptions data = new WebOptions(true).withText().withSubtext();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 data.add(entry.getKey(), bracket.getName(), bracket.getSubText());
@@ -183,7 +183,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getDBLoan() {
         return new WebOption(DBLoan.class).setQueryMap((db, user, nation) -> {
             LoanManager loanUtil = Locutus.imp().getNationDB().getLoanManager();
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             for (DBLoan loan : loanUtil.getLoans()) {
                 data.add(loan.loanId, loan.getLineString(true, true));
             }
@@ -194,7 +194,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = ReportManager.Report.class)
     public WebOption getReport() {
         return new WebOption(ReportManager.Report.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             ReportManager reportManager = Locutus.imp().getNationDB().getReportManager();
             for (ReportManager.Report report : reportManager.loadReports()) {
                 data.add(report.reportId, report.getTitle());
@@ -206,7 +206,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Conflict.class)
     public WebOption getConflict() {
         return new WebOption(Conflict.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             for (Conflict conflict : Locutus.imp().getWarDb().getConflicts().getConflictMap().values()) {
                 data.add(conflict.getId(), conflict.getName());
             }
@@ -225,9 +225,9 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(EmbeddingSource.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             PWGPTHandler gpt = Locutus.cmd().getV2().getPwgptHandler();
             if (gpt == null) {
-                return new WebOptions();
+                return new WebOptions(true);
             }
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             Set<EmbeddingSource> sources = gpt.getSources(db.getGuild(), true);
             for (EmbeddingSource source : sources) {
                 data.add(source.source_id, source.source_name);
@@ -241,10 +241,10 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(GPTProvider.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             PWGPTHandler gpt = Locutus.cmd().getV2().getPwgptHandler();
             if (gpt == null) {
-                return new WebOptions();
+                return new WebOptions(false);
             }
             Set<GPTProvider> providers = gpt.getProviderManager().getProviders(db);
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             for (GPTProvider provider : providers) {
                 data.add(provider.getId(), provider.getType() + ":" + provider.getId());
             }
@@ -256,7 +256,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getDBAlliancePosition() {
         return new WebOption(DBAlliancePosition.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             AllianceList aaList = db.getAllianceList();
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             for (DBAlliancePosition position : aaList.getPositions()) {
                 data.add(position.getId(), aaList.size() > 1 ? position.getQualifiedName() : position.getName());
             }
@@ -269,7 +269,7 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(SheetTemplate.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             List<String> errors = new ArrayList<>();
             Map<String, SheetTemplate> templates = db.getSheetManager().getSheetTemplates(errors);
-            WebOptions data = new WebOptions().withText().withSubtext();
+            WebOptions data = new WebOptions(false).withText().withSubtext();
             for (Map.Entry<String, SheetTemplate> entry : templates.entrySet()) {
                 data.add(entry.getKey(),
                         PlaceholdersMap.getClassName(entry.getValue().getType()) + ":" + entry.getKey(),
@@ -282,7 +282,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = CustomSheet.class)
     public WebOption getCustomSheet() {
         return new WebOption(CustomSheet.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions();
+            WebOptions data = new WebOptions(false);
             Map<String, String> sheets = db.getSheetManager().getCustomSheets();
             for (Map.Entry<String, String> entry : sheets.entrySet()) {
                 data.add(entry.getKey());
@@ -300,7 +300,7 @@ public class WebOptionBindings extends BindingHelper {
                 allAliases.addAll(map.values());
             }
 
-            WebOptions data = new WebOptions().withText().withSubtext();
+            WebOptions data = new WebOptions(false).withText().withSubtext();
             for (SelectionAlias alias : allAliases) {
                 data.add(alias.getName(), PlaceholdersMap.getClassName(alias.getType()) + ":" + alias.getName(), alias.getSelection());
             }
@@ -311,7 +311,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBBounty.class)
     public WebOption getDBBounty() {
         return new WebOption(DBBounty.class).setQueryMap((guild, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             for (DBBounty bounty : Locutus.imp().getWarDb().getBounties()) {
                 data.add(bounty.getId(), bounty.toLineString());
             }
@@ -341,7 +341,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Treaty.class)
     public WebOption getTreaty() {
         return new WebOption(Treaty.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText().withSubtext();
+            WebOptions data = new WebOptions(true).withText().withSubtext();
             for (Treaty treaty : Locutus.imp().getNationDB().getTreaties()) {
                 data.add(treaty.getId(), treaty.toLineString(), treaty.getTurnsRemaining() + "");
             }
@@ -352,7 +352,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBBan.class)
     public WebOption getDBBan() {
         return new WebOption(DBBan.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText().withSubtext();
+            WebOptions data = new WebOptions(true).withText().withSubtext();
             Map<Integer, DBBan> bans = Locutus.imp().getNationDB().getBansByNation();
             for (Map.Entry<Integer, DBBan> entry : bans.entrySet()) {
                 DBBan ban = entry.getValue();
@@ -371,7 +371,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = AGrantTemplate.class)
     public WebOption getAGrantTemplate() {
         return new WebOption(AGrantTemplate.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             GrantTemplateManager manager = db.getGrantTemplateManager();
             for (AGrantTemplate template : manager.getTemplates()) {
                 data.add(template.getName(), template.getType().name() + ":" + template.getName());
@@ -383,7 +383,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = Newsletter.class)
     public WebOption getNewsletter() {
         return new WebOption(Newsletter.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             NewsletterManager manager = db.getNewsletterManager();
             if (manager != null) {
                 for (Map.Entry<Integer, Newsletter> entry : manager.getNewsletters().entrySet()) {
@@ -398,7 +398,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBNation.class)
     public WebOption getDBNation() {
         return new WebOption(DBNation.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(true).withText();
             for (DBNation n : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
                 data.add(n.getId(), n.getName());
             }
@@ -409,7 +409,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = DBAlliance.class)
     public WebOption getDBAlliance() {
         return new WebOption(DBAlliance.class).setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             for (DBAlliance aa : Locutus.imp().getNationDB().getAlliances()) {
                 data.add("AA:" + aa.getId(), aa.getName());
             }
@@ -420,7 +420,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = GuildDB.class)
     public WebOption getGuildDB() {
         return new WebOption(GuildDB.class).setRequiresUser().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions().withText();
+            WebOptions data = new WebOptions(false).withText();
             for (Guild guild : user.getMutualGuilds()) {
                 data.add(guild.getId(), guild.getName());
             }

@@ -3,15 +3,11 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllowEmpty;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
@@ -281,37 +277,65 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     @Override
     public Set<DBNation> parseSet(ValueStore store2, String input, String modifier) {
+        return parseSet(store2, input, modifier, true);
+    }
+    public Set<DBNation> parseSet(ValueStore store2, String input, String modifier, boolean allowDeleted) {
         INationSnapshot snapshot = getSnapshot(modifier);
         input = wrapHashLegacy(input);
         return ArrayUtil.resolveQuery(input,
-                f -> parseSingleElem(store2, f, snapshot),
-                s -> getSingleFilter(store2, s));
+                f -> {
+            long start = System.currentTimeMillis();
+                    Set<DBNation> result = parseSingleElem(store2, f, snapshot, allowDeleted);
+                    long diff = System.currentTimeMillis() - start;
+                    if (diff > 1) {
+                        Logg.text("parseSingleElem took " + diff + "ms for " + f);
+                    }
+                    return result;
+                },
+                s -> {
+                    long start = System.currentTimeMillis();
+                    Predicate<DBNation> result = getSingleFilter(store2, s);
+                    long diff = System.currentTimeMillis() - start;
+                    if (diff > 1) {
+                        Logg.text("getSingleFilter took " + diff + "ms for " + s);
+                    }
+                    return result;
+                });
     }
 
     @Override
     public Set<DBNation> parseSingleElem(ValueStore store, String name) {
-        return parseSingleElem(store, name, Locutus.imp().getNationDB());
+        return parseSingleElem(store, name, Locutus.imp().getNationDB(), true);
     }
 
-    public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot) {
+    public Set<DBNation> parseSingleElem(ValueStore store, String name, boolean allowDeleted) {
+        return parseSingleElem(store, name, Locutus.imp().getNationDB(), allowDeleted);
+    }
+
+    public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot, boolean allowDeleted) {
+        long start = System.currentTimeMillis();
         Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
+        System.out.println(":||Remove parse selection " + (-start + (start = System.currentTimeMillis())));
         if (selection != null) return selection;
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        System.out.println(":||Remove guild " + (-start + (start = System.currentTimeMillis())));
         if (name.equals("*")) {
-            return new ObjectArraySet<>(snapshot.getAllNations());
+            Set<DBNation> allNations = snapshot.getAllNations();
+            System.out.println(":||Remove allNations " + (-start + (start = System.currentTimeMillis())));
+            return allNations;
         } else if (name.contains("tax_id=")) {
             int taxId = PW.parseTaxId(name);
             return snapshot.getNationsByBracket(taxId);
         } else if (SpreadSheet.isSheet(nameLower)) {
-            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
+            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader", "{nation}", "{leader}", "{id}"), true,
                     s -> switch (s.toLowerCase(Locale.ROOT)) {
-                        case "nation" -> 0;
-                        case "leader" -> 1;
+                        case "nation", "{nation}", "{id}" -> 0;
+                        case "leader", "{leader}" -> 1;
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByInput(input);
+                            case 0 -> snapshot.getNationByInput(input, allowDeleted);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -322,7 +346,6 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             Set<DBNation> allianceMembers = snapshot.getNationsByAlliance(alliances);
             return allianceMembers;
-            // role
         } else if (nameLower.startsWith("<@&") && guild != null) {
             Role role = DiscordUtil.getRole(guild, name);
             return getByRole(guild, name, role, snapshot);
@@ -363,7 +386,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
         Set<DBNation> nations = new LinkedHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : snapshot.getNationByInput(name);
+        DBNation nation = containsAA ? null : snapshot.getNationByInput(name, allowDeleted);
         if (nation == null || containsAA) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
@@ -413,7 +436,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByInput(input);
+                            case 0 -> snapshot.getNationByInput(input, true);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -432,7 +455,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             return f -> f.getTax_id() == taxId;
         }
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : snapshot.getNationByInput(name);
+        DBNation nation = containsAA ? null : snapshot.getNationByInput(name, true);
         if (nation == null) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {

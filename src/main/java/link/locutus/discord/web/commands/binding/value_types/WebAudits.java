@@ -5,10 +5,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
 
-public class WebAudits extends WebSuccess {
+public class WebAudits {
     public List<WebAudit> values;
     public WebAudits() {
-        super(true, null);
         this.values = new ObjectArrayList<>();
     }
 }

@@ -46,7 +46,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(SetGuild.class)
-    public WebSuccess set_guild(Context context, @Me @Default User user, Guild guild, @Me @Default DBAuthRecord auth) {
+    public Object set_guild(Context context, @Me @Default User user, Guild guild, @Me @Default DBAuthRecord auth) {
         if (user == null) return error("No user found, please login via discord");
         String id = guild.getId();
         String name = guild.getName();
@@ -56,7 +56,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(WebUrl.class)
-    public WebSuccess login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
+    public Object login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth != null) {
             return error("Already logged in");
         }
@@ -66,7 +66,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(value = WebOptions.class, cache = CacheType.LocalStorage, duration = 30)
-    public WebSuccess input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
+    public Object input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
         PageHandler ph = WebRoot.getInstance().getPageHandler();
         WebOption option = ph.getQueryOption(type);
         if (option == null) {
@@ -121,7 +121,7 @@ public class EndpointPages extends PageHelper {
                 URL_AUTH.getCookieId(),
                 URL_AUTH_SET.getCookieId()
         );
-        List<String> removeCookieStrings = new ArrayList<>();
+        List<String> removeCookieStrings = new ObjectArrayList<>();
         for (String cookie : cookiesToRemove) {
             removeCookieStrings.add(cookie + "=; Max-Age=0; Path=/; HttpOnly");
         }
@@ -136,7 +136,7 @@ public class EndpointPages extends PageHelper {
         CommandGroup commands = handler.getCommands();
         CommandCallable apiCommands = commands.get("api");
 
-        List<WebSuccess> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
+        List<Object> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
 
         for (int i = 0; i < queries.size(); i++) {
             Map.Entry<String, Map<String, Object>> entry = queries.get(i);
@@ -147,7 +147,7 @@ public class EndpointPages extends PageHelper {
             String error;
             if (callable instanceof ParametricCallable cmd) {
                 try {
-                    result.set(i, (WebSuccess) handler.call(cmd, ws, context, value));
+                    result.set(i, handler.call(cmd, ws, context, value));
                     continue;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -177,8 +177,14 @@ public class EndpointPages extends PageHelper {
     }
 
     @Command
+    @ReturnType(value = WebValue.class, cache = CacheType.LocalStorage)
+    public Object test(WebStore ws, Context context) throws IOException {
+        return "HELLO WORLD";
+    }
+
+    @Command
     @ReturnType(WebValue.class)
-    public WebSuccess unregister(@Me @Default DBAuthRecord auth, boolean confirm) {
+    public Object unregister(@Me @Default DBAuthRecord auth, boolean confirm) {
         if (auth == null) {
             return error("No auth record found");
         }

@@ -6,5 +6,6 @@ public class TradePriceByDayJson {
     public String x;
     public String y;
     public List<String> labels;
-    public List<List<Number>> data;
+    public List<Long> timestamps;
+    public List<List<Double>> prices;
 }

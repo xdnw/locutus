@@ -479,11 +479,11 @@ public class OffshoreInstance {
 
     public final Map<Integer, Long> disabledNations = new ConcurrentHashMap<>();
 
-    public TransferResult transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public TransferResult transferFromNationAccountWithRoleChecks(DBNation bankerNation, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
             @Override
             public Map<Long, AccessType> get() {
-               return senderDB.getAllowedBankAccountsOrThrow(banker, receiver, senderChannel);
+               return senderDB.getAllowedBankAccountsOrThrow(bankerNation, banker, receiver, senderChannel, senderChannel == null);
             }
         });
         return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, decay, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);

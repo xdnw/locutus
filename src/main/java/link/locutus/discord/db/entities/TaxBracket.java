@@ -4,11 +4,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PW;
 
 import java.util.*;
@@ -128,7 +130,6 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     }
 
 
-    @Command(desc = "Tax rate object")
     public TaxRate getTaxRate() {
         return new TaxRate(moneyRate, rssRate);
     }

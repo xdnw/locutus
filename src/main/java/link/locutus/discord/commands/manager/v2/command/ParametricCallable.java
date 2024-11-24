@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -915,22 +916,18 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public JsonObject toJson(PermissionHandler permHandler, boolean includeReturnType) {
-        JsonObject command = new JsonObject();
-        command.addProperty("help", simpleHelp());
-        command.addProperty("desc", simpleDesc());
+    public Map<String, Object> toJson(PermissionHandler permHandler, boolean includeReturnType) {
+        Map<String, Object> command = new LinkedHashMap<>();
+        command.put("help", simpleHelp());
+        command.put("desc", simpleDesc());
         if (includeReturnType) {
-            command.addProperty("return_type", StringMan.classNameToSimple(returnType.getTypeName()));
+            command.put("return_type", StringMan.classNameToSimple(returnType.getTypeName()));
         }
         if (groups != null && groups.length != 0) {
-            JsonArray groupsList = new JsonArray();
-            for (String g : groups) groupsList.add(g);
-            command.add("groups", groupsList);
+            command.put("groups", Arrays.asList(groups));
         }
         if (groupDescs != null && groupDescs.length != 0) {
-            JsonArray groupDescsList = new JsonArray();
-            for (String g : groupDescs) groupDescsList.add(g);
-            command.add("group_descs", groupDescsList);
+            command.put("group_descs", Arrays.asList(groupDescs));
         }
 //        Set<String> flags = new LinkedHashSet<>();
 //        if (valueFlags != null && !valueFlags.isEmpty()) flags.addAll(valueFlags);
@@ -940,39 +937,40 @@ public class ParametricCallable implements ICommand {
 //            for (String g : flags) valueFlagsList.add(g);
 //            command.add("flags", valueFlagsList);
 //        }
-        JsonObject annotationsObj = new JsonObject();
+        Map<String, Object> annotationsObj = new LinkedHashMap<>();
         for (Annotation annotation : annotations) {
             if (annotation instanceof Command) continue;
 
             if (permHandler != null && !permHandler.isPermission(annotation)) continue;
-            JsonObject annJson = new JsonObject();
+            Map<String, Object> annJson = new LinkedHashMap<>();
             for (Method method : annotation.annotationType().getDeclaredMethods()) {
                 try {
                     Object value = method.invoke(annotation);
                     Object defaultValue = method.getDefaultValue();
                     if (value != null && !StringMan.areEqual(value, defaultValue)) {
-                        annJson.add(method.getName(), StringMan.toJson(value));
+                        if (value != null) System.out.println(":||remove Convert to value " + value.getClass() + " | " + value.toString() + " | " + defaultValue);
+                        annJson.put(method.getName(), StringMan.toSerializable(value));
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new RuntimeException(e);
                 }
             }
             String key = annotation.annotationType().getSimpleName().replace("Permission", "").toLowerCase(Locale.ROOT);
-            if (annJson.isEmpty()) {
-                annotationsObj.addProperty(key, true);
+            if (annJson.size() == 0) {
+                annotationsObj.put(key, true);
             } else {
-                annotationsObj.add(key, annJson);
+                annotationsObj.put(key, annJson);
             }
         }
         if (!annotationsObj.entrySet().isEmpty()) {
-            command.add("annotations", annotationsObj);
+            command.put("annotations", annotationsObj);
         }
-        JsonObject arguments = new JsonObject();
+        Map<String, Object> arguments = new LinkedHashMap<>();
         for (ParameterData param : userParameters) {
-            arguments.add(param.getName(), param.toJson());
+            arguments.put(param.getName(), param.toJson());
         }
-        if (!arguments.isEmpty()) {
-            command.add("arguments", arguments);
+        if (arguments.size() != 0) {
+            command.put("arguments", arguments);
         }
         return command;
     }

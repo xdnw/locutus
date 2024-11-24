@@ -49,15 +49,14 @@ public class TradeEndpoints {
         }
 
         TradePriceByDayJson result = new TradePriceByDayJson();
-        List<List<Number>> data = new ObjectArrayList();
 
         LongArrayList timestampsJson = new LongArrayList();
         for (long day = minDay; day <= maxDay; day++) {
             long time = TimeUtil.getTimeFromDay(day);
             timestampsJson.add(time / 1000L);
         }
-        data.add((List) timestampsJson);
 
+        List<List<Double>> data = new ObjectArrayList<>();
         for (ResourceType type : resources) {
             Map<Long, Double> avgByDay = avgByRss.get(type);
             DoubleArrayList rssData = new DoubleArrayList();
@@ -65,13 +64,14 @@ public class TradeEndpoints {
                 Double price = avgByDay.getOrDefault(day, 0d);
                 rssData.add(price);
             }
-            data.add((List) rssData);
+            data.add(rssData);
         }
 
         result.x = "Time";
         result.y = "Price Per Unit ($)";
         result.labels = labels;
-        result.data = data;
+        result.timestamps = timestampsJson;
+        result.prices = data;
         return result;
     }
 }
