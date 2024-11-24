@@ -3959,7 +3959,7 @@ public class BankCommands {
             "Optional: Specify Nations",
             "Display Options",
     })
-    @RolePermission(any = true, value = {Roles.ECON_STAFF, Roles.ECON})
+    @RolePermission(any = true, value = {Roles.ECON_STAFF, Roles.ECON, Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM})
     @IsAlliance
     public String stockpileSheet(@Me GuildDB db, @Me IMessageIO channel,
                                  @Arg(value = "Only include stockpiles from these nations", group = 0) @Default NationList nationFilter,
