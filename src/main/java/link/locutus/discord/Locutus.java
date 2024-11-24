@@ -659,7 +659,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
                 taskTrack.addTask("Bounties", () -> {
                     if (Settings.USE_V2) return;
-                    Locutus.imp().getWarDb().updateBountiesV3()
+                    Locutus.imp().getWarDb().updateBountiesV3();
                 },
                 Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
