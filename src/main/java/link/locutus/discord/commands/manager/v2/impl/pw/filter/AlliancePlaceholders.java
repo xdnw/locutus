@@ -201,13 +201,14 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (SpreadSheet.isSheet(input)) {
             return SpreadSheet.parseSheet(input, List.of("alliance", "{name}", "{id}", "{getname}", "{getid}"), true,
-                    s -> {
-                        return switch (s.toLowerCase()) {
-                            case "alliance", "{name}", "{id}", "{getname}", "{getid}" -> 0;
-                            default -> null;
-                        };
-                    },
-                    (type, str) -> PWBindings.alliance(str));
+                s -> switch (s.toLowerCase()) {
+                    case "alliance", "{name}", "{id}", "{getname}", "{getid}" -> 0;
+                    default -> null;
+                },
+                (type, str) -> {
+                    return PWBindings.alliance(str);
+                });
+
         }
         return parseIds(guild, input, true);
     }
@@ -220,8 +221,11 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
         if (SpreadSheet.isSheet(input)) {
-            Set<Set<Integer>> setSet = SpreadSheet.parseSheet(input, List.of("alliance"), true,
-                    s -> s.equalsIgnoreCase("alliance") ? 0 : null,
+            Set<Set<Integer>> setSet = SpreadSheet.parseSheet(input, List.of("alliance", "{name}", "{id}", "{getname}", "{getid}"), true,
+                    s -> switch (s.toLowerCase()) {
+                        case "alliance", "{name}", "{id}", "{getname}", "{getid}" -> 0;
+                        default -> null;
+                    },
                     (type, str) -> DiscordUtil.parseAllianceIds(guild, str));
 
             Set<Integer> ids = setSet.stream().flatMap(Collection::stream).collect(Collectors.toSet());

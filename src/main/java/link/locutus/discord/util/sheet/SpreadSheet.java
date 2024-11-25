@@ -355,9 +355,9 @@ public class SpreadSheet {
         String tabName = null;
         Integer tabId = null;
         if (id.startsWith("sheet:")) {
-            id = id.split(":")[1];
-            if (id.contains(",")) {
-                String[] split = id.split(",");
+            id = id.split(":",2)[1];
+            if (id.contains(",") || id.contains(";") || id.contains(":") || id.contains("#")) {
+                String[] split = id.split("[,;:#]", 2);
                 id = split[0];
                 String tabStr = split[1];
                 if (MathMan.isInteger(tabStr)) {
