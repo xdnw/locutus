@@ -6305,6 +6305,7 @@ public class DBNation implements NationOrAlliance {
         return TimeUtil.getTimeFromTurn(currentTurn - diffTurn);
     }
 
+    @Command(desc = "The time in epoch milliseconds when this nation was last active")
     public long lastActiveMs() {
         return last_active;
     }

@@ -49,28 +49,33 @@ public class TsEndpointGenerator {
         {
             // generateTsPlaceholderBuilder (unused)
         }
-        if (false){
+        if (true){
             CommandManager2 cmdInst = Locutus.cmd().getV2();
             SimpleValueStore<Object> store = new SimpleValueStore<>();
             new WebOptionBindings().register(store);
             Map<String, Object> json = cmdInst.toJson(store, cmdInst.getPermisser());
-            byte[] data = handler.getSerializer().writeValueAsBytes(json);
+//            byte[] data = handler.getSerializer().writeValueAsBytes(json);
+//            File commandsFile = new File(outputDir, "assets/commands.msgpack");
+//            if (!commandsFile.exists()) {
+//                commandsFile.getParentFile().mkdirs();
+//                commandsFile.createNewFile();
+//            }
+//            Files.write(commandsFile.toPath(), data);
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            String jsonString = objectMapper.writeValueAsString(json);
+//            File jsonFile = new File(outputDir, "assets/commands.json");
+//            if (!jsonFile.exists()) {
+//                jsonFile.getParentFile().mkdirs();
+//                jsonFile.createNewFile();
+//            }
+//            Files.write(jsonFile.toPath(), jsonString.getBytes());
+            String header = """
+                    import {ICommandMap} from "@/utils/Command.ts";
+                    export const COMMANDS: ICommandMap = """;
+            File output = new File(outputDir, "lib/commands.ts");
 
-            File commandsFile = new File(outputDir, "assets/commands.msgpack");
-            if (!commandsFile.exists()) {
-                commandsFile.getParentFile().mkdirs();
-                commandsFile.createNewFile();
-            }
-            Files.write(commandsFile.toPath(), data);
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            String jsonString = objectMapper.writeValueAsString(json);
-            File jsonFile = new File(outputDir, "assets/commands.json");
-            if (!jsonFile.exists()) {
-                jsonFile.getParentFile().mkdirs();
-                jsonFile.createNewFile();
-            }
-            Files.write(jsonFile.toPath(), jsonString.getBytes());
+            String jsonStr = WebUtil.GSON.toJson(json);
+            Files.write(output.toPath(), (header + jsonStr).getBytes());
         }
     }
 

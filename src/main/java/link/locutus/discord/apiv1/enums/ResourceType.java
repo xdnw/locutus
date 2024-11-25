@@ -1085,6 +1085,36 @@ public enum ResourceType {
         return Locutus.imp().getTradeManager().getLowAvg(this);
     }
 
+    @Command(desc = "The average weekly sell price of this resource")
+    public double getLowAverage() {
+        return Locutus.imp().getTradeManager().getLowAvg(this);
+    }
+
+    @Command(desc = "The average weekly buy price of this resource")
+    public double getHighAverage() {
+        return Locutus.imp().getTradeManager().getHighAvg(this);
+    }
+
+    @Command(desc = "The margin between the current top buy and sell price on the market")
+    public int getMargin() {
+        return (int) (getHigh() - getLow());
+    }
+
+    @Command(desc = "The average margin between buy and sell in the past week for completed trades")
+    public double getAverageMargin() {
+        return (getHighAverage() - getLowAverage());
+    }
+
+    @Command(desc = "The current top buy price on the market")
+    public int getHigh() {
+        return Locutus.imp().getTradeManager().getPrice(this, true);
+    }
+
+    @Command(desc = "The current top sell price on the market")
+    public int getLow() {
+        return Locutus.imp().getTradeManager().getPrice(this, false);
+    }
+
     public ResourceType[] getInputs() {
         return inputs;
     }
