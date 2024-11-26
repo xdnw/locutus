@@ -41,7 +41,7 @@ public class SheetBindings extends BindingHelper {
     public static Class type(String input) {
         Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
         for (Class<?> type : types) {
-            if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(input)) {
+            if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(input) || type.getSimpleName().equalsIgnoreCase(input)) {
                 return type;
             }
         }

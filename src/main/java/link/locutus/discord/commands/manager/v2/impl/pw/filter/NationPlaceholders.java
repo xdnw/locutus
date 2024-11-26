@@ -92,7 +92,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     @Override
     public Set<String> getSheetColumns() {
-        return new LinkedHashSet<>(List.of("nation", "leader"));
+        return new LinkedHashSet<>(List.of("nation", "leader", "{id}", "{nation}", "{leader}"));
     }
 
     @Override

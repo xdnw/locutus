@@ -2235,7 +2235,12 @@ public class AdminCommands {
 
     @Command(desc = "List players currently sharing a network or an active ban")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired, @Switch("f") boolean forceUpdate) throws IOException {
+    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired,
+                                                   @Switch("a") boolean onlySameAlliance,
+                                                   @Switch("t") @Timediff Long onlySimilarTime,
+                                                   @Switch("d") boolean sortByAgeDays,
+                                                   @Switch("l") boolean sortByLogin,
+                                                   @Switch("f") boolean forceUpdate) throws IOException {
         if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
             throw new IllegalArgumentException("Too many nations to update");
         }
@@ -2262,6 +2267,23 @@ public class AdminCommands {
                     break;
                 }
             }
+            if (onlySameAlliance) {
+                Set<Integer> aaIds = entry.getValue().stream().map(DBNation::getAlliance_id).collect(Collectors.toSet());
+                entry.getValue().removeIf(nation -> nation.getAlliance_id() == 0 || !aaIds.contains(nation.getAlliance_id()));
+            }
+            if (onlySimilarTime != null) {
+                Map<Integer, Boolean> hasSimilarTime = new HashMap<>();
+                for (DBNation nation : entry.getValue()) {
+                    for (DBNation other : entry.getValue()) {
+                        if (nation == other) continue;
+                        if (Math.abs(nation.lastActiveMs() - other.lastActiveMs()) < onlySimilarTime) {
+                            hasSimilarTime.put(nation.getId(), true);
+                            hasSimilarTime.put(other.getId(), true);
+                        }
+                    }
+                }
+                entry.getValue().removeIf(nation -> !hasSimilarTime.getOrDefault(nation.getId(), false));
+            }
             return !contains;
         });
 
@@ -2287,7 +2309,7 @@ public class AdminCommands {
             if (msg != null && msg.getId() > 0) {
                 io.delete(msg.getId());
             }
-            return hasSameNetworkAsBan(io, author, nations, listExpired, false);
+            return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime, sortByAgeDays, sortByLogin, false);
         }
 
         // get the bans
@@ -2322,8 +2344,23 @@ public class AdminCommands {
             response.append("## Active nations sharing the same network:\n");
             for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
                 response.append(entry.getKey().toString(16)).append(":\n");
-                for (DBNation nation : entry.getValue()) {
-                    response.append("- ").append(nation.getUrl()).append("\n");
+                List<DBNation> sorted = new ArrayList<>(entry.getValue());
+                if (sortByAgeDays) {
+                    sorted.sort(Comparator.comparingLong(DBNation::getAgeDays));
+                } else if (sortByLogin) {
+                    sorted.sort(Comparator.comparingLong(DBNation::lastActiveMs));
+                } else {
+                    sorted.sort(Comparator.comparingLong(DBNation::getId));
+                }
+                for (DBNation nation : sorted) {
+                    response.append("- ").append(nation.getUrl());
+                    // add aa if not id 0
+                    if (nation.getAlliance_id() != 0) {
+                        response.append(" | " + nation.getAllianceName());
+                    }
+                    response.append(" | " + nation.active_m() + "m");
+                    response.append(" | " + nation.getAgeDays() + "d");
+                    response.append("\n");
                 }
             }
             response.append("\n");

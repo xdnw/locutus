@@ -73,6 +73,6 @@ public class StatEndpoints {
         }
         List<String> errorsArr = errors.isEmpty() ? null : errors.values().stream().collect(ObjectArrayList::new, List::addAll, List::addAll);
 
-        return new WebTable(data, errorsArr);
+        return new WebTable(data, errorsArr, null);
     }
 }
