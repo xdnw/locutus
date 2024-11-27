@@ -125,7 +125,8 @@ public class CommandManager2 {
         }
 
         Map<String, Object> phRoot = new LinkedHashMap<>();
-        for (Class<?> t : placeholders.getTypes()) {
+        List<Class<?>> phTypesSorted = placeholders.getTypes().stream().sorted(Comparator.comparing(f -> PlaceholdersMap.getClassName(f))).toList();
+        for (Class<?> t : phTypesSorted) {
             Placeholders<?> ph = placeholders.get(t);
             Map<String, Object> json = new LinkedHashMap<>();
 

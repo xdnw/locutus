@@ -2343,6 +2343,7 @@ public class AdminCommands {
         if (!uidsByNationExisting.isEmpty()) {
             response.append("## Active nations sharing the same network:\n");
             for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
+                if (entry.getValue().isEmpty()) continue;
                 response.append(entry.getKey().toString(16)).append(":\n");
                 List<DBNation> sorted = new ArrayList<>(entry.getValue());
                 if (sortByAgeDays) {

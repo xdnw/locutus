@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.WebTable;
+import link.locutus.discord.web.commands.binding.value_types.WebTableError;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.LinkedHashMap;
@@ -29,7 +30,7 @@ public class StatEndpoints {
     public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class type, String selection_str, @TextArea List<String> columns) {
         System.out.println("Columns " + columns.size() + " | " + columns);
         Class<T> typeCasted = (Class<T>) type;
-        Map<Integer, List<String>> errors = new LinkedHashMap<>();
+        Map<Integer, List<WebTableError>> errors = new LinkedHashMap<>();
         int maxPerCol = 3;
 
         PlaceholdersMap map = Locutus.cmd().getV2().getPlaceholders();
@@ -46,13 +47,17 @@ public class StatEndpoints {
             try {
                 formatters.add(ph.getFormatFunction(store, column, cache, true));
             } catch (Exception e) {
-                errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol)).add("Failed to get column: " + e.getMessage());
+                List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
+                if (errList.size() < maxPerCol) {
+                    errList.add(new WebTableError(i, null, e.getMessage()));
+                }
                 formatters.add(null);
             }
         }
 
         List<List<Object>> data = new ObjectArrayList<>(selection.size());
         data.add(new ObjectArrayList<>(columns));
+        int rowI = 0;
         for (T obj : selection) {
             List<Object> row = new ObjectArrayList<>(columns.size());
             for (int i = 0; i < formatters.size(); i++) {
@@ -64,14 +69,18 @@ public class StatEndpoints {
                         Object td = formatter.apply(obj);
                         row.add(StringMan.toSerializable(td));
                     } catch (Exception e) {
-                        errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol)).add("Failed to format column: " + e.getMessage());
+                        List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
+                        if (errList.size() < maxPerCol) {
+                            errList.add(new WebTableError(i, rowI, e.getMessage()));
+                        }
                         row.add(null);
                     }
                 }
             }
             data.add(row);
+            rowI++;
         }
-        List<String> errorsArr = errors.isEmpty() ? null : errors.values().stream().collect(ObjectArrayList::new, List::addAll, List::addAll);
+        List<WebTableError> errorsArr = errors.isEmpty() ? null : errors.values().stream().collect(ObjectArrayList::new, List::addAll, List::addAll);
 
         return new WebTable(data, errorsArr, null);
     }
