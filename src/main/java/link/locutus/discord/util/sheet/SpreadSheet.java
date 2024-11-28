@@ -80,8 +80,10 @@ public class SpreadSheet {
             throw new RuntimeException(e);
         }
 
-        List<List<Object>> rows = sheet.fetchAll(null);
-        sheet.reset();
+        String tab = keys.tabName;
+        if (tab == null) tab = sheet.getDefaultTab(true);
+        List<List<Object>> rows = sheet.fetchAll(tab);
+        this.valuesByTab.remove(tab.toLowerCase(Locale.ROOT));
         if (rows == null || rows.isEmpty()) return Collections.emptySet();
 
         Set<T> toAdd = new LinkedHashSet<>();
