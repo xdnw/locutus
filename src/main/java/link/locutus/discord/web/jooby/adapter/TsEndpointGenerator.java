@@ -240,10 +240,10 @@ public class TsEndpointGenerator {
                         default_values?: {argValuesAllOptional},
                         label?: ReactNode,
                         message?: ReactNode,
-                        handle_response?: (data: ApiTypes.{typeName}, setMessage: (message: React.ReactNode) => void, setShowDialog: (showDialog: boolean) => void, setTitle: (title: string) => void) => void,
-                        handle_submit?: (args: {argValues}, setMessage: (message: string) => void, setShowDialog: (showDialog: boolean) => void, setTitle: (title: string) => void) => boolean,
-                        handle_loading?: (setMessage: (message: string) => void, setShowDialog: (showDialog: boolean) => void, setTitle: (title: string) => void) => void,
-                        handle_error?: (error: string, setMessage: (message: string) => void, setShowDialog: (showDialog: boolean) => void, setTitle: (title: string) => void) => void,
+                        handle_response?: (data: ApiTypes.{typeName}) => void,
+                        handle_submit?: (args: {argValues}) => boolean,
+                        handle_loading?: () => void,
+                        handle_error?: (error: string) => void,
                         classes?: string}): React.ReactNode => {
                         return useForm({constName}.endpoint.url, {constName}.endpoint.args, message, default_values, label, handle_response, handle_submit, handle_loading, handle_error, classes);
                     }

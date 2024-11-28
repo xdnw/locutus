@@ -112,7 +112,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
         SelectionAlias<T> existing = db.getSheetManager().getSelectionAlias(name, false);
         if (existing != null) {
-            throw new IllegalArgumentException("Selection already exists: " + existing.toString());
+            throw new IllegalArgumentException("Selection already exists: `" + existing.toString() + "`");
         }
         String selection;
         if (argumentNames.length == 1) {
@@ -590,7 +590,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             Object parsed = typeFunc.apply(locals, expr.toString());
             if (parsed == null) {
-                throw new IllegalArgumentException("Null parsed " + typeFunc.getKey() + " for Math Expression->Type");
+                throw new IllegalArgumentException("Null parsed `" + typeFunc.getKey() + "` for Math Expression->Type");
             }
             return parsed;
         }
@@ -617,11 +617,11 @@ public abstract class Placeholders<T> extends BindingHelper {
                     locals.addProvider(param);
                     Parser mathFunc = store.get(param.getBinding().getKey());
                     if (mathFunc == null) {
-                        throw new IllegalArgumentException("Unknown function (2): `" + str + "`");
+                        throw new IllegalArgumentException("Unknown math function `" + str + "`");
                     }
                     Object parsed = mathFunc.apply(locals, validators, permisser, str);
                     if (parsed == null) {
-                        throw new IllegalArgumentException("Null parsed " + mathFunc.getKey() + " for Type->Math Expression");
+                        throw new IllegalArgumentException("Null parsed `" + mathFunc.getKey() + "` for Type->Math Expression");
                     }
                     if (parsed instanceof ArrayUtil.DoubleArray da) {
                         return da;
@@ -636,7 +636,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         } else if (s instanceof double[]) {
             return s;
         } else if (s instanceof int[]) {
-            throw new IllegalArgumentException("Cannot parse int[] to DoubleArray for " + param);
+            throw new IllegalArgumentException("Cannot parse int[] to DoubleArray for `" + param.getName() + "`");
         } else if (s instanceof ArrayUtil.DoubleArray) {
             return s;
         } else {
@@ -657,7 +657,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         Set<String> options = commands.getSubCommandIds();
         List<String> closest = StringMan.getClosest(command, new ArrayList<>(options), false);
         if (closest.size() > 5) closest = closest.subList(0, 5);
-        return new IllegalArgumentException("Unknown command (4): " + command + "\n" +
+        return new IllegalArgumentException("Unknown sub command `" + command + "`:\n" +
                 "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
                 "\n\nSee also: " + getDescription());
     }
@@ -670,7 +670,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
         List<String> split = StringMan.split(functionContent, ".");
         if (split.isEmpty()) {
-            throw new IllegalArgumentException("Invalid input: Empty function: `" + functionContent + "`");
+            throw new IllegalArgumentException("Invalid input, Empty function: `" + functionContent + "`");
         }
         for (int i = 0; i < split.size(); i++) {
             Map<String, TypedFunction<T, ?>> actualArguments = new HashMap<>();
@@ -682,7 +682,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             if (indexPar != -1 && (indexSpace == -1 || indexPar < indexSpace)) {
                 if (!arg.endsWith(")")) {
                     if (throwError) {
-                        throw new IllegalArgumentException("Invalid input: Missing closing parenthesis for `" + arg + "`");
+                        throw new IllegalArgumentException("Invalid input, Missing closing parenthesis for: `" + arg + "`");
                     }
                     return null;
                 }

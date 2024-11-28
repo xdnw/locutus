@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -2257,6 +2258,15 @@ public class AdminCommands {
             }
         }
 
+        Map<Long, Set<DBNation>> sharesDiscord = new Object2ObjectOpenHashMap<>();
+        for (DBNation nation : nations) {
+            Long userId = nation.getUserId();
+            if (userId != null) {
+                sharesDiscord.computeIfAbsent(userId, k -> new HashSet<>()).add(nation);
+            }
+        }
+        sharesDiscord.entrySet().removeIf(entry -> entry.getValue().size() <= 1);
+
         // remove uidsBynationExisting when values size <= 1
         uidsByNationExisting.entrySet().removeIf(entry -> entry.getValue().size() <= 1);
         uidsByNationExisting.entrySet().removeIf(entry -> {
@@ -2340,6 +2350,24 @@ public class AdminCommands {
 
         StringBuilder response = new StringBuilder();
 
+        if (!sharesDiscord.isEmpty()) {
+            response.append("## Active nations sharing the same discord:\n");
+            for (Map.Entry<Long, Set<DBNation>> entry : sharesDiscord.entrySet()) {
+                if (entry.getValue().isEmpty()) continue;
+                response.append(entry.getKey()).append(":\n");
+                for (DBNation nation : entry.getValue()) {
+                    response.append("- ").append(nation.getUrl());
+                    if (nation.getAlliance_id() != 0) {
+                        response.append(" | " + nation.getAllianceName());
+                    }
+                    response.append(" | " + nation.active_m() + "m");
+                    response.append(" | " + nation.getAgeDays() + "d");
+                    response.append("\n");
+                }
+            }
+            response.append("\n");
+        }
+
         if (!uidsByNationExisting.isEmpty()) {
             response.append("## Active nations sharing the same network:\n");
             for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
@@ -2355,7 +2383,6 @@ public class AdminCommands {
                 }
                 for (DBNation nation : sorted) {
                     response.append("- ").append(nation.getUrl());
-                    // add aa if not id 0
                     if (nation.getAlliance_id() != 0) {
                         response.append(" | " + nation.getAllianceName());
                     }

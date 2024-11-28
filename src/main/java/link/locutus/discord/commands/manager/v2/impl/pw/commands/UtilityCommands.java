@@ -2144,7 +2144,8 @@ public class UtilityCommands {
         return "Set " + nation.getNation() + " to " + ResourceType.resourcesToString(resources) + " worth: ~$" + ResourceType.convertedTotal(resources);
     }
 
-    @Command(desc = "Rank alliances by their new members over a timeframe")
+    @Command(desc = "Rank alliances by their new members over a timeframe\n" +
+            "A recruitment is when a NONE which was not a former member within the timeframe gets set to member")
     public String recruitmentRankings(@Me User author, @Me IMessageIO channel, @Me JSONObject command,
                                       @Arg("Date to start from")
                                       @Timestamp long cutoff,

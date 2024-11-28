@@ -544,7 +544,7 @@ public class DiscordUtil {
             CommandBehavior finalBehavior = behavior;
             return split.stream().map(cmd -> new CommandInfo(channelId, finalBehavior, cmd)).toList();
         } else if (!id.isEmpty()) {
-            throw new IllegalArgumentException("Unknown command (5): `" + id + "`");
+            throw new IllegalArgumentException("Unknown discord command: `" + id + "`");
         } else {
             return List.of(new CommandInfo(channelId, behavior, id));
         }
