@@ -51,6 +51,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public abstract class Placeholders<T> extends BindingHelper {
     private final ValidatorStore validators;
@@ -386,7 +388,18 @@ public abstract class Placeholders<T> extends BindingHelper {
         };
     }
 
-    protected String wrapHashLegacy(String input) {
+    protected String wrapHashLegacy(ValueStore store2, String input) {
+        if (input.contains("%")) {
+            if (input.contains("%guild_alliances%")) {
+                Supplier<GuildDB> dbLazy = ArrayUtil.memorize(() -> (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false));
+                GuildDB db = dbLazy.get();
+                System.out.println("DB = " + db + " | " + input.contains("%guild_alliances%") + " | " + input + " | " + (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false));
+                if (db != null) {
+                    String value = db.getAllianceIds(true).stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
+                    input = input.replace("%guild_alliances%", value);
+                }
+            }
+        }
         return StringMan.wrapHashFunctions(input, new Predicate<String>() {
             @Override
             public boolean test(String s) {
@@ -399,7 +412,7 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     @Binding(value = "A comma separated list of filters")
     public Predicate<T> parseFilter(ValueStore store2, String input) {
-        input = wrapHashLegacy(input);
+        input = wrapHashLegacy(store2, input);
         return ArrayUtil.parseFilter(input,
                 f -> parseSingleFilter(store2, f),
                 s -> getSingleFilter(store2, s));
@@ -415,7 +428,7 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
-        input = wrapHashLegacy(input);
+        input = wrapHashLegacy(store2, input);
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f),
                 s -> getSingleFilter(store2, s));
@@ -912,13 +925,13 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     @Binding(value = "Format text containing placeholders")
     public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg) {
-        arg = wrapHashLegacy(arg);
+        arg = wrapHashLegacy(store, arg);
         return getFormatFunction(store, arg, true);
     }
 
     @Binding(value = "Format text containing placeholders")
     public TypedFunction<T, Double> getDoubleFunction(ValueStore store, String arg) {
-        arg = wrapHashLegacy(arg);
+        arg = wrapHashLegacy(store, arg);
         TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, false, true);
         Class type = (Class) result.getType();
         if (type == boolean.class || type == Boolean.class) {

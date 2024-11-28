@@ -1,8 +1,18 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import java.util.function.BiFunction;
+
+import com.politicsandwar.graphql.model.Nation;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -15,6 +25,8 @@ import link.locutus.discord.commands.sync.*;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.util.*;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.web.commands.WM;
@@ -56,12 +68,6 @@ import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
@@ -102,6 +108,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -2225,6 +2232,180 @@ public class AdminCommands {
             result.append("\n");
         }
         return result.toString().trim();
+    }
+
+    @Command
+    public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark) throws IOException, ParseException, GeneralSecurityException {
+        Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
+        List<Integer> nationIdsList = nations.stream().map(DBNation::getId).sorted().toList();
+        Map<Integer, String> discords = new Object2ObjectOpenHashMap<>();
+        for (Nation nation : Locutus.imp().getV3().fetchNations(false, f -> f.setId(nationIdsList), r -> {
+            r.id();
+            r.discord();
+            r.discord_id();
+        })) {
+            Integer id = nation.getId();
+            String discord = nation.getDiscord();
+            if (discord != null) {
+                discords.put(id, discord);
+            }
+        }
+
+        DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
+        snapshot.load();
+
+        List<Long> days = snapshot.getDays(true, false);
+        long lastDay = days.get(days.size() - 1);
+
+        Map<Continent, Map<Long, AtomicInteger>> mostCommonLocationPairs = new Object2ObjectOpenHashMap<>();
+        BiFunction<Double, Double, Long> pairLocation = (a, b) -> {
+            int lat = (int) (a * 100);
+            int lon = (int) (b * 100);
+            return MathMan.pairInt(lat, lon);
+        };
+        Map<DBNation, List<Object>> data = new Object2ObjectOpenHashMap<>();
+
+        Map<String, Integer> flagCounts = new Object2IntOpenHashMap<>();
+
+        snapshot.withNationFile(lastDay, new ThrowingConsumer<NationsFile>() {
+            @Override
+            public void acceptThrows(NationsFile file) throws IOException {
+                NationHeader header = file.getHeader();
+                file.reader().required(header.nation_id,
+                        header.continent,
+                        header.latitude,
+                        header.longitude,
+                        header.currency,
+                        header.flag_url,
+                        header.portrait_url,
+                        header.leader_title,
+                        header.nation_title
+                ).read(new ThrowingConsumer<NationHeader>() {
+                    @Override
+                    public void acceptThrows(NationHeader header) {
+                        int nationId = header.nation_id.get();
+
+                        double lat = header.latitude.get();
+                        double lon = header.longitude.get();
+                        long pair = pairLocation.apply(lat, lon);
+                        Continent continent = header.continent.get();
+                        mostCommonLocationPairs.computeIfAbsent(continent, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(pair, k -> new AtomicInteger()).incrementAndGet();
+                        flagCounts.merge(header.flag_url.get(), 1, Integer::sum);
+
+                        if (nationIds.contains(nationId)) {
+                            List<Object> row = new ArrayList<>();
+                            row.add(header.nation_id.get());
+                            row.add(header.continent.get());
+                            row.add(pair);
+                            row.add(header.currency.get());
+                            row.add(header.flag_url.get());
+                            row.add(header.portrait_url.get());
+                            row.add(header.leader_title.get());
+                            row.add(header.nation_title.get());
+                            data.put(DBNation.getById(nationId), row);
+                        }
+                    }
+                });
+            }
+        });
+
+        Map<Continent, Long> mostCommonLocation = new Object2LongOpenHashMap<>();
+        for (Map.Entry<Continent, Map<Long, AtomicInteger>> entry : mostCommonLocationPairs.entrySet()) {
+            long max = 0;
+            long maxPair = 0;
+            for (Map.Entry<Long, AtomicInteger> pair : entry.getValue().entrySet()) {
+                if (pair.getValue().get() > max) {
+                    max = pair.getValue().get();
+                    maxPair = pair.getKey();
+                }
+            }
+            mostCommonLocation.put(entry.getKey(), maxPair);
+        }
+
+        Map<BigInteger, Integer> uidCounts = new Object2IntOpenHashMap<>();
+        Map<Integer, BigInteger> uidByNation = new Object2ObjectOpenHashMap<>();
+        for (DBNation nation : nations) {
+            BigInteger uid = nation.getLatestUid();
+            if (uid != null) {
+                uidCounts.merge(uid, 1, Integer::sum);
+            }
+            uidByNation.put(nation.getId(), uid);
+        }
+
+        long now = System.currentTimeMillis();
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "leader",
+                "cities",
+                "alliance",
+                "position",
+                "continent",
+                "active",
+                "discord",
+                "picked_land", // if their location doesn't match the most common location
+                "custom_flag", // if flagCounts.get(flag) <= 1
+                "currency",
+                "portrait",
+                "leader_title",
+                "nation_title",
+                "domestic_policy",
+                "war_policy",
+                "uid_match",
+                "verified",
+                "mark"
+        ));
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.MULTI_BULK);
+        }
+        sheet.setHeader(header);
+
+        for (DBNation nation : nations) {
+            List<Object> row = data.get(nation);
+            Long locationPair = row == null ? null : (Long) row.get(2);
+            Continent continent = nation.getContinent();
+            boolean isMostCommon = locationPair != null && mostCommonLocation.get(continent).equals(locationPair);
+            String mostCommonMsg = locationPair == null ? "null" : (isMostCommon ? "Default" : "Custom");
+
+            String flagUrl = row == null ? null : (String) row.get(4);
+            String customFlagMsg = flagUrl == null ? "null" : (flagCounts.getOrDefault(flagUrl, 0) <= 1 ? "Custom" : "Default");
+            String currency = row == null ? "null" : (String) row.get(3);
+            String portrait = row == null ? "null" : (String) row.get(5);
+            String leaderTitle = row == null ? "null" : (String) row.get(6);
+            String nationTitle = row == null ? "null" : (String) row.get(7);
+
+            String discord = discords.getOrDefault(nation.getId(), "null");
+
+            row = new ArrayList<>();
+
+            row.add(MarkupUtil.sheetUrl(nation.getName(), nation.getUrl()));
+            row.add(nation.getLeader());
+            row.add(nation.getCities());
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
+            row.add(nation.getPosition());
+            row.add(nation.getContinent().name());
+            row.add(now - nation.lastActiveMs());
+            row.add(discord);
+            row.add(mostCommonMsg);
+            row.add(customFlagMsg);
+            row.add(currency);
+            row.add(portrait);
+            row.add(leaderTitle);
+            row.add(nationTitle);
+            row.add(nation.getDomesticPolicy().name());
+            row.add(nation.getWarPolicy().name());
+            row.add(uidCounts.getOrDefault(uidByNation.get(nation.getId()), 0) - 1);
+            row.add(nation.isVerified());
+            row.add(mark != null && mark.contains(nation) ? "X" : null);
+
+            sheet.addRow(row);
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "login_times").send();
+        return null;
     }
 
     @Command(desc = "Recalculate bans of nations sharing the same network concurrently")

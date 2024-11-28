@@ -3801,6 +3801,16 @@ public class DBNation implements NationOrAlliance {
         return DiscordUtil.getFullUsername(user);
     }
 
+    @Command(desc = "The flag url set in-game (snapshots only)")
+    public String getFlagUrl() {
+        throw new IllegalArgumentException("flagUrl is only supported for snapshots");
+    }
+
+    @Command(desc = "The unverified discord string set in-game (snapshots only)")
+    public String getDiscordString() {
+        throw new IllegalArgumentException("discordString is only supported for snapshots");
+    }
+
     @Command(desc = "The registered discord user id")
     public Long getUserId() {
         PNWUser dbUser = getDBUser();
@@ -4860,6 +4870,15 @@ public class DBNation implements NationOrAlliance {
         return new GetUid(this, priority).call();
     }
 
+    @Command(desc = "The unique network id of this nation")
+    public BigInteger getLatestUid() throws IOException {
+        BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(getId());
+        if (latest == null && isValid()) {
+            latest = fetchUid(false);
+        }
+        return latest;
+    }
+
     public NationMeta.BeigeAlertMode getBeigeAlertMode(NationMeta.BeigeAlertMode def) {
         ByteBuffer value = getMeta(NationMeta.BEIGE_ALERT_MODE);
         if (value == null) {
@@ -5003,6 +5022,7 @@ public class DBNation implements NationOrAlliance {
         double[] arr = getMMRBuildingArr();
         return Arrays.stream(arr).mapToObj(MathMan::format).collect(Collectors.joining("/"));
     }
+
     public double[] getMMRBuildingArr() {
         double barracks = 0; // for rounding
         double factories = 0;

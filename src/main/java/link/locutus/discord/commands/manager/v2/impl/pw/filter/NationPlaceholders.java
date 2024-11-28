@@ -46,13 +46,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -281,7 +275,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
     public Set<DBNation> parseSet(ValueStore store2, String input, String modifier, boolean allowDeleted) {
         INationSnapshot snapshot = getSnapshot(modifier);
-        input = wrapHashLegacy(input);
+        input = wrapHashLegacy(store2, input);
         return ArrayUtil.resolveQuery(input,
                 f -> {
             long start = System.currentTimeMillis();
@@ -315,14 +309,11 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot, boolean allowDeleted) {
         long start = System.currentTimeMillis();
         Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
-        System.out.println(":||Remove parse selection " + (-start + (start = System.currentTimeMillis())));
         if (selection != null) return selection;
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-        System.out.println(":||Remove guild " + (-start + (start = System.currentTimeMillis())));
         if (name.equals("*")) {
             Set<DBNation> allNations = snapshot.getAllNations();
-            System.out.println(":||Remove allNations " + (-start + (start = System.currentTimeMillis())));
             return allNations;
         } else if (name.contains("tax_id=")) {
             int taxId = PW.parseTaxId(name);

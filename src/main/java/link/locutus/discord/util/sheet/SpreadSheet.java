@@ -73,7 +73,7 @@ public class SpreadSheet {
 
     public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero, Function<String, Integer> parseColumnType, BiFunction<Integer, String, T> parseCell) {
         SheetId keys = SpreadSheet.parseId(sheetId);
-        SpreadSheet sheet = null;
+        SpreadSheet sheet;
         try {
             sheet = SpreadSheet.create(keys);
         } catch (GeneralSecurityException | IOException e) {
@@ -81,6 +81,7 @@ public class SpreadSheet {
         }
 
         List<List<Object>> rows = sheet.fetchAll(null);
+        sheet.reset();
         if (rows == null || rows.isEmpty()) return Collections.emptySet();
 
         Set<T> toAdd = new LinkedHashSet<>();

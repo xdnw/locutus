@@ -256,6 +256,7 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "multiInfoSheet", "multis_land");
         getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");
         getCommands().registerMethod(new WebCommands(), List.of("mail"), "mailLogin", "web_login");
         getCommands().registerMethod(new IACommands(), List.of("channel", "sort"), "sortChannelsSheetRules", "category_rule_sheet");

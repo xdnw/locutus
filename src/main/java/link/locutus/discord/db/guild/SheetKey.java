@@ -66,5 +66,6 @@ public enum SheetKey {
     SPY_FREE,
     DEPARTURES,
     VM_HISTORY,
+    MULTI_BULK
 
 }
