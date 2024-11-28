@@ -96,37 +96,6 @@ publishing {
     }
 }
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-    maven {
-        url "https://zoidberg.ukp.informatik.tu-darmstadt.de/artifactory/public-releases/"
-    }
-    maven {
-        name 'm2-dv8tion'
-        url 'https://m2.dv8tion.net/releases'
-    }
-    maven {
-        url "https://repo1.maven.org/maven2"
-    }
-//    maven {
-//        name = "GitHubPackages-pw4j"
-//        url "https://maven.pkg.github.com/l0llygag/pw4j"
-//        credentials {
-//            username = System.getenv("GITHUB_USERNAME")
-//            password = System.getenv("GITHUB_TOKEN")
-//        }
-//    }
-    flatDir {
-        dirs 'libs'
-    }
-    gradlePluginPortal()
-
-    maven { url 'https://jitpack.io' }
-    maven { url 'https://raw.github.com/AcaiSoftware/chatgpt-java/repository/' }
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-}
-
 compileJava.options.compilerArgs.addAll('-Xmaxerrs', '1000')
 compileJava.options.compilerArgs.add '-parameters'
 compileTestJava.options.compilerArgs.add '-parameters'
@@ -511,6 +480,10 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     }
 }
 
+tasks.withType(JavaCompile) {
+    options.incremental = true
+}
+
 sourceSets {
     main {
         java {
@@ -572,8 +545,4 @@ task findDependency {
             }
         }
     }
-}
-
-tasks.withType(JavaCompile) {
-    options.incremental = true
 }

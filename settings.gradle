@@ -3,7 +3,24 @@ rootProject.name = 'Locutus'
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        mavenLocal()
         mavenCentral()
-        google()
+        maven {
+            url "https://zoidberg.ukp.informatik.tu-darmstadt.de/artifactory/public-releases/"
+        }
+        maven {
+            name 'm2-dv8tion'
+            url 'https://m2.dv8tion.net/releases'
+        }
+        maven {
+            url "https://repo1.maven.org/maven2"
+        }
+        flatDir {
+            dirs 'libs'
+        }
+        gradlePluginPortal()
+        maven { url 'https://jitpack.io' }
+        maven { url 'https://raw.github.com/AcaiSoftware/chatgpt-java/repository/' }
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     }
 }
