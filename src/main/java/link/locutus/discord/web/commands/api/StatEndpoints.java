@@ -17,6 +17,7 @@ import link.locutus.discord.web.commands.binding.value_types.WebTable;
 import link.locutus.discord.web.commands.binding.value_types.WebTableError;
 import net.dv8tion.jda.api.entities.User;
 
+import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,18 +41,32 @@ public class StatEndpoints {
 
         Set<T> selection = ph.parseSet(store, selection_str, modifier);
         PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
+        store.addProvider(cache);
 
+        List<String> renderers = new ObjectArrayList<>(columns.size());
         List<TypedFunction<T, ?>> formatters = new ObjectArrayList<>(columns.size());
         for (int i = 0; i < columns.size(); i++) {
             String column = columns.get(i);
             try {
-                formatters.add(ph.getFormatFunction(store, column, cache, true));
+                TypedFunction<T, ?> result = ph.formatRecursively(store, column, null, 0, false, true);
+                Type rsType = result.getType();
+                formatters.add(result);
+                if (rsType instanceof Class clazz) {
+                    renderers.add(switch (clazz.getSimpleName()) {
+                        case "double", "Double", "int", "Integer", "float", "Float" -> "comma";
+                        case "NationColor" -> "color";
+                        default -> null;
+                    });
+                } else {
+                    renderers.add(null);
+                }
             } catch (Exception e) {
                 List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                 if (errList.size() < maxPerCol) {
                     errList.add(new WebTableError(i, null, e.getMessage()));
                 }
                 formatters.add(null);
+                renderers.add(null);
             }
         }
 
@@ -81,7 +96,6 @@ public class StatEndpoints {
             rowI++;
         }
         List<WebTableError> errorsArr = errors.isEmpty() ? null : errors.values().stream().collect(ObjectArrayList::new, List::addAll, List::addAll);
-
-        return new WebTable(data, errorsArr, null);
+        return new WebTable(data, errorsArr, renderers);
     }
 }

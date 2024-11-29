@@ -7,7 +7,7 @@ import java.util.List;
 public class WebTable {
     public @Nullable final List<WebTableError> errors;
     public final List<List<Object>> cells;
-    private @Nullable final List<String> renderers;
+    public @Nullable final List<String> renderers;
 
     public WebTable(List<List<Object>> cells, List<WebTableError> errors, List<String> renderers) {
         this.cells = cells;
