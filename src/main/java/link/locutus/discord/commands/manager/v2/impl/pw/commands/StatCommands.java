@@ -67,6 +67,7 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
@@ -843,9 +844,9 @@ public class StatCommands {
                 .replace("{groupName}", groupName);
 
         if (attachJson) {
-            JsonObject json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), groupName, metric.getName(),
+            WebGraph json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), groupName, metric.getName(),
                     TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0L);
-            msg.file("data.json", json.toString());
+            msg.file("data.json", WebUtil.GSON.toJson(json));
         }
         if (attachCsv) {
             List<List<String>> rows = TimeNumericTable.toSheetRows(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, plot.getTitle().getText(), groupName, metric.getName());

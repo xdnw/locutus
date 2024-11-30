@@ -1,5 +1,3 @@
-@import com.google.gson.JsonObject
-@import java.io.IOException
 @import java.util.Collections
 @import java.util.HashSet
 @import java.util.Map
@@ -11,7 +9,7 @@
 @import link.locutus.discord.db.entities.metric.AllianceMetric
 @import link.locutus.discord.db.entities.DBAlliance
 @import link.locutus.discord.util.TimeUtil
-@import java.util.Collections
+@import link.locutus.discord.web.WebUtil
 @param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
@@ -39,10 +37,10 @@
                     @if(spheres.getAlliances(sphereId).size() > 1)
                     <div class="bg-light border border-3 border-secondary rounded searchable">
                         @template.data.timechartdatasrc(ws = ws, title = spheres.getSphereName(sphereId) + " total",
-                        data = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn,
+                        data = WebUtil.GSON.toJsonTree(AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn,
                         spheres.getSphereName(sphereId),
                         new HashSet<>(spheres.getAlliances(sphereId))
-                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L),
+                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
                         time = true)
                     </div>
                     <hr>
@@ -51,9 +49,9 @@
                     @if(metricMap.containsKey(alliance))
                     <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
                         @template.data.timechartdatasrc(ws = ws, title = alliance.getName(),
-                        data = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(),
+                        data = WebUtil.GSON.toJsonTree(AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(),
                         Collections.singleton(alliance)
-                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L),
+                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
                         time = true)
                     </div>
                     @endif

@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.page;
 
+import com.google.gson.JsonElement;
 import gg.jte.generated.precompiled.data.JtebarchartsingleGenerated;
 import gg.jte.generated.precompiled.data.JtetimechartdatasrcpageGenerated;
 import gg.jte.generated.precompiled.guild.milcom.JteglobalmilitarizationGenerated;
@@ -21,6 +22,8 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -83,7 +86,8 @@ public class StatPages {
     public Object radiationStats(WebStore ws, Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, start, end);
-        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
+        WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
+        JsonElement json = WebUtil.GSON.toJsonTree(graph);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
     }
 
@@ -102,7 +106,8 @@ public class StatPages {
         TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
 
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
-        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, format, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
+        WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, format, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
+        JsonElement json = WebUtil.GSON.toJsonTree(graph);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
     }
 
@@ -124,7 +129,8 @@ public class StatPages {
     @Command()
     public Object metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
-        JsonObject json = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0);
+        WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0);
+        JsonElement json = WebUtil.GSON.toJsonTree(graph);
         return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, table.getName(), json, false));
     }
 
@@ -168,7 +174,8 @@ public class StatPages {
 
         TimeNumericTable table = TimeNumericTable.create(title, metric, nations, coalitionNames, groupBy, total);
 
-        JsonObject data = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0);
+        WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0);
+        JsonElement data = WebUtil.GSON.toJsonTree(graph);
         title = table.getName();
 
         String finalTitle = title;
@@ -224,7 +231,8 @@ public class StatPages {
 
 
         TimeNumericTable table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
-        JsonObject json = table.toHtmlJson(TimeFormat.TURN_TO_DATE, metric.getFormat(), startTurn);
+        WebGraph graph = table.toHtmlJson(TimeFormat.TURN_TO_DATE, metric.getFormat(), startTurn);
+        JsonElement json = WebUtil.GSON.toJsonTree(graph);
         title = table.getName();
         String finalTitle = title;
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, finalTitle, json, true));

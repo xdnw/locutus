@@ -45,6 +45,7 @@ public class StatEndpoints {
 
         List<String> renderers = new ObjectArrayList<>(columns.size());
         List<TypedFunction<T, ?>> formatters = new ObjectArrayList<>(columns.size());
+        boolean[] isEnum = new boolean[columns.size()];
         for (int i = 0; i < columns.size(); i++) {
             String column = columns.get(i);
             try {
@@ -55,7 +56,15 @@ public class StatEndpoints {
                     renderers.add(switch (clazz.getSimpleName()) {
                         case "double", "Double", "int", "Integer", "float", "Float" -> "comma";
                         case "NationColor" -> "color";
-                        default -> null;
+                        case "String" -> "normal";
+                        default -> {
+                            if (clazz.isEnum()) {
+                                isEnum[i] = true;
+                                yield "enum:" + clazz.getSimpleName();
+                            } else {
+                                yield null;
+                            }
+                        }
                     });
                 } else {
                     renderers.add(null);
@@ -70,6 +79,7 @@ public class StatEndpoints {
             }
         }
 
+        boolean[] checkedIsJson = new boolean[columns.size()];
         List<List<Object>> data = new ObjectArrayList<>(selection.size());
         data.add(new ObjectArrayList<>(columns));
         int rowI = 0;
@@ -82,7 +92,18 @@ public class StatEndpoints {
                 } else {
                     try {
                         Object td = formatter.apply(obj);
-                        row.add(StringMan.toSerializable(td));
+                        if (td != null && td.getClass().isEnum() && isEnum[i]) {
+                            row.add(((Enum<?>) td).ordinal());
+                        } else {
+                            Object serialized = StringMan.toSerializable(td);
+                            if (!checkedIsJson[i] && serialized != null) {
+                                checkedIsJson[i] = true;
+                                if (renderers.get(i) == null && serialized instanceof Map || serialized instanceof List) {
+                                    renderers.set(i, "json");
+                                }
+                            }
+                            row.add(serialized);
+                        }
                     } catch (Exception e) {
                         List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                         if (errList.size() < maxPerCol) {

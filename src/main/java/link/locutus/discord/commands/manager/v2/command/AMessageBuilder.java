@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -128,9 +129,10 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         }
         if (includeTables) {
             if (!tables.isEmpty()) {
-                List<JsonObject> tableArray = (List<JsonObject>) root.computeIfAbsent("tables", k -> new ArrayList<>());
+                List<Object> tableArray = (List<Object>) root.computeIfAbsent("tables", k -> new ArrayList<>());
                 for (GraphMessageInfo tableInfo : tables) {
-                    tableArray.add(tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.origin()));
+                    WebGraph html = tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.origin());
+                    tableArray.add(html);
                 }
                 root.put("tables", tableArray);
             }

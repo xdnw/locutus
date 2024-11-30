@@ -11,14 +11,15 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class TradeEndpoints {
     @Command
-    @ReturnType(TradePriceByDayJson.class)
-    public TradePriceByDayJson tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, Set<ResourceType> resources, @Range(min = 1) int days) {
+    @ReturnType(WebGraph.class)
+    public WebGraph tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, Set<ResourceType> resources, @Range(min = 1) int days) {
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
         if (resources.isEmpty()) {
@@ -48,18 +49,19 @@ public class TradeEndpoints {
             maxDay = Collections.max(averages.keySet());
         }
 
-        TradePriceByDayJson result = new TradePriceByDayJson();
+        WebGraph result = new WebGraph();
+        List<List<Object>> data = new ObjectArrayList<>();
 
-        LongArrayList timestampsJson = new LongArrayList();
+        List timestampsJson = new LongArrayList();
         for (long day = minDay; day <= maxDay; day++) {
             long time = TimeUtil.getTimeFromDay(day);
             timestampsJson.add(time / 1000L);
         }
 
-        List<List<Double>> data = new ObjectArrayList<>();
+        data.add(timestampsJson);
         for (ResourceType type : resources) {
             Map<Long, Double> avgByDay = avgByRss.get(type);
-            DoubleArrayList rssData = new DoubleArrayList();
+            List rssData = new DoubleArrayList();
             for (long day = minDay; day <= maxDay; day++) {
                 Double price = avgByDay.getOrDefault(day, 0d);
                 rssData.add(price);
@@ -69,9 +71,8 @@ public class TradeEndpoints {
 
         result.x = "Time";
         result.y = "Price Per Unit ($)";
-        result.labels = labels;
-        result.timestamps = timestampsJson;
-        result.prices = data;
+        result.labels = labels.toArray(new String[0]);
+        result.data = data;
         return result;
     }
 }

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.table;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
@@ -19,6 +20,7 @@ import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import gg.jte.generated.precompiled.data.JtebarchartdatasrcGenerated;
 import gg.jte.generated.precompiled.data.JtetimechartdatasrcGenerated;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -37,6 +39,8 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -328,23 +332,19 @@ public abstract class TimeNumericTable<T> {
         return data;
     }
 
-    public JsonObject toHtmlJson(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+    public WebGraph toHtmlJson(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
         return toHtmlJson(labels, data, amt, name, labelX, labelY, timeFormat, numberFormat, origin);
     }
 
-    public static JsonObject toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("time_format", timeFormat.name());
-        obj.addProperty("number_format", numberFormat.name());
-        obj.addProperty("origin", origin);
+    public static WebGraph toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+        WebGraph graph = new WebGraph();
 
-        JsonArray labelsArr = new JsonArray();
-
-        for (String label : labels) labelsArr.add(label);
+        graph.time_format = timeFormat;
+        graph.number_format = numberFormat;
 
         Column col1 = data.getColumn(0);
-        double minX = col1.getStatistics(Statistics.MIN);
-        double maxX = col1.getStatistics(Statistics.MAX);
+//        double minX = col1.getStatistics(Statistics.MIN);
+//        double maxX = col1.getStatistics(Statistics.MAX);
 
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
@@ -354,26 +354,23 @@ public abstract class TimeNumericTable<T> {
             maxY = Math.max(maxY, col.getStatistics(Statistics.MAX));
         }
 
-        obj.addProperty("title", name);
-        obj.addProperty("x", labelX);
-        obj.addProperty("y", labelY);
-        obj.add("labels", labelsArr);
+        graph.title = name;
+        graph.x = labelX;
+        graph.y = labelY;
+        graph.labels = labels;
 
-        JsonArray[] arrays = new JsonArray[amt + 1];
-        for (int i = 0; i < arrays.length; i++) arrays[i] = new JsonArray();
+
+        graph.data = new ObjectArrayList<>();
+        for (int i = 0; i < amt + 1; i++) graph.data.add(new ObjectArrayList<>());
 
         for (int i = 0; i < data.getRowCount(); i++) {
             Row row = data.getRow(i);
             for (int j = 0; j < row.size(); j++) {
                 Number val = (Number) row.get(j);
-                arrays[j].add(val);
+                graph.data.get(j).add(val);
             }
         }
-        JsonArray dataJson = new JsonArray();
-        for (JsonArray arr : arrays) dataJson.add(arr);
-
-        obj.add("data", dataJson);
-        return obj;
+        return graph;
     }
 
     public TimeNumericTable(JsonObject json) {
@@ -647,10 +644,13 @@ public abstract class TimeNumericTable<T> {
             }
         }
         if (isBar()) {
-            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(timeFormat, numberFormat, origin), false));
+            JsonElement json = WebUtil.GSON.toJsonTree(toHtmlJson(timeFormat, numberFormat, origin));
+            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), json, false));
         } else {
             boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE;
-            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), toHtmlJson(timeFormat, numberFormat, origin), isTime));
+//            toHtmlJson(timeFormat, numberFormat, origin)
+            JsonElement json = WebUtil.GSON.toJsonTree(toHtmlJson(timeFormat, numberFormat, origin));
+            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), json, isTime));
         }
         return html;
     }

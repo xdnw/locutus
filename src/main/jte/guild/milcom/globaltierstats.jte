@@ -8,6 +8,7 @@
 @import java.util.Collections
 @import java.util.Set
 @import link.locutus.discord.commands.manager.v2.table.TimeNumericTable
+@import link.locutus.discord.web.WebUtil
 @param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
@@ -33,9 +34,9 @@
                     @if(spheres.getAlliances(sphereId).size() > 1)
                     <div class="bg-light border border-3 border-secondary rounded searchable">
                         @template.data.barchartdatasrc(ws = ws, title = spheres.getSphereName(sphereId) + " total",
-                        data = TimeNumericTable.create(spheres.getSphereName(sphereId) + ": ", metrics,
+                        data = WebUtil.GSON.toJsonTree(TimeNumericTable.create(spheres.getSphereName(sphereId) + ": ", metrics,
                         spheres.getAlliances(sphereId), groupBy, total, removeVM, removeActiveM, removeApps
-                        ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0),
+                        ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0)),
                         stacked = false)
                     </div>
                     <hr>
@@ -43,9 +44,9 @@
                     @for (DBAlliance alliance : spheres.getAlliances(sphereId))
                         <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
                             @template.data.barchartdatasrc(ws = ws, title = alliance.getName(),
-                            data = TimeNumericTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance),
+                            data = WebUtil.GSON.toJsonTree(TimeNumericTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance),
                             groupBy, total, removeVM, removeActiveM, removeApps
-                            ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0),
+                            ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0)),
                             stacked = false)
                         </div>
                     @endfor
