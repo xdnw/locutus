@@ -865,7 +865,7 @@ public class OffshoreInstance {
                         }
                     }
 
-                    body.append("**Receiver:** " + nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true) + "\n");
+                    body.append("**Receiver:** " + nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup() + "\n");
                     if (escrowFunds) {
                         body.append("`Funds will be escrowed due to blockade`\n");
                     } else if (allowEscrow) {
@@ -883,10 +883,10 @@ public class OffshoreInstance {
 
                 body.append("**Sender:**\n");
                 if (banker != null) {
-                    body.append("- Banker: " + bankerNation.getNationUrlMarkup(true) + "\n");
+                    body.append("- Banker: " + bankerNation.getNationUrlMarkup() + "\n");
                 }
                 if (nationAccount != null) {
-                    body.append("- Nation Account: " + nationAccount.getNationUrlMarkup(true) + "\n");
+                    body.append("- Nation Account: " + nationAccount.getNationUrlMarkup() + "\n");
                 } else if (depositType.isIgnored()) {
                     body.append("- Will NOT deduct from a nation deposits\n");
                 } else {
@@ -1150,7 +1150,7 @@ public class OffshoreInstance {
                             MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
                             if (alertChannel != null) {
                                 StringBuilder body = new StringBuilder();
-                                body.append(banker.getNationUrlMarkup(true) + " | " + banker.getAllianceUrlMarkup(true)).append("\n");
+                                body.append(banker.getNationUrlMarkup() + " | " + banker.getAllianceUrlMarkup()).append("\n");
                                 body.append("Transfer: " + ResourceType.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                                 body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                                 body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");

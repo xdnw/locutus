@@ -4015,17 +4015,19 @@ public class DBNation implements NationOrAlliance {
         return "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }
 
+    @Command(desc = "Markdown url for the nation")
     public String getMarkdownUrl() {
-        return getNationUrlMarkup(true);
+        return getNationUrlMarkup();
     }
 
-    public String getNationUrlMarkup(boolean embed) {
+    public String getNationUrlMarkup() {
         String nationUrl = getUrl();
         nationUrl = MarkupUtil.markdownUrl(nation, "<" + nationUrl + ">");
         return nationUrl;
     }
 
-    public String getAllianceUrlMarkup(boolean embed) {
+    @Command
+    public String getAllianceUrlMarkup() {
         String allianceUrl = getAllianceUrl();
         allianceUrl = MarkupUtil.markdownUrl(getAllianceName(), "<" + allianceUrl + ">");
         return allianceUrl;
@@ -4249,7 +4251,7 @@ public class DBNation implements NationOrAlliance {
         PoliticsAndWarV3 receiverApi = getApi(true);
         Auth auth = getAuth();
         if (auth == null) {
-            throw new IllegalArgumentException("Banker nation has no auth (" + getNationUrlMarkup(true) + "). See: " + CM.credentials.login.cmd.toSlashMention());
+            throw new IllegalArgumentException("Banker nation has no auth (" + getNationUrlMarkup() + "). See: " + CM.credentials.login.cmd.toSlashMention());
         }
 
         Map<ResourceType, Double> amountMapDbl = amountMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> (double) e.getValue()));
@@ -4421,7 +4423,7 @@ public class DBNation implements NationOrAlliance {
     public String toFullMarkdown() {
         StringBuilder body = new StringBuilder();
         //Nation | Leader name | timestamp(DATE_CREATED) `tax_id=1`
-        body.append(getNationUrlMarkup(true)).append(" | ");
+        body.append(getNationUrlMarkup()).append(" | ");
         body.append(leader).append(" | ");
         // DiscordUtil.timestamp
         if (tax_id != 0) {
@@ -4433,7 +4435,7 @@ public class DBNation implements NationOrAlliance {
         if (alliance_id == 0) {
             body.append("`AA:0`");
         } else {
-            body.append(getAllianceUrlMarkup(true));
+            body.append(getAllianceUrlMarkup());
             DBAlliancePosition position = this.getAlliancePosition();
             String posStr;
             if (position != null) {
@@ -4620,9 +4622,9 @@ public class DBNation implements NationOrAlliance {
                 String url = Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
                 nationUrl = embed ? MarkupUtil.markdownUrl(getName(), url) : "<" + url + ">";
             } else {
-                nationUrl = getNationUrlMarkup(embed);
+                nationUrl = getNationUrlMarkup();
             }
-            String allianceUrl = getAllianceUrlMarkup(embed);
+            String allianceUrl = getAllianceUrlMarkup();
             response
                     .append(nationUrl)
                     .append(" | ")
@@ -5431,7 +5433,7 @@ public class DBNation implements NationOrAlliance {
         for (DBWar war : wars) {
             body.append(getWarInfoEmbed(war, loot));
         }
-        body.append(this.getNationUrlMarkup(true));
+        body.append(this.getNationUrlMarkup());
         body.append("\n").append(this.toCityMilMarkdown());
         return body.toString().replaceAll(" \\| ","|");
     }

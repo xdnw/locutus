@@ -190,7 +190,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding("Deny all use")
     @DenyPermission
     public boolean deny(DenyPermission perm, @Me DBNation nation, @Me User user) {
-        throw new IllegalCallerException("Denied by permission: " + nation.getNationUrlMarkup(false) + " | " + user.getAsMention());
+        throw new IllegalCallerException("Denied by permission: " + nation.getNationUrlMarkup() + " | " + user.getAsMention());
     }
 
     @Binding("Has the aliased roles on discord. \n" +

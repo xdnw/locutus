@@ -662,7 +662,7 @@ public class GPTCommands {
                 // add mention
                 body.append(user.getAsMention() + " | ");
             }
-            body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup()).append("\n");
             body.append("Reason: ").append(modReason).append("\n");
             io.create().confirmation(title, body.toString(), command).send();
             return null;

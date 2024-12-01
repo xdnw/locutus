@@ -89,7 +89,7 @@ public class MailReceivedEvent extends Event {
         StringBuilder body = new StringBuilder();
         DBNation nation = Locutus.imp().getNationDB().getNationById(mail.nationId);
         if (nation != null) {
-            body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
+            body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup());
             User user = nation.getUser();
             if (user != null) {
                 body.append(" | ").append(user.getAsMention());

@@ -688,7 +688,7 @@ public class BankCommands {
 
         String title = "Tax info for " + nation.getName();
         StringBuilder body = new StringBuilder();
-        body.append("**Nation:** ").append(nation.getNationUrlMarkup(true)).append("\n");
+        body.append("**Nation:** ").append(nation.getNationUrlMarkup()).append("\n");
         if (db != null && !db.isAllianceId(nation.getAlliance_id())) {
             body.append("`note: nation is not in alliances: " + StringMan.getString(db.getAllianceIds()) + "`\n");
         }
@@ -1042,7 +1042,7 @@ public class BankCommands {
             StringBuilder body = new StringBuilder();
             if (amountToSetOrAdd.size() == 1) {
                 DBNation nation = amountToSetOrAdd.keySet().iterator().next();
-                body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true) + "\n");
+                body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup() + "\n");
                 if (nation.isBlockaded()) {
                     body.append("`BLOCKADED`\n");
                 } else {
@@ -3355,7 +3355,7 @@ public class BankCommands {
         if (!force && receiver.getNumWars() > 0 && (member == null || member.getOnlineStatus() != OnlineStatus.ONLINE)) {
             String title = "Receiver is not online on discord";
             StringBuilder body = new StringBuilder();
-            body.append("**Receiver:** " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
+            body.append("**Receiver:** " + receiver.getNationUrlMarkup() + " | " + receiver.getAllianceUrlMarkup()).append("\n");
             int activeM = receiver.active_m();
             body.append("**Last active** (in-game): " + (activeM == 0 ? "Now" : TimeUtil.secToTime(TimeUnit.MINUTES, activeM))).append("\n");
             body.append("**Discord Status:** " + (member == null ? "No Discord" : member.getOnlineStatus())).append("\n");
@@ -3556,12 +3556,12 @@ public class BankCommands {
         boolean hasEcon = Roles.ECON.has(user, senderDB.getGuild());
         if (!hasEcon) {
             if (sender_alliance != null && sender_alliance.getId() != me.getAlliance_id()) {
-                throw new IllegalArgumentException("You do not have permission to send from another alliance (only: " + me.getAllianceUrlMarkup(true) + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+                throw new IllegalArgumentException("You do not have permission to send from another alliance (only: " + me.getAllianceUrlMarkup() + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
             }
             if (sender_nation == null) {
                 throw new IllegalArgumentException("You do not have permission to omit `sender_nation` " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
             } else if (sender_nation.getId() != me.getId()) {
-                throw new IllegalArgumentException("You do not have permission to send from another nation (only: " + me.getNationUrlMarkup(true) + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+                throw new IllegalArgumentException("You do not have permission to send from another nation (only: " + me.getNationUrlMarkup() + ") " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
             }
         }
 

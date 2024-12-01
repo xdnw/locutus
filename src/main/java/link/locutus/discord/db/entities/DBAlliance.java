@@ -702,7 +702,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return ResourceType.resourcesToMap(total);
     }
 
-
+    @Command(desc = "Get the markdown url of this alliance")
     public String getMarkdownUrl() {
         return PW.getMarkdownUrl(allianceId, true);
     }

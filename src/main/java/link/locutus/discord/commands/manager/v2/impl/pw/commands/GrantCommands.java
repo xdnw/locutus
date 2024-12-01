@@ -2803,7 +2803,7 @@ public class GrantCommands {
             if (receiver.active_m() > 2880) {
                 body.append("**Warning: **`Inactive for ").append(TimeUtil.secToTime(TimeUnit.MINUTES, receiver.active_m())).append("`\n");
             }
-            body.append(receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
+            body.append(receiver.getNationUrlMarkup() + " | " + receiver.getAllianceUrlMarkup()).append("\n");
             channel.create().confirmation(title, body.toString(), command).send();
             return null;
         }
@@ -2956,7 +2956,7 @@ public class GrantCommands {
 //                String title = grant.title();
 //                StringBuilder body = new StringBuilder();
 //
-//                body.append("Receiver: " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
+//                body.append("Receiver: " + receiver.getNationUrlMarkup() + " | " + receiver.getAllianceUrlMarkup()).append("\n");
 //                body.append("Note: " + grant.getNote()).append("\n");
 //                body.append("Amt: " + grant.getAmount()).append("\n");
 //                body.append("Cost: `" + PW.resourcesToString(grant.cost())).append("\n\n");

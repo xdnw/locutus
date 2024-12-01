@@ -184,14 +184,14 @@ public class Who extends Command {
 //                for (DBNation nation : nations) {
 //                    if (!alliances.contains(nation.getAlliance_id())) {
 //                        alliances.add(nation.getAlliance_id());
-//                        nationList.add(nation.getAllianceUrlMarkup(true));
+//                        nationList.add(nation.getAllianceUrlMarkup());
 //                    }
 //                }
 //            } else {
 //                GuildDB db = Locutus.imp().getGuildDB(guild);
 //                IACategory iaCat = flags.contains('c') ? db.getIACategory() : null;
 //                for (DBNation nation : nations) {
-//                    String nationStr = flags.contains('l') ? nation.getNationUrlMarkup(true) : "";
+//                    String nationStr = flags.contains('l') ? nation.getNationUrlMarkup() : "";
 //                    if (flags.contains('p')) {
 //                        PNWUser user = nation.getDBUser();
 //                        if (user != null) {
