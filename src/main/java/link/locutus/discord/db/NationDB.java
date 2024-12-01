@@ -2329,6 +2329,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_unit ON NATION_MIL_HISTORY (unit);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_amount ON NATION_MIL_HISTORY (amount);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_date ON NATION_MIL_HISTORY (date);");
+        executeStmt("CREATE INDEX IF NOT EXISTS idx_nation_mil_history_combined ON NATION_MIL_HISTORY (id, unit, date, amount);");
         {
             executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` BIGINT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` BIGINT NOT NULL, nuke_date BIGINT NOT NULL)");
             executeStmt("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0", true);
@@ -4082,21 +4083,39 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Map<Integer, Map<MilitaryUnit, Long>> getLastMilitaryBuyByNationId(Set<Integer> nationIds) {
+        System.out.println(":||remove Get military buys for " + nationIds.size() + " nations");
+        long start = System.currentTimeMillis();
         Map<Integer, Map<MilitaryUnit, Long>> result = new Int2ObjectOpenHashMap<>();
         String query;
-        if (nationIds == null || nationIds.isEmpty() || nationIds.size() > 2000) {
-            query = "SELECT id, unit, MAX(date) FROM NATION_MIL_HISTORY " +
-                    "WHERE amount > (SELECT amount FROM NATION_MIL_HISTORY AS sub " +
-                    "WHERE sub.id = NATION_MIL_HISTORY.id AND sub.unit = NATION_MIL_HISTORY.unit " +
-                    "AND sub.date < NATION_MIL_HISTORY.date ORDER BY sub.date DESC LIMIT 1) " +
-                    "GROUP BY id, unit";
+        if (nationIds != null && !nationIds.isEmpty() && nationIds.size() < 2000) {
+            query = """
+                    SELECT nmh.id, nmh.unit, MAX(nmh.date) AS last_buy_date
+                    FROM NATION_MIL_HISTORY AS nmh
+                    WHERE id in %IDS% AND nmh.amount > (
+                        SELECT sub.amount
+                        FROM NATION_MIL_HISTORY AS sub
+                        WHERE sub.id = nmh.id
+                            AND sub.unit = nmh.unit
+                            AND sub.date < nmh.date
+                        ORDER BY sub.date DESC
+                        LIMIT 1
+                    )
+                    GROUP BY nmh.id, nmh.unit;""".replace("%IDS%", StringMan.getString(nationIds));
         } else {
             String ids = nationIds.stream().map(String::valueOf).collect(Collectors.joining(","));
-            query = "SELECT id, unit, MAX(date) FROM NATION_MIL_HISTORY " +
-                    "WHERE id IN (" + ids + ") AND amount > (SELECT amount FROM NATION_MIL_HISTORY AS sub " +
-                    "WHERE sub.id = NATION_MIL_HISTORY.id AND sub.unit = NATION_MIL_HISTORY.unit " +
-                    "AND sub.date < NATION_MIL_HISTORY.date ORDER BY sub.date DESC LIMIT 1) " +
-                    "GROUP BY id, unit";
+            query = """
+                    SELECT nmh.id, nmh.unit, MAX(nmh.date) AS last_buy_date
+                    FROM NATION_MIL_HISTORY AS nmh
+                    WHERE nmh.amount > (
+                        SELECT sub.amount
+                        FROM NATION_MIL_HISTORY AS sub
+                        WHERE sub.id = nmh.id
+                            AND sub.unit = nmh.unit
+                            AND sub.date < nmh.date
+                        ORDER BY sub.date DESC
+                        LIMIT 1
+                    )
+                    GROUP BY nmh.id, nmh.unit;""";
         }
         try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -4108,6 +4127,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     result.computeIfAbsent(nationId, k -> new EnumMap<>(MilitaryUnit.class)).put(unit, date);
                 }
             }
+            System.out.println(":||remove Got military buys for " + result.size() + " nations in " + (System.currentTimeMillis() - start) + "ms");
             return result;
         } catch (SQLException e) {
             e.printStackTrace();
