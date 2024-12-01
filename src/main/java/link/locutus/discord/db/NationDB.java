@@ -4083,8 +4083,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Map<Integer, Map<MilitaryUnit, Long>> getLastMilitaryBuyByNationId(Set<Integer> nationIds) {
-        System.out.println(":||remove Get military buys for " + nationIds.size() + " nations");
-        long start = System.currentTimeMillis();
         Map<Integer, Map<MilitaryUnit, Long>> result = new Int2ObjectOpenHashMap<>();
         String query;
         if (nationIds != null && !nationIds.isEmpty() && nationIds.size() < 2000) {
@@ -4127,7 +4125,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     result.computeIfAbsent(nationId, k -> new EnumMap<>(MilitaryUnit.class)).put(unit, date);
                 }
             }
-            System.out.println(":||remove Got military buys for " + result.size() + " nations in " + (System.currentTimeMillis() - start) + "ms");
             return result;
         } catch (SQLException e) {
             e.printStackTrace();

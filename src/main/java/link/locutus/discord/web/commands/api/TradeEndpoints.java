@@ -7,6 +7,8 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
+import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.ReturnType;
@@ -69,6 +71,10 @@ public class TradeEndpoints {
             data.add(rssData);
         }
 
+
+        result.origin = minDay;
+        result.time_format = TimeFormat.SECONDS_TO_DATE;
+        result.number_format = TableNumberFormat.DECIMAL_ROUNDED;
         result.x = "Time";
         result.y = "Price Per Unit ($)";
         result.labels = labels.toArray(new String[0]);

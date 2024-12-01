@@ -647,7 +647,7 @@ public abstract class TimeNumericTable<T> {
             JsonElement json = WebUtil.GSON.toJsonTree(toHtmlJson(timeFormat, numberFormat, origin));
             html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), json, false));
         } else {
-            boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE;
+            boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE || timeFormat == TimeFormat.SECONDS_TO_DATE;
 //            toHtmlJson(timeFormat, numberFormat, origin)
             JsonElement json = WebUtil.GSON.toJsonTree(toHtmlJson(timeFormat, numberFormat, origin));
             html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), json, isTime));
