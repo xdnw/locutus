@@ -174,7 +174,7 @@ public class IAPages {
                 f -> f.getNation() + " is " + TimeUtil.minutesToTime(f.active_m()) + " inactive"));
         allianceAuditResults.put(IACheckup.AuditType.INACTIVE, inactiveMap);
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
 
         for (DBNation nation : allNations) {
             Map<IACheckup.AuditType, Map.Entry<Object, String>> audit = checkup.checkupSafe(cacheStore, nation, true, true);
@@ -332,7 +332,7 @@ public class IAPages {
             }
         }
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(mentees);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(mentees, DBNation.class);
 
         for (DBNation mentor : mentors) {
             List<DBNation> myMentees = mentorMenteeMap.getOrDefault(mentor, Collections.emptyList());

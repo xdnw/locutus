@@ -15,18 +15,6 @@ public class ReflectionUtil {
         return null;
     }
 
-    public static <T> Class<?> getGenericType(Collection<T> collection) {
-        Type type = collection.getClass().getGenericSuperclass();
-        if (type instanceof ParameterizedType) {
-            ParameterizedType paramType = (ParameterizedType) type;
-            Type[] typeArguments = paramType.getActualTypeArguments();
-            if (typeArguments.length > 0) {
-                return (Class<?>) typeArguments[0];
-            }
-        }
-        return null;
-    }
-
     public static Class<?> getWrapperClass(Class<?> primitiveClass) {
         if (primitiveClass == int.class) return Integer.class;
         if (primitiveClass == boolean.class) return Boolean.class;

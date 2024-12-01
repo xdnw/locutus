@@ -931,7 +931,7 @@ public class IACommands {
         List<DBNation> notUpdated = new ArrayList<>();
         List<DBNation> lacking = new ArrayList<>();
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         for (DBNation nation : nations) {
             int spies = nation.getSpies();
@@ -1080,7 +1080,8 @@ public class IACommands {
 
         StringBuilder response = new StringBuilder();
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(sorted.stream().flatMap(f -> f.getValue().stream()).collect(Collectors.toSet()));
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(
+                sorted.stream().flatMap(f -> f.getValue().stream()).collect(Collectors.toSet()), DBNation.class);
 
         for (Map.Entry<DBNation, List<DBNation>> entry : sorted) {
             DBNation mentor = entry.getKey();

@@ -13,23 +13,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static link.locutus.discord.util.math.ReflectionUtil.getGenericType;
-
 public class PlaceholderCache<T> {
     protected final List<T> list;
     protected boolean cached = false;
     protected final Map<String, Map<T, Object>> cacheInstance = new Object2ObjectOpenHashMap<>();
     protected final Map<String, Object> cacheGlobal = new Object2ObjectOpenHashMap<>();
 
-    public static <T> ValueStore<T> createCache(Collection<T> selection) {
+    public static <T> ValueStore<T> createCache(Collection<T> selection, Class<T> type) {
         ValueStore store = new SimpleValueStore();
-        return createCache(store, selection);
+        return createCache(store, selection, type);
     }
 
-    public static <T> ValueStore<T> createCache(ValueStore store, Collection<T> selection) {
+    public static <T> ValueStore<T> createCache(ValueStore store, Collection<T> selection, Class<T> type) {
         if (selection == null || selection.isEmpty()) return store;
         PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
-        Class<?> type = getGenericType(selection);
         if (type == null) return store;
         store.addProvider(Key.of(PlaceholderCache.class, type), cache);
         return store;

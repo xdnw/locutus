@@ -130,7 +130,7 @@ public class IACheckup {
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Collection<DBNation> nations, Consumer<DBNation> onEach, AuditType[] auditTypes, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = new LinkedHashMap<>();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
             if (nation.getVm_turns() != 0 || nation.active_m() > 10000) continue;
 

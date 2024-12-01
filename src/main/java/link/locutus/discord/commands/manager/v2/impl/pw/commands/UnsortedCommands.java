@@ -1608,7 +1608,7 @@ public class UnsortedCommands {
 
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         IACheckup.AuditType[] allowed = audits == null || audits.isEmpty() ? IACheckup.AuditType.values() : audits.toArray(new IACheckup.AuditType[0]);
         for (DBNation nation : nations) {

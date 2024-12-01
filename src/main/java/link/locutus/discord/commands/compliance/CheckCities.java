@@ -123,7 +123,7 @@ public class CheckCities extends Command {
         if (mail && keys == null)
             throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         for (DBNation nation : nations) {
             int failed = 0;

@@ -2893,7 +2893,7 @@ public class WarCommands {
             new SimpleNationList(nationSet).updateCities(true);
         }
 
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
 
         for (Map.Entry<Integer, Set<DBNation>> entry : byAlliance.entrySet()) {
             int aaId = entry.getKey();
