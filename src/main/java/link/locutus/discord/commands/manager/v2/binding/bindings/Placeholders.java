@@ -958,7 +958,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (startsWithEquals) {
             arg = arg.substring(1);
         }
-        if (cache != null) store.addProvider(cache);
+        if (cache != null) store.addProvider(Key.of(PlaceholderCache.class, getType()), cache);
         TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, false, throwError);
         if (result.isResolved()) {
             Object value = result.applyCached(null);

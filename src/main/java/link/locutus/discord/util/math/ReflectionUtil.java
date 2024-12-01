@@ -2,6 +2,7 @@ package link.locutus.discord.util.math;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Collection;
 
 public class ReflectionUtil {
     public static Class getClassType(Type type) {
@@ -10,6 +11,18 @@ public class ReflectionUtil {
         }
         if (type instanceof ParameterizedType) {
             return getClassType(((ParameterizedType) type).getRawType());
+        }
+        return null;
+    }
+
+    public static <T> Class<?> getGenericType(Collection<T> collection) {
+        Type type = collection.getClass().getGenericSuperclass();
+        if (type instanceof ParameterizedType) {
+            ParameterizedType paramType = (ParameterizedType) type;
+            Type[] typeArguments = paramType.getActualTypeArguments();
+            if (typeArguments.length > 0) {
+                return (Class<?>) typeArguments[0];
+            }
         }
         return null;
     }

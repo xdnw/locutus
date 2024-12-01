@@ -1585,9 +1585,8 @@ public class IACommands {
         List<String> full = new ArrayList<>();
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-
-        Function<DBNation, String> subjectF = placeholders.getFormatFunction(db.getGuild(), me, author, subject, nations);
-        Function<DBNation, String> messageF = placeholders.getFormatFunction(db.getGuild(), me, author, message, nations);
+        Function<DBNation, String> subjectF = placeholders.getFormatFunction(db.getGuild(), me, author, subject, cache, true);
+        Function<DBNation, String> messageF = placeholders.getFormatFunction(db.getGuild(), me, author, message, cache, true);
         for (DBNation nation : nations) {
             try {
                 String subjectN = subjectF.apply(nation);

@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static link.locutus.discord.util.math.ReflectionUtil.getGenericType;
+
 public class PlaceholderCache<T> {
     protected final List<T> list;
     protected boolean cached = false;
@@ -21,8 +23,15 @@ public class PlaceholderCache<T> {
 
     public static <T> ValueStore<T> createCache(Collection<T> selection) {
         ValueStore store = new SimpleValueStore();
+        return createCache(store, selection);
+    }
+
+    public static <T> ValueStore<T> createCache(ValueStore store, Collection<T> selection) {
+        if (selection == null || selection.isEmpty()) return store;
         PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
-        store.addProvider(cache);
+        Class<?> type = getGenericType(selection);
+        if (type == null) return store;
+        store.addProvider(Key.of(PlaceholderCache.class, type), cache);
         return store;
     }
 
