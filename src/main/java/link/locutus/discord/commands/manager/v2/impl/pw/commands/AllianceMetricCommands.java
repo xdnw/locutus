@@ -27,6 +27,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.MetricByGroup;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -351,8 +352,7 @@ public class AllianceMetricCommands {
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
-        TimeNumericTable table = TimeNumericTable.metricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total);
-        table.write(io, TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
+        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).write(io, 0, attachJson, attachCsv);
     }
 
     @Command(desc = "Generate and save the alliance metrics over a period of time, using nation and city snapshots to calculate the metrics")

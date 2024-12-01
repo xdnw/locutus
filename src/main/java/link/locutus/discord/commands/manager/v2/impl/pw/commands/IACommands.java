@@ -982,7 +982,7 @@ public class IACommands {
                     if (currentUser != null && Roles.MEMBER.has(currentUser, db.getGuild())) {
                         String title = mentee.getNation() + " already has a mentor";
                         StringBuilder body = new StringBuilder();
-                        body.append("Current mentor: " + current.getNationUrlMarkup(true));
+                        body.append("Current mentor: " + current.getNationUrlMarkup());
                         io.create().confirmation(title, body.toString(), command).send();
                         return null;
                     }
@@ -1960,7 +1960,7 @@ public class IACommands {
         List<String> notInAA = new ArrayList<>();
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
-                notInAA.add(nation.getNationUrlMarkup(true));
+                notInAA.add(nation.getNationUrlMarkup());
             }
         }
         if (!notInAA.isEmpty()) {

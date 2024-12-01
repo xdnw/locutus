@@ -57,7 +57,7 @@ public class TradeListener {
                 if (previousNation == null) {
                     body.append("Previous owner: " + previous.getNation_id() + " (deleted)\n");
                 } else {
-                    body.append("Previous owner: " + previousNation.getNationUrlMarkup(true) + " | " + previousNation.getAllianceUrlMarkup(true) + "\n");
+                    body.append("Previous owner: " + previousNation.getNationUrlMarkup() + " | " + previousNation.getAllianceUrlMarkup() + "\n");
                 }
             }
         }

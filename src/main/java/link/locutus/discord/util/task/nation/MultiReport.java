@@ -70,7 +70,7 @@ public class MultiReport {
 
             String name;
             if (nation == null) name = nationId + "";
-            else name = nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true);
+            else name = nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup();
 
             response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 

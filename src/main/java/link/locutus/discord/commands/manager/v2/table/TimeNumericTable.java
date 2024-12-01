@@ -52,21 +52,37 @@ import java.util.stream.Collectors;
 
 public abstract class TimeNumericTable<T> {
 
-    protected final DataTable data;
+    protected DataTable data;
     private String name;
-    private final int amt;
+    private int amt;
     private String[] labels;
     private String labelX;
     private String labelY;
     private boolean isBar;
 
     public TimeNumericTable(String title, String labelX, String labelY, String... seriesLabels) {
-        this.name = title;
-        this.amt = seriesLabels.length;
-        this.labels = seriesLabels;
+        setTitle(title);
+        setLabelX(labelX);
+        setLabelY(labelY);
+        setLabels(seriesLabels);
+    }
+
+    public void setTitle(String name) {
+        this.name = name;
+    }
+
+    public void setLabelX(String labelX) {
         this.labelX = labelX;
+    }
+
+    public void setLabelY(String labelY) {
         this.labelY = labelY;
-        if (this.labelY == null && title != null) labelY = title;
+        if (this.labelY == null && this.name != null) labelY = name;
+    }
+
+    public void setLabels(String[] labels) {
+        this.labels = labels;
+        this.amt = labels.length;
         List<Class<? extends Comparable<?>>> types = new ArrayList<>();
         types.add(Long.class);
         for (int i = 0; i < amt; i++) types.add(Double.class);
@@ -80,55 +96,6 @@ public abstract class TimeNumericTable<T> {
 
     public boolean isBar() {
         return isBar;
-    }
-
-    public static TimeNumericTable metricByGroup(Set<NationAttributeDouble> metrics, Set<DBNation> coalitionNations, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
-        coalitionNations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        NationAttributeDouble[] metricsArr = metrics.toArray(new NationAttributeDouble[0]);
-        String[] labels = metrics.stream().map(NationAttribute::getName).toArray(String[]::new);
-
-        NationList coalitionList = new SimpleNationList(coalitionNations);
-
-        Function<DBNation, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
-        Map<Integer, NationList> byTier = coalitionList.groupBy(groupByInt);
-        int min = coalitionList.stream(groupByInt).min(Integer::compare).get();
-        int max = coalitionList.stream(groupByInt).max(Integer::compare).get();
-
-        double[] buffer = new double[metricsArr.length];
-        String labelY = labels.length == 1 ? labels[0] : "metric";
-        String title = (total ? "Total" : "Average") + " " + labelY + " by " + groupBy.getName();
-        TimeNumericTable<NationList> table = new TimeNumericTable<>(title, groupBy.getName(), labelY, labels) {
-            @Override
-            public void add(long key, NationList nations) {
-                if (nations == null) {
-                    Arrays.fill(buffer, 0);
-                } else {
-                    for (int i = 0; i < metricsArr.length; i++) {
-                        NationAttributeDouble metric = metricsArr[i];
-                        double valueTotal = 0;
-                        int count = 0;
-
-                        for (DBNation nation : nations.getNations()) {
-                            if (nation.hasUnsetMil()) continue;
-                            count++;
-                            valueTotal += metric.apply(nation);
-                        }
-                        if (count > 1 && !total) {
-                            valueTotal /= count;
-                        }
-
-                        buffer[i] = valueTotal;
-                    }
-                }
-                add(key, buffer);
-            }
-        };
-
-        for (int key = min; key <= max; key++) {
-            NationList nations = byTier.get(key);
-            table.add(key, nations);
-        }
-        return table;
     }
 
     public static TimeNumericTable<Void> createForContinents(Set<Continent> continents, long start, long end) {

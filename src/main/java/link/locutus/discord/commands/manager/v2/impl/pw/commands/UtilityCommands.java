@@ -1921,7 +1921,7 @@ public class UtilityCommands {
                 }
 
                 for (DBNation nation : nationsSorted) {
-                    String nationStr = list ? nation.getNationUrlMarkup(true) : "";
+                    String nationStr = list ? nation.getNationUrlMarkup() : "";
                     if (listMentions) {
                         PNWUser user = nation.getDBUser();
                         if (user != null) {

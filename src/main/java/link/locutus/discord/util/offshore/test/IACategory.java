@@ -430,7 +430,7 @@ public class IACategory {
                         nation = iaChannel.getNation();
                     }
                     if (nation != null) {
-                        body.append("\n").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
+                        body.append("\n").append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup());
                         body.append("\nPosition: ").append(Rank.byId(nation.getPosition()));
                         body.append("\nActive: ").append(TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
                         User user = nation.getUser();

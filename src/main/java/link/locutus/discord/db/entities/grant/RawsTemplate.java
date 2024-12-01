@@ -126,7 +126,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         }
         ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
         if (!db.isAllianceId(receiver.getAlliance_id())) {
-            throw new IllegalArgumentException("Receiver (" + receiver.getMarkdownUrl() + "/" + receiver.getAllianceUrlMarkup(true) + ") is not in an alliance registered to this guild. (currently: " + db.getAllianceIds() + ")");
+            throw new IllegalArgumentException("Receiver (" + receiver.getMarkdownUrl() + "/" + receiver.getAllianceUrlMarkup() + ") is not in an alliance registered to this guild. (currently: " + db.getAllianceIds() + ")");
         }
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);

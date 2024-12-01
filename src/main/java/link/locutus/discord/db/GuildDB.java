@@ -523,7 +523,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
         StringBuilder body = new StringBuilder();
         if (user != null) body.append("User: " + user.getAsMention() + "\n");
-        body.append("Receiver: " + nation.getNationUrlMarkup(true));
+        body.append("Receiver: " + nation.getNationUrlMarkup());
         if (nation.getPosition() <= Rank.APPLICANT.id) body.append(" (applicant)");
         body.append("\n");
         if (nation.active_m() > 1440) {
