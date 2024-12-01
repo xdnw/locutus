@@ -4081,6 +4081,40 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Map<Integer, Map<MilitaryUnit, Long>> getLastMilitaryBuyByNationId(Set<Integer> nationIds) {
+        Map<Integer, Map<MilitaryUnit, Long>> result = new Int2ObjectOpenHashMap<>();
+        String query;
+        if (nationIds == null || nationIds.isEmpty() || nationIds.size() > 2000) {
+            query = "SELECT id, unit, MAX(date) FROM NATION_MIL_HISTORY " +
+                    "WHERE amount > (SELECT amount FROM NATION_MIL_HISTORY AS sub " +
+                    "WHERE sub.id = NATION_MIL_HISTORY.id AND sub.unit = NATION_MIL_HISTORY.unit " +
+                    "AND sub.date < NATION_MIL_HISTORY.date ORDER BY sub.date DESC LIMIT 1) " +
+                    "GROUP BY id, unit";
+        } else {
+            String ids = nationIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+            query = "SELECT id, unit, MAX(date) FROM NATION_MIL_HISTORY " +
+                    "WHERE id IN (" + ids + ") AND amount > (SELECT amount FROM NATION_MIL_HISTORY AS sub " +
+                    "WHERE sub.id = NATION_MIL_HISTORY.id AND sub.unit = NATION_MIL_HISTORY.unit " +
+                    "AND sub.date < NATION_MIL_HISTORY.date ORDER BY sub.date DESC LIMIT 1) " +
+                    "GROUP BY id, unit";
+        }
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt(1);
+                    if (nationIds != null && !nationIds.contains(nationId)) continue;
+                    MilitaryUnit unit = MilitaryUnit.values()[rs.getInt(2)];
+                    long date = rs.getLong(3);
+                    result.computeIfAbsent(nationId, k -> new EnumMap<>(MilitaryUnit.class)).put(unit, date);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public int getMilitary(DBNation nation, MilitaryUnit unit, long time) {
         return getMilitary(nation, unit, time, true);
     }

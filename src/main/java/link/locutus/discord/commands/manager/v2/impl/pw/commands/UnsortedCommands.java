@@ -15,6 +15,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -1607,12 +1608,14 @@ public class UnsortedCommands {
 
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations);
+
         IACheckup.AuditType[] allowed = audits == null || audits.isEmpty() ? IACheckup.AuditType.values() : audits.toArray(new IACheckup.AuditType[0]);
         for (DBNation nation : nations) {
             StringBuilder output = new StringBuilder();
             int failed = 0;
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(nation, allowed, nations.size() == 1, skipUpdate);
+            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(cacheStore, nation, allowed, nations.size() == 1, skipUpdate);
             auditResults.put(nation, auditResult);
 
             if (auditResult != null) {

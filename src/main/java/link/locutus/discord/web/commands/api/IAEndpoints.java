@@ -47,7 +47,7 @@ public class IAEndpoints extends PageHelper {
         }
         Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
         IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
-        checkupResult = checkup.checkup(nation, true, true);
+        checkupResult = checkup.checkup(null, nation, true, true);
         checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
 
 

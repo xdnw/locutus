@@ -1,7 +1,9 @@
+@import link.locutus.discord.commands.manager.v2.binding.ValueStore
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Me
+@import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
 @import link.locutus.discord.db.GuildDB
@@ -40,6 +42,7 @@
 @param Map<Integer, Long> lastMentorTxByNationId
 @param List<DBNation> mentorsWithRole
 @param Map<DBNation, Integer> numPassedMap
+@param ValueStore<DBNation> cacheStore
 @param IACheckup checkup2
 
 <h2>Mentor: <a href="${mentor.getUrl()}">${mentor.getNation()}</a> | <a href="discord://discordapp.com/users/${mentor.getUserId()}">@${mentor.getUserDiscriminator()}</a></h2>
@@ -80,7 +83,7 @@
     </thead>
     <tbody>
     @for (DBNation myMentee : myMentees)
-        !{var checkupResult = checkup2 == null ? null : checkup2.checkupSafe(myMentee, true, true);}
+        !{var checkupResult = checkup2 == null ? null : checkup2.checkupSafe(cacheStore, myMentee, true, true);}
         @template.guild.ia.mentee(ws = ws, mentee = myMentee, myChan = iaCat.get(myMentee), category = categoryMap.get(myMentee), checkup = checkupResult)
     @endfor
     </tbody>

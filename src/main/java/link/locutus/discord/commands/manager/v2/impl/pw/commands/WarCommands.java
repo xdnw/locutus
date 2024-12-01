@@ -8,6 +8,8 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -2891,6 +2893,8 @@ public class WarCommands {
             new SimpleNationList(nationSet).updateCities(true);
         }
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet);
+
         for (Map.Entry<Integer, Set<DBNation>> entry : byAlliance.entrySet()) {
             int aaId = entry.getKey();
 
@@ -2909,7 +2913,7 @@ public class WarCommands {
 
                 List<Object> row = new ArrayList<>(header);
 
-                double daysSpies = nation.daysSinceLastSpyBuy();
+                double daysSpies = nation.daysSinceLastSpyBuy(cacheStore);
 
                 Map<Integer, JavaCity> cities = nation.getCityMap(false, false, false);
                 int i = 0;

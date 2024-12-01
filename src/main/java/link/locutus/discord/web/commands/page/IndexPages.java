@@ -422,7 +422,7 @@ public class IndexPages extends PageHelper {
         if (db.isWhitelisted() && db.hasAlliance()) {
             try {
                 IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
-                checkupResult = checkup.checkup(nation, true, true);
+                checkupResult = checkup.checkup(null, nation, true, true);
                 checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
             } catch (InterruptedException | ExecutionException | IOException e) {
                 e.printStackTrace();

@@ -1,3 +1,4 @@
+@import link.locutus.discord.commands.manager.v2.binding.ValueStore
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Command
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Default
@@ -34,6 +35,7 @@
 @param WebStore ws
 @param IACategory iaCat
 @param GuildDB db
+@param ValueStore<DBNation> cacheStore
 @param List<Map.Entry<DBNation, List<DBNation>>> mentorsSorted
 @param Map<DBNation, IACategory.AssignedMentor> menteeMentorMap
 @param Map<DBNation, IACategory.SortedCategory> categoryMap
@@ -57,6 +59,7 @@
             @template.guild.ia.mentor(ws = ws, mentor = entry.getKey(), myMentees = entry.getValue(), iaCat = iaCat, db = db, categoryMap= categoryMap, passedMap= passedMap,
             lastMentorTxByNationId = lastMentorTxByNationId,
             mentorsWithRole= mentorsWithRole, numPassedMap = numPassedMap,
+            cacheStore = cacheStore,
             checkup2 = checkup)
         </div>
     @endif

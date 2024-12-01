@@ -3,10 +3,12 @@ package link.locutus.discord.web.commands.page;
 import gg.jte.generated.precompiled.guild.ia.JteauditsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JteiachannelsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JtementorsGenerated;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
@@ -172,8 +174,10 @@ public class IAPages {
                 f -> f.getNation() + " is " + TimeUtil.minutesToTime(f.active_m()) + " inactive"));
         allianceAuditResults.put(IACheckup.AuditType.INACTIVE, inactiveMap);
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations);
+
         for (DBNation nation : allNations) {
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> audit = checkup.checkupSafe(nation, true, true);
+            Map<IACheckup.AuditType, Map.Entry<Object, String>> audit = checkup.checkupSafe(cacheStore, nation, true, true);
             for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : audit.entrySet()) {
                 Map<DBNation, String> nationMap = allianceAuditResults.computeIfAbsent(entry.getKey(), f -> new HashMap<>());
                 nationMap.put(nation, entry.getValue().getValue());
@@ -328,6 +332,8 @@ public class IAPages {
             }
         }
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(mentees);
+
         for (DBNation mentor : mentors) {
             List<DBNation> myMentees = mentorMenteeMap.getOrDefault(mentor, Collections.emptyList());
             myMentees.removeIf(f -> f.active_m() > 4880 || f.getVm_turns() > 0 || passedMap.getOrDefault(f, false));
@@ -340,7 +346,7 @@ public class IAPages {
 //                mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
 //                checkup).render().toString();
 
-        return WebStore.render(f -> JtementorsGenerated.render(f, null, ws, iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+        return WebStore.render(f -> JtementorsGenerated.render(f, null, ws, iaCat, db, cacheStore, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
                 mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
                 checkup));
     }
