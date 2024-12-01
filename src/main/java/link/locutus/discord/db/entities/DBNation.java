@@ -5564,9 +5564,6 @@ public class DBNation implements NationOrAlliance {
             return result;
         });
         return byUnit == null ? null : byUnit.get(unit);
-
-
-
     }
 
     public Map<Long, Integer> getUnitPurchaseHistory(MilitaryUnit unit, long cutoff) {
