@@ -1373,7 +1373,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Collection<DBNation> nations = sendTo.getNations();
         Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, 0, 0);
 
-        CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "").document("true");
+        CM.announcement.view cmd = CM.announcement.view.cmd.ann_id(annId + "");
 
         StringBuilder body = new StringBuilder();
         body.append("Title: `" + title + "`\n");

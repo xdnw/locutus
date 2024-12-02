@@ -1785,22 +1785,24 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = "The net change in an asset count for members over a period")
-    public int getNetAssetChange(ValueStore store, GrowthAsset asset, @Timestamp long start, @Timestamp @Default Long end) {
+    public int getNetAsset(ValueStore store, GrowthAsset asset, @Timestamp long start, @Timestamp @Default Long end) {
         if (end == null) end = System.currentTimeMillis();
         int startVal = (int) getMetricAt(store, asset.count, start);
         int endVal = (int) getMetricAt(store, asset.count, end);
-        System.out.println("startVal = " + startVal);
-        System.out.println("endVal = " + endVal);
         return endVal - startVal;
     }
 
     @Command(desc = "The net change in an asset value for members over a period")
-    public double getNetAssetValueChange(ValueStore store, GrowthAsset asset, @Timestamp long start, @Timestamp @Default Long end) {
+    public double getNetAssetValue(ValueStore store, Set<GrowthAsset> asset, @Timestamp long start, @Timestamp @Default Long end) {
         if (end == null) end = System.currentTimeMillis();
-        double startVal = getMetricAt(store, asset.value, start);
-        double endVal = getMetricAt(store, asset.value, end);
-        System.out.println("startVal$ = " + startVal);
-        System.out.println("endVal$ = " + endVal);
+        double startVal = 0;
+        for (GrowthAsset a : asset) {
+            startVal += getMetricAt(store, a.value, start);
+        }
+        double endVal = 0;
+        for (GrowthAsset a : asset) {
+            endVal += getMetricAt(store, a.value, end);
+        }
         return endVal - startVal;
     }
 
