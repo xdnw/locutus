@@ -375,7 +375,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types=DBNation.class, examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public String nation(ParameterData param) {
-        Collection<DBNation> options = (Locutus.imp().getNationDB().getNationsByAlliance().values());
+        Collection<DBNation> options = (Locutus.imp().getNationDB().getAllNations());
         options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         options.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
@@ -394,7 +394,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= NationOrAlliance.class)
     public String nationOrAlliance(ParameterData param) {
-        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
 
@@ -449,7 +449,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     public String nationOrAllianceOrGuildOrTaxid(@Me User user, @Me GuildDB db, ParameterData param, boolean includeBrackets) {
-        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
 
@@ -551,7 +551,7 @@ public class WebPWBindings extends WebBindingHelper {
             filterStr = Locutus.cmd().getV2().getNationPlaceholders().format2(guild, me, user, filterStr, me, true);
             options = Locutus.cmd().getV2().getNationPlaceholders().parseSet(valueStore, filterStr);
         } else {
-            options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+            options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
             options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
             options.removeIf(f -> f.active_m() > 10000 && f.getCities() < 3);
         }

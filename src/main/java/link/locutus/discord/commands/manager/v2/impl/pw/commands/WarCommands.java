@@ -442,7 +442,7 @@ public class WarCommands {
             if (dnrTopX == null) dnrTopX = 0;
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -2106,7 +2106,7 @@ public class WarCommands {
         if (dnrTopX == null) dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (dnrTopX == null) dnrTopX = 0;
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
 
 
         Set<Integer> allies = db.getAllies();

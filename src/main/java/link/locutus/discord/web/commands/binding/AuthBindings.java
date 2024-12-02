@@ -406,7 +406,7 @@ public class AuthBindings extends WebBindingHelper {
         if (allianceIdFilter != null) {
             nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance(allianceIdFilter));
         } else {
-            nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+            nations = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         }
         // Sort nations by lasst_active (descending)
         nations.sort((o1, o2) -> Long.compare(o2.lastActiveMs(), o1.lastActiveMs()));

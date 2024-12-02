@@ -50,11 +50,11 @@ public class UnitRanking extends Command {
         Collection<DBNation> nations;
         if (args.isEmpty()) {
             group = "*";
-            nations = (Locutus.imp().getNationDB().getNationsByAlliance().values());
+            nations = (Locutus.imp().getNationDB().getAllNations());
         } else {
             group = args.get(0);
             if (group.equals("*")) {
-                nations = (Locutus.imp().getNationDB().getNationsByAlliance().values());
+                nations = (Locutus.imp().getNationDB().getAllNations());
             } else {
                 Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, group);
                 if (alliances == null || alliances.isEmpty()) {

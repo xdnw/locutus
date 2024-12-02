@@ -28,7 +28,7 @@ public class CityAgeRanking extends Command {
         int min = Integer.parseInt(args.get(0));
         int max = Integer.parseInt(args.get(1));
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         nations.entrySet().removeIf(e -> {
             int cities = e.getValue().getCities();
             return cities < min || cities > max;

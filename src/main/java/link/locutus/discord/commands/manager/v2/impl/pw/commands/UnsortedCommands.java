@@ -442,7 +442,7 @@ public class UnsortedCommands {
 
         String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
         Set<Integer> self = new HashSet<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Function<Integer, String> nationNameFunc = i -> {
             DBNation nation = nations.get(i);
             return nation == null ? Integer.toString(i) : nation.getNation();
@@ -1237,7 +1237,7 @@ public class UnsortedCommands {
                                @Arg("Include inactive nations (2 days)")
                                @Switch("i") boolean includeInactive,
                                @Switch("d") @Timestamp Long snapshotDate) {
-        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNationsByAlliance().values()).setFilter("*");
+        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*");
         Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild, false);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
 
@@ -2301,7 +2301,7 @@ public class UnsortedCommands {
 
         Map<Integer, Long> aaCount = new HashMap<>();
         Map<Integer, Long> aaCount1City = new HashMap<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int aaId = entry.getValue().getAlliance_id();
             aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));

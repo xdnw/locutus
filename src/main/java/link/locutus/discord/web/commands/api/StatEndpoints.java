@@ -69,6 +69,7 @@ public class StatEndpoints {
                     renderers.add(null);
                 }
             } catch (Exception e) {
+                e.printStackTrace();
                 List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                 if (errList.size() < maxPerCol) {
                     errList.add(new WebTableError(i, null, e.getMessage()));
@@ -104,6 +105,7 @@ public class StatEndpoints {
                             row.add(serialized);
                         }
                     } catch (Exception e) {
+                        e.printStackTrace();
                         List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                         if (errList.size() < maxPerCol) {
                             errList.add(new WebTableError(i, rowI, e.getMessage()));

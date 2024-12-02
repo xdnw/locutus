@@ -81,7 +81,7 @@ public class IntelOpSheet extends Command {
 
         if (attackers.isEmpty()) return usage("No nations found for `attackers`: `" + args.get(1) + "`", channel);
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
 
 
         Set<Integer> allies = db.getAllies();

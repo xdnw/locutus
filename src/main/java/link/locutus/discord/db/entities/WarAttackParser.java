@@ -68,7 +68,7 @@ public class WarAttackParser {
             args.add("*");
         }
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Map<Integer, DBWar> warMap = null;
 
         if (args.size() == 3 || args.size() == 4) {

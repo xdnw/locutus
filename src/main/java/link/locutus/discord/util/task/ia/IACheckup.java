@@ -1094,7 +1094,7 @@ public class IACheckup {
             }
         }
         if ((enemyAAs.isEmpty() && nation.getOff() < 4) || nation.getOff() < 2) {
-            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsByAlliance().entrySet()) {
+            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsById().entrySet()) {
                 DBNation enemy = entry.getValue();
                 if (enemy.getScore() >= maxScore || enemy.getScore() <= minScore) continue;
                 if (enemy.getVm_turns() != 0) continue;

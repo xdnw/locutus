@@ -2972,7 +2972,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return getFirstNationMatching(f -> f.getLeader().equalsIgnoreCase(leader));
     }
 
-    public Map<Integer, DBNation> getNationsByAlliance() {
+    public Map<Integer, DBNation> getNationsById() {
         synchronized (nationsById) {
             return new Int2ObjectOpenHashMap<>(nationsById);
         }
@@ -3464,7 +3464,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         alliancesSorted.sort(Comparator.naturalOrder());
         String allianceQueryStr = StringMan.getString(alliancesSorted);
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new LinkedHashMap<>();
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new Object2ObjectOpenHashMap<>();
 
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? ORDER BY turn DESC LIMIT " + allianceIds.size();
         query(query, new ThrowingConsumer<PreparedStatement>() {
@@ -3484,7 +3484,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
                     DBAlliance alliance = getOrCreateAlliance(allianceId);
                     if (!result.containsKey(alliance)) {
-                        result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
+                        result.computeIfAbsent(alliance, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
                     }
                 }
             }

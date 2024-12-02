@@ -114,7 +114,7 @@ public class TradeListener {
         }
 
         DBNation maxNation = null;
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
             if (maxNation == null || maxNation.getScore() < nation.getScore()) {
                 maxNation = nation;
             }

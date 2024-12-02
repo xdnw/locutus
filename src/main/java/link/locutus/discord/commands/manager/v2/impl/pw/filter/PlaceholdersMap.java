@@ -325,7 +325,7 @@ public class PlaceholdersMap {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
         DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
         if (input.equalsIgnoreCase("*") && allowStar) {
-            return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+            return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getAllNations());
         }
         if (MathMan.isInteger(input)) {
             long id = Long.parseLong(input);
@@ -399,7 +399,7 @@ public class PlaceholdersMap {
             String inputLower = input.toLowerCase(Locale.ROOT);
             String best = null;
             double bestScore = Double.MAX_VALUE;
-            for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+            for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
                 String name = nation.getName();
                 double score = StringMan.distanceWeightedQwertSift4(name.toLowerCase(Locale.ROOT), inputLower);
                 if (score < bestScore) {

@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 
 public class AProject implements Project {
     private final Map<ResourceType, Double> cost;
+    private final double[] costArr;
     private final ResourceType output;
     private final String apiName;
     private final String imageName;
@@ -25,6 +26,7 @@ public class AProject implements Project {
     public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements) {
         this.id = id;
         this.cost = cost;
+        this.costArr = ResourceType.resourcesToArray(cost);
         this.output = output;
         this.apiName = apiName;
         this.imageName = imageName;
@@ -57,6 +59,11 @@ public class AProject implements Project {
     @Override
     public Map<ResourceType, Double> cost() {
         return cost;
+    }
+
+    @Override
+    public double[] costArr() {
+        return costArr;
     }
 
     @Override

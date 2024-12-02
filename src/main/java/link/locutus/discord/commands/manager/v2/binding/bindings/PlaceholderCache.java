@@ -15,7 +15,6 @@ import java.util.Set;
 
 public class PlaceholderCache<T> {
     protected final List<T> list;
-    protected boolean cached = false;
     protected final Map<String, Map<T, Object>> cacheInstance = new Object2ObjectOpenHashMap<>();
     protected final Map<String, Object> cacheGlobal = new Object2ObjectOpenHashMap<>();
 

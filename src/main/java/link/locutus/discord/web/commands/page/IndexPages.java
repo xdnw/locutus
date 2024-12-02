@@ -133,7 +133,7 @@ public class IndexPages extends PageHelper {
         recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "page/", f));
 
 
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
             double val = 0;
             if ((nation.getNation_id() + "").equals(termLow)) {
                 val = 200;

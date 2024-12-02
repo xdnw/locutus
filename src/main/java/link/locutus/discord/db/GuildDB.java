@@ -2419,7 +2419,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
 
         if (topX > 0) {
-            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNationsByAlliance().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
+            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getAllNations()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
             for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
                 if (entry.getKey() == 0) continue;
                 if (topX-- <= 0) break;

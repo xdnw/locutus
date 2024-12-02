@@ -45,7 +45,7 @@ public class InactiveAlliances extends Command {
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
             group = "*";
-            nations = (Locutus.imp().getNationDB().getNationsByAlliance().values());
+            nations = (Locutus.imp().getNationDB().getAllNations());
         } else {
             group = args.get(0);
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, group);

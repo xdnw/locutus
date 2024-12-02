@@ -56,33 +56,32 @@ public class ScopedPlaceholderCache<T> {
             }
             return getSingle.apply(obj);
         }
-        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(method, o -> new Object2ObjectOpenHashMap<>());
-        if (map.containsKey(obj)) {
-            return (V) map.get(obj);
-        }
-        if (!cache.cached) {
-            cache.cached = true;
+        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(method, o -> {
+            Map<T, Object> data = new Object2ObjectOpenHashMap<>();
             if (cache.list != null) {
                 if (cache.list.size() == 1 && getSingle != null) {
                     T first = cache.list.get(0);
-                    map.put(first, getSingle.apply(first));
+                    data.put(first, getSingle.apply(first));
                 } else {
                     List<V> list = getAll.apply(cache.list);
                     for (int i = 0; i < cache.list.size(); i++) {
-                        map.put(cache.list.get(i), list.get(i));
+                        data.put(cache.list.get(i), list.get(i));
                     }
                 }
             } else if (getSingle != null) {
                 V value = getSingle.apply(obj);
-                map.put(obj, value);
-                return value;
+                data.put(obj, value);
             }
+            return data;
+        });
+        if (map.containsKey(obj)) {
+            return (V) map.get(obj);
         }
-        V result = (V) map.get(obj);
-        if (result == null && cache.list == null && !map.containsKey(obj) && getSingle != null) {
-            result = getSingle.apply(obj);
+        if (cache.list == null && getSingle != null) {
+            V result = getSingle.apply(obj);
             map.put(obj, result);
+            return result;
         }
-        return result;
+        return null;
     }
 }

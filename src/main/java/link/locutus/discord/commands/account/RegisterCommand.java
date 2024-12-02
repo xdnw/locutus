@@ -107,7 +107,7 @@ public class RegisterCommand extends Command {
                 return "No permission.";
             }
 
-            Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+            Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
             Map<String, DBNation> byLeader = new HashMap<>();
             for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
                 byLeader.put(entry.getValue().getLeader().toLowerCase(), entry.getValue());

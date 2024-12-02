@@ -83,7 +83,7 @@ public class NationUpdateProcessor {
         long inactive1d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1440);
         long turnNow = TimeUtil.getTurn();
 
-        for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsByAlliance().entrySet()) {
+        for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsById().entrySet()) {
             DBNation nation = entry.getValue();
             if (nation.lastActiveMs() < inactive7d || nation.getPosition() <= Rank.APPLICANT.id || nation.getLeaving_vm() > turnNow) continue;
             int aaId = nation.getAlliance_id();

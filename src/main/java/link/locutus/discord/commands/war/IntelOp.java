@@ -75,7 +75,7 @@ public class IntelOp extends Command {
             if (dnr != null) topX = dnr;
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
 
         Set<Integer> allies = db.getAllies(true);
 
