@@ -131,8 +131,40 @@ public class CM {
                     return set("listExpired", value);
                 }
 
+                public multis onlySameAlliance(String value) {
+                    return set("onlySameAlliance", value);
+                }
+
+                public multis onlySimilarTime(String value) {
+                    return set("onlySimilarTime", value);
+                }
+
+                public multis sortByAgeDays(String value) {
+                    return set("sortByAgeDays", value);
+                }
+
+                public multis sortByLogin(String value) {
+                    return set("sortByLogin", value);
+                }
+
                 public multis forceUpdate(String value) {
                     return set("forceUpdate", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="multiInfoSheet")
+                public static class multis_land extends CommandRef {
+                    public static final multis_land cmd = new multis_land();
+                public multis_land nations(String value) {
+                    return set("nations", value);
+                }
+
+                public multis_land sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                public multis_land mark(String value) {
+                    return set("mark", value);
                 }
 
                 }
@@ -217,6 +249,14 @@ public class CM {
                 }
 
                 }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="setV2")
+            public static class set_v2 extends CommandRef {
+                public static final set_v2 cmd = new set_v2();
+            public set_v2 value(String value) {
+                return set("value", value);
+            }
+
             }
             public static class settings{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="infoBulk")
@@ -529,6 +569,11 @@ public class CM {
                 }
             }
             public static class sync2{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="reloadConfig")
+                public static class config extends CommandRef {
+                    public static final config cmd = new config();
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncMail")
                 public static class mail extends CommandRef {
                     public static final mail cmd = new mail();
@@ -1543,10 +1588,6 @@ public class CM {
                 return set("ann_id", value);
             }
 
-            public view document(String value) {
-                return set("document", value);
-            }
-
             public view nation(String value) {
                 return set("nation", value);
             }
@@ -2182,6 +2223,26 @@ public class CM {
                 }
 
                 public category_filter force(String value) {
+                    return set("force", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="sortChannelsSheetRules")
+                public static class category_rule_sheet extends CommandRef {
+                    public static final category_rule_sheet cmd = new category_rule_sheet();
+                public category_rule_sheet sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                public category_rule_sheet filter(String value) {
+                    return set("filter", value);
+                }
+
+                public category_rule_sheet warn_on_filter_fail(String value) {
+                    return set("warn_on_filter_fail", value);
+                }
+
+                public category_rule_sheet force(String value) {
                     return set("force", value);
                 }
 
@@ -6135,6 +6196,22 @@ public class CM {
 
             public targets dm(String value) {
                 return set("dm", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.WebCommands.class,method="mailLogin")
+            public static class web_login extends CommandRef {
+                public static final web_login cmd = new web_login();
+            public web_login nations(String value) {
+                return set("nations", value);
+            }
+
+            public web_login reset_sessions(String value) {
+                return set("reset_sessions", value);
+            }
+
+            public web_login force(String value) {
+                return set("force", value);
             }
 
             }
