@@ -32,6 +32,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.GrowthAsset;
+import link.locutus.discord.db.entities.metric.MembershipChangeReason;
 import link.locutus.discord.db.entities.metric.GrowthSummary;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
@@ -125,7 +126,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             return metric.apply(this);
         }
         NationDB db = Locutus.imp().getNationDB();
-        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, "metric" + turn);
+        String method = "metric" + (turn - TimeUtil.getTurn(TimeUtil.getOrigin())) + metric;
+        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, method);
         System.out.println("Get metric at " + turn);
         Double value = scoped.getMap(this,
         (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Double>>)
@@ -146,6 +148,18 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             return result;
         });
         return value == null ? 0 : value;
+    }
+
+    public Map<AllianceMetric, Map<Long, Double>> getMetricsAt(ValueStore store, Set<AllianceMetric> metrics, long turnStart, long turnEnd) {
+        String method = "metrics" + metrics;
+        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, method);
+        return scoped.getMap(this,
+        (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>>>)
+            f -> {
+                Set<Integer> aaIds = new IntOpenHashSet(f.size());
+                for (DBAlliance alliance : f) aaIds.add(alliance.allianceId);
+                return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metrics, turnStart, turnEnd);
+        });
     }
 
     @Override
@@ -1774,12 +1788,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return r == null ? new GrowthSummary.AllianceGrowthSummary() : r;
     }
 
-    public Map<ResourceType, Double> getAssetAcquired(ValueStore store, Predicate<GrowthAsset> summaries, Predicate<GrowthSummary.GrowthReason> reasons, boolean effective, @Timestamp long start, @Timestamp @Default Long end) {
+    public Map<ResourceType, Double> getAssetAcquired(ValueStore store, Predicate<GrowthAsset> summaries, Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start, @Timestamp @Default Long end) {
         GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
         return ResourceType.resourcesToMap(summary.getSpending(summaries, reasons, effective));
     }
 
-    public double getAssetAcquiredValue(ValueStore store, Predicate<GrowthAsset> summaries, Predicate<GrowthSummary.GrowthReason> reasons, boolean effective, @Timestamp long start, @Timestamp @Default Long end) {
+    public double getAssetAcquiredValue(ValueStore store, Predicate<GrowthAsset> summaries, Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start, @Timestamp @Default Long end) {
         GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
         return ResourceType.convertedTotal(summary.getSpending(summaries, reasons, effective));
     }
@@ -1789,6 +1803,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (end == null) end = System.currentTimeMillis();
         int startVal = (int) getMetricAt(store, asset.count, start);
         int endVal = (int) getMetricAt(store, asset.count, end);
+        System.out.println("startVal = " + startVal);
+        System.out.println("endVal = " + endVal);
         return endVal - startVal;
     }
 
@@ -1803,120 +1819,46 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         for (GrowthAsset a : asset) {
             endVal += getMetricAt(store, a.value, end);
         }
+        System.out.println("startVal$ = " + startVal + " | " + asset);
+        System.out.println("endVal$ = " + endVal + " | " + asset);
         return endVal - startVal;
     }
 
-    @Command(desc = "The resources this alliance has spent on member cities, projects, land and infra over a period")
-    public Map<ResourceType, Double> getGrowthSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> true, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-    @Command(desc = "The resources this alliance has spent on remaining members' cities, projects, land and infra over a period")
-    public Map<ResourceType, Double> getEffectiveGrowthSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> true, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-    @Command(desc = "The value the alliance has spent on member cities, projects, land and infra over a period")
-    public double getGrowthSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> true, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-    @Command(desc = "The value the alliance has spent on remaining members' cities, projects, land and infra over a period")
-    public double getEffectiveGrowthSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> true, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
+    // city
     @Command(desc = "The resources this alliance has spent on member cities over a period")
-    public Map<ResourceType, Double> getCitySpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.CITIES, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
+    public Map<ResourceType, Double> getSpending(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+        return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start, end);
     }
 
     @Command(desc = "The resources this alliance has spent on remaining members' cities over a period")
-    public Map<ResourceType, Double> getEffectiveCitySpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.CITIES, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
+    public Map<ResourceType, Double> getEffectiveSpending(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+        return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start, end);
     }
 
     @Command(desc = "The value the alliance has spent on member cities over a period")
-    public double getCitySpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.CITIES, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
+    public double getSpendingValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+        return getAssetAcquiredValue(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start, end);
     }
 
     @Command(desc = "The value the alliance has spent on remaining members' cities over a period")
-    public double getEffectiveCitySpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.CITIES, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
-    @Command(desc = "The resources this alliance has spent on member projects over a period")
-    public Map<ResourceType, Double> getProjectSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.PROJECTS, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-
-    @Command(desc = "The resources this alliance has spent on remaining members' projects over a period")
-    public Map<ResourceType, Double> getEffectiveProjectSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.PROJECTS, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
-    @Command(desc = "The value the alliance has spent on member projects over a period")
-    public double getProjectSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.PROJECTS, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-
-    @Command(desc = "The value the alliance has spent on remaining members' projects over a period")
-    public double getEffectiveProjectSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.PROJECTS, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
-    @Command(desc = "The resources this alliance has spent on member infra over a period")
-    public Map<ResourceType, Double> getInfraSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.INFRA, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-
-    @Command(desc = "The resources this alliance has spent on remaining members' infra over a period")
-    public Map<ResourceType, Double> getEffectiveInfraSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.INFRA, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
-    @Command(desc = "The value the alliance has spent on member infra over a period")
-    public double getInfraSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.INFRA, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-
-    @Command(desc = "The value the alliance has spent on remaining members' infra over a period")
-    public double getEffectiveInfraSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.INFRA, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
-    @Command(desc = "The resources this alliance has spent on member land over a period")
-    public Map<ResourceType, Double> getLandSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.LAND, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-
-    @Command(desc = "The resources this alliance has spent on remaining members' land over a period")
-    public Map<ResourceType, Double> getEffectiveLandSpending(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, f -> f == GrowthAsset.LAND, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
-    }
-
-    @Command(desc = "The value the alliance has spent on member land over a period")
-    public double getLandSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.LAND, f -> f == GrowthSummary.GrowthReason.UNCHANGED, false, start, end);
-    }
-
-    @Command(desc = "The value the alliance has spent on remaining members' land over a period")
-    public double getEffectiveLandSpendingValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, f -> f == GrowthAsset.LAND, f -> f == GrowthSummary.GrowthReason.UNCHANGED, true, start, end);
+    public double getEffectiveSpendingValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+        return getAssetAcquiredValue(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start, end);
     }
 
     @Command(desc = "The number of members which have joined and remained in the alliance over the period (all sources)")
     public int getNetMembersAcquired(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
         GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
         int total = 0;
-        for (Map.Entry<Integer, GrowthSummary.GrowthReason> entry : summary.finalState.entrySet()) {
+        for (Map.Entry<Integer, MembershipChangeReason> entry : summary.finalState.entrySet()) {
             if (entry.getValue() == null || !entry.getValue().afterwardsMember()) continue;
-            GrowthSummary.GrowthReason initial = summary.initialState.get(entry.getKey());
+            MembershipChangeReason initial = summary.initialState.get(entry.getKey());
             if (initial == null || !initial.previouslyMember()) {
                 total++;
             }
         }
-        for (Map.Entry<Integer, GrowthSummary.GrowthReason> entry : summary.initialState.entrySet()) {
+        for (Map.Entry<Integer, MembershipChangeReason> entry : summary.initialState.entrySet()) {
             if (entry.getValue() == null || !entry.getValue().previouslyMember()) continue;
-            GrowthSummary.GrowthReason finalState = summary.finalState.get(entry.getKey());
+            MembershipChangeReason finalState = summary.finalState.get(entry.getKey());
             if (finalState == null || !finalState.afterwardsMember()) {
                 total--;
             }
@@ -1925,192 +1867,94 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return total;
     }
 
-    @Command(desc = "The number of non new nations which have joined this alliance, regardless of leaving")
-    public int getPoached(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.JOINED);
-    }
-
     @Command(desc = "The number of the specified assets bought for members in this alliance over the period, regardless of leaving")
     public int getBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.UNCHANGED, false);
+                .getAssetCounts(f -> assets.contains(f), f -> f == MembershipChangeReason.UNCHANGED, false);
     }
 
     @Command(desc = "The number of the specified assets bought for remaining members in this alliance over the period")
     public int getEffectiveBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.UNCHANGED, true);
+                .getAssetCounts(f -> assets.contains(f), f -> f == MembershipChangeReason.UNCHANGED, true);
     }
 
-    @Command(desc = "The number of the specified assets of the non new nations (>7d) which have joined this alliance over the period, regardless of leaving")
-    public int getPoachedAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+    //
+
+    @Command(desc = "The number of membership changes by reason\n" +
+            "Nations can have multiple membership changes over a duration\n" +
+            "- RECRUITED: 7d or less nation becomes member\n" +
+            "- JOINED: Nation >7d becomes member\n" +
+            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
+            "- DELETED: nation deletes\n" +
+            "- VM_LEFT: Nation goes into VM\n" +
+            "- VM_RETURNED: Nation leaves VM")
+    public int getMembershipChangesByReason(ValueStore store, Set<MembershipChangeReason> reasons, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.JOINED, false);
+                .getReasonCounts(reasons::contains);
     }
 
-    @Command(desc = "The resource cost of the specified assets of the non new nations (>7d) which have joined this alliance over the period, regardless of leaving")
-    public Map<ResourceType, Double> getPoachedCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+    @Command(desc = "The market value of the specified assets associated with the provided membership change reasons\n" +
+            "Nations can have multiple membership changes over a duration\n" +
+            "- RECRUITED: 7d or less nation becomes member\n" +
+            "- JOINED: Nation >7d becomes member\n" +
+            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
+            "- DELETED: nation deletes\n" +
+            "- VM_LEFT: Nation goes into VM\n" +
+            "- VM_RETURNED: Nation leaves VM")
+    public double getMembershipChangeAssetValue(ValueStore store, Set<MembershipChangeReason> reasons, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+        return getGrowthSummary(store, start, end)
+                .getSpendingValue(assets::contains, reasons::contains, false);
+    }
+
+    @Command(desc = "The resource value of the specified assets associated with the provided membership change reasons\n" +
+            "Nations can have multiple membership changes over a duration\n" +
+            "- RECRUITED: 7d or less nation becomes member\n" +
+            "- JOINED: Nation >7d becomes member\n" +
+            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
+            "- DELETED: nation deletes\n" +
+            "- VM_LEFT: Nation goes into VM\n" +
+            "- VM_RETURNED: Nation leaves VM")
+    public Map<ResourceType, Double> getMembershipChangeAssetRss(ValueStore store, Set<MembershipChangeReason> reasons, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
-                .getSpending(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.JOINED, false));
+                .getSpending(assets::contains, reasons::contains, false));
     }
 
-    @Command(desc = "The market value of the specified assets of the non new nations (>7d) which have joined this alliance over the period, regardless of leaving")
-    public double getPoachedCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getSpendingValue(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.JOINED, false);
-    }
-
-    @Command(desc = "The number of members which have left the alliance over the period, regardless of rejoining. Does not include VM or deletion")
-    public int getLeft(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.LEFT);
-    }
-
-    @Command(desc = "The number of the specified assets of the members which have left the alliance over the period, regardless of rejoining. Does not include VM or deletion")
-    public int getLeftAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.LEFT, false);
-    }
-
-    @Command(desc = "The resource cost of the specified assets of the members which have left the alliance over the period, regardless of rejoining. Does not include VM or deletion")
-    public Map<ResourceType, Double> getLeftCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
-                .getSpending(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.LEFT, false));
-    }
-
-    @Command(desc = "The market value of the specified assets of the members which have left the alliance over the period, regardless of rejoining. Does not include VM or deletion")
-    public double getLeftCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getSpendingValue(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.LEFT, false);
-    }
-
-    @Command(desc = "The number of new nations (<7d) which have joined the alliance over the period, regardless of leaving")
-    public int getRecruited(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.RECRUITED);
-    }
-
-    @Command(desc = "The number of the specified assets of the new nations (<7d) which have joined the alliance over the period, regardless of leaving")
-    public int getRecruitedAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.RECRUITED, false);
-    }
-
-    @Command(desc = "The resource cost of the specified assets of the new nations (<7d) which have joined the alliance over the period, regardless of leaving")
-    public Map<ResourceType, Double> getRecruitedCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
-                .getSpending(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.RECRUITED, false));
-    }
-
-    @Command(desc = "The market value of the specified assets of the new nations (<7d) which have joined the alliance over the period, regardless of leaving")
-    public double getRecruitedCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getSpendingValue(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.RECRUITED, false);
-    }
-
-    @Command(desc = "The number of alliance members who have ended their VM, regardless of other leave/joins over the period")
-    public int getVmEnded(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.VM_RETURNED);
-    }
-
-    @Command(desc = "The number of the specified assets of the alliance members who have ended their VM, regardless of other leave/joins over the period")
-    public int getVm_EndedAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.VM_RETURNED, false);
-    }
-
-    @Command(desc = "The resource cost of the specified assets of the alliance members who have ended their VM, regardless of other leave/joins over the period")
-    public Map<ResourceType, Double> getVm_EndedCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
-                .getSpending(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.VM_RETURNED, false));
-    }
-
-    @Command(desc = "The market value of the specified assets of the alliance members who have ended their VM, regardless of other leave/joins over the period")
-    public double getVm_EndedCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getSpendingValue(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.VM_RETURNED, false);
-    }
-
-    @Command(desc = "The number of alliance members who have entered VM, regardless of other leave/joins over the period")
-    public int getVm_Entered(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.VM_LEFT);
-    }
-
-    @Command(desc = "The number of the specified assets of the alliance members who have entered VM, regardless of other leave/joins over the period")
-    public int getVm_EnteredAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.VM_LEFT, false);
-    }
-
-    @Command(desc = "The resource cost of the specified assets of the alliance members who have entered VM, regardless of other leave/joins over the period")
-    public Map<ResourceType, Double> getVm_EnteredCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
-                .getSpending(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.VM_LEFT, false));
-    }
-
-    @Command(desc = "The market value of the specified assets of the alliance members who have entered VM, regardless of other leave/joins over the period")
-    public double getVm_EnteredCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getSpendingValue(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.VM_LEFT, false);
-    }
-
-    // deletion
-    @Command(desc = "The number of alliance members who have deleted, regardless of other leave/joins over the period")
-    public int getDeleted(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.DELETED);
-    }
-
-    @Command(desc = "The number of the specified assets of the alliance members who have deleted, regardless of other leave/joins over the period")
-    public int getDeletedAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.DELETED, false);
-    }
-
-    @Command(desc = "The resource cost of the specified assets of the alliance members who have deleted, regardless of other leave/joins over the period")
-    public Map<ResourceType, Double> getDeletedCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
-                .getSpending(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.DELETED, false));
-    }
-
-    @Command(desc = "The market value of the specified assets of the alliance members who have deleted, regardless of other leave/joins over the period")
-    public double getDeletedCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getSpendingValue(f -> assets.contains(f), f -> f == GrowthSummary.GrowthReason.DELETED, false);
-    }
-
-    @Command(desc = "The number of nations which have joined the alliance over the period, regardless of leaving")
-    public int getJoins(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(f -> f == GrowthSummary.GrowthReason.JOINED || f == GrowthSummary.GrowthReason.RECRUITED);
-    }
-
-    @Command(desc = "The number of the specified assets of the nations which have joined the alliance over the period, regardless of leaving")
-    public int getJoinsAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getPoachedAssetCount(store, assets, start, end) + getRecruitedAssetCount(store, assets, start, end);
-    }
-
-    @Command(desc = "The resource cost of the specified assets of the nations which have joined the alliance over the period, regardless of leaving")
-    public Map<ResourceType, Double> getJoinsCost(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        Map<ResourceType, Double> cost = getPoachedCost(store, assets, start, end);
-        return ResourceType.add(cost, getRecruitedCost(store, assets, start, end));
-    }
-
-    @Command(desc = "The market value of the specified assets of the nations which have joined the alliance over the period, regardless of leaving")
-    public double getJoinsCostValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getPoachedCostValue(store, assets, start, end) + getRecruitedCostValue(store, assets, start, end);
-    }
-
-    @Command(desc = "The cumulative revenue members have produced over the period, accounting for joins/leaves, city, building, policy, and project changes")
+    @Command(desc = "The cumulative revenue members have produced over the period, accounting for joins/leaves, radiation, city, building, policy, and project changes")
     public Map<ResourceType, Double> getCumulativeRevenue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
-        GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
-        return ResourceType.resourcesToMap(summary.revenue);
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
+        if (turnEnd - turnStart > 365 * 12) {
+            throw new IllegalArgumentException("Cannot calculate cumulative revenue over more than 365 days");
+        }
+        Map<AllianceMetric, ResourceType> metrics = new EnumMap<>(AllianceMetric.class);
+
+        metrics.put(AllianceMetric.REVENUE_MONEY, ResourceType.MONEY);
+        metrics.put(AllianceMetric.REVENUE_FOOD, ResourceType.FOOD);
+        metrics.put(AllianceMetric.REVENUE_COAL, ResourceType.COAL);
+        metrics.put(AllianceMetric.REVENUE_OIL, ResourceType.OIL);
+        metrics.put(AllianceMetric.REVENUE_URANIUM, ResourceType.URANIUM);
+        metrics.put(AllianceMetric.REVENUE_LEAD, ResourceType.LEAD);
+        metrics.put(AllianceMetric.REVENUE_IRON, ResourceType.IRON);
+        metrics.put(AllianceMetric.REVENUE_BAUXITE, ResourceType.BAUXITE);
+        metrics.put(AllianceMetric.REVENUE_GASOLINE, ResourceType.GASOLINE);
+        metrics.put(AllianceMetric.REVENUE_MUNITIONS, ResourceType.MUNITIONS);
+        metrics.put(AllianceMetric.REVENUE_STEEL, ResourceType.STEEL);
+        metrics.put(AllianceMetric.REVENUE_ALUMINUM, ResourceType.ALUMINUM);
+
+        Set<AllianceMetric> metricSet = new ObjectOpenHashSet<>(metrics.keySet());
+        Map<AllianceMetric, Map<Long, Double>> values = getMetricsAt(store, metricSet, turnStart, turnEnd);
+        double[] buffer = new double[ResourceType.values().length];
+        for (Map.Entry<AllianceMetric, Map<Long, Double>> entry : values.entrySet()) {
+            ResourceType type = metrics.get(entry.getKey());
+            for (Map.Entry<Long, Double> entry2 : entry.getValue().entrySet()) {
+                buffer[type.ordinal()] += entry2.getValue();
+            }
+        }
+        return ResourceType.resourcesToMap(buffer);
     }
 
-    @Command(desc = "The cumulative market value (current prices) of revenue members have produced over the period, accounting for joins/leaves, city, building, policy, and project changes")
+    @Command(desc = "The cumulative market value (current prices) of revenue members have produced over the period, accounting for joins/leaves, radiation, city, building, policy, and project changes")
     public double getCumulativeRevenueValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
         return ResourceType.convertedTotal(getCumulativeRevenue(store, start, end));
     }

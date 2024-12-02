@@ -106,18 +106,18 @@ public class GrowthSummary {
             boolean fromMember = from != null && from.getAlliance_id() == aaId && from.getPositionEnum().id >= Rank.MEMBER.id;
             boolean toMember = to != null && to.getAlliance_id() == aaId && to.getPositionEnum().id >= Rank.MEMBER.id;
 
-            GrowthReason reason;
+            MembershipChangeReason reason;
             if (to == null) {
                 if (DBNation.getById(from.getId()) == null) {
-                    reason = GrowthReason.DELETED;
+                    reason = MembershipChangeReason.DELETED;
                 } else {
-                    reason = GrowthReason.VM_LEFT;
+                    reason = MembershipChangeReason.VM_LEFT;
                 }
             } else if (from == null) {
                 if (to.getAgeDays() > RECRUITED_DAYS) {
-                    reason = GrowthReason.VM_RETURNED;
+                    reason = MembershipChangeReason.VM_RETURNED;
                 } else {
-                    reason = GrowthReason.RECRUITED;
+                    reason = MembershipChangeReason.RECRUITED;
                 }
             } else {
                 boolean joined = to.getAlliance_id() == aaId && to.getPositionEnum().id >= Rank.MEMBER.id && (
@@ -133,21 +133,21 @@ public class GrowthSummary {
 
                 if (joined) {
                     if ((from.getAlliance_id() == 0 || from.getAlliance_id() == aaId) && from.getAgeDays() <= RECRUITED_DAYS) {
-                        reason = GrowthReason.RECRUITED;
+                        reason = MembershipChangeReason.RECRUITED;
                     } else {
-                        reason = GrowthReason.JOINED;
+                        reason = MembershipChangeReason.JOINED;
                     }
                 } else if (left) {
-                    reason = GrowthReason.LEFT;
+                    reason = MembershipChangeReason.LEFT;
                 } else {
-                    reason = GrowthReason.UNCHANGED;
+                    reason = MembershipChangeReason.UNCHANGED;
                 }
             }
 
             { // Set initial
-                 if (reason == GrowthReason.UNCHANGED) {
+                 if (reason == MembershipChangeReason.UNCHANGED) {
                      if (fromMember) {
-                         summary.initialState.putIfAbsent(nationId, GrowthReason.UNCHANGED);
+                         summary.initialState.putIfAbsent(nationId, MembershipChangeReason.UNCHANGED);
                      } else {
                          summary.initialState.putIfAbsent(nationId, null);
                      }
@@ -156,9 +156,9 @@ public class GrowthSummary {
                  }
             }
             { // Set final
-                if (reason == GrowthReason.UNCHANGED) {
+                if (reason == MembershipChangeReason.UNCHANGED) {
                     if (toMember) {
-                        summary.finalState.put(nationId, GrowthReason.UNCHANGED);
+                        summary.finalState.put(nationId, MembershipChangeReason.UNCHANGED);
                     } else {
                         summary.finalState.put(nationId, null);
                     }
@@ -167,9 +167,9 @@ public class GrowthSummary {
                 }
             }
 
-            GrowthReason initialState = summary.initialState.get(nationId);
+            MembershipChangeReason initialState = summary.initialState.get(nationId);
 
-            if (reason != null && reason != GrowthReason.UNCHANGED) {
+            if (reason != null && reason != MembershipChangeReason.UNCHANGED) {
                 summary.countByReason.compute(reason, (k, v) -> v == null ? 1 : v + 1);
                 summary.uniqueByReason.computeIfAbsent(reason, k -> new IntOpenHashSet()).add(nationId);
 
@@ -203,7 +203,7 @@ public class GrowthSummary {
                     summary.lastValue.computeIfAbsent(nationId, k -> new Object2ObjectOpenHashMap<>()).put(asset, currentValue);
                 }
             }
-            if (reason == GrowthReason.UNCHANGED && toMember) {
+            if (reason == MembershipChangeReason.UNCHANGED && toMember) {
                 for (GrowthAsset asset : link.locutus.discord.db.entities.metric.GrowthAsset.values()) {
                     int amtDiff = asset.get(to) - asset.get(from);
 
@@ -213,63 +213,37 @@ public class GrowthSummary {
                             .computeIfAbsent(reason, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, k -> ResourceType.getBuffer());
                     growthValue = asset.value(growthValue, from, to);
                 }
-
-//                double[] revenue = to.getRevenue();
-//                summary.revenue = ResourceType.add(summary.revenue, revenue);
             }
         }
     }
 
-    public static enum GrowthReason {
-        RECRUITED, JOINED, LEFT, DELETED, VM_LEFT, VM_RETURNED,
-        UNCHANGED,
-
-        BOUGHT, SOLD
-        ;
-
-        public boolean previouslyMember() {
-            return switch (this) {
-                case LEFT, VM_LEFT, DELETED, UNCHANGED -> true;
-                default -> false;
-            };
-        }
-
-        public boolean afterwardsMember() {
-            return switch (this) {
-                case JOINED, RECRUITED, VM_RETURNED, UNCHANGED -> true;
-                default -> false;
-            };
-        }
-    }
-
     public static class AllianceGrowthSummary {
-        public Map<Integer, GrowthReason> initialState = new Int2ObjectOpenHashMap();
-        public Map<Integer, GrowthReason> finalState = new Int2ObjectOpenHashMap<>();
+        public Map<Integer, MembershipChangeReason> initialState = new Int2ObjectOpenHashMap();
+        public Map<Integer, MembershipChangeReason> finalState = new Int2ObjectOpenHashMap<>();
 
         public Map<Integer, Map<GrowthAsset, Integer>> lastCount = new Int2ObjectOpenHashMap<>();
         public Map<Integer, Map<GrowthAsset, double[]>> lastValue = new Int2ObjectOpenHashMap<>();
 
-        public Map<GrowthAsset, Map<GrowthReason, Map<Integer, Integer>>> growthCountByNation = new Object2ObjectOpenHashMap<>();
+        public Map<GrowthAsset, Map<MembershipChangeReason, Map<Integer, Integer>>> growthCountByNation = new Object2ObjectOpenHashMap<>();
 
-        public Map<GrowthAsset, Map<GrowthReason, Map<Integer, double[]>>> growthValueByNation = new Object2ObjectOpenHashMap<>();
-        public double[] revenue = ResourceType.getBuffer();
+        public Map<GrowthAsset, Map<MembershipChangeReason, Map<Integer, double[]>>> growthValueByNation = new Object2ObjectOpenHashMap<>();
 
-        public Map<GrowthReason, Integer> countByReason = new Object2ObjectOpenHashMap<>();
-        public Map<GrowthReason, Set<Integer>> uniqueByReason = new Object2ObjectOpenHashMap<>();
+        public Map<MembershipChangeReason, Integer> countByReason = new Object2ObjectOpenHashMap<>();
+        public Map<MembershipChangeReason, Set<Integer>> uniqueByReason = new Object2ObjectOpenHashMap<>();
 
-        public double[] getSpending(Predicate<GrowthAsset> assetPredicate, Predicate<GrowthReason> reasonPredicate, boolean effective) {
+        public double[] getSpending(Predicate<GrowthAsset> assetPredicate, Predicate<MembershipChangeReason> reasonPredicate, boolean effective) {
             double[] total = ResourceType.getBuffer();
             // if effective, only do when finalState is member
-            for (Map.Entry<GrowthAsset, Map<GrowthReason, Map<Integer, double[]>>> entry : growthValueByNation.entrySet()) {
+            for (Map.Entry<GrowthAsset, Map<MembershipChangeReason, Map<Integer, double[]>>> entry : growthValueByNation.entrySet()) {
                 if (!assetPredicate.test(entry.getKey())) continue;
-                for (Map.Entry<GrowthReason, Map<Integer, double[]>> entry2 : entry.getValue().entrySet()) {
-                    GrowthReason reason = entry2.getKey();
+                for (Map.Entry<MembershipChangeReason, Map<Integer, double[]>> entry2 : entry.getValue().entrySet()) {
+                    MembershipChangeReason reason = entry2.getKey();
                     if (!reasonPredicate.test(reason)) continue;
                     for (Map.Entry<Integer, double[]> entry3 : entry2.getValue().entrySet()) {
                         int nationId = entry3.getKey();
                         double[] amt = entry3.getValue();
                         if (effective) {
-                            GrowthReason state = finalState.get(nationId);
+                            MembershipChangeReason state = finalState.get(nationId);
                             if (state == null || !state.afterwardsMember()) continue;
                         }
                         total = ResourceType.add(total, amt);
@@ -279,13 +253,13 @@ public class GrowthSummary {
             return total;
         }
 
-        public double getSpendingValue(Predicate<GrowthAsset> assetPredicate, Predicate<GrowthReason> reasonPredicate, boolean effective) {
+        public double getSpendingValue(Predicate<GrowthAsset> assetPredicate, Predicate<MembershipChangeReason> reasonPredicate, boolean effective) {
             return ResourceType.convertedTotal(getSpending(assetPredicate, reasonPredicate, effective));
         }
 
-        public int getReasonCounts(Predicate<GrowthReason> reasonPredicate) {
+        public int getReasonCounts(Predicate<MembershipChangeReason> reasonPredicate) {
             int total = 0;
-            for (Map.Entry<GrowthReason, Set<Integer>> entry : uniqueByReason.entrySet()) {
+            for (Map.Entry<MembershipChangeReason, Set<Integer>> entry : uniqueByReason.entrySet()) {
                 if (reasonPredicate.test(entry.getKey())) {
                     total += entry.getValue().size();
                 }
@@ -293,19 +267,19 @@ public class GrowthSummary {
             return total;
         }
 
-        public int getAssetCounts(Predicate<GrowthAsset> assetPredicate, Predicate<GrowthReason> reasonPredicate, boolean effective) {
+        public int getAssetCounts(Predicate<GrowthAsset> assetPredicate, Predicate<MembershipChangeReason> reasonPredicate, boolean effective) {
             int total = 0;
             // if effective, only do when finalState is member
-            for (Map.Entry<GrowthAsset, Map<GrowthReason, Map<Integer, Integer>>> entry : growthCountByNation.entrySet()) {
+            for (Map.Entry<GrowthAsset, Map<MembershipChangeReason, Map<Integer, Integer>>> entry : growthCountByNation.entrySet()) {
                 if (!assetPredicate.test(entry.getKey())) continue;
-                for (Map.Entry<GrowthReason, Map<Integer, Integer>> entry2 : entry.getValue().entrySet()) {
-                    GrowthReason reason = entry2.getKey();
+                for (Map.Entry<MembershipChangeReason, Map<Integer, Integer>> entry2 : entry.getValue().entrySet()) {
+                    MembershipChangeReason reason = entry2.getKey();
                     if (!reasonPredicate.test(reason)) continue;
                     for (Map.Entry<Integer, Integer> entry3 : entry2.getValue().entrySet()) {
                         int nationId = entry3.getKey();
                         int amt = entry3.getValue();
                         if (effective) {
-                            GrowthReason state = finalState.get(nationId);
+                            MembershipChangeReason state = finalState.get(nationId);
                             if (state == null || !state.afterwardsMember()) continue;
                         }
                         total += amt;

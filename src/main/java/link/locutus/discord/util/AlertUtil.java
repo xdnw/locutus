@@ -79,7 +79,7 @@ public class AlertUtil {
     public static void auditAlert(DBNation nation, AutoAuditType type, Function<GuildDB, String> messageSuplier) {
         if (nation.getPosition() <= 1) return;
         GuildDB guildDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-        if (guildDb == null || !guildDb.isWhitelisted()) return;
+        if (guildDb == null) return;
         User user = nation.getUser();
         if (user == null) return;
         Guild guild = guildDb.getGuild();

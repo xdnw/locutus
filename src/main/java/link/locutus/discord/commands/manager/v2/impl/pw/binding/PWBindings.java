@@ -211,6 +211,16 @@ public class PWBindings extends BindingHelper {
         return emum(GrowthAsset.class, input);
     }
 
+    @Binding(value = "A comma separated list of alliance membership change reasons")
+    public Set<MembershipChangeReason> membershipChangeReasons(String input) {
+        return emumSet(MembershipChangeReason.class, input);
+    }
+
+    @Binding(value = "An alliance membership change reason")
+    public MembershipChangeReason membershipChangeReason(String input) {
+        return emum(MembershipChangeReason.class, input);
+    }
+
     @Binding(value = "A comma separated list of domestic policies")
     public Set<DomesticPolicy> DomesticPolicies(String input) {
         return emumSet(DomesticPolicy.class, input);
