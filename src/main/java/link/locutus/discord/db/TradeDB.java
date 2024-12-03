@@ -427,7 +427,7 @@ public class TradeDB extends DBMainV2 {
             DBNation natObj = DBNation.getById(nation);
             result.append((isBuy ? "Buyer" : "Seller") + ": ");
             if (natObj != null) {
-                result.append(natObj.getNationUrlMarkup(true) + " | " + natObj.getAllianceUrlMarkup(true));
+                result.append(natObj.getNationUrlMarkup() + " | " + natObj.getAllianceUrlMarkup());
                 Long userId = natObj.getUserId();
                 if (userId != null) {
                     result.append(" | <@" + userId + ">");

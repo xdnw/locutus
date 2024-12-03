@@ -36,7 +36,7 @@ public class DebugFindMMR extends Command {
         if (cities == null) return "Invalid city count: `" + args.get(1) + "`";
 
         List<String> found = new ArrayList<>();
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
             if (nation.getCities() != cities || nation.hasUnsetMil()) continue;
 
             int reqSoldiers = (mmr.charAt(0) - '0') * cities * Buildings.BARRACKS.getUnitCap();

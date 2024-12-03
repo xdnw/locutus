@@ -83,7 +83,7 @@ public class NationUpdateProcessor {
         long inactive1d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1440);
         long turnNow = TimeUtil.getTurn();
 
-        for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsByAlliance().entrySet()) {
+        for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsById().entrySet()) {
             DBNation nation = entry.getValue();
             if (nation.lastActiveMs() < inactive7d || nation.getPosition() <= Rank.APPLICANT.id || nation.getLeaving_vm() > turnNow) continue;
             int aaId = nation.getAlliance_id();
@@ -218,7 +218,7 @@ public class NationUpdateProcessor {
             int rerollId = current.isReroll(true);
             if (rerollId > 0) {
                 String title = "Detected reroll: " + current.getNation();
-                StringBuilder body = new StringBuilder(current.getNationUrlMarkup(true));
+                StringBuilder body = new StringBuilder(current.getNationUrlMarkup());
                 if (rerollId != current.getNation_id()) {
                     body.append("\nReroll of: " + PW.getNationUrl(rerollId));
                 }
@@ -295,10 +295,10 @@ public class NationUpdateProcessor {
             if (nation.getAlliance_id() != 0 && nation.getPosition() > Rank.APPLICANT.id) {
                 GuildDB db = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
                 if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
-                    body.append("\n" + nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum());
+                    body.append("\n" + nation.getAllianceUrlMarkup() + " " + nation.getPositionEnum());
                     Locutus.imp().getRootDb().addCoalition(nation.getAlliance_id(), Coalition.FROZEN_FUNDS);
-                    adminInfo.add(nation.getAllianceUrlMarkup(true));
-                    AlertUtil.error(nation.getAlliance_id() + " frozen", nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum() + " " + nation.getNationUrlMarkup(true) + " " + nation.getNation(), true);
+                    adminInfo.add(nation.getAllianceUrlMarkup());
+                    AlertUtil.error(nation.getAlliance_id() + " frozen", nation.getAllianceUrlMarkup() + " " + nation.getPositionEnum() + " " + nation.getNationUrlMarkup() + " " + nation.getNation(), true);
                 }
             }
         } else {
@@ -321,7 +321,7 @@ public class NationUpdateProcessor {
                             adminInfo.add(guild.toString());
                             String alertMsg = guild.toString() + " <@" + ban.discord_id + "> " + ban.reason;
                             if (nation != null) {
-                                alertMsg += "\n" + nation.getNationUrlMarkup(true) + " " + nation.getNation();
+                                alertMsg += "\n" + nation.getNationUrlMarkup() + " " + nation.getNation();
                             }
                             AlertUtil.error(guild.getIdLong() + " frozen", alertMsg, true);
                         }
@@ -760,7 +760,7 @@ public class NationUpdateProcessor {
 
             String line = PW.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + change.getFromRank().name();
             if (nation.getAlliance_id() > 0) {
-                line += "-> " + nation.getAllianceUrlMarkup(true);
+                line += "-> " + nation.getAllianceUrlMarkup();
             } else {
                 line += " -> None";
             }
@@ -925,9 +925,9 @@ public class NationUpdateProcessor {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     String title = current.getNation() + " | " + Rank.byId(previous.getPosition()) + "->" + Rank.byId(current.getPosition());
-                    String body = previous.getNationUrlMarkup(true) + "\n" +
-                            "From: " + previous.getAllianceUrlMarkup(true) + " | " + Rank.byId(previous.getPosition()) + "\n" +
-                            "To: " + current.getAllianceUrlMarkup(true) + " | " + Rank.byId(current.getPosition());
+                    String body = previous.getNationUrlMarkup() + "\n" +
+                            "From: " + previous.getAllianceUrlMarkup() + " | " + Rank.byId(previous.getPosition()) + "\n" +
+                            "To: " + current.getAllianceUrlMarkup() + " | " + Rank.byId(current.getPosition());
 
                     DiscordUtil.createEmbedCommand(channel, title, body);
                 }

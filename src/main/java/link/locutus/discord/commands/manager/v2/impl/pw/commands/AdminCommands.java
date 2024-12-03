@@ -2791,7 +2791,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncUid(boolean all) throws IOException {
         if (all) {
-            Collection<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance().values();
+            Collection<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
             for (DBNation nation : nations) {
                 if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty()) continue;
                 BigInteger uid = new GetUid(nation, false).call();

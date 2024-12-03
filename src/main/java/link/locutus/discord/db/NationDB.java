@@ -2329,6 +2329,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_unit ON NATION_MIL_HISTORY (unit);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_amount ON NATION_MIL_HISTORY (amount);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_date ON NATION_MIL_HISTORY (date);");
+        executeStmt("CREATE INDEX IF NOT EXISTS idx_nation_mil_history_combined ON NATION_MIL_HISTORY (id, unit, date, amount);");
         {
             executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` BIGINT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` BIGINT NOT NULL, nuke_date BIGINT NOT NULL)");
             executeStmt("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0", true);
@@ -2971,7 +2972,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return getFirstNationMatching(f -> f.getLeader().equalsIgnoreCase(leader));
     }
 
-    public Map<Integer, DBNation> getNationsByAlliance() {
+    public Map<Integer, DBNation> getNationsById() {
         synchronized (nationsById) {
             return new Int2ObjectOpenHashMap<>(nationsById);
         }
@@ -3463,7 +3464,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         alliancesSorted.sort(Comparator.naturalOrder());
         String allianceQueryStr = StringMan.getString(alliancesSorted);
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new LinkedHashMap<>();
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new Object2ObjectOpenHashMap<>();
 
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? ORDER BY turn DESC LIMIT " + allianceIds.size();
         query(query, new ThrowingConsumer<PreparedStatement>() {
@@ -3483,7 +3484,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
                     DBAlliance alliance = getOrCreateAlliance(allianceId);
                     if (!result.containsKey(alliance)) {
-                        result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
+                        result.computeIfAbsent(alliance, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
                     }
                 }
             }
@@ -4074,6 +4075,56 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
 
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Map<Integer, Map<MilitaryUnit, Long>> getLastMilitaryBuyByNationId(Set<Integer> nationIds) {
+        Map<Integer, Map<MilitaryUnit, Long>> result = new Int2ObjectOpenHashMap<>();
+        String query;
+        if (nationIds != null && !nationIds.isEmpty() && nationIds.size() < 2000) {
+            query = """
+                    SELECT nmh.id, nmh.unit, MAX(nmh.date) AS last_buy_date
+                    FROM NATION_MIL_HISTORY AS nmh
+                    WHERE id in %IDS% AND nmh.amount > (
+                        SELECT sub.amount
+                        FROM NATION_MIL_HISTORY AS sub
+                        WHERE sub.id = nmh.id
+                            AND sub.unit = nmh.unit
+                            AND sub.date < nmh.date
+                        ORDER BY sub.date DESC
+                        LIMIT 1
+                    )
+                    GROUP BY nmh.id, nmh.unit;""".replace("%IDS%", StringMan.getString(nationIds));
+        } else {
+            String ids = nationIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+            query = """
+                    SELECT nmh.id, nmh.unit, MAX(nmh.date) AS last_buy_date
+                    FROM NATION_MIL_HISTORY AS nmh
+                    WHERE nmh.amount > (
+                        SELECT sub.amount
+                        FROM NATION_MIL_HISTORY AS sub
+                        WHERE sub.id = nmh.id
+                            AND sub.unit = nmh.unit
+                            AND sub.date < nmh.date
+                        ORDER BY sub.date DESC
+                        LIMIT 1
+                    )
+                    GROUP BY nmh.id, nmh.unit;""";
+        }
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt(1);
+                    if (nationIds != null && !nationIds.contains(nationId)) continue;
+                    MilitaryUnit unit = MilitaryUnit.values()[rs.getInt(2)];
+                    long date = rs.getLong(3);
+                    result.computeIfAbsent(nationId, k -> new EnumMap<>(MilitaryUnit.class)).put(unit, date);
+                }
+            }
             return result;
         } catch (SQLException e) {
             e.printStackTrace();

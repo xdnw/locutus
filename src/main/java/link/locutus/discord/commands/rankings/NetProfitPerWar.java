@@ -75,7 +75,7 @@ public class NetProfitPerWar extends Command {
         String title = id + " Net " + (profit ? "profit" : "losses") + " per war (%s days)";
         title = String.format(title, days);
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
 
         Set<Integer> finalAAs = AAs;
 

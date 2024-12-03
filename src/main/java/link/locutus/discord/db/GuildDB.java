@@ -523,7 +523,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
         StringBuilder body = new StringBuilder();
         if (user != null) body.append("User: " + user.getAsMention() + "\n");
-        body.append("Receiver: " + nation.getNationUrlMarkup(true));
+        body.append("Receiver: " + nation.getNationUrlMarkup());
         if (nation.getPosition() <= Rank.APPLICANT.id) body.append(" (applicant)");
         body.append("\n");
         if (nation.active_m() > 1440) {
@@ -2419,7 +2419,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
 
         if (topX > 0) {
-            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNationsByAlliance().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
+            Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getAllNations()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
             for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
                 if (entry.getKey() == 0) continue;
                 if (topX-- <= 0) break;

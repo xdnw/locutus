@@ -176,6 +176,7 @@ public class PageHandler implements Handler {
 
         this.serializer = new ObjectMapper(new MessagePackFactory());
 
+        System.out.println(":||REMOVE Is debug " + isDebug + " | ");
         if (isDebug) {
             writeTsFiles();
         }

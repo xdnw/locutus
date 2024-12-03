@@ -241,7 +241,7 @@ public class LeavingBeigeAlert {
             return buf == null ? 0 : buf.getDouble();
         });
 
-        Collection<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance().values();
+        Collection<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
         for (DBNation target : nations) {
             if (!testBeigeAlert(target, false, true, true)) continue;
 

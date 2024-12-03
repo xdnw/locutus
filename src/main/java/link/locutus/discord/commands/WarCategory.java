@@ -391,8 +391,8 @@ public class WarCategory {
         DBNation attacker = Locutus.imp().getNationDB().getNationById(attackerId);
         DBNation defender = Locutus.imp().getNationDB().getNationById(defenderId);
 
-        String name1 = attacker.getNationUrlMarkup(true) + (attacker.getAlliance_id() != 0 ? (" of " + attacker.getAllianceUrlMarkup(true)) : "");
-        String name2 = defender.getNationUrlMarkup(true) + (defender.getAlliance_id() != 0 ? (" of " + defender.getAllianceUrlMarkup(true)) : "");
+        String name1 = attacker.getNationUrlMarkup() + (attacker.getAlliance_id() != 0 ? (" of " + attacker.getAllianceUrlMarkup()) : "");
+        String name2 = defender.getNationUrlMarkup() + (defender.getAlliance_id() != 0 ? (" of " + defender.getAllianceUrlMarkup()) : "");
 
         String message;
         boolean showLoot = false;
@@ -573,8 +573,8 @@ public class WarCategory {
 //                        if (rebuy.getValue()) title += " double";
 //                        title += " rebuy";
 //                    }
-                        body.append(room.target.getNationUrlMarkup(true))
-                                .append(" | ").append(room.target.getAllianceUrlMarkup(true))
+                        body.append(room.target.getNationUrlMarkup())
+                                .append(" | ").append(room.target.getAllianceUrlMarkup())
                                 .append('\n');
                         for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Boolean>> entry : rebuys.entrySet()) {
                             Map.Entry<Integer, Boolean> rebuy = entry.getValue();
@@ -830,8 +830,8 @@ public class WarCategory {
             if (update) {
                 StringBuilder body = new StringBuilder();
 
-                body.append("**Enemy:** ").append(target.getNationUrlMarkup(true))
-                        .append(" | ").append(target.getAllianceUrlMarkup(true));
+                body.append("**Enemy:** ").append(target.getNationUrlMarkup())
+                        .append(" | ").append(target.getAllianceUrlMarkup());
                 body.append(target.toMarkdown(true, true, false, false, true, false));
                 body.append("\n");
 

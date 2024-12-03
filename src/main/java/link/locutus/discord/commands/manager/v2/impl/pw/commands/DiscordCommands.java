@@ -421,7 +421,7 @@ public class DiscordCommands {
         if (force && !Roles.INTERNAL_AFFAIRS.hasOnRoot(user)) return "You do not have permission to force un-register.";
         if (originalNation != null && (userNation == null || !userNation.equals(originalNation)) && !force) {
             String title = "Unregister another user.";
-            String body = nation.getNationUrlMarkup(true) + " | " + "<@" + nationUserId + ">";
+            String body = nation.getNationUrlMarkup() + " | " + "<@" + nationUserId + ">";
             io.create().confirmation(title, body, command).send();
             return null;
         }
@@ -698,7 +698,7 @@ public class DiscordCommands {
         if (!force) {
             String title = "Add Transfer Flow: " + nation.getName();
             StringBuilder body = new StringBuilder();
-            body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup()).append("\n");
             body.append("Worth: `$" + MathMan.format(ResourceType.convertedTotal(amount)) + "`\n- ");
             body.append(StringMan.join(messages, "\n- "));
             io.create().confirmation(title, body.toString(), command).send();

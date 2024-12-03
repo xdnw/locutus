@@ -1123,7 +1123,7 @@ public class ReportCommands {
             // append each variable used
             if (nationIdReported != null) {
                 DBNation nation = DBNation.getById(nationIdReported);
-                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
+                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup();
                 body.append("Nation reported: ").append(PW.getMarkdownUrl(nationIdReported, false) + " | " + aaName).append("\n");
             }
             if (userIdReported != null) {
@@ -1131,7 +1131,7 @@ public class ReportCommands {
             }
             if (reportingNation != null) {
                 DBNation nation = DBNation.getById(reportingNation);
-                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
+                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup();
                 body.append("Reporting nation: ").append(PW.getMarkdownUrl(reportingNation, false) + " | " + aaName).append("\n");
             }
             if (reportingUser != null) {
@@ -1175,7 +1175,7 @@ public class ReportCommands {
             // append each variable used
             if (nation_id != null) {
                 DBNation nation = DBNation.getById(nation_id);
-                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
+                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup();
                 body.append("Nation commenting: ").append(PW.getMarkdownUrl(nation_id, false) + " | " + aaName).append("\n");
             }
             if (discord_id != null) {
@@ -1199,7 +1199,7 @@ public class ReportCommands {
         if (!force) {
             String title = "Ban " + nation.getName() + " from reporting";
             StringBuilder body = new StringBuilder();
-            body.append("Nation: ").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append("Nation: ").append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup()).append("\n");
             body.append("Reason:\n```\n").append(reason).append("\n```\n");
             body.append("Until: ").append(DiscordUtil.timestamp(timestamp, null)).append("\n");
 
@@ -1225,7 +1225,7 @@ public class ReportCommands {
         if (!force) {
             String title = "Unban " + nation.getName() + " from reporting";
             StringBuilder body = new StringBuilder();
-            body.append("Nation: ").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append("Nation: ").append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup()).append("\n");
             if (ban != null) {
                 body.append("Existing ban:\n```\n").append(ban.getKey()).append("\n```\nuntil ").append(DiscordUtil.timestamp(ban.getValue(), null)).append("\n");
             }
@@ -1284,7 +1284,7 @@ public class ReportCommands {
     public String riskFactors(@Me IMessageIO io, ReportManager reportManager, LoanManager loanManager, DBNation nation) {
         StringBuilder response = new StringBuilder();
         // Nation | Alliance (#AA Rank) | Position
-        response.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
+        response.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup());
         if (nation.getAlliance_id() > 0) {
             DBAlliance alliance = nation.getAlliance();
             response.append(" (#").append(alliance.getRank()).append(")");
@@ -1411,7 +1411,7 @@ public class ReportCommands {
         if (!sharedNetworkActive.isEmpty()) {
             response.append("Sharing network with " + sharedNetworkActive.size() + " active nation" + (sharedNetworkActive.size() == 1 ? "" : "s") + ":\n");
             for (DBNation other : sharedNetworkActive) {
-                response.append("- " + other.getNationUrlMarkup(true) + "\n");
+                response.append("- " + other.getNationUrlMarkup() + "\n");
             }
         }
         // Alliance history

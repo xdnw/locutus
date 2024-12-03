@@ -133,7 +133,7 @@ public class IndexPages extends PageHelper {
         recursive(WebRoot.getInstance().getPageHandler().getCommands(), f -> cmdSearch.accept(urlBase + "page/", f));
 
 
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
             double val = 0;
             if ((nation.getNation_id() + "").equals(termLow)) {
                 val = 200;
@@ -422,7 +422,7 @@ public class IndexPages extends PageHelper {
         if (db.isWhitelisted() && db.hasAlliance()) {
             try {
                 IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
-                checkupResult = checkup.checkup(nation, true, true);
+                checkupResult = checkup.checkup(null, nation, true, true);
                 checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
             } catch (InterruptedException | ExecutionException | IOException e) {
                 e.printStackTrace();

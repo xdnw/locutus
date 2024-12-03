@@ -81,7 +81,7 @@ public class FindProducer extends Command {
         if (args.size() >= 2) {
             nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, args.get(1), false, false));
         } else {
-            nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+            nations = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         }
         if (args.size() == 1 || args.get(0).equalsIgnoreCase("*")) {
             int topX = 80;

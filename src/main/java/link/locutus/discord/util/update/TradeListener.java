@@ -57,7 +57,7 @@ public class TradeListener {
                 if (previousNation == null) {
                     body.append("Previous owner: " + previous.getNation_id() + " (deleted)\n");
                 } else {
-                    body.append("Previous owner: " + previousNation.getNationUrlMarkup(true) + " | " + previousNation.getAllianceUrlMarkup(true) + "\n");
+                    body.append("Previous owner: " + previousNation.getNationUrlMarkup() + " | " + previousNation.getAllianceUrlMarkup() + "\n");
                 }
             }
         }
@@ -114,7 +114,7 @@ public class TradeListener {
         }
 
         DBNation maxNation = null;
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+        for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
             if (maxNation == null || maxNation.getScore() < nation.getScore()) {
                 maxNation = nation;
             }

@@ -69,7 +69,7 @@ public class Inflows extends Command {
 
         Set<Integer> self;
         String selfName;
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Function<Integer, String> nationNameFunc = i -> {
             DBNation nation = nations.get(i);
             return nation == null ? Integer.toString(i) : nation.getNation();

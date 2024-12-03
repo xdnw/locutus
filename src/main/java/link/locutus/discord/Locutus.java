@@ -709,7 +709,7 @@ public final class Locutus extends ListenerAdapter {
         try {
             new TurnChangeEvent(lastTurn, currentTurn).post();
 
-            for (DBNation nation : getNationDB().getNationsByAlliance().values()) {
+            for (DBNation nation : getNationDB().getAllNations()) {
                 nation.processTurnChange(lastTurn, currentTurn, Event::post);
             }
 

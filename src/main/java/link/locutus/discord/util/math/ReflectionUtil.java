@@ -2,6 +2,7 @@ package link.locutus.discord.util.math;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Collection;
 
 public class ReflectionUtil {
     public static Class getClassType(Type type) {

@@ -287,7 +287,7 @@ public class PWCompleter extends BindingHelper {
             return completeUser(guild, input, true);
         }
 
-        List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
 
         return options.stream().map(f -> Map.entry(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
@@ -311,7 +311,7 @@ public class PWCompleter extends BindingHelper {
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
-        List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
 
         options = StringMan.getClosest(input, options, NationOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
@@ -344,7 +344,7 @@ public class PWCompleter extends BindingHelper {
         if (input.charAt(0) == '@') {
             return completeUser(guild, input, true);
         }
-        List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
             for (Guild other : user.getMutualGuilds()) {
@@ -385,7 +385,7 @@ public class PWCompleter extends BindingHelper {
         }
         AllianceList aaList = db.getAllianceList();
 
-        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
             for (Guild guild : user.getMutualGuilds()) {

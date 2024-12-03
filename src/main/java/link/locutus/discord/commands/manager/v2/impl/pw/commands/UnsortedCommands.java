@@ -15,6 +15,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -441,7 +442,7 @@ public class UnsortedCommands {
 
         String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
         Set<Integer> self = new HashSet<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Function<Integer, String> nationNameFunc = i -> {
             DBNation nation = nations.get(i);
             return nation == null ? Integer.toString(i) : nation.getNation();
@@ -1236,7 +1237,7 @@ public class UnsortedCommands {
                                @Arg("Include inactive nations (2 days)")
                                @Switch("i") boolean includeInactive,
                                @Switch("d") @Timestamp Long snapshotDate) {
-        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNationsByAlliance().values()).setFilter("*");
+        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*");
         Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild, false);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
 
@@ -1607,12 +1608,14 @@ public class UnsortedCommands {
 
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+
         IACheckup.AuditType[] allowed = audits == null || audits.isEmpty() ? IACheckup.AuditType.values() : audits.toArray(new IACheckup.AuditType[0]);
         for (DBNation nation : nations) {
             StringBuilder output = new StringBuilder();
             int failed = 0;
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(nation, allowed, nations.size() == 1, skipUpdate);
+            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(cacheStore, nation, allowed, nations.size() == 1, skipUpdate);
             auditResults.put(nation, auditResult);
 
             if (auditResult != null) {
@@ -2298,7 +2301,7 @@ public class UnsortedCommands {
 
         Map<Integer, Long> aaCount = new HashMap<>();
         Map<Integer, Long> aaCount1City = new HashMap<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int aaId = entry.getValue().getAlliance_id();
             aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));

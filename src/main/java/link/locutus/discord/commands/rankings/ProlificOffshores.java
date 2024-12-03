@@ -54,7 +54,7 @@ public class ProlificOffshores extends Command {
 
         Map<Integer, Long> aaCount = new HashMap<>();
         Map<Integer, Long> aaCount1City = new HashMap<>();
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int aaId = entry.getValue().getAlliance_id();
             aaCount.put(aaId, 1 + aaCount.getOrDefault(aaId, 0L));

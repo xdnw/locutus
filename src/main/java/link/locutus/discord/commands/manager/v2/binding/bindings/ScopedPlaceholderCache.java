@@ -30,11 +30,11 @@ public class ScopedPlaceholderCache<T> {
     }
 
     public <V> V get(T obj, Function<List<T>, List<V>> getAll) {
-        return get(obj, getAll, t -> getAll.apply(Collections.singletonList(t)).get(0));
+        return get(obj, getAll, null);
     }
 
     public <V> V getMap(T obj, Function<List<T>, Map<T, V>> getAll) {
-        return getMap(obj, getAll, t -> getAll.apply(Collections.singletonList(t)).get(t));
+        return getMap(obj, getAll, null);
     }
 
     public <V> V getMap(T obj, Function<List<T>, Map<T, V>> getAll, Function<T, V> getSingle) {
@@ -51,24 +51,37 @@ public class ScopedPlaceholderCache<T> {
 
     public <V> V get(T obj, Function<List<T>, List<V>> getAll, Function<T, V> getSingle) {
         if (cache == null) {
+            if (getSingle == null) {
+                return getAll.apply(Collections.singletonList(obj)).get(0);
+            }
             return getSingle.apply(obj);
         }
-        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(method, o -> new Object2ObjectOpenHashMap<>());
+        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(method, o -> {
+            Map<T, Object> data = new Object2ObjectOpenHashMap<>();
+            if (cache.list != null) {
+                if (cache.list.size() == 1 && getSingle != null) {
+                    T first = cache.list.get(0);
+                    data.put(first, getSingle.apply(first));
+                } else {
+                    List<V> list = getAll.apply(cache.list);
+                    for (int i = 0; i < cache.list.size(); i++) {
+                        data.put(cache.list.get(i), list.get(i));
+                    }
+                }
+            } else if (getSingle != null) {
+                V value = getSingle.apply(obj);
+                data.put(obj, value);
+            }
+            return data;
+        });
         if (map.containsKey(obj)) {
             return (V) map.get(obj);
         }
-        if (!cache.cached && cache.list != null && !cache.list.isEmpty()) {
-            cache.cached = true;
-            if (cache.list.size() == 1) {
-                T first = cache.list.get(0);
-                map.put(first, getSingle.apply(first));
-            } else {
-                List<V> list = getAll.apply(cache.list);
-                for (int i = 0; i < cache.list.size(); i++) {
-                    map.put(cache.list.get(i), list.get(i));
-                }
-            }
+        if (cache.list == null && getSingle != null) {
+            V result = getSingle.apply(obj);
+            map.put(obj, result);
+            return result;
         }
-        return (V) map.computeIfAbsent(obj, getSingle);
+        return null;
     }
 }

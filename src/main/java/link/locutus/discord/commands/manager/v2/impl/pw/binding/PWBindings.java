@@ -43,9 +43,7 @@ import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
-import link.locutus.discord.db.entities.metric.AllianceMetric;
-import link.locutus.discord.db.entities.metric.AllianceMetricMode;
-import link.locutus.discord.db.entities.metric.OrbisMetric;
+import link.locutus.discord.db.entities.metric.*;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -201,6 +199,26 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
     public Set<BeigeReason> BeigeReasons(String input) {
         return emumSet(BeigeReason.class, input);
+    }
+
+    @Binding(value = "A comma separated list of Growth Assets (cities, projects, infra, land)")
+    public Set<GrowthAsset> GrowthAssets(String input) {
+        return emumSet(GrowthAsset.class, input);
+    }
+
+    @Binding(value = "A Growth Asset (cities, projects, infra, land)")
+    public GrowthAsset GrowthAsset(String input) {
+        return emum(GrowthAsset.class, input);
+    }
+
+    @Binding(value = "A comma separated list of alliance membership change reasons")
+    public Set<MembershipChangeReason> membershipChangeReasons(String input) {
+        return emumSet(MembershipChangeReason.class, input);
+    }
+
+    @Binding(value = "An alliance membership change reason")
+    public MembershipChangeReason membershipChangeReason(String input) {
+        return emum(MembershipChangeReason.class, input);
     }
 
     @Binding(value = "A comma separated list of domestic policies")

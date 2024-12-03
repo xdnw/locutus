@@ -5,10 +5,7 @@ import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.Trade;
-import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -517,7 +514,7 @@ public class DBNation implements NationOrAlliance {
             throw new IllegalArgumentException("Nation " + nation_id + " not in alliance: " + checkup.getAlliance().getIds());
         }
         Map<IACheckup.AuditType, Map.Entry<Object, String>> result =
-                checkup.checkup(this, new IACheckup.AuditType[]{audit}, true, true);
+                checkup.checkup(store, this, new IACheckup.AuditType[]{audit}, true, true);
         return result.get(audit);
     }
 
@@ -4018,17 +4015,19 @@ public class DBNation implements NationOrAlliance {
         return "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }
 
+    @Command(desc = "Markdown url for the nation")
     public String getMarkdownUrl() {
-        return getNationUrlMarkup(true);
+        return getNationUrlMarkup();
     }
 
-    public String getNationUrlMarkup(boolean embed) {
+    public String getNationUrlMarkup() {
         String nationUrl = getUrl();
         nationUrl = MarkupUtil.markdownUrl(nation, "<" + nationUrl + ">");
         return nationUrl;
     }
 
-    public String getAllianceUrlMarkup(boolean embed) {
+    @Command
+    public String getAllianceUrlMarkup() {
         String allianceUrl = getAllianceUrl();
         allianceUrl = MarkupUtil.markdownUrl(getAllianceName(), "<" + allianceUrl + ">");
         return allianceUrl;
@@ -4252,7 +4251,7 @@ public class DBNation implements NationOrAlliance {
         PoliticsAndWarV3 receiverApi = getApi(true);
         Auth auth = getAuth();
         if (auth == null) {
-            throw new IllegalArgumentException("Banker nation has no auth (" + getNationUrlMarkup(true) + "). See: " + CM.credentials.login.cmd.toSlashMention());
+            throw new IllegalArgumentException("Banker nation has no auth (" + getNationUrlMarkup() + "). See: " + CM.credentials.login.cmd.toSlashMention());
         }
 
         Map<ResourceType, Double> amountMapDbl = amountMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> (double) e.getValue()));
@@ -4424,7 +4423,7 @@ public class DBNation implements NationOrAlliance {
     public String toFullMarkdown() {
         StringBuilder body = new StringBuilder();
         //Nation | Leader name | timestamp(DATE_CREATED) `tax_id=1`
-        body.append(getNationUrlMarkup(true)).append(" | ");
+        body.append(getNationUrlMarkup()).append(" | ");
         body.append(leader).append(" | ");
         // DiscordUtil.timestamp
         if (tax_id != 0) {
@@ -4436,7 +4435,7 @@ public class DBNation implements NationOrAlliance {
         if (alliance_id == 0) {
             body.append("`AA:0`");
         } else {
-            body.append(getAllianceUrlMarkup(true));
+            body.append(getAllianceUrlMarkup());
             DBAlliancePosition position = this.getAlliancePosition();
             String posStr;
             if (position != null) {
@@ -4623,9 +4622,9 @@ public class DBNation implements NationOrAlliance {
                 String url = Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
                 nationUrl = embed ? MarkupUtil.markdownUrl(getName(), url) : "<" + url + ">";
             } else {
-                nationUrl = getNationUrlMarkup(embed);
+                nationUrl = getNationUrlMarkup();
             }
-            String allianceUrl = getAllianceUrlMarkup(embed);
+            String allianceUrl = getAllianceUrlMarkup();
             response
                     .append(nationUrl)
                     .append(" | ")
@@ -4835,7 +4834,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public int isReroll(boolean fetchUid) {
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance();
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
@@ -5434,7 +5433,7 @@ public class DBNation implements NationOrAlliance {
         for (DBWar war : wars) {
             body.append(getWarInfoEmbed(war, loot));
         }
-        body.append(this.getNationUrlMarkup(true));
+        body.append(this.getNationUrlMarkup());
         body.append("\n").append(this.toCityMilMarkdown());
         return body.toString().replaceAll(" \\| ","|");
     }
@@ -5499,50 +5498,50 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Days since last soldier purchase")
-    public double daysSinceLastSoldierBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.SOLDIER);
+    public double daysSinceLastSoldierBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.SOLDIER);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last tank purchase")
-    public double daysSinceLastTankBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.TANK);
+    public double daysSinceLastTankBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.TANK);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last aircraft purchase")
-    public double daysSinceLastAircraftBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.AIRCRAFT);
+    public double daysSinceLastAircraftBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.AIRCRAFT);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last ship purchase")
-    public double daysSinceLastShipBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.SHIP);
+    public double daysSinceLastShipBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.SHIP);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last spy purchase")
-    public double daysSinceLastSpyBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.SPIES);
+    public double daysSinceLastSpyBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.SPIES);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last ship purchase")
-    public double daysSinceLastNukeBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.NUKE);
+    public double daysSinceLastNukeBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.NUKE);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
     @Command(desc = "Days since last missile purchase")
-    public double daysSinceLastMissileBuy() {
-        Long result = getLastUnitBuy(MilitaryUnit.MISSILE);
+    public double daysSinceLastMissileBuy(ValueStore store) {
+        Long result = getLastUnitBuy(store, MilitaryUnit.MISSILE);
         long now = getSnapshot() == null ? System.currentTimeMillis() : getSnapshot();
         return result == null ? Long.MAX_VALUE : (((double) (now - result)) / TimeUnit.DAYS.toMillis(1));
     }
@@ -5553,21 +5552,20 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get unix timestamp of when a unit was purchased last")
     @RolePermission(Roles.MILCOM)
-    public Long getLastUnitBuy(MilitaryUnit unit) {
-        List<Map.Entry<Long, Integer>> list = getUnitHistory(unit);
-        if (list == null) return null;
-        long lastTime = -1;
-        int lastAmt = -1;
-        for (Map.Entry<Long, Integer> entry : list) {
-            int amt = entry.getValue();
-            if (amt < lastAmt) {
-                return lastTime;
+    public Long getLastUnitBuy(ValueStore store, MilitaryUnit unit) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getLastUnitBuy");
+        Map<MilitaryUnit, Long> byUnit = scoped.getMap(this,
+        (ThrowingFunction<List<DBNation>, Map<DBNation, Map<MilitaryUnit, Long>>>) f -> {
+            Set<Integer> nationIds = new IntOpenHashSet(f.size());
+            for (DBNation nation : f) nationIds.add(nation.getNation_id());
+            Map<Integer, Map<MilitaryUnit, Long>> resultById = Locutus.imp().getNationDB().getLastMilitaryBuyByNationId(nationIds);
+            Map<DBNation, Map<MilitaryUnit, Long>> result = new LinkedHashMap<>();
+            for (DBNation nation : f) {
+                result.put(nation, resultById.get(nation.getNation_id()));
             }
-            lastAmt = amt;
-            lastTime = entry.getKey();
-        }
-        if (lastTime != -1) return lastTime;
-        return 0L;
+            return result;
+        });
+        return byUnit == null ? null : byUnit.get(unit);
     }
 
     public Map<Long, Integer> getUnitPurchaseHistory(MilitaryUnit unit, long cutoff) {
@@ -5778,7 +5776,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public long getRerollDate() {
-        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         int previousNationId = -1;
         for (DBNation nation : nations) {
             if (nation.getNation_id() < nation_id) {

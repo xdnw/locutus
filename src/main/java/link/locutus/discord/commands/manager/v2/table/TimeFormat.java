@@ -56,6 +56,16 @@ public enum TimeFormat {
             return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
         }
     },
+    SECONDS_TO_DATE {
+        @Override
+        public String toString(Number number) {
+            long time = number.longValue();
+            if (time < TimeUtil.getOrigin()) {
+                return TimeUtil.secToTime(TimeUnit.SECONDS, time);
+            }
+            return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
+        }
+    },
     ;
 
     public abstract String toString(Number number);

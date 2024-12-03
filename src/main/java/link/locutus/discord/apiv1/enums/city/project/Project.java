@@ -18,6 +18,8 @@ public interface Project {
     @Command(desc = "Map of resource cost of the project")
     Map<ResourceType, Double> cost();
 
+    public double[] costArr();
+
     @Command(desc = "Market value of project")
     default double getMarketValue() {
         return ResourceType.convertedTotal(cost());
@@ -31,7 +33,7 @@ public interface Project {
     @Command(desc = "Get number of projects for a set of nations")
     default int getCount(@NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
-        if (all == null) all = Locutus.imp().getNationDB().getNationsByAlliance().values();
+        if (all == null) all = Locutus.imp().getNationDB().getAllNations();
         int count = 0;
         for (DBNation nation : all) {
             count += get(nation);
@@ -42,7 +44,7 @@ public interface Project {
     @Command(desc = "Get average attribute for nations with this project")
     default double getAvg(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
-        if (all == null) all = Locutus.imp().getNationDB().getNationsByAlliance().values();
+        if (all == null) all = Locutus.imp().getNationDB().getAllNations();
         double total = 0;
         int count = 0;
         for (DBNation nation : all) {
@@ -56,7 +58,7 @@ public interface Project {
     @Command(desc = "Get total attribute for nations with this project")
     default double getTotal(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
-        if (all == null) all = Locutus.imp().getNationDB().getNationsByAlliance().values();
+        if (all == null) all = Locutus.imp().getNationDB().getAllNations();
         double total = 0;
         int count = 0;
         for (DBNation nation : all) {

@@ -5,6 +5,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -121,6 +123,8 @@ public class CheckCities extends Command {
         if (mail && keys == null)
             throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+
         for (DBNation nation : nations) {
             int failed = 0;
 
@@ -130,7 +134,7 @@ public class CheckCities extends Command {
             }
             if (auditResult == null) {
                 CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching city info: (this will take a minute)");
-                auditResult = checkup.checkup(nation, individual, false);
+                auditResult = checkup.checkup(cacheStore, nation, individual, false);
                 auditResults.put(nation, auditResult);
                 try {
                     IMessageBuilder msg = msgFuture.get();

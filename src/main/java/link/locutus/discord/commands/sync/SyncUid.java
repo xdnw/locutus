@@ -35,7 +35,7 @@ public class SyncUid extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        Collection<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance().values();
+        Collection<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
 
         if (!args.isEmpty() && args.get(0).equalsIgnoreCase("true")) {
             int i = 0;

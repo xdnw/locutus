@@ -399,7 +399,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getDBNation() {
         return new WebOption(DBNation.class).setQueryMap((db, user, nation) -> {
             WebOptions data = new WebOptions(true).withText();
-            for (DBNation n : Locutus.imp().getNationDB().getNationsByAlliance().values()) {
+            for (DBNation n : Locutus.imp().getNationDB().getAllNations()) {
                 data.add(n.getId(), n.getName());
             }
             return data;

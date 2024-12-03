@@ -1,9 +1,12 @@
 package link.locutus.discord.util.task.ia;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -127,24 +130,25 @@ public class IACheckup {
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Collection<DBNation> nations, Consumer<DBNation> onEach, AuditType[] auditTypes, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = new LinkedHashMap<>();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
             if (nation.getVm_turns() != 0 || nation.active_m() > 10000) continue;
 
             if (onEach != null) onEach.accept(nation);
 
-            Map<AuditType, Map.Entry<Object, String>> nationMap = checkup(nation, auditTypes, fast, fast);
+            Map<AuditType, Map.Entry<Object, String>> nationMap = checkup(cacheStore, nation, auditTypes, fast, fast);
             result.put(nation, nationMap);
         }
         return result;
     }
 
-    public Map<AuditType, Map.Entry<Object, String>> checkup(DBNation nation) throws InterruptedException, ExecutionException, IOException {
-        return checkup(nation, AuditType.values());
+    public Map<AuditType, Map.Entry<Object, String>> checkup(ValueStore cacheStore, DBNation nation) throws InterruptedException, ExecutionException, IOException {
+        return checkup(cacheStore, nation, AuditType.values());
     }
 
-    public Map<AuditType, Map.Entry<Object, String>> checkupSafe(DBNation nation, boolean individual, boolean fast) {
+    public Map<AuditType, Map.Entry<Object, String>> checkupSafe(ValueStore cacheStore, DBNation nation, boolean individual, boolean fast) {
         try {
-            Map<AuditType, Map.Entry<Object, String>> result = checkup(nation, individual, fast);
+            Map<AuditType, Map.Entry<Object, String>> result = checkup(cacheStore, nation, individual, fast);
             return result;
         } catch (InterruptedException | ExecutionException | IOException e) {
             e.printStackTrace();
@@ -152,15 +156,15 @@ public class IACheckup {
         }
     }
 
-    public Map<AuditType, Map.Entry<Object, String>> checkup(DBNation nation, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        return checkup(nation, AuditType.values(), individual, fast);
+    public Map<AuditType, Map.Entry<Object, String>> checkup(ValueStore cacheStore, DBNation nation, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+        return checkup(cacheStore, nation, AuditType.values(), individual, fast);
     }
 
-    public Map<AuditType, Map.Entry<Object, String>> checkup(DBNation nation, AuditType[] audits) throws InterruptedException, ExecutionException, IOException {
-        return checkup(nation, audits, true, false);
+    public Map<AuditType, Map.Entry<Object, String>> checkup(ValueStore cacheStore, DBNation nation, AuditType[] audits) throws InterruptedException, ExecutionException, IOException {
+        return checkup(cacheStore, nation, audits, true, false);
     }
 
-    public Map<AuditType, Map.Entry<Object, String>> checkup(DBNation nation, AuditType[] audits, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    public Map<AuditType, Map.Entry<Object, String>> checkup(ValueStore cacheStore, DBNation nation, AuditType[] audits, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Map<Integer, JavaCity> cities = nation.getCityMap(false);
         if (cities.isEmpty()) {
             return new HashMap<>();
@@ -177,7 +181,7 @@ public class IACheckup {
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
             long start = System.currentTimeMillis();
-            audit(type, nation, transactions, cities, stockpile, results, individual, fast);
+            audit(cacheStore, type, nation, transactions, cities, stockpile, results, individual, fast);
             long diff = System.currentTimeMillis() - start;
             if (diff > 10) {
                 Logg.text("Audit " + type + " took " + diff + " ms");
@@ -205,13 +209,13 @@ public class IACheckup {
         return results;
     }
 
-    private void audit(AuditType type, DBNation nation, List<Transaction2> transactions, Map<Integer, JavaCity> cities, Map<ResourceType, Double> stockpile, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    private void audit(ValueStore cacheStore, AuditType type, DBNation nation, List<Transaction2> transactions, Map<Integer, JavaCity> cities, Map<ResourceType, Double> stockpile, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         if (results.containsKey(type)) {
             return;
         }
         if (type.required != null) {
             if (!results.containsKey(type.required)) {
-                audit(type.required, nation, transactions, cities, stockpile, results, individual, fast);
+                audit(cacheStore, type.required, nation, transactions, cities, stockpile, results, individual, fast);
             }
             Map.Entry<Object, String> requiredResult = results.get(type.required);
             if (requiredResult != null) {
@@ -219,7 +223,7 @@ public class IACheckup {
                 return;
             }
         }
-        Map.Entry<Object, String> value = checkup(type, nation, cities, transactions, stockpile, individual, fast);
+        Map.Entry<Object, String> value = checkup(cacheStore, type, nation, cities, transactions, stockpile, individual, fast);
         results.put(type, value);
     }
 
@@ -324,7 +328,7 @@ public class IACheckup {
 
     private Map<Integer, Alliance> alliances = new HashMap<>();
 
-    private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, Map<ResourceType, Double> stockpile, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    private Map.Entry<Object, String> checkup(ValueStore cacheStore, AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, Map<ResourceType, Double> stockpile, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         boolean updateNation = individual && !fast;
 
         switch (type) {
@@ -356,7 +360,7 @@ public class IACheckup {
             case UNUSED_MAP:
                 return testIfCacheFails(() -> checkMAP(nation), updateNation);
             case BUY_SPIES:
-                return checkSpies(nation);
+                return checkSpies(cacheStore, nation);
             case BUY_HANGARS:
                 return checkHangar(nation, cities);
             case BUY_PLANES:
@@ -1090,7 +1094,7 @@ public class IACheckup {
             }
         }
         if ((enemyAAs.isEmpty() && nation.getOff() < 4) || nation.getOff() < 2) {
-            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsByAlliance().entrySet()) {
+            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNationsById().entrySet()) {
                 DBNation enemy = entry.getValue();
                 if (enemy.getScore() >= maxScore || enemy.getScore() <= minScore) continue;
                 if (enemy.getVm_turns() != 0) continue;
@@ -1125,13 +1129,13 @@ public class IACheckup {
         return new AbstractMap.SimpleEntry<>(targets.size(), resposnse.toString());
     }
 
-    private Map.Entry<Object, String> checkSpies(DBNation nation) {
+    private Map.Entry<Object, String> checkSpies(ValueStore cacheStore, DBNation nation) {
         int maxSpies = nation.getSpyCap();
         Integer currentSpies = nation.getSpies();
         if (currentSpies == null || currentSpies >= maxSpies) return null;
 
 
-        boolean buySpies = nation.getSpies() == 0 || nation.daysSinceLastSpyBuy() > 1;
+        boolean buySpies = nation.getSpies() == 0 || nation.daysSinceLastSpyBuy(cacheStore) > 1;
         if (!buySpies) return null;
         String message = "You have " + nation.getSpies() + " spies. Spies can perform various operations, (like destroying planes), and can do so daily, without using a war slot, or bringing you out of beige. You should always purchase max spies every day";
         return new AbstractMap.SimpleEntry<>(nation.getSpies(), message);

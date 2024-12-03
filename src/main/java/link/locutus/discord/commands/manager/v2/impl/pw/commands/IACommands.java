@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
@@ -929,12 +930,15 @@ public class IACommands {
         List<String> errors = new ArrayList<>();
         List<DBNation> notUpdated = new ArrayList<>();
         List<DBNation> lacking = new ArrayList<>();
+
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+
         for (DBNation nation : nations) {
             int spies = nation.getSpies();
             int spyCap = nation.getSpyCap();
             if (spies >= spyCap) continue;
 
-            double days = spies == 0 ? Integer.MAX_VALUE : nation.daysSinceLastSpyBuy();
+            double days = spies == 0 ? Integer.MAX_VALUE : nation.daysSinceLastSpyBuy(cacheStore);
             if (days > 1) {
                 lacking.add(nation);
             }
@@ -978,7 +982,7 @@ public class IACommands {
                     if (currentUser != null && Roles.MEMBER.has(currentUser, db.getGuild())) {
                         String title = mentee.getNation() + " already has a mentor";
                         StringBuilder body = new StringBuilder();
-                        body.append("Current mentor: " + current.getNationUrlMarkup(true));
+                        body.append("Current mentor: " + current.getNationUrlMarkup());
                         io.create().confirmation(title, body.toString(), command).send();
                         return null;
                     }
@@ -1076,6 +1080,9 @@ public class IACommands {
 
         StringBuilder response = new StringBuilder();
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(
+                sorted.stream().flatMap(f -> f.getValue().stream()).collect(Collectors.toSet()), DBNation.class);
+
         for (Map.Entry<DBNation, List<DBNation>> entry : sorted) {
             DBNation mentor = entry.getKey();
             List<DBNation> myMentees = new ArrayList<>(entry.getValue());
@@ -1151,7 +1158,7 @@ public class IACommands {
                 response.append("\n- c" + myMentee.getCities() + " mmr[unit]=" + myMentee.getMMR() + " mmr[build]=" + myMentee.getMMRBuildingStr() + " off:" + myMentee.getOff());
 
                 if (includeAudit) {
-                    Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = checkup.checkup(myMentee, true, true);
+                    Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = checkup.checkup(cacheStore, myMentee, true, true);
                     checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
                     if (!checkupResult.isEmpty()) {
                         response.append("\n- Failed: [" + StringMan.join(checkupResult.keySet(), ", ") + "]");
@@ -1579,9 +1586,8 @@ public class IACommands {
         List<String> full = new ArrayList<>();
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-
-        Function<DBNation, String> subjectF = placeholders.getFormatFunction(db.getGuild(), me, author, subject, nations);
-        Function<DBNation, String> messageF = placeholders.getFormatFunction(db.getGuild(), me, author, message, nations);
+        Function<DBNation, String> subjectF = placeholders.getFormatFunction(db.getGuild(), me, author, subject, cache, true);
+        Function<DBNation, String> messageF = placeholders.getFormatFunction(db.getGuild(), me, author, message, cache, true);
         for (DBNation nation : nations) {
             try {
                 String subjectN = subjectF.apply(nation);
@@ -1954,7 +1960,7 @@ public class IACommands {
         List<String> notInAA = new ArrayList<>();
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
-                notInAA.add(nation.getNationUrlMarkup(true));
+                notInAA.add(nation.getNationUrlMarkup());
             }
         }
         if (!notInAA.isEmpty()) {

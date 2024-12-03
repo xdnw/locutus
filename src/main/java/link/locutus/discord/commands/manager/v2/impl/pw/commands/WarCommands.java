@@ -8,6 +8,8 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -440,7 +442,7 @@ public class WarCommands {
             if (dnrTopX == null) dnrTopX = 0;
         }
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -2104,7 +2106,7 @@ public class WarCommands {
         if (dnrTopX == null) dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (dnrTopX == null) dnrTopX = 0;
 
-        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNationsByAlliance().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
 
 
         Set<Integer> allies = db.getAllies();
@@ -2891,6 +2893,8 @@ public class WarCommands {
             new SimpleNationList(nationSet).updateCities(true);
         }
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
+
         for (Map.Entry<Integer, Set<DBNation>> entry : byAlliance.entrySet()) {
             int aaId = entry.getKey();
 
@@ -2909,7 +2913,7 @@ public class WarCommands {
 
                 List<Object> row = new ArrayList<>(header);
 
-                double daysSpies = nation.daysSinceLastSpyBuy();
+                double daysSpies = nation.daysSinceLastSpyBuy(cacheStore);
 
                 Map<Integer, JavaCity> cities = nation.getCityMap(false, false, false);
                 int i = 0;
@@ -3369,9 +3373,9 @@ public class WarCommands {
             if (mention == null) {
                 response.append("Unknown channel for: " + f.target.getMarkdownUrl());
             } else {
-                response.append(mention + " - " + f.target.getMarkdownUrl() + " | " + f.target.getAllianceUrlMarkup(true));
+                response.append(mention + " - " + f.target.getMarkdownUrl() + " | " + f.target.getAllianceUrlMarkup());
                 for (DBNation participant : f.getParticipants()) {
-                    response.append("\n- " + participant.getMarkdownUrl() + " | " + participant.getAllianceUrlMarkup(true));
+                    response.append("\n- " + participant.getMarkdownUrl() + " | " + participant.getAllianceUrlMarkup());
                 }
             }
             return response.toString();
@@ -3387,7 +3391,7 @@ public class WarCommands {
                 }
             }
             if (rooms.isEmpty()) {
-                return "No war rooms found for: " + nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true);
+                return "No war rooms found for: " + nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup();
             }
             StringBuilder response = new StringBuilder();
             for (WarCategory.WarRoom entry : rooms) {
@@ -4681,28 +4685,28 @@ public class WarCommands {
         if (!force) {
             for (DBNation attacker : attackersSorted) {
                 if (!tracked.contains(attacker.getAlliance_id())) {
-                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is not an ally.", command).send();
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is not an ally.", command).send();
                     return null;
                 }
                 if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * PW.WAR_RANGE_MAX_MODIFIER) {
-//                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", 'f');
-                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send();
+//                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", 'f');
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send();
                     return null;
                 }
                 if (attacker.getOff() >= attacker.getMaxOff() && !allowAttackersWithMaxOffensives) {
-                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) +  " already has max offensives. ", command).send();
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() +  " already has max offensives. ", command).send();
                     return null;
                 }
                 if (attacker.getVm_turns() > 0) {
-                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is in VM. ", command).send();
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is in VM. ", command).send();
                     return null;
                 }
                 if (attacker.isGray() && attacker.active_m() > 1440 || attacker.getCities() < 10 && attacker.active_m() > 2000) {
-                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is gray/inactive. ", command).send();
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is gray/inactive. ", command).send();
                     return null;
                 }
                 if (attacker.getNumWars() > 0 && attacker.getRelativeStrength() < 1) {
-                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is already involved in heavy conflict.", command).send();
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup() + " | " + attacker.getAllianceUrlMarkup() + " is already involved in heavy conflict.", command).send();
                     return null;
                 }
             }

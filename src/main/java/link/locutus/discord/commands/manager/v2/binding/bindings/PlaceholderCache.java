@@ -4,17 +4,32 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.db.entities.DBNation;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PlaceholderCache<T> {
     protected final List<T> list;
-    protected boolean cached = false;
     protected final Map<String, Map<T, Object>> cacheInstance = new Object2ObjectOpenHashMap<>();
     protected final Map<String, Object> cacheGlobal = new Object2ObjectOpenHashMap<>();
+
+    public static <T> ValueStore<T> createCache(Collection<T> selection, Class<T> type) {
+        ValueStore store = new SimpleValueStore();
+        return createCache(store, selection, type);
+    }
+
+    public static <T> ValueStore<T> createCache(ValueStore store, Collection<T> selection, Class<T> type) {
+        if (selection == null || selection.isEmpty()) return store;
+        PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
+        if (type == null) return store;
+        store.addProvider(Key.of(PlaceholderCache.class, type), cache);
+        return store;
+    }
 
     public PlaceholderCache(Collection<T> set) {
         this.list = new ObjectArrayList<>(new ObjectOpenHashSet<>(set));
@@ -25,7 +40,7 @@ public class PlaceholderCache<T> {
     }
 
     public static <T> ScopedPlaceholderCache<T> getScoped(ValueStore store, Class<T> clazz, String method) {
-        PlaceholderCache<T> cache = (PlaceholderCache<T>) store.getProvided(Key.of(PlaceholderCache.class, clazz), false);
+        PlaceholderCache<T> cache = store == null ? null : (PlaceholderCache<T>) store.getProvided(Key.of(PlaceholderCache.class, clazz), false);
         return getScoped(cache, method);
     }
 

@@ -40,8 +40,7 @@ public class StatEndpoints {
         String modifier = null;
 
         Set<T> selection = ph.parseSet(store, selection_str, modifier);
-        PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
-        store.addProvider(cache);
+        ValueStore<T> cacheStore = PlaceholderCache.createCache(selection, typeCasted);
 
         List<String> renderers = new ObjectArrayList<>(columns.size());
         List<TypedFunction<T, ?>> formatters = new ObjectArrayList<>(columns.size());
@@ -49,7 +48,7 @@ public class StatEndpoints {
         for (int i = 0; i < columns.size(); i++) {
             String column = columns.get(i);
             try {
-                TypedFunction<T, ?> result = ph.formatRecursively(store, column, null, 0, false, true);
+                TypedFunction<T, ?> result = ph.formatRecursively(cacheStore, column, null, 0, false, true);
                 Type rsType = result.getType();
                 formatters.add(result);
                 if (rsType instanceof Class clazz) {
@@ -70,6 +69,7 @@ public class StatEndpoints {
                     renderers.add(null);
                 }
             } catch (Exception e) {
+                e.printStackTrace();
                 List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                 if (errList.size() < maxPerCol) {
                     errList.add(new WebTableError(i, null, e.getMessage()));
@@ -105,6 +105,7 @@ public class StatEndpoints {
                             row.add(serialized);
                         }
                     } catch (Exception e) {
+                        e.printStackTrace();
                         List<WebTableError> errList = errors.computeIfAbsent(i, k -> new ObjectArrayList<>(maxPerCol));
                         if (errList.size() < maxPerCol) {
                             errList.add(new WebTableError(i, rowI, e.getMessage()));

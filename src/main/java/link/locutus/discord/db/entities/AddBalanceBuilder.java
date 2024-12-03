@@ -233,7 +233,7 @@ public class AddBalanceBuilder {
         if (!getFundsToSendNations().isEmpty()) {
             if (getFundsToSendNations().size() == 1) {
                 DBNation nation = getFundsToSendNations().keySet().iterator().next();
-                body.append("\n" + nation.getNationUrlMarkup(true) + " | ").append(nation.getAllianceUrlMarkup(true));
+                body.append("\n" + nation.getNationUrlMarkup() + " | ").append(nation.getAllianceUrlMarkup());
             } else {
                 int gray = 0;
                 int vm = 0;

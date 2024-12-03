@@ -1537,13 +1537,13 @@ public class GuildHandler {
         StringBuilder builder = new StringBuilder();
         builder.append(war.toUrl() + "\n");
 
-        builder.append(enemy.getNationUrlMarkup(true))
-                .append(" | ").append(enemy.getAllianceUrlMarkup(true)).append(":");
+        builder.append(enemy.getNationUrlMarkup())
+                .append(" | ").append(enemy.getAllianceUrlMarkup()).append(":");
         builder.append(enemy.toCityMilMarkdown());
 
         String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
         builder.append(typeStr);
-        builder.append(memberNation.getNationUrlMarkup(true) + " (member):");
+        builder.append(memberNation.getNationUrlMarkup() + " (member):");
         builder.append("\n").append(memberNation.toCityMilMarkdown());
 
         String attStr = card.condensedSubInfo(isAttacker);
@@ -1773,9 +1773,9 @@ public class GuildHandler {
                                 if (offensive && dnrViolations.contains(war)) body.append("**DNR VIOLATION**\n");
                                 body.append(MarkupUtil.markdownUrl("War Link", war.toUrl()) + "\n");
                                 if (attacker != null) {
-                                    body.append(attacker.getNationUrlMarkup(true));
+                                    body.append(attacker.getNationUrlMarkup());
                                     if (attacker.getAlliance_id() != 0) {
-                                        body.append(" | " + attacker.getAllianceUrlMarkup(true));
+                                        body.append(" | " + attacker.getAllianceUrlMarkup());
                                         if (attacker.getPosition() < Rank.MEMBER.id) {
                                             body.append("- " + Rank.byId(attacker.getPosition()));
                                         }
@@ -1787,9 +1787,9 @@ public class GuildHandler {
                                     body.append(attacker.getShips()).append(" \u26F5").append("```");
                                 }
                                 if (defender != null) {
-                                    body.append(defender.getNationUrlMarkup(true));
+                                    body.append(defender.getNationUrlMarkup());
                                     if (defender.getAlliance_id() != 0) {
-                                        body.append(" | " + defender.getAllianceUrlMarkup(true));
+                                        body.append(" | " + defender.getAllianceUrlMarkup());
                                         if (defender.active_m() > 1440) {
                                             body.append(" | " + TimeUtil.secToTime(TimeUnit.MINUTES, defender.active_m()));
                                         }
@@ -2389,7 +2389,7 @@ public class GuildHandler {
                     String title = "Rebuilt infra: " + existing.infra + "->" + newCity.infra;
                     StringBuilder body = new StringBuilder();
                     body.append(MarkupUtil.markdownUrl("City Link", PW.City.getCityUrl(existing.cityId)));
-                    body.append("\n").append(nation.getNationUrlMarkup(true));
+                    body.append("\n").append(nation.getNationUrlMarkup());
                     User user = nation.getUser();
                     if (user != null) {
                         body.append(" | ").append(user.getAsMention());
@@ -2649,13 +2649,13 @@ public class GuildHandler {
 
         String title = blockaded.getNation() + " " + titleSuffix;
         StringBuilder body = new StringBuilder();
-        body.append("**Defender:** " + blockaded.getNationUrlMarkup(true) + " | " + blockaded.getAllianceUrlMarkup(true)).append("\n");
+        body.append("**Defender:** " + blockaded.getNationUrlMarkup() + " | " + blockaded.getAllianceUrlMarkup()).append("\n");
         body.append(blockaded.toMarkdown(true, true, false, true, false, false)).append("\n");
         body.append(blockaded.toMarkdown(true, true, false, false, true, false)).append("\n");
         body.append("\n");
 
         if (blockader != null) {
-            body.append("**Blockader:** " + blockader.getNationUrlMarkup(true) + " | " + blockader.getAllianceUrlMarkup(true)).append("\n");
+            body.append("**Blockader:** " + blockader.getNationUrlMarkup() + " | " + blockader.getAllianceUrlMarkup()).append("\n");
             body.append(blockader.toMarkdown(true, true, false, true, false, false)).append("\n");
             body.append(blockader.toMarkdown(true, true, false, false, true, false)).append("\n");
         }
