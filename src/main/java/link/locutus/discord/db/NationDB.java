@@ -4495,7 +4495,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public long getAllianceMemberSeniorityTimestamp(DBNation nation, Long snapshotDate) {
         if (nation.getPosition() < Rank.MEMBER.id) return Long.MAX_VALUE;
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " ORDER BY date DESC LIMIT 1")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND (from_rank < 2 OR from_aa != to_aa) ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
