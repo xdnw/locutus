@@ -137,7 +137,7 @@ public class PoliticsAndWarV3 {
         // The interval in milliseconds (typically 60_000)
         public volatile int intervalMs;
         // The number of ms until the ratelimit resets (unused)
-        public volatile long resetAfterMs_unused;
+//        public volatile long resetAfterMs_unused;
         // The remaining number of requests this interval
         public volatile int remaining;
         // the unix epoch time in milliseconds when the ratelimit resets
@@ -147,8 +147,8 @@ public class PoliticsAndWarV3 {
             if (now > resetMs) {
                 remaining = limit;
                 long remainder = (now - resetMs) % intervalMs;
-                resetAfterMs_unused = intervalMs - remainder;
-                resetMs = now + resetAfterMs_unused;
+                resetMs = now + intervalMs - remainder;
+                System.out.println("Set reset to " + (resetMs - now));
             }
         }
     }
@@ -178,9 +178,18 @@ public class PoliticsAndWarV3 {
                         long sleepMs = 30_500;
 
                         JsonObject duration = obj.getAsJsonObject("duration");
-                        if (duration != null && duration.has("nanos")) {
-                            long nanos = duration.get("nanos").getAsLong();
-                            sleepMs = Math.min(60_000, (nanos + 999_999) / 1_000_000);
+                        if (duration != null) {
+                            if (duration.has("nanos")) {
+                                long nanos = duration.get("nanos").getAsLong();
+                                sleepMs = Math.min(60_000, (nanos + 999_999) / 1_000_000);
+                            } else if (duration.has("seconds")) {
+                                long seconds = duration.get("seconds").getAsLong();
+                                sleepMs = Math.min(60_000, seconds * 1000);
+                            } else {
+                                System.out.println("Unknown duration: " + duration);
+                            }
+                        } else {
+                            System.out.println("Unknown duration2: " + obj);
                         }
 
                         setRateLimit(sleepMs);
@@ -215,7 +224,6 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.limit = 60;
             }
             long now = System.currentTimeMillis();
-            rateLimitGlobal.resetAfterMs_unused = timeMs;
             rateLimitGlobal.remaining = 0;
             rateLimitGlobal.resetMs = now + timeMs;
             rateLimitGlobal.limit = 0;
