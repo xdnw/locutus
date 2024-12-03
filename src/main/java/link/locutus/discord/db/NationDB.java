@@ -35,6 +35,8 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
@@ -246,7 +248,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             if (lastUpdatedMs < timestamp) {
                 for (Map.Entry<MilitaryUnit, Integer> entry : losses.entrySet()) {
                     int amt = Math.max(0, nation.getUnits(entry.getKey()) - entry.getValue());
-                    DBNation copyOriginal = eventConsumer == null ? null : new DBNation(nation);
+                    DBNation copyOriginal = eventConsumer == null ? null : nation.copy();
                     nation.setUnits(entry.getKey(), amt);
                     if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, nation, entry.getKey(), true));
                     return true;
@@ -261,7 +263,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         DBNation nation = getNationById(nationId);
         if (nation != null) {
             if (nation.lastActiveMs() < active) {
-                DBNation previous = eventConsumer == null ? null : new DBNation(nation);
+                DBNation previous = eventConsumer == null ? null : nation.copy();
                 long previousLastActive = nation.lastActiveMs();
                 nation.setLastActive(active);
 
@@ -505,7 +507,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 if (nations != null) {
                     for (DBNation nation : nations.values()) {
                         if (nation.getAlliance_id() == id) {
-                            DBNation copy = eventConsumer == null ? null : new DBNation(nation);
+                            DBNation copy = eventConsumer == null ? null : nation.copy();
 
                             nation.setAlliance_id(0);
                             nation.setAlliancePositionId(0);
@@ -615,7 +617,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         for (DBNation nation : nations.values()) {
                             if (nation.getAlliancePositionId() == 0) continue;
                             if (!positionIds.contains(nation.getAlliancePositionId())) {
-                                DBNation copy = eventConsumer == null ? null : new DBNation(nation);
+                                DBNation copy = eventConsumer == null ? null : nation.copy();
                                 nation.setAlliancePositionId(0);
                                 if (copy != null) eventConsumer.accept(new NationChangePositionEvent(copy, nation));
                                 saveNations.add(nation);
@@ -1708,7 +1710,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     private DBNation createNation(ResultSet rs) throws SQLException {
-        return new DBNation(
+        return new SimpleDBNation(new DBNationData(
                 rs.getInt("nation_id"),
                 rs.getString("nation"),
                 rs.getString("leader"),
@@ -1746,7 +1748,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 rs.getInt("tax_id"),
                 rs.getLong("gdp") / 100d,
                 0d
-        );
+        ));
     }
 
     public void updateNationsV2(boolean includeVM, Consumer<Event> eventConsumer) {
@@ -1765,7 +1767,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             for (SNationContainer nation : nations) {
                 DBNation existing = getNationById(nation.getNationid());
                 if (existing == null) {
-                    existing = new DBNation(nation);
+                    existing = new SimpleDBNation(new DBNationData());
+                    existing.updateNationInfo(nation, null);
                     synchronized (nationsById) {
                         nationsById.put(existing.getNation_id(), existing);
                         if (existing.getAlliance_id() != 0) {
@@ -2145,10 +2148,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     private DBNation updateNationInfo(DBNation base, Nation nation, Consumer<Event> eventConsumer, AtomicBoolean markDirty) {
-        DBNation copyOriginal = base == null ? null : new DBNation(base);
+        DBNation copyOriginal = base == null ? null : base.copy();
         if (base == null) {
             markDirty.set(true);
-            base = new DBNation();
+            base = new SimpleDBNation(new DBNationData());
         }
         if (base.updateNationInfo(copyOriginal, nation, eventConsumer)) {
             markDirty.set(true);
@@ -3113,7 +3116,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         }
 
-        return new DBNation(
+        return new SimpleDBNation(new DBNationData(
                 id,
                 nation,
                 leader,
@@ -3151,7 +3154,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 0,
                 0,
                 0
-        );
+        ));
     }
 
     public Set<DBAlliance> getAlliances() {

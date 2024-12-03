@@ -35,6 +35,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.*;
@@ -904,7 +906,7 @@ public class UtilityCommands {
                         @Switch("mmr") MMRDouble builtMMR
     ) {
         if (nation == null) {
-            nation = new DBNation();
+            nation = new SimpleDBNation(new DBNationData());
             nation.setMissiles(0);
             nation.setNukes(0);
             nation.setSoldiers(0);
@@ -912,7 +914,7 @@ public class UtilityCommands {
             nation.setAircraft(0);
             nation.setShips(0);
         } else {
-            nation = new DBNation(nation);
+            nation = nation.copy();
         }
 
         if (cities != null) nation.setCities(cities);
@@ -1201,7 +1203,7 @@ public class UtilityCommands {
             Map<Project, Integer> counts = new LinkedHashMap<>();
             Map<Project, double[]> costByProject = new LinkedHashMap<>();
             for (DBNation nation : nations) {
-                DBNation nationCopy = new DBNation(nation);
+                DBNation nationCopy = nation.copy();
                 double[] nationCost = ResourceType.getBuffer();
                 List<String> errors = new ArrayList<>();
                 List<Integer> buy = new ArrayList<>();

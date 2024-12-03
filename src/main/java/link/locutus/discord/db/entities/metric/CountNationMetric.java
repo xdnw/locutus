@@ -7,11 +7,10 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.column.NumberColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
-import link.locutus.discord.db.DBNationSnapshot;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.List;
 import java.util.Map;

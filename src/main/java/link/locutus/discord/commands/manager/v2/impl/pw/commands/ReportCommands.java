@@ -20,6 +20,8 @@ import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.LoginFactor;
 import link.locutus.discord.db.entities.LoginFactorResult;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
@@ -485,7 +487,7 @@ public class ReportCommands {
         } else {
             receiver = DBNation.getById(loan.nationOrAllianceId);
             if (receiver == null) {
-                DBNation nation = new DBNation();
+                DBNation nation = new SimpleDBNation(new DBNationData());
                 nation.setNation_id(loan.nationOrAllianceId);
                 receiver = nation;
             }

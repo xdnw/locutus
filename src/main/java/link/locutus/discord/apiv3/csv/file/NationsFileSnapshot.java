@@ -7,11 +7,10 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
-import link.locutus.discord.db.DBNationSnapshot;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.TimeUtil;
 
 import javax.annotation.Nullable;
@@ -22,7 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class NationsFileSnapshot implements INationSnapshot {

@@ -9,6 +9,8 @@ import link.locutus.discord.db.entities.CityNode;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
@@ -61,7 +63,7 @@ public class JavaCity implements ICity {
             if (nation != null) {
                 return Map.entry(nation, cityEntry.toJavaCity(nation));
             }
-            DBNation dummy = new DBNation();
+            DBNation dummy = new SimpleDBNation(new DBNationData());
             dummy.setNation_id(cityEntry.getNationId());
             return Map.entry(dummy, cityEntry.toJavaCity(f -> false));
         }

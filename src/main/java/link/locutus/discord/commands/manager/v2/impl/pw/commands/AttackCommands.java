@@ -104,8 +104,8 @@ public class AttackCommands {
                             @Switch("ap") Set<Project> attackerProjects,
                             @Switch("dp") Set<Project> defenderProjects
     ) {
-        DBNation attacker = new DBNation(selfIsDefender ? enemy : me);
-        DBNation defender = new DBNation(selfIsDefender ? me : enemy);
+        DBNation attacker = (selfIsDefender ? enemy : me).copy();
+        DBNation defender = (selfIsDefender ? me : enemy).copy();
         if (attackerMilitary != null) {
             for (Map.Entry<MilitaryUnit, Long> entry : attackerMilitary.entrySet()) {
                 attacker.setUnits(entry.getKey(), entry.getValue().intValue());

@@ -1,6 +1,8 @@
 package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -33,7 +35,7 @@ public class WarNation {
     private long money;
 
     public static WarNation generate(String name) {
-        DBNation nation1 = new DBNation();
+        DBNation nation1 = new SimpleDBNation(new DBNationData());
         nation1.setNation(name);
         nation1.setMissiles(0);
         nation1.setNukes(0);
@@ -63,7 +65,7 @@ public class WarNation {
     }
 
     public WarNation(DBNation nation, boolean clone) {
-        this.nation = clone ? new DBNation(nation) : nation;
+        this.nation = clone ? nation.copy() : nation;
         this.soldiers = nation.getSoldiers();
         this.tanks = nation.getTanks();
         this.aircraft = nation.getAircraft();

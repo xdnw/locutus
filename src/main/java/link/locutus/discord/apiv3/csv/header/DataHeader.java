@@ -1,50 +1,114 @@
 package link.locutus.discord.apiv3.csv.header;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
+import link.locutus.discord.apiv3.csv.file.DataFile;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
+import net.jpountz.util.SafeUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.List;
 import java.util.Map;
 
 public abstract class DataHeader<T> {
 
-    private final long date;
     private final Dictionary dict;
     private int offset = 0;
-    public DataHeader(long date, Dictionary dict) {
-        this.date = date;
+    private Map<String, ColumnInfo<T, Object>> headers;
+    private DataFile.Header<T> headerInfo;
+
+    public DataHeader(Dictionary dict) {
         this.dict = dict;
         this.dict.load();
-    }
-
-    public final long getDate() {
-        return date;
     }
 
     public final Dictionary getDictionary() {
         return dict;
     }
 
-    public final Map<String, ColumnInfo<T, Object>> getHeaders() {
-        return getHeaders(true);
+    public final Map<String, ColumnInfo<T, Object>> createHeaders() {
+        return createHeaders(true);
     }
 
-    public final Map<String, ColumnInfo<T, Object>> getHeaders(boolean clear) {
-        Map<String, ColumnInfo<T, Object>> headers = new Object2ObjectLinkedOpenHashMap<>();
-        for (Field field : getClass().getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers()) || !field.canAccess(this)) continue;
-            try {
-                ColumnInfo<T, Object> column = (ColumnInfo<T, Object>) field.get(this);
-                if (clear) {
+    public DataFile.Header<T> readIndexes(byte[] decompressed) {
+        if (headerInfo != null) return headerInfo;
+        synchronized (this) {
+            if (headerInfo == null) {
+                headerInfo = new DataFile.Header<>();
+
+                Map<String, ColumnInfo<T, Object>> headers = createHeaders(false);
+                int index = 0;
+                headerInfo.numLines = SafeUtils.readIntBE(decompressed, index);
+                index += 4;
+                List<ColumnInfo<T, Object>> validColumns = new ObjectArrayList<>();
+                int i = 0;
+                for (ColumnInfo<T, Object> col : headers.values()) {
+                    col.setCachedValue(null);
+                    boolean hasIndex = decompressed[index++] != 0;
+                    if (hasIndex) {
+                        int bytes = col.getBytes();
+                        col.setIndex(i, headerInfo.bytesPerRow);
+                        col.setCachedValue(null);
+                        headerInfo.bytesPerRow += bytes;
+                        index += bytes;
+                        i++;
+                    } else {
+                        col.setIndex(-1, -1);
+                        col.setCachedValue(null);
+                    }
+                }
+                headerInfo.headers = validColumns.toArray(new ColumnInfo[0]);
+                headerInfo.initialOffset = index;
+            }
+        }
+        return headerInfo;
+    }
+
+    public final Map<String, String> getAliases() {
+        Map<String, String> result = new Object2ObjectLinkedOpenHashMap<>(1);
+        for (Map.Entry<String, ColumnInfo<T, Object>> entry : createHeaders().entrySet()) {
+            ColumnInfo<T, Object> col = entry.getValue();
+            String[] aliases = col.getAliases();
+            if (aliases != null) {
+                for (String alias : aliases) {
+                    result.put(alias, entry.getKey());
+                }
+            }
+        }
+        return result;
+    }
+
+    public final Map<String, ColumnInfo<T, Object>> createHeaders(boolean clear) {
+        if (headers == null) {
+            synchronized (this) {
+                if (headers == null) {
+                    headers = new Object2ObjectLinkedOpenHashMap<>();
+                    for (Field field : getClass().getDeclaredFields()) {
+                        if (Modifier.isStatic(field.getModifiers()) || !field.canAccess(this)) continue;
+                        try {
+                            ColumnInfo<T, Object> column = (ColumnInfo<T, Object>) field.get(this);
+                            if (clear) {
+                                column.setIndex(-1, -1);
+                                column.setCachedValue(null);
+                            }
+                            column.setName(field.getName());
+                            headers.put(field.getName(), column);
+                        } catch (IllegalAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    clear = false;
+                }
+            }
+        }
+        if (clear) {
+            synchronized (this) {
+                for (ColumnInfo<T, Object> column : headers.values()) {
                     column.setIndex(-1, -1);
                     column.setCachedValue(null);
                 }
-                column.setName(field.getName());
-                headers.put(field.getName(), column);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
             }
         }
         return headers;

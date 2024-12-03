@@ -6,20 +6,13 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.apiv3.csv.ColumnInfo;
-import link.locutus.discord.apiv3.csv.column.BooleanColumn;
-import link.locutus.discord.apiv3.csv.column.DoubleColumn;
-import link.locutus.discord.apiv3.csv.column.EnumColumn;
-import link.locutus.discord.apiv3.csv.column.IntColumn;
-import link.locutus.discord.apiv3.csv.column.LongColumn;
-import link.locutus.discord.apiv3.csv.column.StringColumn;
+import link.locutus.discord.apiv3.csv.column.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
-import link.locutus.discord.db.DBNationSnapshot;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;
-import java.util.Map;
 import java.util.function.Predicate;
 
 public class NationHeader extends DataHeader<DBNation> {
@@ -106,84 +99,45 @@ public class NationHeader extends DataHeader<DBNation> {
             nation.setLeaving_vm(turn + turns);
         }
     });
-//    public int ironworks_np; // int nation.setProject
-    public final BooleanColumn<DBNation> ironworks_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.IRON_WORKS);});
-//    public int bauxiteworks_np;
-    public final BooleanColumn<DBNation> bauxiteworks_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.BAUXITEWORKS);});
-//    public int arms_stockpile_np;
-    public final BooleanColumn<DBNation> arms_stockpile_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.ARMS_STOCKPILE);});
-//    public int emergency_gasoline_reserve_np;
-    public final BooleanColumn<DBNation> emergency_gasoline_reserve_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.EMERGENCY_GASOLINE_RESERVE);});
-//    public int mass_irrigation_np;
-    public final BooleanColumn<DBNation> mass_irrigation_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.MASS_IRRIGATION);});
-//    public int international_trade_center_np;
-    public final BooleanColumn<DBNation> international_trade_center_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.INTERNATIONAL_TRADE_CENTER);});
-//    public int missile_launch_pad_np;
-    public final BooleanColumn<DBNation> missile_launch_pad_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.MISSILE_LAUNCH_PAD);});
-//    public int nuclear_research_facility_np;
-    public final BooleanColumn<DBNation> nuclear_research_facility_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.NUCLEAR_RESEARCH_FACILITY);});
-//    public int iron_dome_np;
-    public final BooleanColumn<DBNation> iron_dome_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.IRON_DOME);});
-//    public int vital_defense_system_np;
-    public final BooleanColumn<DBNation> vital_defense_system_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.VITAL_DEFENSE_SYSTEM);});
-//    public int intelligence_agency_np;
-    public final BooleanColumn<DBNation> intelligence_agency_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.INTELLIGENCE_AGENCY);});
-//    public int center_for_civil_engineering_np;
-    public final BooleanColumn<DBNation> center_for_civil_engineering_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);});
-//    public int propaganda_bureau_np;
-    public final BooleanColumn<DBNation> propaganda_bureau_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.PROPAGANDA_BUREAU);});
-//    public int uranium_enrichment_program_np;
-    public final BooleanColumn<DBNation> uranium_enrichment_program_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.URANIUM_ENRICHMENT_PROGRAM);});
-//    public int urban_planning_np;
-    public final BooleanColumn<DBNation> urban_planning_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.URBAN_PLANNING);});
-//    public int advanced_urban_planning_np;
-    public final BooleanColumn<DBNation> advanced_urban_planning_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.ADVANCED_URBAN_PLANNING);});
-//    public int space_program_np;
-    public final BooleanColumn<DBNation> space_program_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.SPACE_PROGRAM);});
-//    public int moon_landing_np;
-    public final BooleanColumn<DBNation> moon_landing_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.MOON_LANDING);});
-//    public int spy_satellite_np;
-    public final BooleanColumn<DBNation> spy_satellite_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.SPY_SATELLITE);});
-//    public int pirate_economy_np;
-    public final BooleanColumn<DBNation> pirate_economy_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.PIRATE_ECONOMY);});
-//    public int recycling_initiative_np;
-    public final BooleanColumn<DBNation> recycling_initiative_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.RECYCLING_INITIATIVE);});
-//    public int telecommunications_satellite_np;
-    public final BooleanColumn<DBNation> telecommunications_satellite_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.TELECOMMUNICATIONS_SATELLITE);});
-//    public int green_technologies_np;
-    public final BooleanColumn<DBNation> green_technologies_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.GREEN_TECHNOLOGIES);});
-//    public int clinical_research_center_np;
-    public final BooleanColumn<DBNation> clinical_research_center_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.CLINICAL_RESEARCH_CENTER);});
-//    public int specialized_police_training_program_np;
-    public final BooleanColumn<DBNation> specialized_police_training_program_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);});
-//    public int arable_land_agency_np;
-    public final BooleanColumn<DBNation> arable_land_agency_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.ARABLE_LAND_AGENCY);});
-//    public int advanced_engineering_corps_np;
-    public final BooleanColumn<DBNation> advanced_engineering_corps_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.ADVANCED_ENGINEERING_CORPS);});
-//    public int government_support_agency_np;
-    public final BooleanColumn<DBNation> government_support_agency_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.GOVERNMENT_SUPPORT_AGENCY);});
-//    public int research_and_development_center_np;
-    public final BooleanColumn<DBNation> research_and_development_center_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.RESEARCH_AND_DEVELOPMENT_CENTER);});
-//    public int resource_production_center_np;
-    public final BooleanColumn<DBNation> resource_production_center_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.ACTIVITY_CENTER);});
-//    public int metropolitan_planning_np;
-    public final BooleanColumn<DBNation> metropolitan_planning_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.METROPOLITAN_PLANNING);});
-//    public int military_salvage_np;
-    public final BooleanColumn<DBNation> military_salvage_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.MILITARY_SALVAGE);});
-//    public int fallout_shelter_np;
-    public final BooleanColumn<DBNation> fallout_shelter_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.FALLOUT_SHELTER);});
-//    public int advanced_pirate_economy_np;
-    public final BooleanColumn<DBNation> advanced_pirate_economy_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.ADVANCED_PIRATE_ECONOMY);});
-//    public int bureau_of_domestic_affairs_np;
-    public final BooleanColumn<DBNation> bureau_of_domestic_affairs_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);});
-//    public int mars_landing_np;
-    public final BooleanColumn<DBNation> mars_landing_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.MARS_LANDING);});
-//    public int surveillance_network_np;
-    public final BooleanColumn<DBNation> surveillance_network_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.SURVEILLANCE_NETWORK);});
-//    public int guiding_satellite_np
-    public final BooleanColumn<DBNation> guiding_satellite_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.GUIDING_SATELLITE);});
-//    public int nuclear_launch_facility_np
-    public final BooleanColumn<DBNation> nuclear_launch_facility_np = new BooleanColumn<>(this, (nation, value) -> {if (value) nation.setProject(Projects.NUCLEAR_LAUNCH_FACILITY);});
+    public final ProjectColumn ironworks_np = new ProjectColumn(this, Projects.IRON_WORKS);
+    public final ProjectColumn bauxiteworks_np = new ProjectColumn(this, Projects.BAUXITEWORKS);
+    public final ProjectColumn arms_stockpile_np = new ProjectColumn(this, Projects.ARMS_STOCKPILE);
+    public final ProjectColumn emergency_gasoline_reserve_np = new ProjectColumn(this, Projects.EMERGENCY_GASOLINE_RESERVE);
+    public final ProjectColumn mass_irrigation_np = new ProjectColumn(this, Projects.MASS_IRRIGATION);
+    public final ProjectColumn international_trade_center_np = new ProjectColumn(this, Projects.INTERNATIONAL_TRADE_CENTER);
+    public final ProjectColumn missile_launch_pad_np = new ProjectColumn(this, Projects.MISSILE_LAUNCH_PAD);
+    public final ProjectColumn nuclear_research_facility_np = new ProjectColumn(this, Projects.NUCLEAR_RESEARCH_FACILITY);
+    public final ProjectColumn iron_dome_np = new ProjectColumn(this, Projects.IRON_DOME);
+    public final ProjectColumn vital_defense_system_np = new ProjectColumn(this, Projects.VITAL_DEFENSE_SYSTEM);
+    public final ProjectColumn intelligence_agency_np = new ProjectColumn(this, Projects.INTELLIGENCE_AGENCY);
+    public final ProjectColumn center_for_civil_engineering_np = new ProjectColumn(this, Projects.CENTER_FOR_CIVIL_ENGINEERING);
+    public final ProjectColumn propaganda_bureau_np = new ProjectColumn(this, Projects.PROPAGANDA_BUREAU);
+    public final ProjectColumn uranium_enrichment_program_np = new ProjectColumn(this, Projects.URANIUM_ENRICHMENT_PROGRAM);
+    public final ProjectColumn urban_planning_np = new ProjectColumn(this, Projects.URBAN_PLANNING);
+    public final ProjectColumn advanced_urban_planning_np = new ProjectColumn(this, Projects.ADVANCED_URBAN_PLANNING);
+    public final ProjectColumn space_program_np = new ProjectColumn(this, Projects.SPACE_PROGRAM);
+    public final ProjectColumn moon_landing_np = new ProjectColumn(this, Projects.MOON_LANDING);
+    public final ProjectColumn spy_satellite_np = new ProjectColumn(this, Projects.SPY_SATELLITE);
+    public final ProjectColumn pirate_economy_np = new ProjectColumn(this, Projects.PIRATE_ECONOMY);
+    public final ProjectColumn recycling_initiative_np = new ProjectColumn(this, Projects.RECYCLING_INITIATIVE);
+    public final ProjectColumn telecommunications_satellite_np = new ProjectColumn(this, Projects.TELECOMMUNICATIONS_SATELLITE);
+    public final ProjectColumn green_technologies_np = new ProjectColumn(this, Projects.GREEN_TECHNOLOGIES);
+    public final ProjectColumn clinical_research_center_np = new ProjectColumn(this, Projects.CLINICAL_RESEARCH_CENTER);
+    public final ProjectColumn specialized_police_training_program_np = new ProjectColumn(this, Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
+    public final ProjectColumn arable_land_agency_np = new ProjectColumn(this, Projects.ARABLE_LAND_AGENCY);
+    public final ProjectColumn advanced_engineering_corps_np = new ProjectColumn(this, Projects.ADVANCED_ENGINEERING_CORPS);
+    public final ProjectColumn government_support_agency_np = new ProjectColumn(this, Projects.GOVERNMENT_SUPPORT_AGENCY);
+    public final ProjectColumn research_and_development_center_np = new ProjectColumn(this, Projects.RESEARCH_AND_DEVELOPMENT_CENTER);
+    public final ProjectColumn resource_production_center_np = new ProjectColumn(this, Projects.ACTIVITY_CENTER);
+    public final ProjectColumn metropolitan_planning_np = new ProjectColumn(this, Projects.METROPOLITAN_PLANNING);
+    public final ProjectColumn military_salvage_np = new ProjectColumn(this, Projects.MILITARY_SALVAGE);
+    public final ProjectColumn fallout_shelter_np = new ProjectColumn(this, Projects.FALLOUT_SHELTER);
+    public final ProjectColumn advanced_pirate_economy_np = new ProjectColumn(this, Projects.ADVANCED_PIRATE_ECONOMY);
+    public final ProjectColumn bureau_of_domestic_affairs_np = new ProjectColumn(this, Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+    public final ProjectColumn mars_landing_np = new ProjectColumn(this, Projects.MARS_LANDING);
+    public final ProjectColumn surveillance_network_np = new ProjectColumn(this, Projects.SURVEILLANCE_NETWORK);
+    public final ProjectColumn guiding_satellite_np = new ProjectColumn(this, Projects.GUIDING_SATELLITE);
+    public final ProjectColumn nuclear_launch_facility_np = new ProjectColumn(this, Projects.NUCLEAR_LAUNCH_FACILITY);
 
     private DBNationSnapshot cached;
     private int nationLoaded;
@@ -192,8 +146,8 @@ public class NationHeader extends DataHeader<DBNation> {
     private static final int ALLOW_DELETED = 4;
     private static final Predicate<Integer> ALLOW_ALL = b -> true;
 
-    public NationHeader(long date, Dictionary dict) {
-        super(date, dict);
+    public NationHeader(Dictionary dict) {
+        super(dict);
     }
 
     @Override
@@ -251,7 +205,6 @@ public class NationHeader extends DataHeader<DBNation> {
         }
         int aaId = this.alliance_id.get();
         if (!allowedAllianceIds.test(aaId)) return null;
-
         if (!allowDeleted) {
             DBNation existing = DBNation.getById(nationId);
             if (existing == null) {

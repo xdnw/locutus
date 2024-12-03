@@ -10,6 +10,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -177,7 +179,7 @@ public class RegisterCommand extends Command {
 
         if (!force) {
             try {
-                DBNation nation = new DBNation();
+                DBNation nation = new SimpleDBNation(new DBNationData());
                 nation.setNation_id(nationId);
                 String pnwDiscordName = nation.fetchUsername();
                 if (pnwDiscordName == null || pnwDiscordName.isEmpty()) {
@@ -209,7 +211,7 @@ public class RegisterCommand extends Command {
             }
         }
 
-        DBNation nation = new DBNation();
+        DBNation nation = new SimpleDBNation(new DBNationData());
         nation.setNation_id(nationId);
 
         PNWUser pnwUser = new PNWUser(nationId, id, fullDiscriminator);

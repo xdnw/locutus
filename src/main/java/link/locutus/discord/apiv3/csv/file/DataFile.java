@@ -26,19 +26,20 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class DataFile<T, H extends DataHeader<T>> {
     private final File csvFile;
     private final File binFile;
     private boolean csvExists = false;
     private boolean binExists = false;
-    private final H header;
-    private final Map<String, ColumnInfo<T, Object>> headers;
-    private final Map<String, String> aliases;
     private final long date;
     private final long day;
     private final String filePart;
     private SoftReference<byte[]> cachedBytes = new SoftReference<>(null);
+
+    private final Supplier<H> createHeader;
+    private volatile H globalHeader;
 
     public static boolean isValidName(File file, String requirePrefix) {
         String[] split = file.getName().split("\\.", 2);
@@ -51,30 +52,35 @@ public class DataFile<T, H extends DataHeader<T>> {
         return MathMan.isInteger(split2[1]) && MathMan.isInteger(split2[2]) && MathMan.isInteger(split2[3]);
     }
 
+    public synchronized byte[] getBytes() throws IOException {
+        byte[] decompressed = cachedBytes.get();
+        if (decompressed == null) {
+            File binFile = getCompressedFile(true, false);
+            decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
+            cachedBytes = new SoftReference<>(decompressed);
+        }
+        return decompressed;
+    }
+
+    public static class Header<T> {
+        public int numLines;
+        public ColumnInfo<T, Object>[] headers;
+        public int bytesPerRow;
+        public int initialOffset;
+    }
+
     public String getFilePart() {
         return filePart;
     }
 
-    public DataFile(File file, H unloaded) {
+    public DataFile(File file, long date, Supplier<H> createHeader) {
         this.filePart = file.getName().split("\\.")[0];
         this.csvFile = new File(file.getParent(), filePart + ".csv");
         this.binFile = new File(file.getParent(), filePart + ".bin");
         this.csvExists = csvFile.exists();
         this.binExists = binFile.exists();
-        this.header = unloaded;
-        this.headers = unloaded.getHeaders();
-        this.aliases = new Object2ObjectLinkedOpenHashMap<>(1);
-        for (Map.Entry<String, ColumnInfo<T, Object>> entry : this.headers.entrySet()) {
-            ColumnInfo<T, Object> col = entry.getValue();
-            String[] aliases = col.getAliases();
-            if (aliases != null) {
-                for (String alias : aliases) {
-                    this.aliases.put(alias, entry.getKey());
-                }
-            }
-        }
-
-        this.date = unloaded.getDate();
+        this.createHeader = createHeader;
+        this.date = date;
         this.day = TimeUtil.getDay(date);
     }
 
@@ -87,7 +93,7 @@ public class DataFile<T, H extends DataHeader<T>> {
         }
     }
 
-    public long getDate() throws ParseException {
+    public long getDate() {
         return date;
     }
 
@@ -95,8 +101,15 @@ public class DataFile<T, H extends DataHeader<T>> {
         return day;
     }
 
-    public H getHeader() {
-        return header;
+    public H getGlobalHeader() {
+        if (globalHeader == null) {
+            synchronized (this) {
+                if (globalHeader == null) {
+                    globalHeader = createHeader.get();
+                }
+            }
+        }
+        return globalHeader;
     }
 
     private void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
@@ -126,69 +139,74 @@ public class DataFile<T, H extends DataHeader<T>> {
         if (!csvExists) {
             throw new IllegalArgumentException("CSV file does not exist: " + csvFile);
         }
-        readAllCsv(csvFile, (csvHeader, rows) -> {
-            List<ColumnInfo<T, Object>> columnsInCsv = new ArrayList<>();
 
-            for (int i = 0; i < csvHeader.size(); i++) {
-                String header = csvHeader.get(i);
-                ColumnInfo<T, Object> column = headers.get(header);
-                if (column == null) {
-                    String alias = aliases.get(header);
-                    if (alias != null) {
-                        column = headers.get(alias);
+        synchronized (this) {
+            H parent = createHeader.get();
+            Map<String, String> aliases = parent.getAliases();
+            Map<String, ColumnInfo<T, Object>> headers = parent.createHeaders();
+
+            readAllCsv(csvFile, (csvHeader, rows) -> {
+                List<ColumnInfo<T, Object>> columnsInCsv = new ArrayList<>();
+
+                for (int i = 0; i < csvHeader.size(); i++) {
+                    String header = csvHeader.get(i);
+                    ColumnInfo<T, Object> column = headers.get(header);
+                    if (column == null) {
+                        String alias = aliases.get(header);
+                        if (alias != null) {
+                            column = headers.get(alias);
+                        }
+                    } else if (column.getIndex() != -1) {
+                        continue;
                     }
-                } else if (column.getIndex() != -1) {
-                    continue;
-                }
-                if (column != null) {
-                    column.setIndex(i, 0);
-                    columnsInCsv.add(column);
-                } else {
-                    throw new IllegalArgumentException("Unknown header: `" + header + "` in " + csvFile);
-                }
-            }
-
-            List<ColumnInfo<T, Object>> writeOrder = new ArrayList<>(headers.values());
-            {
-                Set<ColumnInfo<T, Object>> present = new ObjectLinkedOpenHashSet<>(columnsInCsv);
-                writeOrder.removeIf(f -> !present.contains(f));
-            }
-
-            FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
-            try (DataOutputStream dos = new DataOutputStream(baos)) {
-                dos.writeInt(headers.size());
-                for (ColumnInfo<T, ?> header : headers.values()) {
-                    dos.writeBoolean(header.getIndex() != -1);
-                }
-                List<List<Object>> all = new ObjectArrayList<>();
-                while (rows.hasNext()) {
-                    CsvRow csvRow = rows.next();
-                    ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
-                    for (ColumnInfo<T, Object> column : columnsInCsv) {
-                        String cell = csvRow.getField(column.getIndex());
-                        Object value = column.read(cell);
-
-
-                        rowData.add(value);
-
-                    }
-                    all.add(rowData);
-                }
-                dos.writeInt(all.size());
-                for (List<Object> rowData : all) {
-                    for (ColumnInfo<T, Object> column : writeOrder) {
-                        column.write(dos, rowData.get(column.getIndex()));
+                    if (column != null) {
+                        column.setIndex(i, 0);
+                        columnsInCsv.add(column);
+                    } else {
+                        throw new IllegalArgumentException("Unknown header: `" + header + "` in " + csvFile);
                     }
                 }
-            }
 
-            baos.trim();
-            byte[] compressed = ArrayUtil.compressLZ4(baos.array);
-            try (FileOutputStream fos = new FileOutputStream(binFile)) {
-                fos.write(compressed);
-            }
-        });
-        header.getDictionary().save();
+                List<ColumnInfo<T, Object>> writeOrder = new ArrayList<>(headers.values());
+                {
+                    Set<ColumnInfo<T, Object>> present = new ObjectLinkedOpenHashSet<>(columnsInCsv);
+                    writeOrder.removeIf(f -> !present.contains(f));
+                }
+
+                FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
+                try (DataOutputStream dos = new DataOutputStream(baos)) {
+                    dos.writeInt(headers.size());
+                    for (ColumnInfo<T, ?> header : headers.values()) {
+                        dos.writeBoolean(header.getIndex() != -1);
+                    }
+                    List<List<Object>> all = new ObjectArrayList<>();
+                    while (rows.hasNext()) {
+                        CsvRow csvRow = rows.next();
+                        ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
+                        for (ColumnInfo<T, Object> column : columnsInCsv) {
+                            String cell = csvRow.getField(column.getIndex());
+                            Object value = column.read(cell);
+                            rowData.add(value);
+
+                        }
+                        all.add(rowData);
+                    }
+                    dos.writeInt(all.size());
+                    for (List<Object> rowData : all) {
+                        for (ColumnInfo<T, Object> column : writeOrder) {
+                            column.write(dos, rowData.get(column.getIndex()));
+                        }
+                    }
+                }
+
+                baos.trim();
+                byte[] compressed = ArrayUtil.compressLZ4(baos.array);
+                try (FileOutputStream fos = new FileOutputStream(binFile)) {
+                    fos.write(compressed);
+                }
+            });
+        }
+        globalHeader.getDictionary().save();
         binExists = true;
         if (deleteCsv) {
             csvFile.deleteOnExit();
@@ -230,6 +248,22 @@ public class DataFile<T, H extends DataHeader<T>> {
 //    }
 
     public class Builder {
+        private final H header;
+        private final Map<String, ColumnInfo<T, Object>> headers;
+
+        public Builder() {
+            this.header = createHeader.get();
+            this.headers = header.createHeaders();
+        }
+
+        public H getHeader() {
+            return header;
+        }
+
+        public Map<String, ColumnInfo<T, Object>> getHeaders() {
+            return headers;
+        }
+
         List<ColumnInfo<T, Object>> requiredColumns = new ObjectArrayList<>();
         List<ColumnInfo<T, Object>> optionalColumns = new ObjectArrayList<>();
 
@@ -286,30 +320,9 @@ public class DataFile<T, H extends DataHeader<T>> {
 
         public void read(Consumer<H> onEachRow) throws IOException {
             synchronized (DataFile.this) {
-                List<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
-                for (ColumnInfo<T, Object> col : allColumns) {
-                    col.setIndex(-1, -1);
-                    col.setCachedValue(null);
-                }
                 header.clear();
-                byte[] decompressed = cachedBytes.get();
-                if (decompressed == null) {
-                    File binFile = getCompressedFile(true, false);
-                    decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
-                    cachedBytes = new SoftReference<>(decompressed);
-                }
-                int index = 0;
-                int size = SafeUtils.readIntBE(decompressed, index);
-                index += 4;
-                int rowBytes = 0;
-                for (int i = 0; i < size; i++) {
-                    boolean hasIndex = decompressed[index++] != 0;
-                    if (hasIndex) {
-                        ColumnInfo<T, Object> column = allColumns.get(i);
-                        column.setIndex(i, rowBytes);
-                        rowBytes += column.getBytes();
-                    }
-                }
+                byte[] decompressed = getBytes();
+                Header<T> colInfo = header.readIndexes(decompressed);
 
                 Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
                 for (ColumnInfo<T, Object> column : requiredColumns) {
@@ -325,8 +338,11 @@ public class DataFile<T, H extends DataHeader<T>> {
                 }
                 ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
                 Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
-                int numLines = SafeUtils.readIntBE(decompressed, index);
-                index += 4;
+
+
+                int index = colInfo.initialOffset;
+                int rowBytes = colInfo.bytesPerRow;
+                int numLines = colInfo.numLines;
 
                 for (int i = 0; i < numLines; i++) {
                     header.setOffset(index);

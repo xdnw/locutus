@@ -658,6 +658,9 @@ public class Settings extends Config {
             @Comment({"The directory to store nation data dumps in",
                     "These are historical csv files  provided by P&W (not a database)"})
             public String NATIONS = "data/nations";
+
+            @Comment({"Allow decompressing each file fully in memory instead of streaming"})
+            public boolean DECOMPRESS_FULLY = false;
         }
 
 

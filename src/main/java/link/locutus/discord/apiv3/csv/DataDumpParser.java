@@ -1,18 +1,15 @@
 package link.locutus.discord.apiv3.csv;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv3.csv.file.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.DBNationSnapshot;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -31,6 +28,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -69,6 +67,10 @@ public class DataDumpParser {
         load();
         NationsFile nationsFile = getNearestNationFile(day);
         CitiesFile citiesFile = getNearestCityFile(day);
+        Function<Integer, Map<Integer, DBCity>> fetchCities = null;
+        if (loadCities) {
+            fetchCities = citiesFile.loadCities();
+        }
 
         Map<Integer, DBNationSnapshot> nationsById = nationsFile.readNations(allowedNations, allowedAlliances, includeVM, true, true);
         if (loadCities) {
@@ -166,7 +168,7 @@ public class DataDumpParser {
                     if (nationColumns == null) {
                         reader.all(false);
                     } else {
-                        nationColumns.accept(nationFile.getHeader(), reader);
+                        nationColumns.accept(reader.getHeader(), reader);
                     }
                     reader.read(nationHeader -> nationRows.accept(day, nationHeader));
                 }
@@ -175,7 +177,7 @@ public class DataDumpParser {
                     if (cityColumns == null) {
                         reader.all(false);
                     } else {
-                        cityColumns.accept(cityFile.getHeader(), reader);
+                        cityColumns.accept(reader.getHeader(), reader);
                     }
                     reader.read(cityHeader -> cityRows.accept(day, cityHeader));
                 }

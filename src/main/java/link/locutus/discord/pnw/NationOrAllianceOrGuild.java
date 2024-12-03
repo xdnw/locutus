@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -21,7 +23,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
             case 1:
                 DBNation nation = DBNation.getById((int) id);
                 if (nation == null) {
-                    nation = new DBNation();
+                    nation = new SimpleDBNation(new DBNationData());
                     nation.setNation_id((int) id);
                 }
                 return nation;

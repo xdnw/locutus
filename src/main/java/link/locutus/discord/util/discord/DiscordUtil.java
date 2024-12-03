@@ -16,6 +16,8 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
@@ -821,7 +823,7 @@ public class DiscordUtil {
         if (id != null) {
             DBNation nation = snapshot.getNationById(id);
             if (nation == null && allowDeleted) {
-                nation = new DBNation();
+                nation = new SimpleDBNation(new DBNationData());
                 nation.setNation_id(id);
             }
             return nation;

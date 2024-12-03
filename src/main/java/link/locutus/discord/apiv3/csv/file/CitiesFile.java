@@ -6,8 +6,11 @@ import link.locutus.discord.db.entities.DBCity;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.SoftReference;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class CitiesFile extends DataFile<DBCity, CityHeader> {
@@ -27,5 +30,38 @@ public class CitiesFile extends DataFile<DBCity, CityHeader> {
             }
         });
         return result;
+    }
+
+    private SoftReference<Map<Integer, List<Integer>>> cityIdsCache = new SoftReference<>(null);
+    private SoftReference<Map<Integer, DBCity>>
+
+    private List<Integer> getCityIds(int nationId) {
+        Map<Integer, List<Integer>> cached = cityIdsCache.get();
+        if (cached != null) {
+            synchronized (this) {
+                return cached.get(nationId);
+            }
+        }
+        synchronized (this) {
+            cached = cityIdsCache.get();
+            if (cached != null) {
+                return cached.get(nationId);
+            }
+            int[] cityIds = readCityIds();
+            synchronized (cached) {
+                cached.put(nationId, cityIds);
+            }
+            return cityIds;
+        }
+
+    }
+
+    public Function<Integer, Map<Integer, DBCity>> loadCities() {
+        return new Function<Integer, Map<Integer, DBCity>>() {
+            @Override
+            public Map<Integer, DBCity> apply(Integer nationId) {
+
+            }
+        };
     }
 }

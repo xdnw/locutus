@@ -201,8 +201,8 @@ public class CombatantSheet extends Command {
     }
 
     public void performAttacks(Map<DBNation, DBNation> losses, Map<DBNation, DBNation> kills, WarNation attacker, WarNation defender, DBNation attackerOrigin, DBNation defenderOrigin) {
-        DBNation attackerKills = kills.computeIfAbsent(attackerOrigin, f -> new DBNation(attackerOrigin));
-        DBNation defenderLosses = losses.computeIfAbsent(defenderOrigin, f -> new DBNation(defenderOrigin));
+        DBNation attackerKills = kills.computeIfAbsent(attackerOrigin, f -> attackerOrigin.copy());
+        DBNation defenderLosses = losses.computeIfAbsent(defenderOrigin, f -> defenderOrigin.copy());
 
         if (attacker.groundAttack(defender, attacker.getSoldiers(), attacker.getTanks(), true, true)) {
             addLosses(defenderOrigin, attackerKills, defenderLosses, defender);

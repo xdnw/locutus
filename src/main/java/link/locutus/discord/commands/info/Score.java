@@ -8,6 +8,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -54,7 +56,7 @@ public class Score extends Command {
 
         String mmrStr = null;
 
-        DBNation nation = new DBNation();
+        DBNation nation = new SimpleDBNation(new DBNationData());
         nation.setMissiles(0);
         nation.setNukes(0);
 
@@ -69,7 +71,7 @@ public class Score extends Command {
 
             DBNation nationArg = DiscordUtil.parseNation(next);
             if (nationArg != null) {
-                nation = new DBNation(nationArg);
+                nation = nationArg.copy();
                 iterator.remove();
             }
         }

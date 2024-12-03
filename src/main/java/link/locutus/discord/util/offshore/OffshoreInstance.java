@@ -19,6 +19,8 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -515,7 +517,7 @@ public class OffshoreInstance {
             return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("You set `escrow_mode: ALWAYS` but the receiver is not a nation: " + receiver.getMarkdownUrl());
         }
 
-        if (nationAccount != null) nationAccount = new DBNation(nationAccount); // Copy to avoid external mutation
+        if (nationAccount != null) nationAccount = nationAccount.copy(); // Copy to avoid external mutation
 
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("Alliance: " + receiver.getMarkdownUrl() + " has no receivable nations");
@@ -649,7 +651,7 @@ public class OffshoreInstance {
         boolean isInternalTransfer = false;
         if (nationAccount == null) {
             if (!hasAnyEcon) {
-                nationAccount = new DBNation(bankerNation); // Copy to avoid external mutation
+                nationAccount = bankerNation.copy(); // Copy to avoid external mutation
             } else {
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             }

@@ -322,7 +322,7 @@ public class GrantCmd extends Command {
         boolean noInfra = flags.contains('i');
         boolean noLand = flags.contains('l');
 
-        me = new DBNation(me);
+        me = me.copy();
 
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
         if (!force) {

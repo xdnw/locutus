@@ -270,7 +270,7 @@ public class NationUpdateProcessor {
         DBNation current = event.getCurrent();
 
         if (previous != null && current == null) {
-            DBNation copy = new DBNation(previous);
+            DBNation copy = previous.copy();
             deletedNationCache.put(previous.getNation_id(), copy);
         }
 

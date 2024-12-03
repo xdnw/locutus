@@ -1879,7 +1879,7 @@ public class WarDB extends DBMainV2 {
                 Locutus.imp().getNationDB().setNationActive(war.getAttacker_id(), war.getDate(), eventConsumer);
                 DBNation attacker = war.getNation(true);
                 if (attacker != null && attacker.isBeige()) {
-                    DBNation copy = eventConsumer == null ? null : new DBNation(attacker);
+                    DBNation copy = eventConsumer == null ? null : attacker.copy();
                     attacker.setColor(NationColor.GRAY);
                     if (eventConsumer != null) eventConsumer.accept(new NationChangeColorEvent(copy, attacker));
                 }
@@ -1914,7 +1914,7 @@ public class WarDB extends DBMainV2 {
                     boolean isAttacker = newWar.getStatus() == WarStatus.ATTACKER_VICTORY;
                     DBNation defender = newWar.getNation(!isAttacker);
                     if (defender != null && defender.getColor() != NationColor.BEIGE) {
-                        DBNation copyOriginal = new DBNation(defender);
+                        DBNation copyOriginal = defender.copy();
                         defender.setColor(NationColor.BEIGE);
                         defender.setBeigeTimer(TimeUtil.getTurn() + 24);
                         if (eventConsumer != null)
@@ -2530,7 +2530,7 @@ public class WarDB extends DBMainV2 {
                         if (runAlerts) {
                             DBNation defender = DBNation.getById(attack.getDefender_id());
                             if (defender != null && defender.getColor() != NationColor.BEIGE && attack.getDate() > now - TimeUnit.MINUTES.toMillis(5)) {
-                                DBNation copyOriginal = copyOriginal = new DBNation(defender);
+                                DBNation copyOriginal = copyOriginal = defender.copy();
                                 defender.setColor(NationColor.BEIGE);
                                 defender.setBeigeTimer(defender.getBeigeAbsoluteTurn() + 24);
                                 if (copyOriginal != null && eventConsumer != null)

@@ -68,7 +68,7 @@ public class WarCard {
     public WarNation toWarNation(boolean attacker) {
         return toWarNation(attacker, id -> {
             DBNation nation = Locutus.imp().getNationDB().getNationById(id);
-            return nation == null ? null : new DBNation(nation);
+            return nation == null ? null : nation.copy();
         });
     }
 

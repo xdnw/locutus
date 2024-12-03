@@ -38,6 +38,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.GPTUtil;
@@ -2577,7 +2579,7 @@ public class WarCommands {
                                       @Default("2w") @Timestamp long startTime,
                                       @Switch("e") @Timestamp Long endTime,
                                       @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        DBNation nation = new DBNation();
+        DBNation nation = new SimpleDBNation(new DBNationData());
         nation.setNation_id(nationId);
         return ActivitySheet(io, db, Collections.singleton(nation), startTime, endTime, sheet);
     }
@@ -3290,8 +3292,8 @@ public class WarCommands {
     }
 
     private void performAttacks(Map<DBNation, DBNation> losses, Map<DBNation, DBNation> kills, WarNation attacker, WarNation defender, DBNation attackerOrigin, DBNation defenderOrigin) {
-        DBNation attackerKills = kills.computeIfAbsent(attackerOrigin, f -> new DBNation(attackerOrigin));
-        DBNation defenderLosses = losses.computeIfAbsent(defenderOrigin, f -> new DBNation(defenderOrigin));
+        DBNation attackerKills = kills.computeIfAbsent(attackerOrigin, f -> attackerOrigin.copy());
+        DBNation defenderLosses = losses.computeIfAbsent(defenderOrigin, f -> defenderOrigin.copy());
 
         if (attacker.groundAttack(defender, attacker.getSoldiers(), attacker.getTanks(), true, true)) {
             addLosses(defenderOrigin, attackerKills, defenderLosses, defender);

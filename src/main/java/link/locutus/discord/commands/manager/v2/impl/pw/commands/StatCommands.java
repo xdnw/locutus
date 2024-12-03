@@ -53,6 +53,8 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -1359,7 +1361,7 @@ public class StatCommands {
                     DBNation nation = natCityList.getNations().isEmpty() ? null : natCityList.getAverage();
                     String name = j == 0 ? "" + cities : "";
                     if (nation == null) {
-                        nation = new DBNation();
+                        nation = new SimpleDBNation(new DBNationData());
                         nation.setSoldiers(0);
                         nation.setTanks(0);
                         nation.setAircraft(0);
