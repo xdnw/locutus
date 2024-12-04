@@ -912,7 +912,7 @@ public final class PW {
         ValueStore store = ph.createLocals(guild, null, null);
         Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
         try {
-            Map<Integer, DBNationSnapshot> nationMap = dumper.getNations(day);
+            Map<Integer, DBNationSnapshot> nationMap = dumper.load().getNations(day);
             Set<DBNation> result = new ObjectOpenHashSet<>();
             if (filter != null) {
                 for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {

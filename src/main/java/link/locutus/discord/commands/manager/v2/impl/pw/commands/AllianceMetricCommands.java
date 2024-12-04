@@ -368,7 +368,7 @@ public class AllianceMetricCommands {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (start == null) start = 0L;
         if (end == null) end = Long.MAX_VALUE;
-        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
         Predicate<Long> dayFilter = dayFilter(start, end);
         Map.Entry<Integer, Integer> changesDays = AllianceMetric.saveDataDump(parser, new ArrayList<>(metrics), dayFilter, overwrite, saveAllTurns);
         return "Done. " + changesDays.getKey() + " changes made for " + changesDays.getValue() + " days.";
@@ -417,7 +417,7 @@ public class AllianceMetricCommands {
         CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
         AtomicLong timer = new AtomicLong(System.currentTimeMillis());
 
-        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
         Map<Long, double[]> valuesByDay = new Long2ObjectOpenHashMap<>();
         Set<DBAlliance> finalAlliances = alliances;
         AllianceMetric.runDataDump(parser, metrics, dayFilter, (imetric, day, value) -> {

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -77,16 +78,16 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
         throw unsupported();
     }
 
-    private static BiPredicate<Project, NationHeader> hasProject = new BiPredicate<Project, NationHeader>() {
-        Function<NationHeader, Boolean>[] byProject;
+    private static BiFunction<Project, NationHeader, ProjectColumn> hasProject = new BiFunction<Project, NationHeader, ProjectColumn>() {
+        Function<NationHeader, ProjectColumn>[] byProject;
 
-        private void set(NationHeader header, Function<NationHeader, ProjectColumn> supplier) {
-            ProjectColumn col = supplier.apply(header);
-            byProject[col.getProject().ordinal()] = f -> supplier.apply(f).get();
+        private void set(NationHeader w, Function<NationHeader, ProjectColumn> supplier) {
+            ProjectColumn col = supplier.apply(w);
+            byProject[col.getProject().ordinal()] = f -> supplier.apply(f);
         }
 
         @Override
-        public boolean test(Project project, NationHeader header) {
+        public ProjectColumn apply(Project project, NationHeader header) {
             if (byProject == null) {
                 byProject = new Function[Arrays.stream(Projects.values).mapToInt(Project::ordinal).max().orElse(0) + 1];
                 set(header, f -> f.ironworks_np);
@@ -136,7 +137,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public boolean hasProject(Project project) {
-        return hasProject.test(project, wrapper.header);
+        return wrapper.get(hasProject.apply(project, wrapper.header), offset);
     }
 
     @Override

@@ -485,7 +485,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void loadWarCityCountsLegacy() throws IOException, ParseException {
-        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
         Map<Long, Map<Integer, Byte>> counts = parser.getUtil().backCalculateCityCounts();
         Set<DBWar> toSave = new ObjectOpenHashSet<>();
         AtomicLong failed = new AtomicLong();

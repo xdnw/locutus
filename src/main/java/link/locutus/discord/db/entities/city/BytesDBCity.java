@@ -25,16 +25,16 @@ public class BytesDBCity extends DBCity {
         this.offset = offset;
     }
 
-    private static BiFunction<Building, CityHeader, Integer> hasBuilding = new BiFunction<Building, CityHeader, Integer>() {
-        Function<CityHeader, Integer>[] byBuilding;
+    private static BiFunction<Building, CityHeader, BuildingColumn> hasBuilding = new BiFunction<Building, CityHeader, BuildingColumn>() {
+        Function<CityHeader, BuildingColumn>[] byBuilding;
 
         private void set(CityHeader header, Function<CityHeader, BuildingColumn> supplier) {
             BuildingColumn col = supplier.apply(header);
-            byBuilding[col.getBuilding().ordinal()] = f -> supplier.apply(f).get();
+            byBuilding[col.getBuilding().ordinal()] = f -> supplier.apply(f);
         }
 
         @Override
-        public Integer apply(Building project, CityHeader header) {
+        public BuildingColumn apply(Building project, CityHeader header) {
             if (byBuilding == null) {
                 byBuilding = new Function[Arrays.stream(Buildings.values()).mapToInt(Building::ordinal).max().orElse(0) + 1];
                 set(header, f -> f.oil_power_plants);
@@ -80,14 +80,14 @@ public class BytesDBCity extends DBCity {
 
     @Override
     public int getBuildingOrdinal(int ordinal) {
-        return hasBuilding.apply(BUILDINGS[ordinal], wrapper.header);
+        return get(hasBuilding.apply(BUILDINGS[ordinal], wrapper.header));
     }
 
     @Override
     public int getNumBuildings() {
         int count = 0;
         for (Building building : Buildings.values()) {
-            count += hasBuilding.apply(building, wrapper.header);
+            count += get(hasBuilding.apply(building, wrapper.header));
         }
         return count;
     }
@@ -123,7 +123,7 @@ public class BytesDBCity extends DBCity {
     public byte[] getBuildings3() {
         byte[] buildings = new byte[Buildings.values().length];
         for (Building building : Buildings.values()) {
-            buildings[building.ordinal()] = hasBuilding.apply(building, wrapper.header).byteValue();
+            buildings[building.ordinal()] = get(hasBuilding.apply(building, wrapper.header)).byteValue();
         }
         return buildings;
     }

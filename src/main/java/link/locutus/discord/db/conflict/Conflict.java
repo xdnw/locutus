@@ -146,7 +146,7 @@ public class Conflict {
         Map<Long, Map<Integer, Map<MilitaryUnit, Integer>>> milHistory = Locutus.imp().getNationDB().getMilitaryHistoryByTurn(nationIds, startMs, endMs);
         Map<Long, Map<Integer, DBNation>> nationsByDay = new HashMap<>();
 
-        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
 
         long dayStart = TimeUtil.getDayFromTurn(getStartTurn());
         long dayEnd = getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getDayFromTurn(getEndTurn() + 11);

@@ -39,7 +39,7 @@ public class GrowthSummary {
     }
 
     public GrowthSummary run() throws IOException, ParseException {
-        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true).load();
         if (dayEnd > TimeUtil.getDay()) {
             throw new IllegalArgumentException("Invalid future day specified for growth summary:" + dayEnd);
         }

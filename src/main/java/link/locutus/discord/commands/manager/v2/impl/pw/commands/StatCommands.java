@@ -2660,7 +2660,7 @@ public class StatCommands {
         Map<Integer, String> allianceNames = new Int2ObjectOpenHashMap<>();
 
         Map<Integer, Map<Long, Integer>> membersByAAByTurn = new Int2ObjectLinkedOpenHashMap<>();
-        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true).load();
 
         AtomicLong start = new AtomicLong(System.currentTimeMillis());
         dumper.iterateAll(f -> true, (h, r) -> {

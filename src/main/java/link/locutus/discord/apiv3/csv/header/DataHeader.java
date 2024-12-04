@@ -40,11 +40,14 @@ public abstract class DataHeader<T> {
 
                 Map<String, ColumnInfo<T, Object>> headers = createHeaders(false);
                 int index = 0;
-                headerInfo.numLines = SafeUtils.readIntBE(decompressed, index);
+                int numHeaders = SafeUtils.readIntBE(decompressed, index);
                 index += 4;
                 List<ColumnInfo<T, Object>> validColumns = new ObjectArrayList<>();
                 int i = 0;
-                for (ColumnInfo<T, Object> col : headers.values()) {
+
+                List<ColumnInfo<T, Object>> headersArr = new ObjectArrayList<>(headers.values());
+                for (int j = 0; j < numHeaders; j++) {
+                    ColumnInfo<T, Object> col = headersArr.get(j);
                     col.setCachedValue(null);
                     boolean hasIndex = decompressed[index++] != 0;
                     if (hasIndex) {
@@ -52,13 +55,14 @@ public abstract class DataHeader<T> {
                         col.setIndex(i, headerInfo.bytesPerRow);
                         col.setCachedValue(null);
                         headerInfo.bytesPerRow += bytes;
-                        index += bytes;
                         i++;
                     } else {
                         col.setIndex(-1, -1);
                         col.setCachedValue(null);
                     }
                 }
+                headerInfo.numLines = SafeUtils.readIntBE(decompressed, index);
+                index += 4;
                 headerInfo.headers = validColumns.toArray(new ColumnInfo[0]);
                 headerInfo.initialOffset = index;
             }

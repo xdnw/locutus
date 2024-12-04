@@ -253,6 +253,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         if (modifier != null && !modifier.isEmpty()) {
             DataDumpParser parser = Locutus.imp().getDataDumper(true);
             try {
+                parser.load();
                 List<String> args = StringMan.split(modifier, ",");
                 Long timestamp = args.size() > 0 ? PrimitiveBindings.timestamp(args.get(0)) : null;
                 Long day = timestamp != null ? TimeUtil.getDay(timestamp) : null;

@@ -2261,7 +2261,7 @@ public class UtilityCommands {
         minNationAge = Math.max(minNationAge, timeframe);
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet()));
 
-        DataDumpParser parser = Locutus.imp().getDataDumper(true);
+        DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
         List<Long> validDays = parser.getDays(true, false);
         long today = TimeUtil.getDay();
         long finalMinDay = TimeUtil.getDay(minNationAge);
@@ -2323,7 +2323,7 @@ public class UtilityCommands {
     @Command(desc = "Get the VM history of a set of nations")
     public static String vmHistory(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
-        Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).getUtil().getCachedVmRanged(Long.MAX_VALUE, true);
+        Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).load().getUtil().getCachedVmRanged(Long.MAX_VALUE, true);
 
         Function<Integer, String> dayToString = day -> {
             if (day == Integer.MAX_VALUE) return "Present";

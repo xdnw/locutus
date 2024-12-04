@@ -1012,7 +1012,7 @@ public class ConflictManager {
     }
 
     public void saveDataCsvAllianceNames() throws IOException, ParseException {
-        Locutus.imp().getDataDumper(true).iterateAll(f -> true,
+        Locutus.imp().getDataDumper(true).load().iterateAll(f -> true,
                 (h, r) -> r.required(h.alliance_id, h.alliance),
                 null,
                 (day, r) -> {

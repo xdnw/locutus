@@ -73,6 +73,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -165,6 +166,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 //                executeStmt("DELETE FROM KICKS2 where from_aa = to_aa AND from_rank = to_rank");
             }
         } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (ParseException e) {
             throw new RuntimeException(e);
         }
 //        importLegacyNationLoot(true);
@@ -2415,7 +2420,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
     }
 
-    public void importKicks() {
+    public void importKicks() throws IOException, ParseException {
         executeStmt("DROP TABLE IF EXISTS KICKS2");
         createKicksTable();
         // check if kicks table exists
@@ -2424,7 +2429,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Map<Long, Map<Integer, Rank>> rankByDay = new Long2ObjectOpenHashMap<>();
 
         if (Settings.INSTANCE.DATABASE.DATA_DUMP.ENABLED) {
-            DataDumpParser data = Locutus.imp().getDataDumper(true);
+            DataDumpParser data = Locutus.imp().getDataDumper(true).load();
             data.iterateFiles((ThrowingTriConsumer<Long, NationsFile, CitiesFile>) (day, nationsFile, citiesFile) ->
             nationsFile.reader().required(f -> List.of(f.nation_id, f.alliance_id, f.alliance_position)).read(r -> {
                 int nationId = r.header.nation_id.get();
