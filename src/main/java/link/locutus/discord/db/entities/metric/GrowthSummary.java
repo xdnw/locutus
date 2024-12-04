@@ -5,20 +5,23 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
-import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.scheduler.QuadConsumer;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 import java.util.function.Predicate;
 
 public class GrowthSummary {
@@ -50,6 +53,14 @@ public class GrowthSummary {
         return allianceMembership;
     }
 
+    private ForkJoinTask<?> applyThreaded(ForkJoinPool pool, Set<Integer> allowedAlliances, long day, Map<Integer, DBNation> from, Map<Integer, Set<Integer>> fromNatByAA, Map<Integer, DBNation> to, Map<Integer, Set<Integer>> toNatByAA) {
+        return pool.submit(() -> {
+            for (int aaId : allowedAlliances) {
+                apply(aaId, day, from, fromNatByAA, to, toNatByAA);
+            }
+        });
+    }
+
     public void apply(int allianceId, long day, Map<Integer, DBNation> from, Map<Integer, Set<Integer>> fromNatByAA, Map<Integer, DBNation> to, Map<Integer, Set<Integer>> toNatByAA) {
         AllianceGrowthSummary summary = byAlliance.computeIfAbsent(allianceId, _ -> new AllianceGrowthSummary());
         Set<Integer> nationIds = new IntOpenHashSet();
@@ -73,24 +84,30 @@ public class GrowthSummary {
 
         Map<Integer, DBNation> last2 = null;
         Map<Integer, Set<Integer>> lastMembership = null;
-        long diffNanoConsume = 0;
-        long diffNanoGet = 0;
+
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+        List<ForkJoinTask<?>> tasks = new ObjectArrayList<>();
+
+        long start = System.nanoTime();
+
         for (long day = dayStart; day <= dayEnd; day++) {
             long start1 = System.nanoTime();
             Map<Integer, DBNation> now = (Map) dumper.getNations(day);
             Map<Integer, Set<Integer>> nowMembership = allianceMembership(now);
-            diffNanoGet += System.nanoTime() - start1;
             if (last2 == null) {
                 last2 = now;
                 lastMembership = nowMembership;
                 continue;
             }
 
-            start1 = System.nanoTime();
-            for (int aaId : allowedAlliances) {
-                apply(aaId, day, last2, lastMembership, now, nowMembership);
-            }
-            diffNanoConsume += System.nanoTime() - start1;
+            tasks.add(applyThreaded(
+                    forkJoinPool,
+                    allowedAlliances,
+                    day,
+                    last2,
+                    lastMembership,
+                    now,
+                    nowMembership));
 
             last2 = now;
             lastMembership = nowMembership;
@@ -98,16 +115,28 @@ public class GrowthSummary {
         if (dayEnd == TimeUtil.getDay()) {
             Map<Integer, DBNation> now = Locutus.imp().getNationDB().getNationsById();
             Map<Integer, Set<Integer>> nowMembership = allianceMembership(now);
-            long start1 = System.nanoTime();
-            for (int aaId : allowedAlliances) {
-                apply(aaId, dayEnd, last2, lastMembership, now, nowMembership);
-            }
-            diffNanoConsume += System.nanoTime() - start1;
+
+            tasks.add(applyThreaded(
+                    forkJoinPool,
+                    allowedAlliances,
+                    dayEnd,
+                    last2,
+                    lastMembership,
+                    now,
+                    nowMembership));
         }
 
-        long diffConsumeMs = diffNanoConsume / 1000000;
-        long diffGetMs = diffNanoGet / 1000000;
-        System.out.println("GrowthSummary: Consume: " + diffConsumeMs + "ms, Get: " + diffGetMs + "ms");
+        // ensure all tasks are done
+        for (ForkJoinTask<?> task : tasks) {
+            task.join();
+        }
+        // shutdown the pool
+        forkJoinPool.shutdown();
+
+        long diff = System.nanoTime() - start;
+
+        long diffMs = diff / 1000000;
+        System.out.println("GrowthSummary: Consume + Get: " + diffMs + "ms");
 
         return this;
     }
@@ -185,8 +214,6 @@ public class GrowthSummary {
                     summary.finalState.put(nationId, reason);
                 }
             }
-
-            MembershipChangeReason initialState = summary.initialState.get(nationId);
 
             if (reason != null && reason != MembershipChangeReason.UNCHANGED) {
                 summary.countByReason.compute(reason, (k, v) -> v == null ? 1 : v + 1);
