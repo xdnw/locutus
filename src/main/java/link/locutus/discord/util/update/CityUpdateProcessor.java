@@ -61,8 +61,8 @@ public class CityUpdateProcessor {
                 public String apply(GuildDB guildDB) {
                     int ideal = (int) (city.getInfra() - city.getInfra() % 50);
                     String msg = AutoAuditType.UNEVEN_INFRA.message
-                            .replace("{city}", PW.City.getCityUrl(city.id));
-                    return "You bought uneven infra in <" + PW.City.getCityUrl(city.id) + "> (" + MathMan.format(city.getInfra()) + " infra) but only get a building slot every `50` infra.\n" +
+                            .replace("{city}", PW.City.getCityUrl(city.getId()));
+                    return "You bought uneven infra in <" + PW.City.getCityUrl(city.getId()) + "> (" + MathMan.format(city.getInfra()) + " infra) but only get a building slot every `50` infra.\n" +
                             "You can enter e.g. `@" + ideal + "` to buy up to that amount";
                 }
             });
@@ -224,7 +224,7 @@ public class CityUpdateProcessor {
 
         if (increase <= 0) return;
 
-        MMRChange change = new MMRChange(cityTo.fetched, mmrFrom, mmrTo, cityTo.id, nation.getNation_id());
-        changes2.computeIfAbsent(nation.getNation_id(), f -> new ConcurrentHashMap<>()).put(cityTo.id, change);
+        MMRChange change = new MMRChange(cityTo.getFetched(), mmrFrom, mmrTo, cityTo.getId(), nation.getNation_id());
+        changes2.computeIfAbsent(nation.getNation_id(), f -> new ConcurrentHashMap<>()).put(cityTo.getId(), change);
     }
 }

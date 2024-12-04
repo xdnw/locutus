@@ -4,15 +4,14 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.city.BytesDBCity;
+import link.locutus.discord.db.entities.nation.SnapshotDataWrapper;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -20,7 +19,7 @@ import java.util.function.Predicate;
 
 public class CitiesFile extends DataFile<DBCity, CityHeader> {
     public CitiesFile(File file, Dictionary dict) {
-        super(file, new CityHeader(parseDateFromFile(file.getName()), dict));
+        super(file, parseDateFromFile(file.getName()), () -> new CityHeader(dict));
     }
 
     public Map<Integer, Map<Integer, DBCity>> readCities(Predicate<Integer> allowedNationIds, boolean condense) throws IOException {
@@ -31,27 +30,29 @@ public class CitiesFile extends DataFile<DBCity, CityHeader> {
             if (allowedNationIds.test(nationId)) {
                 DBCity city = header.getCity();
                 condenseFunc.accept(city);
-                result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.id, city);
+                result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.getId(), city);
             }
         });
         return result;
     }
 
-    private SoftReference<Map<Integer, int[]>> cityIdsCache = new SoftReference<>(null);
+    public record CityCache(Map<Integer, int[]> map, SnapshotDataWrapper<CityHeader> wrapper) {
+    }
 
-    private Map<Integer, DBCity> getCityMap(int[] offsets, byte[] data) {
+    private SoftReference<CityCache> cityIdsCache = new SoftReference<>(null);
+
+    private Map<Integer, DBCity> getCityMap(int[] offsets, SnapshotDataWrapper<CityHeader> wrapper) {
         if (offsets == null) return Collections.emptyMap();
         Map<Integer, DBCity> result = new Int2ObjectOpenHashMap<>();
         for (int offset : offsets) {
-            DBCity city = new DBCity(data, offset);
-            result.put(city.id, city);
+            DBCity city = new BytesDBCity(wrapper, offset);
+            result.put(city.getId(), city);
         }
         return result;
     }
 
-    private Map<Integer, int[]> generateCityIdsCache() throws IOException {
+    private Map<Integer, int[]> generateCityIdsCache(byte[] data) throws IOException {
         CityHeader header = getGlobalHeader();
-        byte[] data = this.getBytes();
         Header<DBCity> colInfo = header.readIndexes(data);
         int bytesPerRow = colInfo.bytesPerRow;
 
@@ -67,32 +68,28 @@ public class CitiesFile extends DataFile<DBCity, CityHeader> {
             int[] arr = value.toArray((int[]) null);
             offsetsArr.put(value.getInt(0), arr);
         }
-
         return offsetsArr;
     }
 
     private Map<Integer, DBCity> getCities(int nationId) throws IOException {
-        Map<Integer, int[]> cached = cityIdsCache.get();
+        CityCache cached = cityIdsCache.get();
         if (cached != null) {
             synchronized (this) {
-                return getCityMap(cached.get(nationId), getBytes());
+                return getCityMap(cached.map.get(nationId), cached.wrapper);
             }
         }
         synchronized (this) {
             cached = cityIdsCache.get();
-            if (cached != null) return getCityMap(cached.get(nationId), getBytes());
-            Map<Integer, int[]> newCache = generateCityIdsCache();
-            cityIdsCache = new SoftReference<>(newCache);
-            return getCityMap(newCache.get(nationId), getBytes());
+            if (cached != null) return getCityMap(cached.map.get(nationId), cached.wrapper);
+            byte[] data = this.getBytes();
+            Map<Integer, int[]> newCache = generateCityIdsCache(data);
+            cached = new CityCache(newCache, new SnapshotDataWrapper<>(getDate(), getGlobalHeader(), data, null));
+            cityIdsCache = new SoftReference<>(cached);
+            return getCityMap(cached.map.get(nationId), cached.wrapper);
         }
     }
 
     public Function<Integer, Map<Integer, DBCity>> loadCities() {
-        return new ThrowingFunction<Integer, Map<Integer, DBCity>>() {
-            @Override
-            public Map<Integer, DBCity> applyThrows(Integer nationId) throws IOException {
-                return getCities(nationId);
-            }
-        };
+        return (ThrowingFunction<Integer, Map<Integer, DBCity>>) this::getCities;
     }
 }

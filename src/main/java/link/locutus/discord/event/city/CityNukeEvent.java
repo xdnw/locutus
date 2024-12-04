@@ -6,7 +6,7 @@ import link.locutus.discord.util.TimeUtil;
 public class CityNukeEvent extends CityChangeEvent {
     public CityNukeEvent(int nation, DBCity previous, DBCity current) {
         super(nation, previous, current);
-        setTime(TimeUtil.getTimeFromTurn(current.nuke_turn));
+        setTime(TimeUtil.getTimeFromTurn(current.getNuke_turn()));
 
     }
 }

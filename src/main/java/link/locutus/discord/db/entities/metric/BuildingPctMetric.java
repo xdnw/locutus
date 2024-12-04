@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv3.csv.column.BuildingColumn;
 import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
@@ -19,10 +20,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class BuildingPctMetric implements IAllianceMetric {
-    private final Function<CityHeader, IntColumn<DBCity>> getHeader;
+    private final Function<CityHeader, BuildingColumn> getHeader;
     private final MilitaryBuilding building;
 
-    public BuildingPctMetric(MilitaryBuilding building, Function<CityHeader, IntColumn<DBCity>> getHeader) {
+    public BuildingPctMetric(MilitaryBuilding building, Function<CityHeader, BuildingColumn> getHeader) {
         this.getHeader = getHeader;
         this.building = building;
     }

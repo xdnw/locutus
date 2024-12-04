@@ -10,7 +10,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
@@ -127,7 +126,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
             if(land > city.getLand())
                 throw new IllegalArgumentException("The nation with the id: " + receiver.getId() + " has already received a land grant of " + land + " land and shouldn't get the land grant of " + parsed);
 
-            if (city.created > cutoff) {
+            if (city.getCreated() > cutoff) {
                 cost += receiver.landCost(Math.max(topCity.getOrDefault(entry.getKey(), 0D), city.getLand()), parsed);
             }
         }

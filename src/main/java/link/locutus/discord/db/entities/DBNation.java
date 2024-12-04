@@ -2564,7 +2564,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Number of cities built since date")
     public int getCitiesSince(@Timestamp long time) {
-        return (int) _getCitiesV3().values().stream().filter(city -> city.created > time).count();
+        return (int) _getCitiesV3().values().stream().filter(city -> city.getCreated() > time).count();
     }
 
     @Command(desc = "Number of cities at a date")
@@ -4281,7 +4281,7 @@ public abstract class DBNation implements NationOrAlliance {
             for (DBCity value : cities) {
                 buildingInfra += value.getNumBuildings() * 50;
                 infra += value.getInfra();
-                if (!value.powered) unpowered++;
+                if (!value.isPowered()) unpowered++;
             }
             infra /= cities.size();
             body.append("I:`" + MathMan.format(infra)).append("` ");

@@ -71,7 +71,7 @@ public class GrowthSummary {
 
         Map<Integer, DBNationSnapshot> last = null;
         for (long day = dayStart; day <= dayEnd; day++) {
-            Map<Integer, DBNationSnapshot> now = dumper.getNations(day, true, true, f -> true, f -> true, null);
+            Map<Integer, DBNationSnapshot> now = dumper.getNations(day);
             System.out.println("Get nations " + day + " | " + now.size());
             if (last == null) {
                 last = now;

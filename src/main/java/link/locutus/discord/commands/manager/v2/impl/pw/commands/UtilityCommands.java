@@ -2648,7 +2648,7 @@ public class UtilityCommands {
                            @Switch("l") Double land
     ) {
         DBNation nation = DBNation.getById(city.getNationId());
-        if (nation == null) return "Unknown nation: `" + city.nation_id + "`";
+        if (nation == null) return "Unknown nation: `" + city.getNation_id() + "`";
         if (infraLevel > 3500) return "Infra level too high (max 3,500)";
 
         JavaCity origin = city.toJavaCity(nation).setInfra(infraLevel).zeroNonMilitary();
@@ -2699,7 +2699,7 @@ public class UtilityCommands {
 
     ) {
         DBNation nation = DBNation.getById(city.getNationId());
-        if (nation == null) return "Unknown nation: `" + city.nation_id + "`";
+        if (nation == null) return "Unknown nation: `" + city.getNation_id() + "`";
         if (landLevel > 10000) return "Land level too high (max 10,000)";
 
         JavaCity origin = city.toJavaCity(nation).setLand(landLevel).zeroNonMilitary();

@@ -1,13 +1,10 @@
 package link.locutus.discord.db.entities.nation;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
-import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.column.ProjectColumn;
-import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.TimeUtil;
@@ -20,19 +17,21 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.apiv1.core.Utility.unsupported;
+
 public class DBNationSnapshot extends DBNation implements DBNationGetter{
-    private SnapshotDataWrapper wrapper;
+    private SnapshotDataWrapper<NationHeader> wrapper;
     private final int offset;
     // cache data??
 //    private Object[] cache;
 
-    public DBNationSnapshot(SnapshotDataWrapper wrapper, int offset) {
+    public DBNationSnapshot(SnapshotDataWrapper<NationHeader> wrapper, int offset) {
         this.wrapper = wrapper;
         this.offset = offset;
     }
 
     public void setSnapshotDate(long snapshotDate) {
-        this.wrapper = new SnapshotDataWrapper(snapshotDate, wrapper.header, wrapper.data, wrapper.getCities);
+        this.wrapper = new SnapshotDataWrapper<>(snapshotDate, wrapper.header, wrapper.data, wrapper.getCities);
     }
 
     @Override
@@ -42,14 +41,12 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
 
     @Override
     public DBNationSetter edit() {
-        unsupported();
-        return null;
+        throw unsupported();
     }
 
     @Override
     public DBNation copy() {
-        unsupported();
-        return null;
+        throw unsupported();
     }
 
     private <T> T get(ColumnInfo<DBNation, T> get) {
@@ -148,11 +145,6 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
         return this.wrapper.getCities != null;
     }
 
-    private UnsupportedOperationException unsupported() {
-        String parentMethodName = Thread.currentThread().getStackTrace()[2].getMethodName();
-        return new UnsupportedOperationException("The method " + parentMethodName + " is not yet supported for snapshots. Data may be available, please contact the developer.");
-    }
-
     @Override
     public DBAlliance getAlliance() {
         throw unsupported();
@@ -179,7 +171,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
             return wrapper.getCities.apply(getNation_id());
         }
         Map<Integer, DBCity> cities = super._getCitiesV3();
-        return cities.entrySet().stream().filter(e -> e.getValue().created <= wrapper.date).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return cities.entrySet().stream().filter(e -> e.getValue().getCreated() <= wrapper.date).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override
@@ -348,14 +340,12 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
 
     @Override
     public long _cityTimer() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
     public long _projectTimer() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
@@ -366,32 +356,27 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
 
     @Override
     public long _warPolicyTimer() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
     public long _domesticPolicyTimer() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
     public long _colorTimer() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
     public long _espionageFull() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
     public int _dcTurn() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override
@@ -411,8 +396,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
 
     @Override
     public double _gni() {
-        unsupported();
-        return 0;
+        throw unsupported();
     }
 
     @Override

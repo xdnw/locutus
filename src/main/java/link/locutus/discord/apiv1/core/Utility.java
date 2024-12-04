@@ -12,4 +12,9 @@ public class Utility {
             return apiKeyStr.replace(apiKeyStr.substring(i+4),"XXXX");
         return apiKeyStr.replace(apiKeyStr.substring(i+4,i+ampersand),"XXXX");
     }
+
+    public static final UnsupportedOperationException unsupported() {
+        String parentMethodName = Thread.currentThread().getStackTrace()[2].getMethodName();
+        return new UnsupportedOperationException("The method " + parentMethodName + " is not yet supported for snapshots. Data may be available, please contact the developer.");
+    }
 }

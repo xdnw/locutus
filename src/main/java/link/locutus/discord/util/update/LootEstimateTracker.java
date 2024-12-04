@@ -633,9 +633,9 @@ public class LootEstimateTracker {
     public void onCityBuy(CityCreateEvent event) {
         DBNation nation = event.getNation();
         DBCity city = event.getCurrent();
-        if (nation != null && city.created > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
+        if (nation != null && city.getCreated() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
             Map<Integer, DBCity> cities = nation._getCitiesV3();
-            int index = (int) cities.values().stream().filter(f -> f.created <= city.created).count();
+            int index = (int) cities.values().stream().filter(f -> f.getCreated() <= city.getCreated()).count();
             double cost = PW.City.cityCost(nation, index - 1, index);
             add(nation.getId(), event.getTimeCreated(), cost);
         }

@@ -1232,29 +1232,29 @@ public class PlaceholdersMap {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (MathMan.isInteger(input) || input.contains("/city/id=")) {
                 DBCity city = PWBindings.cityUrl(input);
-                return f -> f.id == city.id;
+                return f -> f.getId() == city.getId();
             }
             if (SpreadSheet.isSheet(input)) {
                 Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("city", "cities"), true, (type, str) -> parseCitiesSingle(store, str));
                 Set<Integer> cityIds = new IntOpenHashSet();
                 for (Set<DBCity> set : result) {
                     for (DBCity city : set) {
-                        cityIds.add(city.id);
+                        cityIds.add(city.getId());
                     }
                 }
-                return f -> cityIds.contains(f.id);
+                return f -> cityIds.contains(f.getId());
             }
             NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
             Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
             return f -> {
-                DBNation nation = DBNation.getById(f.nation_id);
+                DBNation nation = DBNation.getById(f.getNation_id());
                 if (nation == null) return false;
                 return filter.test(nation);
             };
         }, new Function<DBCity, String>() {
             @Override
             public String apply(DBCity dbCity) {
-                return dbCity.id + "";
+                return dbCity.getId() + "";
             }
         }) {
             @Override

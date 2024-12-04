@@ -33,7 +33,7 @@ public class NationsFileSnapshot implements INationSnapshot {
         this.day = day;
         this.dumper = dumper;
         this.loadCities = loadCities;
-        this.nations = dumper.getNations(day, loadCities, true, f -> true, f -> true, f -> true);
+        this.nations = dumper.getNations(day);
     }
 
     public NationsFileSnapshot loadVm(@Nullable Set<Integer> nationIds) throws IOException, ParseException {

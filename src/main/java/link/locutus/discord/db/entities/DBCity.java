@@ -27,82 +27,50 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-public class DBCity implements ICity {
-    public int id;
-    public int nation_id;
-    public long created;
-    public volatile long fetched;
-    public int land_cents;
-    public int infra_cents;
-    public boolean powered;
-    public byte[] buildings3;
-    public int nuke_turn;
-
-    public static final ToIntFunction<DBCity> GET_ID = c -> c.id;
-
-    public DBCity(int nation_id) {
-        this.nation_id = nation_id;
-        this.buildings3 = new byte[PW.City.Building.SIZE];
-    }
+public abstract class DBCity implements ICity {
+    public static final ToIntFunction<DBCity> GET_ID = c -> c.getId();
 
     public void setBuilding(Building building, int amt) {
-        if (buildings3.length != PW.City.Building.SIZE) {
-            buildings3 = this.toFull();
+        if (getBuildings3().length != PW.City.Building.SIZE) {
+            setBuildings3(this.toFull());
         }
-        buildings3[building.ordinal()] = (byte) amt;
+        getBuildings3()[building.ordinal()] = (byte) amt;
     }
 
-    public void setPowered(boolean powered) {
-        this.powered = powered;
-    }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public void setNation_id(int nation_id) {
-        this.nation_id = nation_id;
-    }
-
-    public DBCity(City cityV3) {
-        this.buildings3 = new byte[PW.City.Building.SIZE];
-        set(cityV3);
-    }
 
     public void setDateCreated(long date_created) {
-        this.created = date_created;
+        this.setCreated(date_created);
     }
 
-    public DBCity(DBCity toCopy) {
-        this.set(toCopy);
-    }
+
 
     @Command(desc = "Url of this city")
     public String getUrl() {
-        return PW.City.getCityUrl(id);
+        return PW.City.getCityUrl(getId());
     }
 
     public void condense() {
-        if (buildings3.length != PW.City.Building.SIZE) {
+        if (getBuildings3().length != PW.City.Building.SIZE) {
             return;
         }
-        for (byte b : buildings3) {
+        for (byte b : getBuildings3()) {
             if (b >= 0 && b < 16) continue;
             return;
         }
-        byte[] half = new byte[(buildings3.length + 1) >> 1];
-        for (int i = 0, j = 0; i < buildings3.length; i += 2, j++) {
-            int number1 = buildings3[i] & 0xFF;
-            int number2 = (i + 1 < buildings3.length) ? buildings3[i + 1] & 0xFF : 0; // Pad with 0 if uneven length
+        byte[] half = new byte[(getBuildings3().length + 1) >> 1];
+        for (int i = 0, j = 0; i < getBuildings3().length; i += 2, j++) {
+            int number1 = getBuildings3()[i] & 0xFF;
+            int number2 = (i + 1 < getBuildings3().length) ? getBuildings3()[i + 1] & 0xFF : 0; // Pad with 0 if uneven length
             byte packedNumbers = (byte)((number1 << 4) | number2);
             half[j] = packedNumbers;
         }
-        buildings3 = half;
+        setBuildings3(half);
     }
 
     public byte[] toFull() {
-        if (this.buildings3.length == PW.City.Building.SIZE) {
-            return buildings3;
+        if (this.getBuildings3().length == PW.City.Building.SIZE) {
+            return getBuildings3();
         }
         // convert to full size
         byte[] full = new byte[PW.City.Building.SIZE];
@@ -115,17 +83,17 @@ public class DBCity implements ICity {
 
     private byte[] createCopy() {
         byte[] full = toFull();
-        return full == buildings3 ? full.clone() : full;
+        return full == getBuildings3() ? full.clone() : full;
     }
 
     @Command(desc = "Number of buildings in this city")
     public int getNumBuildings() {
         int total = 0;
-        if (buildings3.length == PW.City.Building.SIZE) {
-            for (byte amt : buildings3) total += amt;
+        if (getBuildings3().length == PW.City.Building.SIZE) {
+            for (byte amt : getBuildings3()) total += amt;
         } else {
             // two buildings per byte
-            for (byte amt : buildings3) {
+            for (byte amt : getBuildings3()) {
                 if (amt == 0) continue;
                 total += amt & 0x0F;
                 total += (amt >> 4) & 0x0F;
@@ -135,11 +103,11 @@ public class DBCity implements ICity {
     }
 
     public int getBuildingOrdinal(int ordinal) {
-        if (buildings3.length == PW.City.Building.SIZE) {
-            return buildings3[ordinal];
+        if (getBuildings3().length == PW.City.Building.SIZE) {
+            return getBuildings3()[ordinal];
         } else {
             int byteIndex = ordinal >> 1;
-            byte pair = buildings3[byteIndex];
+            byte pair = getBuildings3()[byteIndex];
             if ((ordinal & 1) == 0) {
                 return (pair >> 4) & 0x0F;
             } else {
@@ -154,18 +122,18 @@ public class DBCity implements ICity {
     }
 
     public void set(SCityContainer container) {
-        this.id = Integer.parseInt(container.getCityId());
-        this.fetched = System.currentTimeMillis();
-        if (created == 0) {
-            created = this.fetched;
+        this.setId(Integer.parseInt(container.getCityId()));
+        this.setFetched(System.currentTimeMillis());
+        if (getCreated() == 0) {
+            setCreated(this.getFetched());
         }
-        this.infra_cents = (int) Math.round(Double.parseDouble(container.getInfrastructure()) * 100);
-        this.land_cents = (int) Math.round(Double.parseDouble(container.getLand()) * 100);
+        this.setInfra_cents((int) Math.round(Double.parseDouble(container.getInfrastructure()) * 100));
+        this.setLand_cents((int) Math.round(Double.parseDouble(container.getLand()) * 100));
     }
 
     public void update(boolean events) {
         NationDB db = Locutus.imp().getNationDB();
-        db.markCityDirty(-1, id, Long.MAX_VALUE);
+        db.markCityDirty(-1, getId(), Long.MAX_VALUE);
         if (events) {
             Locutus.imp().runEventsAsync(f -> db.updateDirtyCities(true, f));
         } else {
@@ -174,38 +142,38 @@ public class DBCity implements ICity {
     }
 
     public void set(DBCity toCopy) {
-        this.id = toCopy.id;
-        this.created = toCopy.created;
-        this.fetched = toCopy.fetched;
-        this.land_cents = toCopy.land_cents;
-        this.infra_cents = toCopy.infra_cents;
-        this.powered = toCopy.powered;;
-        this.buildings3 = toCopy.buildings3;
-        this.nuke_turn = toCopy.nuke_turn;
-        this.nation_id = toCopy.nation_id;
+        this.setId(toCopy.getId());
+        this.setCreated(toCopy.getCreated());
+        this.setFetched(toCopy.getFetched());
+        this.setLand_cents(toCopy.getLand_cents());
+        this.setInfra_cents(toCopy.getInfra_cents());
+        this.setPowered(toCopy.isPowered());;
+        this.setBuildings3(toCopy.getBuildings3());
+        this.setNuke_turn(toCopy.getNuke_turn());
+        this.setNation_id(toCopy.getNation_id());
     }
 
     public void setNuke_turn(long nuke_turn) {
-        this.nuke_turn = (int) nuke_turn;
+        this.setNuke_turn((int) nuke_turn);
     }
 
     public boolean set(City cityV3) {
-        this.fetched = System.currentTimeMillis();
-        this.nation_id = cityV3.getNation_id();
-        this.id = cityV3.getId();
-        this.created = cityV3.getDate().getTime();
-        this.land_cents = (int) Math.round(cityV3.getLand() * 100);
-        this.infra_cents = (int) Math.round(cityV3.getInfrastructure() * 100);
-        if (cityV3.getPowered() != null) this.powered = cityV3.getPowered();
+        this.setFetched(System.currentTimeMillis());
+        this.setNation_id(cityV3.getNation_id());
+        this.setId(cityV3.getId());
+        this.setCreated(cityV3.getDate().getTime());
+        this.setLand_cents((int) Math.round(cityV3.getLand() * 100));
+        this.setInfra_cents((int) Math.round(cityV3.getInfrastructure() * 100));
+        if (cityV3.getPowered() != null) this.setPowered(cityV3.getPowered());
 
         if (cityV3.getNuke_date() != null) {
             long nowTurn = TimeUtil.getTurn();
             long cutoff = nowTurn - 132;
             long cityTurn = TimeUtil.getTurn(cityV3.getNuke_date().getTime());
             if (cityTurn > nowTurn) {
-                if (this.nuke_turn == 0) nuke_turn = nuke_turn;
+                if (this.getNuke_turn() == 0) setNuke_turn(getNuke_turn());
             } else if (cityTurn > cutoff) {
-                this.nuke_turn = (int) cityTurn;
+                this.setNuke_turn((int) cityTurn);
             }
         }
 
@@ -319,7 +287,7 @@ public class DBCity implements ICity {
             newBuildings[Buildings.DRYDOCK.ordinal()] = (byte) (int) cityV3.getDrydock();
         }
         if (newBuildings != null) {
-            this.buildings3 = newBuildings;
+            this.setBuildings3(newBuildings);
             this.condense();
         }
         return newBuildings != null;
@@ -333,8 +301,8 @@ public class DBCity implements ICity {
 ////                    new Exception().printStackTrace();
 //////                    AlertUtil.error("Invalid city create", "city for " + nationId + " | " + this);
 ////                }
-                if (this.created > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
-                    Locutus.imp().getNationDB().setNationActive(nationId, this.created, eventConsumer);
+                if (this.getCreated() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
+                    Locutus.imp().getNationDB().setNationActive(nationId, this.getCreated(), eventConsumer);
                     eventConsumer.accept(new CityCreateEvent(nationId, this));
                 }
             }
@@ -343,8 +311,8 @@ public class DBCity implements ICity {
         boolean changed = false;
 
         DBCity previousClone = null;
-        if (this.land_cents != previous.land_cents) {
-            if (this.land_cents > previous.land_cents) {
+        if (this.getLand_cents() != previous.getLand_cents()) {
+            if (this.getLand_cents() > previous.getLand_cents()) {
                 if (eventConsumer != null) {
                     if (previousClone == null) previousClone = new DBCity(previous);
                     eventConsumer.accept(new CityLandBuyEvent(nationId, previousClone, this));
@@ -358,7 +326,7 @@ public class DBCity implements ICity {
             changed = true;
         }
 
-        if (this.nuke_turn != previous.nuke_turn) {
+        if (this.getNuke_turn() != previous.getNuke_turn()) {
             if (eventConsumer != null) {
                 if (previousClone == null) previousClone = new DBCity(previous);
                 eventConsumer.accept(new CityNukeEvent(nationId, previousClone, this));
@@ -366,7 +334,7 @@ public class DBCity implements ICity {
             changed = true;
         }
 
-        if (this.powered != previous.powered) {
+        if (this.isPowered() != previous.isPowered()) {
             if (eventConsumer != null) {
                 if (previousClone == null) previousClone = new DBCity(previous);
                 eventConsumer.accept(new CityPowerChangeEvent(nationId, previousClone, this));
@@ -382,17 +350,17 @@ public class DBCity implements ICity {
             changed = true;
         }
 
-        if (this.infra_cents != previous.infra_cents) {
-            if (previous.infra_cents > 0) {
-                if (this.infra_cents > previous.infra_cents + 1 && getNumBuildings() * 5000 <= this.infra_cents) {
-                    if (eventConsumer != null && (previous.infra_cents != 0 || this.infra_cents != 1000)) {
+        if (this.getInfra_cents() != previous.getInfra_cents()) {
+            if (previous.getInfra_cents() > 0) {
+                if (this.getInfra_cents() > previous.getInfra_cents() + 1 && getNumBuildings() * 5000 <= this.getInfra_cents()) {
+                    if (eventConsumer != null && (previous.getInfra_cents() != 0 || this.getInfra_cents() != 1000)) {
                         if (previousClone == null) previousClone = new DBCity(previous);
                         eventConsumer.accept(new CityInfraBuyEvent(nationId, previousClone, this));
                     }
-                } else if (this.infra_cents < previous.infra_cents - 1) {
+                } else if (this.getInfra_cents() < previous.getInfra_cents() - 1) {
                     if (eventConsumer != null) {
                         if (previousClone == null) previousClone = new DBCity(previous);
-                        boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.infra_cents * 0.01d);
+                        boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.getInfra_cents() * 0.01d);
                         Event event;
                         if (isAttack) {
                             event = new CityInfraDamageEvent(nationId, previousClone, this);
@@ -409,61 +377,32 @@ public class DBCity implements ICity {
         return changed;
     }
 
-    public DBCity(ResultSet rs, int nationId) throws SQLException {
-        id = rs.getInt("id");
-        created = rs.getLong("created");
-        infra_cents = rs.getInt("infra");
-        land_cents = rs.getInt("land");
-        powered = rs.getBoolean("powered");
-        buildings3 = rs.getBytes("improvements");
-        if (buildings3.length < 14) {
-            buildings3 = Arrays.copyOf(buildings3, buildings3.length + 1);
-        }
-        condense();
-        fetched = rs.getLong("update_flag");
-        nuke_turn = (int) TimeUtil.getTurn(rs.getLong("nuke_date"));
-        this.nation_id = nationId;
-    }
-
-    public DBCity(int id, JavaCity city) {
-        this(id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAgeDays()), city);
-    }
-
-    public DBCity(int id, long date, JavaCity city) {
-        this.id = id;
-        this.created = date;
-        this.infra_cents = (int) Math.round(city.getInfra() * 100);
-        this.land_cents = (int) Math.round(city.getLand() * 100);
-        this.buildings3 = city.getBuildings();
-        this.powered = city.getMetrics(f -> false).powered;
-    }
-
     public JavaCity toJavaCity(DBNation nation) {
         return toJavaCity(nation::hasProject);
     }
 
     @Override
     public int hashCode() {
-        return id;
+        return getId();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof DBCity city) {
-            return city.id == id;
+            return city.getId() == getId();
         }
         if (obj instanceof ArrayUtil.IntKey key) {
-            return key.key == id;
+            return key.key == getId();
         }
         if (obj instanceof Integer) {
-            return (int) obj == id;
+            return (int) obj == getId();
         }
         return false;
     }
 
     public JavaCity toJavaCity(Predicate<Project> hasProject) {
-        JavaCity javaCity = new JavaCity(this.createCopy(), infra_cents * 0.01, land_cents * 0.01, created, nuke_turn);
-        if (!powered && javaCity.getPoweredInfra() >= infra_cents * 0.01) {
+        JavaCity javaCity = new JavaCity(this.createCopy(), getInfra_cents() * 0.01, getLand_cents() * 0.01, getCreated(), getNuke_turn());
+        if (!isPowered() && javaCity.getPoweredInfra() >= getInfra_cents() * 0.01) {
             javaCity.getMetrics(hasProject).powered = false;
         }
         return javaCity;
@@ -480,68 +419,63 @@ public class DBCity implements ICity {
 
     @Command(desc = "Get city infrastructure")
     public double getInfra() {
-        return infra_cents * 0.01;
+        return getInfra_cents() * 0.01;
     }
 
     @Command(desc = "Get city land")
     public double getLand() {
-        return land_cents * 0.01;
+        return getLand_cents() * 0.01;
     }
 
     public void setInfra(double v) {
-        infra_cents = (int) Math.round(v * 100);
+        setInfra_cents((int) Math.round(v * 100));
     }
 
     public void setLand(double v) {
-        land_cents = (int) Math.round(v * 100);
+        setLand_cents((int) Math.round(v * 100));
     }
 
     @Command(desc = "Get nation id of this city")
     public int getNationId() {
-        return nation_id;
+        return getNation_id();
     }
 
     @Command(desc = "Get nation of this city")
     public DBNation getNation() {
-        return DBNation.getById(nation_id);
-    }
-
-    @Command(desc = "Get city ID")
-    public int getId() {
-        return id;
+        return DBNation.getById(getNation_id());
     }
 
 //    public long created;
     @Command(desc = "Get city created date")
     public long getCreatedMillis() {
-        return created;
+        return getCreated();
     }
 
     @Command(desc = "Get city age in milliseconds")
     public long getAgeMillis() {
-        return System.currentTimeMillis() - created;
+        return System.currentTimeMillis() - getCreated();
     }
 
     @Command(desc = "Get city age in days")
     public int getAgeDays() {
-        if (created <= 0) return 1;
-        if (created == Long.MAX_VALUE) return 1;
-        return (int) Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - created));
+        if (getCreated() <= 0) return 1;
+        if (getCreated() == Long.MAX_VALUE) return 1;
+        return (int) Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - getCreated()));
     }
     @Command(desc = "Is city powered")
     @Override
     public Boolean getPowered() {
-        return powered;
+        return isPowered();
     }
 
     @Command(desc = "The turns since epoch this city was last nuked, or 0")
     public int getNukeTurnEpoch() {
-        return nuke_turn;
+        return getNuke_turn();
     }
 
     @Command(desc = "Get the turns since last nuked, or 0")
     public int getNukeTurn() {
-        return (int) TimeUtil.getTurn() - nuke_turn;
+        return (int) TimeUtil.getTurn() - getNuke_turn();
     }
 
     private Predicate<Project> getProjectPredicate() {
@@ -555,7 +489,7 @@ public class DBCity implements ICity {
 
     @Override
     public int calcPollution(Predicate<Project> hasProject) {
-        return PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(nuke_turn));
+        return PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(getNuke_turn()));
     }
 
     @Command(desc = "Get city commerce")
@@ -602,7 +536,7 @@ public class DBCity implements ICity {
     @Override
     public double calcCrime(Predicate<Project> hasProject) {
         int commerce = PW.City.getCommerce(hasProject, this::getBuilding);
-        return PW.City.getCrime(hasProject, this::getBuilding, infra_cents, commerce);
+        return PW.City.getCrime(hasProject, this::getBuilding, getInfra_cents(), commerce);
     }
 
     @Command(desc = "Get the number of free infrastructure points in the city")
@@ -621,8 +555,8 @@ public class DBCity implements ICity {
 
     @Override
     public double calcDisease(Predicate<Project> hasProject) {
-        double pollution = PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(nuke_turn));
-        return PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
+        double pollution = PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(getNuke_turn()));
+        return PW.City.getDisease(hasProject, this::getBuilding, getInfra_cents(), getLand_cents(), pollution);
     }
 
     @Command(desc = "Get the population of the city")
@@ -632,12 +566,12 @@ public class DBCity implements ICity {
 
     @Override
     public int calcPopulation(Predicate<Project> hasProject) {
-        int pollution = PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(nuke_turn));
-        double disease = PW.City.getDisease(hasProject, this::getBuilding, infra_cents, land_cents, pollution);
+        int pollution = PW.City.getPollution(hasProject, this::getBuilding, PW.City.getNukePollution(getNuke_turn()));
+        double disease = PW.City.getDisease(hasProject, this::getBuilding, getInfra_cents(), getLand_cents(), pollution);
         int commerce = PW.City.getCommerce(hasProject, this::getBuilding);
-        double crime = PW.City.getCrime(hasProject, this::getBuilding, infra_cents, commerce);
+        double crime = PW.City.getCrime(hasProject, this::getBuilding, getInfra_cents(), commerce);
         int ageDays = getAgeDays();
-        return PW.City.getPopulation(infra_cents, crime, disease, ageDays);
+        return PW.City.getPopulation(getInfra_cents(), crime, disease, ageDays);
     }
 
     @Command(desc = "Get the amount of infrastructure powered by buildings")
@@ -679,4 +613,41 @@ public class DBCity implements ICity {
         double grossModifier = nation == null ? 1 : nation.getGrossModifier();
         return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);
     }
+
+    public abstract void setPowered(boolean powered);
+
+    public abstract void setId(int id);
+
+    public abstract void setNation_id(int nation_id);
+
+    @Command(desc = "Get city ID")
+    public abstract int getId();
+
+    public abstract int getNation_id();
+
+    public abstract long getCreated();
+
+    public abstract void setCreated(long created);
+
+    public abstract long getFetched();
+
+    public abstract void setFetched(long fetched);
+
+    public abstract int getLand_cents();
+
+    public abstract void setLand_cents(int land_cents);
+
+    public abstract int getInfra_cents();
+
+    public abstract void setInfra_cents(int infra_cents);
+
+    public abstract boolean isPowered();
+
+    public abstract byte[] getBuildings3();
+
+    public abstract void setBuildings3(byte[] buildings3);
+
+    public abstract int getNuke_turn();
+
+    public abstract void setNuke_turn(int nuke_turn);
 }

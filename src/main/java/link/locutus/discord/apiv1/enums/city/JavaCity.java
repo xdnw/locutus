@@ -17,20 +17,16 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.search.BFSUtil;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import it.unimi.dsi.fastutil.PriorityQueue;
-import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -56,7 +52,7 @@ public class JavaCity implements ICity {
         DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events::add);
         Locutus.imp().runEventsAsync(events);
         if (cityEntry != null) {
-            if (update && now > cityEntry.fetched) {
+            if (update && now > cityEntry.getFetched()) {
                 cityEntry.update(true);
             }
             DBNation nation = DBNation.getById(cityEntry.getNationId());

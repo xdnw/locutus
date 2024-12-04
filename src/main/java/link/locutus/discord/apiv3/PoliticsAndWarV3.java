@@ -379,9 +379,6 @@ public class PoliticsAndWarV3 {
         }
         HttpHeaders header = exchange.getHeaders();
         synchronized (rateLimitGlobal) {
-            if (header.containsKey("X-RateLimit-Reset-After")) {
-                rateLimitGlobal.resetAfterMs_unused = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
-            }
             if (header.containsKey("X-RateLimit-Limit")) {
                 rateLimitGlobal.limit = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Limit")).get(0));
             }
@@ -390,6 +387,10 @@ public class PoliticsAndWarV3 {
             }
             if (header.containsKey("X-RateLimit-Reset")) {
                 rateLimitGlobal.resetMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset")).get(0)) * 1000L;
+                System.out.println(":||REmove Set resetMs to " + (rateLimitGlobal.resetMs - System.currentTimeMillis()));
+            } else if (header.containsKey("X-RateLimit-Reset-After")) {
+                long ms = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
+                rateLimitGlobal.resetMs = System.currentTimeMillis() + ms;
             }
             if (header.containsKey("X-RateLimit-Interval")) {
                 rateLimitGlobal.intervalMs = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Interval")).get(0)) * 1000;

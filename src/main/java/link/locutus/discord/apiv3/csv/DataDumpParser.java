@@ -63,34 +63,16 @@ public class DataDumpParser {
         return snapshot;
     }
 
-    public Map<Integer, DBNationSnapshot> getNations(long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, @Nullable Predicate<DBNation> nationFilter) throws IOException, ParseException {
+    public Map<Integer, DBNationSnapshot> getNations(long day) throws IOException, ParseException {
         load();
         NationsFile nationsFile = getNearestNationFile(day);
         CitiesFile citiesFile = getNearestCityFile(day);
         Function<Integer, Map<Integer, DBCity>> fetchCities = null;
-        if (loadCities) {
+        if (citiesFile != null) {
             fetchCities = citiesFile.loadCities();
         }
-
-        Map<Integer, DBNationSnapshot> nationsById = nationsFile.readNations(allowedNations, allowedAlliances, includeVM, true, true);
-        if (loadCities) {
-            Map<Integer, Map<Integer, DBCity>> dayCities = citiesFile.readCities(nationsById::containsKey, false);
-            Iterator<Map.Entry<Integer, DBNationSnapshot>> iter = nationsById.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry<Integer, DBNationSnapshot> entry = iter.next();
-                DBNationSnapshot nation = entry.getValue();
-                if (nationFilter != null && !nationFilter.test(nation)) {
-                    iter.remove();
-                    continue;
-                }
-                Map<Integer, DBCity> cityMap = dayCities.get(entry.getKey());
-                if (cityMap == null) continue;
-                nation.setCityMap(cityMap);
-            }
-        } else if (nationFilter != null) {
-            nationsById.entrySet().removeIf(entry -> !nationFilter.test(entry.getValue()));
-        }
-        return (Map) nationsById;
+        Map<Integer, DBNationSnapshot> nations = nationsFile.readNations(fetchCities);
+        return nations;
     }
 
     public DataDumpParser load() throws IOException, ParseException {

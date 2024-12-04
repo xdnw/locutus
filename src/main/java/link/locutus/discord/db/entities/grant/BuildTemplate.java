@@ -443,7 +443,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         long projectOrLandDate = 0;
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
             DBCity city = entry.getValue();
-            createDate.put(entry.getKey(), city.created);
+            createDate.put(entry.getKey(), city.getCreated());
         }
 
         long lastAttackDate = 0;

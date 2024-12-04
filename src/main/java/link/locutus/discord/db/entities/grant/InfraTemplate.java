@@ -255,7 +255,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
             max = Math.max(city.getInfra(), max);
 
-            if (city.created > cutoff) {
+            if (city.getCreated() > cutoff) {
                 cost += receiver.infraCost(max, parsed);
             }
         }
