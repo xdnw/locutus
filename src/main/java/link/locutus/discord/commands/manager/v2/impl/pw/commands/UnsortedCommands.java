@@ -972,7 +972,7 @@ public class UnsortedCommands {
                           @Timediff Long includeWarCosts,
                           @Switch("s") @Timestamp Long snapshotDate
                           ) throws Exception {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         if (forceAtWar && forceAtPeace) {
             throw new IllegalArgumentException("Cannot set both `forceAtWar` and `forceAtPeace` (pick one)");
         }
@@ -1238,7 +1238,7 @@ public class UnsortedCommands {
                                @Switch("i") boolean includeInactive,
                                @Switch("d") @Timestamp Long snapshotDate) {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*");
-        Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild, false);
+        Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
 
         Map<DBNation, Number> profitByNation = new HashMap<>();

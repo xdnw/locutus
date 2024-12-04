@@ -2835,7 +2835,7 @@ public class WarCommands {
                            @Arg("List the military building count of each city instead of each nation")
                            @Switch("c") boolean showCities,
                            @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "city",

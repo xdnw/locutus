@@ -63,6 +63,10 @@ public class DataDumpParser {
         return snapshot;
     }
 
+    // old method, for reference only:
+    // (long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, @Nullable Predicate<DBNation> nationFilter) throws IOException, ParseException {
+
+    // new method
     public Map<Integer, DBNationSnapshot> getNations(long day) throws IOException, ParseException {
         load();
         NationsFile nationsFile = getNearestNationFile(day);

@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.core.Utility.unsupported;
 
-public class DBNationSnapshot extends DBNation implements DBNationGetter{
+public class DBNationSnapshot extends DBNation implements DBNationGetter {
     private SnapshotDataWrapper<NationHeader> wrapper;
     private final int offset;
     // cache data??
@@ -30,8 +30,24 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
         this.offset = offset;
     }
 
-    public void setSnapshotDate(long snapshotDate) {
-        this.wrapper = new SnapshotDataWrapper<>(snapshotDate, wrapper.header, wrapper.data, wrapper.getCities);
+    public int getOffset() {
+        return offset;
+    }
+
+    public SnapshotDataWrapper<NationHeader> getWrapper() {
+        return wrapper;
+    }
+
+    @Override
+    public long _enteredVm() {
+        return 0;
+    }
+
+    @Override
+    public long _leavingVm() {
+        int vmTurns = get(wrapper.header.vm_turns);
+        if (vmTurns > 0) return TimeUtil.getTurn(wrapper.date) + vmTurns;
+        return 0;
     }
 
     @Override
@@ -187,18 +203,6 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter{
     @Override
     public long _lastActiveMs() {
         return lastActiveMs(wrapper.date);
-    }
-
-    @Override
-    public long _enteredVm() {
-        return 0;
-    }
-
-    @Override
-    public long _leavingVm() {
-        int vmTurns = get(wrapper.header.vm_turns);
-        if (vmTurns > 0) return TimeUtil.getTurn(wrapper.date) + vmTurns;
-        return 0;
     }
 
     @Override

@@ -151,34 +151,20 @@ public class Conflict {
         long dayStart = TimeUtil.getDayFromTurn(getStartTurn());
         long dayEnd = getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getDayFromTurn(getEndTurn() + 11);
 
-        parser.iterateAll(day -> {
-            if (day >= dayStart && day <= dayEnd) {
-                return true;
+        for (Long day : parser.getDays(true, false)) {
+            if (day < dayStart || day > dayEnd) continue;
+            Map<Integer, DBNationSnapshot> nations = parser.getNations(day);
+            for (Map.Entry<Integer, DBNationSnapshot> entry : nations.entrySet()) {
+                int nationId = entry.getKey();
+                if (!nationIds.contains(nationId)) {
+                    Rank position = entry.getValue().getPositionEnum();
+                    if (position.id <= Rank.APPLICANT.id) continue;
+                    int allianceId = entry.getValue().getAlliance_id();
+                    if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) continue;
+                }
+                nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nationId, entry.getValue());
             }
-            return false;
-        }, null, null,
-                (day, header) -> {
-            int nationId = header.nation_id.get();
-            if (!nationIds.contains(nationId)) {
-                Rank position = header.alliance_position.get();
-                if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
-                if (!coalition1.hasAlliance(allianceId) && !coalition2.hasAlliance(allianceId)) return;
-            }
-//            long currentTimeMs = TimeUtil.getTimeFromDay(day);
-            DBNationSnapshot nation = header.getNation(f -> true, f -> true, false, true, true);
-            if (nation != null) {
-                nationsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nation.getId(), nation);
-            }
-        }, (day, cityHeader) -> {
-            Map<Integer, DBNation> nationMap = nationsByDay.get(day);
-            if (nationMap == null) return;
-            int nationId = cityHeader.nation_id.get();
-            DBNationSnapshot nation = (DBNationSnapshot) nationMap.get(nationId);
-            if (nation == null) return;
-            DBCity city = cityHeader.getCity();
-            nation.addCity(city);
-        }, null);
+        }
 
         long currentTurn = TimeUtil.getTurn();
 

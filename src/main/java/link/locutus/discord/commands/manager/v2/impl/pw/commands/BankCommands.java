@@ -1460,7 +1460,7 @@ public class BankCommands {
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON})
     @IsAlliance
     public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
         }

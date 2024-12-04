@@ -2270,8 +2270,7 @@ public class AdminCommands {
         snapshot.withNationFile(lastDay, new ThrowingConsumer<NationsFile>() {
             @Override
             public void acceptThrows(NationsFile file) throws IOException {
-                NationHeader header = file.getHeader();
-                file.reader().required(header.nation_id,
+                file.reader().required(header -> List.of(header.nation_id,
                         header.continent,
                         header.latitude,
                         header.longitude,
@@ -2280,7 +2279,7 @@ public class AdminCommands {
                         header.portrait_url,
                         header.leader_title,
                         header.nation_title
-                ).read(new ThrowingConsumer<NationHeader>() {
+                )).read(new ThrowingConsumer<NationHeader>() {
                     @Override
                     public void acceptThrows(NationHeader header) {
                         int nationId = header.nation_id.get();

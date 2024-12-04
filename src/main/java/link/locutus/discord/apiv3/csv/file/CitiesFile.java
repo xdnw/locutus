@@ -22,20 +22,6 @@ public class CitiesFile extends DataFile<DBCity, CityHeader> {
         super(file, parseDateFromFile(file.getName()), () -> new CityHeader(dict));
     }
 
-    public Map<Integer, Map<Integer, DBCity>> readCities(Predicate<Integer> allowedNationIds, boolean condense) throws IOException {
-        Consumer<DBCity> condenseFunc = condense ? DBCity::condense : city -> {};
-        Map<Integer, Map<Integer, DBCity>> result = new Int2ObjectOpenHashMap<>();
-        this.reader().all(false).read(header -> {
-            int nationId = header.nation_id.get();
-            if (allowedNationIds.test(nationId)) {
-                DBCity city = header.getCity();
-                condenseFunc.accept(city);
-                result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.getId(), city);
-            }
-        });
-        return result;
-    }
-
     public record CityCache(Map<Integer, int[]> map, SnapshotDataWrapper<CityHeader> wrapper) {
     }
 

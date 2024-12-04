@@ -7,9 +7,13 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.header.DataHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationSnapshotVm;
+import link.locutus.discord.db.entities.nation.SnapshotDataWrapper;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.TimeUtil;
 
@@ -91,15 +95,21 @@ public class NationsFileSnapshot implements INationSnapshot {
             long enteredVm = TimeUtil.getTurn(TimeUtil.getTimeFromDay((long) fetchDay));
             tasks.add(executor.submit(() -> {
                 try {
-                    Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay, loadCities, true, f -> ids.contains(f), f -> true, null);
+                    Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay);
                     for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
                         int nationId = entry2.getKey();
+                        if (!ids.contains(nationId)) continue;
                         DBNationSnapshot nation = entry2.getValue();
                         // update VM turns
-                        nation.setSnapshotDate(timestamp);
-                        nation.setLeaving_vmRaw(leavingVm.get(nationId));
-                        nation.setEntered_vm(enteredVm);
-                        nations.put(nationId, nation);
+                        long leavingVmMs = leavingVm.get(nationId);
+                        long enteredVmMs = enteredVm;
+                        int offset = nation.getOffset();
+
+                        SnapshotDataWrapper<NationHeader> wrapper = nation.getWrapper();
+                        SnapshotDataWrapper<NationHeader> newWrapper = new SnapshotDataWrapper<>(timestamp, wrapper.header, wrapper.data, wrapper.getCities);
+
+                        DBNationSnapshotVm newNation = new DBNationSnapshotVm(newWrapper, nation.getOffset(), leavingVmMs, enteredVmMs);
+                        nations.put(nationId, newNation);
                     }
                 } catch (IOException | ParseException e) {
                     e.printStackTrace();

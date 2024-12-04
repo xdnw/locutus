@@ -32,6 +32,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
@@ -282,7 +283,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         DBCity city = getDBCity(nationId, cityId);
         if (city != null && city.getNuke_turn() < turnstamp) {
 
-            DBCity copyOriginal = eventConsumer == null ? null : new DBCity(city);
+            DBCity copyOriginal = eventConsumer == null ? null : new SimpleDBCity(city);
             city.setNuke_turn((int) turnstamp);
             if (copyOriginal != null) eventConsumer.accept(new CityNukeEvent(nationId, copyOriginal, city));
 
@@ -295,7 +296,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public boolean setCityInfraFromAttack(int nationId, int cityId, double infra, long timestamp, Consumer<Event> eventConsumer) {
         DBCity city = getDBCity(nationId, cityId);
         if (city != null && city.getFetched() < timestamp && Math.round(infra * 100) != Math.round(city.getInfra() * 100)) {
-            DBCity previous = new DBCity(city);
+            DBCity previous = new SimpleDBCity(city);
             city.setInfra(infra);
             if (eventConsumer != null) {
                 if (Math.round(infra * 100) != Math.round(previous.getInfra() * 100)) {
@@ -1136,7 +1137,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             return;
         }
 
-        DBCity buffer = new DBCity(0);
+        DBCity buffer = new SimpleDBCity(0);
 
         int originalDirtySize = dirtyCities.size();
 
@@ -1149,7 +1150,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
             DBCity existing = getDBCity(nationId, cityId);
             if (existing == null) {
-                existing = new DBCity(nationId);
+                existing = new SimpleDBCity(nationId);
                 existing.setId(cityId);
                 existing.set(city);
                 if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
@@ -1341,7 +1342,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         updateCities(completeCitiesByNation, true, eventConsumer);
     }
     private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, boolean deleteMissing, Consumer<Event> eventConsumer) {
-        DBCity buffer = new DBCity(0);
+        DBCity buffer = new SimpleDBCity(0);
         List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
@@ -1498,7 +1499,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
-        DBCity buffer = new DBCity(0);
+        DBCity buffer = new SimpleDBCity(0);
         List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
@@ -1535,7 +1536,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 dirtyFlag.set(true);
             }
         } else {
-            existing = new DBCity(city);
+            existing = new SimpleDBCity(city);
             synchronized (citiesByNation) {
                 ArrayUtil.addElement(DBCity.class, citiesByNation, city.getNation_id(), existing);
             }
@@ -1656,7 +1657,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
      */
     private DBCity createCity(ResultSet rs) throws SQLException {
         int nationId = rs.getInt("nation");
-        return new DBCity(rs, nationId);
+        return new SimpleDBCity(rs, nationId);
     }
 
     private void loadPositions() throws SQLException {

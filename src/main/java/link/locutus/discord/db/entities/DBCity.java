@@ -12,6 +12,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.util.PW;
@@ -314,12 +315,12 @@ public abstract class DBCity implements ICity {
         if (this.getLand_cents() != previous.getLand_cents()) {
             if (this.getLand_cents() > previous.getLand_cents()) {
                 if (eventConsumer != null) {
-                    if (previousClone == null) previousClone = new DBCity(previous);
+                    if (previousClone == null) previousClone = new SimpleDBCity(previous);
                     eventConsumer.accept(new CityLandBuyEvent(nationId, previousClone, this));
                 }
             } else {
                 if (eventConsumer != null) {
-                    if (previousClone == null) previousClone = new DBCity(previous);
+                    if (previousClone == null) previousClone = new SimpleDBCity(previous);
                     eventConsumer.accept(new CityLandSellEvent(nationId, previousClone, this));
                 }
             }
@@ -328,7 +329,7 @@ public abstract class DBCity implements ICity {
 
         if (this.getNuke_turn() != previous.getNuke_turn()) {
             if (eventConsumer != null) {
-                if (previousClone == null) previousClone = new DBCity(previous);
+                if (previousClone == null) previousClone = new SimpleDBCity(previous);
                 eventConsumer.accept(new CityNukeEvent(nationId, previousClone, this));
             }
             changed = true;
@@ -336,7 +337,7 @@ public abstract class DBCity implements ICity {
 
         if (this.isPowered() != previous.isPowered()) {
             if (eventConsumer != null) {
-                if (previousClone == null) previousClone = new DBCity(previous);
+                if (previousClone == null) previousClone = new SimpleDBCity(previous);
                 eventConsumer.accept(new CityPowerChangeEvent(nationId, previousClone, this));
             }
             changed = true;
@@ -344,7 +345,7 @@ public abstract class DBCity implements ICity {
 
         if (!Arrays.equals(this.toFull(), previous.toFull())) {
             if (eventConsumer != null) {
-                if (previousClone == null) previousClone = new DBCity(previous);
+                if (previousClone == null) previousClone = new SimpleDBCity(previous);
                 eventConsumer.accept(new CityBuildingChangeEvent(nationId, previousClone, this));
             }
             changed = true;
@@ -354,12 +355,12 @@ public abstract class DBCity implements ICity {
             if (previous.getInfra_cents() > 0) {
                 if (this.getInfra_cents() > previous.getInfra_cents() + 1 && getNumBuildings() * 5000 <= this.getInfra_cents()) {
                     if (eventConsumer != null && (previous.getInfra_cents() != 0 || this.getInfra_cents() != 1000)) {
-                        if (previousClone == null) previousClone = new DBCity(previous);
+                        if (previousClone == null) previousClone = new SimpleDBCity(previous);
                         eventConsumer.accept(new CityInfraBuyEvent(nationId, previousClone, this));
                     }
                 } else if (this.getInfra_cents() < previous.getInfra_cents() - 1) {
                     if (eventConsumer != null) {
-                        if (previousClone == null) previousClone = new DBCity(previous);
+                        if (previousClone == null) previousClone = new SimpleDBCity(previous);
                         boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.getInfra_cents() * 0.01d);
                         Event event;
                         if (isAttack) {

@@ -105,52 +105,7 @@ public class CityHeader extends DataHeader<DBCity> {
 //    public int powered;  // boolean
     public final BooleanColumn<DBCity> powered = new BooleanColumn<>(this, DBCity::setPowered).alias("");
 
-    private DBCity cached;
-
     @Override
     public void clear() {
-        cached = null;
-    }
-
-    public DBCity getCity() {
-        int cityId = this.city_id.get();
-        if (cached != null && cached.getId() == cityId) {
-            return cached;
-        }
-        DBCity city = new DBCity(this.nation_id.get());
-        city.setId(cityId);
-        city.setCreated(this.date_created.get());
-        city.setInfra(this.infrastructure.get());
-        city.setLand(this.land.get());
-
-        byte[] buildings = city.getBuildings3();
-        buildings[Buildings.OIL_POWER.ordinal()] += this.oil_power_plants.get();
-        buildings[Buildings.WIND_POWER.ordinal()] += this.wind_power_plants.get();
-        buildings[Buildings.COAL_POWER.ordinal()] += this.coal_power_plants.get();
-        buildings[Buildings.NUCLEAR_POWER.ordinal()] += this.nuclear_power_plants.get();
-        buildings[Buildings.COAL_MINE.ordinal()] += this.coal_mines.get();
-        buildings[Buildings.OIL_WELL.ordinal()] += this.oil_wells.get();
-        buildings[Buildings.URANIUM_MINE.ordinal()] += this.uranium_mines.get();
-        buildings[Buildings.IRON_MINE.ordinal()] += this.iron_mines.get();
-        buildings[Buildings.LEAD_MINE.ordinal()] += this.lead_mines.get();
-        buildings[Buildings.BAUXITE_MINE.ordinal()] += this.bauxite_mines.get();
-        buildings[Buildings.FARM.ordinal()] += this.farms.get();
-        buildings[Buildings.POLICE_STATION.ordinal()] += this.police_stations.get();
-        buildings[Buildings.HOSPITAL.ordinal()] += this.hospitals.get();
-        buildings[Buildings.RECYCLING_CENTER.ordinal()] += this.recycling_centers.get();
-        buildings[Buildings.SUBWAY.ordinal()] += this.subway.get();
-        buildings[Buildings.SUPERMARKET.ordinal()] += this.supermarkets.get();
-        buildings[Buildings.BANK.ordinal()] += this.banks.get();
-        buildings[Buildings.MALL.ordinal()] += this.shopping_malls.get();
-        buildings[Buildings.STADIUM.ordinal()] += this.stadiums.get();
-        buildings[Buildings.GAS_REFINERY.ordinal()] += this.oil_refineries.get();
-        buildings[Buildings.ALUMINUM_REFINERY.ordinal()] += this.aluminum_refineries.get();
-        buildings[Buildings.STEEL_MILL.ordinal()] += this.steel_mills.get();
-        buildings[Buildings.MUNITIONS_FACTORY.ordinal()] += this.munitions_factories.get();
-        buildings[Buildings.BARRACKS.ordinal()] += this.barracks.get();
-        buildings[Buildings.FACTORY.ordinal()] += this.factories.get();
-        buildings[Buildings.HANGAR.ordinal()] += this.hangars.get();
-        buildings[Buildings.DRYDOCK.ordinal()] += this.drydocks.get();
-        return cached = city;
     }
 }

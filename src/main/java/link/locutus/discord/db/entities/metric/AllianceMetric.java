@@ -192,7 +192,6 @@ public enum AllianceMetric implements IAllianceMetric {
 
 
         private final Map<Integer, DBNation> nationMap = new Int2ObjectOpenHashMap<>();
-        private final Map<Integer, List<DBCity>> cityMap = new Int2ObjectOpenHashMap<>();
         private Map<DBWar, Long> warEndDates;
 
         @Override

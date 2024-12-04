@@ -25,6 +25,11 @@ public class NationsFile extends DataFile<DBNation, NationHeader> {
 
     private ThreadLocal<SoftReference<Map<Integer, DBNationSnapshot>>> nationsCache = ThreadLocal.withInitial(() -> new SoftReference<>(null));
 
+    public synchronized Map<Integer, DBNationSnapshot> readNations(CitiesFile cf) throws IOException {
+        Function<Integer, Map<Integer, DBCity>> fetchCities = cf == null ? null : cf.loadCities();
+        return readNations(fetchCities);
+    }
+
     public synchronized Map<Integer, DBNationSnapshot> readNations(Function<Integer, Map<Integer, DBCity>> fetchCities) throws IOException {
         SoftReference<Map<Integer, DBNationSnapshot>> softRef = nationsCache.get();
         Map<Integer, DBNationSnapshot> cached = (softRef != null) ? softRef.get() : null;

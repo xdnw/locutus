@@ -609,7 +609,7 @@ public class StatCommands {
                               @Switch("r") boolean reverseOrder,
                               @Switch("s") @Timestamp Long snapshotDate,
                               @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
-        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         Map<DBNation, Double> attributeByNation = new HashMap<>();
         for (DBNation nation : nationsSet) {
             Double value = attribute.apply(nation);

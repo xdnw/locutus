@@ -182,9 +182,8 @@ public class DataUtil {
             long timestamp = TimeUtil.getTimeFromDay(day);
 
             parser.withNationFile(day, file -> {
-                NationHeader header = file.getHeader();
                 try {
-                    file.reader().required(header.nation_id, header.date_created).read(new Consumer<NationHeader>() {
+                    file.reader().required(f -> List.of(f.nation_id, f.date_created)).read(new Consumer<NationHeader>() {
                         @Override
                         public void accept(NationHeader header) {
                             int nationId = header.nation_id.get();
@@ -341,8 +340,7 @@ public class DataUtil {
         for (Map.Entry<Long, CitiesFile> entry : parser.getCityFilesByDay().entrySet()) {
             long day = entry.getKey();
             CitiesFile cities = entry.getValue();
-            CityHeader header = cities.getHeader();
-            cities.reader().required(header.nation_id, header.city_id, header.infrastructure).read(new Consumer<CityHeader>() {
+            cities.reader().required(header -> List.of(header.nation_id, header.city_id, header.infrastructure)).read(new Consumer<CityHeader>() {
                 @Override
                 public void accept(CityHeader cityHeader) {
                     int nationId = cityHeader.nation_id.get();

@@ -5,6 +5,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
@@ -901,20 +902,31 @@ public final class PW {
         return Map.entry(balance, response.toString());
     }
 
-    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild, boolean includeVM) {
+    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);
 
         long day = TimeUtil.getDay(snapshotDate);
         boolean loadCities = true;
-        Predicate<Integer> allowedNations = f -> true;
-        Predicate<Integer> allowedAlliances = f -> true;
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
         ValueStore store = ph.createLocals(guild, null, null);
         Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
         try {
-            Map<Integer, DBNationSnapshot> nationMap = dumper.getNations(day, loadCities, includeVM, allowedNations, allowedAlliances, filter);
-            return new ObjectOpenHashSet<>(nationMap.values());
+            Map<Integer, DBNationSnapshot> nationMap = dumper.getNations(day);
+            Set<DBNation> result = new ObjectOpenHashSet<>();
+            if (filter != null) {
+                for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
+                    DBNationSnapshot snapshot = entry.getValue();
+                    if (filter.test(snapshot)) {
+                        result.add(snapshot);
+                    }
+                }
+            } else {
+                for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
+                    result.add(entry.getValue());
+                }
+            }
+            return result;
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
         }

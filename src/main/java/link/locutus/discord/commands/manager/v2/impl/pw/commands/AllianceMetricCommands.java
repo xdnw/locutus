@@ -11,6 +11,8 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.CitiesFile;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -37,11 +39,13 @@ import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricMode;
 import link.locutus.discord.db.entities.metric.CountNationMetric;
 import link.locutus.discord.db.entities.metric.IAllianceMetric;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
 import javax.security.auth.login.LoginException;
@@ -60,6 +64,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -217,69 +222,71 @@ public class AllianceMetricCommands {
         AtomicDouble cityTotal = new AtomicDouble();
 
         long dayStart = TimeUtil.getDay() - 365;
-        parser.iterateAll(f -> f > dayStart, null, null, new BiConsumer<Long, NationHeader>() {
 
-            private double[] dailyOld = ResourceType.getBuffer();
-            private double[] dailyNew = ResourceType.getBuffer();
+        parser.load().iterateFiles(new ThrowingTriConsumer<Long, NationsFile, CitiesFile>() {
+            private final double[] dailyOld = ResourceType.getBuffer();
+            private final double[] dailyNew = ResourceType.getBuffer();
             private double citExpenses = 0;
 
             @Override
-            public void accept(Long day, NationHeader header) {
-                if (day != previousDay.get()) {
-                    System.out.println(
-                            TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day)) + "\t" +
-                                    MathMan.format(ResourceType.convertedTotal(dailyOld)) + "\t" +
-                                    MathMan.format(ResourceType.convertedTotal(dailyNew)) + "\t" +
-                                    MathMan.format(citExpenses)
-                    );
+            public void acceptThrows(Long day, NationsFile nf, CitiesFile cf) throws IOException {
+                if (day <= dayStart) return;
+                Map<Integer, DBNationSnapshot> nations = nf.readNations(cf);
 
-                    dayTask.accept(day);
+                System.out.println(
+                        TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day)) + "\t" +
+                                MathMan.format(ResourceType.convertedTotal(dailyOld)) + "\t" +
+                                MathMan.format(ResourceType.convertedTotal(dailyNew)) + "\t" +
+                                MathMan.format(citExpenses)
+                );
+                dayTask.accept(day);
+                Arrays.fill(dailyOld, 0);
+                Arrays.fill(dailyNew, 0);
+                citExpenses = 0;
+                previousDay.set(day);
 
-                    Arrays.fill(dailyOld, 0);
-                    Arrays.fill(dailyNew, 0);
-                    citExpenses = 0;
-                    previousDay.set(day);
-                }
+                for (Map.Entry<Integer, DBNationSnapshot> entry : nations.entrySet()) {
+                    DBNationSnapshot nation = entry.getValue();
+                    int nationId = entry.getKey();
+                    int cities = nation.getCities();
+                    Set<Project> projects = nation.getProjects();
 
-                DBNation nation = header.getNation(f -> true, f -> true, true, true, true);
-                currentProjects.put(nation.getId(), nation.getProjects());
-                currentCities.put(nation.getId(), nation.getCities());
-                Set<Project> previous = previousProjects.get(nation.getId());
-                if (previous == null) return;
-                int numCities = previousCities.getOrDefault(nation.getId(), 0);
-                if (numCities < nation.getCities()) {
-                    double cityCost = PW.City.cityCost(nation, numCities, nation.getCities());
-                    citExpenses += cityCost;
-                    cityTotal.addAndGet(cityCost);
-                    citiesByTier.merge(numCities, cityCost, Double::sum);
-                }
+                    currentProjects.put(nationId, projects);
+                    currentCities.put(nationId, cities);
+                    Set<Project> previous = previousProjects.get(nationId);
+                    if (previous == null) return;
+                    int numCities = previousCities.getOrDefault(nationId, 0);
+                    if (numCities < cities) {
+                        double cityCost = PW.City.cityCost(nation, numCities, cities);
+                        citExpenses += cityCost;
+                        cityTotal.addAndGet(cityCost);
+                        citiesByTier.merge(numCities, cityCost, Double::sum);
+                    }
 
-                for (Project project : nation.getProjects()) {
-                    if (!previous.contains(project)) {
-                        double[] oldCost = cost(project, false).clone();
-                        double[] newCost = cost(project, true).clone();
+                    for (Project project : projects) {
+                        if (!previous.contains(project)) {
+                            double[] oldCost = cost(project, false).clone();
+                            double[] newCost = cost(project, true).clone();
 
-                        // add to maps
-                        ResourceType.add(dailyOld, oldCost.clone());
-                        ResourceType.add(dailyNew, newCost.clone());
-                        // add to totals
-                        ResourceType.add(totalOld, oldCost.clone());
-                        ResourceType.add(totalNew, newCost.clone());
+                            // add to maps
+                            ResourceType.add(dailyOld, oldCost.clone());
+                            ResourceType.add(dailyNew, newCost.clone());
+                            // add to totals
+                            ResourceType.add(totalOld, oldCost.clone());
+                            ResourceType.add(totalNew, newCost.clone());
 
-                        ResourceType.add(oldCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), oldCost.clone());
-                        ResourceType.add(newCostByTier.computeIfAbsent(nation.getCities(), f -> ResourceType.getBuffer()), newCost.clone());
+                            ResourceType.add(oldCostByTier.computeIfAbsent(cities, f -> ResourceType.getBuffer()), oldCost.clone());
+                            ResourceType.add(newCostByTier.computeIfAbsent(cities, f -> ResourceType.getBuffer()), newCost.clone());
 
-                        amtByTier.computeIfAbsent(project, f -> new HashMap<>()).merge(nation.getCities(), 1, Integer::sum);
-                        numProject.merge(project, 1, Integer::sum);
+                            amtByTier.computeIfAbsent(project, f -> new HashMap<>()).merge(cities, 1, Integer::sum);
+                            numProject.merge(project, 1, Integer::sum);
+                        }
                     }
                 }
-            }
-        }, null, new Consumer<Long>() {
-            @Override
-            public void accept(Long day) {
 
             }
         });
+
         // print output
         System.out.println("Total annual revenue:");
         System.out.println("Total " + ResourceType.resourcesToString(revenueTotal));
@@ -351,7 +358,7 @@ public class AllianceMetricCommands {
                                 @Switch("s") @Timestamp Long snapshotDate,
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv) throws IOException {
-        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).write(io, 0, attachJson, attachCsv);
     }
 
