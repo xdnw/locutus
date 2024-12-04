@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.column.NumberColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
@@ -113,13 +114,13 @@ public class CountNationMetric implements IAllianceMetric {
                 }
             });
 
-            importer.setCityReader(metric, new BiConsumer<Long, CityHeader>() {
+            importer.setCityReader(metric, new BiConsumer<Long, CityHeaderReader>() {
                 @Override
-                public void accept(Long day, CityHeader header) {
-                    int nationId = header.nation_id.get();
+                public void accept(Long day, CityHeaderReader r) {
+                    int nationId = r.header.nation_id.get();
                     DBNationSnapshot nation = nationMap.get(nationId);
                     if (nation == null) return;
-                    DBCity city = header.getCity();
+                    DBCity city = r.getCity();
                     nation.addCity(city);
                 }
             });
@@ -148,25 +149,25 @@ public class CountNationMetric implements IAllianceMetric {
                 }
             };
         } else {
-            importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(metric, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
+                public void accept(Long day, NationHeaderReader r) {
                     if (!includeApplicants) {
-                        Rank position = header.alliance_position.get();
+                        Rank position = r.header.alliance_position.get();
                         if (position.id <= Rank.APPLICANT.id) return;
                     }
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
                     if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
                     if (!includeVM) {
-                        Integer vm_turns = header.vm_turns.get();
+                        Integer vm_turns = r.header.vm_turns.get();
                         if (vm_turns == null || vm_turns > 0) return;
                     }
                     double amt;
                     if (getHeader != null) {
-                        amt = getHeader.apply(header).get().doubleValue();
+                        amt = getHeader.apply(r.header).get().doubleValue();
                     } else {
-                        DBNation nation = header.getNation(includeVM, true);
+                        DBNation nation = r.getNation(includeVM, true);
                         if (filter != null && !filter.test(nation)) return;
                         amt = countNation.apply(nation).doubleValue();
                     }
@@ -176,7 +177,7 @@ public class CountNationMetric implements IAllianceMetric {
                             countAllianceMetricModeByAA.merge(allianceId, 1, Integer::sum);
                             break;
                         case PER_CITY:
-                            int cities = header.cities.get();
+                            int cities = r.header.cities.get();
                             countAllianceMetricModeByAA.merge(allianceId, cities, Integer::sum);
                             break;
                         case TOTAL:

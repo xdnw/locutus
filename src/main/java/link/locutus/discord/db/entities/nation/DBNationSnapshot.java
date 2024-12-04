@@ -30,6 +30,18 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
         this.offset = offset;
     }
 
+    public void addCity(DBCity city) {
+        if (wrapper instanceof UniqueDataWrapper<NationHeader> unique) {
+            unique.getCities().put(city.getId(), city);
+        } else if (wrapper instanceof LocalDataWrapper<NationHeader> local) {
+            UniqueDataWrapper<NationHeader> unique = new UniqueDataWrapper<>(wrapper.date, wrapper.header);
+            wrapper = unique;
+            unique.getCities().put(city.getId(), city);
+        } else {
+            throw new IllegalStateException("Cannot add city to non-unique or local wrapper.");
+        }
+    }
+
     public int getOffset() {
         return offset;
     }

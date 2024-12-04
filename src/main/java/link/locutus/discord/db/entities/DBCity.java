@@ -29,7 +29,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 public abstract class DBCity implements ICity {
-    public static final ToIntFunction<DBCity> GET_ID = c -> c.getId();
+    public static final ToIntFunction<SimpleDBCity> GET_ID = c -> c.getId();
 
     public void setBuilding(Building building, int amt) {
         if (getBuildings3().length != PW.City.Building.SIZE) {

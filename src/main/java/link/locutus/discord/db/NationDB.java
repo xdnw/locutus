@@ -123,7 +123,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (citiesByNation) {
             ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-                ArrayUtil.iterateElements(DBCity.class, entry.getValue(), dbCity -> {
+                ArrayUtil.iterateElements(SimpleDBCity.class, entry.getValue(), dbCity -> {
                     ByteArrayList currBytes = new ByteArrayList(dbCity.getBuildings3());
                     ByteArrayList existing = cityBytes.get(currBytes);
                     if (existing != null) {
@@ -230,11 +230,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    public DBCity getDBCity(int nationId, int cityId) {
+    public SimpleDBCity getDBCity(int nationId, int cityId) {
         synchronized (citiesByNation) {
             Object nationCities = citiesByNation.get(nationId);
             if (nationCities != null) {
-                return ArrayUtil.getElement(DBCity.class, nationCities, cityId);
+                return ArrayUtil.getElement(SimpleDBCity.class, nationCities, cityId);
             }
         }
         return null;
@@ -1117,7 +1117,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 if (nation != null && nation.getVm_turns() > 0) continue;
                 Object cities = natEntry.getValue();
                 synchronized (cities) {
-                    ArrayUtil.iterateElements(DBCity.class, natEntry.getValue(), city -> citiesToDeleteToNationId.put(city.getId(), natId));
+                    ArrayUtil.iterateElements(SimpleDBCity.class, natEntry.getValue(), city -> citiesToDeleteToNationId.put(city.getId(), natId));
                 }
             }
         }
@@ -1148,7 +1148,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             // City was fetched, do not delete it
             citiesToDeleteToNationId.remove(cityId);
 
-            DBCity existing = getDBCity(nationId, cityId);
+            SimpleDBCity existing = getDBCity(nationId, cityId);
             if (existing == null) {
                 existing = new SimpleDBCity(nationId);
                 existing.setId(cityId);
@@ -1156,7 +1156,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
                 dirtyCities.add(cityId);
                 synchronized (citiesByNation) {
-                    ArrayUtil.addElement(DBCity.class, citiesByNation, nationId, existing);
+                    ArrayUtil.addElement(SimpleDBCity.class, citiesByNation, nationId, existing);
                 }
             } else {
                 double maxInfra = Double.parseDouble(city.getMaxinfra());
@@ -1180,7 +1180,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 int cityId = entry.getKey();
                 int nationId = entry.getValue();
                 synchronized (citiesByNation) {
-                    ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
+                    ArrayUtil.removeElement(SimpleDBCity.class, citiesByNation, nationId, cityId);
                 }
             }
             deleteCitiesInDB(citiesToDeleteToNationId.keySet());
@@ -1305,7 +1305,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         int[] maxIds = new int[1];
         synchronized (citiesByNation) {
             for (Object cityMap : citiesByNation.values()) {
-                ArrayUtil.iterateElements(DBCity.class, cityMap, (city) -> {
+                ArrayUtil.iterateElements(SimpleDBCity.class, cityMap, (city) -> {
                     maxIds[0] = Math.max(city.getId(), maxIds[0]);
                     cityIds.add(city.getId());
                 });
@@ -1361,13 +1361,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             synchronized (citiesByNation) {
                 Object map = citiesByNation.get(nationId);
                 if (map != null) {
-                    int existingCities = ArrayUtil.countElements(DBCity.class, map);
+                    int existingCities = ArrayUtil.countElements(SimpleDBCity.class, map);
                     if (existingCities == cities.size()) {
                         dirtyCityNations.remove(nationId);
                     }
                     if (deleteMissing) {
                         IntList toDelete = new IntArrayList();
-                        ArrayUtil.iterateElements(DBCity.class, map, dbCity -> {
+                        ArrayUtil.iterateElements(SimpleDBCity.class, map, dbCity -> {
                             City city = cities.get(dbCity.getId());
                             if (city == null) {
                                 toDelete.add(dbCity.getId());
@@ -1376,8 +1376,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         });
                         for (int cityId : toDelete) {
                             citiesToDelete.add(cityId);
-                            DBCity city = ArrayUtil.getElement(DBCity.class, map, cityId);
-                            ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
+                            DBCity city = ArrayUtil.getElement(SimpleDBCity.class, map, cityId);
+                            ArrayUtil.removeElement(SimpleDBCity.class, citiesByNation, nationId, cityId);
                             if (eventConsumer != null) {
                                 if (events == null) events = new ArrayList<>();
                                 events.add(new CityDeleteEvent(nationId, city));
@@ -1412,7 +1412,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Map<Integer, Integer> cityIdNationId = new HashMap<>();
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-                ArrayUtil.iterateElements(DBCity.class, entry.getValue(), dbCity -> {
+                ArrayUtil.iterateElements(SimpleDBCity.class, entry.getValue(), dbCity -> {
                     if (cityIds.contains(dbCity.getId())) {
                         cityIdNationId.put(dbCity.getId(), entry.getKey());
                     }
@@ -1437,7 +1437,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             int cityId = entry.getKey();
             DBCity existing = null;
             synchronized (citiesByNation) {
-                existing =ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
+                existing =ArrayUtil.removeElement(SimpleDBCity.class, citiesByNation, nationId, cityId);
             }
             if (eventConsumer != null && existing != null) {
                 eventConsumer.accept(new CityDeleteEvent(nationId, existing));
@@ -1527,7 +1527,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
      * @return
      */
     private DBCity processCityUpdate(City city, DBCity buffer, Consumer<Event> eventConsumer, AtomicBoolean dirtyFlag) {
-        DBCity existing = getDBCity(city.getNation_id(), city.getId());
+        SimpleDBCity existing = getDBCity(city.getNation_id(), city.getId());
 
         if (existing != null) {
             buffer.set(existing);
@@ -1538,7 +1538,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         } else {
             existing = new SimpleDBCity(city);
             synchronized (citiesByNation) {
-                ArrayUtil.addElement(DBCity.class, citiesByNation, city.getNation_id(), existing);
+                ArrayUtil.addElement(SimpleDBCity.class, citiesByNation, city.getNation_id(), existing);
             }
             if (existing.runChangeEvents(city.getNation_id(), null, eventConsumer)) {
                 dirtyFlag.set(true);
@@ -1639,9 +1639,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         SelectBuilder builder = getDb().selectBuilder("CITY_BUILDS").select("*");
         try (ResultSet rs = builder.executeRaw()) {
             while (rs.next()) {
-                DBCity city = createCity(rs);
+                SimpleDBCity city = createCity(rs);
                 int nationId = city.getNationId();
-                ArrayUtil.addElement(DBCity.class, citiesByNation, nationId, city);
+                ArrayUtil.addElement(SimpleDBCity.class, citiesByNation, nationId, city);
                 total++;
             }
         }
@@ -1655,7 +1655,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
      * @return (nation id, city)
      * @throws SQLException
      */
-    private DBCity createCity(ResultSet rs) throws SQLException {
+    private SimpleDBCity createCity(ResultSet rs) throws SQLException {
         int nationId = rs.getInt("nation");
         return new SimpleDBCity(rs, nationId);
     }
@@ -4683,7 +4683,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public Map<Integer, DBCity> getCitiesV3(int nation_id) {
         synchronized (citiesByNation) {
             Object cities = citiesByNation.get(nation_id);
-            return ArrayUtil.toMap(DBCity.class, cities, DBCity.GET_ID);
+            return (Map) ArrayUtil.toMap(SimpleDBCity.class, cities, DBCity.GET_ID);
         }
     }
 
@@ -4691,7 +4691,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (citiesByNation) {
             Set<DBCity> result = new ObjectOpenHashSet<>();
             for (Object cities : citiesByNation.values()) {
-                ArrayUtil.iterateElements(DBCity.class, cities, result::add);
+                ArrayUtil.iterateElements(SimpleDBCity.class, cities, result::add);
             }
             return result;
         }
@@ -4714,7 +4714,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
                 Object cities = entry.getValue();
-                DBCity city = ArrayUtil.getElement(DBCity.class, cities, cityId);
+                DBCity city = ArrayUtil.getElement(SimpleDBCity.class, cities, cityId);
                 if (city != null) {
                     return city;
                 }
@@ -4734,7 +4734,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         List<DBCity> allCities = new ArrayList<>();
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-                ArrayUtil.iterateElements(DBCity.class, entry.getValue(), allCities::add);
+                ArrayUtil.iterateElements(SimpleDBCity.class, entry.getValue(), allCities::add);
             }
         }
         saveCities(allCities);
@@ -4855,7 +4855,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 synchronized (citiesByNation) {
                     Object cities = citiesByNation.remove(id);
                     if (cities != null) {
-                        ArrayUtil.iterateElements(DBCity.class, cities, city -> citiesToDelete.add(city.getId()));
+                        ArrayUtil.iterateElements(SimpleDBCity.class, cities, city -> citiesToDelete.add(city.getId()));
                     }
                 }
                 synchronized (nationsById) {
