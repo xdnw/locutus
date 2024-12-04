@@ -38,6 +38,27 @@ public class GrowthSummary {
         this.dayEnd = dayEnd;
     }
 
+    private Map<Integer, Set<Integer>> allianceMembership(Map<Integer, DBNation> nations) {
+        Map<Integer, Set<Integer>> allianceMembership = new Int2ObjectOpenHashMap<>();
+        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
+            DBNation nation = entry.getValue();
+            int aaId = nation.getAlliance_id();
+            if (aaId != 0 && nation.getPositionEnum().id >= Rank.MEMBER.id) {
+                allianceMembership.computeIfAbsent(aaId, f -> new IntOpenHashSet()).add(entry.getKey());
+            }
+        }
+        return allianceMembership;
+    }
+
+    public void apply(int allianceId, long day, Map<Integer, DBNation> from, Map<Integer, Set<Integer>> fromNatByAA, Map<Integer, DBNation> to, Map<Integer, Set<Integer>> toNatByAA) {
+        AllianceGrowthSummary summary = byAlliance.computeIfAbsent(allianceId, _ -> new AllianceGrowthSummary());
+        Set<Integer> nationIds = new IntOpenHashSet();
+        nationIds.addAll(fromNatByAA.getOrDefault(allianceId, Set.of()));
+        nationIds.addAll(toNatByAA.getOrDefault(allianceId, Set.of()));
+        if (nationIds.isEmpty()) return;
+        updateDay(day, summary, allianceId, from, to, nationIds);
+    }
+
     public GrowthSummary run() throws IOException, ParseException {
         DataDumpParser dumper = Locutus.imp().getDataDumper(true).load();
         if (dayEnd > TimeUtil.getDay()) {
@@ -50,46 +71,44 @@ public class GrowthSummary {
             throw new IllegalArgumentException("Invalid day range specified for growth summary: " + dayStart + " to " + dayEnd + " (max " + MAX_DAYS + ")");
         }
 
-        QuadConsumer<Integer, Long, Map<Integer, DBNation>, Map<Integer, DBNation>> apply = new QuadConsumer<Integer, Long, Map<Integer, DBNation>, Map<Integer, DBNation>>() {
-            @Override
-            public void consume(Integer aaId, Long day, Map<Integer, DBNation> from, Map<Integer, DBNation> to) {
-                AllianceGrowthSummary summary = byAlliance.computeIfAbsent(aaId, _ -> new AllianceGrowthSummary());
-                Set<Integer> nationIds = new IntOpenHashSet();
-                for (Map.Entry<Integer, DBNation> entry : from.entrySet()) {
-                    if (entry.getValue().getAlliance_id() == aaId && entry.getValue().getPositionEnum().id >= Rank.MEMBER.id) {
-                        nationIds.add(entry.getKey());
-                    }
-                }
-                for (Map.Entry<Integer, DBNation> entry : to.entrySet()) {
-                    if (entry.getValue().getAlliance_id() == aaId && entry.getValue().getPositionEnum().id >= Rank.MEMBER.id) {
-                        nationIds.add(entry.getKey());
-                    }
-                }
-                updateDay(day, summary, aaId, from, to, nationIds);
-            }
-        };
-
-        Map<Integer, DBNationSnapshot> last = null;
+        Map<Integer, DBNation> last2 = null;
+        Map<Integer, Set<Integer>> lastMembership = null;
+        long diffNanoConsume = 0;
+        long diffNanoGet = 0;
         for (long day = dayStart; day <= dayEnd; day++) {
-            Map<Integer, DBNationSnapshot> now = dumper.getNations(day);
-            System.out.println("Get nations " + day + " | " + now.size());
-            if (last == null) {
-                last = now;
+            long start1 = System.nanoTime();
+            Map<Integer, DBNation> now = (Map) dumper.getNations(day);
+            Map<Integer, Set<Integer>> nowMembership = allianceMembership(now);
+            diffNanoGet += System.nanoTime() - start1;
+            if (last2 == null) {
+                last2 = now;
+                lastMembership = nowMembership;
                 continue;
             }
 
+            start1 = System.nanoTime();
             for (int aaId : allowedAlliances) {
-                apply.consume(aaId, day, (Map) last, (Map) now);
+                apply(aaId, day, last2, lastMembership, now, nowMembership);
             }
+            diffNanoConsume += System.nanoTime() - start1;
 
-            last = now;
+            last2 = now;
+            lastMembership = nowMembership;
         }
         if (dayEnd == TimeUtil.getDay()) {
             Map<Integer, DBNation> now = Locutus.imp().getNationDB().getNationsById();
+            Map<Integer, Set<Integer>> nowMembership = allianceMembership(now);
+            long start1 = System.nanoTime();
             for (int aaId : allowedAlliances) {
-                apply.consume(aaId, dayEnd, (Map) last, now);
+                apply(aaId, dayEnd, last2, lastMembership, now, nowMembership);
             }
+            diffNanoConsume += System.nanoTime() - start1;
         }
+
+        long diffConsumeMs = diffNanoConsume / 1000000;
+        long diffGetMs = diffNanoGet / 1000000;
+        System.out.println("GrowthSummary: Consume: " + diffConsumeMs + "ms, Get: " + diffGetMs + "ms");
+
         return this;
     }
 
@@ -108,7 +127,7 @@ public class GrowthSummary {
 
             MembershipChangeReason reason;
             if (to == null) {
-                if (DBNation.getById(from.getId()) == null) {
+                if (DBNation.getById(nationId) == null) {
                     reason = MembershipChangeReason.DELETED;
                 } else {
                     reason = MembershipChangeReason.VM_LEFT;

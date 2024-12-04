@@ -210,8 +210,8 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     fos.write(compressed);
                 }
             });
+            parent.getDictionary().save();
         }
-        globalHeader.getDictionary().save();
         binExists = true;
         if (deleteCsv) {
             csvFile.deleteOnExit();

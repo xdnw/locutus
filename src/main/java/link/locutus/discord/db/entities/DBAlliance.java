@@ -153,13 +153,14 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public Map<AllianceMetric, Map<Long, Double>> getMetricsAt(ValueStore store, Set<AllianceMetric> metrics, long turnStart, long turnEnd) {
         String method = "metrics" + metrics;
         ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, method);
-        return scoped.getMap(this,
+        Map<AllianceMetric, Map<Long, Double>> result = scoped.getMap(this,
         (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>>>)
-            f -> {
-                Set<Integer> aaIds = new IntOpenHashSet(f.size());
-                for (DBAlliance alliance : f) aaIds.add(alliance.allianceId);
-                return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metrics, turnStart, turnEnd);
+        f -> {
+            Set<Integer> aaIds = new IntOpenHashSet(f.size());
+            for (DBAlliance alliance : f) aaIds.add(alliance.allianceId);
+            return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, metrics, turnStart, turnEnd);
         });
+        return result == null ? Collections.emptyMap() : result;
     }
 
     @Override
@@ -1894,6 +1895,19 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 .getReasonCounts(reasons::contains);
     }
 
+    @Command(desc = "The number of membership changes by reason\n" +
+            "Nations can have multiple membership changes over a duration\n" +
+            "- RECRUITED: 7d or less nation becomes member\n" +
+            "- JOINED: Nation >7d becomes member\n" +
+            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
+            "- DELETED: nation deletes\n" +
+            "- VM_LEFT: Nation goes into VM\n" +
+            "- VM_RETURNED: Nation leaves VM")
+    public int getMembershipChangeAssetCount(ValueStore store, Set<MembershipChangeReason> reasons, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
+        return getGrowthSummary(store, start, end)
+                .getAssetCounts(assets::contains, reasons::contains, false);
+    }
+
     @Command(desc = "The market value of the specified assets associated with the provided membership change reasons\n" +
             "Nations can have multiple membership changes over a duration\n" +
             "- RECRUITED: 7d or less nation becomes member\n" +
@@ -1950,6 +1964,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             for (Map.Entry<Long, Double> entry2 : entry.getValue().entrySet()) {
                 buffer[type.ordinal()] += entry2.getValue();
             }
+        }
+        double factor = 1/12d;
+        for (int i = 0; i < buffer.length; i++) {
+            buffer[i] *= factor;
         }
         return ResourceType.resourcesToMap(buffer);
     }
