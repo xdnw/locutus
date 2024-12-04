@@ -23,16 +23,17 @@ public class NationsFile extends DataFile<DBNation, NationHeader> {
         super(file, parseDateFromFile(file.getName()), () -> new NationHeader(dict));
     }
 
-    private SoftReference<Map<Integer, DBNationSnapshot>> nationsCache = new SoftReference<>(null);
+    private ThreadLocal<SoftReference<Map<Integer, DBNationSnapshot>>> nationsCache = ThreadLocal.withInitial(() -> new SoftReference<>(null));
 
     public synchronized Map<Integer, DBNationSnapshot> readNations(Function<Integer, Map<Integer, DBCity>> fetchCities) throws IOException {
-        Map<Integer, DBNationSnapshot> cached = nationsCache.get();
+        SoftReference<Map<Integer, DBNationSnapshot>> softRef = nationsCache.get();
+        Map<Integer, DBNationSnapshot> cached = (softRef != null) ? softRef.get() : null;
         if (cached != null) return cached;
         synchronized (this) {
-            cached = nationsCache.get();
+            softRef = nationsCache.get();
+            cached = (softRef != null) ? softRef.get() : null;
             if (cached != null) return cached;
 
-            // set cached
             NationHeader header = getGlobalHeader();
             byte[] data = this.getBytes();
             Header<DBNation> colInfo = header.readIndexes(data);
@@ -47,22 +48,8 @@ public class NationsFile extends DataFile<DBNation, NationHeader> {
                     result.put(nation.getNation_id(), nation);
                 }
             }
-            nationsCache = new SoftReference<>(result);
+            nationsCache.set(new SoftReference<>(result));
             return result;
         }
     }
-
-//    public Map<Integer, DBNationSnapshot> readNations(Predicate<Integer> allowedNationIds, Predicate<Integer> allowedAllianceIds, boolean allowVm, boolean allowNoVmCol, boolean allowDeleted) throws IOException {
-//        Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>();
-//        this.reader().all(false).read(new ThrowingConsumer<NationHeader>() {
-//            @Override
-//            public void acceptThrows(NationHeader header) throws ParseException {
-//                DBNationSnapshot nation = header.getNation(allowedNationIds, allowedAllianceIds, allowVm, allowNoVmCol, allowDeleted);
-//                if (nation != null) {
-//                    result.put(nation.getNation_id(), nation);
-//                }
-//            }
-//        });
-//        return result;
-//    }
 }
