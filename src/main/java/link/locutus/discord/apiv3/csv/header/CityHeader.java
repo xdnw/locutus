@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.column.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;
@@ -104,8 +105,4 @@ public class CityHeader extends DataHeader<DBCity> {
     };
 //    public int powered;  // boolean
     public final BooleanColumn<DBCity> powered = new BooleanColumn<>(this, DBCity::setPowered).alias("");
-
-    @Override
-    public void clear() {
-    }
 }

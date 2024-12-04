@@ -3,9 +3,10 @@ package link.locutus.discord.apiv3.csv.file;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.city.BytesDBCity;
-import link.locutus.discord.db.entities.nation.SnapshotDataWrapper;
+import link.locutus.discord.db.entities.nation.GlobalDataWrapper;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 
 import java.io.File;
@@ -13,21 +14,19 @@ import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
-public class CitiesFile extends DataFile<DBCity, CityHeader> {
+public class CitiesFile extends DataFile<DBCity, CityHeader, CityHeaderReader> {
     public CitiesFile(File file, Dictionary dict) {
-        super(file, parseDateFromFile(file.getName()), () -> new CityHeader(dict));
+        super(file, parseDateFromFile(file.getName()), () -> new CityHeader(dict), ((header, date) -> new CityHeaderReader(header, date)));
     }
 
-    public record CityCache(Map<Integer, int[]> map, SnapshotDataWrapper<CityHeader> wrapper) {
+    public record CityCache(Map<Integer, int[]> map, GlobalDataWrapper<CityHeader> wrapper) {
     }
 
     private SoftReference<CityCache> cityIdsCache = new SoftReference<>(null);
 
-    private Map<Integer, DBCity> getCityMap(int[] offsets, SnapshotDataWrapper<CityHeader> wrapper) {
+    private Map<Integer, DBCity> getCityMap(int[] offsets, GlobalDataWrapper<CityHeader> wrapper) {
         if (offsets == null) return Collections.emptyMap();
         Map<Integer, DBCity> result = new Int2ObjectOpenHashMap<>();
         for (int offset : offsets) {
@@ -69,7 +68,7 @@ public class CitiesFile extends DataFile<DBCity, CityHeader> {
             if (cached != null) return getCityMap(cached.map.get(nationId), cached.wrapper);
             byte[] data = this.getBytes();
             Map<Integer, int[]> newCache = generateCityIdsCache(data);
-            cached = new CityCache(newCache, new SnapshotDataWrapper<>(getDate(), getGlobalHeader(), data, null));
+            cached = new CityCache(newCache, new GlobalDataWrapper<>(getDate(), getGlobalHeader(), data, null));
             cityIdsCache = new SoftReference<>(cached);
             return getCityMap(cached.map.get(nationId), cached.wrapper);
         }

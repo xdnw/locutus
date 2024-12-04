@@ -13,6 +13,7 @@ import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -2279,28 +2280,28 @@ public class AdminCommands {
                         header.portrait_url,
                         header.leader_title,
                         header.nation_title
-                )).read(new ThrowingConsumer<NationHeader>() {
+                )).read(new ThrowingConsumer<NationHeaderReader>() {
                     @Override
-                    public void acceptThrows(NationHeader header) {
-                        int nationId = header.nation_id.get();
+                    public void acceptThrows(NationHeaderReader r) {
+                        int nationId = r.header.nation_id.get();
 
-                        double lat = header.latitude.get();
-                        double lon = header.longitude.get();
+                        double lat = r.header.latitude.get();
+                        double lon = r.header.longitude.get();
                         long pair = pairLocation.apply(lat, lon);
-                        Continent continent = header.continent.get();
+                        Continent continent = r.header.continent.get();
                         mostCommonLocationPairs.computeIfAbsent(continent, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(pair, k -> new AtomicInteger()).incrementAndGet();
-                        flagCounts.merge(header.flag_url.get(), 1, Integer::sum);
+                        flagCounts.merge(r.header.flag_url.get(), 1, Integer::sum);
 
                         if (nationIds.contains(nationId)) {
                             List<Object> row = new ArrayList<>();
-                            row.add(header.nation_id.get());
-                            row.add(header.continent.get());
+                            row.add(r.header.nation_id.get());
+                            row.add(r.header.continent.get());
                             row.add(pair);
-                            row.add(header.currency.get());
-                            row.add(header.flag_url.get());
-                            row.add(header.portrait_url.get());
-                            row.add(header.leader_title.get());
-                            row.add(header.nation_title.get());
+                            row.add(r.header.currency.get());
+                            row.add(r.header.flag_url.get());
+                            row.add(r.header.portrait_url.get());
+                            row.add(r.header.leader_title.get());
+                            row.add(r.header.nation_title.get());
                             data.put(DBNation.getById(nationId), row);
                         }
                     }

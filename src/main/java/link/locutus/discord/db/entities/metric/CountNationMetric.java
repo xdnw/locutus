@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.column.NumberColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
@@ -91,24 +92,23 @@ public class CountNationMetric implements IAllianceMetric {
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
         if (includeCities) {
             Map<Integer, DBNationSnapshot> nationMap = new Int2ObjectOpenHashMap<>();
-
-            importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(metric, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
+                public void accept(Long day, NationHeaderReader r) {
                     if (!includeApplicants) {
-                        Rank position = header.alliance_position.get();
+                        Rank position = r.header.alliance_position.get();
                         if (position.id <= Rank.APPLICANT.id) return;
                     }
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
                     if (allianceFilter != null && !allianceFilter.test(allianceId)) return;
                     if (!includeVM) {
-                        Integer vm_turns = header.vm_turns.get();
+                        Integer vm_turns = r.header.vm_turns.get();
                         if (vm_turns == null || vm_turns > 0) return;
                     }
-                    DBNationSnapshot nation = header.getNation(includeVM, true);
+                    DBNationSnapshot nation = r.getNation(includeVM, true);
                     if (nation != null) {
-                        nationMap.put(header.nation_id.get(), nation);
+                        nationMap.put(r.header.nation_id.get(), nation);
                     }
                 }
             });

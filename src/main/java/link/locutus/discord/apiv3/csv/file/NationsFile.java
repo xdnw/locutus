@@ -1,26 +1,23 @@
 package link.locutus.discord.apiv3.csv.file;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.nation.SnapshotDataWrapper;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import net.jpountz.util.SafeUtils;
+import link.locutus.discord.db.entities.nation.DataWrapper;
+import link.locutus.discord.db.entities.nation.GlobalDataWrapper;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
-import java.text.ParseException;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
-public class NationsFile extends DataFile<DBNation, NationHeader> {
+public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderReader> {
     public NationsFile(File file, Dictionary dict) {
-        super(file, parseDateFromFile(file.getName()), () -> new NationHeader(dict));
+        super(file, parseDateFromFile(file.getName()), () -> new NationHeader(dict), ((header, date) -> new NationHeaderReader(header, date)));
     }
 
     private ThreadLocal<SoftReference<Map<Integer, DBNationSnapshot>>> nationsCache = ThreadLocal.withInitial(() -> new SoftReference<>(null));
@@ -44,7 +41,7 @@ public class NationsFile extends DataFile<DBNation, NationHeader> {
             Header<DBNation> colInfo = header.readIndexes(data);
             int bytesPerRow = colInfo.bytesPerRow;
 
-            SnapshotDataWrapper wrapper = new SnapshotDataWrapper(getDate(), header, data, fetchCities);
+            DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities);
 
             Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>();
             for (int i = colInfo.initialOffset; i < data.length; i += bytesPerRow) {

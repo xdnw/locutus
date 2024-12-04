@@ -5,25 +5,22 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.column.BuildingColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
-import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.nation.SnapshotDataWrapper;
+import link.locutus.discord.db.entities.nation.GlobalDataWrapper;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 import static link.locutus.discord.apiv1.core.Utility.unsupported;
 import static link.locutus.discord.apiv1.enums.city.building.Buildings.BUILDINGS;
 
 public class BytesDBCity extends DBCity {
-    private final SnapshotDataWrapper<CityHeader> wrapper;
+    private final GlobalDataWrapper<CityHeader> wrapper;
     private final int offset;
 
-    public BytesDBCity(SnapshotDataWrapper<CityHeader> wrapper, int offset) {
+    public BytesDBCity(GlobalDataWrapper<CityHeader> wrapper, int offset) {
         this.wrapper = wrapper;
         this.offset = offset;
     }

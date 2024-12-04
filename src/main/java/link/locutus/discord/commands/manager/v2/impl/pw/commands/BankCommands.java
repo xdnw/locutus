@@ -2218,7 +2218,7 @@ public class BankCommands {
     @Command(desc = "Sheet of projects each nation has")
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.PROJECT_SHEET);
         }

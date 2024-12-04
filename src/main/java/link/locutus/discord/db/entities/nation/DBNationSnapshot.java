@@ -20,12 +20,12 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.apiv1.core.Utility.unsupported;
 
 public class DBNationSnapshot extends DBNation implements DBNationGetter {
-    private SnapshotDataWrapper<NationHeader> wrapper;
+    private DataWrapper<NationHeader> wrapper;
     private final int offset;
     // cache data??
 //    private Object[] cache;
 
-    public DBNationSnapshot(SnapshotDataWrapper<NationHeader> wrapper, int offset) {
+    public DBNationSnapshot(DataWrapper<NationHeader> wrapper, int offset) {
         this.wrapper = wrapper;
         this.offset = offset;
     }
@@ -34,7 +34,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
         return offset;
     }
 
-    public SnapshotDataWrapper<NationHeader> getWrapper() {
+    public DataWrapper<NationHeader> getWrapper() {
         return wrapper;
     }
 
@@ -45,7 +45,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public long _leavingVm() {
-        int vmTurns = get(wrapper.header.vm_turns);
+        int vmTurns = wrapper.get(wrapper.header.vm_turns, offset);
         if (vmTurns > 0) return TimeUtil.getTurn(wrapper.date) + vmTurns;
         return 0;
     }
@@ -63,14 +63,6 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     @Override
     public DBNation copy() {
         throw unsupported();
-    }
-
-    private <T> T get(ColumnInfo<DBNation, T> get) {
-        try {
-            return get.read(this.wrapper.data, get.getOffset() + this.offset);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static BiPredicate<Project, NationHeader> hasProject = new BiPredicate<Project, NationHeader>() {
@@ -149,7 +141,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int getNumProjects() {
-        return get(wrapper.header.projects);
+        return wrapper.get(wrapper.header.projects, offset);
     }
 
     @Override
@@ -158,7 +150,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     }
 
     public boolean hasCityData() {
-        return this.wrapper.getCities != null;
+        return this.wrapper.getGetCities() != null;
     }
 
     @Override
@@ -183,8 +175,9 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public Map<Integer, DBCity> _getCitiesV3() {
-        if (wrapper.getCities != null) {
-            return wrapper.getCities.apply(getNation_id());
+        Function<Integer, Map<Integer, DBCity>> getCities = wrapper.getGetCities();
+        if (getCities != null) {
+            return getCities.apply(getNation_id());
         }
         Map<Integer, DBCity> cities = super._getCitiesV3();
         return cities.entrySet().stream().filter(e -> e.getValue().getCreated() <= wrapper.date).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -207,7 +200,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int getVm_turns() {
-        return get(wrapper.header.vm_turns);
+        return wrapper.get(wrapper.header.vm_turns, offset);
     }
 
     @Override
@@ -244,72 +237,72 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int _nationId() {
-        return get(wrapper.header.nation_id);
+        return wrapper.get(wrapper.header.nation_id, offset);
     }
 
     @Override
     public String _nation() {
-        return get(wrapper.header.nation_name);
+        return wrapper.get(wrapper.header.nation_name, offset);
     }
 
     @Override
     public String _leader() {
-        return get(wrapper.header.leader_name);
+        return wrapper.get(wrapper.header.leader_name, offset);
     }
 
     @Override
     public int _allianceId() {
-        return get(wrapper.header.alliance_id);
+        return wrapper.get(wrapper.header.alliance_id, offset);
     }
 
     @Override
     public double _score() {
-        return get(wrapper.header.score);
+        return wrapper.get(wrapper.header.score, offset);
     }
 
     @Override
     public int _cities() {
-        return get(wrapper.header.cities);
+        return wrapper.get(wrapper.header.cities, offset);
     }
 
     @Override
     public DomesticPolicy _domesticPolicy() {
-        return get(wrapper.header.domestic_policy);
+        return wrapper.get(wrapper.header.domestic_policy, offset);
     }
 
     @Override
     public WarPolicy _warPolicy() {
-        return get(wrapper.header.war_policy);
+        return wrapper.get(wrapper.header.war_policy, offset);
     }
 
     @Override
     public int _soldiers() {
-        return get(wrapper.header.soldiers);
+        return wrapper.get(wrapper.header.soldiers, offset);
     }
 
     @Override
     public int _tanks() {
-        return get(wrapper.header.tanks);
+        return wrapper.get(wrapper.header.tanks, offset);
     }
 
     @Override
     public int _aircraft() {
-        return get(wrapper.header.aircraft);
+        return wrapper.get(wrapper.header.aircraft, offset);
     }
 
     @Override
     public int _ships() {
-        return get(wrapper.header.ships);
+        return wrapper.get(wrapper.header.ships, offset);
     }
 
     @Override
     public int _missiles() {
-        return get(wrapper.header.missiles);
+        return wrapper.get(wrapper.header.missiles, offset);
     }
 
     @Override
     public int _nukes() {
-        return get(wrapper.header.nukes);
+        return wrapper.get(wrapper.header.nukes, offset);
     }
 
     @Override
@@ -319,12 +312,12 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public NationColor _color() {
-        return get(wrapper.header.color);
+        return wrapper.get(wrapper.header.color, offset);
     }
 
     @Override
     public long _date() {
-        return get(wrapper.header.date_created);
+        return wrapper.get(wrapper.header.date_created, offset);
     }
 
     @Override
@@ -334,12 +327,12 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public Rank _rank() {
-        return get(wrapper.header.alliance_position);
+        return wrapper.get(wrapper.header.alliance_position, offset);
     }
 
     @Override
     public Continent _continent() {
-        return get(wrapper.header.continent);
+        return wrapper.get(wrapper.header.continent, offset);
     }
 
     @Override
@@ -354,7 +347,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public long _beigeTimer() {
-        int turns = get(wrapper.header.beige_turns_remaining);
+        int turns = wrapper.get(wrapper.header.beige_turns_remaining, offset);
         return TimeUtil.getTurn(wrapper.date) + turns;
     }
 
@@ -385,12 +378,12 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int _warsWon() {
-        return get(wrapper.header.wars_won);
+        return wrapper.get(wrapper.header.wars_won, offset);
     }
 
     @Override
     public int _warsLost() {
-        return get(wrapper.header.wars_lost);
+        return wrapper.get(wrapper.header.wars_lost, offset);
     }
 
     @Override

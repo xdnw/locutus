@@ -11,6 +11,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -1715,7 +1716,7 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder();
         String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
         if (filter == null && me != null) filter = me.getQualifiedId();
-        final Set<DBNation> nations = PW.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild(), true);
+        final Set<DBNation> nations = PW.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild());
 
         String arg0;
         String title;
@@ -2270,13 +2271,13 @@ public class UtilityCommands {
         Map<Integer, Long> lastStreak = new Int2ObjectOpenHashMap<>();
         Map<Integer, Integer> countMap = new Int2ObjectOpenHashMap<>();
 
-        parser.iterateAll(f -> f >= finalMinDay, (h, r) -> r.required(h.nation_id).optional(h.vm_turns).required(h.color), null, new BiConsumer<Long, NationHeader>() {
+        parser.iterateAll(f -> f >= finalMinDay, (h, r) -> r.required(h.nation_id).optional(h.vm_turns).required(h.color), null, new BiConsumer<Long, NationHeaderReader>() {
             @Override
-            public void accept(Long day, NationHeader header) {
-                int nationId = header.nation_id.get();
+            public void accept(Long day, NationHeaderReader r) {
+                int nationId = r.header.nation_id.get();
                 if (!nationIds.contains(nationId)) return;
 
-                NationColor color = header.color.get();
+                NationColor color = r.header.color.get();
                 if (color != NationColor.GRAY) {
                     lastNotGray.put(nationId, day);
                     if (color != NationColor.BEIGE) {
@@ -2522,7 +2523,7 @@ public class UtilityCommands {
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
                                NationList nations, @Switch("u") boolean update, @Switch("s") @Timestamp Long snapshotDate) {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;

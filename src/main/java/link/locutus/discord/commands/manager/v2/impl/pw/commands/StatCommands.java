@@ -721,8 +721,8 @@ public class StatCommands {
                                      @Switch("v") boolean attachCsv,
                                      @Switch("s") @Timestamp Long snapshotDate,
                                      @Switch("g") NationAttributeDouble groupBy) throws IOException {
-        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
         int num1 = coalition1Nations.size();
         int num2 = coalition2Nations.size();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -944,8 +944,8 @@ public class StatCommands {
                                     @Switch("s") @Timestamp Long snapshotDate,
                                     @Switch("j") boolean attachJson,
                                     @Switch("v") boolean attachCsv) throws IOException {
-        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1077,8 +1077,8 @@ public class StatCommands {
                                  @Switch("s") @Timestamp Long snapshotDate,
                                  @Switch("j") boolean attachJson,
                                  @Switch("c") boolean attachCsv) throws IOException {
-        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1326,8 +1326,8 @@ public class StatCommands {
                                 @Arg("Graph the average military buildings instead of units")
                                @Switch("b") boolean buildings,
                                @Switch("t") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
 
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1486,8 +1486,8 @@ public class StatCommands {
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv,
                                 @Switch("s") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild(), false);
-        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild(), false);
+        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> allNations = new HashSet<>();
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -2177,7 +2177,7 @@ public class StatCommands {
         } else {
             Set<DBNation> tmp;
             if (snapshotDate != null) {
-                tmp = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild(), false);
+                tmp = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
             } else {
                 tmp = nations.getNations();
             }
@@ -2665,17 +2665,17 @@ public class StatCommands {
         AtomicLong start = new AtomicLong(System.currentTimeMillis());
         dumper.iterateAll(f -> true, (h, r) -> {
             r.required(h.alliance_position, h.alliance_id, h.nation_id, h.alliance);
-        }, null, (day, header) -> {
-            Rank position = header.alliance_position.get();
+        }, null, (day, r) -> {
+            Rank position = r.header.alliance_position.get();
             if (position.id <= Rank.APPLICANT.id) return;
-            int aaId = header.alliance_id.get();
+            int aaId = r.header.alliance_id.get();
             membersByAAByTurn.computeIfAbsent(aaId, k -> new Long2IntLinkedOpenHashMap()).merge(day, 1, Integer::sum);
-            int nationId = header.nation_id.get();
+            int nationId = r.header.nation_id.get();
             nationsByAAByDay.computeIfAbsent(day, k -> new Int2ObjectLinkedOpenHashMap<>()).computeIfAbsent(aaId, k -> new IntOpenHashSet()).add(nationId);
             nationAllianceByDay.computeIfAbsent(day, k -> new Int2IntLinkedOpenHashMap()).put(nationId, aaId);
 
             if (!allianceNames.containsKey(aaId)) {
-                String aaName = header.alliance.get();
+                String aaName = r.header.alliance.get();
                 allianceNames.put(aaId, aaName);
             }
         }, null, aLong -> {

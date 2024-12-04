@@ -142,8 +142,4 @@ public class NationHeader extends DataHeader<DBNation> {
     public NationHeader(Dictionary dict) {
         super(dict);
     }
-
-    @Override
-    public void clear() {
-    }
 }

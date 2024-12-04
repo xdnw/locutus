@@ -114,10 +114,6 @@ public abstract class DataHeader<T> {
         return headers;
     }
 
-
-
-    public abstract void clear();
-
     public void setOffset(int index) {
         this.offset = index;
     }

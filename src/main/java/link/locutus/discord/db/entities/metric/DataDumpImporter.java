@@ -3,7 +3,9 @@ package link.locutus.discord.db.entities.metric;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,30 +24,30 @@ class DataDumpImporter {
         return parser;
     }
 
-    Map<IAllianceMetric, BiConsumer<Long, NationHeader>> nationReaders = new LinkedHashMap<>();
-    Map<IAllianceMetric, BiConsumer<Long, CityHeader>> cityReaders = new LinkedHashMap<>();
+    Map<IAllianceMetric, BiConsumer<Long, NationHeaderReader>> nationReaders = new LinkedHashMap<>();
+    Map<IAllianceMetric, BiConsumer<Long, CityHeaderReader>> cityReaders = new LinkedHashMap<>();
 
-    public void setNationReader(IAllianceMetric metric, BiConsumer<Long, NationHeader> nationReader) {
+    public void setNationReader(IAllianceMetric metric, BiConsumer<Long, NationHeaderReader> nationReader) {
         this.nationReaders.put(metric, nationReader);
     }
 
-    public void setCityReader(IAllianceMetric metric, BiConsumer<Long, CityHeader> cityReader) {
+    public void setCityReader(IAllianceMetric metric, BiConsumer<Long, CityHeaderReader> cityReader) {
         this.cityReaders.put(metric, cityReader);
     }
 
-    public BiConsumer<Long, NationHeader> getNationReader() {
+    public BiConsumer<Long, NationHeaderReader> getNationReader() {
         if (nationReaders.isEmpty()) return null;
         return (day, header) -> {
-            for (Map.Entry<IAllianceMetric, BiConsumer<Long, NationHeader>> entry : nationReaders.entrySet()) {
+            for (Map.Entry<IAllianceMetric, BiConsumer<Long, NationHeaderReader>> entry : nationReaders.entrySet()) {
                 entry.getValue().accept(day, header);
             }
         };
     }
 
-    public BiConsumer<Long, CityHeader> getCityReader() {
+    public BiConsumer<Long, CityHeaderReader> getCityReader() {
         if (cityReaders.isEmpty()) return null;
         return (day, header) -> {
-            for (Map.Entry<IAllianceMetric, BiConsumer<Long, CityHeader>> entry : cityReaders.entrySet()) {
+            for (Map.Entry<IAllianceMetric, BiConsumer<Long, CityHeaderReader>> entry : cityReaders.entrySet()) {
                 entry.getValue().accept(day, header);
             }
         };

@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv3.csv.column.IntColumn;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriConsumer;
@@ -36,18 +37,18 @@ public class UnitPctMetric implements IAllianceMetric {
 
     @Override
     public void setupReaders(IAllianceMetric metric, DataDumpImporter importer) {
-        importer.setNationReader(metric, new BiConsumer<Long, NationHeader>() {
+        importer.setNationReader(metric, new BiConsumer<Long, NationHeaderReader>() {
             @Override
-            public void accept(Long day, NationHeader header) {
-                Rank position = header.alliance_position.get();
+            public void accept(Long day, NationHeaderReader r) {
+                Rank position = r.header.alliance_position.get();
                 if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
+                int allianceId = r.header.alliance_id.get();
                 if (allianceId == 0) return;
-                Integer vm_turns = header.vm_turns.get();
+                Integer vm_turns = r.header.vm_turns.get();
                 if (vm_turns == null || vm_turns > 0) return;
-                int units = getHeader.apply(header).get();
+                int units = getHeader.apply(r.header).get();
                 unitsByAA.merge(allianceId, units, Integer::sum);
-                int cities = header.cities.get();
+                int cities = r.header.cities.get();
                 citiesByAA.merge(allianceId, cities, Integer::sum);
             }
         });

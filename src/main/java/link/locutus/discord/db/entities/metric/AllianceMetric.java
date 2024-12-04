@@ -17,9 +17,13 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.csv.file.CitiesFile;
+import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
@@ -89,12 +93,12 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, (day, header) -> {
-                Rank position = header.alliance_position.get();
+            importer.setNationReader(this, (day, r) -> {
+                Rank position = r.header.alliance_position.get();
                 if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
+                int allianceId = r.header.alliance_id.get();
                 if (allianceId == 0) return;
-                Integer vmTurns = header.vm_turns.get();
+                Integer vmTurns = r.header.vm_turns.get();
                 if (vmTurns == null || vmTurns == 0) return;
                 vmByAA.merge(allianceId, 1, Integer::sum);
             });
@@ -129,12 +133,12 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, (day, header) -> {
-                Rank position = header.alliance_position.get();
+            importer.setNationReader(this, (day, r) -> {
+                Rank position = r.header.alliance_position.get();
                 if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
+                int allianceId = r.header.alliance_id.get();
                 if (allianceId == 0) return;
-                Integer vm_turns = header.vm_turns.get();
+                Integer vm_turns = r.header.vm_turns.get();
                 if (vm_turns == null || vm_turns == 0) return;
                 vmByAA.merge(allianceId, 1, Integer::sum);
             });
@@ -192,6 +196,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
 
         private final Map<Integer, DBNation> nationMap = new Int2ObjectOpenHashMap<>();
+        private final Map<Integer, List<DBCity>> cityMap = new Int2ObjectOpenHashMap<>();
         private Map<DBWar, Long> warEndDates;
 
         @Override
@@ -201,25 +206,25 @@ public enum AllianceMetric implements IAllianceMetric {
             Collection<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withTypes(AttackType.PEACE, AttackType.VICTORY).getList();
             warEndDates = importer.getParser().getUtil().getWarEndDates(wars, attacks);
 
-            importer.setNationReader(this, (day, header) -> {
-                Rank position = header.alliance_position.get();
+            importer.setNationReader(this, (day, r) -> {
+                Rank position = r.header.alliance_position.get();
                 if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
+                int allianceId = r.header.alliance_id.get();
                 if (allianceId == 0) return;
-                Integer vm_turns = header.vm_turns.get();
+                Integer vm_turns = r.header.vm_turns.get();
                 if (vm_turns == null || vm_turns > 0) return;
-                NationColor color = header.color.get();
+                NationColor color = r.header.color.get();
                 if (color == NationColor.GRAY || color == NationColor.BEIGE) return;
-                DBNation nation = header.getNation( false, true);
+                DBNation nation = r.getNation( false, true);
                 if (nation == null) return;
                 nationMap.put(nation.getNation_id(), nation);
             });
 
-            importer.setCityReader(this, (day, header) -> {
-                int nationId = header.nation_id.get();
+            importer.setCityReader(this, (day, r) -> {
+                int nationId = r.header.nation_id.get();
                 DBNation nation = nationMap.get(nationId);
                 if (nation == null) return;
-                DBCity city = header.getCity();
+                DBCity city = r.getCity();
                 List<DBCity> cities = cityMap.computeIfAbsent(nationId, f -> new ObjectArrayList<>());
                 cities.add(city);
             });
@@ -458,26 +463,26 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(this, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
+                public void accept(Long day, NationHeaderReader r) {
+                    Rank position = r.header.alliance_position.get();
                     if (position.id <= Rank.APPLICANT.id) return;
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
-                    Integer vm_turns = header.vm_turns.get();
+                    Integer vm_turns = r.header.vm_turns.get();
                     if (vm_turns == null || vm_turns > 0) return;
-                    allianceByNationId.put(header.nation_id.get(), allianceId);
+                    allianceByNationId.put(r.header.nation_id.get(), allianceId);
                 }
             });
 
-            importer.setCityReader(this, new BiConsumer<Long, CityHeader>() {
+            importer.setCityReader(this, new BiConsumer<Long, CityHeaderReader>() {
                 @Override
-                public void accept(Long day, CityHeader header) {
-                    int nationId = header.nation_id.get();
+                public void accept(Long day, CityHeaderReader r) {
+                    int nationId = r.header.nation_id.get();
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
-                    double infra = header.infrastructure.get();
+                    double infra = r.header.infrastructure.get();
                     double value = PW.City.Infra.calculateInfra(0, infra);
                     infraValueByAA.merge(allianceId, value, Double::sum);
                 }
@@ -517,26 +522,26 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(this, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
+                public void accept(Long day, NationHeaderReader r) {
+                    Rank position = r.header.alliance_position.get();
                     if (position.id <= Rank.APPLICANT.id) return;
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
-                    Integer vm_turns = header.vm_turns.get();
+                    Integer vm_turns = r.header.vm_turns.get();
                     if (vm_turns == null || vm_turns > 0) return;
-                    allianceByNationId.put(header.nation_id.get(), allianceId);
+                    allianceByNationId.put(r.header.nation_id.get(), allianceId);
                 }
             });
 
-            importer.setCityReader(this, new BiConsumer<Long, CityHeader>() {
+            importer.setCityReader(this, new BiConsumer<Long, CityHeaderReader>() {
                 @Override
-                public void accept(Long day, CityHeader header) {
-                    int nationId = header.nation_id.get();
+                public void accept(Long day, CityHeaderReader r) {
+                    int nationId = r.header.nation_id.get();
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
-                    double land = header.land.get();
+                    double land = r.header.land.get();
                     double value = PW.City.Land.calculateLand(0, land);
                     landValueByAA.merge(allianceId, value, Double::sum);
                 }
@@ -582,16 +587,16 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, (day, header) -> {
-                Rank position = header.alliance_position.get();
+            importer.setNationReader(this, (day, r) -> {
+                Rank position = r.header.alliance_position.get();
                 if (position.id <= Rank.APPLICANT.id) return;
-                int allianceId = header.alliance_id.get();
+                int allianceId = r.header.alliance_id.get();
                 if (allianceId == 0) return;
-                Integer vm_turns = header.vm_turns.get();
+                Integer vm_turns = r.header.vm_turns.get();
                 if (vm_turns == null || vm_turns > 0) return;
-                soldiersByAA.merge(allianceId, header.soldiers.get(), Integer::sum);
-                tanksByAA.merge(allianceId, header.tanks.get(), Integer::sum);
-                citiesByAA.merge(allianceId, header.cities.get(), Integer::sum);
+                soldiersByAA.merge(allianceId, r.header.soldiers.get(), Integer::sum);
+                tanksByAA.merge(allianceId, r.header.tanks.get(), Integer::sum);
+                citiesByAA.merge(allianceId, r.header.cities.get(), Integer::sum);
             });
 
         }
@@ -649,49 +654,49 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(this, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
+                public void accept(Long day, NationHeaderReader r) {
+                    Rank position = r.header.alliance_position.get();
                     if (position.id <= Rank.APPLICANT.id) return;
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
-                    Integer vm_turns = header.vm_turns.get();
+                    Integer vm_turns = r.header.vm_turns.get();
                     if (vm_turns == null || vm_turns > 0) return;
-                    int nationId = header.nation_id.get();
+                    int nationId = r.header.nation_id.get();
                     Integer previousAlliance = allianceByNationId.get(nationId);
                     if (previousAlliance == null || (previousAlliance != allianceId)) {
                         nationJoinDay.put(nationId, day);
                     }
                     allianceByNationId.put(nationId, allianceId);
-                    citiesByNation.put(nationId, header.cities.get());
-                    manifestDestiny.put(nationId, header.domestic_policy.get() == DomesticPolicy.MANIFEST_DESTINY);
-                    if (header.urban_planning_np.get() == Boolean.TRUE) {
-                        urbanPlanningByNation.put(nationId, header.urban_planning_np.get());
+                    citiesByNation.put(nationId, r.header.cities.get());
+                    manifestDestiny.put(nationId, r.header.domestic_policy.get() == DomesticPolicy.MANIFEST_DESTINY);
+                    if (r.header.urban_planning_np.get() == Boolean.TRUE) {
+                        urbanPlanningByNation.put(nationId, r.header.urban_planning_np.get());
                     }
-                    if (header.advanced_urban_planning_np.get() == Boolean.TRUE) {
-                        advancedUrbanPlanningByNation.put(nationId, header.advanced_urban_planning_np.get());
+                    if (r.header.advanced_urban_planning_np.get() == Boolean.TRUE) {
+                        advancedUrbanPlanningByNation.put(nationId, r.header.advanced_urban_planning_np.get());
                     }
-                    if (header.metropolitan_planning_np.get() == Boolean.TRUE) {
-                        metropolitanPlanningByNation.put(nationId, header.metropolitan_planning_np.get());
+                    if (r.header.metropolitan_planning_np.get() == Boolean.TRUE) {
+                        metropolitanPlanningByNation.put(nationId, r.header.metropolitan_planning_np.get());
                     }
-                    if (header.government_support_agency_np.get() == Boolean.TRUE) {
-                        governmentSupportAgencyByNation.put(nationId, header.government_support_agency_np.get());
+                    if (r.header.government_support_agency_np.get() == Boolean.TRUE) {
+                        governmentSupportAgencyByNation.put(nationId, r.header.government_support_agency_np.get());
                     }
-                    if (header.bureau_of_domestic_affairs_np.get() == Boolean.TRUE) {
-                        bdaByNation.put(nationId, header.bureau_of_domestic_affairs_np.get());
+                    if (r.header.bureau_of_domestic_affairs_np.get() == Boolean.TRUE) {
+                        bdaByNation.put(nationId, r.header.bureau_of_domestic_affairs_np.get());
                     }
                 }
             });
-            importer.setCityReader(this, new BiConsumer<Long, CityHeader>() {
+            importer.setCityReader(this, new BiConsumer<Long, CityHeaderReader>() {
                 @Override
-                public void accept(Long day, CityHeader cityHeader) {
-                    int nationId = cityHeader.nation_id.get();
+                public void accept(Long day, CityHeaderReader r) {
+                    int nationId = r.header.nation_id.get();
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
                     long dayJoinedAlliance = nationJoinDay.get(nationId);
                     long joinedAllianceMs = TimeUtil.getTimeFromDay(Math.max(dayJoinedAlliance, day - 10));
-                    long createdMs = cityHeader.date_created.get();
+                    long createdMs = r.header.date_created.get();
                     if (createdMs < joinedAllianceMs) return;
                     citiesBuyByNation.merge(nationId, 1, Integer::sum);
                 }
@@ -754,16 +759,16 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(this, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
+                public void accept(Long day, NationHeaderReader r) {
+                    Rank position = r.header.alliance_position.get();
                     if (position.id <= Rank.APPLICANT.id) return;
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
-                    Integer vm_turns = header.vm_turns.get();
+                    Integer vm_turns = r.header.vm_turns.get();
                     if (vm_turns == null || vm_turns > 0) return;
-                    int nationId = header.nation_id.get();
+                    int nationId = r.header.nation_id.get();
                     Integer previousAlliance = allianceByNationId.get(nationId);
                     if (previousAlliance == null || (previousAlliance != allianceId)) {
                         nationJoinDay.put(nationId, day);
@@ -771,15 +776,15 @@ public enum AllianceMetric implements IAllianceMetric {
                     allianceByNationId.put(nationId, allianceId);
                 }
             });
-            importer.setCityReader(this, new BiConsumer<Long, CityHeader>() {
+            importer.setCityReader(this, new BiConsumer<Long, CityHeaderReader>() {
                 @Override
-                public void accept(Long day, CityHeader cityHeader) {
-                    int nationId = cityHeader.nation_id.get();
+                public void accept(Long day, CityHeaderReader r) {
+                    int nationId = r.header.nation_id.get();
                     Integer allianceId = allianceByNationId.get(nationId);
                     if (allianceId == null || allianceId == 0) return;
                     long dayJoinedAlliance = nationJoinDay.get(nationId);
                     long joinedAllianceMs = TimeUtil.getTimeFromDay(Math.max(dayJoinedAlliance, day - 10));
-                    long createdMs = cityHeader.date_created.get();
+                    long createdMs = r.header.date_created.get();
                     if (createdMs < joinedAllianceMs) return;
                     cities10D.merge(allianceId, 1, Integer::sum);
                 }
@@ -822,24 +827,24 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(this, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
+                public void accept(Long day, NationHeaderReader r) {
+                    Rank position = r.header.alliance_position.get();
                     if (position.id <= Rank.APPLICANT.id) return;
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
-                    Integer vm_turns = header.vm_turns.get();
+                    Integer vm_turns = r.header.vm_turns.get();
                     if (vm_turns == null || vm_turns > 0) return;
-                    int nationId = header.nation_id.get();
+                    int nationId = r.header.nation_id.get();
                     Integer previousAlliance = allianceByNationId.get(nationId);
                     if (previousAlliance == null || (previousAlliance != allianceId)) {
                         nationJoinDay.put(nationId, day);
                     }
                     allianceByNationId.put(nationId, allianceId);
-                    int numProjects = header.projects.get();
+                    int numProjects = r.header.projects.get();
                     if (numProjects == 0) return;
-                    DBNation nation = header.getNation(false, true);
+                    DBNation nation = r.getNation(false, true);
                     if (nation == null) {
                         projectsByDate.computeIfAbsent(nationId, f -> new Long2LongOpenHashMap()).put(day, 0L);
                     } else {
@@ -906,24 +911,24 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public void setupReaders(DataDumpImporter importer) {
-            importer.setNationReader(this, new BiConsumer<Long, NationHeader>() {
+            importer.setNationReader(this, new BiConsumer<Long, NationHeaderReader>() {
                 @Override
-                public void accept(Long day, NationHeader header) {
-                    Rank position = header.alliance_position.get();
+                public void accept(Long day, NationHeaderReader r) {
+                    Rank position = r.header.alliance_position.get();
                     if (position.id <= Rank.APPLICANT.id) return;
-                    int allianceId = header.alliance_id.get();
+                    int allianceId = r.header.alliance_id.get();
                     if (allianceId == 0) return;
-                    Integer vm_turns = header.vm_turns.get();
+                    Integer vm_turns = r.header.vm_turns.get();
                     if (vm_turns == null || vm_turns > 0) return;
-                    int nationId = header.nation_id.get();
+                    int nationId = r.header.nation_id.get();
                     Integer previousAlliance = allianceByNationId.get(nationId);
                     if (previousAlliance == null || (previousAlliance != allianceId)) {
                         nationJoinDay.put(nationId, day);
                     }
                     allianceByNationId.put(nationId, allianceId);
-                    int numProjects = header.projects.get();
+                    int numProjects = r.header.projects.get();
                     if (numProjects == 0) return;
-                    DBNation nation = header.getNation(false, true);
+                    DBNation nation = r.getNation(false, true);
                     if (nation == null) {
                         projectsByDate.computeIfAbsent(nationId, f -> new Long2LongOpenHashMap()).put(day, 0L);
                     } else {
@@ -1180,9 +1185,16 @@ public enum AllianceMetric implements IAllianceMetric {
             metric.setupReaders(metric, importer);
         }
 
-        BiConsumer<Long, NationHeader> nationRows = importer.getNationReader();
-        BiConsumer<Long, CityHeader> cityRows = importer.getCityReader();
+        BiConsumer<Long, NationHeaderReader> nationRows = importer.getNationReader();
+        BiConsumer<Long, CityHeaderReader> cityRows = importer.getCityReader();
 
+        parser.iterateFiles(new TriConsumer<Long, NationsFile, CitiesFile>() {
+            @Override
+            public void accept(Long day, NationsFile nf, CitiesFile cf) {
+                if (!acceptDay.test(day)) return;
+
+            }
+        });
         parser.iterateAll(acceptDay, null, null, nationRows, cityRows, new Consumer<Long>() {
             @Override
             public void accept(Long day) {

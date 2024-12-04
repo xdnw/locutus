@@ -10,10 +10,12 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
+import link.locutus.discord.apiv3.csv.header.DataReader;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
+import link.locutus.discord.util.scheduler.TriFunction;
 import net.jpountz.util.SafeUtils;
 
 import java.io.DataOutputStream;
@@ -24,13 +26,15 @@ import java.lang.ref.SoftReference;
 import java.nio.file.Files;
 import java.text.ParseException;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class DataFile<T, H extends DataHeader<T>> {
+public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
     private final File csvFile;
     private final File binFile;
+    private final BiFunction<H, Long, R> createReader;
     private boolean csvExists = false;
     private boolean binExists = false;
     private final long date;
@@ -73,7 +77,7 @@ public class DataFile<T, H extends DataHeader<T>> {
         return filePart;
     }
 
-    public DataFile(File file, long date, Supplier<H> createHeader) {
+    public DataFile(File file, long date, Supplier<H> createHeader, BiFunction<H, Long, R> createReader) {
         this.filePart = file.getName().split("\\.")[0];
         this.csvFile = new File(file.getParent(), filePart + ".csv");
         this.binFile = new File(file.getParent(), filePart + ".bin");
@@ -82,6 +86,7 @@ public class DataFile<T, H extends DataHeader<T>> {
         this.createHeader = createHeader;
         this.date = date;
         this.day = TimeUtil.getDay(date);
+        this.createReader = createReader;
     }
 
     public static long parseDateFromFile(String fileName) {
@@ -318,9 +323,9 @@ public class DataFile<T, H extends DataHeader<T>> {
             return this;
         }
 
-        public void read(Consumer<H> onEachRow) throws IOException {
+        public void read(Consumer<R> onEachRow) throws IOException {
             synchronized (DataFile.this) {
-                header.clear();
+                R reader = createReader.apply(header, date);
                 byte[] decompressed = getBytes();
                 Header<T> colInfo = header.readIndexes(decompressed);
 
@@ -349,7 +354,7 @@ public class DataFile<T, H extends DataHeader<T>> {
                     for (ColumnInfo<T, Object> column : shouldRead) {
                         column.setCachedValue(column.read(decompressed, index + column.getOffset()));
                     }
-                    onEachRow.accept(header);
+                    onEachRow.accept(reader);
                     index += rowBytes;
                 }
             }

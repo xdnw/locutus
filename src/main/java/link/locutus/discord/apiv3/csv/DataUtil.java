@@ -17,7 +17,9 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
+import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
@@ -183,14 +185,14 @@ public class DataUtil {
 
             parser.withNationFile(day, file -> {
                 try {
-                    file.reader().required(f -> List.of(f.nation_id, f.date_created)).read(new Consumer<NationHeader>() {
+                    file.reader().required(f -> List.of(f.nation_id, f.date_created)).read(new Consumer<NationHeaderReader>() {
                         @Override
-                        public void accept(NationHeader header) {
-                            int nationId = header.nation_id.get();
+                        public void accept(NationHeaderReader r) {
+                            int nationId = r.header.nation_id.get();
                             if (nationIds.test(nationId)) {
                                 newFinal.add(nationId);
                                 if (!dateCreated.containsKey(nationId)) {
-                                    dateCreated.put(nationId, header.date_created.get());
+                                    dateCreated.put(nationId, r.header.date_created.get());
                                 }
                             }
                         }
@@ -232,9 +234,9 @@ public class DataUtil {
         parser.iterateAll(f -> true,
                 (h, r) -> r.required(h.nation_id, h.cities),
                 null,
-                (day, header) -> {
-                    int nationId = header.nation_id.get();
-                    int cities = header.cities.get();
+                (day, r) -> {
+                    int nationId = r.header.nation_id.get();
+                    int cities = r.header.cities.get();
                     cityCountsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nationId, (byte) cities);
                 }, null, f -> System.out.println("backCalculateCityCounts @ day=" + f));
         return cityCountsByDay;
@@ -340,13 +342,13 @@ public class DataUtil {
         for (Map.Entry<Long, CitiesFile> entry : parser.getCityFilesByDay().entrySet()) {
             long day = entry.getKey();
             CitiesFile cities = entry.getValue();
-            cities.reader().required(header -> List.of(header.nation_id, header.city_id, header.infrastructure)).read(new Consumer<CityHeader>() {
+            cities.reader().required(header -> List.of(header.nation_id, header.city_id, header.infrastructure)).read(new Consumer<CityHeaderReader>() {
                 @Override
-                public void accept(CityHeader cityHeader) {
-                    int nationId = cityHeader.nation_id.get();
+                public void accept(CityHeaderReader r) {
+                    int nationId = r.header.nation_id.get();
                     if (!dateNationFilter.test(day, nationId)) return;
-                    int cityId = cityHeader.city_id.get();
-                    double infra = cityHeader.infrastructure.get();
+                    int cityId = r.header.city_id.get();
+                    double infra = r.header.infrastructure.get();
                     result.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new Int2ObjectOpenHashMap<>()).put(cityId, infra);
                 }
             });

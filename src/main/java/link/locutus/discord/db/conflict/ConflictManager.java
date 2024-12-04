@@ -1015,10 +1015,10 @@ public class ConflictManager {
         Locutus.imp().getDataDumper(true).iterateAll(f -> true,
                 (h, r) -> r.required(h.alliance_id, h.alliance),
                 null,
-                (day, header) -> {
-                    int aaId = header.alliance_id.get();
+                (day, r) -> {
+                    int aaId = r.header.alliance_id.get();
                     if (aaId == 0) return;
-                    String name = header.alliance.get();
+                    String name = r.header.alliance.get();
                     if (name != null && !name.isEmpty()) {
                         long date = TimeUtil.getTimeFromDay(day);
                         addLegacyName(aaId, name, date);

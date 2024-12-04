@@ -2426,10 +2426,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (Settings.INSTANCE.DATABASE.DATA_DUMP.ENABLED) {
             DataDumpParser data = Locutus.imp().getDataDumper(true);
             data.iterateFiles((ThrowingTriConsumer<Long, NationsFile, CitiesFile>) (day, nationsFile, citiesFile) ->
-            nationsFile.reader().required(f -> List.of(f.nation_id, f.alliance_id, f.alliance_position)).read(header -> {
-                int nationId = header.nation_id.get();
-                int allianceId = header.alliance_id.get();
-                Rank alliancePosition = header.alliance_position.get();
+            nationsFile.reader().required(f -> List.of(f.nation_id, f.alliance_id, f.alliance_position)).read(r -> {
+                int nationId = r.header.nation_id.get();
+                int allianceId = r.header.alliance_id.get();
+                Rank alliancePosition = r.header.alliance_position.get();
                 allianceByDay.computeIfAbsent(day, f -> new Int2IntOpenHashMap()).put(nationId, allianceId);
                 rankByDay.computeIfAbsent(day, f -> new Int2ObjectOpenHashMap<>()).put(nationId, alliancePosition);
             }));

@@ -5,9 +5,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.csv.file.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
-import link.locutus.discord.apiv3.csv.header.CityHeader;
-import link.locutus.discord.apiv3.csv.header.DataHeader;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.apiv3.csv.header.*;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.*;
@@ -138,10 +136,10 @@ public class DataDumpParser {
     }
 
     public void iterateAll(Predicate<Long> acceptDay,
-                            BiConsumer<NationHeader, DataFile<DBNation, NationHeader>.Builder> nationColumns,
-                            BiConsumer<CityHeader, DataFile<DBCity, CityHeader>.Builder> cityColumns,
-                            BiConsumer<Long, NationHeader> nationRows,
-                            BiConsumer<Long, CityHeader> cityRows,
+                            BiConsumer<NationHeader, DataFile<DBNation, NationHeader, NationHeaderReader>.Builder> nationColumns,
+                            BiConsumer<CityHeader, DataFile<DBCity, CityHeader, CityHeaderReader>.Builder> cityColumns,
+                            BiConsumer<Long, NationHeaderReader> nationRows,
+                            BiConsumer<Long, CityHeaderReader> cityRows,
                             Consumer<Long> onEach) throws IOException, ParseException {
         load();
         iterateFiles((day, nationFile, cityFile) -> {
@@ -150,7 +148,7 @@ public class DataDumpParser {
                 if (cityRows != null && cityFile == null) return;
                 if (nationRows != null && nationFile == null) return;
                 if (nationRows != null) {
-                    DataFile<DBNation, NationHeader>.Builder reader = nationFile.reader();
+                    DataFile<DBNation, NationHeader, NationHeaderReader>.Builder reader = nationFile.reader();
                     if (nationColumns == null) {
                         reader.all(false);
                     } else {
@@ -159,7 +157,7 @@ public class DataDumpParser {
                     reader.read(nationHeader -> nationRows.accept(day, nationHeader));
                 }
                 if (cityRows != null) {
-                    DataFile<DBCity, CityHeader>.Builder reader = cityFile.reader();
+                    DataFile<DBCity, CityHeader, CityHeaderReader>.Builder reader = cityFile.reader();
                     if (cityColumns == null) {
                         reader.all(false);
                     } else {
@@ -234,7 +232,7 @@ public class DataDumpParser {
         }
     }
 
-    private <T, H extends DataHeader<T>, F extends DataFile<T, H>> F getNearest(Map<Long, F> map, long day) {
+    private <T, H extends DataHeader<T>, U extends DataReader<H>, F extends DataFile<T, H, U>> F getNearest(Map<Long, F> map, long day) {
         F nearest = null;
         long nearestDiff = Long.MAX_VALUE;
         for (Map.Entry<Long, F> entry : map.entrySet()) {
