@@ -296,6 +296,7 @@ public class PoliticsAndWarV3 {
             }
             rethrow(new IllegalArgumentException(StringUtils.replaceIgnoreCase(errorMsg, pair.getKey(), "XXX")), pair, true);
         }
+        throw new IllegalArgumentException("Failed to read snapshot");
     }
 
     private String getQueryStub(GraphQLRequest graphQLRequest) {
@@ -314,7 +315,6 @@ public class PoliticsAndWarV3 {
     public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         int priorityId = priority.ordinal() + (pagination ? 1 : 0);
         ResponseEntity<String> exchange;
-        T result = null;
         String queryUrlStub = getQueryStub(graphQLRequest);
 
         int badKey = 0;
@@ -360,8 +360,7 @@ public class PoliticsAndWarV3 {
                     rethrow(new IllegalArgumentException(StringUtils.replaceIgnoreCase(message, pair.getKey(), "XXX")), pair, true);
                 }
 
-                result = jacksonObjectMapper.readValue(body, resultBody);
-                break;
+                return jacksonObjectMapper.readValue(body, resultBody);
             } catch (HttpClientErrorException.TooManyRequests e) {
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 try {
@@ -432,7 +431,7 @@ public class PoliticsAndWarV3 {
                 throw e;
             }
         }
-        return result;
+        throw new IllegalArgumentException("Failed to read template");
     }
 
     private <T extends Throwable> void rethrow(T e, ApiKeyPool.ApiKey pair, boolean throwRuntime) {
