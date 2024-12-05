@@ -180,12 +180,12 @@ public class Settings extends Config {
     public static class TASKS {
         @Comment("If any turn related tasks are run (default: true)")
         public boolean ENABLE_TURN_TASKS = true;
-//
-//        @Comment("Fetches most active wars and then attacks (default: 1 minute)")
-//        public int ACTIVE_WAR_SECONDS = 60;
+
+        @Comment("Fetches most active wars and then attacks (default: 1 minute)")
+        public int ACTIVE_WAR_SECONDS = 60;
 
         @Comment("Fetches all wars (default 5 minutes)")
-        public int ALL_WAR_SECONDS = 60;
+        public int ALL_WAR_SECONDS = 60 * 5;
 
         @Comment({"If attacks for completed wars are loaded into memory", "Ignored if load-active-attacks is disabled"})
         public boolean LOAD_INACTIVE_ATTACKS = false;

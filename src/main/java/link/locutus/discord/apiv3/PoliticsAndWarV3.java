@@ -39,11 +39,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -73,6 +76,7 @@ public class PoliticsAndWarV3 {
     public static int BANS_PER_PAGE = 500;
 
     private final String endpoint;
+    private final URL url;
     private final String snapshotUrl;
     private final RestTemplate restTemplate;
     private final ObjectMapper jacksonObjectMapper;
@@ -81,6 +85,11 @@ public class PoliticsAndWarV3 {
     public PoliticsAndWarV3(String url, ApiKeyPool pool) {
         this.endpoint = url + "/graphql";
         this.snapshotUrl = url + "/subscriptions/v1/snapshot/";
+        try {
+            this.url = new URL(endpoint);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
         this.restTemplate = new RestTemplate();
         this.pool = pool;
 
@@ -132,6 +141,9 @@ public class PoliticsAndWarV3 {
     }
 
     private static class RateLimit {
+        private final int defaultResetMs;
+        private final int defaultLimit;
+
         // Amount of requests allowed per interval
         public volatile int limit;
         // The interval in milliseconds (typically 60_000)
@@ -143,17 +155,86 @@ public class PoliticsAndWarV3 {
         // the unix epoch time in milliseconds when the ratelimit resets
         public volatile long resetMs;
 
+        public RateLimit(int resetMs, int limit) {
+            this.defaultResetMs = resetMs;
+            this.defaultLimit = limit;
+        }
+
         public void reset(long now) {
             if (now > resetMs) {
                 remaining = limit;
                 long remainder = (now - resetMs) % intervalMs;
                 resetMs = now + intervalMs - remainder;
-                System.out.println("Set reset to " + (resetMs - now));
             }
         }
+
+        private void handleRateLimit(HttpHeaders header) {
+            if (header == null) return;
+            synchronized (this) {
+                if (header.containsKey("X-RateLimit-Limit")) {
+                    limit = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Limit")).get(0));
+                }
+                if (header.containsKey("X-RateLimit-Remaining")) {
+                    remaining = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Remaining")).get(0));
+                }
+                if (header.containsKey("X-RateLimit-Reset")) {
+                    resetMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset")).get(0)) * 1000L;
+                    System.out.println(":||REmove Set resetMs to " + (resetMs - System.currentTimeMillis()));
+                } else if (header.containsKey("X-RateLimit-Reset-After")) {
+                    long ms = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
+                    resetMs = System.currentTimeMillis() + ms;
+                }
+                if (header.containsKey("X-RateLimit-Interval")) {
+                    intervalMs = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Interval")).get(0)) * 1000;
+                }
+            }
+        }
+
+        private void setRateLimit(long timeMs) {
+            synchronized (this) {
+                if (intervalMs == 0) {
+                    intervalMs = defaultResetMs;
+                }
+                if (limit == 0) {
+                    limit = defaultLimit;
+                }
+                long now = System.currentTimeMillis();
+                remaining = 0;
+                resetMs = now + timeMs;
+                limit = 0;
+            }
+        }
+
+        private void handleRateLimit() {
+            if (intervalMs != 0) {
+                synchronized (this) {
+                    long now = System.currentTimeMillis();
+                    reset(now);
+                    if (remaining <= 0) {
+                        long sleepMs = resetMs - now;
+                        if (sleepMs > 0) {
+                            try {
+                                sleepMs = Math.min(sleepMs, defaultResetMs);
+                                Logg.text("Pausing API requests to avoid being rate limited:\n" +
+                                        "- Limit: " + limit + "\n" +
+                                        "- Retry After: " + sleepMs + "ms");
+                                Thread.sleep(sleepMs + 1000);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                        now = System.currentTimeMillis();
+                    }
+                    reset(now);
+                    remaining--;
+                }
+            }
+        }
+
     }
 
-    private static final RateLimit rateLimitGlobal = new RateLimit();
+    private static final RateLimit rateLimitGlobal = new RateLimit(60_000, 60);
+    private static final RateLimit rateLimitSnapshot = new RateLimit(60_000 * 5, 10);
     private static RequestTracker requestTracker = new RequestTracker();
 
     public static RequestTracker getRequestTracker() {
@@ -161,9 +242,11 @@ public class PoliticsAndWarV3 {
     }
 
     public <T extends Serializable> List<T> readSnapshot(PagePriority priority, Class<T> type) {
-        handleRateLimit();
         String errorMsg;
-        while (true) {
+        int backoff = 1;
+        while (backoff++ < 8) {
+            rateLimitSnapshot.handleRateLimit();
+
             errorMsg = null;
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getSnapshotUrl(type, pair.getKey());
@@ -192,7 +275,7 @@ public class PoliticsAndWarV3 {
                             System.out.println("Unknown duration2: " + obj);
                         }
 
-                        setRateLimit(sleepMs);
+                        rateLimitSnapshot.setRateLimit(sleepMs);
                         Thread.sleep(sleepMs);
                         continue;
                     } else {
@@ -215,70 +298,35 @@ public class PoliticsAndWarV3 {
         }
     }
 
-    private void setRateLimit(long timeMs) {
-        synchronized (rateLimitGlobal) {
-            if (rateLimitGlobal.intervalMs == 0) {
-                rateLimitGlobal.intervalMs = 60_000;
-            }
-            if (rateLimitGlobal.limit == 0) {
-                rateLimitGlobal.limit = 60;
-            }
-            long now = System.currentTimeMillis();
-            rateLimitGlobal.remaining = 0;
-            rateLimitGlobal.resetMs = now + timeMs;
-            rateLimitGlobal.limit = 0;
-        }
-    }
+    private String getQueryStub(GraphQLRequest graphQLRequest) {
+        String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
 
-    private void handleRateLimit() {
-        if (rateLimitGlobal.intervalMs != 0) {
-            synchronized (rateLimitGlobal) {
-                long now = System.currentTimeMillis();
-                rateLimitGlobal.reset(now);
-                if (rateLimitGlobal.remaining <= 0) {
-                    long sleepMs = rateLimitGlobal.resetMs - now;
-                    if (sleepMs > 0) {
-                        try {
-                            sleepMs = Math.min(sleepMs, 60 * 1000);
-                            Logg.text("Pausing API requests to avoid being rate limited:\n" +
-                                    "- Limit: " + rateLimitGlobal.limit + "\n" +
-                                    "- Retry After: " + sleepMs + "ms");
-                            Thread.sleep(sleepMs + 1000);
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    now = System.currentTimeMillis();
-                }
-                rateLimitGlobal.reset(now);
-                rateLimitGlobal.remaining--;
-            }
+//        String queryFull = graphQLRequest.toQueryString();
+        // find index of first number
+        int index = 0;
+        while (index < queryStr.length() && !Character.isDigit(queryStr.charAt(index))) {
+            index++;
         }
+        String queryUrl = queryStr.substring(0, index);
+        return queryUrl;
     }
 
     public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         int priorityId = priority.ordinal() + (pagination ? 1 : 0);
-        handleRateLimit();
-        {
-            String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
-            String queryFull = graphQLRequest.toQueryString();
-            // find index of first number
-            int index = 0;
-            while (index < queryFull.length() && !Character.isDigit(queryFull.charAt(index))) {
-                index++;
-            }
-            String queryUrl = queryFull.substring(0, index);
-            requestTracker.addRequest(queryStr, queryUrl);
-        }
-
         ResponseEntity<String> exchange;
-        T result;
+        T result = null;
+        String queryUrlStub = getQueryStub(graphQLRequest);
 
         int badKey = 0;
         int backOff = 1;
-        while (true) {
+        while (backOff++ < 8) {
+            rateLimitGlobal.handleRateLimit();
+
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getUrl(pair.getKey());
+            {
+                requestTracker.addRequest(queryUrlStub, this.url.getHost());
+            }
             try {
                 restTemplate.acceptHeaderRequestCallback(String.class);
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
@@ -289,6 +337,7 @@ public class PoliticsAndWarV3 {
                         HttpMethod.POST,
                         entity,
                         String.class), uri);
+                rateLimitGlobal.handleRateLimit(exchange.getHeaders());
 
                 String body = exchange.getBody();
                 JsonNode json = jacksonObjectMapper.readTree(body);
@@ -314,6 +363,7 @@ public class PoliticsAndWarV3 {
                 result = jacksonObjectMapper.readValue(body, resultBody);
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
+                rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 try {
                     HttpHeaders headers = e.getResponseHeaders();
                     // Retry-After
@@ -330,8 +380,8 @@ public class PoliticsAndWarV3 {
                 } catch (InterruptedException ex) {
                     throw new RuntimeException(ex);
                 }
-                backOff++;
             } catch (HttpClientErrorException.Unauthorized e) {
+                rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 try {
                     if (badKey++ >= 4 || pool.size() <= 1) {
                         e.printStackTrace();
@@ -344,11 +394,13 @@ public class PoliticsAndWarV3 {
                 }
                 pool.removeKey(pair);
             } catch (HttpClientErrorException e) {
+                rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 e.printStackTrace();
                 AlertUtil.error(e.getMessage(), e);
                 rethrow(e, pair, false);
                 throw e;
             } catch (HttpServerErrorException.InternalServerError e) {
+                rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 e.printStackTrace();
                 String msg = "Error 500 thrown by " + endpoint + ". Is the game's API down?";
                 throw HttpClientErrorException.create(msg, e.getStatusCode(), e.getStatusText(), e.getResponseHeaders(), e.getResponseBodyAsByteArray(), /* charset utf-8 */ StandardCharsets.UTF_8);
@@ -356,6 +408,9 @@ public class PoliticsAndWarV3 {
                 AlertUtil.error(e.getMessage(), e);
                 rethrow(e, pair,true);
             } catch (Throwable e) {
+                if (e instanceof RestClientResponseException rest) {
+                    rateLimitGlobal.handleRateLimit(rest.getResponseHeaders());
+                }
                 boolean remove = false;
                 if (e.getMessage().contains("The bot key you provided is not valid.")) {
                     pair.deleteApiKey();
@@ -377,26 +432,6 @@ public class PoliticsAndWarV3 {
                 throw e;
             }
         }
-        HttpHeaders header = exchange.getHeaders();
-        synchronized (rateLimitGlobal) {
-            if (header.containsKey("X-RateLimit-Limit")) {
-                rateLimitGlobal.limit = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Limit")).get(0));
-            }
-            if (header.containsKey("X-RateLimit-Remaining")) {
-                rateLimitGlobal.remaining = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Remaining")).get(0));
-            }
-            if (header.containsKey("X-RateLimit-Reset")) {
-                rateLimitGlobal.resetMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset")).get(0)) * 1000L;
-                System.out.println(":||REmove Set resetMs to " + (rateLimitGlobal.resetMs - System.currentTimeMillis()));
-            } else if (header.containsKey("X-RateLimit-Reset-After")) {
-                long ms = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
-                rateLimitGlobal.resetMs = System.currentTimeMillis() + ms;
-            }
-            if (header.containsKey("X-RateLimit-Interval")) {
-                rateLimitGlobal.intervalMs = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Interval")).get(0)) * 1000;
-            }
-        }
-
         return result;
     }
 

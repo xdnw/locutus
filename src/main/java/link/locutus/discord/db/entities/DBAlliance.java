@@ -1820,8 +1820,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         for (GrowthAsset a : asset) {
             endVal += getMetricAt(store, a.value, end);
         }
-        System.out.println("startVal$ = " + startVal + " | " + asset);
-        System.out.println("endVal$ = " + endVal + " | " + asset);
         return endVal - startVal;
     }
 

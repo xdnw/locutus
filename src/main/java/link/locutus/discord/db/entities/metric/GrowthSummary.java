@@ -3,6 +3,8 @@ package link.locutus.discord.db.entities.metric;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -13,6 +15,7 @@ import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -20,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.function.Predicate;
@@ -41,33 +45,36 @@ public class GrowthSummary {
         this.dayEnd = dayEnd;
     }
 
-    private Map<Integer, Set<Integer>> allianceMembership(Map<Integer, DBNation> nations) {
+    private Map<Integer, Set<Integer>> allianceMembership(Map<Integer, DBNation> nations, Set<Integer> allowedAlliances) {
         Map<Integer, Set<Integer>> allianceMembership = new Int2ObjectOpenHashMap<>();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             DBNation nation = entry.getValue();
             int aaId = nation.getAlliance_id();
-            if (aaId != 0 && nation.getPositionEnum().id >= Rank.MEMBER.id) {
+            if (aaId == 0 || !allowedAlliances.contains(aaId)) continue;
+            if (nation.getPositionEnum().id >= Rank.MEMBER.id) {
                 allianceMembership.computeIfAbsent(aaId, f -> new IntOpenHashSet()).add(entry.getKey());
             }
         }
         return allianceMembership;
     }
 
-    private ForkJoinTask<?> applyThreaded(ForkJoinPool pool, Set<Integer> allowedAlliances, long day, Map<Integer, DBNation> from, Map<Integer, Set<Integer>> fromNatByAA, Map<Integer, DBNation> to, Map<Integer, Set<Integer>> toNatByAA) {
-        return pool.submit(() -> {
-            for (int aaId : allowedAlliances) {
-                apply(aaId, day, from, fromNatByAA, to, toNatByAA);
-            }
-        });
+    private void applyAlliance(ForkJoinPool pool, Set<Integer> allowedAlliances, long day, Map<Integer, DBNation> from, Map<Integer, Set<Integer>> fromNatByAA, Map<Integer, DBNation> to, Map<Integer, Set<Integer>> toNatByAA) {
+        for (int aaId : allowedAlliances) {
+            apply(aaId, day, from, fromNatByAA, to, toNatByAA);
+        }
     }
 
     public void apply(int allianceId, long day, Map<Integer, DBNation> from, Map<Integer, Set<Integer>> fromNatByAA, Map<Integer, DBNation> to, Map<Integer, Set<Integer>> toNatByAA) {
         AllianceGrowthSummary summary = byAlliance.computeIfAbsent(allianceId, _ -> new AllianceGrowthSummary());
         Set<Integer> nationIds = new IntOpenHashSet();
-        nationIds.addAll(fromNatByAA.getOrDefault(allianceId, Set.of()));
-        nationIds.addAll(toNatByAA.getOrDefault(allianceId, Set.of()));
+
+        Set<Integer> memberBefore = fromNatByAA.getOrDefault(allianceId, Set.of());
+        Set<Integer> memberAfter = toNatByAA.getOrDefault(allianceId, Set.of());
+        nationIds.addAll(memberBefore);
+        nationIds.addAll(memberAfter);
+
         if (nationIds.isEmpty()) return;
-        updateDay(day, summary, allianceId, from, to, nationIds);
+        updateDay(day, summary, allianceId, from, to, nationIds, memberBefore, memberAfter);
     }
 
     public GrowthSummary run() throws IOException, ParseException {
@@ -82,56 +89,61 @@ public class GrowthSummary {
             throw new IllegalArgumentException("Invalid day range specified for growth summary: " + dayStart + " to " + dayEnd + " (max " + MAX_DAYS + ")");
         }
 
-        Map<Integer, DBNation> last2 = null;
-        Map<Integer, Set<Integer>> lastMembership = null;
-
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         List<ForkJoinTask<?>> tasks = new ObjectArrayList<>();
 
         long start = System.nanoTime();
+        Map<Long, Map<Integer, DBNation>> byDay = new ConcurrentHashMap<>();
+        Map<Long, Map<Integer, Set<Integer>>> memberShip = new ConcurrentHashMap<>();
 
-        for (long day = dayStart; day <= dayEnd; day++) {
-            long start1 = System.nanoTime();
-            Map<Integer, DBNation> now = (Map) dumper.getNations(day);
-            Map<Integer, Set<Integer>> nowMembership = allianceMembership(now);
-            if (last2 == null) {
-                last2 = now;
-                lastMembership = nowMembership;
-                continue;
+        int dayEndWithCurrent = dayEnd == TimeUtil.getDay() ? (int) dayEnd + 1 : (int) dayEnd;
+
+        ThrowingFunction<Long, Map<Integer, DBNation>> fetchNations = new ThrowingFunction<Long, Map<Integer, DBNation>>() {
+            @Override
+            public Map<Integer, DBNation> applyThrows(Long day) throws Exception {
+                if (day == dayEnd + 1) {
+                    return Locutus.imp().getNationDB().getNationsById();
+                }
+                return (Map) dumper.getNations(day);
             }
+        };
 
-            tasks.add(applyThreaded(
-                    forkJoinPool,
-                    allowedAlliances,
-                    day,
-                    last2,
-                    lastMembership,
-                    now,
-                    nowMembership));
+        List<ForkJoinTask<Map<Integer, DBNation>>> fetchTasks = new ObjectArrayList<>();
 
-            last2 = now;
-            lastMembership = nowMembership;
-        }
-        if (dayEnd == TimeUtil.getDay()) {
-            Map<Integer, DBNation> now = Locutus.imp().getNationDB().getNationsById();
-            Map<Integer, Set<Integer>> nowMembership = allianceMembership(now);
-
-            tasks.add(applyThreaded(
-                    forkJoinPool,
-                    allowedAlliances,
-                    dayEnd,
-                    last2,
-                    lastMembership,
-                    now,
-                    nowMembership));
+        for (long day = dayStart; day <= dayEndWithCurrent; day++) {
+            long finalDay = day;
+            fetchTasks.add(forkJoinPool.submit(() -> {
+                Map<Integer, DBNation> now = fetchNations.apply(finalDay);
+                byDay.put(finalDay, now);
+                memberShip.put(finalDay, allianceMembership(now, allowedAlliances));
+                return now;
+            }));
         }
 
-        // ensure all tasks are done
-        for (ForkJoinTask<?> task : tasks) {
+        // Ensure all fetch tasks are done
+        for (ForkJoinTask<Map<Integer, DBNation>> task : fetchTasks) {
             task.join();
         }
         // shutdown the pool
         forkJoinPool.shutdown();
+
+        // Process the data sequentially
+        for (long day = dayStart + 1; day <= dayEndWithCurrent; day++) {
+            Map<Integer, DBNation> now = byDay.get(day);
+            Map<Integer, DBNation> last = byDay.get(day - 1);
+            Map<Integer, Set<Integer>> nowMembership = memberShip.get(day);
+            Map<Integer, Set<Integer>> lastMembership = memberShip.get(day - 1);
+
+            applyAlliance(
+                    forkJoinPool,
+                    allowedAlliances,
+                    day,
+                    last,
+                    lastMembership,
+                    now,
+                    nowMembership);
+        }
+
 
         long diff = System.nanoTime() - start;
 
@@ -145,14 +157,14 @@ public class GrowthSummary {
         return byAlliance;
     }
 
-    public void updateDay(long day, AllianceGrowthSummary summary, int aaId, Map<Integer, DBNation> nationsFrom, Map<Integer, DBNation> nationsTo, Set<Integer> relevantIds) {
+    public void updateDay(long day, AllianceGrowthSummary summary, int aaId, Map<Integer, DBNation> nationsFrom, Map<Integer, DBNation> nationsTo, Set<Integer> relevantIds, Set<Integer> memberBefore, Set<Integer> memberAfter) {
         for (int nationId : relevantIds) {
             DBNation from = nationsFrom.get(nationId);
             DBNation to = nationsTo.get(nationId);
             if (from == null && to == null) continue;
 
-            boolean fromMember = from != null && from.getAlliance_id() == aaId && from.getPositionEnum().id >= Rank.MEMBER.id;
-            boolean toMember = to != null && to.getAlliance_id() == aaId && to.getPositionEnum().id >= Rank.MEMBER.id;
+            boolean fromMember = memberBefore.contains(nationId);
+            boolean toMember = memberAfter.contains(nationId);
 
             MembershipChangeReason reason;
             if (to == null) {
@@ -168,19 +180,11 @@ public class GrowthSummary {
                     reason = MembershipChangeReason.RECRUITED;
                 }
             } else {
-                boolean joined = to.getAlliance_id() == aaId && to.getPositionEnum().id >= Rank.MEMBER.id && (
-                            from == null ||
-                            from.getAlliance_id() != aaId ||
-                            from.getPositionEnum().id < Rank.MEMBER.id
-                        );
-                boolean left = !joined && from != null && from.getAlliance_id() == aaId && from.getPositionEnum().id >= Rank.MEMBER.id && (
-                            to == null ||
-                            to.getAlliance_id() != aaId ||
-                            to.getPositionEnum().id < Rank.MEMBER.id
-                        );
+                boolean joined = toMember && !fromMember;
+                boolean left = !joined && from != null && fromMember && !toMember;
 
                 if (joined) {
-                    if ((from.getAlliance_id() == 0 || from.getAlliance_id() == aaId) && from.getAgeDays() <= RECRUITED_DAYS) {
+                    if (from.getAgeDays() <= RECRUITED_DAYS) { // (from.getAlliance_id() == 0 || from.getAlliance_id() == aaId) &&
                         reason = MembershipChangeReason.RECRUITED;
                     } else {
                         reason = MembershipChangeReason.JOINED;

@@ -139,7 +139,7 @@ public class RequestTracker {
                 }
 
                 now = System.currentTimeMillis();
-                int delayS = depth > 0 ? depth > 1 ? 60 : 30 : 6;
+                int delayS = depth > 0 ? depth > 1 ? 60 : 30 : 10;
                 if (retryAfter == null) retryAfter = delayS;
                 long minimumRetry = now + TimeUnit.SECONDS.toMillis(delayS);
 
@@ -179,9 +179,9 @@ public class RequestTracker {
         return DOMAIN_MAP.computeIfAbsent(host, k -> DOMAIN_COUNTER.incrementAndGet());
     }
 
-    public void addRequest(String host, String url) {
-        int domainId = getDomainId(url);
-        addRequest(domainId, url);
+    public void addRequest(String queryStr, String queryUrl) {
+        int domainId = getDomainId(queryUrl);
+        addRequest(domainId, queryStr);
     }
 
     public void addRequest(int domainId, String url) {

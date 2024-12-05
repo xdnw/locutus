@@ -199,7 +199,6 @@ public final class FileUtil {
     }
 
     public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
-
         Supplier<String> jsoupTask = () -> {
             try {
                 Connection connection = Jsoup.connect(urlStr).method(post ? Connection.Method.POST : Connection.Method.GET)

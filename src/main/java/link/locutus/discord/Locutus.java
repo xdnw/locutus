@@ -654,6 +654,13 @@ public final class Locutus extends ListenerAdapter {
                 }
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
+            taskTrack.addTask("Active War/Attack", () -> {
+                synchronized (warUpdateLock) {
+                    runEventsAsync(f -> getWarDb().updateActiveWars(f, Settings.USE_V2));
+                    runEventsAsync(getWarDb()::updateAttacks);
+                }
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
+
             checkMailTasks();
 
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {

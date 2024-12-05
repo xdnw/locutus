@@ -1225,7 +1225,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         List<Integer> idList = new ArrayList<>(nationIds);
         if (bulk) markDirtyIncorrectCities(true, true);
         int estimatedCitiesToFetch = estimateCities(nationIds);
-        if (estimatedCitiesToFetch > 500) {
+        if (estimatedCitiesToFetch >= PoliticsAndWarV3.CITIES_PER_PAGE * 30) {
+            System.out.println("Updating all cities (2)");
             updateAllCities(eventConsumer);
             return;
         }
@@ -1257,7 +1258,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         markDirtyIncorrectNations(true, true);
 
         int dirtyNationCities = estimateCities(dirtyCityNations);
-        if (dirtyCities.size() > 500 || dirtyNationCities > 500) {
+        if (dirtyCities.size() > 15000 || dirtyNationCities > 15000) {
+            System.out.println("Updating all cities (dirty)");
             updateAllCities(eventConsumer);
             return true;
         }
@@ -3559,15 +3561,19 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
-        List<Integer> alliancesSorted = new ArrayList<>(allianceIds);
+        Set<Integer> aaIdsFU = new IntOpenHashSet(allianceIds);
+
+        List<Integer> alliancesSorted = new ArrayList<>(aaIdsFU);
         alliancesSorted.sort(Comparator.naturalOrder());
         String allianceQueryStr = StringMan.getString(alliancesSorted);
+        String aaInClause = "alliance_id in " + allianceQueryStr + " AND ";
+
         String metricQueryStr = StringMan.getString(metrics.stream().map(Enum::ordinal).collect(Collectors.toList()));
         boolean hasTurnEnd = turnEnd > 0 && turnEnd < Long.MAX_VALUE;
 
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new HashMap<>();
 
-        String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric in " + metricQueryStr + " and turn >= ?" + (hasTurnEnd ? " and turn <= ?" : "");
+        String query = "SELECT * FROM ALLIANCE_METRICS WHERE turn >= ?" + (hasTurnEnd ? " and turn <= ?" : "") + " AND " + aaInClause + "metric in " + metricQueryStr;
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws Exception {
@@ -3579,6 +3585,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             public void acceptThrows(ResultSet rs) throws Exception {
                 while (rs.next()) {
                     int allianceId = rs.getInt("alliance_id");
+                    if (aaInClause == null && !aaIdsFU.contains(allianceId)) {
+                        continue;
+                    }
                     AllianceMetric metric = AllianceMetric.values[rs.getInt("metric")];
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
