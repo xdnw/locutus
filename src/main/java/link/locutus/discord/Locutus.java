@@ -1,6 +1,8 @@
 package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord._main.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -583,22 +585,39 @@ public final class Locutus extends ListenerAdapter {
                 runEventsAsync(getNationDB()::updateRecentNations);
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            taskTrack.addTask("Nation", () -> {
+            taskTrack.addTask("All Nations", () -> {
                 if (Settings.USE_V2) {
                     runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
                     return;
                 }
                 runEventsAsync(events -> {
                     getNationDB().updateAllNations(events, true);
-                    boolean hasUnknownAA = false;
+                    Set<Integer> unknownAA = new IntOpenHashSet();
                     for (DBNation nation : getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getVm_turns() == 0)) {
-                        if (DBAlliance.get(nation.getAlliance_id()) == null) {
-                            hasUnknownAA = true;
+                        if (nation.getAlliance_id() != 0 && DBAlliance.get(nation.getAlliance_id()) == null) {
+                            unknownAA.add(nation.getAlliance_id());
                             break;
                         }
                     }
-                    if (hasUnknownAA) {
-                        getNationDB().updateAlliances(null, events);
+                    if (!unknownAA.isEmpty()) {
+                        getNationDB().updateAlliancesById(new IntArrayList(unknownAA), events);
+                    }
+                });
+            }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
+
+            taskTrack.addTask("New Nations", () -> {
+                if (Settings.USE_V2) return;
+                runEventsAsync(events -> {
+                    getNationDB().updateAllNations(events, true);
+                    Set<Integer> unknownAA = new IntOpenHashSet();
+                    for (DBNation nation : getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getVm_turns() == 0)) {
+                        if (nation.getAlliance_id() != 0 && DBAlliance.get(nation.getAlliance_id()) == null) {
+                            unknownAA.add(nation.getAlliance_id());
+                            break;
+                        }
+                    }
+                    if (!unknownAA.isEmpty()) {
+                        getNationDB().updateAlliancesById(new IntArrayList(unknownAA), events);
                     }
                 });
             }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
@@ -659,7 +678,15 @@ public final class Locutus extends ListenerAdapter {
                     runEventsAsync(f -> getWarDb().updateActiveWars(f, Settings.USE_V2));
                     runEventsAsync(getWarDb()::updateAttacks);
                 }
-            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
+            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
+
+            taskTrack.addTask("All Alliances", () -> {
+                if (Settings.USE_V2) {
+                    runEventsAsync(getNationDB()::updateAlliancesV2);
+                } else {
+                    runEventsAsync(f -> getNationDB().updateAlliances(null, f));
+                }
+            }, Settings.INSTANCE.TASKS.ALL_ALLIANCES_SECONDS, TimeUnit.SECONDS);
 
             checkMailTasks();
 

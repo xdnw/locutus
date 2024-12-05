@@ -14,6 +14,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -468,7 +469,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    private Set<Integer> updateAlliancesById(List<Integer> ids, Consumer<Event> eventConsumer) {
+    public Set<Integer> updateAlliancesById(List<Integer> ids, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         Set<Integer> fetched = new LinkedHashSet<>();
@@ -1755,6 +1756,60 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 rs.getLong("gdp") / 100d,
                 0d
         ));
+    }
+
+    public void updateAlliancesV2(Consumer<Event> eventConsumer) {
+        try {
+            List<SAllianceContainer> alliances = Locutus.imp().getPnwApiV2().getAlliances().getAlliances();
+            Set<Integer> expected = new LinkedHashSet<>(alliances.size());
+            synchronized (alliancesById) {
+                expected.addAll(alliancesById.keySet());
+            }
+
+            List<Alliance> adaptedList = new ObjectArrayList<>();
+            for (SAllianceContainer alliance : alliances) {
+                // public Alliance(Integer id,
+                Alliance adapted = new Alliance(Integer.parseInt(alliance.getId()),
+                        alliance.getName(),
+                        alliance.getAcronym(),
+                        alliance.getScore(),
+                        alliance.getColor(),
+                        TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(alliance.getFounddate()).toInstant(), // TODO parse
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        alliance.getFlagurl(),
+                        alliance.getForumurl(),
+                        alliance.getIrcchan(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
+                adaptedList.add(adapted);
+            }
+
+            Set<Integer> updated = processUpdatedAlliances(adaptedList, eventConsumer);
+            // TODO handle deletion later
+
+        } catch (IOException | ParseException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void updateNationsV2(boolean includeVM, Consumer<Event> eventConsumer) {
