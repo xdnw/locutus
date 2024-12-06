@@ -386,7 +386,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int _dcTurn() {
-        throw unsupported();
+        return 0;
     }
 
     @Override
