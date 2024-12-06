@@ -27,6 +27,7 @@
 @import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 @import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
 @import link.locutus.discord.web.WebUtil
+@import link.locutus.discord.web.commands.binding.value_types.GraphType
 @import net.dv8tion.jda.api.entities.Guild
 @import java.util.List
 @import java.util.Map
@@ -56,7 +57,7 @@
         </p>
     @endif
     @template.data.timechartdatasrc(ws = ws, title = "",
-        data = WebUtil.GSON.toJsonTree(categorized.createTable("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, TimeUtil.getTimeFromTurn(start) / 1000L)),
+        data = WebUtil.GSON.toJsonTree(categorized.createTable("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTimeFromTurn(start) / 1000L)),
     time = true)
 
     @if(entry.getKey() == -1)
@@ -74,7 +75,7 @@
                             <div class="bg-light border border-3 border-secondary rounded">
                                 @template.data.timechartdatasrc(ws = ws, title = type.name(),
                                 data = WebUtil.GSON.toJsonTree(categorized.createTable(type.name(), entry.getValue(),
-                                type).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, start)),
+                                type).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, start)),
                                 time = true)
                             </div>
                             <hr>

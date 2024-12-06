@@ -13,6 +13,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -95,7 +96,7 @@ public class WarsByTier extends Command {
 
         boolean attachJson = flags.contains('j');
         boolean attachCsv = flags.contains('j');
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.SIDE_BY_SIDE_BAR, 0, attachJson, attachCsv);
         return null;
     }
 }

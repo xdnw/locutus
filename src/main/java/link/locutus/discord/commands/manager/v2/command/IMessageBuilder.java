@@ -14,6 +14,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
@@ -26,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public interface IMessageBuilder {
-    public record GraphMessageInfo(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+    public record GraphMessageInfo(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long origin) {
         public static GraphMessageInfo fromJson(JsonObject tableObj) {
             TimeNumericTable<?> table = new TimeNumericTable<>(tableObj) {
                 @Override
@@ -36,7 +37,11 @@ public interface IMessageBuilder {
             TimeFormat timeFormat = TimeFormat.valueOf(tableObj.get("timeFormat").getAsString());
             TableNumberFormat numberFormat = TableNumberFormat.valueOf(tableObj.get("numberFormat").getAsString());
             long origin = tableObj.get("origin").getAsLong();
-            return new GraphMessageInfo(table, timeFormat, numberFormat, origin);
+            GraphType type = null;
+            if (tableObj.has("type")) {
+                type = GraphType.valueOf(tableObj.get("type").getAsString());
+            }
+            return new GraphMessageInfo(table, timeFormat, numberFormat, type, origin);
         }
     }
 
@@ -378,7 +383,7 @@ public interface IMessageBuilder {
     IMessageBuilder file(String name, byte[] data);
 
     @CheckReturnValue
-    IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate);
+    IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate);
 
     CompletableFuture<IMessageBuilder> send();
 

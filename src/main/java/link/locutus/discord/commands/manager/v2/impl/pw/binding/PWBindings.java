@@ -191,7 +191,7 @@ public class PWBindings extends BindingHelper {
             if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
             CityRanges range = CityRanges.parse(pair[0]);
             List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
-            result.put(range, new HashSet<>(list));
+            result.put(range, new LinkedHashSet<>(list));
         }
         return result;
     }
@@ -234,7 +234,7 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A comma separated list of attack success types")
     public static Set<SuccessType> SuccessTypes(String input) {
         String[] split = input.split(",");
-        Set<SuccessType> result = new HashSet<>();
+        Set<SuccessType> result = new LinkedHashSet<>();
         for (String s : split) {
             result.add(SuccessType.parse(s));
         }
@@ -811,7 +811,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A comma separated list of spy operation types")
     public Set<SpyCount.Operation> opTypes(String input) {
-        Set<SpyCount.Operation> allowedOpTypes = new HashSet<>();
+        Set<SpyCount.Operation> allowedOpTypes = new LinkedHashSet<>();
         for (String type : input.split(",")) {
             if (type.equalsIgnoreCase("*")) {
                 allowedOpTypes.addAll(Arrays.asList(SpyCount.Operation.values()));
@@ -827,7 +827,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A comma separated list of alliance metrics")
     public Set<AllianceMetric> metrics(String input) {
-        Set<AllianceMetric> metrics = new HashSet<>();
+        Set<AllianceMetric> metrics = new LinkedHashSet<>();
         for (String type : input.split(",")) {
             AllianceMetric arg = StringMan.parseUpper(AllianceMetric.class, type);
             metrics.add(arg);
@@ -1051,7 +1051,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
     public static Set<WarStatus> WarStatuses(String input) {
-        Set<WarStatus> result = new HashSet<>();
+        Set<WarStatus> result = new LinkedHashSet<>();
         for (String s : input.split(",")) {
             result.add(WarStatus.parse(s));
         }
@@ -1493,7 +1493,7 @@ public class PWBindings extends BindingHelper {
         RolePermission perms = param.getAnnotation(RolePermission.class);
         if (perms != null) {
             if (user != null) {
-                Set<Integer> allowedIds = new HashSet<>();
+                Set<Integer> allowedIds = new LinkedHashSet<>();
                 for (int aaId : list.getIds()) {
                     try {
                         PermissionBinding.checkRole(db.getGuild(), perms, user, aaId);

@@ -28,6 +28,7 @@ public class Dictionary {
     private final File file;
     private Map<String, Integer> reverse;
     private ObjectArrayList<String> map;
+    private volatile boolean loaded;
     private boolean saved;
 
     public Dictionary(File folder) {
@@ -38,10 +39,12 @@ public class Dictionary {
     }
 
     public Dictionary load() {
-        if (!map.isEmpty() || !file.exists()) {
+        if (loaded) {
             return this;
         }
         synchronized (this) {
+            if (loaded) return this;
+            loaded = true;
             try (DataInputStream in = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
                 int lines = IOUtil.readVarInt(in);
                 int i = 0;

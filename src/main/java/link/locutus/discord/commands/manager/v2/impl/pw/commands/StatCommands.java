@@ -37,6 +37,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.table.imp.RadiationByTurn;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.WarCostByDay;
 import link.locutus.discord.commands.rankings.WarCostRanking;
@@ -69,6 +70,7 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -847,7 +849,7 @@ public class StatCommands {
 
         if (attachJson) {
             WebGraph json = TimeNumericTable.toHtmlJson(new String[]{coalition1.getFilter(), coalition2.getFilter()}, data, 0, plot.getTitle().getText(), groupName, metric.getName(),
-                    TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, 0L);
+                    TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.SIDE_BY_SIDE_BAR, 0L);
             msg.file("data.json", WebUtil.GSON.toJson(json));
         }
         if (attachCsv) {
@@ -1005,7 +1007,7 @@ public class StatCommands {
         for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
             table.add(score, (Void) null);
         }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachJson, attachCsv);
         return null;
     }
 
@@ -1064,7 +1066,7 @@ public class StatCommands {
             table.add(cities, (Void) null);
         }
         if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0, attachJson, attachCsv);
         return null;
     }
 
@@ -1133,7 +1135,7 @@ public class StatCommands {
         for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
             table.add(score, (Void) null);
         }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachJson, attachCsv);
         return null;
     }
 
@@ -1513,7 +1515,7 @@ public class StatCommands {
             table.add(cities, (Void) null);
         }
         if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, 0, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0, attachJson, attachCsv);
         return null;
     }
 
@@ -1526,7 +1528,7 @@ public class StatCommands {
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalitions);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), turnStart, attachJson, attachCsv);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done!";
     }
 
@@ -1541,7 +1543,7 @@ public class StatCommands {
 
         List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
-        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, start_time, attach_json, attach_csv);
+        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, start_time, attach_json, attach_csv);
         return null;
     }
 
@@ -1552,7 +1554,7 @@ public class StatCommands {
                                     @Switch("c") boolean attachCsv) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, null, coalition1, coalition2);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), turnStart, attachJson, attachCsv);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done!";
     }
 
@@ -1639,9 +1641,8 @@ public class StatCommands {
                                   @Arg("Date to start from")
                                   @Timestamp long time, @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv) throws IOException {
-        TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, time, Long.MAX_VALUE);
-
-        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, TimeUtil.getTurn(time), attachJson, attachCsv);
+        TimeNumericTable<Void> table = new RadiationByTurn(continents, time, Long.MAX_VALUE).writeData();
+        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTurn(time), attachJson, attachCsv);
         return "Done!";
     }
 
@@ -1653,7 +1654,7 @@ public class StatCommands {
         long turnStart = TimeUtil.getTurn(time);
         List<String> coalitionNames = List.of(metric.name());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalition);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), turnStart, attachJson, attachCsv);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done! " + user.getAsMention();
     }
 
@@ -2580,7 +2581,7 @@ public class StatCommands {
             table.add(turn, (Void) null);
         }
         TimeFormat format = hasTurn ? TimeFormat.TURN_TO_DATE : TimeFormat.DAYS_TO_DATE;
-        table.write(channel, format, TableNumberFormat.SI_UNIT, minTurn, attachJson, attachCsv);
+        table.write(channel, format, TableNumberFormat.SI_UNIT, GraphType.LINE, minTurn, attachJson, attachCsv);
         return "Done!";
     }
 
@@ -3110,7 +3111,7 @@ public class StatCommands {
         }
 
         for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, min, attach_json, attach_csv);
+            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attach_json, attach_csv);
         }
         return null;
     }
@@ -3365,7 +3366,7 @@ public class StatCommands {
         }
 
         for (TimeNumericTable<Map<String, WarParser>> table : tables) {
-            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, min, attach_json, attach_csv);
+            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attach_json, attach_csv);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

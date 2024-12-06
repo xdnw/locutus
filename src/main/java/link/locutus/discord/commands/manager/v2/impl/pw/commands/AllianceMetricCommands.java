@@ -47,6 +47,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
@@ -359,7 +360,7 @@ public class AllianceMetricCommands {
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
-        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).write(io, 0, attachJson, attachCsv);
+        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).writeData().write(io, 0, attachJson, attachCsv);
     }
 
     @Command(desc = "Generate and save the alliance metrics over a period of time, using nation and city snapshots to calculate the metrics")
@@ -466,7 +467,7 @@ public class AllianceMetricCommands {
             for (long day = minDay; day <= maxDay; day++) {
                 table.add(day, (Void) null);
             }
-            table.writeMsg(msg2, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, false, false);
+            table.writeMsg(msg2, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, false, false);
         }
         msg2.send();
         return null;

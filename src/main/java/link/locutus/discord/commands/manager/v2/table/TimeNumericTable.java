@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
@@ -18,28 +17,18 @@ import de.erichseifert.gral.plots.colors.ColorMapper;
 import de.erichseifert.gral.plots.legends.AbstractLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
-import gg.jte.generated.precompiled.data.JtebarchartdatasrcGenerated;
-import gg.jte.generated.precompiled.data.JtetimechartdatasrcGenerated;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
-import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.awt.*;
@@ -98,44 +87,6 @@ public abstract class TimeNumericTable<T> {
         return isBar;
     }
 
-    public static TimeNumericTable<Void> createForContinents(Set<Continent> continents, long start, long end) {
-        String title = "Radiation by turn";
-        long turnStart = TimeUtil.getTurn(start);
-        long turnEnd = (end >= TimeUtil.getTimeFromTurn(TimeUtil.getTurn())) ? TimeUtil.getTurn() : TimeUtil.getTimeFromTurn(end);
-        Map<Long, Map<Continent, Double>> radsbyTurn = Locutus.imp().getNationDB().getRadiationByTurns();
-        List<Continent> continentsList = new ArrayList<>(continents);
-        String[] labels = new String[continents.size() + 1];
-        for (int i = 0; i < continentsList.size(); i++) {
-            labels[i] = continentsList.get(i).name();
-        }
-        labels[labels.length - 1] = "Global";
-
-        double[] buffer = new double[labels.length];
-
-        TimeNumericTable<Void> table = new TimeNumericTable<>(title, "turn", "Radiation", labels) {
-            @Override
-            public void add(long turn, Void ignore) {
-                int turnRelative = (int) (turn - turnStart);
-                Map<Continent, Double> radsByCont = radsbyTurn.get(turn);
-                if (radsByCont != null) {
-                    for (int i = 0; i < continentsList.size(); i++) {
-                        double rads = radsByCont.getOrDefault(continentsList.get(i), 0d);
-                        buffer[i] = rads;
-                    }
-                    double total = 0;
-                    for (double val : radsByCont.values()) total += val;
-                    buffer[buffer.length - 1] = total / 5d;
-                }
-                add(turnRelative, buffer);
-            }
-        };
-
-        for (long turn = turnStart; turn <= turnEnd; turn++) {
-            table.add(turn, (Void) null);
-        }
-        return table;
-    }
-
     /*
 
             Set<DBNation> nations = coalition.stream().flatMap(f -> f.getNations(removeVM, removeInactiveM, removeApps).stream()).collect(Collectors.toSet());
@@ -164,124 +115,6 @@ public abstract class TimeNumericTable<T> {
         return result;
     }
 
-    public static TimeNumericTable create(String title, Set<NationAttributeDouble> metrics, Collection<DBAlliance> alliances, NationAttributeDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps) {
-//        List<String> coalitionNames = alliances.stream().map(f -> f.getName()).collect(Collectors.toList());
-        List<Set<DBAlliance>> aaSingleton = Collections.singletonList(new HashSet<>(alliances));
-        List<DBNation> nations = toNations(aaSingleton, removeVM, removeActiveM, removeApps).get(0);
-        return create(title, (Set) metrics, nations, groupBy, total);
-    }
-
-    public static <T> TimeNumericTable create(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {
-        Set<T> nations = new HashSet<>(coalition);
-        return create(title, metrics, nations, groupBy, total);
-    }
-
-    public static <T> TimeNumericTable create(String titlePrefix, Attribute<T, Double> metric, List<List<T>> coalitions, List<String> coalitionNames, Attribute<T, Double> groupBy, boolean total) {
-        String[] labels = coalitionNames.toArray(new String[0]);
-
-        Function<T, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
-        List<Map<Integer, List<T>>> byTierList = new ArrayList<>();
-        Set<T> allNations = new HashSet<>();
-        for (List<T> coalition : coalitions) {
-            allNations.addAll(coalition);
-            Map<Integer, List<T>> byTierListCoalition = new HashMap<>();
-            for (T nation : coalition) {
-                Integer group = groupByInt.apply(nation);
-                byTierListCoalition.computeIfAbsent(group, f -> new ArrayList<>()).add(nation);
-            }
-            byTierList.add(byTierListCoalition);
-        }
-//        SimpleNationList allNationsList = new SimpleNationList(allNations);
-
-
-        int min = allNations.stream().map(groupByInt).min(Integer::compare).get();
-        int max = allNations.stream().map(groupByInt).max(Integer::compare).get();
-
-        double[] buffer = new double[coalitions.size()];
-
-        String labelY = labels.length == 1 ? labels[0] : "metric";
-        titlePrefix += (total ? "Total" : "Average") + " " + labelY + " by " + groupBy.getName();
-        TimeNumericTable<Void> table = new TimeNumericTable<>(titlePrefix, groupBy.getName(), labelY, labels) {
-            @Override
-            public void add(long key, Void ignore) {
-                for (int i = 0; i < byTierList.size(); i++) {
-                    double valueTotal = 0;
-                    int count = 0;
-
-                    Map<Integer, List<T>> byTier = byTierList.get(i);
-                    List<T> nations = byTier.get((int) key);
-                    if (nations == null) {
-                        buffer[i] = 0;
-                        continue;
-                    }
-                    for (T nation : nations) {
-                        count++;
-                        valueTotal += metric.apply(nation);
-                    }
-                    if (count > 1 && !total) {
-                        valueTotal /= count;
-                    }
-                    buffer[i] = valueTotal;
-                }
-                add(key, buffer);
-            }
-        };
-
-        for (int key = min; key <= max; key++) {
-            table.add(key, (Void) null);
-        }
-        return table;
-    }
-
-    public static <T> TimeNumericTable create(String title, Set<Attribute<T, Double>> metrics, Set<T> coalition, Attribute<T, Double> groupBy, boolean total) {
-        List<Attribute<T, Double>> metricsList = new ArrayList<>(metrics);
-        String[] labels = metrics.stream().map(Attribute::getName).toArray(String[]::new);
-
-        Function<T, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
-        Map<Integer, List<T>> byTier = new HashMap<>();
-        for (T t : coalition) {
-            int tier = groupByInt.apply(t);
-            byTier.computeIfAbsent(tier, f -> new ArrayList<>()).add(t);
-        }
-        int min = coalition.isEmpty() ? 0 : coalition.stream().map(groupByInt).min(Integer::compare).get();
-        int max = coalition.isEmpty() ? 0 : coalition.stream().map(groupByInt).max(Integer::compare).get();
-
-        double[] buffer = new double[metricsList.size()];
-        String labelY = labels.length == 1 ? labels[0] : "metric";
-        title += (total ? "Total" : "Average") + " " + labelY + " by " + groupBy.getName();
-        TimeNumericTable<List<T>> table = new TimeNumericTable<>(title, groupBy.getName(), labelY, labels) {
-            @Override
-            public void add(long key, List<T> nations) {
-                if (nations == null) {
-                    Arrays.fill(buffer, 0);
-                } else {
-                    for (int i = 0; i < metricsList.size(); i++) {
-                        Attribute<T, Double> metric = metricsList.get(i);
-                        double valueTotal = 0;
-                        int count = 0;
-
-                        for (T nation : nations) {
-                            count++;
-                            valueTotal += metric.apply(nation);
-                        }
-                        if (count > 1 && !total) {
-                            valueTotal /= count;
-                        }
-
-                        buffer[i] = valueTotal;
-                    }
-                }
-                add(key, buffer);
-            }
-        };
-
-        for (int key = min; key <= max; key++) {
-            List<T> nations = byTier.get(key);
-            table.add(key, nations);
-        }
-        return table;
-    }
-
     public String getName() {
         return name;
     }
@@ -299,15 +132,16 @@ public abstract class TimeNumericTable<T> {
         return data;
     }
 
-    public WebGraph toHtmlJson(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
-        return toHtmlJson(labels, data, amt, name, labelX, labelY, timeFormat, numberFormat, origin);
+    public WebGraph toHtmlJson(TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long origin) {
+        return toHtmlJson(labels, data, amt, name, labelX, labelY, timeFormat, numberFormat, type, origin);
     }
 
-    public static WebGraph toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY, TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
+    public static WebGraph toHtmlJson(String[] labels, DataTable data, int amt, String name, String labelX, String labelY, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long origin) {
         WebGraph graph = new WebGraph();
 
         graph.time_format = timeFormat;
         graph.number_format = numberFormat;
+        graph.origin = origin;
 
         Column col1 = data.getColumn(0);
 //        double minX = col1.getStatistics(Statistics.MIN);
@@ -325,6 +159,7 @@ public abstract class TimeNumericTable<T> {
         graph.x = labelX;
         graph.y = labelY;
         graph.labels = labels;
+        graph.type = type;
 
 
         graph.data = new ObjectArrayList<>();
@@ -601,27 +436,6 @@ public abstract class TimeNumericTable<T> {
         return plot;
     }
 
-    public String toHtml(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
-        String html;
-        if (origin > 0) {
-            if (timeFormat == TimeFormat.TURN_TO_DATE) {
-                convertTurnsToEpochSeconds(origin);
-            } else if (timeFormat == TimeFormat.DAYS_TO_DATE) {
-                convertDaysToEpochSeconds(origin);
-            }
-        }
-        if (isBar()) {
-            JsonElement json = WebUtil.GSON.toJsonTree(toHtmlJson(timeFormat, numberFormat, origin));
-            html = WebStore.render(f -> JtebarchartdatasrcGenerated.render(f, null, null, getName(), json, false));
-        } else {
-            boolean isTime = timeFormat == TimeFormat.TURN_TO_DATE || timeFormat == TimeFormat.DAYS_TO_DATE || timeFormat == TimeFormat.MILLIS_TO_DATE || timeFormat == TimeFormat.SECONDS_TO_DATE;
-//            toHtmlJson(timeFormat, numberFormat, origin)
-            JsonElement json = WebUtil.GSON.toJsonTree(toHtmlJson(timeFormat, numberFormat, origin));
-            html = WebStore.render(f -> JtetimechartdatasrcGenerated.render(f, null, null, getName(), json, isTime));
-        }
-        return html;
-    }
-
     public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat) throws IOException {
         XYPlot plot = getTable(timeFormat, numberFormat);
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
@@ -629,17 +443,17 @@ public abstract class TimeNumericTable<T> {
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
-    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
-        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, originDate, attachJson, attachCsv);
+    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, type, originDate, attachJson, attachCsv);
         msg.send();
     }
 
-    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
+    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
         try {
-            msg = msg.graph(this, timeFormat, numberFormat, originDate);
+            msg = msg.graph(this, timeFormat, numberFormat, type, originDate);
             String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
             if (attachJson) {
-                msg = msg.file(name + ".json", toHtmlJson(timeFormat, numberFormat, originDate).toString());
+                msg = msg.file(name + ".json", toHtmlJson(timeFormat, numberFormat, type, originDate).toString());
             }
             if (attachCsv) {
                 msg = msg.file(name + ".csv", toCsv());

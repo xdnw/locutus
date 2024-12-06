@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.ReturnType;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
@@ -79,6 +80,8 @@ public class TradeEndpoints {
         result.y = "Price Per Unit ($)";
         result.labels = labels.toArray(new String[0]);
         result.data = data;
+        result.title = "Trade Prices by Day";
+        result.type = GraphType.LINE;
         return result;
     }
 }

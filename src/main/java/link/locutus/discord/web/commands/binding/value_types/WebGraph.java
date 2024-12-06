@@ -9,6 +9,7 @@ import java.util.List;
 public class WebGraph {
     public @Nullable TimeFormat time_format;
     public @Nullable TableNumberFormat number_format;
+    public @Nullable GraphType type;
     public @Nullable long origin;
 
     public String title;

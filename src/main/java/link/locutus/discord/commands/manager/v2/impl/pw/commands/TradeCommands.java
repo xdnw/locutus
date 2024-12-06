@@ -43,6 +43,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -1256,7 +1257,7 @@ public class TradeCommands {
             table.add(day, (Void) null);
         }
 
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
         return "Done!";
     }
 
@@ -1314,7 +1315,7 @@ public class TradeCommands {
         }
 
 
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
+        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
 
         return "Done!";
     }
@@ -1406,7 +1407,7 @@ public class TradeCommands {
             }
 
 
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
         }
 
 
@@ -1486,7 +1487,7 @@ public class TradeCommands {
                 }
             }
 
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, minDay, attachJson, attachCsv);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
         }
     }
 

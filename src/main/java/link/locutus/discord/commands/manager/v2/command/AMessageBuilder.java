@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -93,8 +94,8 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, long originDate) {
-        tables.add(new GraphMessageInfo(table, timeFormat, numberFormat, originDate));
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate) {
+        tables.add(new GraphMessageInfo(table, timeFormat, numberFormat, type, originDate));
         return this;
     }
 
@@ -131,7 +132,11 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             if (!tables.isEmpty()) {
                 List<Object> tableArray = (List<Object>) root.computeIfAbsent("tables", k -> new ArrayList<>());
                 for (GraphMessageInfo tableInfo : tables) {
-                    WebGraph html = tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.origin());
+                    GraphType type = tableInfo.type();
+                    if (type == null) {
+                        type = tableInfo.table().isBar() ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE;
+                    }
+                    WebGraph html = tableInfo.table().toHtmlJson(tableInfo.timeFormat(), tableInfo.numberFormat(), tableInfo.type(), tableInfo.origin());
                     tableArray.add(html);
                 }
                 root.put("tables", tableArray);
@@ -343,7 +348,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             output.file(entry.getKey(), entry.getValue());
         }
         for (GraphMessageInfo table : tables) {
-            output.graph(table.table(), table.timeFormat(), table.numberFormat(), table.origin());
+            output.graph(table.table(), table.timeFormat(), table.numberFormat(), table.type(), table.origin());
         }
         return output;
     }

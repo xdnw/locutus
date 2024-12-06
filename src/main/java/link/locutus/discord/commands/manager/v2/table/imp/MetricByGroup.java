@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -58,6 +59,11 @@ public class MetricByGroup extends SimpleTable<NationList> {
     @Override
     public TimeFormat getTimeFormat() {
         return TimeFormat.SI_UNIT;
+    }
+
+    @Override
+    public GraphType getGraphType() {
+        return GraphType.LINE;
     }
 
     @Override

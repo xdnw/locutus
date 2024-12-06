@@ -3626,7 +3626,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         String metricQueryStr = StringMan.getString(metrics.stream().map(Enum::ordinal).collect(Collectors.toList()));
         boolean hasTurnEnd = turnEnd > 0 && turnEnd < Long.MAX_VALUE;
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new HashMap<>();
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new Object2ObjectOpenHashMap<>();
 
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE turn >= ?" + (hasTurnEnd ? " and turn <= ?" : "") + " AND " + aaInClause + "metric in " + metricQueryStr;
         query(query, new ThrowingConsumer<PreparedStatement>() {

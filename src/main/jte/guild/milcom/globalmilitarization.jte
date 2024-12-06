@@ -10,6 +10,7 @@
 @import link.locutus.discord.db.entities.DBAlliance
 @import link.locutus.discord.util.TimeUtil
 @import link.locutus.discord.web.WebUtil
+@import link.locutus.discord.web.commands.binding.value_types.GraphType
 @param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
@@ -40,7 +41,7 @@
                         data = WebUtil.GSON.toJsonTree(AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn,
                         spheres.getSphereName(sphereId),
                         new HashSet<>(spheres.getAlliances(sphereId))
-                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
+                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
                         time = true)
                     </div>
                     <hr>
@@ -51,7 +52,7 @@
                         @template.data.timechartdatasrc(ws = ws, title = alliance.getName(),
                         data = WebUtil.GSON.toJsonTree(AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(),
                         Collections.singleton(alliance)
-                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
+                        ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
                         time = true)
                     </div>
                     @endif

@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -42,15 +43,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.text.ParseException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -1476,10 +1469,11 @@ public enum AllianceMetric implements IAllianceMetric {
     public static Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Collection<AllianceMetric> metrics, long minTurn, long maxTurn, Set<DBAlliance>... coalitions) {
         if (minTurn < maxTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
         if (maxTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
-        Set<DBAlliance> allAlliances = new HashSet<>();
+        Set<DBAlliance> allAlliances = new ObjectLinkedOpenHashSet<>();
         for (Set<DBAlliance> coalition : coalitions) allAlliances.addAll(coalition);
-        Set<Integer> aaIds = allAlliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
-        Set<AllianceMetric> finalMetrics = new HashSet<>(metrics);
+        // to linked hash set
+        Set<Integer> aaIds = allAlliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
+        Set<AllianceMetric> finalMetrics = new ObjectLinkedOpenHashSet<>(metrics);
         if (aaIds.size() > 1) {
             for (AllianceMetric metric : metrics) {
                 if (metric.shouldAverage()) {

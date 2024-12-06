@@ -19,6 +19,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarAttackParser;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -257,7 +258,7 @@ public class WarCostRankingByDay extends Command {
         boolean attachJson = flags.contains('j');
         boolean attachCsv = flags.contains('j');
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, min, attachJson, attachCsv);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attachJson, attachCsv);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

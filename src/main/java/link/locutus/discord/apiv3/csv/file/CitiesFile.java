@@ -27,7 +27,9 @@ public class CitiesFile extends DataFile<DBCity, CityHeader, CityHeaderReader> {
     private SoftReference<CityCache> cityIdsCache = new SoftReference<>(null);
 
     private Map<Integer, DBCity> getCityMap(int[] offsets, GlobalDataWrapper<CityHeader> wrapper) {
-        if (offsets == null) return Collections.emptyMap();
+        if (offsets == null) {
+            return Collections.emptyMap();
+        }
         Map<Integer, DBCity> result = new Int2ObjectOpenHashMap<>();
         for (int offset : offsets) {
             DBCity city = new BytesDBCity(wrapper, offset);
@@ -49,9 +51,9 @@ public class CitiesFile extends DataFile<DBCity, CityHeader, CityHeaderReader> {
         }
 
         Map<Integer, int[]> offsetsArr = new Int2ObjectOpenHashMap<>();
-        for (IntArrayList value : offsets.values()) {
-            int[] arr = value.toArray((int[]) null);
-            offsetsArr.put(value.getInt(0), arr);
+        for (Map.Entry<Integer, IntArrayList> entry : offsets.entrySet()) {
+            int[] arr = entry.getValue().toArray((int[]) null);
+            offsetsArr.put(entry.getKey(), arr);
         }
         return offsetsArr;
     }
