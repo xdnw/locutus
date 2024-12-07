@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.TradePriceByDay;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -1267,69 +1268,19 @@ public class TradeCommands {
                                   int numDays,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv) throws IOException, GeneralSecurityException {
-        if (numDays <= 1) return "Invalid number of days";
-        List<ResourceType> rssList = new ArrayList<>(resources);
-        rssList.remove(ResourceType.MONEY);
-        rssList.remove(ResourceType.CREDITS);
-        if (rssList.isEmpty()) return "Invalid resources";
-
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
-
-        Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
-        long minDay = Long.MAX_VALUE;
-        long maxDay = Long.MIN_VALUE;
-
-        for (ResourceType type : rssList) {
-            // long minDate, ResourceType type, int minQuantity, int min, int max
-            double curAvg = manager.getHighAvg(type);
-            int min = (int) (curAvg * 0.2);
-            int max = (int) (curAvg * 5);
-
-            Map<Long, Double> averages = tradeDB.getAverage(start, type, 15, min, max);
-
-            avgByRss.put(type, averages);
-
-            minDay = Math.min(minDay, Collections.min(averages.keySet()));
-            maxDay = Collections.max(averages.keySet());
-        }
-
-        String title = "Trade average by day";
-
-        double[] buffer = new double[rssList.size()];
-        long finalMinDay = minDay;
-        String[] labels = rssList.stream().map(f -> f.getName()).toArray(String[]::new);
-        TimeNumericTable<Map<ResourceType, Map<Long, Double>>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
-            @Override
-            public void add(long day, Map<ResourceType, Map<Long, Double>> cost) {
-                for (int i = 0; i < rssList.size(); i++) {
-                    ResourceType type = rssList.get(i);
-                    Double value = cost.getOrDefault(type, Collections.emptyMap()).get(day);
-                    if (value != null) buffer[i] = value;
-                }
-                add(day - finalMinDay, buffer);
-            }
-        };
-
-        for (long day = minDay; day <= maxDay; day++) {
-            table.add(day, avgByRss);
-        }
-
-
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
-
+        TradePriceByDay graph = new TradePriceByDay(resources, numDays);
+        graph.write(channel, attachJson, attachCsv);
         return "Done!";
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell margin by day")
-    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int numDays,
+    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Timestamp long start, @Default @Timestamp Long end,
                                    @Arg("Use the margin percent instead of absolute difference")
                                    @Default("true") boolean percent,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv) throws IOException, GeneralSecurityException {
-        long now = System.currentTimeMillis();
-        long cutoff = now - TimeUnit.DAYS.toMillis(numDays + 1);
-
-        List<DBTrade> allOffers = manager.getTradeDb().getTrades(cutoff);
+        if (end == null) end = Long.MAX_VALUE;
+        List<DBTrade> allOffers = manager.getTradeDb().getTrades(start, end);
         Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
 
         long minDay = Long.MAX_VALUE;

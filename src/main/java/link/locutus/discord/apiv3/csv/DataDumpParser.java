@@ -66,7 +66,6 @@ public class DataDumpParser {
 
     // new method
     public Map<Integer, DBNationSnapshot> getNations(long day) throws IOException, ParseException {
-        load();
         NationsFile nationsFile = getNearestNationFile(day);
         CitiesFile citiesFile = getNearestCityFile(day);
         Function<Integer, Map<Integer, DBCity>> fetchCities = null;
@@ -83,16 +82,30 @@ public class DataDumpParser {
         return this;
     }
 
-    public List<Long> getDays(boolean includeNations, boolean includeCities) {
+    public List<Long> getDays(boolean requireNations, boolean requireCities) {
         Set<Long> days = new LongOpenHashSet();
-        if (includeNations && nationFilesByDay != null) {
-            synchronized (nationFilesByDay) {
-                days.addAll(nationFilesByDay.keySet());
+        if (requireNations) {
+            if (requireCities) {
+                if (nationFilesByDay != null && cityFilesByDay != null) {
+                    synchronized (nationFilesByDay) {
+                        days.addAll(nationFilesByDay.keySet());
+                    }
+                    synchronized (cityFilesByDay) {
+                        days.removeIf(day -> !cityFilesByDay.containsKey(day));
+                    }
+                }
+            } else {
+                if (nationFilesByDay != null) {
+                    synchronized (nationFilesByDay) {
+                        days.addAll(nationFilesByDay.keySet());
+                    }
+                }
             }
-        }
-        if (includeCities && cityFilesByDay != null) {
-            synchronized (cityFilesByDay) {
-                days.addAll(cityFilesByDay.keySet());
+        } else if (requireCities) {
+            if (cityFilesByDay != null) {
+                synchronized (cityFilesByDay) {
+                    days.addAll(cityFilesByDay.keySet());
+                }
             }
         }
         return days.stream().sorted().toList();
@@ -233,6 +246,8 @@ public class DataDumpParser {
     }
 
     private <T, H extends DataHeader<T>, U extends DataReader<H>, F extends DataFile<T, H, U>> F getNearest(Map<Long, F> map, long day) {
+        F exact = map.get(day);
+        if (exact != null) return exact;
         F nearest = null;
         long nearestDiff = Long.MAX_VALUE;
         for (Map.Entry<Long, F> entry : map.entrySet()) {

@@ -7,25 +7,25 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 public enum TimeFormat {
-    NUMERIC {
+    NUMERIC(false) {
         @Override
         public String toString(Number number) {
             return number.toString();
         }
     },
-    DECIMAL_ROUNDED {
+    DECIMAL_ROUNDED(false) {
         @Override
         public String toString(Number number) {
             return MathMan.format(number);
         }
     },
-    SI_UNIT {
+    SI_UNIT(false) {
         @Override
         public String toString(Number number) {
             return MathMan.formatSig(number.doubleValue());
         }
     },
-    TURN_TO_DATE {
+    TURN_TO_DATE(false) {
         @Override
         public String toString(Number number) {
             long time = TimeUtil.getTimeFromTurn(number.longValue());
@@ -36,7 +36,7 @@ public enum TimeFormat {
 
         }
     },
-    DAYS_TO_DATE {
+    DAYS_TO_DATE(false) {
         @Override
         public String toString(Number number) {
             long time = TimeUtil.getTimeFromDay(number.longValue());
@@ -46,7 +46,7 @@ public enum TimeFormat {
             return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
         }
     },
-    MILLIS_TO_DATE {
+    MILLIS_TO_DATE(false) {
         @Override
         public String toString(Number number) {
             long time = number.longValue();
@@ -56,7 +56,7 @@ public enum TimeFormat {
             return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
         }
     },
-    SECONDS_TO_DATE {
+    SECONDS_TO_DATE(false) {
         @Override
         public String toString(Number number) {
             long time = number.longValue();
@@ -67,6 +67,16 @@ public enum TimeFormat {
         }
     },
     ;
+
+    private final boolean isTime;
+
+    TimeFormat(boolean isTime) {
+        this.isTime = isTime;
+    }
+
+    public boolean isTime() {
+        return isTime;
+    }
 
     public abstract String toString(Number number);
 }

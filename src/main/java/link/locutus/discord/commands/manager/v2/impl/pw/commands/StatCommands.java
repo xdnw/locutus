@@ -37,7 +37,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.table.imp.RadiationByTurn;
+import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.WarCostByDay;
 import link.locutus.discord.commands.rankings.WarCostRanking;
@@ -98,64 +98,10 @@ public class StatCommands {
     public String warAttacksByDay(@Me IMessageIO io, @Default Set<DBNation> nations,
                                   @Arg("Period of time to graph") @Default @Timestamp Long cutoff,
                                   @Arg("Restrict to a list of attack types") @Default Set<AttackType> allowedTypes) throws IOException {
-        if (cutoff == null) cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
-        Long finalCutoff = cutoff;
-
-        long minDay = TimeUtil.getDay(cutoff);
-        long maxDay = TimeUtil.getDay();
-        if (maxDay - minDay > 50000) {
-            throw new IllegalArgumentException("Too many days.");
-        }
-
-        Predicate<AttackType> alllowedType = allowedTypes == null ? f -> true : allowedTypes::contains;
-
-        Map<Integer, DBWar> wars;
-        if (nations == null) {
-            wars = Locutus.imp().getWarDb().getWarsSince(cutoff);
-        } else {
-            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
-            wars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(nationIds::contains, null, f -> f.possibleEndDate() >= finalCutoff);
-        }
-
-        final List<AbstractCursor> attacks = new ArrayList<>();
-        Locutus.imp().getWarDb().getAttacks(wars.values(), alllowedType, new Predicate<AbstractCursor>() {
-            @Override
-            public boolean test(AbstractCursor attack) {
-                if (attack.getDate() > finalCutoff) {
-                    attacks.add(attack);
-                }
-                return false;
-            }
-        }, f -> false);
-
-        Map<Long, Integer> totalAttacksByDay = new HashMap<>();
-
-        for (AbstractCursor attack : attacks) {
-            long day = TimeUtil.getDay(attack.getDate());
-            totalAttacksByDay.put(day, totalAttacksByDay.getOrDefault(day, 0) + 1);
-        }
-
-        List<String> sheet = new ArrayList<>(List.of(
-                "Day,Attacks"
-        ));
-        TimeNumericTable<Void> table = new TimeNumericTable<>("Total attacks by day", "day", "attacks", "") {
-            @Override
-            public void add(long day, Void ignore) {
-                long offset = day - minDay;
-                int attacks = totalAttacksByDay.getOrDefault(day, 0);
-                add(offset, attacks);
-                String dayStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(TimeUtil.getTimeFromDay(day)));
-                sheet.add(dayStr + "," + attacks);
-            }
-        };
-
-        for (long day = minDay; day <= maxDay; day++) {
-            table.add(day, (Void) null);
-        }
-
+        WarAttacksByDay table = new WarAttacksByDay(nations, cutoff, allowedTypes);
         io.create()
-                .file("img.png", table.write(TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT))
-                .file("data.csv", StringMan.join(sheet, "\n"))
+                .file("img.png", table.write())
+                .file("data.csv", table.toCsv())
                 .append("Done!")
                 .send();
         return null;
@@ -1527,7 +1473,7 @@ public class StatCommands {
         long turnStart = TimeUtil.getTurn(time);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
-        TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalitions);
+        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, coalitionNames, coalitions);
         table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done!";
     }
@@ -1542,7 +1488,7 @@ public class StatCommands {
         long startTurn = TimeUtil.getTurn(start_time);
 
         List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
-        TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
+        TimeNumericTable table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
         table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, start_time, attach_json, attach_csv);
         return null;
     }
@@ -1553,7 +1499,7 @@ public class StatCommands {
                                     @Timestamp long time, @Switch("j") boolean attachJson,
                                     @Switch("c") boolean attachCsv) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
-        TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, null, coalition1, coalition2);
+        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, null, coalition1, coalition2);
         table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done!";
     }
@@ -1641,7 +1587,7 @@ public class StatCommands {
                                   @Arg("Date to start from")
                                   @Timestamp long time, @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv) throws IOException {
-        TimeNumericTable<Void> table = new RadiationByTurn(continents, time, Long.MAX_VALUE).writeData();
+        TimeNumericTable<Void> table = new RadiationByTurn(continents, time, Long.MAX_VALUE);
         table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTurn(time), attachJson, attachCsv);
         return "Done!";
     }
@@ -1653,7 +1599,7 @@ public class StatCommands {
                                         @Switch("c") boolean attachCsv) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         List<String> coalitionNames = List.of(metric.name());
-        TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalition);
+        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, coalitionNames, coalition);
         table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done! " + user.getAsMention();
     }
@@ -2526,62 +2472,8 @@ public class StatCommands {
 
     @Command(desc = "Get a game graph by day")
     public String orbisStatByDay(@Me IMessageIO channel, NationDB db, Set<OrbisMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end, @Switch("j") boolean attachJson, @Switch("c") boolean attachCsv) throws IOException {
-        // Update
-        OrbisMetric.update(db);
-
-        if (start == null) start = 0L;
-        if (end == null) end = Long.MAX_VALUE;
-        boolean hasTurn = metrics.stream().anyMatch(OrbisMetric::isTurn);
-        boolean hasDay = metrics.stream().anyMatch(f -> !f.isTurn());
-        if (hasTurn && hasDay) throw new IllegalArgumentException("Cannot mix turn and day metrics");
-        Map<OrbisMetric, Map<Long, Double>> metricData = db.getMetrics(metrics, start, end);
-        Map<Long, Map<OrbisMetric, Double>> dataByTurn = new Long2ObjectOpenHashMap<>();
-
-        long minTurn = Long.MAX_VALUE;
-        long maxTurn = 0;
-        for (Map.Entry<OrbisMetric, Map<Long, Double>> entry : metricData.entrySet()) {
-            OrbisMetric metric = entry.getKey();
-            Map<Long, Double> turnValue = entry.getValue();
-            for (Map.Entry<Long, Double> turnValueEntry : turnValue.entrySet()) {
-                long turn = turnValueEntry.getKey();
-                double value = turnValueEntry.getValue();
-                dataByTurn.computeIfAbsent(turn, f -> new EnumMap<>(OrbisMetric.class)).put(metric, value);
-                minTurn = Math.min(minTurn, turn);
-                maxTurn = Math.max(maxTurn, turn);
-            }
-        }
-        if (maxTurn == 0) return "No data found";
-
-
-        List<OrbisMetric> metricList = new ArrayList<>(metrics);
-        metricList.sort(Comparator.comparing(OrbisMetric::ordinal));
-
-        String turnOrDayStr = hasTurn ? "turn" : "day";
-        String title = (metrics.size() == 1 ? metrics.iterator().next() : "Game Stats") + " by " + turnOrDayStr;
-        String[] labels = metricList.stream().map(f -> f.name().toLowerCase().replace("_", " ")).toArray(String[]::new);
-        double[] buffer = new double[labels.length];
-
-        long finalMinTurn = minTurn;
-        TimeNumericTable<Void> table = new TimeNumericTable<>(title, turnOrDayStr, "Resource", labels) {
-            @Override
-            public void add(long turn, Void ignore) {
-                int turnRelative = (int) (turn - finalMinTurn);
-                Map<OrbisMetric, Double> turnData = dataByTurn.get(turn);
-                if (turnData != null) {
-                    for (int i = 0; i < metricList.size(); i++) {
-                        double rads = turnData.getOrDefault(metricList.get(i), 0d);
-                        buffer[i] = rads;
-                    }
-                }
-                add(turnRelative, buffer);
-            }
-        };
-
-        for (long turn = minTurn; turn <= maxTurn; turn++) {
-            table.add(turn, (Void) null);
-        }
-        TimeFormat format = hasTurn ? TimeFormat.TURN_TO_DATE : TimeFormat.DAYS_TO_DATE;
-        table.write(channel, format, TableNumberFormat.SI_UNIT, GraphType.LINE, minTurn, attachJson, attachCsv);
+        OrbisMetricGraph graph = new OrbisMetricGraph(metrics, start, end);
+        graph.write(channel, attachJson, attachCsv);
         return "Done!";
     }
 

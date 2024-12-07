@@ -3,6 +3,7 @@
 @import java.util.Map
 @import java.util.Set
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
+@import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph
 @import link.locutus.discord.commands.rankings.SphereGenerator
 @import link.locutus.discord.commands.manager.v2.table.TableNumberFormat
 @import link.locutus.discord.commands.manager.v2.table.TimeFormat
@@ -38,7 +39,7 @@
                     @if(spheres.getAlliances(sphereId).size() > 1)
                     <div class="bg-light border border-3 border-secondary rounded searchable">
                         @template.data.timechartdatasrc(ws = ws, title = spheres.getSphereName(sphereId) + " total",
-                        data = WebUtil.GSON.toJsonTree(AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn,
+                        data = WebUtil.GSON.toJsonTree(new CoalitionMetricsGraph(metricMap, metrics, startTurn, endTurn,
                         spheres.getSphereName(sphereId),
                         new HashSet<>(spheres.getAlliances(sphereId))
                         ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
@@ -50,7 +51,7 @@
                     @if(metricMap.containsKey(alliance))
                     <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
                         @template.data.timechartdatasrc(ws = ws, title = alliance.getName(),
-                        data = WebUtil.GSON.toJsonTree(AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(),
+                        data = WebUtil.GSON.toJsonTree(new CoalitionMetricsGraph(metricMap, metrics, startTurn, endTurn, alliance.getName(),
                         Collections.singleton(alliance)
                         ).convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L)),
                         time = true)

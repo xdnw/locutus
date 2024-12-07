@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
@@ -13,7 +14,7 @@ public abstract class SimpleTable<T> extends TimeNumericTable<T> {
         super(null, null, null, null, null);
     }
 
-    public abstract SimpleTable<T> writeData();
+    protected abstract SimpleTable<T> writeData();
 
     public abstract TimeFormat getTimeFormat();
 
@@ -21,7 +22,17 @@ public abstract class SimpleTable<T> extends TimeNumericTable<T> {
 
     public abstract GraphType getGraphType();
 
-    public void write(IMessageIO io, long origin, boolean attachJson, boolean attachCsv) throws IOException {
-        write(io, getTimeFormat(), getNumberFormat(), getGraphType(), origin, attachJson, attachCsv);
+    public abstract long getOrigin();
+
+    public void write(IMessageIO io, boolean attachJson, boolean attachCsv) throws IOException {
+        write(io, getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin(), attachJson, attachCsv);
+    }
+
+    public IMessageBuilder writeMsg(IMessageBuilder msg, boolean attachJson, boolean attachCsv) throws IOException {
+        return writeMsg(msg, getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin(), attachJson, attachCsv);
+    }
+
+    public byte[] write() {
+        return write(getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin());
     }
 }

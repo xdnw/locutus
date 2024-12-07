@@ -12,7 +12,7 @@ public class StrengthTierGraph extends SimpleTable{
     }
 
     @Override
-    public SimpleTable writeData() {
+    protected SimpleTable writeData() {
         return null;
     }
 

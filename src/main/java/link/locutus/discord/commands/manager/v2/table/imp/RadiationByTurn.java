@@ -33,10 +33,17 @@ public class RadiationByTurn extends SimpleTable<Void> {
         setLabelX("turn");
         setLabelY("Radiation");
         setLabels(labels);
+
+        writeData();
     }
 
     @Override
-    public SimpleTable<Void> writeData() {
+    public long getOrigin() {
+        return turnStart;
+    }
+
+    @Override
+    protected SimpleTable<Void> writeData() {
         for (long turn = turnStart; turn <= turnEnd; turn++) {
             add(turn, (Void) null);
         }

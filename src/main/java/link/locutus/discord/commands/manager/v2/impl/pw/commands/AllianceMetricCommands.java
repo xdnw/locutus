@@ -5,8 +5,10 @@ import com.opencsv.CSVWriter;
 import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -29,6 +31,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.AlliancesNationMetricByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.MetricByGroup;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -62,11 +65,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class AllianceMetricCommands {
@@ -360,7 +361,7 @@ public class AllianceMetricCommands {
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
-        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).writeData().write(io, 0, attachJson, attachCsv);
+        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).write(io, attachJson, attachCsv);
     }
 
     @Command(desc = "Generate and save the alliance metrics over a period of time, using nation and city snapshots to calculate the metrics")
@@ -379,95 +380,54 @@ public class AllianceMetricCommands {
             "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.")
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
-    public String AlliancesDataByDay(@Me IMessageIO io, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Arg ("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances, @Default Predicate<DBNation> filter, @Switch("g") boolean graph,
-                                     @Switch("v") boolean includeVM, @Switch("a") boolean includeApps,
-                                     @Switch("c") boolean skipCityData) throws IOException, ParseException {
-        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 15);
-        if (alliances.size() > 100) {
-            alliances.removeIf(f -> f.getNations(true, 10080, true).isEmpty());
-        }
-        if (graph && alliances.size() > 16) {
-            throw new IllegalArgumentException("Cannot graph more than 8 alliances.");
-        }
-        if (alliances.isEmpty()) return "No alliances found";
-        Set<Integer> aaIds = new IntOpenHashSet(alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()));
-        Predicate<DBNation> filterFinal = filter == null ? f -> aaIds.contains(f.getAlliance_id()) : f -> aaIds.contains(f.getAlliance_id()) && filter.test(f);
-        CountNationMetric counter = new CountNationMetric(metric::apply,
-                null,
-                mode,
-                filterFinal).allianceFilter(aaIds::contains);
-        if (includeVM) counter.includeVM();
-        if (includeApps) counter.includeApplicants();
-        if (!skipCityData) counter.includeCities();
-        List<IAllianceMetric> metrics = new ArrayList<>(List.of(counter));
-        Predicate<Long> dayFilter = dayFilter(start, end);
+    public String AlliancesDataByDay(@Me IMessageIO io,
+                                     TypedFunction<DBNation, Double> metric,
+                                     @Timestamp long start,
+                                     @Timestamp long end,
+                                     AllianceMetricMode mode,
+                                     @Arg ("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances,
+                                     @Default Predicate<DBNation> filter, @Switch("g") boolean graph, @Switch("a") boolean includeApps) throws IOException, ParseException {
+        CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
+        Map<Long, double[]> valuesByDay = AlliancesNationMetricByDay.generateData(new Consumer<Long>() {
+            @Override
+            public void accept(Long day) {
+                io.updateOptionally(msg, "Processing day " + day + "...");
+            }
+        }, metric, start, end, mode, alliances, filter, includeApps);
+
+        String name = metric.getName().replace("{", "").replace("}", "");
 
         List<String> header = new ArrayList<>(List.of("date"));
-        Map<Integer, Integer> allianceIdToHeaderI = new Int2IntOpenHashMap();
+        Map<Integer, Integer> headerIndexByAAId = new Int2IntOpenHashMap();
         for (DBAlliance alliance : alliances) {
-            allianceIdToHeaderI.put(alliance.getAlliance_id(), header.size());
+            headerIndexByAAId.put(alliance.getAlliance_id(), header.size());
             header.add(alliance.getName());
         }
+
         // new csv writer
         StringWriter stringWriter = new StringWriter();
         CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
-
         // write header
         csvWriter.writeNext(header.toArray(new String[0]));
 
-        CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
-        AtomicLong timer = new AtomicLong(System.currentTimeMillis());
-
-        DataDumpParser parser = Locutus.imp().getDataDumper(true).load();
-        Map<Long, double[]> valuesByDay = new Long2ObjectOpenHashMap<>();
-        Set<DBAlliance> finalAlliances = alliances;
-        AllianceMetric.runDataDump(parser, metrics, dayFilter, (imetric, day, value) -> {
-            long timestamp = TimeUtil.getTimeFromDay(day);
-            SimpleDateFormat format = TimeUtil.DD_MM_YYYY;
-            String dateStr = format.format(timestamp);
+        for (Map.Entry<Long, double[]> entry : valuesByDay.entrySet()) {
+            long day = entry.getKey();
+            double[] values = entry.getValue();
+            String dateStr = TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day));
             String[] row = new String[header.size()];
             row[0] = dateStr;
-            for (Map.Entry<Integer, Double> entry : value.entrySet()) {
-                int allianceId = entry.getKey();
-                int headerI = allianceIdToHeaderI.get(allianceId);
-                row[headerI] = entry.getValue().toString();
-            }
-            if (graph) {
-                double[] values = valuesByDay.computeIfAbsent(day, f -> new double[finalAlliances.size()]);
-                for (Map.Entry<Integer, Double> entry : value.entrySet()) {
-                    int allianceId = entry.getKey();
-                    int headerI = allianceIdToHeaderI.get(allianceId);
-                    values[headerI - 1] = entry.getValue();
-                }
+            for (int i = 0; i < values.length; i++) {
+                int headerIndex = headerIndexByAAId.get(i);
+                row[headerIndex] = Double.toString(values[i]);
             }
             csvWriter.writeNext(row);
-            metric.clearCache();
+        }
 
-            if (System.currentTimeMillis() - timer.get() > 10000) {
-                timer.getAndSet(System.currentTimeMillis());
-                io.updateOptionally(msg, "Processing day " + day + "...");
-            }
-        });
         IMessageBuilder msg2 = io.create().file("alliance_data.csv", stringWriter.toString().getBytes());
         if (graph) {
-            long minDay = valuesByDay.keySet().stream().min(Long::compareTo).orElse(0L);
-            long maxDay = valuesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
-            String[] labels = alliances.stream().map(DBAlliance::getName).toArray(String[]::new);
-            double[] buffer = new double[labels.length];
-            TimeNumericTable<Void> table = new TimeNumericTable<>(metric.getName() + " by day", "day", metric.getName(), labels) {
-                @Override
-                public void add(long day, Void cost) {
-                    double[] values = valuesByDay.get(day);
-                    if (values != null) {
-                        System.arraycopy(values, 0, buffer, 0, values.length);
-                    }
-                    add(day, buffer);
-                }
-            };
-            for (long day = minDay; day <= maxDay; day++) {
-                table.add(day, (Void) null);
-            }
-            table.writeMsg(msg2, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, false, false);
+            Set<DBAlliance> finalAlliances = AlliancesNationMetricByDay.resolveAlliances(alliances);
+            AlliancesNationMetricByDay graphObj = new AlliancesNationMetricByDay(valuesByDay, metric, start, end, finalAlliances);
+            graphObj.writeMsg(msg2, false, false);
         }
         msg2.send();
         return null;
