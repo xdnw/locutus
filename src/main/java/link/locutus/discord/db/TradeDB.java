@@ -718,12 +718,29 @@ public class TradeDB extends DBMainV2 {
     public List<DBTrade> getTrades(ResourceType type, long startDate, long endDate) {
         return getTrades(f ->
                 f.where(QueryCondition.equals("resource", type.ordinal())
-                                .and(QueryCondition.greater("date", startDate))
-                                .and(QueryCondition.less("date", endDate))
-                                .and(QueryCondition.notEquals("seller", 0))
-                                .and(QueryCondition.notEquals("buyer", 0))
-                        )
+                        .and(QueryCondition.greater("date", startDate))
+                        .and(QueryCondition.less("date", endDate))
+                        .and(QueryCondition.notEquals("seller", 0))
+                        .and(QueryCondition.notEquals("buyer", 0))
+                )
         );
+    }
+
+    public List<DBTrade> getTradesByResources(Set<ResourceType> types, long startDate, long endDate) {
+        if (types.isEmpty()) return Collections.emptyList();
+        if (types.size() == 1) {
+            return getTrades(types.iterator().next(), startDate, endDate);
+        }
+        return getTrades(f -> {
+            QueryConditions condition = QueryCondition.in("resource", types.stream().map(ResourceType::ordinal).toArray())
+                    .and(QueryCondition.greater("date", startDate))
+                    .and(QueryCondition.notEquals("seller", 0))
+                    .and(QueryCondition.notEquals("buyer", 0));
+            if (endDate != Long.MAX_VALUE) {
+                condition = condition.and(QueryCondition.less("date", endDate));
+            }
+            f.where(condition);
+        });
     }
 
     public List<DBTrade> getTrades(Set<Integer> nationIds, long startDate) {

@@ -38,6 +38,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -791,7 +792,7 @@ public class NationUpdateProcessor {
                     List<Set<DBAlliance>> alliances = joinedAlliances.stream().map(Collections::singleton).toList();
                     SimpleTable table = new MultiCoalitionMetricGraph(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
                     try {
-                        graphData = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.MEMBERS.getFormat(), table.getOrigin());
+                        graphData = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.MEMBERS.getFormat(), GraphType.LINE, table.getOrigin());
                     } catch (IOException e) {
                     }
                 }

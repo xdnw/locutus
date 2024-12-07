@@ -256,7 +256,7 @@ public class AllianceListener {
         }
         byte[] graphData;
         try {
-            graphData = table.write(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, table.getOrigin());
+            graphData = table.write(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, table.getGraphType(), table.getOrigin());
         } catch (IOException e) {
             graphData = null;
         }

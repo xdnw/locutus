@@ -452,7 +452,7 @@ public abstract class TimeNumericTable<T> {
         return plot;
     }
 
-    public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) throws IOException {
+    public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long origin) throws IOException {
         XYPlot plot = getTable(timeFormat, numberFormat, origin);
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

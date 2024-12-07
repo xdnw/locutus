@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -13,111 +15,99 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class TradeMarginByDay extends SimpleTable<Void> {
-//if (end == null) end = Long.MAX_VALUE;
-//List<DBTrade> allOffers = manager.getTradeDb().getTrades(start, end);
-//Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
-//
-//long minDay = Long.MAX_VALUE;
-//long maxDay = TimeUtil.getDay();
-//for (DBTrade offer : allOffers) {
-//    long turn = TimeUtil.getTurn(offer.getDate());
-//    long day = turn / 12;
-//    minDay = Math.min(minDay, day);
-//    offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
-//}
-//offersByDay.remove(minDay);
-//minDay++;
-//
-//Map<Long, Map<ResourceType, Double>> marginsByDay = new HashMap<>();
-//
-//for (Map.Entry<Long, List<DBTrade>> entry : offersByDay.entrySet()) {
-//    long day = entry.getKey();
-//    List<DBTrade> offers = entry.getValue();
-//    Map<ResourceType, Double> dayMargins = new HashMap<>();
-//
-//    Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = manager.getAverage(offers);
-//    Map<ResourceType, Double> lows = avg.getKey();
-//    Map<ResourceType, Double> highs = avg.getValue();
-//    for (ResourceType type : ResourceType.values) {
-//        Double low = lows.get(type);
-//        Double high = highs.get(type);
-//        if (low != null && high != null) {
-//            double margin = high - low;
-//            if (percent) margin = 100 * margin / high;
-//            dayMargins.put(type, margin);
-//        }
-//    }
-//
-//    marginsByDay.put(day, dayMargins);
-//}
-//
-//String title = "Resource margin " + (percent ? " % " : "") + "by day";
-//
-//List<ResourceType[]> tableTypes = new ArrayList<>();
-//
+public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
 
-//tableTypes.add(new ResourceType[]{ResourceType.FOOD});
-//tableTypes.add(new ResourceType[]{
-//        ResourceType.COAL,
-//        ResourceType.OIL,
-//        ResourceType.URANIUM,
-//        ResourceType.LEAD,
-//        ResourceType.IRON,
-//        ResourceType.BAUXITE,
-//});
-//tableTypes.add(new ResourceType[]{
-//        ResourceType.GASOLINE,
-//        ResourceType.MUNITIONS,
-//        ResourceType.STEEL,
-//        ResourceType.ALUMINUM
-//});
-//
-//for (ResourceType[] types : tableTypes) {
-//    double[] buffer = new double[types.length];
-//    String[] labels = Arrays.asList(types).stream().map(f -> f.getName()).toArray(String[]::new);
-//    TimeNumericTable<Map<ResourceType, Double>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
-//        @Override
-//        public void add(long day, Map<ResourceType, Double> cost) {
-//            for (int i = 0; i < types.length; i++) {
-//                buffer[i] = cost.getOrDefault(types[i], buffer[i]);
-//            }
-//            add(day, buffer);
-//        }
-//    };
-//
-//    for (long day = minDay; day <= maxDay; day++) {
-//        long dayOffset = day - minDay;
-//        Map<ResourceType, Double> margins = marginsByDay.getOrDefault(day, Collections.emptyMap());
-//        table.add(dayOffset, margins);
-//    }
-//
-//
-//    table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
     private final long start;
     private final long end;
     private final boolean percent;
-    private final TradeManager manager;
     private final Map<Long, Map<ResourceType, Double>> marginsByDay = new HashMap<>();
+    private final List<ResourceType> resourceTypes;
+    private final double[] buffer;
     private long minDay;
     private long maxDay;
 
-    public TradeMarginByDay(@Timestamp long start, @Default @Timestamp Long end,
+    public static List<DBTrade> getTradesByResources(Set<ResourceType> resources, long start, Long end) {
+        if (end == null) end = Long.MAX_VALUE;
+        if (resources.size() == ResourceType.values.length) {
+            return Locutus.imp().getTradeManager().getTradeDb().getTrades(start, end);
+        }
+        return Locutus.imp().getTradeManager().getTradeDb().getTradesByResources(
+                resources.stream().filter(f -> f != ResourceType.MONEY && f != ResourceType.CREDITS).collect(Collectors.toSet()), start, end);
+    }
+
+    public TradeMarginByDay(Set<ResourceType> resources, @Timestamp long start, @Default @Timestamp Long end,
                             @Arg("Use the margin percent instead of absolute difference")
                             @Default("true") boolean percent) {
+        this(getTradesByResources(resources, start, end), resources, start, end, percent);
+    }
+
+    public TradeMarginByDay(List<DBTrade> trades, Set<ResourceType> resources, @Timestamp long start, @Default @Timestamp Long end,
+                            @Arg("Use the margin percent instead of absolute difference")
+                            @Default("true") boolean percent) {
+        resources.remove(ResourceType.MONEY);
+        resources.remove(ResourceType.CREDITS);
+
         this.start = start;
         this.end = (end == null) ? Long.MAX_VALUE : end;
         this.percent = percent;
-        this.manager = manager;
+        List<DBTrade> allOffers = trades;
+        Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
+
+        this.minDay = Long.MAX_VALUE;
+        this.maxDay = 0;
+        for (DBTrade offer : allOffers) {
+            long turn = TimeUtil.getTurn(offer.getDate());
+            long day = turn / 12;
+            minDay = Math.min(minDay, day);
+            offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
+        }
+        offersByDay.remove(minDay);
+        minDay++;
+
+        Map<Long, Map<ResourceType, Double>> marginsByDay = new HashMap<>();
+
+        for (Map.Entry<Long, List<DBTrade>> entry : offersByDay.entrySet()) {
+            long day = entry.getKey();
+            List<DBTrade> offers = entry.getValue();
+            Map<ResourceType, Double> dayMargins = new HashMap<>();
+
+            Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = Locutus.imp().getTradeManager().getAverage(offers);
+            Map<ResourceType, Double> lows = avg.getKey();
+            Map<ResourceType, Double> highs = avg.getValue();
+            for (ResourceType type : ResourceType.values) {
+                Double low = lows.get(type);
+                Double high = highs.get(type);
+                if (low != null && high != null) {
+                    double margin = high - low;
+                    if (percent) margin = 100 * margin / high;
+                    dayMargins.put(type, margin);
+                }
+            }
+
+            marginsByDay.put(day, dayMargins);
+        }
+
+        this.resourceTypes = new ObjectArrayList<>(resources);
+        this.buffer = new double[resourceTypes.size()];
+        String[] labels = resourceTypes.stream().map(f -> f.getName()).toArray(String[]::new);
+
         setTitle("Resource margin " + (percent ? " % " : "") + "by day");
         setLabelX("day");
         setLabelY("ppu");
+        setLabels(labels);
         writeData();
     }
 
     @Override
     protected SimpleTable writeData() {
+        for (long day = minDay; day <= maxDay; day++) {
+            long dayOffset = day - minDay;
+            Map<ResourceType, Double> margins = marginsByDay.getOrDefault(day, Collections.emptyMap());
+            add(dayOffset, margins);
+        }
+        return this;
     }
 
     @Override
@@ -142,5 +132,9 @@ public class TradeMarginByDay extends SimpleTable<Void> {
 
     @Override
     public void add(long day, Map<ResourceType, Double> cost) {
+        for (int i = 0; i < resourceTypes.size(); i++) {
+            buffer[i] = cost.getOrDefault(resourceTypes.get(i), buffer[i]);
+        }
+        add(day, buffer);
     }
 }
