@@ -43,7 +43,7 @@ import link.locutus.discord.commands.external.guild.KickLocutus;
 import link.locutus.discord.commands.info.FindSpyOp;
 import link.locutus.discord.commands.external.guild.Mask;
 import link.locutus.discord.commands.sync.SyncMail;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.fun.Borgomas;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
