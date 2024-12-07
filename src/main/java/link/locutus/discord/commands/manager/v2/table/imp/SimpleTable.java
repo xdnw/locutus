@@ -32,7 +32,7 @@ public abstract class SimpleTable<T> extends TimeNumericTable<T> {
         return writeMsg(msg, getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin(), attachJson, attachCsv);
     }
 
-    public byte[] write() {
+    public byte[] write() throws IOException {
         return write(getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin());
     }
 }
