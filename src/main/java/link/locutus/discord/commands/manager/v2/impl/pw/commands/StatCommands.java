@@ -2522,10 +2522,17 @@ public class StatCommands {
             public void add(long score, PriorityQueue<Double> values) {
                 if (values.isEmpty()) return;
                 // Convert PriorityQueue to a sorted list
-                List<Double> sortedValues = new ArrayList<>(values);
-                Collections.sort(sortedValues);
+                PriorityQueue<Double> topValues = new PriorityQueue<>(Comparator.reverseOrder());
+                List<Double> sortedValues = new ArrayList<>(topValues);
+                Collections.sort(sortedValues, Collections.reverseOrder());
+                if (sortedValues.size() < n) {
+                    // add 0s to fill the table
+                    for (int i = sortedValues.size(); i < n; i++) {
+                        sortedValues.add(0d);
+                    }
+                }
                 // Calculate nth value
-                double nth = sortedValues.size() >= n ? sortedValues.get(n - 1) : 0;
+                double nth = sortedValues.get(n - 1);
                 // Calculate median
                 double median;
                 int size = sortedValues.size();
