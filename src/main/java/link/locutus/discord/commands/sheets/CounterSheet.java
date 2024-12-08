@@ -4,9 +4,10 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.CounterType;
@@ -246,7 +247,7 @@ public class CounterSheet extends Command {
             ArrayList<Object> row = new ArrayList<>();
             row.add(notes.getOrDefault(enemy.getNation_id(), ""));
 
-            WarCategory.WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
+            WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
 //            warCat.sync();
             GuildMessageChannel warChan = warroom != null ? warroom.getChannel(false) : null;
             if (warChan != null) {

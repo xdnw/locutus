@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
@@ -23,6 +25,9 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.RssTradeByDay;
+import link.locutus.discord.commands.manager.v2.table.imp.TradeMarginByDay;
+import link.locutus.discord.commands.manager.v2.table.imp.TradePriceByDay;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -1267,110 +1272,22 @@ public class TradeCommands {
                                   int numDays,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv) throws IOException, GeneralSecurityException {
-        if (numDays <= 1) return "Invalid number of days";
-        List<ResourceType> rssList = new ArrayList<>(resources);
-        rssList.remove(ResourceType.MONEY);
-        rssList.remove(ResourceType.CREDITS);
-        if (rssList.isEmpty()) return "Invalid resources";
-
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
-
-        Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
-        long minDay = Long.MAX_VALUE;
-        long maxDay = Long.MIN_VALUE;
-
-        for (ResourceType type : rssList) {
-            // long minDate, ResourceType type, int minQuantity, int min, int max
-            double curAvg = manager.getHighAvg(type);
-            int min = (int) (curAvg * 0.2);
-            int max = (int) (curAvg * 5);
-
-            Map<Long, Double> averages = tradeDB.getAverage(start, type, 15, min, max);
-
-            avgByRss.put(type, averages);
-
-            minDay = Math.min(minDay, Collections.min(averages.keySet()));
-            maxDay = Collections.max(averages.keySet());
-        }
-
-        String title = "Trade average by day";
-
-        double[] buffer = new double[rssList.size()];
-        long finalMinDay = minDay;
-        String[] labels = rssList.stream().map(f -> f.getName()).toArray(String[]::new);
-        TimeNumericTable<Map<ResourceType, Map<Long, Double>>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
-            @Override
-            public void add(long day, Map<ResourceType, Map<Long, Double>> cost) {
-                for (int i = 0; i < rssList.size(); i++) {
-                    ResourceType type = rssList.get(i);
-                    Double value = cost.getOrDefault(type, Collections.emptyMap()).get(day);
-                    if (value != null) buffer[i] = value;
-                }
-                add(day - finalMinDay, buffer);
-            }
-        };
-
-        for (long day = minDay; day <= maxDay; day++) {
-            table.add(day, avgByRss);
-        }
-
-
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
-
+        TradePriceByDay graph = new TradePriceByDay(resources, numDays);
+        graph.write(channel, attachJson, attachCsv);
         return "Done!";
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell margin by day")
-    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int numDays,
+    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Timestamp long start, @Default @Timestamp Long end,
                                    @Arg("Use the margin percent instead of absolute difference")
                                    @Default("true") boolean percent,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv) throws IOException, GeneralSecurityException {
-        long now = System.currentTimeMillis();
-        long cutoff = now - TimeUnit.DAYS.toMillis(numDays + 1);
-
-        List<DBTrade> allOffers = manager.getTradeDb().getTrades(cutoff);
-        Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
-
-        long minDay = Long.MAX_VALUE;
-        long maxDay = TimeUtil.getDay();
-        for (DBTrade offer : allOffers) {
-            long turn = TimeUtil.getTurn(offer.getDate());
-            long day = turn / 12;
-            minDay = Math.min(minDay, day);
-            offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
-        }
-        offersByDay.remove(minDay);
-        minDay++;
-
-        Map<Long, Map<ResourceType, Double>> marginsByDay = new HashMap<>();
-
-        for (Map.Entry<Long, List<DBTrade>> entry : offersByDay.entrySet()) {
-            long day = entry.getKey();
-            List<DBTrade> offers = entry.getValue();
-            Map<ResourceType, Double> dayMargins = new HashMap<>();
-
-            Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = manager.getAverage(offers);
-            Map<ResourceType, Double> lows = avg.getKey();
-            Map<ResourceType, Double> highs = avg.getValue();
-            for (ResourceType type : ResourceType.values) {
-                Double low = lows.get(type);
-                Double high = highs.get(type);
-                if (low != null && high != null) {
-                    double margin = high - low;
-                    if (percent) margin = 100 * margin / high;
-                    dayMargins.put(type, margin);
-                }
-            }
-
-            marginsByDay.put(day, dayMargins);
-        }
-
-        String title = "Resource margin " + (percent ? " % " : "") + "by day";
+        Set<ResourceType> all = new HashSet<>(Arrays.asList(ResourceType.values()));
+        List<DBTrade> trades = TradeMarginByDay.getTradesByResources(all, start, end);
 
         List<ResourceType[]> tableTypes = new ArrayList<>();
 
-//        tableTypes.add(new ResourceType[]{CREDITS});
         tableTypes.add(new ResourceType[]{ResourceType.FOOD});
         tableTypes.add(new ResourceType[]{
                 ResourceType.COAL,
@@ -1380,7 +1297,7 @@ public class TradeCommands {
                 ResourceType.IRON,
                 ResourceType.BAUXITE,
         });
-        tableTypes.add(new ResourceType[]{
+        tableTypes.add(new ResourceType[] {
                 ResourceType.GASOLINE,
                 ResourceType.MUNITIONS,
                 ResourceType.STEEL,
@@ -1388,127 +1305,57 @@ public class TradeCommands {
         });
 
         for (ResourceType[] types : tableTypes) {
-            double[] buffer = new double[types.length];
-            String[] labels = Arrays.asList(types).stream().map(f -> f.getName()).toArray(String[]::new);
-            TimeNumericTable<Map<ResourceType, Double>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
-                @Override
-                public void add(long day, Map<ResourceType, Double> cost) {
-                    for (int i = 0; i < types.length; i++) {
-                        buffer[i] = cost.getOrDefault(types[i], buffer[i]);
-                    }
-                    add(day, buffer);
+            boolean[] rssIds = new boolean[ResourceType.values.length];
+            for (ResourceType type : types) rssIds[type.ordinal()] = true;
+            List<DBTrade> filtered = new ObjectArrayList<>();
+            for (DBTrade trade : trades) {
+                if (rssIds[trade.getResource().ordinal()]) {
+                    filtered.add(trade);
                 }
-            };
-
-            for (long day = minDay; day <= maxDay; day++) {
-                long dayOffset = day - minDay;
-                Map<ResourceType, Double> margins = marginsByDay.getOrDefault(day, Collections.emptyMap());
-                table.add(dayOffset, margins);
             }
-
-
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
+            TradeMarginByDay table = new TradeMarginByDay(trades, new HashSet<>(Arrays.asList(types)), start, end, percent);
+            table.write(channel, attachJson, attachCsv);
         }
-
-
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day")
     public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager,
-                                   @Range(min=1, max=300) int numDays,
+                                   @Timestamp long start, @Default @Timestamp Long end,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv,
                                    @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers), attachJson, attachCsv, resources);
+        rssTradeByDay(title, channel, start, end, offers -> manager.volumeByResource(offers), attachJson, attachCsv, resources);
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day")
     public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager,
-                                  @Range(min=1, max=300) int numDays,
+                                  @Timestamp long start, @Default @Timestamp Long end,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv,
                                   @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers), attachJson, attachCsv, resources);
+        rssTradeByDay(title, channel, start, end, offers -> manager.totalByResource(offers), attachJson, attachCsv, resources);
         return null;
     }
 
-    public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction, boolean
+    public void rssTradeByDay(String title, IMessageIO channel, long start, Long end, Function<Collection<DBTrade>, long[]> rssFunction, boolean
             attachJson,
                               boolean attachCsv, Set<ResourceType> resources) throws IOException {
-        TradeManager manager = Locutus.imp().getTradeManager();
-        Map<Long, List<DBTrade>> tradesByDay = getOffersByDay(days);
-        long minDay = Collections.min(tradesByDay.keySet());
-        long maxDay = Collections.max(tradesByDay.keySet());
-
-        Map<Long, Map<ResourceType, Map.Entry<Long, Long>>> volumeByDay = new HashMap<>();
-
-        for (Map.Entry<Long, List<DBTrade>> entry : tradesByDay.entrySet()) {
-            Long day = entry.getKey();
-            Collection<DBTrade> offers = entry.getValue();
-            offers = manager.filterOutliers(offers);
-            Collection<DBTrade> lows = manager.getLow(offers);
-            Collection<DBTrade> highs = manager.getHigh(offers);
-
-            long[] volumesLow = rssFunction.apply(lows);
-            long[] volumesHigh = rssFunction.apply(highs);
-
-            Map<ResourceType, Map.Entry<Long, Long>> volumeMap = volumeByDay.computeIfAbsent(day, f -> new HashMap<>());
-            for (ResourceType type : ResourceType.values) {
-                long low = volumesLow[type.ordinal()];
-                long high = volumesHigh[type.ordinal()];
-                Map.Entry<Long, Long> lowHigh = new AbstractMap.SimpleEntry<>(low, high);
-                volumeMap.put(type, lowHigh);
-            }
-        }
-
+        if (end == null) end = Long.MAX_VALUE;
         if (resources == null) resources = new LinkedHashSet<>(Arrays.asList(ResourceType.values));
+        resources.remove(ResourceType.CREDITS);
+        resources.remove(ResourceType.MONEY);
+
+        Map<Long, Map<ResourceType, Map.Entry<Long, Long>>> offers = RssTradeByDay.getVolumeByDay(resources, rssFunction, start, end);
+
         for (ResourceType type : resources) {
             if (type == ResourceType.CREDITS || type == ResourceType.MONEY) continue;
-            String finalTital = type + " " + title;
-            TimeNumericTable<Map.Entry<Long, Long>> table = new TimeNumericTable<>(finalTital, "day", "volume", "low", "high") {
-                @Override
-                public void add(long day, Map.Entry<Long, Long> volume) {
-                    add(day, volume.getKey(), volume.getValue());
-                }
-            };
-
-            for (long day = minDay; day <= maxDay; day++) {
-                long dayOffset = day - minDay;
-                Map<ResourceType, Map.Entry<Long, Long>> volume = volumeByDay.get(day);
-                if (volume == null) volume = Collections.emptyMap();
-
-                Map.Entry<Long, Long> rssVolume = volume.get(type);
-                if (rssVolume != null) {
-                    table.add(dayOffset, rssVolume);
-                }
-            }
-
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
+            RssTradeByDay graph = new RssTradeByDay(title, offers, type);
+            graph.write(channel, attachJson, attachCsv);
         }
-    }
-
-    private Map<Long, List<DBTrade>> getOffersByDay(int days) {
-        long now = System.currentTimeMillis();
-        long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
-
-        List<DBTrade> allOffers = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutoff);
-        Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
-
-        long minDay = Long.MAX_VALUE;
-        long maxDay = TimeUtil.getDay();
-        for (DBTrade offer : allOffers) {
-            if (offer.getDate() > now) continue;
-            long turn = TimeUtil.getTurn(offer.getDate());
-            long day = turn / 12;
-            minDay = Math.min(minDay, day);
-            offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
-        }
-        offersByDay.remove(minDay);
-        return offersByDay;
     }
 
     @Command(desc = "List nations who have bought and sold the most of a resource over a period")
@@ -1531,8 +1378,6 @@ public class TradeCommands {
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
         Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
-
-//        for (ResourceType type : ResourceType.values()) {
 
         Map<Integer, Double> newMap = new HashMap<>();
         for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {

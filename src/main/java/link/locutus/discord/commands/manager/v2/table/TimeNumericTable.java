@@ -252,7 +252,7 @@ public abstract class TimeNumericTable<T> {
         return this;
     }
 
-    public XYPlot getTable(TimeFormat timeFormat, TableNumberFormat numberFormat) {
+    public XYPlot getTable(TimeFormat timeFormat, TableNumberFormat numberFormat, long origin) {
         DataSource[] series = new DataSource[amt];
         for (int i = 0; i < amt; i++) {
             DataSource source = new DataSeries(this.labels[i], data, 0, i + 1);
@@ -261,6 +261,12 @@ public abstract class TimeNumericTable<T> {
 
         DataTable barData = null;
 
+        Function<Number, String> timeFormatFunction;
+        if (!timeFormat.isTime() && origin > 0) {
+            timeFormatFunction = time -> timeFormat.toString(time.longValue() + origin);
+        } else {
+            timeFormatFunction = time -> timeFormat.toString(time);
+        }
         // Create new xy-plot
         XYPlot plot;
         if (isBar) {
@@ -271,7 +277,7 @@ public abstract class TimeNumericTable<T> {
             for (int i = 0; i < data.getRowCount(); i++) {
                 Row row = data.getRow(i);
                 long timeData = ((Number) row.get(0)).longValue();
-                String timeStr = timeFormat.toString(timeData);
+                String timeStr = timeFormatFunction.apply((double) timeData);
 
                 for (int j = 0; j < numYTypes; j++) {
                     double val = ((Number) row.get(j + 1)).doubleValue();
@@ -335,7 +341,7 @@ public abstract class TimeNumericTable<T> {
         AxisRenderer axisRendererX = plot.getAxisRenderer(XYPlot.AXIS_X);
         axisRendererX.setTicksAutoSpaced(true);
         axisRendererX.setMinorTicksCount(4);
-        axisRendererX.setTickLabelFormat(MathMan.toFormat(timeFormat::toString));
+        axisRendererX.setTickLabelFormat(MathMan.toFormat(timeFormatFunction::apply));
 
         AxisRenderer axisRendererY = plot.getAxisRenderer(XYPlot.AXIS_Y);
         axisRendererY.setTicksAutoSpaced(true);
@@ -344,6 +350,16 @@ public abstract class TimeNumericTable<T> {
 
         Set<Color> colors = new HashSet<>();
         switch (amt) {
+            case 11:
+                colors.add(Color.BLACK);
+            case 10:
+                colors.add(Color.PINK);
+            case 9:
+                colors.add(Color.YELLOW);
+            case 8:
+                colors.add(Color.LIGHT_GRAY);
+            case 7:
+                colors.add(Color.DARK_GRAY);
             case 6:
                 colors.add(Color.ORANGE);
             case 5:
@@ -436,8 +452,8 @@ public abstract class TimeNumericTable<T> {
         return plot;
     }
 
-    public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat) throws IOException {
-        XYPlot plot = getTable(timeFormat, numberFormat);
+    public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long origin) throws IOException {
+        XYPlot plot = getTable(timeFormat, numberFormat, origin);
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         writer.write(plot, baos, 1400, 600);

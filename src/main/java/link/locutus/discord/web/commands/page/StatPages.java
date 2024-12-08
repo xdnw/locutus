@@ -13,9 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.table.imp.EntityGroup;
-import link.locutus.discord.commands.manager.v2.table.imp.MetricByGroup;
-import link.locutus.discord.commands.manager.v2.table.imp.RadiationByTurn;
+import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
@@ -88,7 +86,7 @@ public class StatPages {
     @Command()
     public Object radiationStats(WebStore ws, Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
-        TimeNumericTable<Void> table = new RadiationByTurn(continents, start, end).writeData();
+        TimeNumericTable<Void> table = new RadiationByTurn(continents, start, end);
         WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
         JsonElement json = WebUtil.GSON.toJsonTree(graph);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, "Radiation by Time", json, true));
@@ -108,7 +106,7 @@ public class StatPages {
         Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
         TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
 
-        TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
+        TimeNumericTable table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
         WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.MILLIS_TO_DATE, format, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
         JsonElement json = WebUtil.GSON.toJsonTree(graph);
         return WebStore.render(f -> JtetimechartdatasrcpageGenerated.render(f, null, ws, title, json, true));
@@ -131,7 +129,7 @@ public class StatPages {
 
     @Command()
     public Object metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
-        TimeNumericTable table = new MetricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total).writeData();
+        TimeNumericTable table = new MetricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.LINE, 0);
         JsonElement json = WebUtil.GSON.toJsonTree(graph);
         return WebStore.render(f -> JtebarchartsingleGenerated.render(f, null, ws, table.getName(), json, false));
@@ -175,7 +173,7 @@ public class StatPages {
         List<String> coalitionNames = TimeNumericTable.toCoalitionNames(coalitions);
         List<List<DBNation>> nations = TimeNumericTable.toNations(coalitions, removeVM, removeActiveM, removeApps);
 
-        TimeNumericTable table = new EntityGroup(title, metric, nations, coalitionNames, groupBy, total).writeData();
+        TimeNumericTable table = new EntityGroup(title, metric, nations, coalitionNames, groupBy, total);
 
         WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.SIDE_BY_SIDE_BAR, 0);
         JsonElement data = WebUtil.GSON.toJsonTree(graph);
@@ -233,7 +231,7 @@ public class StatPages {
         if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
 
 
-        TimeNumericTable table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
+        TimeNumericTable table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
         WebGraph graph = table.toHtmlJson(TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, startTurn);
         JsonElement json = WebUtil.GSON.toJsonTree(graph);
         title = table.getName();

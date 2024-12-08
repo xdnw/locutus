@@ -43,7 +43,7 @@ import link.locutus.discord.commands.external.guild.KickLocutus;
 import link.locutus.discord.commands.info.FindSpyOp;
 import link.locutus.discord.commands.external.guild.Mask;
 import link.locutus.discord.commands.sync.SyncMail;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.fun.Borgomas;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
@@ -391,15 +391,15 @@ public class CommandManager {
 
         if (!db.hasAlliance()) return;
 
-        WarCategory.WarRoom room = WarCategory.getGlobalWarRoom((MessageChannel) channel);
+        link.locutus.discord.commands.war.WarRoom room = WarCategory.getGlobalWarRoom((MessageChannel) channel);
         if (room == null || room.target == null) return;
 
-        Set<WarCategory.WarRoom> rooms = WarCategory.getGlobalWarRooms(room.target);
+        Set<link.locutus.discord.commands.war.WarRoom> rooms = WarCategory.getGlobalWarRooms(room.target);
         if (rooms == null) return;
         ByteBuffer optOut = DiscordMeta.OPT_OUT.get(msgUser.getIdLong());
         if (optOut != null && optOut.get() != 0) return;
 
-        for (WarCategory.WarRoom other : rooms) {
+        for (link.locutus.discord.commands.war.WarRoom other : rooms) {
             if (other == room || other.channel == null) continue;
 
             String userPrefix = DiscordUtil.getFullUsername(msgUser);

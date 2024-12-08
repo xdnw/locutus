@@ -49,6 +49,8 @@ public class EntityTable<T> extends SimpleTable<Void> {
         setLabelX(groupBy.getName());
         setLabelY(labelY);
         setLabels(labels);
+
+        writeData();
     }
 
     @Override
@@ -64,6 +66,11 @@ public class EntityTable<T> extends SimpleTable<Void> {
     @Override
     public GraphType getGraphType() {
         return GraphType.LINE;
+    }
+
+    @Override
+    public long getOrigin() {
+        return min;
     }
 
     @Override
@@ -88,11 +95,11 @@ public class EntityTable<T> extends SimpleTable<Void> {
                 buffer[i] = valueTotal;
             }
         }
-        add(key, buffer);
+        add(key - min, buffer);
     }
 
     @Override
-    public SimpleTable<Void> writeData() {
+    protected SimpleTable<Void> writeData() {
         for (int key = min; key <= max; key++) {
             add(key, (Void) null);
         }

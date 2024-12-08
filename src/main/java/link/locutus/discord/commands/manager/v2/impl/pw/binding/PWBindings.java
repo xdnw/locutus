@@ -22,11 +22,12 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
@@ -1514,8 +1515,8 @@ public class PWBindings extends BindingHelper {
 
     @Me
     @Binding
-    public WarCategory.WarRoom warRoom(@Me WarCategory warCat, @Me TextChannel channel) {
-        WarCategory.WarRoom warroom = warCat.getWarRoom(channel);
+    public WarRoom warRoom(@Me WarCategory warCat, @Me TextChannel channel) {
+        WarRoom warroom = warCat.getWarRoom(channel);
         if (warroom == null) throw new IllegalArgumentException("The command was not run in a war room");
         return warroom;
     }

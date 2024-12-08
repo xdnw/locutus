@@ -16,10 +16,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
-import link.locutus.discord.commands.manager.v2.table.imp.EntityGroup;
-import link.locutus.discord.commands.manager.v2.table.imp.EntityTable;
-import link.locutus.discord.commands.manager.v2.table.imp.MetricByGroup;
-import link.locutus.discord.commands.manager.v2.table.imp.RadiationByTurn;
+import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -156,13 +153,13 @@ public class StatEndpoints {
 
             WebGraph overall = null;
             if (sphereAlliances.size() > 1) {
-                overall = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, name, new ObjectLinkedOpenHashSet<>(sphereAlliances))
+                overall = new CoalitionMetricsGraph(metricMap, metrics, startTurn, endTurn, name, new ObjectLinkedOpenHashSet<>(sphereAlliances))
                         .toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, startTurn);
             }
 
             Map<Integer, WebGraph> byAlliance = new Int2ObjectOpenHashMap<>();
             for (DBAlliance alliance : sphereAlliances) {
-                WebGraph graph = AllianceMetric.generateTable(metricMap, metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance))
+                WebGraph graph = new CoalitionMetricsGraph(metricMap, metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance))
                         .toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, startTurn);
                 byAlliance.put(alliance.getId(), graph);
             }
@@ -222,7 +219,7 @@ public class StatEndpoints {
     @ReturnType(WebGraph.class)
     public WebGraph radiationStats(WebStore ws, Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
-        TimeNumericTable<Void> table = new RadiationByTurn(continents, start, end).writeData();
+        TimeNumericTable<Void> table = new RadiationByTurn(continents, start, end);
         WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.SECONDS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
         return graph;
     }
@@ -242,7 +239,7 @@ public class StatEndpoints {
         Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
         TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
 
-        TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
+        TimeNumericTable table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
         WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.SECONDS_TO_DATE, format, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
         return graph;
     }
@@ -250,7 +247,7 @@ public class StatEndpoints {
     @Command()
     @ReturnType(WebGraph.class)
     public WebGraph metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
-        TimeNumericTable table = new MetricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total).writeData();
+        TimeNumericTable table = new MetricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.LINE, 0);
         return graph;
     }
@@ -294,7 +291,7 @@ public class StatEndpoints {
         List<String> coalitionNames = TimeNumericTable.toCoalitionNames(coalitions);
         List<List<DBNation>> nations = TimeNumericTable.toNations(coalitions, removeVM, removeActiveM, removeApps);
 
-        TimeNumericTable table = new EntityGroup(title, metric, nations, coalitionNames, groupBy, total).writeData();
+        TimeNumericTable table = new EntityGroup(title, metric, nations, coalitionNames, groupBy, total);
 
         WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0);
         return graph;
@@ -345,8 +342,15 @@ public class StatEndpoints {
         if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
 
 
-        TimeNumericTable table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
+        TimeNumericTable table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
         WebGraph graph = table.toHtmlJson(TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, startTurn);
         return graph;
     }
+
+    // TODO
+    // StrengthTierGraph
+    // AlliancesNationMetricByDay
+    // CoalitionMetricsGraph
+    // MultiCoalitionMetricGraph
+    // metricByGroup is added, but needs snapshot support
 }

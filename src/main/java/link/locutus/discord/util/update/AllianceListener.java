@@ -10,6 +10,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
+import link.locutus.discord.commands.manager.v2.table.imp.MultiCoalitionMetricGraph;
+import link.locutus.discord.commands.manager.v2.table.imp.SimpleTable;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.AllianceMeta;
@@ -240,20 +243,20 @@ public class AllianceListener {
 
         long endTurn = TimeUtil.getTurn();
         long startTurn = endTurn - 84;
-        TimeNumericTable table;
+        SimpleTable table;
         if (alertAlliances.size() == 1) {
             DBAlliance alliance = alertAlliances.keySet().iterator().next();
             List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
-            table = AllianceMetric.generateTable(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
+            table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
         } else {
             List<String> coalitions = alertAlliances.keySet().stream().map(DBAlliance::getName).toList();
             List<Set<DBAlliance>> alliances = alertAlliances.keySet().stream().map(Set::of).toList();
             AllianceMetric metric = AllianceMetric.TANK_PCT;
-            table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitions, alliances.toArray(Set[]::new));
+            table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitions, alliances.toArray(Set[]::new));
         }
         byte[] graphData;
         try {
-            graphData = table.write(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE);
+            graphData = table.write(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, table.getGraphType(), table.getOrigin());
         } catch (IOException e) {
             graphData = null;
         }

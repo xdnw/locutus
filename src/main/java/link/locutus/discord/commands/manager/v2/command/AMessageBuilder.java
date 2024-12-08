@@ -315,7 +315,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
         for (GraphMessageInfo gi : tables) {
             try {
-                byte[] imgData = gi.table().write(gi.timeFormat(), gi.numberFormat());
+                byte[] imgData = gi.table().write(gi.timeFormat(), gi.numberFormat(), gi.type(), gi.origin());
                 String base64String = Base64.getEncoder().encodeToString(imgData);
                 html.append("<img class=\"img-rounded\" src=\"data:image/png;base64,").append(base64String).append("\" alt=\"").append(gi.table().getName()).append("\">");
             } catch (IOException e) {

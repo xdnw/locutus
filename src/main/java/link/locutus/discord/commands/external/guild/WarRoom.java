@@ -1,12 +1,11 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
@@ -14,25 +13,17 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.PermissionOverride;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
-import java.io.IOException;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class WarRoom extends Command {
@@ -93,7 +84,7 @@ public class WarRoom extends Command {
         String arg = args.get(0);
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
             MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
-            WarCategory.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
+            link.locutus.discord.commands.war.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
             if (room != null) {
                 room.delete("Closed by " + DiscordUtil.getFullUsername(author));
                 return "Goodbye.";
@@ -131,7 +122,7 @@ public class WarRoom extends Command {
                 DBNation target = entry.getKey();
                 Set<DBNation> attackers = entry.getValue();
 
-                WarCategory.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+                link.locutus.discord.commands.war.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
                 try {
                     if (args.get(1).length() > 1 && !args.get(1).equalsIgnoreCase("null")) {
@@ -159,7 +150,7 @@ public class WarRoom extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        WarCategory.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+        link.locutus.discord.commands.war.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
         response.append(warChan.getChannel().getAsMention());
 

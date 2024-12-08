@@ -49,6 +49,13 @@ public class MetricByGroup extends SimpleTable<NationList> {
         setLabelX(groupBy.getName());
         setLabelY(labelY);
         setLabels(labels);
+
+        writeData();
+    }
+
+    @Override
+    public long getOrigin() {
+        return min;
     }
 
     @Override
@@ -88,11 +95,11 @@ public class MetricByGroup extends SimpleTable<NationList> {
                 buffer[i] = valueTotal;
             }
         }
-        add(key, buffer);
+        add(key - min, buffer);
     }
 
     @Override
-    public MetricByGroup writeData() {
+    protected MetricByGroup writeData() {
         for (int key = min; key <= max; key++) {
             NationList nations = byTier.get(key);
             add(key, nations);

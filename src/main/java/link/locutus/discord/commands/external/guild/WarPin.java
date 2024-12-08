@@ -8,7 +8,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -48,7 +49,7 @@ public class WarPin extends Command {
         if (warChannels == null) return "War channels are not enabled.";
 
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
-        WarCategory.WarRoom warRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
+        WarRoom warRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
         if (warRoom == null) return "This command must be run in a war room.";
 
         IMessageBuilder message = warRoom.updatePin(true);

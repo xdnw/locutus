@@ -116,50 +116,6 @@ public class TaxRecordCategorizer2 {
         return copy;
     }
 
-    public TimeNumericTable createTable(String title, Map<TaxRecordCategorizer2.TransactionType, double[][]> transfers, ResourceType valueType) {
-        if (transfers.isEmpty()) throw new IllegalArgumentException("No transfers found");
-
-        String[] labels = new String[transfers.size() + 2];
-        labels[0] = "Expense Total";
-        labels[1] = "Income Total";
-
-        String labelY = valueType == null ? "Market Value ($)" : valueType.name();
-
-        Function<double[], Double> getValue = input -> valueType != null ? input[valueType.ordinal()] : ResourceType.convertedTotal(input);
-
-        double[] buffer = new double[labels.length];
-
-        TransactionType[] txTypes = transfers.keySet().toArray(new TransactionType[0]);
-        for (int i = 0; i < txTypes.length; i++) {
-            TransactionType txType = txTypes[i];
-            labels[2 + i] = txType.name();
-        }
-
-        TimeNumericTable<Void> table = new TimeNumericTable<>(title, "group by", labelY, labels) {
-            @Override
-            public void add(long key, Void ignore) {
-                buffer[0] = 0;
-                buffer[1] = 0;
-                for (int i = 0; i < txTypes.length; i++) {
-                    TransactionType txType = txTypes[i];
-                    double[] typeIncome = transfers.get(txType)[(int) key];
-                    double value = getValue.apply(typeIncome);
-
-                    buffer[i + 2] = value;
-                    if (txType.isExpense) buffer[0] += value;
-                    else buffer[1] += value;
-                }
-                add(key, buffer);
-            }
-        };
-
-        double[][] arr0 = transfers.values().iterator().next();
-        for (int i = 0; i < arr0.length; i++) {
-            table.add(i, (Void) null);
-        }
-        return table;
-    }
-
     public Map<TaxRecordCategorizer2.TransactionType, double[][]> sumTransfersByCategoryByTurn(long turnStart, long turnEnd, List<BankDB.TaxDeposit> taxRecords, List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>> transfers) {
         int len = (int) (turnEnd - turnStart + 1);
 

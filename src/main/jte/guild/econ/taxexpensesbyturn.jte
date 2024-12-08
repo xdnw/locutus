@@ -9,6 +9,7 @@
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
 @import link.locutus.discord.commands.manager.v2.table.TableNumberFormat
 @import link.locutus.discord.commands.manager.v2.table.TimeFormat
+@import link.locutus.discord.commands.manager.v2.table.imp.TaxCategoryGraph
 @import link.locutus.discord.db.BankDB
 @import link.locutus.discord.db.GuildDB
 @import link.locutus.discord.db.entities.Coalition
@@ -57,7 +58,7 @@
         </p>
     @endif
     @template.data.timechartdatasrc(ws = ws, title = "",
-        data = WebUtil.GSON.toJsonTree(categorized.createTable("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTimeFromTurn(start) / 1000L)),
+        data = WebUtil.GSON.toJsonTree(new TaxCategoryGraph("", entry.getValue(), null).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTimeFromTurn(start) / 1000L)),
     time = true)
 
     @if(entry.getKey() == -1)
@@ -74,7 +75,7 @@
                         @if(type != ResourceType.CREDITS)
                             <div class="bg-light border border-3 border-secondary rounded">
                                 @template.data.timechartdatasrc(ws = ws, title = type.name(),
-                                data = WebUtil.GSON.toJsonTree(categorized.createTable(type.name(), entry.getValue(),
+                                data = WebUtil.GSON.toJsonTree(new TaxCategoryGraph(type.name(), entry.getValue(),
                                 type).convertTurnsToEpochSeconds(start).toHtmlJson(TimeFormat.MILLIS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, start)),
                                 time = true)
                             </div>

@@ -12,7 +12,6 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -23,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.AllianceCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.NationCommands;
 import link.locutus.discord.commands.sync.*;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.gpt.GPTUtil;
@@ -51,7 +51,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
@@ -2736,7 +2736,7 @@ public class AdminCommands {
                 throw new IllegalArgumentException("Missing " + Roles.MILCOM.toDiscordRoleNameElseInstructions(chanGuild));
             }
         }
-        WarCategory.WarRoom room = channel instanceof GuildMessageChannel mC ? WarCategory.getGlobalWarRoom(mC) : null;
+        WarRoom room = channel instanceof GuildMessageChannel mC ? WarCategory.getGlobalWarRoom(mC) : null;
         if (channel != null && room == null) {
             throw new IllegalArgumentException("Channel is not a war room");
         }
@@ -2745,9 +2745,9 @@ public class AdminCommands {
             return "Deleted " + channel.getName();
         } else {
             Set<Category> categories = new HashSet<>();
-            Iterator<Map.Entry<Integer, WarCategory.WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
+            Iterator<Map.Entry<Integer, WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
             while (iter.hasNext()) {
-                Map.Entry<Integer, WarCategory.WarRoom> entry = iter.next();
+                Map.Entry<Integer, WarRoom> entry = iter.next();
                 TextChannel guildChan = entry.getValue().getChannel(false);
                 if (guildChan != null) {
                     Category category = guildChan.getParentCategory();

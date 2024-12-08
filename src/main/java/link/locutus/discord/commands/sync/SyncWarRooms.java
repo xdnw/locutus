@@ -5,9 +5,10 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -53,7 +54,7 @@ public class SyncWarRooms extends Command {
         WarCategory warCat = guildDB.getWarChannel(true);
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
         if (warCat != null) {
-            WarCategory.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
+            WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
             if (room != null) {
                 if (args.size() == 1) {
                     switch (args.get(0)) {
@@ -85,9 +86,9 @@ public class SyncWarRooms extends Command {
                     }
                     case "delete":
                         Set<Category> categories = new HashSet<>();
-                        Iterator<Map.Entry<Integer, WarCategory.WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
+                        Iterator<Map.Entry<Integer, WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
                         while (iter.hasNext()) {
-                            Map.Entry<Integer, WarCategory.WarRoom> entry = iter.next();
+                            Map.Entry<Integer, WarRoom> entry = iter.next();
                             TextChannel guildChan = entry.getValue().getChannel(false);
                             if (guildChan != null) {
                                 Category category = guildChan.getParentCategory();

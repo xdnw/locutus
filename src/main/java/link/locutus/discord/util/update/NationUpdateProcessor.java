@@ -14,6 +14,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.MultiCoalitionMetricGraph;
+import link.locutus.discord.commands.manager.v2.table.imp.SimpleTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
@@ -36,6 +38,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -787,9 +790,9 @@ public class NationUpdateProcessor {
                     long startTurn = endTurn - 120;
                     List<String> coalitions = joinedAlliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
                     List<Set<DBAlliance>> alliances = joinedAlliances.stream().map(Collections::singleton).toList();
-                    TimeNumericTable table = AllianceMetric.generateTable(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
+                    SimpleTable table = new MultiCoalitionMetricGraph(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
                     try {
-                        graphData = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.MEMBERS.getFormat());
+                        graphData = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.MEMBERS.getFormat(), GraphType.LINE, table.getOrigin());
                     } catch (IOException e) {
                     }
                 }

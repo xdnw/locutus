@@ -1,7 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
@@ -12,7 +13,6 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 
 import java.util.*;
 
@@ -102,7 +102,7 @@ public class CounterGenerator {
             double roomFactor = 1;
             if (warCat != null) {
                 Set<Integer> inWarRoom = new HashSet<>();
-                for (WarCategory.WarRoom room : warCat.getWarRoomMap().values()) {
+                for (WarRoom room : warCat.getWarRoomMap().values()) {
                     if (room.isParticipant(att, false) && room.target.active_m() < 2880) {
                         inWarRoom.add(room.target.getNation_id());
                     }

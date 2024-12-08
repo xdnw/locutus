@@ -233,7 +233,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         List<Map.Entry<String, byte[]>> tables = new ArrayList<>();
         for (GraphMessageInfo gmi : this.tables) {
             try {
-                byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat());
+                byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat(), gmi.type(), gmi.origin());
                 String fileName = gmi.table().getName().replaceAll("[^a-zA-Z0-9.-]", "") + ".png";
                 tables.add(new AbstractMap.SimpleEntry<>(fileName, imgData));
             } catch (IOException e) {

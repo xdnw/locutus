@@ -18,7 +18,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.WarCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -32,6 +32,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.Coalitio
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.sheets.SpySheet;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -3367,9 +3368,9 @@ public class WarCommands {
 
     @Command(desc = "List war rooms for an ally or enemy")
     public String warRoomList(@Me WarCategory warCategory, DBNation nation) {
-        Map<Integer, WarCategory.WarRoom> roomMap = warCategory.getWarRoomMap();
-        WarCategory.WarRoom room = roomMap.get(nation.getId());
-        Function<WarCategory.WarRoom, String> toString = f -> {
+        Map<Integer, WarRoom> roomMap = warCategory.getWarRoomMap();
+        WarRoom room = roomMap.get(nation.getId());
+        Function<WarRoom, String> toString = f -> {
             StringBuilder response = new StringBuilder();
             String mention = f.getChannelMention();
             if (mention == null) {
@@ -3385,8 +3386,8 @@ public class WarCommands {
         if (room != null) {
             return toString.apply(room);
         } else {
-            Set<WarCategory.WarRoom> rooms = new LinkedHashSet<>();
-            for (Map.Entry<Integer, WarCategory.WarRoom> entry : roomMap.entrySet()) {
+            Set<WarRoom> rooms = new LinkedHashSet<>();
+            for (Map.Entry<Integer, WarRoom> entry : roomMap.entrySet()) {
                 room = entry.getValue();
                 if (room.isParticipant(nation, false)) {
                     rooms.add(room);
@@ -3396,7 +3397,7 @@ public class WarCommands {
                 return "No war rooms found for: " + nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup();
             }
             StringBuilder response = new StringBuilder();
-            for (WarCategory.WarRoom entry : rooms) {
+            for (WarRoom entry : rooms) {
                 response.append(toString.apply(entry) + "\n");
             }
             return response.toString();
@@ -3464,7 +3465,7 @@ public class WarCommands {
             DBNation target = entry.getKey();
             Set<DBNation> attackers = entry.getValue();
 
-            WarCategory.WarRoom channel = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
+            WarRoom channel = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
 
             try {
                 if (customMessage != null) {
@@ -4234,7 +4235,7 @@ public class WarCommands {
             ArrayList<Object> row = new ArrayList<>();
             row.add(notes.getOrDefault(enemy.getNation_id(), ""));
 
-            WarCategory.WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
+            WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
 //            warCat.sync();
             GuildMessageChannel channel = warroom != null ? warroom.getChannel(false) : null;
             if (channel != null) {
@@ -4615,8 +4616,8 @@ public class WarCommands {
     @Command(desc = "Delete planning war rooms with no participants")
     public String deletePlanningChannel(@Me WarCategory warCat) {
         int count = 0;
-        for (Map.Entry<Integer, WarCategory.WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
-            WarCategory.WarRoom room = entry.getValue();
+        for (Map.Entry<Integer, WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
+            WarRoom room = entry.getValue();
             if (room.channel == null) continue;
             if (!room.getParticipants().isEmpty()) continue;
             if (!room.isPlanning()) continue;
@@ -4633,8 +4634,8 @@ public class WarCommands {
     @Command(desc = "Delete war rooms against the enemies specified")
     public String deleteForEnemies(@Me WarCategory warCat, Set<DBNation> enemy_rooms) {
         int count = 0;
-        for (Map.Entry<Integer, WarCategory.WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
-            WarCategory.WarRoom room = entry.getValue();
+        for (Map.Entry<Integer, WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
+            WarRoom room = entry.getValue();
             if (!enemy_rooms.contains(room.target)) continue;
             room.delete("Manually deleted");
             count++;
@@ -4721,7 +4722,7 @@ public class WarCommands {
             attackersSorted = attackersSorted.subList(0, max);
         }
 
-        WarCategory.WarRoom warChan = warCat.createChannel(author, new Consumer<String>() {
+        WarRoom warChan = warCat.createChannel(author, new Consumer<String>() {
             @Override
             public void accept(String s) {
                 response.append(s + "\n");
@@ -4746,7 +4747,7 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MEMBER)
     @Command(desc = "Update the pin in the current war room channel")
-    public String warpin(@Me WarCategory.WarRoom warRoom) {
+    public String warpin(@Me WarRoom warRoom) {
         IMessageBuilder message = warRoom.updatePin(true);
         return "Updated: " + DiscordUtil.getChannelUrl(warRoom.channel) + "/" + message.getId();
     }
@@ -4754,7 +4755,7 @@ public class WarCommands {
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Run this command in a war room to assign it to a category\n" +
             "`{prefix}war room setcategory category:raid`")
-    public String warcat(@Me WarCategory warCat, @Me WarCategory.WarRoom waRoom, @Me TextChannel channel,
+    public String warcat(@Me WarCategory warCat, @Me WarRoom waRoom, @Me TextChannel channel,
                          @Arg("The category to move this channel to")
                          @Filter("warcat.*") Category category) {
         if (category.equals(channel.getParentCategory())) {
