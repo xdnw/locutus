@@ -179,7 +179,6 @@ public class PoliticsAndWarV3 {
                 }
                 if (header.containsKey("X-RateLimit-Reset")) {
                     resetMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset")).get(0)) * 1000L;
-                    System.out.println(":||REmove Set resetMs to " + (resetMs - System.currentTimeMillis()));
                 } else if (header.containsKey("X-RateLimit-Reset-After")) {
                     long ms = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
                     resetMs = System.currentTimeMillis() + ms;

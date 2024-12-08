@@ -2420,6 +2420,19 @@ public class IACommands {
         return null;
     }
 
+    @Command(desc = "Set yourself as the referrer for a user")
+    @RolePermission(value = { Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERVIEWER, Roles.MENTOR, Roles.RECRUITER }, any = true)
+    public String setReferrerId(@Me GuildDB db, @Me DBNation me, Long userId) {
+        if (!db.isValidAlliance()) return "Note: No alliance registered to guild";
+        if (!db.isAllianceId(me.getAlliance_id())) {
+            return "Note: You are not in this alliance";
+        }
+        if (db.getMeta(userId, NationMeta.REFERRER) == null) {
+            db.getHandler().setReferrer(userId, me);
+        }
+        return null;
+    }
+
     @Command(aliases = {"sortInterviews", "sortInterview"}, desc = "Sort the interview channels to an audit category\n" +
             "An appropriate discord category must exist in the form: `interview-CATEGORY`\n" +
             "Allowed categories: `INACTIVE,ENTRY,RAIDS,BANK,SPIES,BUILD,COUNTERS,TEST,ARCHIVE`")

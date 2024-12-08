@@ -2312,10 +2312,14 @@ public class GuildHandler {
     }
 
     public void setReferrer(User user, DBNation referrer) {
+        setReferrer(user.getIdLong(), referrer);
+    }
+
+    public void setReferrer(Long userId, DBNation referrer) {
         ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + Long.BYTES);
         buf.putInt(referrer.getNation_id());
         buf.putLong(System.currentTimeMillis());
-        db.setMeta(user.getIdLong(), NationMeta.REFERRER, buf.array());
+        db.setMeta(userId, NationMeta.REFERRER, buf.array());
     }
 
     public Map.Entry<Integer, Long> getNationTimestampReferrer(long userId) {

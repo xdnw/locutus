@@ -3251,7 +3251,6 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Total stockpile value based on last war loss or espionage")
-    @WhitelistPermission
     public double getBeigeLootTotal() {
         LootEntry loot = getBeigeLoot();
         return loot == null ? 0 : ResourceType.convertedTotal(loot.getTotal_rss());
