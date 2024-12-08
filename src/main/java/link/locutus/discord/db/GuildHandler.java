@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
@@ -1629,7 +1630,7 @@ public class GuildHandler {
                     boolean violation = true;
                     {
                         if (defender != null && warCat != null) {
-                            WarCategory.WarRoom warRoom = warCat.get(defender, false, false, false);
+                            WarRoom warRoom = warCat.get(defender, false, false, false);
                             if (warRoom != null && warRoom.channel != null && warRoom.isParticipant(attacker, false)) {
                                 violation = false;
                             }

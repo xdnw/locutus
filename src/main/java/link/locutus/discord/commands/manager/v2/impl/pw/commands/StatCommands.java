@@ -2477,6 +2477,85 @@ public class StatCommands {
         return "Done!";
     }
 
+    @Command(desc = "Get nth loot beige graph by score range")
+    public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me GuildDB db, @Default NationList nations, @Default("5") int n, @Default @Timestamp Long snapshotDate,
+                                           @Switch("c") boolean attachCsv, @Switch("j") boolean attachJson) throws IOException {
+        if (n <= 0) throw new IllegalArgumentException("N must be greater than 0");
+        String filter;
+        if (nations != null) {
+            filter = nations.getFilter();
+        } else {
+            filter = "*,#active_m<7200,#vm_turns=0,#position<=1";
+            nations = new SimpleNationList(Locutus.imp().getNationDB().getNationsMatching(f ->
+                    f.active_m() < 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
+        }
+
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db.getGuild());
+        nationsSet.removeIf(f -> f.getVm_turns() == 0);
+        if (nationsSet.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        Map<Integer, PriorityQueue<Double>> lootByScore = new Int2ObjectOpenHashMap<>();
+
+        BiConsumer<Double, PriorityQueue<Double>> compareAndAddTop = (value, topValues) -> {
+            if (topValues.size() < n) {
+                topValues.add(value);
+            } else if (value > topValues.peek()) {
+                topValues.poll();
+                topValues.add(value);
+            }
+        };
+
+        for (DBNation nation : nationsSet) {
+            double score = nation.getScore();
+            double loot = nation.getBeigeLootTotal();
+            if (loot == 0) continue;
+            int min = (int) (score / PW.WAR_RANGE_MAX_MODIFIER);
+            int max = (int) (score / PW.WAR_RANGE_MIN_MODIFIER);
+            for (int i = min; i <= max; i++) {
+                lootByScore.computeIfAbsent(i, f -> new PriorityQueue<>(n)).add(loot);
+            }
+        }
+
+        String[] labels = {"Nth", "Median", "Mean", "Max"};
+
+        TimeNumericTable<PriorityQueue<Double>> table = new TimeNumericTable<PriorityQueue<Double>>("Raid income by score", "score", "loot", labels) {
+            @Override
+            public void add(long score, PriorityQueue<Double> values) {
+                if (values.isEmpty()) return;
+                // Convert PriorityQueue to a sorted list
+                List<Double> sortedValues = new ArrayList<>(values);
+                Collections.sort(sortedValues);
+                // Calculate nth value
+                double nth = sortedValues.size() >= n ? sortedValues.get(n - 1) : 0;
+                // Calculate median
+                double median;
+                int size = sortedValues.size();
+                if (size % 2 == 0) {
+                    median = (sortedValues.get(size / 2 - 1) + sortedValues.get(size / 2)) / 2.0;
+                } else {
+                    median = sortedValues.get(size / 2);
+                }
+                // Calculate mean
+                double sum = 0;
+                for (double value : sortedValues) {
+                    sum += value;
+                }
+                double mean = sum / size;
+                // Get max value
+                double max = sortedValues.get(size - 1);
+                // Add the calculated values to the table
+                add(score, nth, median, mean, max);
+            }
+        };
+
+        int maxScore = lootByScore.keySet().stream().mapToInt(f -> f).max().orElse(0);
+        for (int score = 0; score <= maxScore; score++) {
+            table.add(score, lootByScore.getOrDefault(score, new PriorityQueue<>()));
+        }
+
+        table.write(io, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachCsv, attachJson);
+        return null;
+    }
+
     private void add(SpreadSheet sheet,
                      Map<Integer, String> aaNames,
                      Map<Long, Map<Integer, Set<Integer>>> nationsByAAByDay,

@@ -260,6 +260,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");
         getCommands().registerMethod(new WebCommands(), List.of("mail"), "mailLogin", "web_login");
         getCommands().registerMethod(new IACommands(), List.of("channel", "sort"), "sortChannelsSheetRules", "category_rule_sheet");
+        getCommands().registerMethod(new StatCommands(), List.of("stats_tier"), "NthBeigeLootByScoreRange", "nth_loot_by_score");
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "costBulk", "cost");

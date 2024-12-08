@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -60,7 +61,7 @@ public class WarCat extends Command {
         if (warChannels == null) return "War channels are not enabled.";
 
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
-        WarCategory.WarRoom waRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
+        WarRoom waRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
         if (waRoom == null) return "This command must be run in a war room.";
 
         String categoryName = args.get(0);

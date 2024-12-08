@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.GuildDB;
@@ -271,7 +272,7 @@ public class WarUpdateProcessor {
                     for (int ally : warCat.getTrackedAllianceIds()) {
                         warCatsByAA.computeIfAbsent(ally, f -> new HashSet<>()).add(warCat);
                     }
-                    for (WarCategory.WarRoom room : warCat.getWarRoomMap().values()) {
+                    for (WarRoom room : warCat.getWarRoomMap().values()) {
                         if (room.channel != null && room.target != null) {
                             warCatsByRoom.computeIfAbsent(room.target.getId(), f -> new HashSet<>()).add(warCat);
                         }

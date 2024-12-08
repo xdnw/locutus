@@ -9,6 +9,7 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.CounterStat;
@@ -99,7 +100,7 @@ public class WarPages {
         if (warCat != null) {
             table.addColumn("warroom", false, false, f -> {
                 DBNation attacker = f.getNation(true);
-                WarCategory.WarRoom room = warCat.get(attacker, false, false);
+                WarRoom room = warCat.get(attacker, false, false);
                 if (room != null && room.channel != null) {
                     return MarkupUtil.htmlUrl("#" + room.channel.getName(), room.url());
                 }

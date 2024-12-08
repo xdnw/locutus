@@ -22,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.AllianceCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.NationCommands;
 import link.locutus.discord.commands.sync.*;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.gpt.GPTUtil;
@@ -2735,7 +2736,7 @@ public class AdminCommands {
                 throw new IllegalArgumentException("Missing " + Roles.MILCOM.toDiscordRoleNameElseInstructions(chanGuild));
             }
         }
-        WarCategory.WarRoom room = channel instanceof GuildMessageChannel mC ? WarCategory.getGlobalWarRoom(mC) : null;
+        WarRoom room = channel instanceof GuildMessageChannel mC ? WarCategory.getGlobalWarRoom(mC) : null;
         if (channel != null && room == null) {
             throw new IllegalArgumentException("Channel is not a war room");
         }
@@ -2744,9 +2745,9 @@ public class AdminCommands {
             return "Deleted " + channel.getName();
         } else {
             Set<Category> categories = new HashSet<>();
-            Iterator<Map.Entry<Integer, WarCategory.WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
+            Iterator<Map.Entry<Integer, WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
             while (iter.hasNext()) {
-                Map.Entry<Integer, WarCategory.WarRoom> entry = iter.next();
+                Map.Entry<Integer, WarRoom> entry = iter.next();
                 TextChannel guildChan = entry.getValue().getChannel(false);
                 if (guildChan != null) {
                     Category category = guildChan.getParentCategory();

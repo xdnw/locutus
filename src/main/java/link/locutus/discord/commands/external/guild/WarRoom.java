@@ -84,7 +84,7 @@ public class WarRoom extends Command {
         String arg = args.get(0);
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
             MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
-            WarCategory.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
+            link.locutus.discord.commands.war.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
             if (room != null) {
                 room.delete("Closed by " + DiscordUtil.getFullUsername(author));
                 return "Goodbye.";
@@ -122,7 +122,7 @@ public class WarRoom extends Command {
                 DBNation target = entry.getKey();
                 Set<DBNation> attackers = entry.getValue();
 
-                WarCategory.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+                link.locutus.discord.commands.war.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
                 try {
                     if (args.get(1).length() > 1 && !args.get(1).equalsIgnoreCase("null")) {
@@ -150,7 +150,7 @@ public class WarRoom extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        WarCategory.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+        link.locutus.discord.commands.war.WarRoom warChan = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
         response.append(warChan.getChannel().getAsMention());
 
