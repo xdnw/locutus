@@ -2485,13 +2485,13 @@ public class StatCommands {
         if (nations != null) {
             filter = nations.getFilter();
         } else {
-            filter = "*,#active_m<7200,#vm_turns=0,#position<=1";
+            filter = "*,#active_m>7200,#vm_turns=0,#position<=1";
             nations = new SimpleNationList(Locutus.imp().getNationDB().getNationsMatching(f ->
-                    f.active_m() < 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
+                    f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
 
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db.getGuild());
-        nationsSet.removeIf(f -> f.getVm_turns() == 0);
+        nationsSet.removeIf(f -> f.getVm_turns() != 0);
         if (nationsSet.isEmpty()) throw new IllegalArgumentException("No nations provided");
         Map<Integer, PriorityQueue<Double>> lootByScore = new Int2ObjectOpenHashMap<>();
 
