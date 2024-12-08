@@ -2511,7 +2511,8 @@ public class StatCommands {
             int min = (int) (score / PW.WAR_RANGE_MAX_MODIFIER);
             int max = (int) (score / PW.WAR_RANGE_MIN_MODIFIER);
             for (int i = min; i <= max; i++) {
-                lootByScore.computeIfAbsent(i, f -> new PriorityQueue<>(n)).add(loot);
+                PriorityQueue<Double> queue = lootByScore.computeIfAbsent(i, f -> new PriorityQueue<>(n));
+                compareAndAddTop.accept(loot, queue);
             }
         }
 
@@ -2524,15 +2525,14 @@ public class StatCommands {
                 // Convert PriorityQueue to a sorted list
                 PriorityQueue<Double> topValues = new PriorityQueue<>(Comparator.reverseOrder());
                 List<Double> sortedValues = new ArrayList<>(topValues);
-                Collections.sort(sortedValues, Collections.reverseOrder());
+                Collections.sort(sortedValues);
                 if (sortedValues.size() < n) {
-                    // add 0s to fill the table
                     for (int i = sortedValues.size(); i < n; i++) {
-                        sortedValues.add(0d);
+                        sortedValues.add(0, 0d);
                     }
                 }
                 // Calculate nth value
-                double nth = sortedValues.get(n - 1);
+                double min = sortedValues.get(0);
                 // Calculate median
                 double median;
                 int size = sortedValues.size();
@@ -2550,7 +2550,8 @@ public class StatCommands {
                 // Get max value
                 double max = sortedValues.get(size - 1);
                 // Add the calculated values to the table
-                add(score, nth, median, mean, max);
+                System.out.println("Adding " + score + " " + min + " " + median + " " + mean + " " + max);
+                add(score, min, median, mean, max);
             }
         };
 
