@@ -22,6 +22,8 @@ public enum AutoAuditType {
 
     INACTIVE("Please remember to login every day to deter raiders and collect the login bonus"),
 
+    WRONG_COLOR("Please go to <https://politicsandwar.com/nation/edit/> then set your color to match the alliance, and click save (so that you receive color trade bloc revenue)"),
+
         ;
 
 

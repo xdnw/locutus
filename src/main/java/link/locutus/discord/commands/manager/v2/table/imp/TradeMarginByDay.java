@@ -97,6 +97,7 @@ public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
         setLabelX("day");
         setLabelY("ppu");
         setLabels(labels);
+
         writeData();
     }
 

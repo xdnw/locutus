@@ -52,6 +52,8 @@ public class CoalitionMetricsGraph extends SimpleTable<Void> {
         setLabelX("turn");
         setLabelY("value");
         setLabels(labels);
+
+        writeData();
     }
 
     @Override

@@ -2522,10 +2522,7 @@ public class StatCommands {
             @Override
             public void add(long score, PriorityQueue<Double> values) {
                 if (values.isEmpty()) return;
-                // Convert PriorityQueue to a sorted list
-                PriorityQueue<Double> topValues = new PriorityQueue<>(Comparator.reverseOrder());
-                List<Double> sortedValues = new ArrayList<>(topValues);
-                Collections.sort(sortedValues);
+                List<Double> sortedValues = new ArrayList<>(values);
                 if (sortedValues.size() < n) {
                     for (int i = sortedValues.size(); i < n; i++) {
                         sortedValues.add(0, 0d);
@@ -2550,7 +2547,6 @@ public class StatCommands {
                 // Get max value
                 double max = sortedValues.get(size - 1);
                 // Add the calculated values to the table
-                System.out.println("Adding " + score + " " + min + " " + median + " " + mean + " " + max);
                 add(score, min, median, mean, max);
             }
         };

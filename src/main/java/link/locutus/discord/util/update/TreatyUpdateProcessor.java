@@ -35,10 +35,12 @@ public class TreatyUpdateProcessor {
     public void onTreatyDowngrade(TreatyDowngradeEvent event) {
         update("Downgraded", event);
     }
-    @Subscribe
-    public void onTreatyExtend(TreatyExtendEvent event) {
-        update("Extended", event);
-    }
+
+//    @Subscribe
+//    public void onTreatyExtend(TreatyExtendEvent event) {
+//        update("Extended", event);
+//    }
+
     @Subscribe
     public void onTreatyUpgraded(TreatyUpgradeEvent event) {
         update("Upgraded", event);

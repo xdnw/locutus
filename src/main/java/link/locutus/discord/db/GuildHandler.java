@@ -357,6 +357,7 @@ public class GuildHandler {
     public void onNationColorChange(NationChangeColorEvent event) {
         DBNation previous = event.getPrevious();
         DBNation current = event.getCurrent();
+        if (!db.isAllianceId(current.getAlliance_id())) return;
 
         if (current.getPositionEnum() == Rank.APPLICANT && (previous.isGray() || previous.isBeige()) && !current.isGray() && !current.isBeige()) {
             MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
@@ -368,6 +369,23 @@ public class GuildHandler {
                 }
                 String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
+            }
+        }
+
+        if (current.getPositionEnum().id > Rank.APPLICANT.id) {
+            if (current.isGray() && !previous.isGray() && current.active_m() < 10000) {
+                String extra = (current.isGray()) ? "" : ", set your color to match the alliance ";
+
+                AlertUtil.auditAlert(current, AutoAuditType.GRAY, f ->
+                        "Please go to <https://politicsandwar.com/nation/edit/>" + extra + " and click save (so that you receive color trade bloc revenue)"
+                );
+            }
+            if (!current.isBeige() && !current.isGray() && !current.isAllianceColor()) {
+                NationColor color = current.getAlliance().getColor();
+
+                AlertUtil.auditAlert(current, AutoAuditType.WRONG_COLOR, f ->
+                        "Please go to <https://politicsandwar.com/nation/edit/>, set your color to " + color + " and click save (so that you receive color trade bloc revenue)"
+                );
             }
         }
     }
@@ -407,13 +425,7 @@ public class GuildHandler {
         DBNation current = event.getCurrent();
         DBNation previous = event.getPrevious();
 
-        if (current.getPositionEnum().id > Rank.APPLICANT.id && current.isGray() && !previous.isGray() && current.active_m() < 10000) {
-            String extra = (current.isGray()) ? "" : ", set your color to match the alliance ";
 
-            AlertUtil.auditAlert(current, AutoAuditType.GRAY, f ->
-                    "Please go to <https://politicsandwar.com/nation/edit/>" + extra + " and click save (so that you receive color trade bloc revenue)"
-            );
-        }
     }
 
 //    @Subscribe
