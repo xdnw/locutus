@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -100,7 +101,7 @@ public class WarPages {
         if (warCat != null) {
             table.addColumn("warroom", false, false, f -> {
                 DBNation attacker = f.getNation(true);
-                WarRoom room = warCat.get(attacker, false, false);
+                WarRoom room = warCat.createWarRoom(attacker, false, false, false, WarCatReason.WAR_PAGE);
                 if (room != null && room.channel != null) {
                     return MarkupUtil.htmlUrl("#" + room.channel.getName(), room.url());
                 }

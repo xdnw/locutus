@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
@@ -19,8 +20,8 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +62,7 @@ public class WarCat extends Command {
         if (warChannels == null) return "War channels are not enabled.";
 
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
-        WarRoom waRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
+        WarRoom waRoom = warChannels.getWarRoom((StandardGuildMessageChannel) textChannel, WarCatReason.WARCAT_COMMAND);
         if (waRoom == null) return "This command must be run in a war room.";
 
         String categoryName = args.get(0);

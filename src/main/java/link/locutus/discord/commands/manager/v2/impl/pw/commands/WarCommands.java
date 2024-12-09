@@ -11,14 +11,13 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.war.RaidCommand;
+import link.locutus.discord.commands.war.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -32,7 +31,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.Coalitio
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.sheets.SpySheet;
-import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -79,6 +77,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.json.JSONObject;
 
@@ -3406,7 +3405,8 @@ public class WarCommands {
 
     @Command(desc = "Create war rooms from a blitz sheet")
     @RolePermission(Roles.MILCOM)
-    public String warRoomSheet(@Me WarCategory warCat, @Me User author, @Me Guild guild, @Me JSONObject command, @Me IMessageIO io,
+    public String warRoomSheet(@Me WarCategory warCat,
+                               @Me User author, @Me GuildDB db, @Me JSONObject command, @Me IMessageIO io,
                                SpreadSheet blitzSheet,
                                @Arg("Custom message to send in each created war room")
                                @Default String customMessage,
@@ -3465,17 +3465,26 @@ public class WarCommands {
             DBNation target = entry.getKey();
             Set<DBNation> attackers = entry.getValue();
 
-            WarRoom channel = WarCategory.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
-
-            try {
-                if (customMessage != null) {
-                    RateLimitUtil.queue(channel.getChannel().sendMessage(customMessage));
+            WarRoom room = warCat.createWarRoom(target, true, true, true, WarCatReason.WARROOM_COMMAND);
+            if (room == null) {
+                response.append("Failed to create channel for ").append(target.getName()).append("\n");
+            } else {
+                WarRoomUtil.handleRoomCreation(room, author, db, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
+                GuildMessageChannel roomChan = room.getChannel();
+                if (roomChan != null) {
+                    response.append(roomChan.getAsMention());
+                    try {
+                        if (customMessage != null) {
+                            RateLimitUtil.queue(roomChan.sendMessage(customMessage));
+                        }
+                        channels.add(roomChan);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        response.append(e.getMessage());
+                    }
+                } else {
+                    response.append("Failed to create channel for ").append(target.getName());
                 }
-
-                channels.add(channel.getChannel());
-            } catch (Throwable e) {
-                e.printStackTrace();
-                response.append(e.getMessage());
             }
         }
 
@@ -4235,9 +4244,9 @@ public class WarCommands {
             ArrayList<Object> row = new ArrayList<>();
             row.add(notes.getOrDefault(enemy.getNation_id(), ""));
 
-            WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
+            WarRoom warroom = warCat != null ? warCat.createWarRoom(enemy, true, false, false, WarCatReason.COUNTER_SHEET) : null;
 //            warCat.sync();
-            GuildMessageChannel channel = warroom != null ? warroom.getChannel(false) : null;
+            GuildMessageChannel channel = warroom != null ? warroom.getChannel() : null;
             if (channel != null) {
                 String url = DiscordUtil.getChannelUrl(channel);
                 String name = "#" + enemy.getName();
@@ -4614,7 +4623,7 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Delete planning war rooms with no participants")
-    public String deletePlanningChannel(@Me WarCategory warCat) {
+    public String deletePlanningChannel(@Me User user, @Me WarCategory warCat) {
         int count = 0;
         for (Map.Entry<Integer, WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
             WarRoom room = entry.getValue();
@@ -4623,7 +4632,7 @@ public class WarCommands {
             if (!room.isPlanning()) continue;
             room.addInitialParticipants(false);
             if (!room.getParticipants().isEmpty()) continue;
-            room.delete("Manually deleted");
+            warCat.deleteRoom(room, "Manually deleted by " + DiscordUtil.getFullUsername(user));
             count++;
         }
         if (count == 0) return "No channels found to delete";
@@ -4632,12 +4641,12 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Delete war rooms against the enemies specified")
-    public String deleteForEnemies(@Me WarCategory warCat, Set<DBNation> enemy_rooms) {
+    public String deleteForEnemies(@Me User user, @Me WarCategory warCat, Set<DBNation> enemy_rooms) {
         int count = 0;
         for (Map.Entry<Integer, WarRoom> entry : new HashMap<>(warCat.getWarRoomMap()).entrySet()) {
             WarRoom room = entry.getValue();
             if (!enemy_rooms.contains(room.target)) continue;
-            room.delete("Manually deleted");
+            warCat.deleteRoom(room, "Manually deleted by " + DiscordUtil.getFullUsername(user));
             count++;
         }
         if (count == 0) return "No channels found to delete";
@@ -4722,14 +4731,22 @@ public class WarCommands {
             attackersSorted = attackersSorted.subList(0, max);
         }
 
-        WarRoom warChan = warCat.createChannel(author, new Consumer<String>() {
+        WarRoom room = warCat.createWarRoom(enemy, true, true, true, WarCatReason.WARROOM_COMMAND);
+        if (room == null) {
+            return "Error creating war room";
+        }
+        StandardGuildMessageChannel warChan = room.getChannel();
+        if (warChan == null) {
+            return "Error creating war room channel";
+        }
+        WarRoomUtil.handleRoomCreation(room, author, db, new Consumer<String>() {
             @Override
             public void accept(String s) {
                 response.append(s + "\n");
             }
         }, pingMembers, !skipAddMembers, sendMail, enemy, attackersSorted);
 
-        response.append(warChan.getChannel().getAsMention());
+        response.append(warChan.getAsMention());
 
         me.setMeta(NationMeta.INTERVIEW_WAR_ROOM, (byte) 1);
 

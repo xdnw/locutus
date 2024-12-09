@@ -1,14 +1,17 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -21,6 +24,9 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
 
 import java.util.*;
@@ -29,23 +35,58 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
+import static link.locutus.discord.commands.war.WarRoomUtil.getRangeFromCategory;
+import static link.locutus.discord.util.discord.DiscordUtil.setSymbol;
 
 public class WarRoom {
     protected final WarCategory warCategory;
     public final DBNation target;
     protected final Set<DBNation> participants;
-    public TextChannel channel;
     public boolean planning;
     public boolean enemyGc;
     public boolean enemyAc;
     public boolean enemyBlockade;
 
-    public WarRoom(WarCategory warCategory, DBNation target) {
+    public long channelId;
+    public StandardGuildMessageChannel channel;
+
+    public WarRoom(WarCategory warCategory, DBNation target, WarCatReason reason) {
         this.warCategory = warCategory;
         checkNotNull(target);
         this.target = target;
         this.participants = new HashSet<>();
         loadParticipants(false);
+        MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
+        if (logChan != null) {
+            String msg = "Creating war room for " + target.getMarkdownUrl() + " due to " + reason.name();
+            RateLimitUtil.queueMessage(logChan, msg, true, 60);
+        }
+    }
+
+    public synchronized WarRoom addChannel(long channelId, StandardGuildMessageChannel channel, WarCatReason reason) {
+        if (this.channelId != channelId) {
+            MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
+            if (logChan != null) {
+                String msg = "Adding channel " + channel.getAsMention() + " to " + target.getMarkdownUrl();
+                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+            }
+
+            this.channelId = channelId;
+            StandardGuildMessageChannel oldChannel = this.channel;
+            this.channel = channel;
+            if (oldChannel != null) {
+                if (logChan != null) {
+                    String msg = "Deleting old channel " + oldChannel.getAsMention() + " for " + target.getMarkdownUrl();
+                    RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                }
+                DiscordUtil.deleteChannelSafe(oldChannel);
+                warCategory.getGuildDb().deleteWarRoomChannelCache(Set.of(oldChannel.getIdLong()));
+            }
+            warCategory.getGuildDb().addWarRoomCache(target.getId(), channel.getIdLong());
+        } else if (this.channel != channel) {
+            this.channel = channel;
+        }
+        return this;
     }
 
     private void loadParticipants(boolean force) {
@@ -61,38 +102,21 @@ public class WarRoom {
                     participants.add(nation);
                 }
             }
-
-        }
-    }
-
-    private Message getMessage(String topic) {
-        if (topic == null || topic.isEmpty()) return null;
-        try {
-            topic = topic.split(" ")[0];
-            if (topic.contains("/")) {
-                String[] split = topic.split("/");
-                topic = split[split.length - 1];
-            }
-            return RateLimitUtil.complete(channel.retrieveMessageById(topic));
-        } catch (Exception e) {
-            return null;
         }
     }
 
     public String url() {
         if (channel == null) return null;
-        return "https://discord.com/channels/" + warCategory.guild.getIdLong() + "/" + channel.getIdLong();
+        return "https://discord.com/channels/" + warCategory.getGuild().getIdLong() + "/" + channel.getIdLong();
     }
 
     public IMessageBuilder updatePin(boolean update) {
         if (channel == null) {
             return null;
         }
-
         String topic = channel.getTopic();
-
         boolean updatePin = false;
-        DiscordChannelIO io = new DiscordChannelIO(channel, () -> getMessage(topic));
+        DiscordChannelIO io = new DiscordChannelIO(channel, () -> WarRoomUtil.getMessage(channel, topic));
         IMessageBuilder msg = io.getMessage();
         if (msg == null) {
             msg = io.create();
@@ -160,7 +184,7 @@ public class WarRoom {
     public boolean setGC(boolean value) {
         if (value == enemyGc) return false;
         enemyGc = value;
-        return setSymbol("\uD83D\uDC82", value);
+        return setSymbol(channel,"\uD83D\uDC82", value);
     }
 
     public boolean isGC() {
@@ -171,7 +195,7 @@ public class WarRoom {
     public boolean setAC(boolean value) {
         if (value == enemyAc) return false;
         enemyAc = value;
-        return setSymbol("\u2708", value);
+        return setSymbol(channel, "\u2708", value);
     }
 
     public boolean isAC() {
@@ -182,7 +206,7 @@ public class WarRoom {
     public boolean setBlockade(boolean value) {
         if (enemyBlockade == value) return false;
         enemyBlockade = value;
-        return setSymbol("\u26F5", value);
+        return setSymbol(channel, "\u26F5", value);
     }
 
     public boolean isBlockade() {
@@ -193,183 +217,39 @@ public class WarRoom {
     public boolean setPlanning(boolean value) {
         if (value == planning) return false;
         planning = value;
-        return setSymbol("\uD83D\uDCC5", value);
+        return WarRoomUtil.setPlanning(channel, value);
     }
 
     public boolean isPlanning() {
-        if (channel != null) return channel.getName().contains("\uD83D\uDCC5");
+        if (channel != null) return WarRoomUtil.isPlanning(channel);
         return false;
     }
 
-    public boolean setSymbol(String symbol, boolean value) {
-        if (channel != null) {
-            String name = channel.getName();
-            if (name.contains(symbol) != value) {
-                if (value) {
-                    name = symbol + name;
-                } else if (name.contains(symbol)) {
-                    name = name.replace(symbol, "");
-                    if (name.endsWith("-")) name = name.substring(0, name.length() - 1);
-                } else {
-                    return false;
-                }
-                RateLimitUtil.queue(channel.getManager().setName(name));
-                return true;
-            }
-        }
-        return false;
-    }
-
-//        public boolean updatePerms() {
-//            boolean modified = false;
-//            Set<DBNation> toAdd = new HashSet<>(participants.keySet());
-//
-//            System.out.println("Participants: " + StringMan.getString(participants) + " | " + channel.getName());
-//
-//            for (PermissionOverride memberOverride : channel.getMemberPermissionOverrides()) {
-//                System.out.println("Found permission override: " + memberOverride);
-//                Member member = memberOverride.getMember();
-//                if (member == null) {
-//                    member = memberOverride.getManager().getMember();
-//                }
-//
-//                // Failed to fetch member
-//                if (member == null) {
-//                    System.out.println("Unknown member override " + memberOverride);
-//                    return false;
-//                }
-//
-//                DBNation nation = DiscordUtil.getNation(member.getIdLong());
-//                if (nation == null || !participants.containsKey(nation)) {
-//                    if (!isPlanning()) {
-//                        System.out.println("Remove participant: " + (nation == null));
-
-    /// /                        link.locutus.discord.util.RateLimitUtil.queue(memberOverride.delete());
-    /// /                        modified = true;
-//                    }
-//                } else {
-//                    toAdd.remove(nation);
-//                }
-//            }
-//
-//            for (DBNation nation : toAdd) {
-//                User user = nation.getUser();
-//                if (user != null) {
-//                    Member member = guild.getMember(user);
-//                    if (member != null) {
-//                        modified = true;
-//                        if (channel.getPermissionOverride(member) == null) {
-//                            if (channel.getPermissionOverrides().isEmpty()) {
-//                                if (channel.getPermissionOverride(member) != null) continue;
-//                            }
-//                            {
-//                                PermissionOverride result = link.locutus.discord.util.RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
-//                                String mention = allianceIds.contains(nation.getAlliance_id()) ? member.getAsMention() : member.getEffectiveName();
-//                                String msg = "`" + mention + "` joined the fray";
-//                                Role milcomRole = Roles.MILCOM.toRole(guild);
-//                                if (milcomRole != null) msg += ". Ping `" + milcomRole.getName() + "`  for assistance";
-//                                link.locutus.discord.util.RateLimitUtil.queue(channel.sendMessage(msg));
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//            return modified;
-//        }
-    public TextChannel getChannel() {
-        return getChannel(true);
-    }
-
-    public TextChannel getChannel(boolean create) {
-        return getChannel(create, false);
-    }
-
-    public TextChannel getChannel(boolean create, boolean planning) {
-        if (channel != null) {
-            long dateCreated = channel.getTimeCreated().toEpochSecond() * 1000L;
-            if (System.currentTimeMillis() - dateCreated > TimeUnit.MINUTES.toMillis(1)) {
-                if (warCategory.guild.getTextChannelById(channel.getIdLong()) == null) {
-                    channel = null;
-                }
+    public StandardGuildMessageChannel getChannel() {
+        synchronized (this) {
+            if (channel == null) {
+                channel = warCategory.getGuild().getTextChannelById(channelId);
             }
             if (channel != null) return channel;
         }
-
-        synchronized (target.getName()) {
-            for (Category category : warCategory.guild.getCategories()) {
-                String catName = category.getName().toLowerCase();
-                if (catName.startsWith(warCategory.catPrefix)) {
-                    for (TextChannel channel : category.getTextChannels()) {
-                        String channelName = channel.getName();
-                        String[] split = channelName.split("-");
-                        if (MathMan.isInteger(split[split.length - 1])) {
-                            int targetId = Integer.parseInt(split[split.length - 1]);
-                            if (targetId == target.getNation_id()) {
-                                this.channel = channel;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (create && channel == null) {
-                Category useCat = null;
-                for (Category category : warCategory.guild.getCategories()) {
-                    String catName = category.getName().toLowerCase();
-                    if (!catName.startsWith(warCategory.catPrefix)) continue;
-                    List<GuildChannel> channels = category.getChannels();
-                    if (channels.size() >= 49) continue;
-
-                    CityRanges range = warCategory.getRangeFromCategory(category);
-                    if (range != null) {
-                        if (range.contains(target.getCities())) {
-                            useCat = category;
-                            break;
-                        } else if (useCat == null) {
-                            useCat = category;
-                        }
-                    } else {
-                        useCat = category;
-                    }
-                }
-
-                if (useCat == null) {
-                    for (int i = 0; ; i++) {
-                        String name = warCategory.catPrefix + "-" + i;
-                        List<Category> existingCat = warCategory.guild.getCategoriesByName(name, true);
-                        if (existingCat.isEmpty()) {
-                            useCat = RateLimitUtil.complete(warCategory.guild.createCategory(name));
-                            PermissionOverrideAction upsert = useCat.upsertPermissionOverride(warCategory.guild.getMemberById(Settings.INSTANCE.APPLICATION_ID));
-                            for (Permission perm : warCategory.getCategoryPermissions()) {
-                                upsert = upsert.setAllowed(perm);
-                            }
-                            RateLimitUtil.queue(upsert);
-                            RateLimitUtil.queue(useCat.upsertPermissionOverride(warCategory.guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
-
-                            List<CompletableFuture<PermissionOverride>> futures = new ArrayList<>();
-
-                            for (Role role : Roles.MILCOM.toRoles(warCategory.db)) {
-                                futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                        .setAllowed(Permission.VIEW_CHANNEL)));
-                            }
-                            for (Role role : Roles.MILCOM_NO_PINGS.toRoles(warCategory.db)) {
-                                futures.add(RateLimitUtil.queue(useCat.upsertPermissionOverride(role)
-                                        .setAllowed(Permission.VIEW_CHANNEL)));
-                            }
-                            if (!futures.isEmpty()) {
-                                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-                            }
-                            break;
-                        }
-                    }
-                }
-                String name = target.getNation() + "-" + target.getNation_id();
-                if (planning) name = "\uD83D\uDCC5" + name;
-                channel = RateLimitUtil.complete(useCat.createTextChannel(name));
-                warCategory.processChannelCreation(this, channel, planning);
-            }
-        }
         return channel;
+    }
+
+    public boolean isChannelValid() {
+        if (channel == null) {
+            if (channelId != 0) {
+                synchronized (this) {
+                    if (channel != null) return true;
+                    channel = warCategory.getGuild().getTextChannelById(channelId);
+                }
+                return channel != null;
+
+            }
+            return false;
+        }
+        TextChannel newChannel = this.warCategory.getGuild().getTextChannelById(channelId);
+        this.channel = newChannel;
+        return newChannel != null;
     }
 
     public boolean hasChannel() {
@@ -384,80 +264,18 @@ public class WarRoom {
         enemyBlockade = isBlockade();
     }
 
-    public void delete(String reason) {
+    public void handleDelete(String reason) {
         if (channel != null) {
-            System.out.println("Delete channel (" + reason + "): " + channel.getName() + " | " + channel.getIdLong());
-            RateLimitUtil.queue(channel.delete());
-            warCategory.warRoomMap.remove(target.getNation_id());
+            MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
+            if (logChan != null) {
+                String msg = "Deleting channel " + channel.getAsMention() + " for " + target.getMarkdownUrl() + " due to " + reason;
+                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+            }
+            DiscordUtil.deleteChannelSafe(channel);
             channel = null;
         }
     }
 
-//        public boolean update(List<DBWar> wars) {
-//            if (wars.isEmpty()) {
-//                if (isPlanning()) return false;
-//                delete();
-//                return false;
-//            }
-//
-//            boolean checkCounter = false;
-//
-//            Map<Integer, Member> toAdd = new HashMap<>();
-//
-//            for (DBWar war : wars) {
-//                int assignedId = war.attacker_id == target.getNation_id() ? war.defender_id : war.attacker_id;
-//                DBNation nation = Locutus.imp().getNationDB().getNation(assignedId);
-//                if (nation == null || nation.getPosition() <= 1 || nation.getVm_turns() != 0 || nation.active_m() > 2880 || !allies.contains(nation.getAlliance_id())) {
-//                    continue;
-//                }
-//                User discordUser = nation.getUser();
-//                if (discordUser == null) continue;
-//                Member member = guild.getMember(discordUser);
-//                if (member == null) continue;
-//
-//                toAdd.put(nation.getNation_id(), member);
-//                if (!participants.containsKey(nation)) {
-//                    participants.put(nation, new WarCard(war, true));
-//                    checkCounter = true;
-//                }
-//            }
-//
-//            participants.entrySet().removeIf(e -> !toAdd.containsKey(e.getKey().getNation_id()));
-//            if (participants.isEmpty()) {
-//                if (channel != null && !isPlanning()) {
-//                    delete();
-//                }
-//                return false;
-//            }
-//            getChannel();
-////            boolean modifiedPerms = updatePerms();
-//
-//            int isCounter = 0;
-//            int isNotCounter = 0;
-//            if (checkCounter) {
-//                for (DBWar war : wars) {
-//                    CounterStat counterStat = Locutus.imp().getWarDb().getCounterStat(war);
-//                    if (counterStat != null) {
-//                        if (counterStat.type.equals(CounterType.IS_COUNTER) && !enemies.contains(target.getAlliance_id())) {
-//                            isCounter++;
-//                        } else {
-//                            isNotCounter++;
-//                        }
-//                    }
-//                }
-//                if (isCounter > 0 && isNotCounter == 0) {
-//                    setCounter(true);
-//                } else {
-//                    setCounter(false);
-//                }
-//            }
-//
-//
-
-    /// /            updatePin(modifiedPerms);
-//
-//            return true;
-//        }
     public void updateParticipants(DBWar from, DBWar to) {
         updateParticipants(from, to, false);
     }
@@ -468,7 +286,7 @@ public class WarRoom {
         if (nation == null) return;
 
         User user = nation.getUser();
-        Member member = user == null ? null : warCategory.guild.getMember(user);
+        Member member = user == null ? null : warCategory.getGuild().getMember(user);
         if (from == null) {
             participants.add(nation);
 
@@ -503,12 +321,12 @@ public class WarRoom {
         boolean planned = planning || isPlanning();
         if (!planned && wars.isEmpty()) {
             if (channel != null) {
-                delete("No wars");
+                warCategory.deleteRoom(this, "No wars");
             }
             return;
         }
 
-        Member botMember = warCategory.guild.getMemberById(Settings.INSTANCE.APPLICATION_ID);
+        Member botMember = warCategory.getGuild().getMemberById(Settings.INSTANCE.APPLICATION_ID);
         if (botMember != null && channel != null && channel.getPermissionOverride(botMember) == null) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(botMember)
                     .grant(Permission.VIEW_CHANNEL)
@@ -528,7 +346,7 @@ public class WarRoom {
             participants.add(other);
 
             User user = other.getUser();
-            Member member = user == null ? null : warCategory.guild.getMember(user);
+            Member member = user == null ? null : warCategory.getGuild().getMember(user);
 
             if (member != null) {
                 addedMembers.add(member);
@@ -556,12 +374,12 @@ public class WarRoom {
         return participants.contains(nation);
     }
 
-    protected boolean hasOtherWar(int warId) {
+    protected boolean hasOtherWar(NationFilter filter, int warId) {
         boolean hasWar = false;
         for (DBWar war : target.getWars()) {
             if (war.getWarId() == warId) continue;
             DBNation other = war.getNation(!war.isAttacker(target));
-            if (other != null && warCategory.isActive(other) && warCategory.allianceIds.contains(other.getAlliance_id())) {
+            if (other != null && warCategory.isActive(filter, other) && warCategory.getTrackedAllianceIds().contains(other.getAlliance_id())) {
                 hasWar = true;
                 break;
             }
@@ -574,7 +392,6 @@ public class WarRoom {
     }
 
     public String getChannelMention() {
-        TextChannel tc = getChannel(false, false);
-        return tc == null ? null : tc.getAsMention();
+        return "<#" + channelId + ">";
     }
 }

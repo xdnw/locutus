@@ -1,5 +1,7 @@
 package link.locutus.discord.util.update;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
@@ -7,6 +9,8 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
@@ -236,7 +240,7 @@ public class WarUpdateProcessor {
             WarCategory warChannel = db.getWarChannel();
             if (warChannel == null) continue;
             try {
-                warChannel.update(root);
+                warChannel.update(warChannel.getFilter(), root);
             } catch (InsufficientPermissionException e) {
                 db.disableWarChannel();
             }
@@ -283,6 +287,7 @@ public class WarUpdateProcessor {
 
 
             Set<WarCategory> toUpdate = new LinkedHashSet<>();
+            Map<Long, NationFilter> filters = new Long2ObjectOpenHashMap<>();
             for (Map.Entry<DBWar, DBWar> pair : wars) {
                 DBWar current = pair.getValue();
 
@@ -306,7 +311,8 @@ public class WarUpdateProcessor {
                     }
                     for (WarCategory warCat : toUpdate) {
                         try {
-                            warCat.update(pair.getKey(), pair.getValue());
+                            NationFilter filter = filters.computeIfAbsent(warCat.getGuild().getIdLong(), f -> warCat.getFilter());
+                            warCat.update(filter, pair.getKey(), pair.getValue());
                         } catch (ErrorResponseException e) {
                             e.printStackTrace();
                         }

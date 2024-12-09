@@ -5,10 +5,12 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.war.WarRoom;
+import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -20,6 +22,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,7 +57,7 @@ public class SyncWarRooms extends Command {
         WarCategory warCat = guildDB.getWarChannel(true);
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
         if (warCat != null) {
-            WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
+            WarRoom room = warCat.getWarRoom((StandardGuildMessageChannel) textChannel, WarCatReason.SYNC_COMMAND);
             if (room != null) {
                 if (args.size() == 1) {
                     switch (args.get(0)) {
@@ -63,7 +66,7 @@ public class SyncWarRooms extends Command {
                             return "Updated " + textChannel.getAsMention();
                         case "delete":
                             String name = textChannel.getName();
-                            room.delete("Deleted by " + DiscordUtil.getFullUsername(author));
+                            warCat.deleteRoom(room, "Deleted by " + DiscordUtil.getFullUsername(author));
                             return "Deleted " + name;
                     }
 
@@ -80,7 +83,7 @@ public class SyncWarRooms extends Command {
                 switch (args.get(0).toLowerCase()) {
                     case "update": {
                         GuildMessageChannel guildChan = Locutus.imp().getDiscordApi().getGuildChannelById(Long.parseLong(args.get(1)));
-                        room = WarCategory.getGlobalWarRoom(guildChan);
+                        room = WarRoomUtil.getGlobalWarRoom(guildChan, WarCatReason.SYNC_COMMAND);
                         room.addInitialParticipants(false);
                         return "Updated <#" + args.get(1) + ">";
                     }
@@ -89,7 +92,7 @@ public class SyncWarRooms extends Command {
                         Iterator<Map.Entry<Integer, WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
                         while (iter.hasNext()) {
                             Map.Entry<Integer, WarRoom> entry = iter.next();
-                            TextChannel guildChan = entry.getValue().getChannel(false);
+                            StandardGuildMessageChannel guildChan = entry.getValue().getChannel();
                             if (guildChan != null) {
                                 Category category = guildChan.getParentCategory();
                                 if (category != null) categories.add(category);
