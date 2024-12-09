@@ -730,7 +730,7 @@ public class WarCategory {
                 }
             }
 
-            WarCatReason reason = getActiveReason(filter, wars, targetNation);
+            WarCatReason reason = getActiveReason(filter, currentWars, targetNation);
 
             if (reason.isActive()) {
                 WarRoom room;
