@@ -1071,7 +1071,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public void addWarRoomCache(int targetId, long channelId) {
-        update("INSERT OR REPLACE INTO WAR_ROOM_CACHE2(`target`, `channel`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO WAR_ROOM_CACHE_2(`target`, `channel`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, targetId);
             stmt.setLong(2, channelId);
         });
@@ -1084,7 +1084,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         Set<Integer> allianceIds = new IntOpenHashSet();
         WarRoomUtil.updateAllianceIds(this, allianceIds);
 
-        query("SELECT * FROM WAR_ROOM_CACHE", f -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+        query("SELECT * FROM WAR_ROOM_CACHE_2", f -> {}, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 int target = rs.getInt("target");
                 long channelId = rs.getLong("channel");
@@ -1120,7 +1120,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public void deleteWarRoomCache(Set<Integer> targetIds) {
-        update("DELETE FROM WAR_ROOM_CACHE2 WHERE target = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("DELETE FROM WAR_ROOM_CACHE_2 WHERE target = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             for (int id : targetIds) {
                 stmt.setInt(1, id);
                 stmt.addBatch();
@@ -1130,7 +1130,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public void deleteWarRoomChannelCache(Set<Long> channelIds) {
-        update("DELETE FROM WAR_ROOM_CACHE2 WHERE channel = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("DELETE FROM WAR_ROOM_CACHE_2 WHERE channel = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             for (long id : channelIds) {
                 stmt.setLong(1, id);
                 stmt.addBatch();
