@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.war.WarRoom;
@@ -1630,7 +1631,7 @@ public class GuildHandler {
                     boolean violation = true;
                     {
                         if (defender != null && warCat != null) {
-                            WarRoom warRoom = warCat.get(defender, false, false, false);
+                            WarRoom warRoom = warCat.createWarRoom(defender, false, false, false, WarCatReason.WAR_ALERT_DNR);
                             if (warRoom != null && warRoom.channel != null && warRoom.isParticipant(attacker, false)) {
                                 violation = false;
                             }

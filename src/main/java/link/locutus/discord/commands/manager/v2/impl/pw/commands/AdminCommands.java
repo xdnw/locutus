@@ -22,7 +22,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.AllianceCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.NationCommands;
 import link.locutus.discord.commands.sync.*;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarRoom;
+import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.gpt.GPTUtil;
@@ -91,6 +93,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -156,7 +159,7 @@ public class AdminCommands {
         Map<Category, Set<Permission>> permissionsMissing = new LinkedHashMap<>();
         Map<Category, CityRanges> ranges = new LinkedHashMap<>();
 
-        Permission[] catPerms = cat.getCategoryPermissions();
+        Permission[] catPerms = WarRoomUtil.CATEGORY_PERMISSIONS;
         for (Category category : categories) {
             EnumSet<Permission> selfPerms = self.getPermissions(category);
             for (Permission perm : catPerms) {
@@ -164,7 +167,7 @@ public class AdminCommands {
                     permissionsMissing.computeIfAbsent(category, k -> new LinkedHashSet<>()).add(perm);
                 }
             }
-            CityRanges range = cat.getRangeFromCategory(category);
+            CityRanges range = WarRoomUtil.getRangeFromCategory(category);
             if (range != null) {
                 ranges.put(category, range);
             }
@@ -197,36 +200,36 @@ public class AdminCommands {
             notes.add("You may create multiple categories with the same or overlapping filters");
         }
 
-        Map<DBWar, WarCategory.WarCatReason> warsLog = new LinkedHashMap<>();
-        Map<DBNation, WarCategory.WarCatReason> inactiveRoomLog = new LinkedHashMap<>();
-        Map<DBNation, WarCategory.WarCatReason> activeRoomLog = new LinkedHashMap<>();
+        Map<DBWar, WarCatReason> warsLog = new LinkedHashMap<>();
+        Map<DBNation, WarCatReason> inactiveRoomLog = new LinkedHashMap<>();
+        Map<DBNation, WarCatReason> activeRoomLog = new LinkedHashMap<>();
         Set<DBNation> toCreate = new LinkedHashSet<>();
-        Map<Integer, WarCategory.WarCatReason> toDelete = new LinkedHashMap<>();
+        Map<Integer, WarCatReason> toDelete = new LinkedHashMap<>();
         Map<DBNation, TextChannel> toReassign = new LinkedHashMap<>();
         Map<Integer, Set<TextChannel>> duplicates = new LinkedHashMap<>();
 
         cat.sync(warsLog, inactiveRoomLog, activeRoomLog, toCreate, toDelete, toReassign, duplicates, force);
         if (!warsLog.isEmpty()) {
             response.append("\n**" + warsLog.size() + " wars:**\n");
-            for (Map.Entry<DBWar, WarCategory.WarCatReason> entry : warsLog.entrySet()) {
+            for (Map.Entry<DBWar, WarCatReason> entry : warsLog.entrySet()) {
                 DBWar war = entry.getKey();
-                WarCategory.WarCatReason reason = entry.getValue();
+                WarCatReason reason = entry.getValue();
                 response.append("- " + war.warId + ": " + reason.name() + " - " + reason.getReason() + "\n");
             }
         }
         if (!inactiveRoomLog.isEmpty()) {
             response.append("\n**" + inactiveRoomLog.size() + " inactive rooms:**\n");
-            for (Map.Entry<DBNation, WarCategory.WarCatReason> entry : inactiveRoomLog.entrySet()) {
+            for (Map.Entry<DBNation, WarCatReason> entry : inactiveRoomLog.entrySet()) {
                 DBNation nation = entry.getKey();
-                WarCategory.WarCatReason reason = entry.getValue();
+                WarCatReason reason = entry.getValue();
                 response.append("- " + nation.getNation() + ": " + reason.name() + " - " + reason.getReason() + "\n");
             }
         }
         if (!activeRoomLog.isEmpty()) {
             response.append("\n**" + activeRoomLog.size() + " active rooms:**\n");
-            for (Map.Entry<DBNation, WarCategory.WarCatReason> entry : activeRoomLog.entrySet()) {
+            for (Map.Entry<DBNation, WarCatReason> entry : activeRoomLog.entrySet()) {
                 DBNation nation = entry.getKey();
-                WarCategory.WarCatReason reason = entry.getValue();
+                WarCatReason reason = entry.getValue();
                 response.append("- " + nation.getNation() + ": " + reason.name() + " - " + reason.getReason() + "\n");
             }
         }
@@ -238,9 +241,9 @@ public class AdminCommands {
         }
         if (!toDelete.isEmpty()) {
             response.append("\n**" + toDelete.size() + " rooms to delete:**\n");
-            for (Map.Entry<Integer, WarCategory.WarCatReason> entry : toDelete.entrySet()) {
+            for (Map.Entry<Integer, WarCatReason> entry : toDelete.entrySet()) {
                 int id = entry.getKey();
-                WarCategory.WarCatReason reason = entry.getValue();
+                WarCatReason reason = entry.getValue();
                 response.append("- " + PW.getMarkdownUrl(id, false) + ": " + reason.name() + " - " + reason.getReason() + "\n");
             }
         }
@@ -2736,19 +2739,19 @@ public class AdminCommands {
                 throw new IllegalArgumentException("Missing " + Roles.MILCOM.toDiscordRoleNameElseInstructions(chanGuild));
             }
         }
-        WarRoom room = channel instanceof GuildMessageChannel mC ? WarCategory.getGlobalWarRoom(mC) : null;
+        WarRoom room = channel instanceof GuildMessageChannel mC ? WarRoomUtil.getGlobalWarRoom(mC, WarCatReason.PURGE_COMMAND) : null;
         if (channel != null && room == null) {
             throw new IllegalArgumentException("Channel is not a war room");
         }
         if (room != null) {
-            room.delete("Deleted by " + DiscordUtil.getFullUsername(user));
+            warCat.deleteRoom(room, "Deleted by " + DiscordUtil.getFullUsername(user));
             return "Deleted " + channel.getName();
         } else {
             Set<Category> categories = new HashSet<>();
             Iterator<Map.Entry<Integer, WarRoom>> iter = warCat.getWarRoomMap().entrySet().iterator();
             while (iter.hasNext()) {
                 Map.Entry<Integer, WarRoom> entry = iter.next();
-                TextChannel guildChan = entry.getValue().getChannel(false);
+                StandardGuildMessageChannel guildChan = entry.getValue().getChannel();
                 if (guildChan != null) {
                     Category category = guildChan.getParentCategory();
                     if (category != null) categories.add(category);

@@ -2845,6 +2845,19 @@ public class GuildKey {
         }
     };
 
+    public static GuildSetting<MessageChannel> WAR_ROOM_LOG = new GuildChannelSetting(GuildSettingCategory.WAR_ROOM) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String WAR_ROOM_LOG(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return WAR_ROOM_LOG.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The #channel to post creation and deletion of war rooms in";
+        }
+    }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
+
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {

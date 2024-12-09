@@ -1,7 +1,10 @@
 package link.locutus.discord.db;
 
 import com.google.common.eventbus.AsyncEventBus;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -14,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -91,6 +95,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -1048,15 +1053,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         };
         {
             String create = "CREATE TABLE IF NOT EXISTS `INFO` (`key` VARCHAR NOT NULL PRIMARY KEY, `value` VARCHAR NOT NULL, `date_updated` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            executeStmt(create);
             {
-                // Rename AUTOROLE to AUTOROLE_ALLIANCES in `key`
                 String updateKey = "UPDATE INFO SET key = 'AUTOROLE_ALLIANCES' WHERE key = 'AUTOROLE'";
                 executeStmt(updateKey);
             }
@@ -1065,8 +1063,81 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         };
         createDeletionsTables();
+
+        {
+            // war room cache
+            executeStmt("CREATE TABLE IF NOT EXISTS `WAR_ROOM_CACHE_2` (`target` INT NOT NULL PRIMARY KEY, `channel` BIGINT NOT NULL)");
+        }
     }
 
+    public void addWarRoomCache(int targetId, long channelId) {
+        update("INSERT OR REPLACE INTO WAR_ROOM_CACHE2(`target`, `channel`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, targetId);
+            stmt.setLong(2, channelId);
+        });
+    }
+
+    public Map<Integer, Long> loadWarRoomCache(Function<Integer, Boolean> allowDelete) {
+        Map<Integer, Long> cache = new Object2LongOpenHashMap<>();
+        Set<Integer> toDelete = new IntOpenHashSet();
+
+        Set<Integer> allianceIds = new IntOpenHashSet();
+        WarRoomUtil.updateAllianceIds(this, allianceIds);
+
+        query("SELECT * FROM WAR_ROOM_CACHE", f -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int target = rs.getInt("target");
+                long channelId = rs.getLong("channel");
+
+                DBNation targetNation = DBNation.getById(target);
+                if (targetNation == null) {
+                    if (allowDelete.apply(target)) {
+                        toDelete.add(target);
+                    }
+                    continue;
+                }
+                boolean hasActiveWar = false;
+                for (DBWar war : targetNation.getActiveWars()) {
+                    DBNation other = war.getNation(!war.isAttacker(targetNation));
+                    if (allianceIds.contains(other.getAlliance_id())) {
+                        hasActiveWar = true;
+                        break;
+                    }
+                }
+                if (hasActiveWar) {
+                    cache.put(target, channelId);
+                } else {
+                    if (allowDelete.apply(target)) {
+                        toDelete.add(target);
+                    }
+                }
+            }
+        });
+        if (!toDelete.isEmpty()) {
+            deleteWarRoomCache(toDelete);
+        }
+        return cache;
+    }
+
+    public void deleteWarRoomCache(Set<Integer> targetIds) {
+        update("DELETE FROM WAR_ROOM_CACHE2 WHERE target = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            for (int id : targetIds) {
+                stmt.setInt(1, id);
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        });
+    }
+
+    public void deleteWarRoomChannelCache(Set<Long> channelIds) {
+        update("DELETE FROM WAR_ROOM_CACHE2 WHERE channel = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            for (long id : channelIds) {
+                stmt.setLong(1, id);
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        });
+    }
 
     public void purgeOldInterviews(long cutoff) {
         update("DELETE FROM INTERVIEW_MESSAGES2 WHERE date_updated < ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, cutoff));
@@ -2025,10 +2096,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     private String warCatErrorMsg = null;
 
     public WarCategory getWarChannel(boolean throwException) {
-        return getWarChannel(throwException, false);
+        return getWarChannel(throwException, false, true);
     }
 
-    public WarCategory getWarChannel(boolean throwException, boolean isWarServer) {
+    public WarCategory getWarChannel(boolean throwException, boolean isWarServer, boolean create) {
+        if (!create) {
+            return warChannel;
+        }
         Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
         if (enabled == Boolean.FALSE || enabled == null) {
             if (throwException) {
@@ -2061,7 +2135,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 if (throwException) throw new IllegalArgumentException("There is a null war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
                 return null;
             }
-            return db.getWarChannel(throwException, true);
+            return db.getWarChannel(throwException, true, create);
         }
 
         if (hasAlliance() || isWarServer) {
@@ -2071,7 +2145,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     boolean allowed = Boolean.TRUE.equals(enabled);
                     if (allowed) {
                         try {
-                            warChannel = new WarCategory(guild, "warcat");
+                            warChannel = new WarCategory(this, "warcat");
                             warCatError = null;
                             warCatErrorMsg = null;
                         } catch (Throwable e) {

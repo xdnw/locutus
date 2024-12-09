@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.stock.StockDB;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
@@ -53,13 +54,19 @@ import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.SelfUser;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.unions.ChannelUnion;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
+import net.dv8tion.jda.api.events.channel.ChannelCreateEvent;
+import net.dv8tion.jda.api.events.channel.ChannelDeleteEvent;
+import net.dv8tion.jda.api.events.channel.update.ChannelUpdateParentEvent;
 import net.dv8tion.jda.api.events.guild.GuildAvailableEvent;
 import net.dv8tion.jda.api.events.guild.GuildBanEvent;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
@@ -1080,6 +1087,42 @@ public final class Locutus extends ListenerAdapter {
             }
         } catch (Throwable e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onChannelDelete(@NotNull ChannelDeleteEvent event) {
+        if (!event.isFromGuild()) return;
+        ChannelUnion channel = event.getChannel();
+        Guild guild = event.getGuild();
+        GuildDB db = getGuildDB(guild);
+        WarCategory warCat = db.getWarChannel(false, false, false);
+        if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
+            warCat.onChannelDelete(gc);
+        }
+    }
+
+    @Override
+    public void onChannelCreate(@NotNull ChannelCreateEvent event) {
+        if (!event.isFromGuild()) return;
+        ChannelUnion channel = event.getChannel();
+        Guild guild = event.getGuild();
+        GuildDB db = getGuildDB(guild);
+        WarCategory warCat = db.getWarChannel(false, false, false);
+        if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
+            warCat.onChannelCreate(gc);
+        }
+    }
+
+    @Override
+    public void onChannelUpdateParent(@NotNull ChannelUpdateParentEvent event) {
+        if (!event.isFromGuild()) return;
+        ChannelUnion channel = event.getChannel();
+        Guild guild = event.getGuild();
+        GuildDB db = getGuildDB(guild);
+        WarCategory warCat = db.getWarChannel(false, false, false);
+        if (warCat != null && channel instanceof StandardGuildMessageChannel gc) {
+            warCat.onChannelParent(gc, event.getOldValue(), event.getNewValue());
         }
     }
 

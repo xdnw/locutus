@@ -22,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
@@ -80,6 +81,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 
 import java.io.IOException;
 import java.util.*;
@@ -1516,7 +1518,7 @@ public class PWBindings extends BindingHelper {
     @Me
     @Binding
     public WarRoom warRoom(@Me WarCategory warCat, @Me TextChannel channel) {
-        WarRoom warroom = warCat.getWarRoom(channel);
+        WarRoom warroom = warCat.getWarRoom((StandardGuildMessageChannel) channel, WarCatReason.COMMAND_ARGUMENT);
         if (warroom == null) throw new IllegalArgumentException("The command was not run in a war room");
         return warroom;
     }

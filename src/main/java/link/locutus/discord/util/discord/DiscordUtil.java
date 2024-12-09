@@ -37,7 +37,9 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
@@ -91,6 +93,37 @@ public class DiscordUtil {
             }
         }
         return content;
+    }
+
+    public static boolean setSymbol(StandardGuildMessageChannel channel, String symbol, boolean value) {
+        if (channel != null) {
+            String name = channel.getName();
+            if (name.contains(symbol) != value) {
+                if (value) {
+                    name = symbol + name;
+                } else if (name.contains(symbol)) {
+                    name = name.replace(symbol, "");
+                    if (name.endsWith("-")) name = name.substring(0, name.length() - 1);
+                } else {
+                    return false;
+                }
+                RateLimitUtil.queue(channel.getManager().setName(name));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void deleteChannelSafe(GuildChannel channel) {
+        try {
+            if (channel != null) {
+                RateLimitUtil.queue(channel.delete());
+            }
+        } catch (ErrorResponseException e) {
+            if (e.getErrorCode() != 10003) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public static String userUrl(long discordId, boolean redirect) {

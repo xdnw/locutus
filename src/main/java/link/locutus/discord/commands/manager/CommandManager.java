@@ -26,7 +26,7 @@ import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.external.guild.UpdateEmbed;
 import link.locutus.discord.commands.external.guild.WarCat;
 import link.locutus.discord.commands.external.guild.WarPin;
-import link.locutus.discord.commands.external.guild.WarRoom;
+import link.locutus.discord.commands.external.guild.WarRoomCmd;
 import link.locutus.discord.commands.account.Embassy;
 import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
@@ -43,7 +43,6 @@ import link.locutus.discord.commands.external.guild.KickLocutus;
 import link.locutus.discord.commands.info.FindSpyOp;
 import link.locutus.discord.commands.external.guild.Mask;
 import link.locutus.discord.commands.sync.SyncMail;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.fun.Borgomas;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
@@ -133,6 +132,7 @@ import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import org.apache.commons.lang3.StringUtils;
 
 import java.nio.ByteBuffer;
@@ -391,10 +391,10 @@ public class CommandManager {
 
         if (!db.hasAlliance()) return;
 
-        link.locutus.discord.commands.war.WarRoom room = WarCategory.getGlobalWarRoom((MessageChannel) channel);
+        link.locutus.discord.commands.war.WarRoom room = WarRoomUtil.getGlobalWarRoom((StandardGuildMessageChannel) channel, WarCatReason.MESSAGE_SYNC);
         if (room == null || room.target == null) return;
 
-        Set<link.locutus.discord.commands.war.WarRoom> rooms = WarCategory.getGlobalWarRooms(room.target);
+        Set<link.locutus.discord.commands.war.WarRoom> rooms = WarRoomUtil.getGlobalWarRooms(room.target, WarCatReason.MESSAGE_SYNC);
         if (rooms == null) return;
         ByteBuffer optOut = DiscordMeta.OPT_OUT.get(msgUser.getIdLong());
         if (optOut != null && optOut.get() != 0) return;
@@ -565,7 +565,7 @@ public class CommandManager {
         this.register(new ChannelCommand());
         this.register(new WarCat());
         this.register(new WarPin());
-        this.register(new WarRoom());
+        this.register(new WarRoomCmd());
 
         this.register(new SpyCommand());
         this.register(new Who());

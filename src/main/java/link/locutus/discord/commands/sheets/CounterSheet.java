@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -247,9 +248,8 @@ public class CounterSheet extends Command {
             ArrayList<Object> row = new ArrayList<>();
             row.add(notes.getOrDefault(enemy.getNation_id(), ""));
 
-            WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
-//            warCat.sync();
-            GuildMessageChannel warChan = warroom != null ? warroom.getChannel(false) : null;
+            WarRoom warroom = warCat != null ? warCat.createWarRoom(enemy, true, false, false, WarCatReason.COUNTER_SHEET) : null;
+            GuildMessageChannel warChan = warroom != null ? warroom.getChannel() : null;
             if (warChan != null) {
                 String url = DiscordUtil.getChannelUrl(warChan);
                 String name = "#" + enemy.getName();
