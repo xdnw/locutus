@@ -716,9 +716,15 @@ public class WarCategory {
             DBNation targetNation = Locutus.imp().getNationDB().getNationById(targetId);
 
             WarCatReason enemyReason = getActiveReason(filter, targetNation);
+            boolean nonApp = false;
             if (targetNation != null) {
                 for (DBWar war : currentWars) {
                     DBNation ally = war.getNation(!war.isAttacker(targetNation));
+                    if (!nonApp && ally != null &&
+                            ally.getPositionEnum().id > Rank.APPLICANT.id &&
+                            (war.getDefender_id() == ally.getNation_id() || targetNation.getPositionEnum().id > Rank.APPLICANT.id)) {
+                        nonApp = true;
+                    }
                     WarCatReason allyReason = getActiveReason(filter, ally);
                     if (!enemyReason.isActive()) {
                         if (warsLog != null) warsLog.put(war, enemyReason);
@@ -733,9 +739,10 @@ public class WarCategory {
             WarCatReason reason = getActiveReason(filter, currentWars, targetNation);
 
             if (reason.isActive()) {
+                boolean createOnSync = create && nonApp;
                 WarRoom room;
                 try {
-                    room = createWarRoom(targetNation, create, create, false, reason);
+                    room = createWarRoom(targetNation, createOnSync, createOnSync, false, reason);
                 } catch (ErrorResponseException e) {
                     if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.ROOM_ACTIVE_NO_FREE_CATEGORY);
                     continue;
@@ -758,7 +765,6 @@ public class WarCategory {
                     if (toCreate != null) toCreate.add(targetNation);
                     if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.NOT_CREATED);
                 }
-
             } else {
                 WarRoom room = targetNation == null ? warRoomMap.get(targetId) : createWarRoom(targetNation, false, false, false, reason);
                 if (room != null && room.channel != null) {
