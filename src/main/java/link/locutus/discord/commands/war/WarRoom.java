@@ -63,7 +63,7 @@ public class WarRoom {
         }
     }
 
-    public synchronized WarRoom addChannel(long channelId, StandardGuildMessageChannel channel, WarCatReason reason) {
+    public synchronized WarRoom addChannel(long channelId, StandardGuildMessageChannel channel, WarCatReason reason, boolean updateUsers) {
         if (this.channelId != channelId) {
             MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
             if (logChan != null) {
@@ -71,9 +71,17 @@ public class WarRoom {
                 RateLimitUtil.queueMessage(logChan, msg, true, 60);
             }
 
-            this.channelId = channelId;
             StandardGuildMessageChannel oldChannel = this.channel;
+            long oldChannelId = this.channelId;
+
+            this.channelId = channelId;
             this.channel = channel;
+
+            if (oldChannelId == 0 && channel != null && updateUsers) {
+                updatePin(true);
+                addInitialParticipants(isPlanning());
+            }
+
             if (oldChannel != null) {
                 if (logChan != null) {
                     String msg = "Deleting old channel " + oldChannel.getAsMention() + " for " + target.getMarkdownUrl();
