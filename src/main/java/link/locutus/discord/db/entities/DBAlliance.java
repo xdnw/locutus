@@ -615,7 +615,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 int otherId = treaty.getToId() == allianceId ? treaty.getFromId() : treaty.getToId();
                 body.append("- ").append(treaty.getType())
                         .append(": ").append(PW.getMarkdownUrl(otherId, true))
-                        .append(" (").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(treaty.getTurnEnds()), null))
+                        .append(" (").append(treaty.getExpiresDiscordString())
                         .append(")\n");
             }
             if (cappedMsg != null) {

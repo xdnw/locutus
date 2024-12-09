@@ -848,7 +848,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                             } else {
                                 eventConsumer.accept(new TreatyDowngradeEvent(previous, current));
                             }
-                        } else if (current.getTurnEnds() > previous.getTurnEnds() + 2) {
+                        } else if (!previous.isPermanent() && current.getTurnEnds() > previous.getTurnEnds() + 2) {
                             eventConsumer.accept(new TreatyExtendEvent(previous, current));
                         }
                     }

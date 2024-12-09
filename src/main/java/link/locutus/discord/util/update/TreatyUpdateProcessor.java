@@ -85,7 +85,7 @@ public class TreatyUpdateProcessor {
 
         int maxRank = Integer.MAX_VALUE;
         StringBuilder body = new StringBuilder();
-        body.append("Time remaining: " + DiscordUtil.timestamp(existing.getEndTime(), null) + " (" + existing.getTurnsRemaining() + " turns)\n");
+        body.append("Time remaining: " + existing.getExpiresDiscordString() + " (" + (existing.isPermanent() ? "Permanent" : (existing.getTurnsRemaining() + " turns")) + ")\n");
         body.append("From: " + PW.getMarkdownUrl(existing.getFromId(), true));
         if (fromAA != null) {
             maxRank = fromAA.getRank();

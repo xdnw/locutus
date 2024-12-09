@@ -292,7 +292,7 @@ public class FACommands {
 
             response.append(from + " | " + type + " -> " + to);
             if (treaty.getTurnEnds() > turn) {
-                String expires = TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(treaty.getTurnEnds() - turn));
+                String expires = treaty.getExpiresString();
                 response.append(" (" + expires + ")");
             }
             response.append("\n");
