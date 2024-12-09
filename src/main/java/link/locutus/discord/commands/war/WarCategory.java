@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -77,20 +79,47 @@ public class WarCategory {
         syncAlliances();
         this.loadChannels();
         this.loadCache();
-        Map<DBWar, WarCatReason> byReason = new Object2ObjectOpenHashMap<>();
-        sync(byReason, null, null, null, null, null, null, false);
-        if (!byReason.isEmpty()) {
+
+        Set<DBNation> toCreate = new ObjectLinkedOpenHashSet<>();
+        Map<Integer, WarCatReason> toDelete = new Int2ObjectLinkedOpenHashMap<>();
+        Map<DBNation, TextChannel> toReassign = new Object2ObjectOpenHashMap<>();
+        Map<Integer, Set<TextChannel>> duplicates = new Int2ObjectLinkedOpenHashMap<>();
+
+        sync(null, null, null, toCreate, toDelete, toReassign, duplicates, false);
+        if (!toCreate.isEmpty() || !toDelete.isEmpty() || !toReassign.isEmpty() || !duplicates.isEmpty()) {
             MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(getGuildDb());
             if (logChan != null) {
                 StringBuilder pretty = new StringBuilder();
-                for (Map.Entry<DBWar, WarCatReason> entry : byReason.entrySet()) {
-                    DBWar war = entry.getKey();
-                    WarCatReason reason = entry.getValue();
-                    pretty.append("\n").append(war.getWarId()).append(" - ").append(reason);
+                if (!toCreate.isEmpty()) {
+                    pretty.append("\n### Create\n");
+                    for (DBNation nation : toCreate) {
+                        pretty.append("\n").append(nation.getNation_id()).append(" - Create");
+                    }
                 }
-                String msg = "(startup) Synced " + byReason.size() + " war rooms:\n" + pretty;
-                DiscordUtil.sendMessage(logChan, msg);
-                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                if (!toDelete.isEmpty()) {
+                    pretty.append("\n### Delete\n");
+                    for (Map.Entry<Integer, WarCatReason> entry : toDelete.entrySet()) {
+                        pretty.append("\n").append(entry.getKey()).append(" - ").append(entry.getValue());
+                    }
+                }
+                if (!toReassign.isEmpty()) {
+                    pretty.append("\n### Reassign\n");
+                    for (Map.Entry<DBNation, TextChannel> entry : toReassign.entrySet()) {
+                        pretty.append("\n").append(entry.getKey().getNation_id()).append(" - ").append(entry.getValue().getName());
+                    }
+                }
+                if (!duplicates.isEmpty()) {
+                    pretty.append("\n### Duplicates\n");
+                    for (Map.Entry<Integer, Set<TextChannel>> entry : duplicates.entrySet()) {
+                        pretty.append("\n").append(entry.getKey()).append(" - ").append(entry.getValue().size());
+                    }
+                }
+                if (pretty.length() > 0) {
+                    String msg = "(startup) Synced war rooms. To confirm these changes, run:" +
+                            CM.admin.sync.warrooms.cmd.toSlashMention() + "\n" + pretty;
+                    DiscordUtil.sendMessage(logChan, msg);
+                    RateLimitUtil.queueMessage(logChan, msg, true, 60);
+                }
             }
         }
     }
