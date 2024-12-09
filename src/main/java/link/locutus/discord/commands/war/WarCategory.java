@@ -76,6 +76,9 @@ public class WarCategory {
         this.catPrefix = catPrefix.toLowerCase();
         this.db = db;
 
+        // DEBUG, remove later
+        if (db.getIdLong() == 1128116350708093118L) new Exception().printStackTrace();
+
         syncAlliances();
         this.loadChannels();
         this.loadCache();
@@ -117,7 +120,6 @@ public class WarCategory {
                 if (pretty.length() > 0) {
                     String msg = "(startup) Synced war rooms. To confirm these changes, run:" +
                             CM.admin.sync.warrooms.cmd.toSlashMention() + "\n" + pretty;
-                    DiscordUtil.sendMessage(logChan, msg);
                     RateLimitUtil.queueMessage(logChan, msg, true, 60);
                 }
             }
@@ -737,12 +739,14 @@ public class WarCategory {
             }
 
             WarCatReason reason = getActiveReason(filter, currentWars, targetNation);
+            if (!nonApp) {
+                reason = ACTIVE_BUT_APPLICANT;
+            }
 
             if (reason.isActive()) {
-                boolean createOnSync = create && nonApp;
                 WarRoom room;
                 try {
-                    room = createWarRoom(targetNation, createOnSync, createOnSync, false, reason);
+                    room = createWarRoom(targetNation, create, create, false, reason);
                 } catch (ErrorResponseException e) {
                     if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.ROOM_ACTIVE_NO_FREE_CATEGORY);
                     continue;
@@ -772,9 +776,11 @@ public class WarCategory {
                         if (targetNation != null) {
                             if (inactiveRoomLog != null) inactiveRoomLog.put(targetNation, reason);
                         }
-                        if (toDelete != null) toDelete.put(targetId, reason);
-                        if (create) {
-                            deleteRoom(room, "Target is not active");
+                        if (reason != ACTIVE_BUT_APPLICANT) {
+                            if (toDelete != null) toDelete.put(targetId, reason);
+                            if (create) {
+                                deleteRoom(room, "Target is not active");
+                            }
                         }
                     } else {
                         if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.PLANNING_NO_ACTIVE_WARS);

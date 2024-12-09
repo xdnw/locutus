@@ -20,6 +20,7 @@ public enum WarCatReason {
     INACTIVE_NONE("Nation is not in an alliance and not active in past 1d, with 0 offensive wars", false),
     FILTER("Nation does not match the `WAR_ROOM_FILTER` set", false),
     ACTIVE("Nation is active with wars", true),
+    ACTIVE_BUT_APPLICANT("Active war, but with an applicant", false),
     PLANNING_NO_ACTIVE_WARS("War room is marked as planning and has no active wars", true),
     ROOM_ACTIVE_NO_CHANNEL("War room is registered and active but has no channel", true),
     ROOM_ACTIVE_INVALID_CHANNEL("War room is registered and active but has an invalid channel", true),
