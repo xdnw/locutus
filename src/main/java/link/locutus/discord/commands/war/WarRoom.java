@@ -111,74 +111,7 @@ public class WarRoom {
     }
 
     public IMessageBuilder updatePin(boolean update) {
-        if (channel == null) {
-            return null;
-        }
-        String topic = channel.getTopic();
-        boolean updatePin = false;
-        DiscordChannelIO io = new DiscordChannelIO(channel, () -> WarRoomUtil.getMessage(channel, topic));
-        IMessageBuilder msg = io.getMessage();
-        if (msg == null) {
-            msg = io.create();
-            updatePin = true;
-            update = true;
-        }
-
-        if (update) {
-            StringBuilder body = new StringBuilder();
-
-            body.append("**Enemy:** ").append(target.getNationUrlMarkup())
-                    .append(" | ").append(target.getAllianceUrlMarkup());
-            body.append(target.toMarkdown(true, true, false, false, true, false));
-            body.append("\n");
-
-            Set<DBWar> wars = target.getActiveWars();
-            for (DBWar war : wars) {
-                boolean defensive = war.getAttacker_id() == target.getNation_id();
-                DBNation participant = Locutus.imp().getNationDB().getNationById(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
-
-                if (participant != null && (participants.contains(participant) || participant.active_m() < 2880)) {
-                    String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
-                    body.append(typeStr).append("`" + participant.getNation() + "`")
-                            .append(" | ").append(participant.getAllianceName());
-
-                    WarCard card = new WarCard(war, false);
-                    if (card.blockaded == participant.getNation_id()) body.append("\u26F5");
-                    if (card.airSuperiority != 0 && card.airSuperiority == participant.getNation_id())
-                        body.append("\u2708");
-                    if (card.groundControl != 0 && card.groundControl == participant.getNation_id())
-                        body.append("\uD83D\uDC82");
-
-                    body.append(participant.toMarkdown(true, false, false, true, false));
-                }
-            }
-            body.append("\n");
-            body.append("Note: These figures are only updated every 5m");
-
-            EmbedBuilder builder = new EmbedBuilder();
-
-            builder.setDescription(body.toString().replaceAll(" \\| ", "|"));
-
-
-            msg.clearEmbeds();
-            msg.clearButtons();
-            msg.embed(builder.build());
-            msg.commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
-            try {
-                CompletableFuture<IMessageBuilder> sent = msg.send();
-                if (sent != null) msg = sent.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        if (updatePin) {
-            String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + msg.getId() + " " + CM.war.room.pin.cmd.toSlashMention();
-            RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
-            RateLimitUtil.queue(channel.pinMessageById(msg.getId()));
-        }
-
-        return msg;
+        return WarRoomUtil.updatePin(channel, target, participants, update);
     }
 
     public boolean setGC(boolean value) {
