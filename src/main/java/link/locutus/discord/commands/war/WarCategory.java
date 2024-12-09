@@ -76,9 +76,6 @@ public class WarCategory {
         this.catPrefix = catPrefix.toLowerCase();
         this.db = db;
 
-        // DEBUG, remove later
-        if (db.getIdLong() == 1128116350708093118L) new Exception().printStackTrace();
-
         syncAlliances();
         this.loadChannels();
         this.loadCache();
