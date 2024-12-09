@@ -384,6 +384,7 @@ public class WarRoomUtil {
     }
 
     public static boolean isWarRoomCategory(Category category, String prefix) {
+        if (category == null) return false;
         return category.getName().toLowerCase(Locale.ROOT).startsWith(prefix);
     }
 
