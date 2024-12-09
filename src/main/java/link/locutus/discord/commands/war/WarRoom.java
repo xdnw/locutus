@@ -58,7 +58,7 @@ public class WarRoom {
         loadParticipants(false);
         MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
         if (logChan != null) {
-            String msg = "Creating war room for " + target.getMarkdownUrl() + " due to " + reason.name();
+            String msg = "Creating war room for " + target.getMarkdownUrl() + " due to " + reason.name() + ": " + reason.getReason();
             RateLimitUtil.queueMessage(logChan, msg, true, 60);
         }
     }
@@ -67,7 +67,7 @@ public class WarRoom {
         if (this.channelId != channelId) {
             MessageChannel logChan = reason.isExisting() ? null : GuildKey.WAR_ROOM_LOG.getOrNull(warCategory.getGuildDb());
             if (logChan != null) {
-                String msg = "Adding channel " + channel.getAsMention() + " to " + target.getMarkdownUrl();
+                String msg = "Adding channel " + channel.getAsMention() + " to " + target.getMarkdownUrl() + " due to " + reason.name() + ": " + reason.getReason();
                 RateLimitUtil.queueMessage(logChan, msg, true, 60);
             }
 
