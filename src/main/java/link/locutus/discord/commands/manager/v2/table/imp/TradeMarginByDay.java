@@ -105,7 +105,7 @@ public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
     protected SimpleTable writeData() {
         for (long day = minDay; day <= maxDay; day++) {
             Map<ResourceType, Double> margins = marginsByDay.getOrDefault(day, Collections.emptyMap());
-            add(dayOffset, margins);
+            add(day, margins);
         }
         return this;
     }

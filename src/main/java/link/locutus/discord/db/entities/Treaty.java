@@ -55,7 +55,7 @@ public class Treaty {
         if (isPermanent()) {
             return "Permanent";
         }
-        return TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(getTurnEnds() - TimeUtil.getTurn()))
+        return TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(getTurnEnds() - TimeUtil.getTurn()));
     }
 
     @Command(desc = "Absolute turns (since unix epoch) this treaty ends")

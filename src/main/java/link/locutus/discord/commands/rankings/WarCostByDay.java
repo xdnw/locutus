@@ -15,9 +15,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
+import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -31,6 +33,8 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import static link.locutus.discord.commands.rankings.WarCostRankingByDay.processTotal;
 
 public class WarCostByDay extends Command {
     public WarCostByDay() {
@@ -342,22 +346,5 @@ public class WarCostByDay extends Command {
         }
 
         return null;
-    }
-
-    public static void processTotal(boolean total, TimeDualNumericTable table) {
-        if (!total) return;
-        DataTable data = table.getData();
-        if (data.getRowCount() <= 1) return;
-        Row row1 = data.getRow(data.getRowCount() - 2);
-        Row row2 = data.getRow(data.getRowCount() - 1);
-
-        Long day = (Long) row2.get(0);
-        Double cost1A = (Double) row1.get(1);
-        Double cost1B = (Double) row1.get(2);
-        Double cost2A = (Double) row2.get(1);
-        Double cost2B = (Double) row2.get(2);
-
-        data.removeLast();
-        data.add(day, cost1A + cost2A, cost1B + cost2B);
     }
 }
