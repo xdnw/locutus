@@ -3271,8 +3271,8 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Cost of the next city, optionally accounting for cost reduction policies")
-    public double getNextCityCost(@Default boolean costReduction) {
-        if (costReduction) {
+    public double getNextCityCost(@Default Boolean costReduction) {
+        if (costReduction == Boolean.TRUE) {
             return PW.City.cityCost(this, this.getCities(), this.getCities() + 1);
         } else {
             return PW.City.cityCost(null, this.getCities(), this.getCities() + 1);
