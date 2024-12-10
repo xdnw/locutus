@@ -1313,32 +1313,14 @@ public class StatCommands {
                                 @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> allNations = new HashSet<>();
-        nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        allNations.addAll(nations1);
-        allNations.addAll(nations2);
-        if (nations1.isEmpty() || nations2.isEmpty())
-            throw new IllegalArgumentException("No nations provided");
-        int min = 0;
-        int max = 0;
-        for (DBNation nation : allNations) max = Math.max(nation.getCities(), max);
-        max++;
-        int[] count1 = new int[max + 1];
-        int[] count2 = new int[max + 1];
-        for (DBNation nation : nations1) count1[nation.getCities()]++;
-        for (DBNation nation : nations2) count2[nation.getCities()]++;
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by city count", "city", "nations", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long cities, Void ignore) {
-                add(cities, count1[(int) cities], count2[(int) cities]);
-            }
-        };
-        for (int cities = min; cities <= max; cities++) {
-            table.add(cities, (Void) null);
-        }
-        if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0, attachJson, attachCsv);
+
+        NationAttribute<Double> attribute = new NationAttribute<>("nations", "", double.class, f -> 1d);
+        List<List<DBNation>> coalitions = List.of(new ArrayList<>(nations1), new ArrayList<>(nations2));
+        List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
+        NationAttribute<Double> groupBy = new NationAttribute<>("city", "", double.class, f -> (double) f.getCities());
+
+        EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, true);
+        graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -2736,7 +2718,9 @@ public class StatCommands {
             @Switch("c") boolean attach_csv
 
             ) throws IOException {
-        if (time_end == null) time_end = Long.MAX_VALUE;
+        String nameA = command.getString("coalition1");
+        String nameB = command.getString("coalition2");
+
 
         WarParser parser = WarParser.of(coalition1, coalition2, time_start, time_end)
                 .allowWarStatuses(allowedWarStatus)
@@ -2750,8 +2734,7 @@ public class StatCommands {
 
         attacks.sort(Comparator.comparingLong(o -> o.getDate()));
 
-        String nameA = command.getString("coalition1");
-        String nameB = command.getString("coalition2");
+
         Function<AbstractCursor, Boolean> isPrimary = parser.getAttackPrimary();
         Function<AbstractCursor, Boolean> isSecondary = parser.getAttackSecondary();
 
