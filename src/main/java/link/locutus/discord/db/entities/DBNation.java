@@ -3270,6 +3270,15 @@ public abstract class DBNation implements NationOrAlliance {
         return convertedTotal;
     }
 
+    @Command(desc = "Cost of the next city, optionally accounting for cost reduction policies")
+    public double getNextCityCost(@Default boolean costReduction) {
+        if (costReduction) {
+            return PW.City.cityCost(this, this.getCities(), this.getCities() + 1);
+        } else {
+            return PW.City.cityCost(null, this.getCities(), this.getCities() + 1);
+        }
+    }
+
     public int getTurnsInactive(LootEntry loot) {
         long turnInactive = TimeUtil.getTurn(lastActiveMs());
         if (loot != null) {
