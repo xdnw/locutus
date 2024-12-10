@@ -33,6 +33,8 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -80,6 +82,7 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
@@ -894,66 +897,18 @@ public class StatCommands {
                                     @Switch("v") boolean attachCsv) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> allNations = new HashSet<>();
-        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        allNations.addAll(coalition1Nations);
-        allNations.addAll(coalition2Nations);
-        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-
-        int maxScore = 0;
-        int minScore = Integer.MAX_VALUE;
-        for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
-            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
-        }
-        double[] coal1Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-        double[] coal2Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-
-        double[] coal1StrSpread = new double[coal1Str.length];
-        double[] coal2StrSpread = new double[coal2Str.length];
-
-        // min = x * 0.75;
-        // max = x * 1.25
-        // max = (min / 0.6)
-
-        for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrengthMMR(col1MMR);
-        }
-        for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrengthMMR(col2MMR);
-        }
-        for (int min = 10; min < coal1Str.length; min++) {
-            double val = coal1Str[min];
-            if (val == 0) continue;
-            int max = (int) (min / 0.6);
-
-            for (int i = min; i <= max; i++) {
-                double shaped = val - 0.4 * val * ((double) (i - min) / (max - min));
-                coal1StrSpread[i] += shaped;
-            }
-        }
-        for (int min = 10; min < coal2Str.length; min++) {
-            double val = coal2Str[min];
-            if (val == 0) continue;
-            int max = (int) (min / 0.6);
-
-            for (int i = min; i <= max; i++) {
-                double shaped = val - 0.4 * val * ((double) (i - min) / (max - min));
-                coal2StrSpread[i] += shaped;
-            }
-        }
-
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Effective military strength by score range", "score", "strength", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long score, Void ignore) {
-                add(score, coal1StrSpread[(int) score], coal2StrSpread[(int) score]);
-            }
-        };
-        for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
-            table.add(score, (Void) null);
-        }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachJson, attachCsv);
+        new StrengthTierGraph(
+                coalition1.getFilter(),
+                coalition2.getFilter(),
+                coalition1Nations,
+                coalition2Nations,
+                includeInactives,
+                includeApplicants,
+                col1MMR,
+                col2MMR,
+                col1Infra,
+                col2Infra
+        ).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -971,48 +926,16 @@ public class StatCommands {
                                @Switch("c") boolean attachCsv) throws IOException {
         Collection<DBNation> coalition1Nations = coalition1.getNations();
         Collection<DBNation> coalition2Nations = coalition2.getNations();
-        Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
-        allNations.addAll(coalition1Nations);
-        allNations.addAll(coalition2Nations);
-        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        int min = 0;
-        int max = 0;
-        for (DBNation nation : allNations) max = Math.max(nation.getCities(), max);
-        max++;
 
-        Collection<DBNation>[] coalitions = new Collection[]{coalition1Nations, coalition2Nations};
-        int[][] counts = new int[coalitions.length][];
-        for (int i = 0; i < coalitions.length; i++) {
-            Collection<DBNation> coalition = coalitions[i];
-            int[] cities = new int[max + 1];
-            int[] spies = new int[max + 1];
-            counts[i] = spies;
-            int k = 0;
-            for (DBNation nation : coalition) {
-                cities[nation.getCities()]++;
-                spies[nation.getCities()] += nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1);
-            }
-            if (!total) {
-                for (int j = 0; j < cities.length; j++) {
-                    if (cities[j] > 1) spies[j] /= cities[j];
-                }
-            }
-        }
+        NationAttribute<Double> attribute = new NationAttribute<>("spies", "", double.class, f -> (double) f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1));
+        List<List<DBNation>> coalitions = List.of(new ArrayList<>(coalition1Nations), new ArrayList<>(coalition2Nations));
+        List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
+        NationAttribute<Double> groupBy = new NationAttribute<>("cities", "", double.class, f -> (double) f.getCities());
 
-        String title = (total ? "Total" : "Average") + " spies by city count";
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>(title, "cities", "spies", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long cities, Void ignore) {
-                add(cities, counts[0][(int) cities], counts[1][(int) cities]);
-            }
-        };
-        for (int cities = min; cities <= max; cities++) {
-            table.add(cities, (Void) null);
-        }
-        if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0, attachJson, attachCsv);
+        EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, total);
+        graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -1027,61 +950,15 @@ public class StatCommands {
                                  @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> allNations = new HashSet<>();
-        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        allNations.addAll(coalition1Nations);
-        allNations.addAll(coalition2Nations);
 
-        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-
-        int maxScore = 0;
-        int minScore = Integer.MAX_VALUE;
-        for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.getScore());
-            minScore = (int) Math.min(minScore, nation.getScore());
-        }
-        double[] coal1Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-        double[] coal2Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-
-        double[] coal1StrSpread = new double[coal1Str.length];
-        double[] coal2StrSpread = new double[coal2Str.length];
-
-        for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.getScore() * 0.75)] += 1;
-        }
-        for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.getScore() * 0.75)] += 1;
-        }
-        for (int min = 10; min < coal1Str.length; min++) {
-            double val = coal1Str[min];
-            if (val == 0) continue;
-            int max = Math.min(coal1StrSpread.length, (int) (PW.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
-
-            for (int i = min; i < max; i++) {
-                coal1StrSpread[i] += val;
-            }
-        }
-        for (int min = 10; min < coal2Str.length; min++) {
-            double val = coal2Str[min];
-            if (val == 0) continue;
-            int max = Math.min(coal2StrSpread.length, (int) (PW.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
-
-            for (int i = min; i < max; i++) {
-                coal2StrSpread[i] += val;
-            }
-        }
-
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by score range", "score", "nations", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long score, Void ignore) {
-                add(score, coal1StrSpread[(int) score], coal2StrSpread[(int) score]);
-            }
-        };
-        for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
-            table.add(score, (Void) null);
-        }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachJson, attachCsv);
+        new ScoreTierGraph(
+                coalition1.getFilter(),
+                coalition2.getFilter(),
+                coalition1Nations,
+                coalition2Nations,
+                includeInactives,
+                includeApplicants
+        ).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -2489,74 +2366,8 @@ public class StatCommands {
             nations = new SimpleNationList(Locutus.imp().getNationDB().getNationsMatching(f ->
                     f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
-
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db.getGuild());
-        nationsSet.removeIf(f -> f.getVm_turns() != 0);
-        if (nationsSet.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        Map<Integer, PriorityQueue<Double>> lootByScore = new Int2ObjectOpenHashMap<>();
-
-        BiConsumer<Double, PriorityQueue<Double>> compareAndAddTop = (value, topValues) -> {
-            if (topValues.size() < n) {
-                topValues.add(value);
-            } else if (value > topValues.peek()) {
-                topValues.poll();
-                topValues.add(value);
-            }
-        };
-
-        for (DBNation nation : nationsSet) {
-            double score = nation.getScore();
-            double loot = nation.getBeigeLootTotal();
-            if (loot == 0) continue;
-            int min = (int) (score / PW.WAR_RANGE_MAX_MODIFIER);
-            int max = (int) (score / PW.WAR_RANGE_MIN_MODIFIER);
-            for (int i = min; i <= max; i++) {
-                PriorityQueue<Double> queue = lootByScore.computeIfAbsent(i, f -> new PriorityQueue<>(n));
-                compareAndAddTop.accept(loot, queue);
-            }
-        }
-
-        String[] labels = {"Nth", "Median", "Mean", "Max"};
-
-        TimeNumericTable<PriorityQueue<Double>> table = new TimeNumericTable<PriorityQueue<Double>>("Raid income by score", "score", "loot", labels) {
-            @Override
-            public void add(long score, PriorityQueue<Double> values) {
-                if (values.isEmpty()) return;
-                List<Double> sortedValues = new ArrayList<>(values);
-                if (sortedValues.size() < n) {
-                    for (int i = sortedValues.size(); i < n; i++) {
-                        sortedValues.add(0, 0d);
-                    }
-                }
-                // Calculate nth value
-                double min = sortedValues.get(0);
-                // Calculate median
-                double median;
-                int size = sortedValues.size();
-                if (size % 2 == 0) {
-                    median = (sortedValues.get(size / 2 - 1) + sortedValues.get(size / 2)) / 2.0;
-                } else {
-                    median = sortedValues.get(size / 2);
-                }
-                // Calculate mean
-                double sum = 0;
-                for (double value : sortedValues) {
-                    sum += value;
-                }
-                double mean = sum / size;
-                // Get max value
-                double max = sortedValues.get(size - 1);
-                // Add the calculated values to the table
-                add(score, min, median, mean, max);
-            }
-        };
-
-        int maxScore = lootByScore.keySet().stream().mapToInt(f -> f).max().orElse(0);
-        for (int score = 0; score <= maxScore; score++) {
-            table.add(score, lootByScore.getOrDefault(score, new PriorityQueue<>()));
-        }
-
-        table.write(io, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachCsv, attachJson);
+        new NthBeigeLoot(nationsSet, n).write(io, attachCsv, attachJson);
         return null;
     }
 

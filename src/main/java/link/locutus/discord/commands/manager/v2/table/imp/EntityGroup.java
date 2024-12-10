@@ -16,6 +16,7 @@ public class EntityGroup<T> extends SimpleTable<Void> {
     private final int min, max;
     private final boolean total;
     private final Attribute<T, Double> metric;
+    private GraphType type = GraphType.LINE;
 
     public EntityGroup(String titlePrefix, Attribute<T, Double> metric, List<List<T>> coalitions, List<String> coalitionNames, Attribute<T, Double> groupBy, boolean total) {
         this.metric = metric;
@@ -40,7 +41,7 @@ public class EntityGroup<T> extends SimpleTable<Void> {
         this.max = allNations.stream().map(groupByInt).max(Integer::compare).orElse(0);
         this.buffer = new double[coalitions.size()];
 
-        String labelY = labels.length == 1 ? labels[0] : "metric";
+        String labelY = metric.getName();
         titlePrefix = (titlePrefix == null || titlePrefix.isEmpty() ? "" : titlePrefix + " ") +
                 (total ? "Total" : "Average") + " " + labelY + " by " + groupBy.getName();
 
@@ -50,6 +51,11 @@ public class EntityGroup<T> extends SimpleTable<Void> {
         setLabels(labels);
 
         writeData();
+    }
+
+    public EntityGroup<T> setGraphType(GraphType type) {
+        this.type = type;
+        return this;
     }
 
     @Override
@@ -69,7 +75,7 @@ public class EntityGroup<T> extends SimpleTable<Void> {
 
     @Override
     public GraphType getGraphType() {
-        return GraphType.LINE;
+        return type;
     }
 
     @Override

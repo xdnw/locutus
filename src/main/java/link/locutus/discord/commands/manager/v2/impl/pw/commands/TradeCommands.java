@@ -26,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.commands.manager.v2.table.imp.RssTradeByDay;
+import link.locutus.discord.commands.manager.v2.table.imp.StockpileValueByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.TradeMarginByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.TradePriceByDay;
 import link.locutus.discord.commands.trade.TradeRanking;
@@ -1194,75 +1195,7 @@ public class TradeCommands {
                                              @Range(min=1, max=3000) int numDays,
                                              @Switch("j") boolean attachJson,
                                              @Switch("c") boolean attachCsv) throws IOException, GeneralSecurityException {
-        Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
-        long minDay = Long.MAX_VALUE;
-        long maxDay = Long.MIN_VALUE;
-        List<ResourceType> resources = new ArrayList<>(Arrays.asList(ResourceType.values()));
-        resources.remove(ResourceType.CREDITS);
-        resources.remove(ResourceType.MONEY);
-
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
-
-        for (ResourceType type : resources) {
-            double curAvg = manager.getHighAvg(type);
-            int min = (int) (curAvg * 0.2);
-            int max = (int) (curAvg * 5);
-
-            Map<Long, Double> averages = tradeDB.getAverage(start, type, 15, min, max);
-
-            avgByRss.put(type, averages);
-
-            minDay = Math.min(minDay, Collections.min(averages.keySet()));
-            maxDay = Collections.max(averages.keySet());
-        }
-
-        Map<Long, Double> valueByDay1 = new HashMap<>();
-        Map<Long, Double> valueByDay2 = new HashMap<>();
-
-        double minDiff = Double.MAX_VALUE;
-        double totalValue1 = 0;
-        double totalValue2 = 0;
-        double num = 0;
-
-        outer:
-        for (long day = minDay; day <= maxDay; day++) {
-            double val1 = 0;
-            double val2 = 0;
-
-            for (ResourceType resource : resources) {
-                Double rssPrice = avgByRss.getOrDefault(resource, Collections.emptyMap()).get(day);
-                if (rssPrice == null) {
-                    continue outer;
-                }
-
-                val1 += rssPrice * stockpile1.getOrDefault(resource, 0d);
-                val2 += rssPrice * stockpile2.getOrDefault(resource, 0d);
-            }
-            val1 += 1 * stockpile1.getOrDefault(ResourceType.MONEY, 0d);
-            val2 += 1 * stockpile2.getOrDefault(ResourceType.MONEY, 0d);
-
-            valueByDay1.put(day, val1);
-            valueByDay2.put(day, val2);
-
-            double diff = val2 - val1;
-            if (diff < minDiff) minDiff = diff;
-        }
-
-        long finalMinDay = minDay;
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Stockpile value by day", "day", "stockpile value", "stockpile 1", "stockpile 2") {
-
-            @Override
-            public void add(long day, Void ignore) {
-                long offset = day - finalMinDay;
-                add(offset, valueByDay1.getOrDefault(day, 0d), valueByDay2.getOrDefault(day, 0d));
-            }
-        };
-
-        for (long day = minDay; day <= maxDay; day++) {
-            table.add(day, (Void) null);
-        }
-
-        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, minDay, attachJson, attachCsv);
+        new StockpileValueByDay(stockpile1, stockpile2, numDays).write(channel, attachJson, attachCsv);
         return "Done!";
     }
 

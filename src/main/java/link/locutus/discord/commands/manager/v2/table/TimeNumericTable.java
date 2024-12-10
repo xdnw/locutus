@@ -69,7 +69,7 @@ public abstract class TimeNumericTable<T> {
         if (this.labelY == null && this.name != null) labelY = name;
     }
 
-    public void setLabels(String[] labels) {
+    public void setLabels(String... labels) {
         this.labels = labels;
         this.amt = labels.length;
         List<Class<? extends Comparable<?>>> types = new ArrayList<>();
