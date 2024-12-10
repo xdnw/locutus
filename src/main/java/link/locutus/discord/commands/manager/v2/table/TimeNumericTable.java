@@ -218,7 +218,7 @@ public abstract class TimeNumericTable<T> {
             Row row = data.getRow(i);
             List<String> sheetRow = new ArrayList<>();
             for (int j = 0; j < row.size(); j++) {
-                Number val = (Number) row.get(j);
+                Object val = row.get(j);
                 sheetRow.add(val == null ? "" : val.toString());
             }
             rows.add(sheetRow);
