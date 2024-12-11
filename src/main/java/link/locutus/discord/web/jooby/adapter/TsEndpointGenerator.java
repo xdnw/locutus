@@ -81,9 +81,13 @@ public class TsEndpointGenerator {
 
     private static String generateEndpointConstants(CommandGroup api) {
         StringBuilder output = new StringBuilder();
+        List<String> endpoints = new ArrayList<>();
         for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
-            output.append(TsEndpointGenerator.generateTsEndpoint(cmd)).append("\n\n");
+            TsEndpoint endpoint = generateTsEndpoint(cmd);
+            endpoints.add(endpoint.name);
+            output.append(endpoint.declaration).append("\n\n");
         }
+        output.append("const endpoints = [").append(StringMan.join(endpoints, ", ")).append("];\n");
         return output.toString();
     }
 
@@ -192,7 +196,9 @@ public class TsEndpointGenerator {
 //        return Schema.createUnion(schemas);
 //    }
 
-    public static String generateTsEndpoint(ParametricCallable cmd) {
+    private static record TsEndpoint(String name, String declaration) {}
+
+    public static TsEndpoint generateTsEndpoint(ParametricCallable cmd) {
         Method method = cmd.getMethod();
         ReturnType returnType = method.getAnnotation(ReturnType.class);
         if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
@@ -258,7 +264,7 @@ public class TsEndpointGenerator {
                 .replace("{argValuesAllOptional}", argValuesAllOptional)
                 .replace("{cacheArg}", cacheArg)
                 ;
-        return tsDef;
+        return new TsEndpoint(constName, tsDef);
     }
 
     private static String adaptType(String simpleName) {
