@@ -87,7 +87,7 @@ public class TsEndpointGenerator {
             endpoints.add(endpoint.name);
             output.append(endpoint.declaration).append("\n\n");
         }
-        output.append("const endpoints = [").append(StringMan.join(endpoints, ", ")).append("];\n");
+        output.append("export const ENDPOINTS = [").append(StringMan.join(endpoints, ", ")).append("];\n");
         return output.toString();
     }
 
