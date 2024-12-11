@@ -395,8 +395,6 @@ public class AllianceMetricCommands {
             }
         }, metric, start, end, mode, alliances, filter, includeApps);
 
-        String name = metric.getName().replace("{", "").replace("}", "");
-
         List<String> header = new ArrayList<>(List.of("date"));
         Map<Integer, Integer> headerIndexByAAId = new Int2IntOpenHashMap();
         for (DBAlliance alliance : alliances) {

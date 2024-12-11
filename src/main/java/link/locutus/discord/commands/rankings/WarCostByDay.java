@@ -73,7 +73,7 @@ public class WarCostByDay extends Command {
                 Add `-t` to show Tank losses
                 Add `-s` to show Soldier losses
                 Add `-i` to show Infra losses
-                Add `-o` to graph a running total,
+                Add `-o` to graph a running total,   
                 Add `-j` to attach json/csv""";
     }
 

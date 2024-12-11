@@ -1274,7 +1274,7 @@ public class TradeCommands {
         return null;
     }
 
-    public void rssTradeByDay(String title, IMessageIO channel, long start, Long end, Function<Collection<DBTrade>, long[]> rssFunction, boolean
+    public static void rssTradeByDay(String title, IMessageIO channel, long start, Long end, Function<Collection<DBTrade>, long[]> rssFunction, boolean
             attachJson,
                               boolean attachCsv, Set<ResourceType> resources) throws IOException {
         if (end == null) end = Long.MAX_VALUE;
