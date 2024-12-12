@@ -239,7 +239,8 @@ public class IAEndpoints extends PageHelper {
     @Command
     @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
-    public WebTargets raid(@Me GuildDB db, @Me DBNation me,
+    public WebTargets raid(@Me @Default GuildDB db, @Me @Default DBNation me,
+                                    @Default DBNation nation,
                                     @Default("*,#position<=1") Set<DBNation> nations,
                                     @Default("false") boolean weak_ground,
                                     @Default("0") int vm_turns,
@@ -248,9 +249,15 @@ public class IAEndpoints extends PageHelper {
                                     @Default("7d") @Timediff long time_inactive,
                                     @Default("-1") double min_loot,
                                     @Default("8") int num_results) throws InterruptedException {
+        if (nation == null) nation = me;
+        if (nation == null) {
+            throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
+        }
+        if (db == null && nation != null) db = nation.getGuildDB();
+
         List<Map.Entry<DBNation, Map.Entry<Double, Double>>> raidResult = RaidCommand.getNations(
                 db,
-                me,
+                nation,
                 nations,
                 weak_ground,
                 vm_turns,
@@ -261,25 +268,26 @@ public class IAEndpoints extends PageHelper {
                 false,
                 false,
                 time_inactive / TimeUnit.MINUTES.toMillis(1),
-                me.getScore(),
+                nation.getScore(),
                 min_loot, beige_turns,
                 false, false, num_results
         );
         List<WebTarget> targets = new ObjectArrayList<>();
         for (Map.Entry<DBNation, Map.Entry<Double, Double>> entry : raidResult) {
-            DBNation nation = entry.getKey();
+            DBNation other = entry.getKey();
             double expected = entry.getValue().getKey();
             double loot = entry.getValue().getValue();
-            targets.add(new WebTarget(nation, expected, loot, 0));
+            targets.add(new WebTarget(other, expected, loot, 0));
         }
-        WebTargets result = targets(me, targets);
+        WebTargets result = targets(nation, targets);
         return result;
     }
 
     @Command
     @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
-    public WebTargets unprotected(@Me GuildDB db, @Me DBNation me,
+    public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me,
+                           DBNation nation,
                            @Default("*") Set<DBNation> nations,
                            @Switch("a") boolean includeAllies,
                            @Switch("o") boolean ignoreODP,
@@ -290,8 +298,14 @@ public class IAEndpoints extends PageHelper {
                            @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
                            @Arg("Only list targets within range of ALL attackers")
                            @Default("8") int num_results) throws InterruptedException {
-        Set<DBNation> nationsToBlitzWith = Set.of(me);
-        List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, nations, num_results, ignore_dnr, includeAllies, Set.of(me), maxRelativeTargetStrength, maxRelativeCounterStrength, false, ignoreODP, true);
+        if (nation == null) nation = me;
+        if (nation == null) {
+            throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
+        }
+        if (db == null && nation != null) db = nation.getGuildDB();
+
+        Set<DBNation> nationsToBlitzWith = Set.of(nation);
+        List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, nations, num_results, ignore_dnr, includeAllies, Set.of(nation), maxRelativeTargetStrength, maxRelativeCounterStrength, false, ignoreODP, true);
         double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
 
         if (counterChance.size() > num_results) {
@@ -299,12 +313,12 @@ public class IAEndpoints extends PageHelper {
         }
         List<WebTarget> targets = new ObjectArrayList<>();
         for (Map.Entry<DBNation, Double> entry : counterChance) {
-            DBNation nation = entry.getKey();
+            DBNation other = entry.getKey();
             double strength = entry.getValue();
-            double loot = nation.lootTotal();
-            targets.add(new WebTarget(nation, loot, loot, 100 * strength / myStrength));
+            double loot = other.lootTotal();
+            targets.add(new WebTarget(other, loot, loot, 100 * strength / myStrength));
         }
-        WebTargets result = targets(me, targets);
+        WebTargets result = targets(nation, targets);
         result.include_strength = true;
         return result;
     }
