@@ -105,7 +105,7 @@ public class IACheckup {
 
     public IACheckup(GuildDB db, AllianceList alliance, boolean useCache) throws IOException {
         if (db == null) throw new IllegalStateException("No database found");
-        if (alliance == null || alliance.isEmpty()) throw new IllegalStateException("No alliance found");
+        if (alliance == null) throw new IllegalStateException("No alliance found");
         this.db = db;
         this.alliance = alliance;
         memberStockpile = new HashMap<>();
