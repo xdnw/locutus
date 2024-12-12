@@ -1340,7 +1340,7 @@ public class UnsortedCommands {
 
     @Command(desc = "List the alliance rank changes of a nation or alliance members")
     public static String leftAA(@Me IMessageIO io, @Me GuildDB db,
-                         NationOrAlliance nationOrAlliance,
+                         @AllowDeleted NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
                          @Default @Timestamp Long time,
                          @Arg("Only include these nations")
