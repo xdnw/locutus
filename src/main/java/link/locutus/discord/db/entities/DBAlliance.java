@@ -1700,6 +1700,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return new Treaty(result);
     }
 
+    @Command(desc = "Google sheet named url")
+    public String getSheetUrl() {
+        return MarkupUtil.sheetUrl(getName(), getUrl());
+    }
+
     @Command
     public double getCities() {
         return getMemberDBNations().stream().mapToDouble(DBNation::getCities).sum();
