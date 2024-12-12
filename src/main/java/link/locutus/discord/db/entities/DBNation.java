@@ -3823,6 +3823,11 @@ public abstract class DBNation implements NationOrAlliance {
         return getNationUrlMarkup();
     }
 
+    @Command(desc = "Google sheet named url")
+    public String getSheetUrl() {
+        return MarkupUtil.sheetUrl(getName(), getUrl());
+    }
+
     public String getNationUrlMarkup() {
         String nationUrl = getUrl();
         nationUrl = MarkupUtil.markdownUrl(data()._nation(), "<" + nationUrl + ">");
