@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding.checkMembership;
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.getCounterChance;
 
 public class IAEndpoints extends PageHelper {
@@ -237,9 +238,8 @@ public class IAEndpoints extends PageHelper {
     }
 //
     @Command
-    @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
-    public WebTargets raid(@Me @Default GuildDB db, @Me @Default DBNation me,
+    public WebTargets raid(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
                                     @Default DBNation nation,
                                     @Default("*,#position<=1") Set<DBNation> nations,
                                     @Default("false") boolean weak_ground,
@@ -252,6 +252,9 @@ public class IAEndpoints extends PageHelper {
         if (nation == null) nation = me;
         if (nation == null) {
             throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
+        }
+        if (db != null) {
+            checkMembership(db, null, user, me);
         }
         if (db == null && nation != null) db = nation.getGuildDB();
 
@@ -284,9 +287,8 @@ public class IAEndpoints extends PageHelper {
     }
 
     @Command
-    @IsMemberIngameOrDiscord
     @ReturnType(WebTargets.class)
-    public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me,
+    public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me, @Default @Me User user,
                            DBNation nation,
                            @Default("*") Set<DBNation> nations,
                            @Switch("a") boolean includeAllies,
@@ -301,6 +303,9 @@ public class IAEndpoints extends PageHelper {
         if (nation == null) nation = me;
         if (nation == null) {
             throw new IllegalArgumentException("Please sign, or provide a nation to raid as");
+        }
+        if (db != null) {
+            checkMembership(db, null, user, me);
         }
         if (db == null && nation != null) db = nation.getGuildDB();
 

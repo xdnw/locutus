@@ -27,15 +27,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -317,7 +309,7 @@ public class RaidCommand extends Command {
                                                                            int vm, int slots, boolean beige,
                                                                            boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
                                                                            long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) {
-        Set<Integer> enemyAAs = db.getCoalition("enemies");
+        Set<Integer> enemyAAs = db == null ? Collections.emptySet() : db.getCoalition("enemies");
 
         if (weakground) nations.removeIf(f -> f.getGroundStrength(true, true) > me.getGroundStrength(true, true) * 0.4);
 
@@ -335,7 +327,7 @@ public class RaidCommand extends Command {
 
         int count = 0;
 
-        Function<DBNation, Boolean> canRaidDNR = db.getCanRaid();
+        Function<DBNation, Boolean> canRaidDNR = db == null ? f -> true : db.getCanRaid();
 
         List<Map.Entry<DBNation, Map.Entry<Double, Double>>> nationNetValues = new ObjectArrayList<>();
 
