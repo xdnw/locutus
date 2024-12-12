@@ -33,6 +33,8 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -41,7 +43,6 @@ import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.WarCostByDay;
 import link.locutus.discord.commands.rankings.WarCostRanking;
-import link.locutus.discord.commands.rankings.WarCostRankingByDay;
 import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
@@ -80,6 +81,7 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
@@ -894,66 +896,18 @@ public class StatCommands {
                                     @Switch("v") boolean attachCsv) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> allNations = new HashSet<>();
-        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        allNations.addAll(coalition1Nations);
-        allNations.addAll(coalition2Nations);
-        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-
-        int maxScore = 0;
-        int minScore = Integer.MAX_VALUE;
-        for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
-            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
-        }
-        double[] coal1Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-        double[] coal2Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-
-        double[] coal1StrSpread = new double[coal1Str.length];
-        double[] coal2StrSpread = new double[coal2Str.length];
-
-        // min = x * 0.75;
-        // max = x * 1.25
-        // max = (min / 0.6)
-
-        for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrengthMMR(col1MMR);
-        }
-        for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrengthMMR(col2MMR);
-        }
-        for (int min = 10; min < coal1Str.length; min++) {
-            double val = coal1Str[min];
-            if (val == 0) continue;
-            int max = (int) (min / 0.6);
-
-            for (int i = min; i <= max; i++) {
-                double shaped = val - 0.4 * val * ((double) (i - min) / (max - min));
-                coal1StrSpread[i] += shaped;
-            }
-        }
-        for (int min = 10; min < coal2Str.length; min++) {
-            double val = coal2Str[min];
-            if (val == 0) continue;
-            int max = (int) (min / 0.6);
-
-            for (int i = min; i <= max; i++) {
-                double shaped = val - 0.4 * val * ((double) (i - min) / (max - min));
-                coal2StrSpread[i] += shaped;
-            }
-        }
-
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Effective military strength by score range", "score", "strength", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long score, Void ignore) {
-                add(score, coal1StrSpread[(int) score], coal2StrSpread[(int) score]);
-            }
-        };
-        for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
-            table.add(score, (Void) null);
-        }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachJson, attachCsv);
+        new StrengthTierGraph(
+                coalition1.getFilter(),
+                coalition2.getFilter(),
+                coalition1Nations,
+                coalition2Nations,
+                includeInactives,
+                includeApplicants,
+                col1MMR,
+                col2MMR,
+                col1Infra,
+                col2Infra
+        ).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -971,48 +925,16 @@ public class StatCommands {
                                @Switch("c") boolean attachCsv) throws IOException {
         Collection<DBNation> coalition1Nations = coalition1.getNations();
         Collection<DBNation> coalition2Nations = coalition2.getNations();
-        Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
-        allNations.addAll(coalition1Nations);
-        allNations.addAll(coalition2Nations);
-        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        int min = 0;
-        int max = 0;
-        for (DBNation nation : allNations) max = Math.max(nation.getCities(), max);
-        max++;
 
-        Collection<DBNation>[] coalitions = new Collection[]{coalition1Nations, coalition2Nations};
-        int[][] counts = new int[coalitions.length][];
-        for (int i = 0; i < coalitions.length; i++) {
-            Collection<DBNation> coalition = coalitions[i];
-            int[] cities = new int[max + 1];
-            int[] spies = new int[max + 1];
-            counts[i] = spies;
-            int k = 0;
-            for (DBNation nation : coalition) {
-                cities[nation.getCities()]++;
-                spies[nation.getCities()] += nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1);
-            }
-            if (!total) {
-                for (int j = 0; j < cities.length; j++) {
-                    if (cities[j] > 1) spies[j] /= cities[j];
-                }
-            }
-        }
+        NationAttribute<Double> attribute = new NationAttribute<>("spies", "", double.class, f -> (double) f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1));
+        List<List<DBNation>> coalitions = List.of(new ArrayList<>(coalition1Nations), new ArrayList<>(coalition2Nations));
+        List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
+        NationAttribute<Double> groupBy = new NationAttribute<>("cities", "", double.class, f -> (double) f.getCities());
 
-        String title = (total ? "Total" : "Average") + " spies by city count";
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>(title, "cities", "spies", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long cities, Void ignore) {
-                add(cities, counts[0][(int) cities], counts[1][(int) cities]);
-            }
-        };
-        for (int cities = min; cities <= max; cities++) {
-            table.add(cities, (Void) null);
-        }
-        if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0, attachJson, attachCsv);
+        EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, total);
+        graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -1027,61 +949,15 @@ public class StatCommands {
                                  @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> allNations = new HashSet<>();
-        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        allNations.addAll(coalition1Nations);
-        allNations.addAll(coalition2Nations);
 
-        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-
-        int maxScore = 0;
-        int minScore = Integer.MAX_VALUE;
-        for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.getScore());
-            minScore = (int) Math.min(minScore, nation.getScore());
-        }
-        double[] coal1Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-        double[] coal2Str = new double[(int) (maxScore * PW.WAR_RANGE_MAX_MODIFIER)];
-
-        double[] coal1StrSpread = new double[coal1Str.length];
-        double[] coal2StrSpread = new double[coal2Str.length];
-
-        for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.getScore() * 0.75)] += 1;
-        }
-        for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.getScore() * 0.75)] += 1;
-        }
-        for (int min = 10; min < coal1Str.length; min++) {
-            double val = coal1Str[min];
-            if (val == 0) continue;
-            int max = Math.min(coal1StrSpread.length, (int) (PW.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
-
-            for (int i = min; i < max; i++) {
-                coal1StrSpread[i] += val;
-            }
-        }
-        for (int min = 10; min < coal2Str.length; min++) {
-            double val = coal2Str[min];
-            if (val == 0) continue;
-            int max = Math.min(coal2StrSpread.length, (int) (PW.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
-
-            for (int i = min; i < max; i++) {
-                coal2StrSpread[i] += val;
-            }
-        }
-
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by score range", "score", "nations", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long score, Void ignore) {
-                add(score, coal1StrSpread[(int) score], coal2StrSpread[(int) score]);
-            }
-        };
-        for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
-            table.add(score, (Void) null);
-        }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachJson, attachCsv);
+        new ScoreTierGraph(
+                coalition1.getFilter(),
+                coalition2.getFilter(),
+                coalition1Nations,
+                coalition2Nations,
+                includeInactives,
+                includeApplicants
+        ).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -1436,32 +1312,16 @@ public class StatCommands {
                                 @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> allNations = new HashSet<>();
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        allNations.addAll(nations1);
-        allNations.addAll(nations2);
-        if (nations1.isEmpty() || nations2.isEmpty())
-            throw new IllegalArgumentException("No nations provided");
-        int min = 0;
-        int max = 0;
-        for (DBNation nation : allNations) max = Math.max(nation.getCities(), max);
-        max++;
-        int[] count1 = new int[max + 1];
-        int[] count2 = new int[max + 1];
-        for (DBNation nation : nations1) count1[nation.getCities()]++;
-        for (DBNation nation : nations2) count2[nation.getCities()]++;
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by city count", "city", "nations", coalition1.getFilter(), coalition2.getFilter()) {
-            @Override
-            public void add(long cities, Void ignore) {
-                add(cities, count1[(int) cities], count2[(int) cities]);
-            }
-        };
-        for (int cities = min; cities <= max; cities++) {
-            table.add(cities, (Void) null);
-        }
-        if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE, 0, attachJson, attachCsv);
+
+        NationAttribute<Double> attribute = new NationAttribute<>("nations", "", double.class, f -> 1d);
+        List<List<DBNation>> coalitions = List.of(new ArrayList<>(nations1), new ArrayList<>(nations2));
+        List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
+        NationAttribute<Double> groupBy = new NationAttribute<>("city", "", double.class, f -> (double) f.getCities());
+
+        EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, true);
+        graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).write(channel, attachJson, attachCsv);
         return null;
     }
 
@@ -2489,74 +2349,8 @@ public class StatCommands {
             nations = new SimpleNationList(Locutus.imp().getNationDB().getNationsMatching(f ->
                     f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
-
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db.getGuild());
-        nationsSet.removeIf(f -> f.getVm_turns() != 0);
-        if (nationsSet.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        Map<Integer, PriorityQueue<Double>> lootByScore = new Int2ObjectOpenHashMap<>();
-
-        BiConsumer<Double, PriorityQueue<Double>> compareAndAddTop = (value, topValues) -> {
-            if (topValues.size() < n) {
-                topValues.add(value);
-            } else if (value > topValues.peek()) {
-                topValues.poll();
-                topValues.add(value);
-            }
-        };
-
-        for (DBNation nation : nationsSet) {
-            double score = nation.getScore();
-            double loot = nation.getBeigeLootTotal();
-            if (loot == 0) continue;
-            int min = (int) (score / PW.WAR_RANGE_MAX_MODIFIER);
-            int max = (int) (score / PW.WAR_RANGE_MIN_MODIFIER);
-            for (int i = min; i <= max; i++) {
-                PriorityQueue<Double> queue = lootByScore.computeIfAbsent(i, f -> new PriorityQueue<>(n));
-                compareAndAddTop.accept(loot, queue);
-            }
-        }
-
-        String[] labels = {"Nth", "Median", "Mean", "Max"};
-
-        TimeNumericTable<PriorityQueue<Double>> table = new TimeNumericTable<PriorityQueue<Double>>("Raid income by score", "score", "loot", labels) {
-            @Override
-            public void add(long score, PriorityQueue<Double> values) {
-                if (values.isEmpty()) return;
-                List<Double> sortedValues = new ArrayList<>(values);
-                if (sortedValues.size() < n) {
-                    for (int i = sortedValues.size(); i < n; i++) {
-                        sortedValues.add(0, 0d);
-                    }
-                }
-                // Calculate nth value
-                double min = sortedValues.get(0);
-                // Calculate median
-                double median;
-                int size = sortedValues.size();
-                if (size % 2 == 0) {
-                    median = (sortedValues.get(size / 2 - 1) + sortedValues.get(size / 2)) / 2.0;
-                } else {
-                    median = sortedValues.get(size / 2);
-                }
-                // Calculate mean
-                double sum = 0;
-                for (double value : sortedValues) {
-                    sum += value;
-                }
-                double mean = sum / size;
-                // Get max value
-                double max = sortedValues.get(size - 1);
-                // Add the calculated values to the table
-                add(score, min, median, mean, max);
-            }
-        };
-
-        int maxScore = lootByScore.keySet().stream().mapToInt(f -> f).max().orElse(0);
-        for (int score = 0; score <= maxScore; score++) {
-            table.add(score, lootByScore.getOrDefault(score, new PriorityQueue<>()));
-        }
-
-        table.write(io, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, GraphType.LINE, 0, attachCsv, attachJson);
+        new NthBeigeLoot(nationsSet, n).write(io, attachCsv, attachJson);
         return null;
     }
 
@@ -2922,172 +2716,23 @@ public class StatCommands {
             @Switch("a") Set<AttackType> allowedAttackTypes,
             @Switch("v") Set<SuccessType> allowedVictoryTypes,
             @Switch("j") boolean attach_json,
-            @Switch("c") boolean attach_csv
-
-            ) throws IOException {
-        if (time_end == null) time_end = Long.MAX_VALUE;
-
-        WarParser parser = WarParser.of(coalition1, coalition2, time_start, time_end)
-                .allowWarStatuses(allowedWarStatus)
-                .allowedWarTypes(allowedWarTypes)
-                .allowedAttackTypes(allowedAttackTypes)
-                .allowedSuccessTypes(allowedVictoryTypes);
-
-        List<AbstractCursor> attacks = parser.getAttacks();
-
-        Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
-
-        attacks.sort(Comparator.comparingLong(o -> o.getDate()));
-
+            @Switch("c") boolean attach_csv) throws IOException {
         String nameA = command.getString("coalition1");
         String nameB = command.getString("coalition2");
-        Function<AbstractCursor, Boolean> isPrimary = parser.getAttackPrimary();
-        Function<AbstractCursor, Boolean> isSecondary = parser.getAttackSecondary();
-
-
-        long now = System.currentTimeMillis();
-        for (AbstractCursor attack : attacks) {
-            if (attack.getDate() > now) continue;
-            long turn = TimeUtil.getTurn(attack.getDate());
-            long day = turn / 12;
-            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB, type == WarCostByDayMode.BUILDING, false, false, false, type == WarCostByDayMode.ATTACK_TYPE));
-            cost.addCost(attack, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
-        }
-
-        long min = Collections.min(warCostByDay.keySet());
-        long max = Collections.max(warCostByDay.keySet());
-        List<TimeDualNumericTable<AttackCost>> tables = new ArrayList<>();
-        if (type == WarCostByDayMode.INFRASTRUCTURE) tables.add(new TimeDualNumericTable<>("Infra Loss", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getInfraLost(true), cost.getInfraLost(false));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.SOLDIER) tables.add(new TimeDualNumericTable<>("Soldier Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.SOLDIER, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.SOLDIER, 0));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.TANK) tables.add(new TimeDualNumericTable<>("Tank Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.TANK, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.TANK, 0));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.AIRCRAFT) tables.add(new TimeDualNumericTable<>("Plane Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.AIRCRAFT, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.AIRCRAFT, 0));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.SHIP) tables.add(new TimeDualNumericTable<>("Naval Ship Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.SHIP, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.SHIP, 0));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.MISSILE) tables.add(new TimeDualNumericTable<>("Missile Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.MISSILE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.MISSILE, 0));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.NUKE)
-            tables.add(new TimeDualNumericTable<>("Nuke Losses", "day", null, nameA, nameB) {
-                @Override
-                public void add(long day, AttackCost cost) {
-                    add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.NUKE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.NUKE, 0));
-                    WarCostByDay.processTotal(running_total, this);
-                }
-            });
-        if (type == WarCostByDayMode.UNIT) tables.add(new TimeDualNumericTable<>("Unit Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, ResourceType.convertedTotal(cost.getUnitCost(true)), ResourceType.convertedTotal(cost.getUnitCost(false)));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.GASOLINE) tables.add(new TimeDualNumericTable<>("Gasoline", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getConsumption(true).getOrDefault(ResourceType.GASOLINE, 0d), cost.getConsumption(false).getOrDefault(ResourceType.GASOLINE, 0d));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.MUNITIONS) tables.add(new TimeDualNumericTable<>("Munitions", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getConsumption(true).getOrDefault(ResourceType.MUNITIONS, 0d), cost.getConsumption(false).getOrDefault(ResourceType.MUNITIONS, 0d));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.CONSUMPTION) tables.add(new TimeDualNumericTable<>("Consumption", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, ResourceType.convertedTotal(cost.getConsumption(true)), ResourceType.convertedTotal(cost.getConsumption(false)));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.BUILDING) tables.add(new TimeDualNumericTable<>("Building Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, cost.getNumBuildingsDestroyed(true), cost.getNumBuildingsDestroyed(true));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.LOOT) tables.add(new TimeDualNumericTable<>("Looted", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, -ResourceType.convertedTotal(cost.getLoot(true)), -ResourceType.convertedTotal(cost.getLoot(false)));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.COST) tables.add(new TimeDualNumericTable<>("Full Losses", "day", null, nameA, nameB) {
-            @Override
-            public void add(long day, AttackCost cost) {
-                add(day, ResourceType.convertedTotal(cost.getTotal(true)), ResourceType.convertedTotal(cost.getTotal(false)));
-                WarCostByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.ATTACK_TYPE) {
-            for (AttackType attType : AttackType.values) {
-                tables.add(new TimeDualNumericTable<>("Num " + attType.getName(), "day", null, nameA, nameB) {
-                    @Override
-                    public void add(long day, AttackCost cost) {
-                        ArrayList<AbstractCursor> a = new ArrayList<>(cost.getAttacks(true));
-                        ArrayList<AbstractCursor> b = new ArrayList<>(cost.getAttacks(false));
-                        a.removeIf(f -> f.getAttack_type() != attType);
-                        b.removeIf(f -> f.getAttack_type() != attType);
-                        add(day, a.size(), b.size());
-                        WarCostByDay.processTotal(running_total, this);
-                    }
-                });
-            }
-        }
-
-        AttackCost nullCost = new AttackCost("", "", type == WarCostByDayMode.BUILDING, false, false, true, type == WarCostByDayMode.ATTACK_TYPE);
-        for (long day = min; day <= max; day++) {
-            long dayOffset = day - min;
-            AttackCost cost = warCostByDay.get(day);
-            if (cost == null) {
-                cost = nullCost;
-            }
-
-            for (TimeDualNumericTable<AttackCost> table : tables) {
-                table.add(dayOffset, cost);
-            }
-        }
-
-        for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attach_json, attach_csv);
-        }
+        new link.locutus.discord.commands.manager.v2.table.imp.WarCostByDay(
+                nameA,
+                nameB,
+                coalition1,
+                coalition2,
+                type,
+                time_start,
+                time_end,
+                running_total,
+                allowedWarStatus,
+                allowedWarTypes,
+                allowedAttackTypes,
+                allowedVictoryTypes
+        ).write(io, attach_json, attach_csv);
         return null;
     }
 
@@ -3140,211 +2785,30 @@ public class StatCommands {
     ) throws IOException {
         if (time_end == null) time_end = Long.MAX_VALUE;
         Map<String, Set<NationOrAlliance>> args = new LinkedHashMap<>();
-        args.put(command.has("c1") ? command.getString("c1") : null, coalition1);
-        args.put(command.has("c2") ? command.getString("c2") : null, coalition2);
-        args.put(command.has("c3") ? command.getString("c3") : null, coalition3);
-        args.put(command.has("c4") ? command.getString("c4") : null, coalition4);
-        args.put(command.has("c5") ? command.getString("c5") : null, coalition5);
-        args.put(command.has("c6") ? command.getString("c6") : null, coalition6);
-        args.put(command.has("c7") ? command.getString("c7") : null, coalition7);
-        args.put(command.has("c8") ? command.getString("c8") : null, coalition8);
-        args.put(command.has("c9") ? command.getString("c9") : null, coalition9);
-        args.put(command.has("c10") ? command.getString("c10") : null, coalition10);
+        args.put(command.has("coalition1") ? command.getString("coalition1") : null, coalition1);
+        args.put(command.has("coalition2") ? command.getString("coalition2") : null, coalition2);
+        args.put(command.has("coalition3") ? command.getString("coalition3") : null, coalition3);
+        args.put(command.has("coalition4") ? command.getString("coalition4") : null, coalition4);
+        args.put(command.has("coalition5") ? command.getString("coalition5") : null, coalition5);
+        args.put(command.has("coalition6") ? command.getString("coalition6") : null, coalition6);
+        args.put(command.has("coalition7") ? command.getString("coalition7") : null, coalition7);
+        args.put(command.has("coalition8") ? command.getString("coalition8") : null, coalition8);
+        args.put(command.has("coalition9") ? command.getString("coalition9") : null, coalition9);
+        args.put(command.has("coalition10") ? command.getString("coalition10") : null, coalition10);
         args.entrySet().removeIf(f -> f.getValue() == null);
 
-        Map<String, WarParser> coalitions = new LinkedHashMap<>();
-        Map<String, Map<Long, AttackCost>> coalitionsByDay = new LinkedHashMap<>();
-
-        for (Map.Entry<String, Set<NationOrAlliance>> entry : args.entrySet()) {
-            String colName = entry.getKey();
-            Set<NationOrAlliance> col = entry.getValue();
-            WarParser parser = WarParser.of(col, null, time_start, time_end)
-                    .allowWarStatuses(allowedWarStatus)
-                    .allowedWarTypes(allowedWarTypes)
-                    .allowedAttackTypes(allowedAttackTypes)
-                    .allowedSuccessTypes(allowedVictoryTypes);
-            coalitions.put(colName, parser);
-
-            Map<Long, AttackCost> byDay = parser.toWarCostByDay(type == WarCostByDayMode.BUILDING, false, false, false, type == WarCostByDayMode.ATTACK_TYPE);
-            coalitionsByDay.put(colName, byDay);
-        }
-
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (Map.Entry<String, Map<Long, AttackCost>> entry : coalitionsByDay.entrySet()) {
-            min = Math.min(min, Collections.min(entry.getValue().keySet()));
-            max = Math.max(max, Collections.max(entry.getValue().keySet()));
-        }
-        long finalMin = min;
-
-        String[] labels = coalitions.keySet().toArray(new String[0]);
-
-        List<TimeNumericTable<Map<String, WarParser>>> tables = new ArrayList<>();
-
-        BiFunction<Double, Double, Double> costF = mode.getCostFunc();
-        BiFunction<AttackCost, BiFunction<AttackCost, Boolean, Number>, Double> delegate = (cost, del) -> {
-            double a = del.apply(cost, true).doubleValue();
-            double b = del.apply(cost, false).doubleValue();
-            return costF.apply(a, b);
-        };
-
-        if (type == WarCostByDayMode.INFRASTRUCTURE) {
-            tables.add(new TimeNumericTable<>("Infra Loss", "day", null, labels) {
-                @Override
-                public void add(long day, Map<String, WarParser> costMap) {
-                    addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, AttackCost::getInfraLost)
-                    );
-                    WarCostRankingByDay.processTotal(running_total, this);
-                }
-            });
-        }
-
-        if (type == WarCostByDayMode.SOLDIER) tables.add(new TimeNumericTable<>("Soldier Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getUnitsLost(primary).getOrDefault(MilitaryUnit.SOLDIER, 0))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.BUILDING) tables.add(new TimeNumericTable<>("Building Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, AttackCost::getNumBuildingsDestroyed)
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.TANK) tables.add(new TimeNumericTable<>("Tank Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getUnitsLost(primary).getOrDefault(MilitaryUnit.TANK, 0))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.AIRCRAFT) tables.add(new TimeNumericTable<>("Aircraft Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-//                        f.getUnitsLost(primary).getOrDefault(MilitaryUnit.AIRCRAFT, 0)
-                        delegate.apply(f, (cost, primary) -> cost.getUnitsLost(primary).getOrDefault(MilitaryUnit.AIRCRAFT, 0))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.SHIP) tables.add(new TimeNumericTable<>("Ship Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getUnitsLost(primary).getOrDefault(MilitaryUnit.SHIP, 0))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.MISSILE) tables.add(new TimeNumericTable<>("Missile Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getUnitsLost(primary).getOrDefault(MilitaryUnit.MISSILE, 0))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.NUKE) tables.add(new TimeNumericTable<>("Nuke Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getUnitsLost(primary).getOrDefault(MilitaryUnit.NUKE, 0))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.UNIT) tables.add(new TimeNumericTable<>("Unit Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> ResourceType.convertedTotal(cost.getUnitCost(primary)))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.GASOLINE) tables.add(new TimeNumericTable<>("Gasoline", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getConsumption(primary).getOrDefault(ResourceType.GASOLINE, 0d))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.MUNITIONS) tables.add(new TimeNumericTable<>("Munitions", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> cost.getConsumption(primary).getOrDefault(ResourceType.MUNITIONS, 0d))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.CONSUMPTION) tables.add(new TimeNumericTable<>("Consumption", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> ResourceType.convertedTotal(cost.getConsumption(primary)))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.LOOT) tables.add(new TimeNumericTable<>("Looted", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> -ResourceType.convertedTotal(cost.getLoot(primary)))
-                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.COST) tables.add(new TimeNumericTable<>("Full Losses", "day", null, labels) {
-            @Override
-            public void add(long day, Map<String, WarParser> costMap) {
-                addRanking(this, day, finalMin, costMap, coalitionsByDay, f ->
-                        delegate.apply(f, (cost, primary) -> ResourceType.convertedTotal(cost.getTotal(primary)))
-                                );
-                WarCostRankingByDay.processTotal(running_total, this);
-            }
-        });
-        if (type == WarCostByDayMode.ATTACK_TYPE) {
-            for (AttackType attType : AttackType.values) {
-                tables.add(new TimeNumericTable<>("Num " + attType.getName(), "day", null, labels) {
-                    @Override
-                    public void add(long day, Map<String, WarParser> costMap) {
-                        addRanking(this, day, finalMin, costMap, coalitionsByDay, cost ->
-                            delegate.apply(cost, (cost1, primary) -> cost.getAttacks(primary).stream().filter(f -> f.getAttack_type() == attType).count())
-                        );
-                        WarCostRankingByDay.processTotal(running_total, this);
-                    }
-                });
-            }
-        }
-
-        for (long day = min; day <= max; day++) {
-            long dayRelative = day - min;
-
-            for (TimeNumericTable<Map<String, WarParser>> table : tables) {
-                table.add(dayRelative, coalitions);
-            }
-        }
-
-        for (TimeNumericTable<Map<String, WarParser>> table : tables) {
-            table.write(io, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attach_json, attach_csv);
-        }
-        if (tables.isEmpty()) return "Please use one of the flag";
-
+        new WarCostRankingByDay(
+                type,
+                mode,
+                time_start,
+                time_end,
+                args,
+                running_total,
+                allowedWarStatus,
+                allowedWarTypes,
+                allowedAttackTypes,
+                allowedVictoryTypes
+        ).write(io, attach_json, attach_csv);
         return null;
     }
 }

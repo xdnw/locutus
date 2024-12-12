@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -29,6 +30,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -39,10 +41,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
-import link.locutus.discord.web.commands.api.EndpointPages;
-import link.locutus.discord.web.commands.api.IAEndpoints;
-import link.locutus.discord.web.commands.api.StatEndpoints;
-import link.locutus.discord.web.commands.api.TradeEndpoints;
+import link.locutus.discord.web.commands.api.*;
 import link.locutus.discord.web.commands.binding.*;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
@@ -90,10 +89,14 @@ public class PageHandler implements Handler {
         new GPTBindings().register(store);
         new SheetBindings().register(store);
 //        new StockBinding().register(store);
+        PlaceholdersMap placeholders = Locutus.imp().getCommandManager().getV2().getPlaceholders();
+        for (Class<?> type : placeholders.getTypes()) {
+            Placeholders<?> ph = placeholders.get(type);
+            ph.register(store);
+        }
 
         new JavalinBindings().register(store);
         new AuthBindings().register(store);
-
         //
         new DiscordWebBindings().register(store);
         new WebPWBindings().register(store);
@@ -121,6 +124,8 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new TradeEndpoints(), "api");
         this.commands.registerSubCommands(new IAEndpoints(), "api");
         this.commands.registerSubCommands(new StatEndpoints(), "api");
+        this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
+        this.commands.registerSubCommands(new GraphEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);

@@ -1694,7 +1694,7 @@ public class IACommands {
             boolean result = alliance.setTaxBracket(bracket, nation);
             response.append("Set bracket to " + bracket + " for " + nation.getNation() + ": " + result).append("\n");
         }
-        response.append("\nDone!");
+        response.append("\nSee also: " + CM.tax.set_from_sheet.cmd.toSlashMention());
         return response.toString();
     }
 

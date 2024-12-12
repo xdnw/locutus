@@ -902,6 +902,10 @@ public final class PW {
         return Map.entry(balance, response.toString());
     }
 
+    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, GuildDB db) {
+        return getNationsSnapshot(nations, filterStr, snapshotDate, db == null ? null : db.getGuild());
+    }
+
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);

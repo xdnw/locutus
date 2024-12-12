@@ -233,7 +233,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                 "Remove columns via";
     }
 
-    private void registerCustom(Method method, Type type) {
+    private void registerCustom(ValueStore store, Method method, Type type) {
         Binding binding = method.getAnnotation(Binding.class);
         MethodParser parser = new MethodParser(this, method, this.getDescription(), binding, type);
         Key key = parser.getKey();
@@ -255,10 +255,10 @@ public abstract class Placeholders<T> extends BindingHelper {
             Method methodPredicate = this.getClass().getMethod("parseFilter", ValueStore.class, String.class);
             Method methodFormat = this.getClass().getMethod("getFormatFunction", ValueStore.class, String.class);
             Method methodDouble = this.getClass().getMethod("getDoubleFunction", ValueStore.class, String.class);
-            registerCustom(methodSet, TypeToken.getParameterized(Set.class, this.instanceType).getType());
-            registerCustom(methodPredicate, TypeToken.getParameterized(Predicate.class, this.instanceType).getType());
-            registerCustom(methodFormat, TypeToken.getParameterized(TypedFunction.class, this.instanceType, String.class).getType());
-            registerCustom(methodDouble, TypeToken.getParameterized(TypedFunction.class, this.instanceType, Double.class).getType());
+            registerCustom(store, methodSet, TypeToken.getParameterized(Set.class, this.instanceType).getType());
+            registerCustom(store, methodPredicate, TypeToken.getParameterized(Predicate.class, this.instanceType).getType());
+            registerCustom(store, methodFormat, TypeToken.getParameterized(TypedFunction.class, this.instanceType, String.class).getType());
+            registerCustom(store, methodDouble, TypeToken.getParameterized(TypedFunction.class, this.instanceType, Double.class).getType());
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }

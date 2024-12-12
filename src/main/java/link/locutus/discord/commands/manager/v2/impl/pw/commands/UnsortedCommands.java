@@ -1938,15 +1938,25 @@ public class UnsortedCommands {
                                      "Otherwise the audit will be run on the last fetched info")@Switch("u") boolean forceUpdate,
                              @Arg("Include full descriptions in the audit sheet results\n" +
                                      "Otherwise only raw data will be included")@Switch("v") boolean verbose,
+                             @Switch("n") boolean allowNonAlliance,
+                           @Switch("d") boolean skipDiscordAudits,
+                           @Switch("a") boolean skipApiAudits,
+                           @Switch("w") boolean warningOrHigher,
                              @Switch("s") SpreadSheet sheet) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
         if (includeAudits == null) {
-            includeAudits = new HashSet<>();
+            includeAudits = new LinkedHashSet<>();
             for (IACheckup.AuditType value : IACheckup.AuditType.values()) {
                 if (excludeAudits == null || !excludeAudits.contains(value)) {
                     includeAudits.add(value);
                 }
             }
         }
+        if (excludeAudits != null) {
+            includeAudits.removeAll(excludeAudits);
+        }
+        if (warningOrHigher) includeAudits.removeIf(f -> f.severity.ordinal() < IACheckup.AuditSeverity.WARNING.ordinal());
+        if (skipApiAudits) includeAudits.removeIf(f -> f.requiresApi());
+        if (skipDiscordAudits) includeAudits.removeIf(f -> f.requiresDiscord());
 
         if (nations == null) {
             nations = db.getAllianceList().getNations(true, 0, true);
@@ -1955,7 +1965,7 @@ public class UnsortedCommands {
         AtomicInteger appRemoved = new AtomicInteger();
         AtomicInteger vmRemoved = new AtomicInteger();
         nations.removeIf(f -> {
-            if (!db.isAllianceId(f.getAlliance_id())) {
+            if (!db.isAllianceId(f.getAlliance_id()) && !allowNonAlliance) {
                 notAllianceRemoved.incrementAndGet();
                 return true;
             }
@@ -2090,6 +2100,10 @@ public class UnsortedCommands {
         if (!nationBySeverity.isEmpty()) {
             nationBySeverity = ArrayUtil.sortMap(nationBySeverity, false);
             msg.append("## \\# Nations By Severity\n- `" + StringMan.getString(nationBySeverity) + "`\n");
+        }
+        msg.append("## Audit Description:\n");
+        for (IACheckup.AuditType audit : includeAudits) {
+            msg.append("- " + audit.name() + "[" + audit.infoType + "]: " + audit.description + "\n");
         }
         msg.send();
     }

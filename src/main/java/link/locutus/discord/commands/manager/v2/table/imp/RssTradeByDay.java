@@ -95,13 +95,12 @@ public class RssTradeByDay extends SimpleTable<Map.Entry<Long, Long>> {
     @Override
     protected SimpleTable<Map.Entry<Long, Long>> writeData() {
         for (long day = minDay; day <= maxDay; day++) {
-            long dayOffset = day - minDay;
             Map<ResourceType, Map.Entry<Long, Long>> volume = volumeByDay.get(day);
             if (volume == null) volume = Collections.emptyMap();
 
             Map.Entry<Long, Long> rssVolume = volume.get(type);
             if (rssVolume != null) {
-                add(dayOffset, rssVolume);
+                add(day, rssVolume);
             }
         }
         return this;
@@ -129,6 +128,6 @@ public class RssTradeByDay extends SimpleTable<Map.Entry<Long, Long>> {
 
     @Override
     public void add(long day, Map.Entry<Long, Long> rssVolume) {
-        add(day, rssVolume.getKey(), rssVolume.getValue());
+        add(day - minDay, rssVolume.getKey(), rssVolume.getValue());
     }
 }

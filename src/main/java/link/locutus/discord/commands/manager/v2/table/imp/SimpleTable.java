@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.io.IOException;
 
@@ -34,5 +35,9 @@ public abstract class SimpleTable<T> extends TimeNumericTable<T> {
 
     public byte[] write() throws IOException {
         return write(getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin());
+    }
+
+    public WebGraph toHtmlJson() {
+        return toHtmlJson(getTimeFormat(), getNumberFormat(), getGraphType(), getOrigin());
     }
 }
