@@ -1951,6 +1951,9 @@ public class UnsortedCommands {
                 }
             }
         }
+        if (excludeAudits != null) {
+            includeAudits.removeAll(excludeAudits);
+        }
         if (warningOrHigher) includeAudits.removeIf(f -> f.severity.ordinal() < IACheckup.AuditSeverity.WARNING.ordinal());
         if (skipApiAudits) includeAudits.removeIf(f -> f.requiresApi());
         if (skipDiscordAudits) includeAudits.removeIf(f -> f.requiresDiscord());
@@ -2097,6 +2100,10 @@ public class UnsortedCommands {
         if (!nationBySeverity.isEmpty()) {
             nationBySeverity = ArrayUtil.sortMap(nationBySeverity, false);
             msg.append("## \\# Nations By Severity\n- `" + StringMan.getString(nationBySeverity) + "`\n");
+        }
+        msg.append("## Audit Description:\n");
+        for (IACheckup.AuditType audit : includeAudits) {
+            msg.append("- " + audit.name() + "[" + audit.infoType + "]: " + audit.description + "\n");
         }
         msg.send();
     }
