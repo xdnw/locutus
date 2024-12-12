@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -1979,6 +1980,7 @@ public class UnsortedCommands {
             }
             return false;
         });
+        Set<DBNation> aaNations = nations.stream().filter(f -> db.isAllianceId(f.getAlliance_id())).collect(Collectors.toSet());
 
         if (nations.isEmpty()) {
             StringBuilder msg = new StringBuilder("No nations found");
@@ -1993,7 +1995,7 @@ public class UnsortedCommands {
             }
             throw new IllegalArgumentException(msg.toString());
         }
-        IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(nations), false);
+        IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaNations), false);
         IACheckup.AuditType[] audits = includeAudits.toArray(new IACheckup.AuditType[0]);
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = checkup.checkup(nations, null, audits, !forceUpdate);
 
