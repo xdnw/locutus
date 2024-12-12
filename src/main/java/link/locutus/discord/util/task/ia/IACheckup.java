@@ -1,6 +1,6 @@
 package link.locutus.discord.util.task.ia;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
@@ -132,10 +132,8 @@ public class IACheckup {
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = new LinkedHashMap<>();
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
-            if (nation.getVm_turns() != 0 || nation.active_m() > 10000) continue;
-
+            if (nation.getVm_turns() != 0) continue;
             if (onEach != null) onEach.accept(nation);
-
             Map<AuditType, Map.Entry<Object, String>> nationMap = checkup(cacheStore, nation, auditTypes, fast, fast);
             result.put(nation, nationMap);
         }
@@ -169,9 +167,11 @@ public class IACheckup {
         if (cities.isEmpty()) {
             return new HashMap<>();
         }
+        boolean inactive = nation.active_m() > 10080;
+
         List<Transaction2> transactions = memberTransfers.computeIfAbsent(nation, f -> {
             try {
-                return nation.getTransactions(fast ? -1L : 1, false);
+                return nation.getTransactions(fast || inactive ? -1L : 1, false);
             } catch (RuntimeException e) {
                 e.printStackTrace();
                 return Locutus.imp().getBankDB().getTransactionsByNation(nation.getNation_id());
@@ -223,6 +223,14 @@ public class IACheckup {
                 return;
             }
         }
+        if (type.requiresApi() && stockpile == null) {
+            results.put(type, null);
+            return;
+        }
+        if (type.requiresDiscord() && !nation.isVerified()) {
+            results.put(type, null);
+            return;
+        }
         Map.Entry<Object, String> value = checkup(cacheStore, type, nation, cities, transactions, stockpile, individual, fast);
         results.put(type, value);
     }
@@ -234,80 +242,133 @@ public class IACheckup {
     }
 
     public enum AuditType {
-        CHECK_RANK("\uD83E\uDD47", AuditSeverity.WARNING),
-        INACTIVE("\uD83D\uDCA4", AuditSeverity.DANGER),
-        FINISH_OBJECTIVES("\uD83D\uDC69\u200D\uD83C\uDFEB", AuditSeverity.WARNING),
-        FIX_COLOR(FINISH_OBJECTIVES, "\uD83C\uDFA8", AuditSeverity.WARNING),
-        CHANGE_CONTINENT(FINISH_OBJECTIVES, "\uD83C\uDF0D", AuditSeverity.WARNING),
-        FIX_WAR_POLICY(FINISH_OBJECTIVES, "\uD83D\uDCDC", AuditSeverity.WARNING),
-        RAID(FINISH_OBJECTIVES, "\uD83D\uDD2A", AuditSeverity.WARNING),
-        UNUSED_MAP( "\uD83D\uDE34", AuditSeverity.WARNING),
-        BARRACKS(FINISH_OBJECTIVES, "\uD83C\uDFD5", AuditSeverity.WARNING),
-        INCORRECT_MMR(FINISH_OBJECTIVES, "\uD83C\uDFE2", AuditSeverity.WARNING),
-        BUY_SOLDIERS(BARRACKS, "\uD83D\uDC82", AuditSeverity.WARNING),
-        BUY_HANGARS(BUY_SOLDIERS, "\u2708\uFE0F", AuditSeverity.WARNING),
-        BUY_PLANES(BUY_HANGARS, "\u2708\uFE0F", AuditSeverity.WARNING),
-        BUY_SHIPS(BUY_PLANES, "\uD83D\uDEA2", AuditSeverity.WARNING),
-        BEIGE_LOOT(BUY_SOLDIERS, "\uD83D\uDC82", AuditSeverity.INFO),
-        RAID_TURN_CHANGE(BEIGE_LOOT, "\uD83C\uDFAF", AuditSeverity.INFO),
-        BUY_SPIES(FINISH_OBJECTIVES, "\uD83D\uDD75", AuditSeverity.WARNING),
-        GATHER_INTEL(BUY_SPIES, "\uD83D\uDD0E", AuditSeverity.INFO),
-        SPY_COMMAND(GATHER_INTEL, "\uD83D\uDCE1", AuditSeverity.INFO),
-        LOOT_COMMAND(SPY_COMMAND, "", AuditSeverity.INFO),
-        DAILY_SPYOPS(LOOT_COMMAND, "\uD83D\uDEF0", AuditSeverity.INFO),
-        DEPOSIT_RESOURCES(FINISH_OBJECTIVES, "\uD83C\uDFE6", AuditSeverity.WARNING),
-        CHECK_DEPOSITS(DEPOSIT_RESOURCES, "", AuditSeverity.INFO),
-        WITHDRAW_DEPOSITS(CHECK_DEPOSITS, "\uD83C\uDFE7", AuditSeverity.INFO),
-        OBTAIN_RESOURCES(FINISH_OBJECTIVES, "\uD83C\uDFE7", AuditSeverity.DANGER),
-        SAFEKEEP(FINISH_OBJECTIVES, "\uD83C\uDFE6", AuditSeverity.WARNING),
-        OBTAIN_WARCHEST(OBTAIN_RESOURCES, "\uD83C\uDFE7", AuditSeverity.INFO),
-        BUY_CITY(FINISH_OBJECTIVES, "\uD83C\uDFD9", AuditSeverity.INFO),
-        BUY_PROJECT(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.INFO),
-        BUY_RESOURCE_PRODUCTION_CENTER(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.INFO),
-        BUY_INFRA(FINISH_OBJECTIVES, "\uD83C\uDFD7", AuditSeverity.INFO),
-        BUY_LAND(FINISH_OBJECTIVES, "\uD83C\uDFDE", AuditSeverity.INFO),
-        UNPOWERED(FINISH_OBJECTIVES, "\uD83D\uDD0C", AuditSeverity.DANGER),
-        OVERPOWERED(FINISH_OBJECTIVES, "\u26A1", AuditSeverity.DANGER),
-        NOT_NUCLEAR(FINISH_OBJECTIVES, "\u2622", AuditSeverity.WARNING),
-        FREE_SLOTS(FINISH_OBJECTIVES, "\uD83D\uDEA7", AuditSeverity.DANGER),
-        NEGATIVE_REVENUE(FINISH_OBJECTIVES, "\uD83E\uDD7A", AuditSeverity.DANGER),
-        MISSING_PRODUCTION_BONUS(FINISH_OBJECTIVES, "\uD83D\uDCC8", AuditSeverity.WARNING),
-        EXCESS_HOSPITAL(FINISH_OBJECTIVES, "\uD83C\uDFE5", AuditSeverity.WARNING),
-        EXCESS_POLICE(FINISH_OBJECTIVES, "\uD83D\uDE93", AuditSeverity.WARNING),
-        EXCESS_RECYCLING(FINISH_OBJECTIVES, "\u267B", AuditSeverity.WARNING),
-        GENERATE_CITY_BUILDS(MISSING_PRODUCTION_BONUS, "", AuditSeverity.INFO),
-        ROI(GENERATE_CITY_BUILDS, "", AuditSeverity.INFO),
-        BLOCKADED("\uD83D\uDEA2", AuditSeverity.INFO),
+        CHECK_RANK("\uD83E\uDD47", AuditSeverity.WARNING, "position",
+                "Not a member of the alliance in-game", false, false),
+        INACTIVE("\uD83D\uDCA4", AuditSeverity.DANGER, "days inactive",
+                "Two or more days inactive", false, false),
+        FINISH_OBJECTIVES("\uD83D\uDC69\u200D\uD83C\uDFEB", AuditSeverity.WARNING, "false",
+                "Has one city in-game", false, false),
+        FIX_COLOR(FINISH_OBJECTIVES, "\uD83C\uDFA8", AuditSeverity.WARNING, "color",
+                "Not on the alliance color", false, false),
+        CHANGE_CONTINENT(FINISH_OBJECTIVES, "\uD83C\uDF0D", AuditSeverity.WARNING, "continent",
+                "Not in a continent that can build uranium (needed for self sufficient city power)", false, false),
+        FIX_WAR_POLICY(FINISH_OBJECTIVES, "\uD83D\uDCDC", AuditSeverity.WARNING, "war policy",
+                "War policy must be either fortress if no wars, or pirate", false, false),
+        RAID(FINISH_OBJECTIVES, "\uD83D\uDD2A", AuditSeverity.WARNING, "# available targets",
+                "Must have at least 4 raids going, or no suitable nations in range", false, false),
+        UNUSED_MAP( "\uD83D\uDE34", AuditSeverity.WARNING, "war ids",
+                "Has 12 MAP in raids against inactives", false, false),
+        BARRACKS(FINISH_OBJECTIVES, "\uD83C\uDFD5", AuditSeverity.WARNING, "building mmr",
+                "Has <5 barracks and is either below city 10, or is fighting an active nation", false, false),
+        INCORRECT_MMR(FINISH_OBJECTIVES, "\uD83C\uDFE2", AuditSeverity.WARNING, "building mmr",
+                "Does not match the REQUIRED_MMR set by the guild", false, true),
+        BUY_SOLDIERS(BARRACKS, "\uD83D\uDC82", AuditSeverity.WARNING, "soldier %",
+                "Has barracks, but has not bought soldiers OR has not bought barracks and the alliance is at war", false, false),
+        BUY_HANGARS(BUY_SOLDIERS, "\u2708\uFE0F", AuditSeverity.WARNING, "building mmr",
+                "Nation is c10 or higher, with >1.7k infra, at peace, and has <5 avg. hangars", false, false),
+        BUY_PLANES(BUY_HANGARS, "\u2708\uFE0F", AuditSeverity.WARNING, "plane %",
+                "Nation is c10 or higher, with >1.7k infra, at peace, and has not bought planes in its hangars", false, false),
+        BUY_SHIPS(BUY_PLANES, "\uD83D\uDEA2", AuditSeverity.WARNING, "ships",
+                "Nation is at war with a pirate (weaker air and <4 ships), and has no ships", false, false),
+        BEIGE_LOOT(BUY_SOLDIERS, "\uD83D\uDC82", AuditSeverity.INFO, "LINK",
+                "Has not used the bot to find beige targets to raid", true, false), // TODO FIXME web link
+        RAID_TURN_CHANGE(BEIGE_LOOT, "\uD83C\uDFAF", AuditSeverity.INFO, "false",
+                "Has not declared a war at turn change", true, false), // TODO FIXME web link
+        BUY_SPIES(FINISH_OBJECTIVES, "\uD83D\uDD75", AuditSeverity.WARNING, "spies",
+                "Nation is below spy cap and has not bought in 2 or more days", false, false),
+        GATHER_INTEL(BUY_SPIES, "\uD83D\uDD0E", AuditSeverity.INFO, "false",
+                "Nation has not used the `/spy find intel` command", true, false),
+        SPY_COMMAND(GATHER_INTEL, "\uD83D\uDCE1", AuditSeverity.INFO, "false",
+                "Nation has not used the `/nation spies` command", true, false),
+        LOOT_COMMAND(SPY_COMMAND, "", AuditSeverity.INFO, "false",
+                "Nation has not used the `/nation loot` command", true, false),
+        DAILY_SPYOPS(LOOT_COMMAND, "\uD83D\uDEF0", AuditSeverity.WARNING, "days since last spy op",
+        "Nation has not done a spy op in 3 days nor pinged the bot with a spy report (if no api tracking is available)", false, true),
+        DEPOSIT_RESOURCES(FINISH_OBJECTIVES, "\uD83C\uDFE6", AuditSeverity.WARNING, "false",
+                "Nation has NEVER deposited resources into the alliance bank", false, false),
+        CHECK_DEPOSITS(DEPOSIT_RESOURCES, "", AuditSeverity.INFO, "false",
+                "Nation has NEVER checked their balance using the command", true, false),
+        WITHDRAW_DEPOSITS(CHECK_DEPOSITS, "\uD83C\uDFE7", AuditSeverity.INFO, "false",
+                "Nation has never received funds from the alliance", false, false),
+        OBTAIN_RESOURCES(FINISH_OBJECTIVES, "\uD83C\uDFE7", AuditSeverity.DANGER, "daily upkeep missing",
+                "Missing resources for nation upkeep", false, true),
+        SAFEKEEP(FINISH_OBJECTIVES, "\uD83C\uDFE6", AuditSeverity.WARNING, "amount to deposit",
+                "Exceeds 3x alliance warchest, and 7d of nation upkeep", false, true),
+        OBTAIN_WARCHEST(OBTAIN_RESOURCES, "\uD83C\uDFE7", AuditSeverity.WARNING, "resources missing",
+                "C10+, Has >80% planes and has below the warchest requirements", false, true),
+        BUY_CITY(FINISH_OBJECTIVES, "\uD83C\uDFD9", AuditSeverity.INFO, "cities",
+                "Nation is c10+ or has raided $200M, is at peace, and has no city timer", false, false),
+        BUY_PROJECT(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.INFO, "free project slots",
+                "Nation has no project timer and free project slots", false, false),
+        ACTIVITY_CENTER(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.WARNING, "BUY/SELL",
+                "Nation is above AC city cutoff OR nation has not purchased activity center and has free project slots and no timer", false, false),
+        BUY_INFRA(FINISH_OBJECTIVES, "\uD83C\uDFD7", AuditSeverity.WARNING, "city ids",
+                "Nation has less than 1.2k infra worth of buildings in their cities (bot does not recommend rebuilding damaged infra)", false, false),
+        BUY_LAND(FINISH_OBJECTIVES, "\uD83C\uDFDE", AuditSeverity.WARNING, "city ids",
+                "Nation has below 800 land, or >33% less land than infra in their cities and less than 2k land", false, false),
+        UNPOWERED(FINISH_OBJECTIVES, "\uD83D\uDD0C", AuditSeverity.DANGER, "city ids",
+                "Nation has unpowered cities", false, false),
+        OVERPOWERED(FINISH_OBJECTIVES, "\u26A1", AuditSeverity.DANGER, "city ids",
+                "Nation has cities with excess power plants", false, false),
+        NOT_NUCLEAR(FINISH_OBJECTIVES, "\u2622", AuditSeverity.WARNING, "city ids",
+                "Nation has cities with no nuclear power plants", false, false),
+        FREE_SLOTS(FINISH_OBJECTIVES, "\uD83D\uDEA7", AuditSeverity.DANGER, "city ids",
+                "Nation has cities with free building slots", false, false),
+        NEGATIVE_REVENUE(FINISH_OBJECTIVES, "\uD83E\uDD7A", AuditSeverity.DANGER, "city ids",
+                "Nation has cities with negative revenue", false, false),
+        MISSING_PRODUCTION_BONUS(FINISH_OBJECTIVES, "\uD83D\uDCC8", AuditSeverity.WARNING, "city ids",
+                "Nation has cities with two or more resources missing production bonus", false, false),
+        EXCESS_HOSPITAL(FINISH_OBJECTIVES, "\uD83C\uDFE5", AuditSeverity.WARNING, "city ids",
+                "Nation has cities with excess hospitals", false, false),
+        EXCESS_POLICE(FINISH_OBJECTIVES, "\uD83D\uDE93", AuditSeverity.WARNING, "city ids",
+                "Nation has cities with excess police stations", false, false),
+        EXCESS_RECYCLING(FINISH_OBJECTIVES, "\u267B", AuditSeverity.WARNING, "city ids",
+                "Nation has cities with excess recycling centers", false, false),
+        GENERATE_CITY_BUILDS(MISSING_PRODUCTION_BONUS, "", AuditSeverity.INFO, "false",
+                "Nation has not used the bot to generate city builds", true, false),
+//        ROI(GENERATE_CITY_BUILDS, "", AuditSeverity.INFO, "false",
+//                "Nation has not used the bot to generate ROI", true, false),
+        BLOCKADED("\uD83D\uDEA2", AuditSeverity.WARNING, "blockader nation ids",
+                "Nation is blockaded by other nations", false, false),
 //        LOSE_A_WAR(RAID_TURN_CHANGE, "", AuditSeverity.INFO),
 //        PLAN_A_RAID_WITH_FRIENDS(LOSE_A_WAR, "", AuditSeverity.INFO),
 //        CREATE_A_WAR_ROOM(PLAN_A_RAID_WITH_FRIENDS, "", AuditSeverity.INFO),
         ;
 
         public final AuditType required;
-        public final String emoji;
+        public final String emoji, infoType;
         public final AuditSeverity severity;
+        public final String description;
+        public final boolean requiresDiscord, requiresApi;
 
-        AuditType(String emoji) {
-            this(null, emoji);
+        AuditType(String emoji, AuditSeverity severity, String infoType, String description, boolean requiresDiscord, boolean requiresApi) {
+            this(null, emoji, severity, infoType, description, requiresDiscord, requiresApi);
         }
 
-        AuditType(String emoji, AuditSeverity severity) {
-            this(null, emoji, severity);
-        }
-
-        AuditType(AuditType required, String emoji) {
-            this(required, emoji, AuditSeverity.INFO);
-        }
-
-        AuditType(AuditType required, String emoji, AuditSeverity severity) {
+        AuditType(AuditType required, String emoji, AuditSeverity severity, String infoType, String description, boolean requiresDiscord, boolean requiresApi) {
             this.required = required;
             this.emoji = emoji;
             this.severity = severity;
+            this.infoType = infoType;
+            this.description = description;
+            this.requiresDiscord = requiresDiscord;
+            this.requiresApi = requiresApi;
         }
 
         @Command(desc = "Audit severity")
         public AuditSeverity getSeverity() {
             return severity;
+        }
+
+
+        @Command(desc = "Audit requires API access")
+        public boolean requiresApi() {
+            return requiresApi;
+        }
+
+        @Command(desc = "Audit requries member has discord")
+        public boolean requiresDiscord() {
+            return requiresDiscord;
         }
 
         @Command(desc = "Audit emoji")
@@ -338,10 +399,10 @@ public class IACheckup {
 
                 if (!aaIds.contains(nation.getAlliance_id())) {
                     int id = aaIds.iterator().next();
-                    return new AbstractMap.SimpleEntry<>("APPLY", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + id);
+                    return new AbstractMap.SimpleEntry<>("NONE", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + id);
                 }
                 if (nation.getPosition() <= 1) {
-                    return new AbstractMap.SimpleEntry<>("MEMBER", "Please discuss with your mentor about becoming a member");
+                    return new AbstractMap.SimpleEntry<>("APPLICANT", "Please discuss with your mentor about becoming a member");
                 }
                 return null;
             }
@@ -382,7 +443,7 @@ public class IACheckup {
                 }
                 String desc = "Soldiers are the best unit for looting enemies and necessary for fighting wars, and are cheap. Get 5 barracks in each of your cities. <https://politicsandwar.com/cities/>\n\n" +
                         "*Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*";
-                return new AbstractMap.SimpleEntry<>(nation.getMMR(), desc);
+                return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), desc);
             }
             case INCORRECT_MMR:
                 Map<NationFilter, MMRMatcher> requiredMmrMap = db.getOrNull(GuildKey.REQUIRED_MMR);
@@ -420,7 +481,7 @@ public class IACheckup {
 //                    }
 //                }
 //                return null;
-            case BUY_RESOURCE_PRODUCTION_CENTER:
+            case ACTIVITY_CENTER:
                 return checkBuyRpc(db, nation, cities);
             case BUY_INFRA:
                 return checkBuyInfra(nation, cities, db);
@@ -492,8 +553,9 @@ public class IACheckup {
 //                return null;
 //            }
             case DEPOSIT_RESOURCES: {
-                Set<Integer> aaIds = db.getAllianceIds();
+                Set<Integer> aaIds = new IntOpenHashSet(db.getAllianceIds());
                 if (!aaIds.isEmpty()) {
+                    aaIds.add(nation.getAlliance_id());
                     for (Transaction2 transaction : transactions) {
                         if (aaIds.contains((int) transaction.receiver_id)) return null;
                     }
@@ -597,17 +659,17 @@ public class IACheckup {
                                 MathMan.format(maxInfra)).toSlashCommand());
                 return new AbstractMap.SimpleEntry<>(false, response.toString());
             }
-            case ROI: {
-                if (nation.getMeta(NationMeta.INTERVIEW_ROI) != null) return null;
-
-                String desc = "National Projects provide nation level benefits:\n" +
-                        "<https://politicsandwar.com/nation/projects/>\n" +
-                        "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
-                        "To see which projects the bot recommends (for a 120 day period), use:\n" +
-                        "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
-                        "We recommend getting two resource projects after your 10th city";
-                return new AbstractMap.SimpleEntry<>(false, desc);
-            }
+//            case ROI: {
+//                if (nation.getMeta(NationMeta.INTERVIEW_ROI) != null) return null;
+//
+//                String desc = "National Projects provide nation level benefits:\n" +
+//                        "<https://politicsandwar.com/nation/projects/>\n" +
+//                        "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
+//                        "To see which projects the bot recommends (for a 120 day period), use:\n" +
+//                        "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
+//                        "We recommend getting two resource projects after your 10th city";
+//                return new AbstractMap.SimpleEntry<>(false, desc);
+//            }
             case DAILY_SPYOPS: {
                 ByteBuffer day = nation.getMeta(NationMeta.SPY_OPS_DAY);
                 long dayVal = day == null ? 0 : day.getLong();
@@ -664,7 +726,6 @@ public class IACheckup {
 
     private Map.Entry<Object, String> checkWarchest(DBNation nation, Map<ResourceType, Double> stockpile, GuildDB db) {
         if (nation.getCities() < 10) return null;
-        if (!db.getCoalition("enemies").isEmpty()) return null;
         Map<ResourceType, Double> perCity = db.getOrNull(GuildKey.WARCHEST_PER_CITY);
         if (perCity == null) return null;
         int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.getUnitCap();
@@ -724,7 +785,7 @@ public class IACheckup {
         avgHangars /= cities.size();
         if (avgHangars <= 4) {
             String desc = "The following cities have < 5 hangars: ";
-            return new AbstractMap.SimpleEntry<>(avgHangars, desc);
+            return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), desc);
         }
         return null;
     }
@@ -736,9 +797,9 @@ public class IACheckup {
         if (nation.getNumWars() == 0) return null;
         for (DBWar war : nation.getActiveWars()) {
             DBNation other = war.getNation(!war.isAttacker(nation));
-            if (other == null || other.getShips() > 1 || other.getAircraft() > nation.getAircraft()) return null;
+            if (other == null || other.getShips() > 3 || other.getAircraft() > nation.getAircraft()) return null;
         }
-        String desc = "Buy ships to prevent yourself from being 1 shipped in a conflict";
+        String desc = "Buy ships to prevent yourself from being 3 shipped in a conflict";
         return new AbstractMap.SimpleEntry<>(0, desc);
     }
 
@@ -763,7 +824,7 @@ public class IACheckup {
             int previousAir = nation.getUnitsAt(MilitaryUnit.AIRCRAFT, cutoff);
             if (previousAir == nation.getAircraft()) {
                 String desc = "Planes can attack ground, air, or sea and are the best unit for defending your infra and allies. You can buy aircraft from the military tab. <https://politicsandwar.com/nation/military/aircraft/>";
-                return new AbstractMap.SimpleEntry<>(nation.getAircraft() / (double) threshold, desc);
+                return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getAircraftPct() * 100) + "%", desc);
             }
         }
         return null;
@@ -847,12 +908,12 @@ public class IACheckup {
     private Map.Entry<Object, String> checkBuyRpc(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
         if (nation.getCities() > Projects.ACTIVITY_CENTER.maxCities()) {
             if (nation.hasProject(Projects.ACTIVITY_CENTER)) {
-                return Map.entry("-1", "Go to the projects tab and sell activity center");
+                return Map.entry("SELL", "Go to the projects tab and sell activity center");
             }
             return null;
         }
         if (nation.getProjectTurns() > 0 || nation.getFreeProjectSlots() <= 0) return null;
-        return new AbstractMap.SimpleEntry<>("1", "Go to the projects tab and buy the Activity Center");
+        return new AbstractMap.SimpleEntry<>("BUY", "Go to the projects tab and buy the Activity Center");
     }
 
     private Map.Entry<Object, String> checkBuyProject(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
@@ -861,7 +922,7 @@ public class IACheckup {
 
         if (nation.getProjectAbsoluteTurn() != null && nation.getProjectTurns() <= 0) {
             if (nation.isBlockaded()) return null;
-            return new AbstractMap.SimpleEntry<>("1", "Your project timer is up. Use the #resource-request channel to request funds for a project");
+            return new AbstractMap.SimpleEntry<>(freeProjects, "Your project timer is up.");
         }
         return null;
     }
@@ -951,12 +1012,12 @@ public class IACheckup {
                 return null;
             }
         }
-        if (nation.getCityTurns() <= 0 && nation.getCities() < 20) {
+        if (nation.getCityTurns() <= 0) {
             if (nation.isBlockaded()) return null;
 
-            double cost = PW.City.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING), nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY), nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
+            double cost = PW.City.cityCost(nation, nation.getCities(), nation.getCities() + 1);
             Map<ResourceType, Double> resources = Collections.singletonMap(ResourceType.MONEY, cost);
-            return new AbstractMap.SimpleEntry<>(nation.getCities(), "Your city timer is up. Use the #resource-request channel to request funds for a city");
+            return new AbstractMap.SimpleEntry<>(nation.getCities(), "Your city timer is up");
         }
         return null;
     }
@@ -1043,7 +1104,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkObjectives(DBNation nation) {
         if (nation.getCities() == 1) {
             String message = "You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/objectives/>" + " and complete the objectives for some easy cash.";
-            return new AbstractMap.SimpleEntry<>(true, message);
+            return new AbstractMap.SimpleEntry<>(false, message);
         }
         return null;
     }
@@ -1081,14 +1142,14 @@ public class IACheckup {
         boolean hasRaids = false;
         if (!enemyAAs.isEmpty()) {
             for (DBNation enemy : Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs)) {
-                if (enemy.getScore() >= score * 1.25 || enemy.getScore() <= minScore) continue;
-                if (enemy.getVm_turns() != 0) continue;
-                if (enemy.getCities() > nation.getCities() * 1.5) continue;
+                if (enemy.isBeige()) continue;
                 if (enemy.getDef() >= 3) continue;
+                if (enemy.getScore() >= score * 1.25 || enemy.getScore() <= minScore) continue;
+                if (enemy.getCities() > nation.getCities() * 1.5) continue;
+                if (enemy.getVm_turns() != 0) continue;
                 if (enemy.hasUnsetMil()) continue;
                 if (enemy.getAircraft() > nation.getAircraft()) continue;
                 if (enemy.getGroundStrength(true, true) > nation.getGroundStrength(true, false)) continue;
-                if (enemy.isBeige()) continue;
                 targets.add(enemy);
                 hasEnemies = true;
             }
@@ -1345,7 +1406,7 @@ public class IACheckup {
         }
 
         if (!citiesMissingBarracks.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>(nation.getAircraft(), "The following cities have less than 5 barracks: " + StringMan.getString(citiesMissingBarracks) + " ");
+            return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getSoldierPct() * 100) + "%", "The following cities have less than 5 barracks: " + StringMan.getString(citiesMissingBarracks) + " ");
         }
 
         if (nation.getCities() >= 10 && nation.getNumWars() != 0 && nation.getAvg_infra() > 1000) {
@@ -1366,7 +1427,7 @@ public class IACheckup {
                 double canBuy = Math.min(pop * 0.15, 3000 * numBarracks);
                 message = "You can purchase up to " + (int) canBuy + " soldiers.";
             }
-            return new AbstractMap.SimpleEntry<>(nation.getAircraft(), message);
+            return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getSoldierPct() * 100) + "%", message);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -1432,7 +1493,7 @@ public class IACheckup {
         }
         if (unpoweredInfra.isEmpty() && unpoweredRss.isEmpty()) return null;
 
-        Set<Integer> unpowered = new HashSet<>();
+        Set<Integer> unpowered = new LinkedHashSet<>();
         unpowered.addAll(unpoweredInfra);
         unpowered.addAll(unpoweredRss);
 
