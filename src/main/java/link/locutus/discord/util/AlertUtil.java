@@ -96,9 +96,7 @@ public class AlertUtil {
             if (optOut != null && optOut.contains(type)) return;
         }
 
-        Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole2(channel.getGuild());
-        Role pingOptOut2 = Roles.AUDIT_ALERT_OPT_OUT.toRole2(guild);
-        boolean hasOptOut = (pingOptOut != null && member.getRoles().contains(pingOptOut)) || (pingOptOut2 != null && member.getRoles().contains(pingOptOut2));
+        boolean hasOptOut = Roles.AUDIT_ALERT_OPT_OUT.has(user, channel.getGuild()) || (channel.getGuild() != guild && Roles.AUDIT_ALERT_OPT_OUT.has(user, guild));
         if (hasOptOut) {
             message = member.getEffectiveName() + " " + message;
         } else {
