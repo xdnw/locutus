@@ -529,12 +529,12 @@ public class IACheckup {
                 return stockpile == null || stockpile.isEmpty() ? null : checkWarchest(nation, stockpile, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
-                    String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("84").toString();
-                    String shortDesc = "`" + cmd + "`";
+//                    String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("84").toString();
+                    String cmd = "https://www.locutus.link/#/raid/" + nation.getId();
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +
-                            "> `" + cmd + "`";
-                    return new AbstractMap.SimpleEntry<>(shortDesc, longDesc);
+                            "> " + cmd;
+                    return new AbstractMap.SimpleEntry<>(cmd, longDesc);
                 }
                 return null;
             case RAID_TURN_CHANGE:
@@ -866,9 +866,10 @@ public class IACheckup {
             }
         }
 
-        String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("12").toSlashCommand(false);
+//        String cmd = CM.war.find.raid.cmd.targets("*").numResults("15").beigeTurns("12").toSlashCommand(false);
+        String cmd = "https://www.locutus.link/#/raid/" + me.getId();
         String longDesc = "Let's declare on a target as they come off beige:\n" +
-                "1. Use e.g. `" + cmd + "` to find a target that ends beige in the next 12 turns\n" +
+                "1. Use e.g. " + cmd + " to find a target that ends beige in the next 12 turns\n" +
                 "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
                 "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
                 "*Note:*\n" +
@@ -1182,9 +1183,8 @@ public class IACheckup {
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");
             else resposnse.append("or ");
-
-            String cmd = CM.war.find.raid.cmd.targets("*").toSlashCommand(false);
-            resposnse.append("`" + cmd + "` ");
+            String cmd = "https://www.locutus.link/#/raid/" + nation.getId();
+            resposnse.append(cmd);
         }
         resposnse.append("for some juicy targets");
         return new AbstractMap.SimpleEntry<>(targets.size(), resposnse.toString());

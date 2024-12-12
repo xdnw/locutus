@@ -897,7 +897,7 @@ public class WarCommands {
         }
 
         if (!ignoreDNR) {
-            Function<DBNation, Boolean> dnr = db.getCanRaid();
+            Function<DBNation, Boolean> dnr = db == null ? f -> true : db.getCanRaid();
             nations.removeIf(f -> !dnr.apply(f));
         }
 
