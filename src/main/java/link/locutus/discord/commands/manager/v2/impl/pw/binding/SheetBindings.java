@@ -105,6 +105,9 @@ public class SheetBindings extends BindingHelper {
                     continue;
                 }
                 List<String> split = StringMan.split(name, ":", 2);
+                if (split.size() != 2) {
+                    continue;
+                }
                 String typeNameAndModifier = split.get(0);
                 String modifier = null;
                 if (typeNameAndModifier.contains("(")) {
