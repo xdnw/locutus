@@ -90,7 +90,9 @@ public class WarRoom {
                 DiscordUtil.deleteChannelSafe(oldChannel);
                 warCategory.getGuildDb().deleteWarRoomChannelCache(Set.of(oldChannel.getIdLong()));
             }
-            warCategory.getGuildDb().addWarRoomCache(target.getId(), channel.getIdLong());
+            if (reason == WarCatReason.CACHE) {
+                warCategory.getGuildDb().addWarRoomCache(target.getId(), channelId);
+            }
         } else if (this.channel != channel) {
             this.channel = channel;
         }
