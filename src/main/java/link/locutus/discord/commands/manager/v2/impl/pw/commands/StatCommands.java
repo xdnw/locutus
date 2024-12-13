@@ -484,7 +484,8 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank alliances by a metric")
-    public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command, AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
@@ -501,7 +502,8 @@ public class StatCommands {
 
     @NoFormat
     @Command(desc = "Rank alliances by an alliance attribute")
-    public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, TypedFunction<DBAlliance, Double> attribute, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command, TypedFunction<DBAlliance, Double> attribute, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
@@ -531,7 +533,8 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank alliances by a metric over a specified time period")
-    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, AllianceMetric metric, @Default Set<DBAlliance> alliances, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turnStart = TimeUtil.getTurn(timeStart);
         long turnEnd = TimeUtil.getTurn(timeEnd);
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
