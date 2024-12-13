@@ -289,7 +289,7 @@ public class IAEndpoints extends PageHelper {
     @Command
     @ReturnType(WebTargets.class)
     public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me, @Default @Me User user,
-                           DBNation nation,
+                           @Default DBNation nation,
                            @Default("*") Set<DBNation> nations,
                            @Switch("a") boolean includeAllies,
                            @Switch("o") boolean ignoreODP,

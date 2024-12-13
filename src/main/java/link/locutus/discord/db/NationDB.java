@@ -3615,7 +3615,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getAllianceMetrics(Set<Integer> allianceIds, Collection<AllianceMetric> metrics, long turnStart, long turnEnd) {
         if (metrics.isEmpty()) throw new IllegalArgumentException("No metrics provided");
-        if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
+        if (allianceIds.isEmpty()) throw new IllegalArgumentException("No alliances provided");
         Set<Integer> aaIdsFU = new IntOpenHashSet(allianceIds);
 
         List<Integer> alliancesSorted = new ArrayList<>(aaIdsFU);
