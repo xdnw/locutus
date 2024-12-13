@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.util.*;
@@ -220,8 +221,26 @@ public class TsEndpointGenerator {
         boolean hasArg = !cmd.getUserParameters().isEmpty();
         String argValues, argValuesAllOptional, cacheArg;
         if (hasArg) {
-            argValues = "{" + cmd.getUserParameters().stream().map(p -> p.getName() + (p.isOptional() ? "?" : "") + ": string").reduce((a, b) -> a + ", " + b).orElse("") + "}";
-            argValuesAllOptional = "{" + cmd.getUserParameters().stream().map(p -> p.getName() + "?: string").reduce((a, b) -> a + ", " + b).orElse("") + "}";
+            List<String> argTypes = new ArrayList<>();
+            List<String> argTypesAllOptional = new ArrayList<>();
+            for (ParameterData param : cmd.getUserParameters()) {
+                List<String> allowedTypes = new ArrayList<>();
+                Type type = param.getType();
+                if (type instanceof ParameterizedType pt && pt.getRawType() == List.class && pt.getActualTypeArguments().length == 1 && pt.getActualTypeArguments()[0] == String.class) {
+                    allowedTypes.add("string[]");
+                }
+                allowedTypes.add("string");
+                String paramName = param.getName() + "?: " + StringMan.join(allowedTypes, " | ");
+                String paramOptional = param.getName() + "?: " + StringMan.join(allowedTypes, " | ");
+                if (param.isOptional()) {
+                    argTypes.add(paramOptional);
+                } else {
+                    argTypes.add(paramName);
+                }
+                argTypesAllOptional.add(paramOptional);
+            }
+            argValues = "{" + StringMan.join(argTypes, ", ") + "}";
+            argValuesAllOptional = "{" + StringMan.join(argTypesAllOptional, ", ") + "}";
             cacheArg = "combine(" + constName + ".endpoint.cache, args)";
         } else {
             argValues = "Record<string, never>";

@@ -416,7 +416,6 @@ public class SpyBlitzGenerator {
             Spyop op2 = createOp(attacker, row.get(6) + "", "COVERT" + "", update);
 
             if (op1 == null) {
-//                System.out.println("OP is null"); // todo add more info like attacker and row.get(3) / 6
                 warnings.accept("Operation is null " + attacker.getMarkdownUrl() + " | " + row.get(3) + " | " + row.get(6));
             }
 

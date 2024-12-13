@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class CoalitionGraphEndpoints {
     @Command()
     @ReturnType(CoalitionGraphs.class)
-    public CoalitionGraphs globalStats(WebStore ws, Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, int topX) {
+    public CoalitionGraphs globalStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, int topX) {
         if (topX > 250) throw new IllegalArgumentException("Treaty information is not available for those alliances (outside top 250)");
 
         long startTurn = TimeUtil.getTurn(start);
@@ -73,7 +73,7 @@ public class CoalitionGraphEndpoints {
     @Command()
     @NoFormat
     @ReturnType(CoalitionGraphs.class)
-    public CoalitionGraphs globalTierStats(WebStore ws, Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
+    public CoalitionGraphs globalTierStats(Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
         if (topX > 250) throw new IllegalArgumentException("Treaty information is not available for those alliances (outside top 80)");
 
         boolean removeVM = true;

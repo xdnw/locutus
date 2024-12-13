@@ -1377,7 +1377,6 @@ public enum AllianceMetric implements IAllianceMetric {
                 }
             }
         }
-
         return Locutus.imp().getNationDB().getAllianceMetrics(aaIds, finalMetrics, minTurn, maxTurn);
     }
 }
