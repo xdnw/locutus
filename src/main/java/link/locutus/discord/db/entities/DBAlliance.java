@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
@@ -7,6 +8,7 @@ import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -26,6 +28,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -55,6 +58,8 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -120,7 +125,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = "Get value of an alliance metric at a date")
-    public double getMetricAt(ValueStore store, AllianceMetric metric, @Timestamp long date) {
+    public double getMetricAt(ValueStore store, AllianceMetric metric, @Default @Timestamp Long date) {
+        if (date == null) return metric.apply(this);
         long turn = TimeUtil.getTurn(date);
         if (turn == TimeUtil.getTurn()) {
             return metric.apply(this);
@@ -1708,6 +1714,18 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command
     public double getCities() {
         return getMemberDBNations().stream().mapToDouble(DBNation::getCities).sum();
+    }
+
+    @Command
+    public Map<String, Object> getMilitarizationGraph(@Default @Timestamp Long start, @Default @Timestamp Long end) {
+        if (end == null) end = System.currentTimeMillis();
+        if (start == null) start = end - TimeUnit.DAYS.toMillis(7);
+        long startTurn = TimeUtil.getTurn(start);
+        long endTurn = TimeUtil.getTurn(end);
+        List<AllianceMetric> metrics = List.of(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT);
+        CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, this.getName(), Collections.singleton(this));
+        WebGraph toSerialize = table.toHtmlJson();
+        return WebUtil.convertToMap(toSerialize);
     }
 
     public Map<DBNation, Integer> updateOffSpyOps() {

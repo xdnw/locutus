@@ -2,6 +2,7 @@ package link.locutus.discord.web;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
 import in.wilsonl.minifyhtml.Configuration;
 import in.wilsonl.minifyhtml.MinifyHtml;
 import io.javalin.http.*;
@@ -46,6 +47,12 @@ public class WebUtil {
     public static String mailLogin(DBNation nation, boolean backend, boolean allowExisting) throws IOException {
         ApiKeyPool pool = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
         return mailLogin(pool, nation, backend, allowExisting);
+    }
+
+    public static Map<String, Object> convertToMap(Object obj) {
+        Gson gson = new Gson();
+        Type type = new TypeToken<Map<String, Object>>() {}.getType();
+        return gson.fromJson(gson.toJson(obj), type);
     }
 
     public static String mailLogin(ApiKeyPool pool, DBNation nation, boolean backend, boolean allowExisting) throws IOException {

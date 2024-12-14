@@ -9,6 +9,7 @@ import com.opencsv.CSVWriter;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
@@ -775,7 +776,7 @@ public class StringMan {
             }
             return arr;
         } else if (obj instanceof Map) {
-            Map<String, Object> result = new LinkedHashMap<>();
+            Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
                 result.put(entry.getKey().toString(), toSerializable(entry.getValue()));
             }

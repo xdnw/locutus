@@ -85,6 +85,7 @@ public class StatEndpoints {
                 formatters.add(result);
                 if (rsType instanceof Class clazz) {
                     renderers.add(switch (clazz.getSimpleName()) {
+                        case "WebGraph" -> "graph";
                         case "double", "Double", "int", "Integer", "float", "Float" -> "comma";
                         case "NationColor" -> "color";
                         case "String" -> "normal";
@@ -130,8 +131,16 @@ public class StatEndpoints {
                             Object serialized = StringMan.toSerializable(td);
                             if (!checkedIsJson[i] && serialized != null) {
                                 checkedIsJson[i] = true;
-                                if (renderers.get(i) == null && serialized instanceof Map || serialized instanceof List) {
-                                    renderers.set(i, "json");
+                                if (renderers.get(i) == null) {
+                                    if (serialized instanceof Map sMap) {
+                                        if (sMap.containsKey("title") && sMap.containsKey("x") && sMap.containsKey("y") && sMap.containsKey("labels") && sMap.containsKey("data")) {
+                                            renderers.set(i, "graph");
+                                        } else {
+                                            renderers.set(i, "json");
+                                        }
+                                    } else if (serialized instanceof List list) {
+                                        renderers.set(i, "json");
+                                    }
                                 }
                             }
                             row.add(serialized);
