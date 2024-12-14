@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.theokanning.openai.service.OpenAiService;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -2857,6 +2858,50 @@ public class GuildKey {
             return "The #channel to post creation and deletion of war rooms in";
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
+
+    public static GuildSetting<Set<Integer>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<Integer>>(GuildSettingCategory.TAX, Set.class, Integer.class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ALLOWED_TAX_BRACKETS(@Me GuildDB db, @Me User user, Set<TaxBracket> brackets) {
+            Set<Integer> taxIds = new IntOpenHashSet();
+            for (TaxBracket bracket : brackets) {
+                int aaId = bracket.getAlliance_id(false);
+                if (aaId != 0 && !db.isAllianceId(aaId)) {
+                    throw new IllegalArgumentException("Invalid alliance id: " + aaId + " for tax_id=" + bracket.getId());
+                }
+                taxIds.add(bracket.getId());
+            }
+            return ALLOWED_TAX_BRACKETS.setAndValidate(db, user, taxIds);
+        }
+        @Override
+        public String help() {
+            return "The tax bracket ids allowed to be set by members, if enabled ";
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Set<Integer> taxIds) {
+            List<String> names = new ArrayList<>();
+
+            for (int id : value) {
+                DBNation nation = DBNation.getById(id);
+                // add name to list, or add the id if nation is null
+
+                if(nation == null)
+                    names.add(nation.getId() + "");
+                else
+                    names.add(nation.getName());
+            }
+
+            return String.join(",", names);
+        }
+
+        @Override
+        public String toString(Set<Integer> value) {
+            return StringMan.join(value, ",");
+        }
+
+    }.setupRequirements(f -> f.requires(API_KEY).requires(MEMBER_CAN_SET_BRACKET).requireValidAlliance());
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

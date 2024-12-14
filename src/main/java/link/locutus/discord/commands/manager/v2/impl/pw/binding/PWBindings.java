@@ -1586,6 +1586,10 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A tax id or url", examples = {"tax_id=1234", "https://politicsandwar.com/index.php?id=15&tax_id=1234"})
     public static TaxBracket bracket(@Default @Me GuildDB db, String input) {
+        return bracket(db, input, TimeUnit.MINUTES.toMillis(1));
+    }
+
+    public static TaxBracket bracket(@Default @Me GuildDB db, String input, long cache) {
         Integer taxId;
         if (MathMan.isInteger(input)) {
             taxId = Integer.parseInt(input);
@@ -1607,7 +1611,7 @@ public class PWBindings extends BindingHelper {
         if (allianceList == null) {
             throw new IllegalArgumentException("No alliance registered. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
         }
-        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(TimeUnit.MINUTES.toMillis(1));
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(cache);
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
             int moneyRate = Integer.parseInt(split[0]);
