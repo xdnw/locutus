@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.theokanning.openai.service.OpenAiService;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -2881,18 +2882,25 @@ public class GuildKey {
 
         @Override
         public String toReadableString(GuildDB db, Set<Integer> taxIds) {
-            List<String> names = new ArrayList<>();
+            Map<Integer, String> namesCached = new Int2ObjectOpenHashMap<>();
 
-            for (int id : value) {
-                DBNation nation = DBNation.getById(id);
-                // add name to list, or add the id if nation is null
-
-                if(nation == null)
-                    names.add(nation.getId() + "");
-                else
-                    names.add(nation.getName());
+            AllianceList aaList = db.getAllianceList();
+            if (aaList != null) {
+                try {
+                    Map<Integer, TaxBracket> brackets = aaList.getTaxBrackets(Long.MAX_VALUE);
+                    for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
+                        TaxBracket bracket = entry.getValue();
+                        if (bracket.moneyRate != -1) {
+                            namesCached.put(entry.getKey(), bracket.getSubText());
+                        }
+                    }
+                } catch (IllegalArgumentException ignore) {}
             }
-
+            List<String> names = new ArrayList<>();
+            for (int id : taxIds) {
+                String name = namesCached.getOrDefault(id, "tax_id=" + id);
+                names.add(name);
+            }
             return String.join(",", names);
         }
 

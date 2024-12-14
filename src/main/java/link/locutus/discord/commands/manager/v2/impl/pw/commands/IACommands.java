@@ -1621,6 +1621,12 @@ public class IACommands {
             if (db.getOrNull(GuildKey.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + GuildKey.MEMBER_CAN_SET_BRACKET.getCommandMention() + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
+        if (bracket != null) {
+            Set<Integer> allowedTaxIds = GuildKey.ALLOWED_TAX_BRACKETS.getOrNull(db);
+            if (!isGov && allowedTaxIds != null && !allowedTaxIds.contains(bracket.taxId)) {
+                return "Only the following tax ids are allowed: " + allowedTaxIds;
+            }
+        }
         if (internalTaxRate != null && !isGov) {
             return "You are only allowed to set your tax bracket";
         }
