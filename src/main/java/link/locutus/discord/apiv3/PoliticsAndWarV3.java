@@ -343,7 +343,7 @@ public class PoliticsAndWarV3 {
 
                 if (json.has("errors")) {
                     StringBuilder printToConsole = new StringBuilder("[GraphQL][" + priority + "] Error with " + graphQLRequest.getRequest());
-                    printToConsole.append("\n\n---START BODY---\n");
+                    printToConsole.append("\n\n---START BODY (2)---\n");
                     printToConsole.append(body);
                     printToConsole.append("\n\n---END BODY---\n");
                     Logg.text(printToConsole.toString());
@@ -425,7 +425,7 @@ public class PoliticsAndWarV3 {
                     if (remove) pool.removeKey(pair);
                     continue;
                 }
-                Logg.text("Error " + graphQLRequest.toHttpJsonBody() + "\n\n---START BODY---\n\n" + e.getMessage() + "\n\n---END BODY---\n\n");
+                Logg.text("Error " + graphQLRequest.toHttpJsonBody() + "\n\n---START BODY (4)---\n\n" + e.getMessage() + "\n\n---END BODY---\n\n");
                 rethrow(e, pair,false);
                 throw e;
             }
