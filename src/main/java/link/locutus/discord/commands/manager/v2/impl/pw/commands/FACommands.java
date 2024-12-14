@@ -153,7 +153,7 @@ public class FACommands {
                     }
                 } else {
                     name = Locutus.imp().getNationDB().getAllianceName((int) allianceOrGuildId);
-                    if (name == null) {
+                    if (name == null || DBAlliance.get((int) allianceOrGuildId) == null) {
                         if (ignoreDeleted) continue;
                         name = "AA:" + allianceOrGuildId;
                     }
