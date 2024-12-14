@@ -182,7 +182,7 @@ public class Auth {
                         if (tables.isEmpty()) {
                             String alerts = PW.getAlert(dom);
                             if (alerts == null || alerts.isEmpty()) {
-                                Logg.text("Unable to confirm login\n\n---START BODY---\n\n" + html + "\n\n---END BODY---\n\n");
+                                Logg.text("Unable to confirm login\n\n---START BODY (1)---\n\n" + html + "\n\n---END BODY---\n\n");
                             }
                             throw new IllegalArgumentException("Error: " + alerts);
                         }
@@ -469,7 +469,7 @@ public class Auth {
                         }
                     }
                 }
-                Logg.text("Failed to set rank:\n\n---START BODY---\n\n" + result + "\n\n---END BODY---\n\n");
+                Logg.text("Failed to set rank:\n\n---START BODY (3)---\n\n" + result + "\n\n---END BODY---\n\n");
             }
             result = readStringFromURL(PagePriority.TOKEN, url, Collections.emptyMap());
             dom = Jsoup.parse(result);

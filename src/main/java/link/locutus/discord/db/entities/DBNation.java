@@ -4540,7 +4540,7 @@ public abstract class DBNation implements NationOrAlliance {
                         return JsonParser.parseString(result).getAsJsonObject();
                     }
                 }
-                Logg.text("Invalid response\n\n---START BODY---\n" + result + "\n---END BODY---");
+                Logg.text("Invalid response\n\n---START BODY (5)---\n" + result + "\n---END BODY---");
             }
             try {
                 JsonObject obj = JsonParser.parseString(result).getAsJsonObject();
