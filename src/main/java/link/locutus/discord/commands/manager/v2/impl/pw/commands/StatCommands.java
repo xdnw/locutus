@@ -533,7 +533,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank alliances by a metric over a specified time period")
-    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, AllianceMetric metric, @Default Set<DBAlliance> alliances, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turnStart = TimeUtil.getTurn(timeStart);
         long turnEnd = TimeUtil.getTurn(timeEnd);
