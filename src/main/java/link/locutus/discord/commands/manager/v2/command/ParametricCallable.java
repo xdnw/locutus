@@ -37,6 +37,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class ParametricCallable implements ICommand {
 
@@ -850,15 +851,19 @@ public class ParametricCallable implements ICommand {
         Object[] paramVals = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             ParameterData parameter = parameters[i];
+            Key typeKey = parameter.getBinding().getKey();
+
             locals.addProvider(ParameterData.class, parameter);
             Object arg = argsByParams.get(parameter);
             Object value;
-            // flags
-            if (parameter.isFlag()) {
+            if (arg == null && typeKey.getType() == JSONObject.class && typeKey.getAnnotation(Me.class) != null) {
+                Map<String, Object> argsByParamName = argsByParams.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().getName(), Map.Entry::getValue));
+                value = new JSONObject(argsByParamName);
+            } else if (parameter.isFlag()) {
                 Object toParse = flags.get(parameter.getFlag());
                 if (toParse == null) {
                     if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0) {
-                        value = locals.get(parameter.getBinding().getKey()).apply(store, parameter.getDefaultValueString());
+                        value = locals.get(typeKey).apply(store, parameter.getDefaultValueString());
                     } else if (!parameter.isConsumeFlag()) {
                         value = false;
                     } else {
@@ -875,7 +880,7 @@ public class ParametricCallable implements ICommand {
                         if (parameter.getBinding().isConsumer(store)) {
                             paramVals[i] = null;
                         } else {
-                            paramVals[i] = locals.getProvided(parameter.getBinding().getKey(), false);
+                            paramVals[i] = locals.getProvided(typeKey, false);
                         }
                         continue;
                     }

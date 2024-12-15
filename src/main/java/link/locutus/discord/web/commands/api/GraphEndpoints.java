@@ -387,6 +387,7 @@ public class GraphEndpoints {
         args.put(command.has("coalition9") ? command.getString("coalition9") : null, coalition9);
         args.put(command.has("coalition10") ? command.getString("coalition10") : null, coalition10);
         args.entrySet().removeIf(f -> f.getValue() == null);
+        if (args.isEmpty()) throw new IllegalArgumentException("Please specify at least one coalition");
 
         return new WarCostRankingByDay(
                 type,

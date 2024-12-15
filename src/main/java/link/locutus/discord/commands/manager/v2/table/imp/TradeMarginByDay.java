@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -61,6 +62,7 @@ public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
             long turn = TimeUtil.getTurn(offer.getDate());
             long day = turn / 12;
             minDay = Math.min(minDay, day);
+            maxDay = Math.max(maxDay, day);
             offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
         }
         offersByDay.remove(minDay);
@@ -71,7 +73,7 @@ public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
         for (Map.Entry<Long, List<DBTrade>> entry : offersByDay.entrySet()) {
             long day = entry.getKey();
             List<DBTrade> offers = entry.getValue();
-            Map<ResourceType, Double> dayMargins = new HashMap<>();
+            Map<ResourceType, Double> dayMargins = new Object2ObjectLinkedOpenHashMap<>();
 
             Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = Locutus.imp().getTradeManager().getAverage(offers);
             Map<ResourceType, Double> lows = avg.getKey();
@@ -85,6 +87,8 @@ public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
                     dayMargins.put(type, margin);
                 }
             }
+
+            System.out.println("Add day " + day + " with " + dayMargins);
 
             marginsByDay.put(day, dayMargins);
         }
@@ -103,6 +107,7 @@ public class TradeMarginByDay extends SimpleTable<Map<ResourceType, Double>> {
 
     @Override
     protected SimpleTable writeData() {
+        System.out.println("Min/max day: " + minDay + "/" + maxDay);
         for (long day = minDay; day <= maxDay; day++) {
             Map<ResourceType, Double> margins = marginsByDay.getOrDefault(day, Collections.emptyMap());
             add(day, margins);

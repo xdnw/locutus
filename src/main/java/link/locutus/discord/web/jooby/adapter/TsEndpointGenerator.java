@@ -255,7 +255,8 @@ public class TsEndpointGenerator {
                         "{path}",
                         {paramsJson},
                         (data: unknown) => data as ApiTypes.{typeName},
-                        {cachePolicy}
+                        {cachePolicy},
+                        "{typeName}"
                     ),
                     useDisplay: ({args, render, renderLoading, renderError}: 
                     {args: {argValues}, render: (data: ApiTypes.{typeName}) => React.ReactNode, renderLoading?: () => React.ReactNode, renderError?: (error: string) => React.ReactNode}): React.ReactNode => {
