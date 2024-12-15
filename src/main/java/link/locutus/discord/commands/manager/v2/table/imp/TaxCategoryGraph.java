@@ -55,7 +55,7 @@ public class TaxCategoryGraph extends SimpleTable<Void> {
 
     @Override
     public TimeFormat getTimeFormat() {
-        return TimeFormat.MILLIS_TO_DATE;
+        return TimeFormat.NUMERIC;
     }
 
     @Override

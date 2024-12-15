@@ -406,8 +406,8 @@ public class GraphEndpoints {
     @ReturnType(WebGraph.class)
     public WebGraph radiationStats(Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
         long startTurn = TimeUtil.getTurn(start);
-        TimeNumericTable<Void> table = new RadiationByTurn(continents, start, end);
-        WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.SECONDS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
+        RadiationByTurn table = new RadiationByTurn(continents, start, end);
+        WebGraph graph = table.toHtmlJson();
         return graph;
     }
 
@@ -426,8 +426,8 @@ public class GraphEndpoints {
         Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
         TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
 
-        TimeNumericTable table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
-        WebGraph graph = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson(TimeFormat.SECONDS_TO_DATE, format, GraphType.LINE, TimeUtil.getTimeFromTurn(startTurn) / 1000L);
+        CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
+        WebGraph graph = table.toHtmlJson();
         return graph;
     }
 
@@ -529,8 +529,8 @@ public class GraphEndpoints {
         if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
 
 
-        TimeNumericTable table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
-        WebGraph graph = table.toHtmlJson(TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, startTurn);
+        MultiCoalitionMetricGraph table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
+        WebGraph graph = table.toHtmlJson();
         return graph;
     }
 }

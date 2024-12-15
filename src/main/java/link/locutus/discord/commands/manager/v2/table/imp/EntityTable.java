@@ -14,7 +14,7 @@ import java.util.function.Function;
 public class EntityTable<T> extends SimpleTable<Void> {
     private final double[] buffer;
     private final List<Attribute<T, Double>> metricsList;
-    private final int min, max;
+    private int min, max;
     private final boolean total;
     private final Map<Integer, List<T>> byTier;
 
@@ -34,12 +34,15 @@ public class EntityTable<T> extends SimpleTable<Void> {
 
         Function<T, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
         this.byTier = new HashMap<>();
+        this.min = Integer.MAX_VALUE;
+        this.max = Integer.MIN_VALUE;
         for (T t : coalition) {
             int tier = groupByInt.apply(t);
+            min = Math.min(min, tier);
+            max = Math.max(max, tier);
             byTier.computeIfAbsent(tier, f -> new ArrayList<>()).add(t);
         }
-        this.min = coalition.isEmpty() ? 0 : coalition.stream().map(groupByInt).min(Integer::compare).orElse(0);
-        this.max = coalition.isEmpty() ? 0 : coalition.stream().map(groupByInt).max(Integer::compare).orElse(0);
+
         this.total = total;
 
         this.buffer = new double[metricsList.size()];

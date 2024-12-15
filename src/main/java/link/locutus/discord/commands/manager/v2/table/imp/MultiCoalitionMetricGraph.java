@@ -88,7 +88,7 @@ public class MultiCoalitionMetricGraph extends SimpleTable<Void> {
 
     @Override
     public TimeFormat getTimeFormat() {
-        return TimeFormat.SI_UNIT;
+        return TimeFormat.TURN_TO_DATE;
     }
 
     @Override

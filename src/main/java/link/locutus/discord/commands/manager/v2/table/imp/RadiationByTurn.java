@@ -52,7 +52,7 @@ public class RadiationByTurn extends SimpleTable<Void> {
 
     @Override
     public TimeFormat getTimeFormat() {
-        return TimeFormat.DAYS_TO_DATE;
+        return TimeFormat.TURN_TO_DATE;
     }
 
     @Override

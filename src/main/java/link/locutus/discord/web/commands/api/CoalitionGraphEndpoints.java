@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
 import link.locutus.discord.commands.manager.v2.table.imp.EntityTable;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.commands.ReturnType;
@@ -52,13 +53,13 @@ public class CoalitionGraphEndpoints {
             WebGraph overall = null;
             if (sphereAlliances.size() > 1) {
                 overall = new CoalitionMetricsGraph(metricMap, metrics, startTurn, endTurn, name, new ObjectLinkedOpenHashSet<>(sphereAlliances))
-                        .toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, startTurn);
+                        .toHtmlJson();
             }
 
             Map<Integer, WebGraph> byAlliance = new Int2ObjectOpenHashMap<>();
             for (DBAlliance alliance : sphereAlliances) {
                 WebGraph graph = new CoalitionMetricsGraph(metricMap, metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance))
-                        .toHtmlJson(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, startTurn);
+                        .toHtmlJson();
                 byAlliance.put(alliance.getId(), graph);
             }
 
@@ -94,14 +95,19 @@ public class CoalitionGraphEndpoints {
             if (sphereAlliances.size() > 1) {
                 overall = EntityTable.create(spheres.getSphereName(sphereId) + ": ", metrics,
                         spheres.getAlliances(sphereId), groupBy, total, removeVM, removeActiveM, removeApps
-                ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.SIDE_BY_SIDE_BAR, 0);
+                ).toHtmlJson();
             }
 
             Map<Integer, WebGraph> byAlliance = new Int2ObjectOpenHashMap<>();
             for (DBAlliance alliance : sphereAlliances) {
-                WebGraph graph = EntityTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance),
+                EntityTable<DBNation> table = EntityTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance),
                         groupBy, total, removeVM, removeActiveM, removeApps
-                ).toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.SIDE_BY_SIDE_BAR, 0);
+                );
+                WebGraph graph = table.toHtmlJson();
+                if (alliance.getId() == 10279) {
+                    System.out.println("ORIGIN   " + table.getOrigin() + " | " + graph.origin);
+                }
+
                 byAlliance.put(alliance.getId(), graph);
             }
 
