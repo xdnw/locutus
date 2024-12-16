@@ -194,7 +194,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day")
     @ReturnType(WebGraph.class)
-    public WebGraph tradevolumebyday(TradeManager manager,
+    public WebGraph tradeVolumeByDay(TradeManager manager,
                                      ResourceType resource,
                                      @Timestamp long start, @Default @Timestamp Long end) throws IOException, GeneralSecurityException {
         String title = "volume by day";
@@ -214,7 +214,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day")
     @ReturnType(WebGraph.class)
-    public WebGraph tradetotalbyday(TradeManager manager,
+    public WebGraph tradeTotalByDay(TradeManager manager,
                                     ResourceType resource,
                                     @Timestamp long start, @Default @Timestamp Long end) throws IOException, GeneralSecurityException {
         String title = "total by day";
@@ -282,7 +282,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Generate a graph of average trade buy and sell margin by day")
     @ReturnType(WebGraph.class)
-    public WebGraph trademarginbyday(Set<ResourceType> resources, @Timestamp long start, @Default @Timestamp Long end,
+    public WebGraph tradeMarginByDay(Set<ResourceType> resources, @Timestamp long start, @Default @Timestamp Long end,
                                      @Arg("Use the margin percent instead of absolute difference")
                                      @Default("true") boolean percent) throws IOException, GeneralSecurityException {
         Set<ResourceType> all = new HashSet<>(Arrays.asList(ResourceType.values()));
@@ -303,7 +303,7 @@ public class GraphEndpoints {
     /// TODO FIXME update or remove the trade price endpoint in other class
     @Command(desc = "Generate a graph of average buy and sell trade price by day")
     @ReturnType(WebGraph.class)
-    public WebGraph tradepricebyday(
+    public WebGraph tradePriceByDay(
             Set<ResourceType> resources,
             int numDays) throws IOException, GeneralSecurityException {
         TradePriceByDay graph = new TradePriceByDay(resources, numDays);
@@ -413,7 +413,7 @@ public class GraphEndpoints {
 
     @Command()
     @ReturnType(WebGraph.class)
-    public WebGraph aaStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
+    public WebGraph allianceStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
         String title = "aaStats";
         String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
 
