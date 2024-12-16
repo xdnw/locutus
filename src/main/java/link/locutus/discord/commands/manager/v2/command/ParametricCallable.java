@@ -754,6 +754,16 @@ public class ParametricCallable implements ICommand {
     public Object[] parseArgumentMap(Map<String, String> combined, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         return parseArgumentMap2((Map) combined, store, validators, permisser, false);
     }
+
+    private JSONObject getJSONObject(Map<ParameterData, Object> argsByParams) {
+        Map<String, Object> argsByParamName = new Object2ObjectOpenHashMap<>();
+        argsByParamName.put("", getFullPath());
+        for (Map.Entry<ParameterData, Object> entry : argsByParams.entrySet()) {
+            argsByParamName.put(entry.getKey().getName(), entry.getValue());
+        }
+        return new JSONObject(argsByParamName);
+    }
+
     public Object[] parseArgumentMap2(Map<String, Object> combined, ValueStore store, ValidatorStore validators, PermissionHandler permisser, boolean partialParse) {
         validatePermissions(store, permisser);
 
@@ -856,10 +866,10 @@ public class ParametricCallable implements ICommand {
             locals.addProvider(ParameterData.class, parameter);
             Object arg = argsByParams.get(parameter);
             Object value;
-            if (arg == null && typeKey.getType() == JSONObject.class && typeKey.getAnnotation(Me.class) != null) {
-                Map<String, Object> argsByParamName = argsByParams.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().getName(), Map.Entry::getValue));
-                value = new JSONObject(argsByParamName);
-            } else if (parameter.isFlag()) {
+             if (arg == null && typeKey.getType() == JSONObject.class && typeKey.getAnnotation(Me.class) != null) {
+                 value = locals.getProvided(typeKey, false);
+                 if (value == null) value = getJSONObject(argsByParams);
+             } else if (parameter.isFlag()) {
                 Object toParse = flags.get(parameter.getFlag());
                 if (toParse == null) {
                     if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0) {
@@ -874,7 +884,6 @@ public class ParametricCallable implements ICommand {
                 }
             } else {
                 Object arg2 = null;
-//                List<String> args;
                 if (arg == null && parameter.isOptional()) {
                     if (parameter.getDefaultValue() == null) {
                         if (parameter.getBinding().isConsumer(store)) {
