@@ -102,6 +102,108 @@ import java.util.stream.Collectors;
 
 public class UnsortedCommands {
 
+    @Command(desc = "Generate a sheet of guild member nations and their unit buys today")
+    @IsAlliance
+    @HasApi
+    public void unitBuySheet(
+            @Me GuildDB db,
+            ValueStore store, @Me IMessageIO channel,
+            @Arg("Nations to list in the sheet\n" +
+                    "Defaults to the guild alliance")
+            @Default NationList nations,
+            @Default @TextArea @Arg("A space separated list of columns to add to the sheet\n" +
+                    "Can include NationAttribute as placeholders in columns\n" +
+                    "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
+            List<String> addColumns,
+            @Switch("sheet") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (nations == null) nations = new SimpleNationList(db.getAllianceList().getNations());
+
+        AllianceList aaList = db.getAllianceList();
+        NationList finalNations = nations;
+        Set<DBNation> aaNations = aaList.getNations(f -> f.getPositionEnum().id >= Rank.APPLICANT.id && f.getVm_turns() == 0 && finalNations.contains(f));
+        if (aaNations.isEmpty()) {
+            throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
+        }
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.SPY_FREE);
+        }
+
+        aaList = aaList.subList(aaNations);
+        Map<DBNation, Map<MilitaryUnit, Integer>> opsUsed = aaList.updateMilitaryBuys();
+
+        List<String> columns = new ArrayList<>(
+                Arrays.asList(
+                        "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")",
+                        "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")",
+                        "{score}",
+                        "{cities}",
+
+                        "{spies}",
+                        "{soldier}",
+                        "{tank}",
+                        "{aircraft}",
+                        "{ship}",
+                        "{missile}",
+                        "{nuke}",
+
+                        "{spy_buy}",
+                        "{soldier_buy}",
+                        "{tank_buy}",
+                        "{aircraft_buy}",
+                        "{ship_buy}",
+                        "{missile_buy}",
+                        "{nuke_buy}"
+                )
+        );
+        if (addColumns != null) columns.addAll(addColumns);
+        List<String> header = new ArrayList<>(columns);
+        for (int i = 0; i < header.size(); i++) {
+            String arg = header.get(i);
+            arg = arg.replace("{", "").replace("}", "").replace("=", "");
+            header.set(i, arg);
+        }
+
+        sheet.setHeader(header);
+
+        for (Map.Entry<DBNation, Map<MilitaryUnit, Integer>> entry : opsUsed.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (!aaNations.contains(nation)) continue;
+            Map<MilitaryUnit, Integer> buys = entry.getValue();
+
+            header.set(0, "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")"
+                    .replace("{nation_id}", nation.getId() + "")
+                    .replace("{nation}", nation.getName()));
+
+            header.set(1, "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")"
+                    .replace("{alliance_id}", nation.getAlliance_id() + "")
+                    .replace("{alliancename}", nation.getAllianceName()));
+
+            header.set(2, nation.getScore() + "");
+            header.set(3, nation.getCities() + "");
+            header.set(4, nation.getSpies() + "");
+            header.set(5, nation.getSoldiers() + "");
+            header.set(6, nation.getTanks() + "");
+            header.set(7, nation.getAircraft() + "");
+            header.set(8, nation.getShips() + "");
+            header.set(9, nation.getMissiles() + "");
+            header.set(10, nation.getNukes() + "");
+            header.set(11, buys.getOrDefault(MilitaryUnit.SPIES, 0) + "");
+            header.set(12, buys.getOrDefault(MilitaryUnit.SOLDIER, 0) + "");
+            header.set(13, buys.getOrDefault(MilitaryUnit.TANK, 0) + "");
+            header.set(14, buys.getOrDefault(MilitaryUnit.AIRCRAFT, 0) + "");
+            header.set(15, buys.getOrDefault(MilitaryUnit.SHIP, 0) + "");
+            header.set(16, buys.getOrDefault(MilitaryUnit.MISSILE, 0) + "");
+            header.set(17, buys.getOrDefault(MilitaryUnit.NUKE, 0) + "");
+
+            sheet.addRow(new ArrayList<>(header));
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(channel.create(), "mil_buy_used").send();
+    }
+
     @Command(desc = "Generate a sheet of guild member nations that have free espionage spy operations\n" +
             "Useful for finding who can participate in a spy blitz")
     @IsAlliance

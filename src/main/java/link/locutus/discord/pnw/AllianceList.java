@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -286,6 +287,14 @@ public class AllianceList {
         Map<DBNation, Integer> ops = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
             ops.putAll(alliance.updateOffSpyOps());
+        }
+        return ops;
+    }
+
+    public Map<DBNation, Map<MilitaryUnit, Integer>> updateMilitaryBuys() {
+        Map<DBNation, Map<MilitaryUnit, Integer>> ops = new LinkedHashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            ops.putAll(alliance.updateMilitaryBuys());
         }
         return ops;
     }

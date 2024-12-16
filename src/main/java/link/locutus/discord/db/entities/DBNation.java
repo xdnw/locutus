@@ -3873,7 +3873,12 @@ public abstract class DBNation implements NationOrAlliance {
         return reports.size();
     }
 
-    public int getRemainingUnitBuy(MilitaryUnit unit, long timeSince) {
+    @Command
+    public int getRemainingUnitBuy(MilitaryUnit unit, @Default Long timeSince) {
+        if (timeSince == null) {
+            long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
+            timeSince = dcTime;
+        }
         if (unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) return -1;
 
         int previousAmt = getUnitsAt(unit, timeSince);

@@ -7,9 +7,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.*;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
@@ -1752,6 +1750,39 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                     nation.setSpy_attacks(nation.getSpy_attacks());
                     ops.put(dbNation, nation.getSpy_attacks());
                 }
+            }
+        });
+        return ops;
+    }
+
+    public Map<DBNation, Map<MilitaryUnit, Integer>> updateMilitaryBuys() {
+        Map<DBNation, Map<MilitaryUnit, Integer>> ops = new Object2ObjectOpenHashMap<>();
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.SEE_SPIES);
+        Locutus.imp().runEventsAsync(events -> {
+            for (Nation nation : api.fetchNations(true, request -> {
+                request.setAlliance_id(List.of(allianceId));
+                request.setVmode(false);
+            }, proj -> {
+                proj.id();
+                proj.soldiers_today();
+                proj.tanks_today();
+                proj.aircraft_today();
+                proj.ships_today();
+                proj.missiles_today();
+                proj.nukes_today();
+                proj.spies_today();
+            })) {
+                DBNation dbNation = DBNation.getById(nation.getId());
+                if (dbNation == null) continue;
+                Map<MilitaryUnit, Integer> units = new Object2IntOpenHashMap<>();
+                units.put(MilitaryUnit.SOLDIER, nation.getSoldiers_today());
+                units.put(MilitaryUnit.TANK, nation.getTanks_today());
+                units.put(MilitaryUnit.AIRCRAFT, nation.getAircraft_today());
+                units.put(MilitaryUnit.SHIP, nation.getShips_today());
+                units.put(MilitaryUnit.MISSILE, nation.getMissiles_today());
+                units.put(MilitaryUnit.NUKE, nation.getNukes_today());
+                units.put(MilitaryUnit.SPIES, nation.getSpies_today());
+                ops.put(dbNation, units);
             }
         });
         return ops;
