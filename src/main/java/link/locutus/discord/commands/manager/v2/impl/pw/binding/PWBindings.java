@@ -151,7 +151,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "The name of a nation attribute\n" +
             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"},
-    webType = "CommandCallable<DBNation>")
+    webType = "ICommand<DBNation>")
     @NationAttributeCallable
     public ParametricCallable nationAttribute(NationPlaceholders placeholders, ValueStore store, String input) {
         List<ParametricCallable> options = placeholders.getParametricCallables();
@@ -639,7 +639,8 @@ public class PWBindings extends BindingHelper {
         return nationOrAlliance(input, null);
     }
 
-    @Binding(value = "A nation or alliance name, url or id. Prefix with `AA:` or `nation:` to avoid ambiguity if there exists both by the same name or id", examples = {"Borg", "https://politicsandwar.com/alliance/id=1234", "aa:1234"})
+    @Binding(value = "A nation or alliance name, url or id. Prefix with `AA:` or `nation:` to avoid ambiguity if there exists both by the same name or id",
+            examples = {"Borg", "https://politicsandwar.com/alliance/id=1234", "aa:1234"})
     public static NationOrAlliance nationOrAlliance(String input, @Default ParameterData data) {
         return nationOrAlliance(data, input, false);
     }
@@ -871,7 +872,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1", value = "A comma separated list of nations, alliances and filters",
-            webType = "DBNation")
+            webType = "Set<DBNation>")
     public static NationList nationList(ParameterData data, @Default @Me Guild guild, String input, @Default @Me User author, @Default @Me DBNation me) {
         return new SimpleNationList(nations(data, guild, input, author, me)).setFilter(input);
     }
@@ -883,7 +884,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes",
-    webType = "Set<TypedFunction<DBNation, Double>>")
+    webType = "Set<TypedFunction<DBNation,Double>>")
     public Set<NationAttributeDouble> nationMetricDoubles(ValueStore store, String input) {
         Set<NationAttributeDouble> metrics = new LinkedHashSet<>();
         for (String arg : StringMan.split(input, ',')) {

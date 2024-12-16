@@ -23,6 +23,7 @@ public class WebOption {
     private boolean allowCompletions;
     private List<String> options;
     private TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions;
+    private boolean allowQuery;
     private List<String> compositeTypes;
     private boolean requiresGuild;
     private boolean requiresNation;
@@ -120,6 +121,7 @@ public class WebOption {
         this.queryOptions = (guild, user, nation) -> {
             return queryOptions.apply(guild, user, nation);
         };
+        allowQuery = true;
         return this;
     }
 
@@ -143,7 +145,7 @@ public class WebOption {
     }
 
     public boolean isAllowQuery() {
-        return queryOptions != null;
+        return allowQuery;
     }
 
     public boolean isAllowCompletions() {

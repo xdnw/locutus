@@ -154,7 +154,7 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setStatus(ConflictManager manager, Conflict conflict, String status) throws IOException {
-        conflict.setStatus(status);
+        conflict.setStatus(status.replace("\\n", "\n"));
         conflict.push(manager, null, false, false);
         return "Done! Set the status of `" + conflict.getName() + "` to `" + status + "`";
     }
@@ -163,7 +163,7 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCB(ConflictManager manager, Conflict conflict, String casus_belli) throws IOException {
-        conflict.setCasusBelli(casus_belli);
+        conflict.setCasusBelli(casus_belli.replace("\\n", "\n"));
         conflict.push(manager, null, false, false);
         return "Done! Set the casus belli of `" + conflict.getName() + "` to `" + casus_belli + "`";
     }
