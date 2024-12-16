@@ -26,6 +26,10 @@ public class MathMan {
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#,###.00");
     private static final DecimalFormat INT_FORMAT = new DecimalFormat("#,###");
 
+    public static <T extends Number> T orElse(T value, T orElse) {
+        return value == null ? orElse : value;
+    }
+
     private static final NavigableMap<Long, String> suffixes = new TreeMap<>();
     static {
         suffixes.put(1_000L, "k");

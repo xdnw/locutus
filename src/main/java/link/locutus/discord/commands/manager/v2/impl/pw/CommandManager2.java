@@ -263,7 +263,7 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
-        getCommands().registerMethod(new UnsortedCommands(), List.of("unit", "buy_sheet"), "unitBuySheet", "buy_sheet");
+        getCommands().registerMethod(new UnsortedCommands(), List.of("unit"), "unitBuySheet", "buy_sheet");
         getCommands().registerMethod(new UnsortedCommands(), List.of("sheets_milcom"), "unitBuySheet", "unit_buy_sheet");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "multiInfoSheet", "multis_land");
         getCommands().registerMethod(new WebCommands(), List.of(), "web", "web");

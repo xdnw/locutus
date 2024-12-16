@@ -71,6 +71,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.util.MathMan.orElse;
+
 public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance {
     private final int allianceId;
     private String name;
@@ -1775,13 +1777,13 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 DBNation dbNation = DBNation.getById(nation.getId());
                 if (dbNation == null) continue;
                 Map<MilitaryUnit, Integer> units = new Object2IntOpenHashMap<>();
-                units.put(MilitaryUnit.SOLDIER, nation.getSoldiers_today());
-                units.put(MilitaryUnit.TANK, nation.getTanks_today());
-                units.put(MilitaryUnit.AIRCRAFT, nation.getAircraft_today());
-                units.put(MilitaryUnit.SHIP, nation.getShips_today());
-                units.put(MilitaryUnit.MISSILE, nation.getMissiles_today());
-                units.put(MilitaryUnit.NUKE, nation.getNukes_today());
-                units.put(MilitaryUnit.SPIES, nation.getSpies_today());
+                units.put(MilitaryUnit.SOLDIER, orElse(nation.getSoldiers_today(), 0));
+                units.put(MilitaryUnit.TANK, orElse(nation.getTanks_today(), 0));
+                units.put(MilitaryUnit.AIRCRAFT, orElse(nation.getAircraft_today(), 0));
+                units.put(MilitaryUnit.SHIP, orElse(nation.getShips_today(), 0));
+                units.put(MilitaryUnit.MISSILE, orElse(nation.getMissiles_today(), 0));
+                units.put(MilitaryUnit.NUKE, orElse(nation.getNukes_today(), 0));
+                units.put(MilitaryUnit.SPIES, orElse(nation.getSpies_today(), 0));
                 ops.put(dbNation, units);
             }
         });
