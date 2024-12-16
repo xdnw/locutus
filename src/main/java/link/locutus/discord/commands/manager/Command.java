@@ -1,9 +1,5 @@
 package link.locutus.discord.commands.manager;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -13,8 +9,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -36,20 +30,6 @@ public abstract class Command {
         if (aliases.isEmpty()) {
             aliases.add(getClass().getSimpleName().replace("Command", "").toLowerCase());
         }
-    }
-
-    public static Command create(ICommand command) {
-        return new Command() {
-            @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-                return command.onCommand(guild, channel, author, me, fullCommandRaw, args, flags);
-            }
-
-            @Override
-            public List<CommandRef> getSlashReference() {
-                return null;
-            }
-        };
     }
 
     public Set<CommandCategory> getCategories() {

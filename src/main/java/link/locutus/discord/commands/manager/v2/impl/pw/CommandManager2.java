@@ -85,13 +85,20 @@ public class CommandManager2 {
             }
 
         }
+        Map<Key, Parser> p2 = htmlOptionsStore.getParsers();
+        for (Map.Entry<Key, Parser> entry2 : p2.entrySet()) {
+            System.out.println("wEEB options for " + entry2.getKey().toSimpleString());
+
+        }
+
+
         for (Parser parser : parsers) {
             Key key = parser.getKey();
             Map<String, Object> typeJson = parser.toJson();
             keysData.put(key.toSimpleString(), typeJson);
-            Key optionsKey = key.append(HtmlOptions.class);
-            Parser optionParser = htmlOptionsStore.get(optionsKey);
+            Parser optionParser = htmlOptionsStore.get(key);
             if (optionParser != null) {
+                System.out.println("Found options for " + key.toSimpleString());
                 WebOption option = (WebOption) optionParser.apply(store, null);
                 optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                 continue;
@@ -109,7 +116,7 @@ public class CommandManager2 {
                     optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                     continue;
                 }
-                optionsKey = Key.of(t, HtmlOptions.class);
+                Key optionsKey = Key.of(t);
                 optionParser = htmlOptionsStore.get(optionsKey);
                 if (optionParser != null) {
                     WebOption option = (WebOption) optionParser.apply(htmlOptionsStore, null);
@@ -119,7 +126,7 @@ public class CommandManager2 {
                         optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                     }
                 } else {
-                    System.out.println("No options for " + name);
+                    System.out.println("No options for " + name + " | " + key.toSimpleString());
                 }
             }
         }

@@ -162,7 +162,7 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
-    @Binding(value = "A discord slash command reference for the bot", webType = "CommandCallable")
+    @Binding(value = "A discord slash command reference for the bot")
     public ICommand slashCommand(String input) {
         List<String> split = StringMan.split(input, ' ');
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
