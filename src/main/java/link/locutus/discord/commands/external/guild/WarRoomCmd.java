@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 public class WarRoomCmd extends Command {
     public WarRoomCmd() {
-        super(CommandCategory.MILCOM, CommandCategory.MEMBER);
+        super("warroom", CommandCategory.MILCOM, CommandCategory.MEMBER);
     }
 
     @Override
