@@ -129,8 +129,6 @@ public class UnsortedCommands {
         }
 
         aaList = aaList.subList(aaNations);
-        Map<DBNation, Map<MilitaryUnit, Integer>> opsUsed = aaList.updateMilitaryBuys();
-
         List<String> columns = new ArrayList<>(
                 Arrays.asList(
                         "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")",
@@ -164,11 +162,15 @@ public class UnsortedCommands {
         }
 
         sheet.setHeader(header);
-
-        for (Map.Entry<DBNation, Map<MilitaryUnit, Integer>> entry : opsUsed.entrySet()) {
-            DBNation nation = entry.getKey();
-            if (!aaNations.contains(nation)) continue;
-            Map<MilitaryUnit, Integer> buys = entry.getValue();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(aaNations, DBNation.class);
+        for (DBNation nation : aaNations) {
+            double updateTz = nation.getUpdateTZ(db, cacheStore);
+            if (updateTz == -1) updateTz = 0;
+            long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
+            long natDcTime = dcTime + TimeUnit.HOURS.toMillis((long) (updateTz * 2));
+            if (natDcTime > System.currentTimeMillis()) {
+                natDcTime -= TimeUnit.DAYS.toMillis(1);
+            }
 
             header.set(0, "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")"
                     .replace("{nation_id}", nation.getId() + "")
@@ -187,13 +189,14 @@ public class UnsortedCommands {
             header.set(8, nation.getShips() + "");
             header.set(9, nation.getMissiles() + "");
             header.set(10, nation.getNukes() + "");
-            header.set(11, buys.getOrDefault(MilitaryUnit.SPIES, 0) + "");
-            header.set(12, buys.getOrDefault(MilitaryUnit.SOLDIER, 0) + "");
-            header.set(13, buys.getOrDefault(MilitaryUnit.TANK, 0) + "");
-            header.set(14, buys.getOrDefault(MilitaryUnit.AIRCRAFT, 0) + "");
-            header.set(15, buys.getOrDefault(MilitaryUnit.SHIP, 0) + "");
-            header.set(16, buys.getOrDefault(MilitaryUnit.MISSILE, 0) + "");
-            header.set(17, buys.getOrDefault(MilitaryUnit.NUKE, 0) + "");
+
+            header.set(11, nation.getRemainingUnitBuy(MilitaryUnit.SPIES, natDcTime) + "");
+            header.set(12, nation.getRemainingUnitBuy(MilitaryUnit.SOLDIER, natDcTime) + "");
+            header.set(13, nation.getRemainingUnitBuy(MilitaryUnit.TANK, natDcTime) + "");
+            header.set(14, nation.getRemainingUnitBuy(MilitaryUnit.AIRCRAFT, natDcTime) + "");
+            header.set(15, nation.getRemainingUnitBuy(MilitaryUnit.SHIP, natDcTime) + "");
+            header.set(16, nation.getRemainingUnitBuy(MilitaryUnit.MISSILE, natDcTime) + "");
+            header.set(17, nation.getRemainingUnitBuy(MilitaryUnit.NUKE, natDcTime) + "");
 
             sheet.addRow(new ArrayList<>(header));
         }
