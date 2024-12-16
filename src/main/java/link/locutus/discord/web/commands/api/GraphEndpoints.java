@@ -296,7 +296,7 @@ public class GraphEndpoints {
                 filtered.add(trade);
             }
         }
-        TradeMarginByDay table = new TradeMarginByDay(trades, resources, start, end, percent);
+        TradeMarginByDay table = new TradeMarginByDay(filtered, resources, percent);
         return table.toHtmlJson();
     }
 
@@ -405,9 +405,8 @@ public class GraphEndpoints {
 
     @Command()
     @ReturnType(WebGraph.class)
-    public WebGraph radiationStats(Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
-        long startTurn = TimeUtil.getTurn(start);
-        RadiationByTurn table = new RadiationByTurn(continents, start, end);
+    public WebGraph radiationStats(Set<Continent> continents, @Timestamp long start, @Default @Timestamp Long end) {
+        RadiationByTurn table = new RadiationByTurn(continents, start, end == null ? Long.MAX_VALUE : end);
         WebGraph graph = table.toHtmlJson();
         return graph;
     }
