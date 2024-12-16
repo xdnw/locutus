@@ -204,7 +204,7 @@ public class UnsortedCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "mil_buy_used").send();
+        sheet.attach(channel.create(), "mil_buy_remaining").send();
     }
 
     @Command(desc = "Generate a sheet of guild member nations that have free espionage spy operations\n" +
