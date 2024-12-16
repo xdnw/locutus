@@ -1246,7 +1246,7 @@ public class TradeCommands {
                     filtered.add(trade);
                 }
             }
-            TradeMarginByDay table = new TradeMarginByDay(trades, new HashSet<>(Arrays.asList(types)), start, end, percent);
+            TradeMarginByDay table = new TradeMarginByDay(filtered, new HashSet<>(Arrays.asList(types)), percent);
             table.write(channel, attachJson, attachCsv);
         }
         return null;

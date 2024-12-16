@@ -296,7 +296,7 @@ public class GraphEndpoints {
                 filtered.add(trade);
             }
         }
-        TradeMarginByDay table = new TradeMarginByDay(trades, resources, start, end, percent);
+        TradeMarginByDay table = new TradeMarginByDay(filtered, resources, percent);
         return table.toHtmlJson();
     }
 
@@ -387,6 +387,7 @@ public class GraphEndpoints {
         args.put(command.has("coalition9") ? command.getString("coalition9") : null, coalition9);
         args.put(command.has("coalition10") ? command.getString("coalition10") : null, coalition10);
         args.entrySet().removeIf(f -> f.getValue() == null);
+        if (args.isEmpty()) throw new IllegalArgumentException("Please specify at least one coalition");
 
         return new WarCostRankingByDay(
                 type,
@@ -404,9 +405,8 @@ public class GraphEndpoints {
 
     @Command()
     @ReturnType(WebGraph.class)
-    public WebGraph radiationStats(Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
-        long startTurn = TimeUtil.getTurn(start);
-        RadiationByTurn table = new RadiationByTurn(continents, start, end);
+    public WebGraph radiationStats(Set<Continent> continents, @Timestamp long start, @Default @Timestamp Long end) {
+        RadiationByTurn table = new RadiationByTurn(continents, start, end == null ? Long.MAX_VALUE : end);
         WebGraph graph = table.toHtmlJson();
         return graph;
     }
