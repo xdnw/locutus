@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gg.jte.generated.precompiled.JtealertGenerated;
 import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.*;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -257,13 +258,9 @@ public class PageHandler implements Handler {
     }
 
     private void sseMessage(SseClient2 sse, String message, boolean success) {
-        JsonObject resultObj = new JsonObject();
-        resultObj.addProperty("content", message);
-        resultObj.addProperty("success", success);
-        sse.sendEvent(resultObj);
+        Map<String, Object> data = Map.of("content", message, "success", success);
+        sse.sendEvent(data);
     }
-
-
 
     /**
      * From argument list
@@ -274,7 +271,10 @@ public class PageHandler implements Handler {
     public void sse(SseClient2 sse) {
         try {
             Context ctx = sse.ctx;
-            Map<String, List<String>> queryMap = sse.ctx.queryParamMap();
+            Map<String, List<String>> queryMap = new Object2ObjectOpenHashMap<>(sse.ctx.queryParamMap());
+            for (Map.Entry<String, List<String>> entry : sse.ctx.formParamMap().entrySet()) {
+                queryMap.put(entry.getKey(), entry.getValue());
+            }
 
             List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
             WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null, false));
@@ -302,7 +302,7 @@ public class PageHandler implements Handler {
 
                 if (cmd instanceof ParametricCallable) {
                     LocalValueStore locals = stack.getStore();
-                    Map<String, Object> fullCmdStr = parseQueryMap(ctx.queryParamMap(), null);
+                    Map<String, Object> fullCmdStr = parseQueryMap(queryMap, null);
                     locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
                     setupLocals(locals, ctx, null);
@@ -748,10 +748,8 @@ public class PageHandler implements Handler {
 
             String redirect = redirectBase + StringMan.join(orderedArgs, "/");
 
-            JsonObject response = new JsonObject();
-            response.addProperty("action", "redirect");
-            response.addProperty("value", redirect);
-            sse.sendEvent(response);
+            Map<String, Object> data = Map.of("action", "redirect", "value", redirect);
+            sse.sendEvent(data);
         } catch (Throwable e) {
             handleErrors(e, ws, sse.ctx, false);
         }

@@ -30,6 +30,7 @@ import link.locutus.discord.db.handlers.ActiveWarHandler;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationChangeColorEvent;
+import link.locutus.discord.event.nation.NationChangeDefEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
@@ -1875,7 +1876,7 @@ public class WarDB extends DBMainV2 {
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);
 
-            if (handleNationStatus && existing == null && war.getDate() > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.getStatus() == WarStatus.ACTIVE) {
+            if (handleNationStatus && existing == null && war.getDate() > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.isActive()) {
                 Locutus.imp().getNationDB().setNationActive(war.getAttacker_id(), war.getDate(), eventConsumer);
                 DBNation attacker = war.getNation(true);
                 if (attacker != null && attacker.isBeige()) {
@@ -1889,9 +1890,9 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        long cannotExpireWithin5m = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5);
+        long cannotExpireWithin15m = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15);
         for (DBWar war : activeWars.getActiveWars()) {
-            if (war.getDate() >= cannotExpireWithin5m) continue;
+            if (war.getDate() >= cannotExpireWithin15m) continue;
             if (expectedIdsSet != null && expectedIdsSet.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
                 prevWars.add(new DBWar(war));
                 war.setStatus(WarStatus.EXPIRED);
@@ -1900,7 +1901,9 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        saveWars(newWars, true);
+        for (DBWar war : newWars) {
+            setWar(war);
+        }
 
         List<Map.Entry<DBWar, DBWar>> warUpdatePreviousNow = new ArrayList<>();
 
@@ -1910,22 +1913,32 @@ public class WarDB extends DBMainV2 {
             if (newWar.isActive()) {
                 activeWars.addActiveWar(newWar);
             } else {
-                if (handleNationStatus && previous != null && previous.isActive() && (newWar.getStatus() == WarStatus.DEFENDER_VICTORY || newWar.getStatus() == WarStatus.ATTACKER_VICTORY)) {
+                activeWars.makeWarInactive(newWar);
+                if (handleNationStatus && previous != null && previous.isActive() && !newWar.isActive()) {
                     boolean isAttacker = newWar.getStatus() == WarStatus.ATTACKER_VICTORY;
                     DBNation defender = newWar.getNation(!isAttacker);
-                    if (defender != null && defender.getColor() != NationColor.BEIGE) {
-                        DBNation copyOriginal = defender.copy();
-                        defender.setColor(NationColor.BEIGE);
-                        defender.setBeigeTimer(TimeUtil.getTurn() + 24);
-                        if (eventConsumer != null)
-                            eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
+                    if (defender != null) {
+                        if (newWar.getStatus() == WarStatus.DEFENDER_VICTORY || newWar.getStatus() == WarStatus.ATTACKER_VICTORY) {
+                            if (defender.getColor() != NationColor.BEIGE) {
+                                DBNation copyOriginal = defender.copy();
+                                defender.setColor(NationColor.BEIGE);
+                                defender.setBeigeTimer(TimeUtil.getTurn() + 24);
+                                if (eventConsumer != null)
+                                    eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
+                            }
+                        } else if (newWar.getStatus() == WarStatus.EXPIRED) {
+                            if (eventConsumer != null) {
+                                eventConsumer.accept(new NationChangeDefEvent(defender, defender));
+                            }
+                        }
                     }
                 }
-                activeWars.makeWarInactive(newWar);
             }
 
             warUpdatePreviousNow.add(new AbstractMap.SimpleEntry<>(previous, newWar));
         }
+
+        saveWars(newWars, false);
 
         if (!warUpdatePreviousNow.isEmpty() && eventConsumer != null) {
             try {
@@ -2529,10 +2542,10 @@ public class WarDB extends DBMainV2 {
                     if (war != null) {
                         if (runAlerts) {
                             DBNation defender = DBNation.getById(attack.getDefender_id());
-                            if (defender != null && defender.getColor() != NationColor.BEIGE && attack.getDate() > now - TimeUnit.MINUTES.toMillis(5)) {
+                            if (defender != null && defender.getColor() != NationColor.BEIGE && attack.getDate() > now - TimeUnit.MINUTES.toMillis(15)) {
                                 DBNation copyOriginal = copyOriginal = defender.copy();
                                 defender.setColor(NationColor.BEIGE);
-                                defender.setBeigeTimer(defender.getBeigeAbsoluteTurn() + 24);
+                                defender.setBeigeTimer(TimeUtil.getTurn() + 24);
                                 if (copyOriginal != null && eventConsumer != null)
                                     eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
                             }

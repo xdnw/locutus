@@ -16,10 +16,12 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.commands.binding.value_types.DiscordRole;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -124,6 +126,18 @@ public class MarkupUtil {
         return sb.toString();
     }
 
+    public static void mapMentionedRoles(Guild guild, String input, Map<Long, DiscordRole> roles) {
+        Matcher m = MENTIONED_ROLE.matcher(input);
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            Role role = guild.getRoleById(id);
+            if (role != null) {
+                roles.put(id, new DiscordRole(role));
+            }
+        }
+    }
+
     public static String formatMentionedChannels(String input, Guild guild) {
         Matcher m = MENTIONED_CHANNEL.matcher(input);
         StringBuffer sb = new StringBuffer();
@@ -141,6 +155,18 @@ public class MarkupUtil {
         return sb.toString();
     }
 
+    public static void mapMentionedChannels(Guild guild, String input, Map<Long, String> channels) {
+        Matcher m = MENTIONED_CHANNEL.matcher(input);
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            GuildChannel channel = guild.getGuildChannelById(id);
+            if (channel != null) {
+                channels.put(id, channel.getName());
+            }
+        }
+    }
+
     public static String formatMentionedUsers(String input) {
         Matcher m = MENTIONED_USER.matcher(input);
         StringBuffer sb = new StringBuffer();
@@ -152,7 +178,20 @@ public class MarkupUtil {
             m.appendReplacement(sb, markdownUrl(name, url));
         }
         m.appendTail(sb);
-        return sb.toString(); }
+        return sb.toString();
+    }
+
+    public static void mapMentionedUsers(Guild guild, String input, Map<Long, String> usernames) {
+        Matcher m = MENTIONED_USER.matcher(input);
+        while(m.find()) {
+            String found = m.group(1);
+            Long id = Long.parseLong(found);
+            User user = Locutus.imp().getDiscordApi().getUserById(id);
+            if (user != null) {
+                usernames.put(id, user.getName());
+            }
+        }
+    }
 
     public static String formatDiscordMarkdown(String input, Guild guild) {
         input = formatQuotedCommands(input);
@@ -162,6 +201,21 @@ public class MarkupUtil {
         if (guild != null) {
             input = formatMentionedRoles(input, guild);
             input = formatMentionedChannels(input, guild);
+        }
+        return input;
+    }
+
+    public static String mapDiscordMarkdown(String input, Guild guild, Map<Long, String> usernames, Map<Long, DiscordRole> roles, Map<Long, String> channels) {
+        input = formatQuotedCommands(input);
+        input = formatMentionedCommands(input);
+//        input = formatMentionedUsers(input);
+//        input = formatQuotedTimestamps(input);
+        if (usernames != null) mapMentionedUsers(guild, input, usernames);
+        if (guild != null) {
+//            input = formatMentionedRoles(input, guild);
+//            input = formatMentionedChannels(input, guild);
+            if (roles != null) mapMentionedRoles(guild, input, roles);
+            if (channels != null) mapMentionedChannels(guild, input, channels);
         }
         return input;
     }

@@ -351,7 +351,16 @@ public class NationUpdateProcessor {
         DBNation nation = event.getCurrent();
         if (nation.getVm_turns() == 0) {
             raidAlert(nation);
-            enemyAlert(event.getPrevious(), nation);
+            enemyAlert(event.getPrevious(), nation, event.getPrevious().getDef());
+        }
+    }
+
+    @Subscribe
+    public void onNationDefEvent(NationChangeDefEvent event) {
+        DBNation previous = event.getPrevious();
+        DBNation current = event.getCurrent();
+        if (current.getDef() < 3) {
+            enemyAlert(previous, current, current.getDef() + 1);
         }
     }
 
@@ -369,38 +378,49 @@ public class NationUpdateProcessor {
         DBNation nation = event.getCurrent();
         if (nation.getVm_turns() == 0 && !nation.isBeige()) {
             raidAlert(nation);
-            enemyAlert(event.getPrevious(), nation);
+            enemyAlert(event.getPrevious(), nation, event.getPrevious().getDef());
         }
     }
 
     private final PassiveExpiringMap<Long, Boolean> pingFlag = new PassiveExpiringMap<>(60, TimeUnit.MINUTES);
 
-    private boolean enemyAlert(DBNation previous, DBNation current) {
+    private boolean enemyAlert(DBNation previous, DBNation current, int previousDef) {
         if (current.active_m() > 7200) return false;
 
-        boolean leftVMBeige = false;
+        boolean checkSlots = false;
+        boolean checkBeige = false;
+        boolean checkVm = false;
         String title;
-        if (previous.isBeige() && !current.isBeige() && current.active_m() < 10000) {
+        if (previous.isBeige() && !current.isBeige()) {
             title = "Left Beige: " + current.getNation() + " | " + current.getAllianceName();
-            leftVMBeige = true;
+            checkSlots = true;
+            checkVm = true;
         } else if (previous.getVm_turns() > 0 && current.getVm_turns() == 0) {
             title = "Left VM: " + current.getNation() + " | " + current.getAllianceName();
-            leftVMBeige = true;
+            checkSlots = true;
+            checkBeige = true;
         } else if (previous.active_m() <= 10080 && current.active_m() > 10080) {
             title = "Inactive: " + current.getNation() + " | " + current.getAllianceName();
-            leftVMBeige = true;
+            checkSlots = true;
+            checkBeige = true;
+            checkVm = true;
         } else if (previous.getAlliance_id() != 0 && current.getAlliance_id() == 0 && current.active_m() > 1440) {
             title = "Removed: " + current.getNation() + " | " + current.getAllianceName();
-            leftVMBeige = true;
-        } else if (previous.getDef() >= 3 && current.getDef() < 3 && !current.isBeige()) {
+            checkSlots = true;
+            checkBeige = true;
+            checkVm = true;
+        } else if (previousDef >= 3 && current.getDef() < 3 && !current.isBeige()) {
             title = "Unslotted: " + current.getNation() + " | " + current.getAllianceName();
-//                    leftVMBeige = true;
+            checkVm = true;
         } else {
             return false;
         }
+        if (checkSlots && current.getDef() >= 3) return false;
+        if (checkBeige && current.isBeige()) return false;
+        if (checkVm && current.getVm_turns() > 0) return false;
 
         double minScore = current.getScore() / PW.WAR_RANGE_MAX_MODIFIER;
-        double maxScore = current.getScore() / 0.75;
+        double maxScore = current.getScore() / PW.WAR_RANGE_MIN_MODIFIER;
 
         AlertUtil.forEachChannel(GuildDB::isValidAlliance, GuildKey.ENEMY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
