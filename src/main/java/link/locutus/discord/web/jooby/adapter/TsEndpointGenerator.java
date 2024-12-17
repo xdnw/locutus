@@ -262,8 +262,9 @@ public class TsEndpointGenerator {
                     {args: {argValues}, render: (data: ApiTypes.{typeName}) => React.ReactNode, renderLoading?: () => React.ReactNode, renderError?: (error: string) => React.ReactNode}): React.ReactNode => {
                         return useDisplay({constName}.endpoint.name, {cacheArg}, args, render, renderLoading, renderError);
                     },
-                    useForm: ({default_values, label, message, handle_response, handle_submit, handle_loading, handle_error, classes}: {
+                    useForm: ({default_values, showArguments = [], label, message, handle_response, handle_submit, handle_loading, handle_error, classes}: {
                         default_values?: {argValuesAllOptional},
+                        showArguments?: string[],
                         label?: ReactNode,
                         message?: ReactNode,
                         handle_response?: (data: ApiTypes.{typeName}) => void,
@@ -271,7 +272,7 @@ public class TsEndpointGenerator {
                         handle_loading?: () => void,
                         handle_error?: (error: string) => void,
                         classes?: string}): React.ReactNode => {
-                        return useForm({constName}.endpoint.url, {constName}.endpoint.args, message, default_values, label, handle_response, handle_submit, handle_loading, handle_error, classes);
+                        return useForm({constName}.endpoint.url, {constName}.endpoint.args, message, default_values, showArguments, label, handle_response, handle_submit, handle_loading, handle_error, classes);
                     }
                 };"""
                 .replace("{path}", path)

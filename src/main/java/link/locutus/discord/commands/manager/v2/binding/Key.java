@@ -172,7 +172,7 @@ public class Key<T> {
 
     public String toSimpleString() {
         StringBuilder name = new StringBuilder();
-        name.append(type.getTypeName());
+        name.append(type.getTypeName().replace(", ", ","));
         if (!annotationTypes.isEmpty()) {
             name.append("[" + annotationTypes.stream().map(Class::getSimpleName).collect(Collectors.joining(",")) + "]");
         }
