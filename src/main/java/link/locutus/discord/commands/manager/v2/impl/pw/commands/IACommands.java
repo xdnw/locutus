@@ -667,6 +667,7 @@ public class IACommands {
     }
     @Command(desc = "View a list of reactions on a message sent by or mentioning the bot")
     @RolePermission(Roles.ADMIN)
+    @MessageCommand
     public String msgInfo(@Me IMessageIO channel, Message message, @Arg("List the ids of users who reacted")@Switch("i") boolean useIds) {
         StringBuilder response = new StringBuilder();
 

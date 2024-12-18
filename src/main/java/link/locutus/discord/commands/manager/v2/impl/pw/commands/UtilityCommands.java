@@ -958,6 +958,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"})
+    @UserCommand
     public String TurnTimer(DBNation nation) throws IOException {
         StringBuilder response = new StringBuilder();
         response.append("City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n");
@@ -1694,6 +1695,7 @@ public class UtilityCommands {
             desc = "Get detailed information about a nation\n" +
                     "Nation argument can be nation name, id, link, or discord tag\n" +
                     "e.g. `{prefix}who @borg`")
+    @UserCommand
     public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db, @Me @Default DBNation me,
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,

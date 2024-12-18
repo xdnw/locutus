@@ -620,6 +620,7 @@ public class BankCommands {
 
     @Command(desc = "View a nation's taxability, in-game tax rate, and internal tax-rate")
     @IsAlliance
+    @UserCommand
     public String taxInfo(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, DBNation nation) {
         if (nation == null) nation = me;
         if (nation.getId() != me.getId()) {
@@ -3594,6 +3595,7 @@ public class BankCommands {
     @Command(desc="Displays the account balance for a nation, alliance or guild\n" +
             "Balance info includes deposits, loans, grants, taxes and escrow")
     @RolePermission(Roles.MEMBER)
+    @UserCommand
     public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author,
                            @AllowDeleted
                            @StarIsGuild

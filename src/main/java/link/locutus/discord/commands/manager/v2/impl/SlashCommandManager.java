@@ -39,10 +39,13 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.entities.sticker.Sticker;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -128,6 +131,8 @@ public class SlashCommandManager extends ListenerAdapter {
 
     private CommandManager2 commandsOrNull;
     private Set<String> ephemeralOrNull;
+    private Set<String> userCommandsOrNull;
+    private Set<String> messageCommandsOrNull;
     private final Map<String, Long> commandIds = new HashMap<>();
     private final Set<Key> bindingKeys = new HashSet<>();
     private final boolean registerAdminCmds;
@@ -145,6 +150,8 @@ public class SlashCommandManager extends ListenerAdapter {
                 if (commandsOrNull == null) {
                     commandsOrNull = provider.get();
                     this.ephemeralOrNull = generateEphemeral(commandsOrNull.getCommands());
+                    this.userCommandsOrNull = generateUserCommands(commandsOrNull.getCommands());
+                    this.messageCommandsOrNull = generateMessageCommands(commandsOrNull.getCommands());
                 }
             }
         }
@@ -159,6 +166,26 @@ public class SlashCommandManager extends ListenerAdapter {
             }
         }
         return ephemeral;
+    }
+
+    public Set<String> generateUserCommands(CommandGroup group) {
+        Set<String> userCommands = new ObjectOpenHashSet<>();
+        for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
+            if (cmd.getAnnotation(UserCommand.class) != null) {
+                userCommands.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
+            }
+        }
+        return userCommands;
+    }
+
+    public Set<String> generateMessageCommands(CommandGroup group) {
+        Set<String> userCommands = new ObjectOpenHashSet<>();
+        for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
+            if (cmd.getAnnotation(MessageCommand.class) != null) {
+                userCommands.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
+            }
+        }
+        return userCommands;
     }
 
     private boolean isAdmin(ParametricCallable cmd) {
@@ -252,7 +279,7 @@ public class SlashCommandManager extends ListenerAdapter {
         response.append(indentStr).append("opt:").append(option.getName()).append("(desc:").append(option.getDescription().length()).append(")\n");
     }
 
-    public List<SlashCommandData>  generateCommandData() {
+    public List<CommandData>  generateCommandData() {
         CommandManager2 commands = getCommands();
         new PrimitiveCompleter().register(commands.getStore());
         new DiscordCompleter().register(commands.getStore());
@@ -260,7 +287,7 @@ public class SlashCommandManager extends ListenerAdapter {
         new SheetCompleter().register(commands.getStore());
         new GPTCompleter().register(commands.getStore());
 
-        List<SlashCommandData> toRegister = new ArrayList<>();
+        List<CommandData> toRegister = new ObjectArrayList<>();
         for (Map.Entry<String, CommandCallable> entry : commands.getCommands().getSubcommands().entrySet()) {
             CommandCallable callable = entry.getValue();
             String id = entry.getKey();
@@ -295,24 +322,37 @@ public class SlashCommandManager extends ListenerAdapter {
                 throw e;
             }
         }
-        for (SlashCommandData cmd : toRegister) {
-            int size = getSize(cmd);
-            if (size > 4000) {
-                StringBuilder builder = new StringBuilder();
-                printSize(cmd, builder, 0);
-                System.out.println(builder);
-                throw new IllegalArgumentException("Command " + cmd.getName() + "too large: " + size + "");
+        if (userCommandsOrNull != null) {
+            for (String cmd : userCommandsOrNull) {
+                toRegister.add(Commands.user(cmd));
+            }
+        }
+        if (messageCommandsOrNull != null) {
+            for (String cmd : messageCommandsOrNull) {
+                toRegister.add(Commands.message(cmd));
+            }
+        }
+
+        for (CommandData cmd : toRegister) {
+            if (cmd instanceof SlashCommandData slash) {
+                int size = getSize(slash);
+                if (size > 4000) {
+                    StringBuilder builder = new StringBuilder();
+                    printSize(slash, builder, 0);
+                    System.out.println(builder);
+                    throw new IllegalArgumentException("Command " + cmd.getName() + "too large: " + size + "");
+                }
             }
         }
         return toRegister;
     }
 
     public void registerCommandData(JDA jda) {
-        List<SlashCommandData> generate = generateCommandData();
+        List<CommandData> generate = generateCommandData();
         registerCommandData(jda, generate);
     }
 
-    public void registerCommandData(JDA jda, List<SlashCommandData> toRegister) {
+    public void registerCommandData(JDA jda, List<CommandData> toRegister) {
         if (!toRegister.isEmpty()) {
             List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
@@ -856,5 +896,41 @@ public class SlashCommandManager extends ListenerAdapter {
         } catch (Throwable e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void onUserContextInteraction(UserContextInteractionEvent event) {
+        String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
+        MessageChannel channel = event.getMessageChannel();
+        InteractionHook hook = event.getHook();
+        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+
+        DiscordHookIO io = new DiscordHookIO(hook, event);
+        RateLimitUtil.complete(event.deferReply(true));
+        hook.setEphemeral(true);
+
+        User target = event.getTarget();
+        String mention = target.getAsMention();
+
+        String fullCmdStr = path + " " + mention;
+        Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, fullCmdStr, true, true);
+    }
+
+    @Override
+    public void onMessageContextInteraction(MessageContextInteractionEvent event) {
+        String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
+        MessageChannel channel = event.getMessageChannel();
+        InteractionHook hook = event.getHook();
+        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+
+        DiscordHookIO io = new DiscordHookIO(hook, event);
+        RateLimitUtil.complete(event.deferReply(true));
+        hook.setEphemeral(true);
+
+        Message target = event.getTarget();
+        String mention = target.getJumpUrl();
+
+        String fullCmdStr = path + " " + mention;
+        Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), target, io, fullCmdStr, true, true);
     }
 }
