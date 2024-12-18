@@ -356,7 +356,7 @@ public class DiscordCommands {
 
         return "Run the following commands:\n" +
                 "```\n" +
-                StringMan.join(commands, "\n") +
+                StringMan.join(commands, "\n").replace("```", "\\`\\`\\`") +
                 "\n```";
     }
 
