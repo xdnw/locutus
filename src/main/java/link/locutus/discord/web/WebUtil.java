@@ -128,7 +128,7 @@ public class WebUtil {
     }
 
     public static void setCookieViaHeader(Context context, String key, String value, int duration, boolean secure, String domain) {
-        String newCookie = key + "=" + value + "; Max-Age=" + duration + "; Path=/; ";
+        String newCookie = key + "=" + value + "; " + (duration <= 0 ? "" : "Max-Age=" + duration + "; ") + "Path=/; ";
         if (secure) {
             newCookie += (context.scheme().equals("https") ? "Secure; " : "") + "HttpOnly; ";
             newCookie += "SameSite=Strict;";

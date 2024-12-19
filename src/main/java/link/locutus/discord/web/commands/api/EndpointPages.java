@@ -29,8 +29,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.web.jooby.PageHandler.CookieType.URL_AUTH;
-import static link.locutus.discord.web.jooby.PageHandler.CookieType.URL_AUTH_SET;
+import static link.locutus.discord.web.jooby.PageHandler.CookieType.*;
 
 public class EndpointPages extends PageHelper {
 
@@ -46,12 +45,20 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(SetGuild.class)
-    public Object set_guild(Context context, @Me @Default User user, Guild guild, @Me @Default DBAuthRecord auth) {
-        if (user == null) return error("No user found, please login via discord");
+    public Object set_guild(Context context, Guild guild, @Me @Default DBAuthRecord auth) {
         String id = guild.getId();
         String name = guild.getName();
         String icon = guild.getIconUrl();
+        WebUtil.setCookieViaHeader(context, GUILD_ID.getCookieId(), guild.getId(), -1, true, null);
         return new SetGuild(id, name, icon);
+    }
+
+    @Command
+    @ReturnType(WebSuccess.class)
+    public Object unset_guild(Context context) {
+        String removeCookieStrings = GUILD_ID.getCookieId() + "=; Max-Age=0; Path=/; HttpOnly";
+        context.header("Set-Cookie", removeCookieStrings);
+        return success();
     }
 
     @Command
