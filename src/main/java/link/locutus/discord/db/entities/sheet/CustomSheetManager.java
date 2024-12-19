@@ -11,6 +11,7 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Types;
 import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -256,7 +257,7 @@ public class CustomSheetManager {
             stmt.setString(1, finalName);
             stmt.setString(2, PlaceholdersMap.getClassName(type));
             stmt.setString(3, selection);
-            stmt.setString(4, modifierOrNull);
+            stmt.setString(4, modifierOrNull == null ? "" : modifierOrNull);
         });
         SelectionAlias alias = new SelectionAlias(name, type, selection, modifierOrNull);
         getSelectionAliases().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, alias);
