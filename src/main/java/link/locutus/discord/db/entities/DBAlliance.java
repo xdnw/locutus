@@ -205,6 +205,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return lootEntry;
     }
 
+    @Command(desc = "Loot value for a specific score")
+    public double getLootValue(double score) {
+        LootEntry loot = getLoot();
+        return loot == null ? 0 : ResourceType.convertedTotal(loot.getAllianceLootValue(score));
+    }
+
     public String setAAPage(String file) throws Exception{
         String input = FileUtil.readFile(file);
 

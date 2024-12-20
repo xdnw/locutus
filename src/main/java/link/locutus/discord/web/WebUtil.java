@@ -24,7 +24,9 @@ import link.locutus.discord.web.jooby.WebRoot;
 import org.jsoup.Jsoup;
 
 import java.awt.Color;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
@@ -36,6 +38,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class WebUtil {
     public static final Gson GSON = new Gson();
@@ -292,5 +295,19 @@ public class WebUtil {
 
     public static String createInput(String tag, InputType type, ParameterData param, String... attributes) {
         return createInputWithClass(tag, type, param, null, false, attributes);
+    }
+
+    public static byte[] downloadToBytes(CompletableFuture<InputStream> future) throws IOException {
+        try (InputStream inputStream = future.get();
+             ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+            int nRead;
+            byte[] data = new byte[1024];
+            while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            return buffer.toByteArray();
+        } catch (Exception e) {
+            throw new IOException("Failed to download and convert to bytes", e);
+        }
     }
 }
