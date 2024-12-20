@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -7,16 +8,23 @@ import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.table.imp.EntityGroup;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.web.commands.binding.value_types.DiscordRole;
+import link.locutus.discord.web.commands.binding.value_types.GraphType;
+import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.utils.ImageProxy;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class WebMessage extends AMessageBuilder {
@@ -118,12 +126,20 @@ public class WebMessage extends AMessageBuilder {
 
     public Map<String, Object> build() {
         Map<String, Object> root = new LinkedHashMap<>();
+        System.out.println("BUttons " + buttons);
         addJson(root, false, true, true);
-        if (!files.isEmpty() || !images.isEmpty()) {
-            Map<String, byte[]> dataByName = new LinkedHashMap<>();
-            dataByName.putAll(files);
-            dataByName.putAll(images);
+        if (!files.isEmpty()) {
+            Map<String, String> dataByName = new LinkedHashMap<>();
+            files.entrySet().forEach(entry -> dataByName.put(entry.getKey(), new String(entry.getValue())));
             root.put("files", dataByName);
+        }
+        if (!images.isEmpty()) {
+            Map<String, List<Byte>> dataByName = new LinkedHashMap<>();
+//            images.entrySet().forEach(entry -> dataByName.put(entry.getKey(), new String(entry.getValue())));
+            for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+                dataByName.put(entry.getKey(), new ByteArrayList(entry.getValue()));
+            }
+            root.put("images", dataByName);
         }
         if (!usernames.isEmpty()) {
             Map<String, String> strIds = new Object2ObjectOpenHashMap<>();
