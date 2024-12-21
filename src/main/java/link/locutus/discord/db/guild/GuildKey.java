@@ -16,21 +16,17 @@ import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.CustomConditionMessage;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.EnemyAlertChannelMode;
-import link.locutus.discord.db.entities.MMRMatcher;
-import link.locutus.discord.db.entities.MessageTrigger;
-import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.gpt.GPTModerator;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
@@ -46,6 +42,8 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
@@ -53,6 +51,8 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -2910,6 +2910,52 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requires(API_KEY).requires(MEMBER_CAN_SET_BRACKET).requireValidAlliance());
+
+    public static GuildSetting<Map<ICommand, LabelArgs>> USER_ACTIONS = new GuildSetting<Map<ICommand, LabelArgs>>(GuildSettingCategory.GUILD_MANAGEMENT, Key.of(Map.class, ICommand.class, LabelArgs.class)) {
+        @Override
+        public String toString(Map<ICommand, LabelArgs> value) {
+            List<Map<String, Object>> data = new ArrayList<>();
+            for (Map.Entry<ICommand, LabelArgs> entry : value.entrySet()) {
+                String cmd = entry.getKey().getFullPath();
+                LabelArgs labelArgs = entry.getValue();
+                String label = labelArgs.label();
+                Map<String, String> args = labelArgs.arguments();
+                Map<String, Object> map = new HashMap<>();
+                map.put("command", cmd);
+                map.put("label", label);
+                map.put("values", args);
+                data.add(map);
+            }
+            return WebUtil.GSON.toJson(data);
+        }
+
+        @Override
+        public Map<ICommand, LabelArgs> parse(GuildDB db, String input) {
+            Map<ICommand, LabelArgs> result = new LinkedHashMap<>();
+            List<Map<String, Object>> data = WebUtil.GSON.fromJson(input, new TypeToken<List<Map<String, Object>>>(){}.getType());
+
+            for (Map<String, Object> map : data) {
+                String cmdPath = (String) map.get("command");
+                String label = (String) map.get("label");
+                Map<String, String> args = (Map<String, String>) map.get("values");
+
+                try {
+                    ICommand command = PWBindings.slashCommand(cmdPath);
+                    if (command != null) {
+                        result.put(command, new LabelArgs(label, args));
+                    }
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public String help() {
+            return "The #channel to post creation and deletion of war rooms in";
+        }
+    }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

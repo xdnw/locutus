@@ -163,7 +163,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A discord slash command reference for the bot")
-    public ICommand slashCommand(String input) {
+    public static ICommand slashCommand(String input) {
         List<String> split = StringMan.split(input, ' ');
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
         if (command == null) throw new IllegalArgumentException("No command found for `" + input + "`");
