@@ -25,6 +25,7 @@ import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
+import link.locutus.discord.db.entities.menu.MenuManager;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -159,6 +160,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     private CustomSheetManager sheetManager;
     private volatile boolean cachedRoleAliases = false;
     private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
+    private MenuManager menuManager;
 
     public GuildDB(Guild guild) throws SQLException, ClassNotFoundException {
         super("guilds/" + guild.getId());
@@ -241,6 +243,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         }
         return sheetManager;
+    }
+
+    public MenuManager getMenuManager() {
+        if (menuManager == null) {
+            synchronized (this) {
+                if (menuManager == null) {
+                    menuManager = new MenuManager(this);
+                }
+            }
+        }
+        return menuManager;
     }
 
     public long getLastModified() {

@@ -27,27 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class AppActionCommands {
-    // Create menu
-    // Edit menu
-    // List menus
-    // Delete menu
-    // Open menu <menu>
-
-    // Embed buttons
-    // Menu Edit ->
-    // - Title
-    // - Description
-    // - Reorder Button
-    // > You are now in reordering mode. Click the buttons to swap their positions. Click the same button again to exit reordering mode.
-    // > Press cancel to exit. This dialog will timeout after 2 minutes.
-    // - Add Button
-    // > Enter the command you wish to add to the menu. Use {user} to mention the user, {channel} to mention the channel, {message} to mention the message
-    // > Press cancel to exit. This dialog will timeout after 2 minutes.
-    // - Remove Button
-    // > Click the button you wish to remove from the menu. Press cancel to exit.
-    // - Rename Button
-    // > Click the button you wish to rename, then enter the new name. Press cancel to exit.
-
     private static final PassiveExpiringMap<Long, AppMenu> USER_MENU_STATE = new PassiveExpiringMap<Long, AppMenu>(2, TimeUnit.MINUTES);
 
     public AppMenu getAppMenu(User user, IMessageIO io, boolean deleteIfDifferentChannel) {
@@ -69,9 +48,11 @@ public class AppActionCommands {
         return menu;
     }
 
-    public AppMenu getAppMenuFromDb(String name) {
-        // fetch from database
-        // Don't write code for this now
+    public AppMenu getAppMenuFromDb(GuildDB db, String name) {
+        // returns a menu devoid of user information, and in default state
+    }
+
+    public Map<String, AppMenu> getAppMenus(GuildDB db) {
         // returns a menu devoid of user information, and in default state
     }
 
