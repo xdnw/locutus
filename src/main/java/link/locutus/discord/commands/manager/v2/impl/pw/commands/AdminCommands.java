@@ -2354,7 +2354,8 @@ public class AdminCommands {
                 "domestic_policy",
                 "war_policy",
                 "uid_match",
-                "verified",
+                "bot_validated",
+                "irl_verified",
                 "mark"
         ));
 
@@ -2362,6 +2363,8 @@ public class AdminCommands {
             sheet = SpreadSheet.create(db, SheetKey.MULTI_BULK);
         }
         sheet.setHeader(header);
+
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         for (DBNation nation : nations) {
             List<Object> row = data.get(nation);
@@ -2399,6 +2402,7 @@ public class AdminCommands {
             row.add(nation.getWarPolicy().name());
             row.add(uidCounts.getOrDefault(uidByNation.get(nation.getId()), 0) - 1);
             row.add(nation.isVerified());
+            row.add(nation.hasProvidedIdentity(cacheStore));
             row.add(mark != null && mark.contains(nation) ? "X" : null);
 
             sheet.addRow(row);
