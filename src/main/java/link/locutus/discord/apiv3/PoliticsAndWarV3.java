@@ -819,11 +819,7 @@ public class PoliticsAndWarV3 {
             p.def_id();
             p.type();
             p.success();
-//            p.attcas1();
-//            p.attcas2();
-//            p.defcas1();
-//            p.defcas2();
-            // victory
+
             p.infra_destroyed_percentage();
 
             CityInfraDamageResponseProjection cityDamageProj = new CityInfraDamageResponseProjection();
@@ -831,7 +827,6 @@ public class PoliticsAndWarV3 {
             cityDamageProj.id();
 
             p.cities_infra_before(cityDamageProj);
-
 
             // unit attack
             p.infra_destroyed();

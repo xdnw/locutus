@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
@@ -69,6 +70,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.PermissionException;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.json.JSONObject;
 
@@ -2698,5 +2700,11 @@ public class IACommands {
 
         sheet.attach(io.create(), "interview").send();
         return null;
+    }
+
+    @Command
+    public void addUserAppCommand(@Me GuildDB db, @Me Guild guild, @Me User user, String label, ICommand command, String arguments) {
+
+//        guild.upsertCommand()
     }
 }
