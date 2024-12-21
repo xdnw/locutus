@@ -9,6 +9,8 @@ import io.javalin.http.Header;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.servlet.JavalinServletContext;
 import link.locutus.discord.Logg;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.value_types.*;
@@ -224,6 +226,28 @@ public class WebRoot {
         this.app.get("/discordids", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
+                String userId = context.queryParam("user");
+                if (userId != null) {
+                    Long id = Long.parseLong(userId);
+                    PNWUser user = Locutus.imp().getDiscordDB().getUser(id, null, null);
+                    if (user == null) {
+                        context.result("-1\t" + id + "\t");
+                    } else {
+                        context.result(user.getNationId() + "\t" + user.getDiscordId() + "\t" + user.getDiscordName());
+                    }
+                    return;
+                }
+                String nationId = context.queryParam("nation");
+                if (nationId != null) {
+                    DBNation nation = DiscordUtil.parseNation(nationId);
+                    PNWUser user = nation == null ? null : nation.getDBUser();
+                    if (user == null) {
+                        context.result(nationId + "\t-1\t");
+                    } else {
+                        context.result(user.getNationId() + "\t" + user.getDiscordId() + "\t" + user.getDiscordName());
+                    }
+                    return;
+                }
                 Map<Long, PNWUser> users = Locutus.imp().getDiscordDB().getRegisteredUsers();
                 StringBuilder result = new StringBuilder();
                 for (Map.Entry<Long, PNWUser> entry : users.entrySet()) {
