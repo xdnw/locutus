@@ -2243,7 +2243,9 @@ public class AdminCommands {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
         List<Integer> nationIdsList = nations.stream().map(DBNation::getId).sorted().toList();
         Map<Integer, String> discords = new Object2ObjectOpenHashMap<>();
-        for (Nation nation : Locutus.imp().getV3().fetchNations(false, f -> f.setId(nationIdsList), r -> {
+        for (Nation nation : Locutus.imp().getV3().fetchNations(false, f -> {
+            if (nationIdsList.size() < 5000) f.setId(nationIdsList);
+        }, r -> {
             r.id();
             r.discord();
             r.discord_id();
@@ -2254,6 +2256,12 @@ public class AdminCommands {
                 discords.put(id, discord);
             }
         }
+
+        Map<String, Set<Integer>> duplicateDiscordIds = new Object2ObjectOpenHashMap<>();
+        for (Map.Entry<Integer, String> entry : discords.entrySet()) {
+            duplicateDiscordIds.computeIfAbsent(entry.getValue(), k -> new IntOpenHashSet()).add(entry.getKey());
+        }
+        duplicateDiscordIds.entrySet().removeIf(e -> e.getValue().size() == 1);
 
         DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
         snapshot.load();
@@ -2411,7 +2419,16 @@ public class AdminCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "login_times").send();
+        IMessageBuilder msg = sheet.attach(io.create(), "login_times");
+        // append duplicate discord ids
+        if (!duplicateDiscordIds.isEmpty()) {
+            StringBuilder discordMsg = new StringBuilder("### Duplicate Discord IDs\n");
+            for (Map.Entry<String, Set<Integer>> entry : duplicateDiscordIds.entrySet()) {
+                discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
+            }
+            msg.append(discordMsg.toString());
+        }
+        msg.send();
         return null;
     }
 
