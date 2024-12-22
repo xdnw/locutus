@@ -2701,10 +2701,4 @@ public class IACommands {
         sheet.attach(io.create(), "interview").send();
         return null;
     }
-
-    @Command
-    public void addUserAppCommand(@Me GuildDB db, @Me Guild guild, @Me User user, String label, ICommand command, String arguments) {
-
-//        guild.upsertCommand()
-    }
 }
