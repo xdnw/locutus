@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -9,7 +10,9 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.MenuLabel;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -23,6 +26,8 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+
+import static link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.USER_MENU_STATE;
 
 public class DiscordCompleter extends BindingHelper {
     public final Set<Role> ROLES_KEY = null;
@@ -75,6 +80,14 @@ public class DiscordCompleter extends BindingHelper {
         }
 
         return categories.stream().map(Channel::getAsMention).collect(Collectors.toList());
+    }
+
+    @Autocomplete
+    @MenuLabel
+    @Binding(types = {String.class})
+    public List<String> appMenuLabel(@Me User user, String input) {
+        AppMenu menu = USER_MENU_STATE.get(user.getIdLong());
+        return menu == null ? Collections.emptyList() : new ObjectArrayList<>(menu.buttons.keySet());
     }
 
     @Autocomplete

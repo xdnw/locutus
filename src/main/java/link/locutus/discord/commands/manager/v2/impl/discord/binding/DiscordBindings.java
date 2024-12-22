@@ -1,19 +1,20 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
 import cn.easyproject.easyocr.ImageType;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -50,6 +51,12 @@ public class DiscordBindings extends BindingHelper {
             throw new IllegalArgumentException("No user found for: `" + name + "`");
         }
         return user;
+    }
+
+    @Binding(value = "A button label for a custom menu")
+    @MenuLabel
+    public String menuLabel(@Me User user, String input) {
+        return input;
     }
 
     @Binding(examples = {"@member", "borg"}, value = "A discord user mention, or if a nation name, id or url if they are registered")

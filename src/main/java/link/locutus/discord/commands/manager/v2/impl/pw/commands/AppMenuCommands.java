@@ -5,30 +5,24 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.db.entities.menu.MenuState;
 import link.locutus.discord.user.Roles;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.json.JSONObject;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class AppActionCommands {
-    private static final PassiveExpiringMap<Long, AppMenu> USER_MENU_STATE = new PassiveExpiringMap<Long, AppMenu>(2, TimeUnit.MINUTES);
+public class AppMenuCommands {
+    public static final PassiveExpiringMap<Long, AppMenu> USER_MENU_STATE = new PassiveExpiringMap<Long, AppMenu>(2, TimeUnit.MINUTES);
 
     public AppMenu getAppMenu(User user, IMessageIO io, boolean deleteIfDifferentChannel) {
-        // Get from the USER_MENU_STATE and check if the channel is the same as the message channel
-        // if deleteIfDifferentChannel is true, delete the menu from the map if the channel is different
         long channelId = 0;
         if (io instanceof DiscordHookIO hook) {
             channelId = hook.getIdLong();
@@ -45,14 +39,6 @@ public class AppActionCommands {
         return menu;
     }
 
-    public AppMenu getAppMenuFromDb(GuildDB db, String name) {
-        // returns a menu devoid of user information, and in default state
-    }
-
-    public Map<String, AppMenu> getAppMenus(GuildDB db) {
-        // returns a menu devoid of user information, and in default state
-    }
-
     public boolean onCommand(IMessageIO io, GuildDB db, User user, MessageChannel channel, ICommand command, Map<String, String> args) {
         AppMenu menu = getAppMenu(user, io, false);
         if (menu == null || menu.getChannelId() != channel.getIdLong()) {
@@ -67,18 +53,12 @@ public class AppActionCommands {
         String buttonCommand = args.get("command");
         if (buttonLabel != null && buttonCommand != null) {
             menu.buttons.put(buttonLabel, buttonCommand);
-            saveMenu(db, menu);
+            db.getMenuManager().saveMenu(menu);
             sendMenuInfo(io, menu, null, true, false);
             return true;
         }
 
         return false;
-    }
-
-    public void saveMenu(GuildDB db, AppMenu menu) {
-        // Don't write code for this now
-        // Save the menu to the database
-        // upsert command labels to the discord guild
     }
 
     // Placeholder for now, don't code these now
@@ -123,9 +103,9 @@ public class AppActionCommands {
                 // Remove the button
                 menu.buttons.remove(buttonLabel);
                 // save the menu
-                saveMenu(db, menu);
+                db.getMenuManager().saveMenu(menu);
                 // Send the updated menu
-                sendMenuInfo(io, menu, true);
+                sendMenuInfo(io, menu, null, true, true);
                 break;
             case RENAME_BUTTON:
                 // Rename the button
@@ -153,6 +133,8 @@ public class AppActionCommands {
     public void sendMenuInfo(IMessageIO io, AppMenu menu, String overrideDescription, boolean showEdit, boolean showCancel) {
         // Send the menu info to the user
         // Use io.embed() to send the menu info
+
+        // showCancel = set state to NONE
         String desc = overrideDescription != null ? overrideDescription : menu.description;
         IMessageBuilder msg = io.create().embed(menu.title, desc);
         for (Map.Entry<String, String> entry : menu.buttons.entrySet()) {
@@ -166,16 +148,10 @@ public class AppActionCommands {
     @NoFormat
     @Ephemeral
     public void openMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
-        io.setMessageDeleted();
         menu.lastUsedChannel = io.getIdLong();
         menu.state = MenuState.NONE;
         USER_MENU_STATE.put(user.getIdLong(), menu);
-
-        boolean canEdit = Roles.ADMIN.has(user, db.getGuild());
-        sendMenuInfo(io, menu, null, canEdit, false);
-        // get or create the menu, set the state to NONE
-        // save the menu to the USER_MENU_STATE
-        // send the menu embed
+        sendMenuInfo(io, menu, null, menu.canEdit(db, user), false);
     }
 
     @Command
@@ -184,13 +160,12 @@ public class AppActionCommands {
     @Ephemeral
     public void deleteMenu(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me User user, AppMenu menu, @Switch("f") boolean force) {
         if (!force) {
-            String title = todo;
-            String body = todo;
+            String title = "Delete Menu";
+            String body = "Are you sure you want to delete the menu `" + menu.title + "`?";
             io.create().confirmation(title, body, command).send();
             return;
         }
-
-        db.getGuild().getMenuManager().deleteMenu(menu);
+        db.getMenuManager().deleteMenu(menu);
         return;
     }
 
@@ -263,7 +238,7 @@ public class AppActionCommands {
         }
 
         menu.buttons.put(label, command);
-        saveMenu(db, menu);
+        db.getMenuManager().saveMenu(menu);
         sendMenuInfo(io, menu, "Button added successfully.", true, true);
     }
 
@@ -278,7 +253,7 @@ public class AppActionCommands {
         }
 
         if (menu.buttons.remove(label) != null) {
-            saveMenu(db, menu);
+            db.getMenuManager().saveMenu(menu);
             sendMenuInfo(io, menu, "Button removed successfully.", true, true);
         } else {
             io.create().embed("Error", "Button not found.").send();
@@ -306,7 +281,7 @@ public class AppActionCommands {
         menu.buttons.put(label1, command2);
         menu.buttons.put(label2, command1);
 
-        saveMenu(db, menu);
+        db.getMenuManager().saveMenu(menu);
         sendMenuInfo(io, menu, "Buttons swapped successfully.", true, true);
     }
 
@@ -328,7 +303,7 @@ public class AppActionCommands {
         }
 
         menu.buttons.put(new_label, command);
-        saveMenu(db, menu);
+        db.getMenuManager().saveMenu(menu);
         sendMenuInfo(io, menu, "Button renamed successfully.", true, true);
     }
 
@@ -337,13 +312,26 @@ public class AppActionCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void newMenu(@Me IMessageIO io, @Me GuildDB db, String name, String description) {
-        // ensure menu doesn't exist
-        AppMenu existing = getAppMenuFromDb(db, name);
+        AppMenu existing = db.getMenuManager().getAppMenu(name);
         if (existing != null) {
             throw new IllegalArgumentException("Menu already exists with name: `" + name + "`. Pick a different name or edit that one instead.");
         }
         AppMenu newMenu = new AppMenu(name, description, new ConcurrentHashMap<>(), 0, MenuState.NONE);
-        saveMenu(db, newMenu);
+        db.getMenuManager().saveMenu(newMenu);
         io.create().embed("Success", "New menu created successfully.").send();
+    }
+
+    @Command
+    @NoFormat
+    @Ephemeral
+    public String cancel(@Me IMessageIO io, @Me GuildDB db, User user) {
+        AppMenu menu = AppMenuCommands.USER_MENU_STATE.get(user.getIdLong());
+        if (menu != null) {
+            menu.clearState();
+            sendMenuInfo(io, menu, null, menu.canEdit(db, user), false);
+            return null;
+        } else {
+            return "No menu to cancel. (Is it old?)";
+        }
     }
 }
