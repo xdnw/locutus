@@ -58,6 +58,10 @@ public class UserWrapper {
         Member member = getMember();
         return member != null && member.getRoles().stream().anyMatch(roles::contains);
     }
+    @Command(desc = "Discord user id")
+    public long getId() {
+        return userId;
+    }
 
     @Command(desc = "Discord user id")
     public long getUserId() {
@@ -66,6 +70,17 @@ public class UserWrapper {
 
     public Guild getGuild() {
         return guild;
+    }
+
+    @Command(desc = "Roles of this user")
+    public Set<String> getRoles() {
+        Member member = getMember();
+        if (member == null) return new ObjectArraySet<>();
+        Set<String> roles = new HashSet<>();
+        for (Role role : member.getRoles()) {
+            roles.add(role.getName());
+        }
+        return roles;
     }
 
     @Command(desc = "Nation class corresponding to this user\n" +
@@ -80,6 +95,10 @@ public class UserWrapper {
         DBNation nation = getNation();
         if (nation == null) return false;
         return filter.test(nation);
+    }
+    @Command(desc = "Discord user name")
+    public String getName() {
+        return getUserName();
     }
 
     @Command(desc = "Discord user name")
