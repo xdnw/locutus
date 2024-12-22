@@ -1,9 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
@@ -167,7 +164,15 @@ public class AppActionCommands {
 
     @Command
     @NoFormat
+    @Ephemeral
     public void openMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
+        io.setMessageDeleted();
+        menu.lastUsedChannel = io.getIdLong();
+        menu.state = MenuState.NONE;
+        USER_MENU_STATE.put(user.getIdLong(), menu);
+
+        boolean canEdit = Roles.ADMIN.has(user, db.getGuild());
+        sendMenuInfo(io, menu, null, canEdit, false);
         // get or create the menu, set the state to NONE
         // save the menu to the USER_MENU_STATE
         // send the menu embed
@@ -176,6 +181,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void deleteMenu(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me User user, AppMenu menu, @Switch("f") boolean force) {
         if (!force) {
             String title = todo;
@@ -191,6 +197,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void renameMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, String name) {
         // rename the menu
         // save it to db
@@ -200,6 +207,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void describeMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, String description) {
         // set menu description
         // save it to db
@@ -209,6 +217,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void setMenuState(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, MenuState state) {
         // set the menu state, clear prior state
         // return menu embed
@@ -217,6 +226,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void editMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
         String title = "Edit Menu";
         String description = "Edit the menu details";
@@ -245,6 +255,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void addMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label, String command) {
         if (menu.state != MenuState.ADD_BUTTON) {
             io.create().embed("Error", "Menu is not in a state to add buttons.").send();
@@ -259,6 +270,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void removeMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label) {
         if (menu.state != MenuState.REMOVE_BUTTON) {
             io.create().embed("Error", "Menu is not in a state to remove buttons.").send();
@@ -276,6 +288,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void swapMenuButtons(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label1, @MenuLabel String label2) {
         if (menu.state != MenuState.REORDER) {
             io.create().embed("Error", "Menu is not in a state to reorder buttons.").send();
@@ -300,6 +313,7 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void renameMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, @MenuLabel String label, String new_label) {
         AppMenu menu = getAppMenu(user, null, false);
         if (menu == null || menu.state != MenuState.RENAME_BUTTON) {
@@ -321,7 +335,13 @@ public class AppActionCommands {
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
+    @Ephemeral
     public void newMenu(@Me IMessageIO io, @Me GuildDB db, String name, String description) {
+        // ensure menu doesn't exist
+        AppMenu existing = getAppMenuFromDb(db, name);
+        if (existing != null) {
+            throw new IllegalArgumentException("Menu already exists with name: `" + name + "`. Pick a different name or edit that one instead.");
+        }
         AppMenu newMenu = new AppMenu(name, description, new ConcurrentHashMap<>(), 0, MenuState.NONE);
         saveMenu(db, newMenu);
         io.create().embed("Success", "New menu created successfully.").send();
