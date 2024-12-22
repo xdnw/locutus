@@ -2266,7 +2266,6 @@ public class AdminCommands {
                 discords.put(id, discord);
             }
             if (discordId != null && !discordId.isEmpty()) {
-//                discordIds.put(id, Long.parseLong(discordId));
                 discordIds.computeIfAbsent(id, k -> new LongOpenHashSet()).add(Long.parseLong(discordId));
             }
         }
