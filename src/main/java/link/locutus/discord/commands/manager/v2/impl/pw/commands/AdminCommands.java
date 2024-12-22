@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import java.util.function.BiFunction;
 
 import com.politicsandwar.graphql.model.Nation;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
@@ -2242,26 +2244,42 @@ public class AdminCommands {
     public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark) throws IOException, ParseException, GeneralSecurityException {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
         List<Integer> nationIdsList = nations.stream().map(DBNation::getId).sorted().toList();
-        Map<Integer, String> discords = new Object2ObjectOpenHashMap<>();
+        Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Long> discordIds = new Int2LongOpenHashMap();
+
         for (Nation nation : Locutus.imp().getV3().fetchNations(false, f -> {
             if (nationIdsList.size() < 5000) f.setId(nationIdsList);
+            else f.setVmode(false);
         }, r -> {
             r.id();
             r.discord();
             r.discord_id();
         })) {
             Integer id = nation.getId();
+            String discordId = nation.getDiscord_id();
             String discord = nation.getDiscord();
-            if (discord != null) {
+            if (discord != null && !discord.isEmpty()) {
                 discords.put(id, discord);
+            }
+            if (discordId != null && !discordId.isEmpty()) {
+                discordIds.put(id, Long.parseLong(discordId));
             }
         }
 
-        Map<String, Set<Integer>> duplicateDiscordIds = new Object2ObjectOpenHashMap<>();
-        for (Map.Entry<Integer, String> entry : discords.entrySet()) {
-            duplicateDiscordIds.computeIfAbsent(entry.getValue(), k -> new IntOpenHashSet()).add(entry.getKey());
+        Map<String, Set<Integer>> duplicateDiscordNames = new Object2ObjectOpenHashMap<>();
+        {
+            for (Map.Entry<Integer, String> entry : discords.entrySet()) {
+                duplicateDiscordNames.computeIfAbsent(entry.getValue(), k -> new IntOpenHashSet()).add(entry.getKey());
+            }
+            duplicateDiscordNames.entrySet().removeIf(e -> e.getValue().size() == 1);
         }
-        duplicateDiscordIds.entrySet().removeIf(e -> e.getValue().size() == 1);
+        Map<Long, Set<Integer>> duplicateDiscordIds = new Object2ObjectOpenHashMap<>();
+        {
+            for (Map.Entry<Integer, Long> entry : discordIds.entrySet()) {
+                duplicateDiscordIds.computeIfAbsent(entry.getValue(), k -> new IntOpenHashSet()).add(entry.getKey());
+            }
+            duplicateDiscordIds.entrySet().removeIf(e -> e.getValue().size() == 1);
+        }
 
         DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
         snapshot.load();
@@ -2421,9 +2439,16 @@ public class AdminCommands {
 
         IMessageBuilder msg = sheet.attach(io.create(), "login_times");
         // append duplicate discord ids
+        if (!duplicateDiscordNames.isEmpty()) {
+            StringBuilder discordMsg = new StringBuilder("### Duplicate Discord Names\n");
+            for (Map.Entry<String, Set<Integer>> entry : duplicateDiscordNames.entrySet()) {
+                discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
+            }
+            msg.append(discordMsg.toString());
+        }
         if (!duplicateDiscordIds.isEmpty()) {
             StringBuilder discordMsg = new StringBuilder("### Duplicate Discord IDs\n");
-            for (Map.Entry<String, Set<Integer>> entry : duplicateDiscordIds.entrySet()) {
+            for (Map.Entry<Long, Set<Integer>> entry : duplicateDiscordIds.entrySet()) {
                 discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
             }
             msg.append(discordMsg.toString());
