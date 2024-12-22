@@ -6,10 +6,8 @@ import com.politicsandwar.graphql.model.Nation;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -2245,7 +2243,13 @@ public class AdminCommands {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
         List<Integer> nationIdsList = nations.stream().map(DBNation::getId).sorted().toList();
         Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();
-        Map<Integer, Long> discordIds = new Int2LongOpenHashMap();
+        Map<Integer, Set<Long>> discordIds = new Int2ObjectOpenHashMap<>();
+        for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
+            Long discordId = nation.getUserId();
+            if (discordId != null) {
+                discordIds.computeIfAbsent(nation.getId(), k -> new LongOpenHashSet()).add(discordId);
+            }
+        }
 
         for (Nation nation : Locutus.imp().getV3().fetchNations(false, f -> {
             if (nationIdsList.size() < 5000) f.setId(nationIdsList);
@@ -2262,7 +2266,8 @@ public class AdminCommands {
                 discords.put(id, discord);
             }
             if (discordId != null && !discordId.isEmpty()) {
-                discordIds.put(id, Long.parseLong(discordId));
+//                discordIds.put(id, Long.parseLong(discordId));
+                discordIds.computeIfAbsent(id, k -> new LongOpenHashSet()).add(Long.parseLong(discordId));
             }
         }
 
@@ -2275,8 +2280,10 @@ public class AdminCommands {
         }
         Map<Long, Set<Integer>> duplicateDiscordIds = new Object2ObjectOpenHashMap<>();
         {
-            for (Map.Entry<Integer, Long> entry : discordIds.entrySet()) {
-                duplicateDiscordIds.computeIfAbsent(entry.getValue(), k -> new IntOpenHashSet()).add(entry.getKey());
+            for (Map.Entry<Integer, Set<Long>> entry : discordIds.entrySet()) {
+                for (long discordId : entry.getValue()) {
+                    duplicateDiscordIds.computeIfAbsent(discordId, k -> new IntOpenHashSet()).add(entry.getKey());
+                }
             }
             duplicateDiscordIds.entrySet().removeIf(e -> e.getValue().size() == 1);
         }
@@ -2440,14 +2447,14 @@ public class AdminCommands {
         IMessageBuilder msg = sheet.attach(io.create(), "login_times");
         // append duplicate discord ids
         if (!duplicateDiscordNames.isEmpty()) {
-            StringBuilder discordMsg = new StringBuilder("### Duplicate Discord Names\n");
+            StringBuilder discordMsg = new StringBuilder("\n### Duplicate Discord Names\n");
             for (Map.Entry<String, Set<Integer>> entry : duplicateDiscordNames.entrySet()) {
                 discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
             }
             msg.append(discordMsg.toString());
         }
         if (!duplicateDiscordIds.isEmpty()) {
-            StringBuilder discordMsg = new StringBuilder("### Duplicate Discord IDs\n");
+            StringBuilder discordMsg = new StringBuilder("\n### Duplicate Discord IDs\n");
             for (Map.Entry<Long, Set<Integer>> entry : duplicateDiscordIds.entrySet()) {
                 discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
             }
