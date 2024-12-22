@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.entities.ApiRecord;
@@ -543,7 +544,6 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public boolean isVerified(int nationId) {
-            HashSet<Integer> set = new HashSet<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM VERIFIED WHERE nation_id = ?")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -553,6 +553,35 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public Set<Integer> getVerified(Set<Integer> nationIds) {
+        if (nationIds.isEmpty()) return Collections.emptySet();
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            if (isVerified(nationId)) {
+                return Collections.singleton(nationId);
+            }
+            return Collections.emptySet();
+        }
+        if (nationIds.size() > 1000) {
+            return getVerified();
+        }
+        Set<Integer> set = new IntOpenHashSet();
+        List<Integer> nationIdsSorted = new ArrayList<>(nationIds);
+        Collections.sort(nationIdsSorted);
+        try (PreparedStatement stmt = prepareQuery("select * FROM VERIFIED WHERE nation_id IN " + StringMan.getString(nationIdsSorted))) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt("nation_id");
+                    set.add(nationId);
+                }
+            }
+            return set;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public Map<BigInteger, Set<Integer>> getUuidMap() {

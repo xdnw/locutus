@@ -6,6 +6,7 @@ import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.Trade;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -109,6 +110,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static com.ibm.icu.impl.ValidIdentifiers.Datatype.unit;
 
 public abstract class DBNation implements NationOrAlliance {
     public static DBNation getByUser(User user) {
@@ -3575,6 +3578,23 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "If registered with this Bot")
     public boolean isVerified() {
         return getDBUser() != null;
+    }
+
+    @Command(desc = "If the user has provided IRL identity verification to the game")
+    public boolean hasProvidedIdentity(ValueStore store) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "hasProvidedIdentity");
+        Boolean verified = scoped.getMap(this,
+                (ThrowingFunction<List<DBNation>, Map<DBNation, Boolean>>) f -> {
+                    Set<Integer> nationIds = new IntOpenHashSet(f.size());
+                    for (DBNation nation : f) nationIds.add(nation.getNation_id());
+                    Set<Integer> verifiedSet = Locutus.imp().getDiscordDB().getVerified(nationIds);
+                    Map<DBNation, Boolean> result = new Object2BooleanOpenHashMap<>(f.size());
+                    for (DBNation nation : f) {
+                        result.put(nation, verifiedSet.contains(nation.getNation_id()));
+                    }
+                    return result;
+                });
+        return verified != null && verified;
     }
 
     @Command(desc = "If in the discord guild for their alliance")

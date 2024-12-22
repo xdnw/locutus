@@ -1507,6 +1507,7 @@ public class WarDB extends DBMainV2 {
                 f -> f.getDate() >= startDate - TimeUnit.DAYS.toMillis(5) && f.getDate() <= finalEndDate).values();
         for (DBWar other : possibleCounters) {
             if (other.warId == war.warId) continue;
+            if (war.isActive() && !other.isActive() && (System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) < war.getDate())) continue;
             if (attAA.contains(other.getAttacker_aa()) || !(defAA.contains(other.getAttacker_aa()))) continue;
             if (other.getDate() < war.getDate()) {
                 if (other.getAttacker_id() == war.getDefender_id() && attAA.contains(other.getDefender_aa())) {
