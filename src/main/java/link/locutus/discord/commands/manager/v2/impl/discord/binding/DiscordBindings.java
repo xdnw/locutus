@@ -51,13 +51,18 @@ public class DiscordBindings extends BindingHelper {
             existing.lastUsedChannel = io.getIdLong();
             return existing;
         }
-        existing = db.getMenuManager().getAppMenu(menu);
-        if (existing == null) {
+        AppMenu newMenu = db.getMenuManager().getAppMenu(menu);
+        if (newMenu == null) {
             throw new IllegalArgumentException("No menu found for " + menu);
         }
-        existing.lastUsedChannel = io.getIdLong();
-        USER_MENU_STATE.put(user.getIdLong(), existing);
-        return existing;
+        newMenu.lastUsedChannel = io.getIdLong();
+        if (existing != null) {
+            newMenu.targetUser = existing.targetUser;
+            newMenu.targetMessage = existing.targetMessage;
+            newMenu.targetContent = existing.targetContent;
+        }
+        USER_MENU_STATE.put(user.getIdLong(), newMenu);
+        return newMenu;
     }
 
     @Binding(value = "The context state of a custom app menu")
