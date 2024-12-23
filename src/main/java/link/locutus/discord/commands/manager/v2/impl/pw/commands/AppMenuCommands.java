@@ -179,6 +179,11 @@ public class AppMenuCommands {
             menu.message().options(true).cancel(true).description("You cannot use `cancel` or `edit` as button labels. Please try again").queue(io);
             return;
         }
+        if (!label.matches("^[-_\\p{L}\\p{N}\\p{sc=Deva}\\p{sc=Thai}]{1,32}$")) {
+            menu.setState(MenuState.ADD_BUTTON);
+            menu.message().buttons(true).cancel(true).description("Button labels can only contain alphanumeric characters and spaces, not `" + label + "`.\n\nSelect a button to add.\nPress `cancel` to exit").queue(io);
+            return;
+        }
         String contains = null;
         for (String button : menu.buttons.keySet()) {
             if (button.equalsIgnoreCase(label)) {
@@ -316,6 +321,11 @@ public class AppMenuCommands {
         }
         if (new_label.equalsIgnoreCase("cancel") || new_label.equalsIgnoreCase("edit")) {
             String desc = "You cannot use `cancel` or `edit` as button labels. Please try again.\n\nSelect a button to rename.\nPress `cancel` to exit.";
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
+            return;
+        }
+        if (!new_label.matches("^[-_\\p{L}\\p{N}\\p{sc=Deva}\\p{sc=Thai}]{1,32}$")) {
+            String desc = "Button labels can only contain alphanumeric characters and spaces, not `" + new_label + "`.\n\nSelect a button to rename.\nPress `cancel` to exit.";
             menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
             return;
         }

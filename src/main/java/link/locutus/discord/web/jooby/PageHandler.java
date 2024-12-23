@@ -227,9 +227,14 @@ public class PageHandler implements Handler {
         Map<String, WebOption> result = new ConcurrentHashMap<>();
 
         for (Parser optionParser : store.getParsers().values()) {
-            WebOption option = (WebOption) optionParser.apply(store, null);
-            if (option.isAllowQuery()) {
-                result.put(option.getName(), option);
+            try {
+                WebOption option = (WebOption) optionParser.apply(store, null);
+                if (option.isAllowQuery()) {
+                    result.put(option.getName(), option);
+                }
+            } catch (Throwable e) {
+                System.out.println("Error: " + optionParser);
+                e.printStackTrace();
             }
         }
 

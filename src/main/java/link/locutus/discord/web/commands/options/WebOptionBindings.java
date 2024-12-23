@@ -87,10 +87,10 @@ public class WebOptionBindings extends BindingHelper {
     }
 
     @Binding(types = {AppMenu.class})
-    public WebOption appMenu(@Me GuildDB db, String input) {
-        return new WebOption(AppMenu.class).setQueryMap((guild, user, nation) -> {
+    public WebOption appMenu(String input) {
+        return new WebOption(AppMenu.class).setRequiresGuild().setQueryMap((guild, user, nation) -> {
             WebOptions data = new WebOptions(false).withText().withSubtext();
-            for (AppMenu menu : db.getMenuManager().getAppMenus().values()) {
+            for (AppMenu menu : guild.getMenuManager().getAppMenus().values()) {
                 data.addSubtext(menu.title, menu.description.split("\n")[0]);
             }
             return data;

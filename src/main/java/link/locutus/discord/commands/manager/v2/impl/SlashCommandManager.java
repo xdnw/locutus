@@ -185,7 +185,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 cmds.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
         }
-        cmds.add("more");
+        cmds.add("...more");
         return cmds;
     }
 
@@ -196,7 +196,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 cmds.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
         }
-        cmds.add("more");
+        cmds.add("...more");
         return cmds;
     }
 
@@ -947,7 +947,7 @@ public class SlashCommandManager extends ListenerAdapter {
             }
             fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
             System.out.println("Get path " + path + " | " + fullCmdStr + " | " + menu.buttons);
-            if ((path.equalsIgnoreCase("more") && fullCmdStr == null) || "more".equalsIgnoreCase(fullCmdStr)) {
+            if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
                 fullCmdStr = menu.formatCommand(CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
             } else if (fullCmdStr == null) {
                 fullCmdStr = path + " " + mention;
