@@ -153,6 +153,7 @@ public class CustomSheet {
                                 String value1 = function.apply(o);
                                 header.set(i, value1 == null ? "" : value1);
                             } catch (Throwable e) {
+                                header.set(i, "");
                                 while (e.getCause() != null && e.getCause() != e) {
                                     e = e.getCause();
                                 }
@@ -164,7 +165,6 @@ public class CustomSheet {
                                     String column = columns.get(i);
                                     String elemStr = ph.getName(o);
                                     errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(e.getMessage()));
-                                    header.set(i, "");
                                 }
                             }
                         }

@@ -78,6 +78,7 @@ public class IndexPages extends PageHelper {
     }
 
     @Command
+    @NoForm
     public Object search(WebStore ws, String term) {
         term = URLDecoder.decode(term).trim();
 
