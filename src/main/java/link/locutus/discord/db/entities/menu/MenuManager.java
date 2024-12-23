@@ -57,10 +57,9 @@ public class MenuManager {
         if (isUser || isMessage) {
             Set<String> labels = new LinkedHashSet<>();
             for (Map.Entry<String, String> entry : menu.buttons.entrySet()) {
-                if (labels.size() < 4) {
+                if (labels.size() < 5) {
                     labels.add(entry.getKey());
                 } else {
-                    labels.add("more");
                     break;
                 }
             }
