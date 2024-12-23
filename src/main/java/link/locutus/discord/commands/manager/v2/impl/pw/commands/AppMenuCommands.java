@@ -14,8 +14,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.json.JSONObject;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -54,7 +53,7 @@ public class AppMenuCommands {
         if (buttonLabel != null && buttonCommand != null) {
             menu.buttons.put(buttonLabel, buttonCommand);
             db.getMenuManager().saveMenu(menu);
-            sendMenuInfo(io, menu, null, true, false);
+            menu.setState(MenuState.NONE).message().buttons(true).edit(menu.canEdit(db, user)).queue(io);
             return true;
         }
 
@@ -79,7 +78,6 @@ public class AppMenuCommands {
         if (menu == null) {
             return false;
         }
-
         MenuState state = menu.state;
         switch (state) {
             case REORDER:
@@ -87,61 +85,27 @@ public class AppMenuCommands {
                     swapMenuButtons(io, db, user, menu, menu.lastPressedButton, buttonLabel);
                     break;
                 }
-                menu.lastPressedButton = buttonLabel;
+                menu.lastPressedButton = buttonLabel.toLowerCase(Locale.ROOT);
                 String msg = """
                         You are now in reordering mode. Click the buttons to swap their positions. Click the same button again to exit reordering mode.
-                        Press cancel to exit. This dialog will timeout after 2 minutes.
+                        Press `cancel` to exit.
                         """;
-                sendMenuInfo(io, menu, msg, true, true);
-                // Reorder the buttons
-                // Implement reordering logic here
+                menu.setState(MenuState.REORDER).message().buttons(true).cancel(true).description(msg).queue(io);
                 break;
-            case ADD_BUTTON:
-                // Not a valid interaction, return false
-                return false;
             case REMOVE_BUTTON:
-                // Remove the button
-                menu.buttons.remove(buttonLabel);
-                // save the menu
-                db.getMenuManager().saveMenu(menu);
-                // Send the updated menu
-                sendMenuInfo(io, menu, null, true, true);
+                removeMenuButton(io, db, user, menu, buttonLabel);
                 break;
             case RENAME_BUTTON:
                 // Rename the button
                 menu.lastPressedButton = buttonLabel; // Store the button to be renamed
                 // Open a modal to get the new name
-                CommandRef renameModal = RENAME_BUTTON.menu(menu.title).label(buttonLabel).new_label("");
-                io.create().modal(CommandBehavior.EPHEMERAL, renameModal, "Rename Modal").send();
-
+//                CommandRef renameModal = RENAME_BUTTON.menu(menu.title).label(buttonLabel).new_label("");  // TODO FIXME APP MENU COMMAND
+//                io.create().modal(CommandBehavior.EPHEMERAL, renameModal, "Rename Modal").send();
                 break;
             default:
                 return false;
         }
         return true;
-    }
-
-    public Set<String> getMenuLabels(User user) {
-        // either Set<String> or null if no menu is open
-        AppMenu menu = USER_MENU_STATE.get(user.getIdLong());
-        if (menu == null) {
-            return null;
-        }
-        return menu.buttons.keySet();
-    }
-
-    public void sendMenuInfo(IMessageIO io, AppMenu menu, String overrideDescription, boolean showEdit, boolean showCancel) {
-        // Send the menu info to the user
-        // Use io.embed() to send the menu info
-
-        // showCancel = set state to NONE
-        String desc = overrideDescription != null ? overrideDescription : menu.description;
-        IMessageBuilder msg = io.create().embed(menu.title, desc);
-        for (Map.Entry<String, String> entry : menu.buttons.entrySet()) {
-            String label = entry.getKey();
-            String command = entry.getValue();
-            msg.commandButton(CommandBehavior.EPHEMERAL, label, command);
-        }
     }
 
     @Command
@@ -151,22 +115,22 @@ public class AppMenuCommands {
         menu.lastUsedChannel = io.getIdLong();
         menu.state = MenuState.NONE;
         USER_MENU_STATE.put(user.getIdLong(), menu);
-        sendMenuInfo(io, menu, null, menu.canEdit(db, user), false);
+        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(io);
     }
 
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
-    public void deleteMenu(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me User user, AppMenu menu, @Switch("f") boolean force) {
+    public String deleteMenu(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me User user, AppMenu menu, @Switch("f") boolean force) {
         if (!force) {
             String title = "Delete Menu";
             String body = "Are you sure you want to delete the menu `" + menu.title + "`?";
             io.create().confirmation(title, body, command).send();
-            return;
+            return null;
         }
         db.getMenuManager().deleteMenu(menu);
-        return;
+        return "Menu deleted successfully.";
     }
 
     @Command
@@ -174,9 +138,9 @@ public class AppMenuCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void renameMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, String name) {
-        // rename the menu
-        // save it to db
-        // return menu embed
+        menu.setState(MenuState.NONE);
+        db.getMenuManager().renameMenu(menu, name);
+        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(io);
     }
 
     @Command
@@ -184,9 +148,10 @@ public class AppMenuCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void describeMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, String description) {
-        // set menu description
-        // save it to db
-        // return menu embed
+        menu.setState(MenuState.NONE);
+        menu.description = description.replace("\\n", "\n");
+        db.getMenuManager().saveMenu(menu);
+        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(io);
     }
 
     @Command
@@ -194,8 +159,7 @@ public class AppMenuCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void setMenuState(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, MenuState state) {
-        // set the menu state, clear prior state
-        // return menu embed
+        menu.messageState(io, db, user, state);
     }
 
     @Command
@@ -203,27 +167,8 @@ public class AppMenuCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void editMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
-        String title = "Edit Menu";
-        String description = "Edit the menu details";
-
-        // A command will run a command, a modal will open a prompt for an input and then run a command
-        CommandRef renameModel = RENAME_MENU.menu(menu.title).name("");
-        CommandRef describeModel = DESCRIBE_MENU.menu(menu.title).description("");
-        CommandRef reorderCommand = SET_MENU_STATE.menu(menu.title).state(MenuState.REORDER.name());
-        CommandRef addButtonCommand = SET_MENU_STATE.menu(menu.title).state(MenuState.ADD_BUTTON.name());
-        CommandRef removeButtonCommand = SET_MENU_STATE.menu(menu.title).state(MenuState.REMOVE_BUTTON.name());
-        CommandRef renameButtonCommand = SET_MENU_STATE.menu(menu.title).state(MenuState.RENAME_BUTTON.name());
-        CommandRef deleteMenu = DELETE_MENU.menu(menu.title); // Don't force, let delete prompt for confirmation
-
-        io.create().embed(title, description)
-                .modal(CommandBehavior.EPHEMERAL, renameModel, "Rename Menu")
-                .modal(CommandBehavior.EPHEMERAL, describeModel, "Menu Description")
-                .commandButton(CommandBehavior.EPHEMERAL, reorderCommand, "Reorder Buttons")
-                .commandButton(CommandBehavior.EPHEMERAL, addButtonCommand, "Add Button")
-                .commandButton(CommandBehavior.EPHEMERAL, removeButtonCommand, "Remove Button")
-                .commandButton(CommandBehavior.EPHEMERAL, renameButtonCommand, "Rename Button")
-                .commandButton(CommandBehavior.EPHEMERAL, deleteMenu, "Delete Menu")
-                .send();
+        menu.setState(MenuState.NONE);
+        menu.message().options(true).cancel(true).queue(io);
     }
 
 
@@ -231,15 +176,38 @@ public class AppMenuCommands {
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
-    public void addMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label, String command) {
-        if (menu.state != MenuState.ADD_BUTTON) {
-            io.create().embed("Error", "Menu is not in a state to add buttons.").send();
+    public void addMenuButton(@Me IMessageIO io, @Me JSONObject cmdJson, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label, @Default String command, @Switch("f") boolean force) {
+        label = label.toLowerCase(Locale.ROOT);
+        menu.setState(MenuState.NONE);
+        if (label.equalsIgnoreCase("cancel") || label.equalsIgnoreCase("edit")) {
+            menu.setState(MenuState.NONE);
+            menu.message().options(true).cancel(true).description("You cannot use `cancel` or `edit` as button labels. Please try again").queue(io);
             return;
         }
-
-        menu.buttons.put(label, command);
-        db.getMenuManager().saveMenu(menu);
-        sendMenuInfo(io, menu, "Button added successfully.", true, true);
+        String contains = null;
+        for (String button : menu.buttons.keySet()) {
+            if (button.equalsIgnoreCase(label)) {
+                contains = button;
+                break;
+            }
+        }
+        if (contains != null) {
+            if (!force) {
+                io.create().confirmation("Button already exists", "A button with the label `" + label + "` already exists. Do you want to overwrite it?", cmdJson).send();
+                return;
+            }
+            menu.buttons.remove(contains);
+            db.getMenuManager().saveMenu(menu);
+        }
+        if (command == null || command.isEmpty()) {
+            String desc = "Enter the SLASH command for the button `" + label + "` as you would normally, within the same channel\nNote: Legacy commands are not supported";
+            menu.message().buttons(true).edit(true).description(desc).queue(io);
+        } else {
+            menu.buttons.put(label, command);
+            db.getMenuManager().saveMenu(menu);
+            String desc = "Button `" + label + "` added successfully.\n\nPress a button to remove it.\nPress `cancel` to exit";
+            menu.message().options(true).cancel(true).description(desc).queue(io);
+        }
     }
 
     @Command
@@ -247,16 +215,14 @@ public class AppMenuCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void removeMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label) {
-        if (menu.state != MenuState.REMOVE_BUTTON) {
-            io.create().embed("Error", "Menu is not in a state to remove buttons.").send();
-            return;
-        }
-
+        label = label.toLowerCase(Locale.ROOT);
+        menu.setState(MenuState.REMOVE_BUTTON);
         if (menu.buttons.remove(label) != null) {
             db.getMenuManager().saveMenu(menu);
-            sendMenuInfo(io, menu, "Button removed successfully.", true, true);
+            String desc = "Removed button `" + label + "`.\n\nPress a button to remove it.\nPress `cancel` to exit";
+            menu.message().buttons(true).cancel(true).description(desc).queue(io);
         } else {
-            io.create().embed("Error", "Button not found.").send();
+            menu.message().buttons(true).cancel(true).description("Error: Button not found. Try again.\nPress a button to remove it.\nPress  `cancel` to exit").queue(io);
         }
     }
 
@@ -265,16 +231,27 @@ public class AppMenuCommands {
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void swapMenuButtons(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label1, @MenuLabel String label2) {
-        if (menu.state != MenuState.REORDER) {
-            io.create().embed("Error", "Menu is not in a state to reorder buttons.").send();
+        label1 = label1.toLowerCase(Locale.ROOT);
+        label2 = label2.toLowerCase(Locale.ROOT);
+        if (label1.equals(label2)) {
+            menu.clearState().message().options(true).description("Cancelled reordering (pressed button twice)\n\n" +
+                    "Select an edit option.\nPress `cancel` to exit").cancel(true).queue(io);
             return;
         }
-
         String command1 = menu.buttons.get(label1);
         String command2 = menu.buttons.get(label2);
 
         if (command1 == null || command2 == null) {
-            io.create().embed("Error", "One or both buttons not found.").send();
+            List<String> cannotFind = new ArrayList<>();
+            if (command1 == null) {
+                cannotFind.add(label1);
+            }
+            if (command2 == null) {
+                cannotFind.add(label2);
+            }
+            String errorMsg = "Cannot find button(s): " + String.join(", ", cannotFind);
+            String desc = errorMsg + "\n\nSelect a button to swap.\nPress `cancel` to exit.";
+            menu.setState(MenuState.REORDER).message().options(true).description(desc).cancel(true).queue(io);
             return;
         }
 
@@ -282,56 +259,63 @@ public class AppMenuCommands {
         menu.buttons.put(label2, command1);
 
         db.getMenuManager().saveMenu(menu);
-        sendMenuInfo(io, menu, "Buttons swapped successfully.", true, true);
+        menu.setState(MenuState.REORDER).message()
+                .options(true)
+                .description("Successfully swapped `" + label1 + "` and `" + label2 + "`.\n\nSelect a button to swap.\nPress `cancel` to exit.")
+                .cancel(true).queue(io);
     }
 
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
-    public void renameMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, @MenuLabel String label, String new_label) {
-        AppMenu menu = getAppMenu(user, null, false);
-        if (menu == null || menu.state != MenuState.RENAME_BUTTON) {
-            io.create().embed("Error", "Menu is not in a state to rename buttons.").send();
+    public void renameMenuButton(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, @MenuLabel String label, String new_label) {
+        label = label.toLowerCase(Locale.ROOT);
+        if (!menu.buttons.containsKey(label)) {
+            String desc = "Cannot find button: `" + label + "`.\n\nSelect a button to rename.\nPress `cancel` to exit.";
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
             return;
         }
-
-        String command = menu.buttons.remove(label);
-        if (command == null) {
-            io.create().embed("Error", "Button not found.").send();
+        if (menu.buttons.containsKey(new_label)) {
+            String desc = "Button with label `" + new_label + "` already exists. Pick another name.\n\nSelect a button to rename.\nPress `cancel` to exit.";
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
             return;
         }
-
-        menu.buttons.put(new_label, command);
+        if (new_label.equalsIgnoreCase("cancel") || new_label.equalsIgnoreCase("edit")) {
+            String desc = "You cannot use `cancel` or `edit` as button labels. Please try again.\n\nSelect a button to rename.\nPress `cancel` to exit.";
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
+            return;
+        }
+        String cmd1 = menu.buttons.remove(label);
+        menu.buttons.put(new_label, cmd1);
         db.getMenuManager().saveMenu(menu);
-        sendMenuInfo(io, menu, "Button renamed successfully.", true, true);
+        String desc = "Successfully rename `" + label + "` to `" + new_label + "`.\n\nSelect a button to rename.\nPress `cancel` to exit.";
+        menu.setState(MenuState.RENAME_BUTTON).message().options(true).description(desc).cancel(true).queue(io);
     }
 
     @Command
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
-    public void newMenu(@Me IMessageIO io, @Me GuildDB db, String name, String description) {
+    public void newMenu(@Me IMessageIO io, @Me User user, @Me GuildDB db, String name, String description) {
         AppMenu existing = db.getMenuManager().getAppMenu(name);
         if (existing != null) {
             throw new IllegalArgumentException("Menu already exists with name: `" + name + "`. Pick a different name or edit that one instead.");
         }
         AppMenu newMenu = new AppMenu(name, description, new ConcurrentHashMap<>(), 0, MenuState.NONE);
+        USER_MENU_STATE.put(user.getIdLong(), newMenu);
         db.getMenuManager().saveMenu(newMenu);
-        io.create().embed("Success", "New menu created successfully.").send();
+        newMenu.message().edit(true).cancel(true).queue(io);
     }
 
     @Command
     @NoFormat
     @Ephemeral
-    public String cancel(@Me IMessageIO io, @Me GuildDB db, User user) {
-        AppMenu menu = AppMenuCommands.USER_MENU_STATE.get(user.getIdLong());
-        if (menu != null) {
-            menu.clearState();
-            sendMenuInfo(io, menu, null, menu.canEdit(db, user), false);
-            return null;
+    public void cancel(@Me IMessageIO io, @Me GuildDB db, User user, AppMenu menu) {
+        if (menu.state == MenuState.NONE) {
+            menu.clearState().message().buttons(true).edit(menu.canEdit(db, user)).queue(io);
         } else {
-            return "No menu to cancel. (Is it old?)";
+            menu.clearState().message().options(true).cancel(true).queue(io);
         }
     }
 }

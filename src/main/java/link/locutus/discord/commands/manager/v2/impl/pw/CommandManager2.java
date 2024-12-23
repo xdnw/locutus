@@ -263,6 +263,20 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 //        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "describeMenu", "description");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "setMenuState", "context");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "editMenu", "edit");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu", "button"), "addMenuButton", "add");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu", "button"), "removeMenuButton", "remove");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu", "button"), "swapMenuButtons", "swap");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu", "button"), "renameMenuButton", "rename");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "newMenu", "create");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "cancel", "cancel");
+
+
         getCommands().registerMethod(new UnsortedCommands(), List.of("unit"), "unitBuySheet", "buy_sheet");
         getCommands().registerMethod(new UnsortedCommands(), List.of("sheets_milcom"), "unitBuySheet", "unit_buy_sheet");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "multiInfoSheet", "multis_land");

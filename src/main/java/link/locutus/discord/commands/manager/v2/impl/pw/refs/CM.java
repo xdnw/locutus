@@ -1163,12 +1163,12 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceAttributeRanking")
                 public static class attribute_ranking extends CommandRef {
                     public static final attribute_ranking cmd = new attribute_ranking();
-                public attribute_ranking alliances(String value) {
-                    return set("alliances", value);
-                }
-
                 public attribute_ranking attribute(String value) {
                     return set("attribute", value);
+                }
+
+                public attribute_ranking alliances(String value) {
+                    return set("alliances", value);
                 }
 
                 public attribute_ranking reverseOrder(String value) {
@@ -1315,12 +1315,12 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceRanking")
                 public static class ranking extends CommandRef {
                     public static final ranking cmd = new ranking();
-                public ranking alliances(String value) {
-                    return set("alliances", value);
-                }
-
                 public ranking metric(String value) {
                     return set("metric", value);
+                }
+
+                public ranking alliances(String value) {
+                    return set("alliances", value);
                 }
 
                 public ranking reverseOrder(String value) {
@@ -1680,6 +1680,22 @@ public class CM {
 
             public sheet verbose(String value) {
                 return set("verbose", value);
+            }
+
+            public sheet allowNonAlliance(String value) {
+                return set("allowNonAlliance", value);
+            }
+
+            public sheet skipDiscordAudits(String value) {
+                return set("skipDiscordAudits", value);
+            }
+
+            public sheet skipApiAudits(String value) {
+                return set("skipApiAudits", value);
+            }
+
+            public sheet warningOrHigher(String value) {
+                return set("warningOrHigher", value);
             }
 
             public sheet sheet(String value) {
@@ -5892,6 +5908,14 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="setReferrerId")
+            public static class setreferrerid extends CommandRef {
+                public static final setreferrerid cmd = new setreferrerid();
+            public setreferrerid userId(String value) {
+                return set("userId", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="interviewSheet")
             public static class sheet extends CommandRef {
                 public static final sheet cmd = new sheet();
@@ -6223,6 +6247,162 @@ public class CM {
             return set("snapshotDate", value);
         }
 
+        }
+        public static class menu{
+            public static class button{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="addMenuButton")
+                public static class add extends CommandRef {
+                    public static final add cmd = new add();
+                public add menu(String value) {
+                    return set("menu", value);
+                }
+
+                public add label(String value) {
+                    return set("label", value);
+                }
+
+                public add command(String value) {
+                    return set("command", value);
+                }
+
+                public add force(String value) {
+                    return set("force", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="removeMenuButton")
+                public static class remove extends CommandRef {
+                    public static final remove cmd = new remove();
+                public remove menu(String value) {
+                    return set("menu", value);
+                }
+
+                public remove label(String value) {
+                    return set("label", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="renameMenuButton")
+                public static class rename extends CommandRef {
+                    public static final rename cmd = new rename();
+                public rename menu(String value) {
+                    return set("menu", value);
+                }
+
+                public rename label(String value) {
+                    return set("label", value);
+                }
+
+                public rename new_label(String value) {
+                    return set("new_label", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="swapMenuButtons")
+                public static class swap extends CommandRef {
+                    public static final swap cmd = new swap();
+                public swap menu(String value) {
+                    return set("menu", value);
+                }
+
+                public swap label1(String value) {
+                    return set("label1", value);
+                }
+
+                public swap label2(String value) {
+                    return set("label2", value);
+                }
+
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="cancel")
+            public static class cancel extends CommandRef {
+                public static final cancel cmd = new cancel();
+            public cancel user(String value) {
+                return set("user", value);
+            }
+
+            public cancel menu(String value) {
+                return set("menu", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="setMenuState")
+            public static class context extends CommandRef {
+                public static final context cmd = new context();
+            public context menu(String value) {
+                return set("menu", value);
+            }
+
+            public context state(String value) {
+                return set("state", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="newMenu")
+            public static class create extends CommandRef {
+                public static final create cmd = new create();
+            public create name(String value) {
+                return set("name", value);
+            }
+
+            public create description(String value) {
+                return set("description", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="deleteMenu")
+            public static class delete extends CommandRef {
+                public static final delete cmd = new delete();
+            public delete menu(String value) {
+                return set("menu", value);
+            }
+
+            public delete force(String value) {
+                return set("force", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="describeMenu")
+            public static class description extends CommandRef {
+                public static final description cmd = new description();
+            public description menu(String value) {
+                return set("menu", value);
+            }
+
+            public description description(String value) {
+                return set("description", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="editMenu")
+            public static class edit extends CommandRef {
+                public static final edit cmd = new edit();
+            public edit menu(String value) {
+                return set("menu", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="openMenu")
+            public static class open extends CommandRef {
+                public static final open cmd = new open();
+            public open menu(String value) {
+                return set("menu", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.class,method="renameMenu")
+            public static class title extends CommandRef {
+                public static final title cmd = new title();
+            public title menu(String value) {
+                return set("menu", value);
+            }
+
+            public title name(String value) {
+                return set("name", value);
+            }
+
+            }
         }
         public static class modal{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="modal")
@@ -8260,7 +8440,7 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="NON_AA_MEMBERS_CAN_BANK", field="NON_AA_MEMBERS_CAN_BANK")
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="NON_AA_MEMBERS_CAN_BANK", field="NO_DISCORD_CAN_BANK")
             public static class NON_AA_MEMBERS_CAN_BANK extends CommandRef {
                 public static final NON_AA_MEMBERS_CAN_BANK cmd = new NON_AA_MEMBERS_CAN_BANK();
             public NON_AA_MEMBERS_CAN_BANK enabled(String value) {
@@ -8949,6 +9129,14 @@ public class CM {
             }
         }
         public static class settings_tax{
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ALLOWED_TAX_BRACKETS", field="ALLOWED_TAX_BRACKETS")
+            public static class ALLOWED_TAX_BRACKETS extends CommandRef {
+                public static final ALLOWED_TAX_BRACKETS cmd = new ALLOWED_TAX_BRACKETS();
+            public ALLOWED_TAX_BRACKETS brackets(String value) {
+                return set("brackets", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_SET_BRACKET", field="MEMBER_CAN_SET_BRACKET")
             public static class MEMBER_CAN_SET_BRACKET extends CommandRef {
                 public static final MEMBER_CAN_SET_BRACKET cmd = new MEMBER_CAN_SET_BRACKET();
@@ -9160,6 +9348,14 @@ public class CM {
                 public static final ENABLE_WAR_ROOMS cmd = new ENABLE_WAR_ROOMS();
             public ENABLE_WAR_ROOMS enabled(String value) {
                 return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WAR_ROOM_LOG", field="WAR_ROOM_LOG")
+            public static class WAR_ROOM_LOG extends CommandRef {
+                public static final WAR_ROOM_LOG cmd = new WAR_ROOM_LOG();
+            public WAR_ROOM_LOG channel(String value) {
+                return set("channel", value);
             }
 
             }
@@ -12608,6 +12804,10 @@ public class CM {
                 return set("useLeader", value);
             }
 
+            public WarCostSheet total(String value) {
+                return set("total", value);
+            }
+
             public WarCostSheet sheet(String value) {
                 return set("sheet", value);
             }
@@ -12725,6 +12925,22 @@ public class CM {
             }
 
             public lootValueSheet sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="unitBuySheet")
+            public static class unit_buy_sheet extends CommandRef {
+                public static final unit_buy_sheet cmd = new unit_buy_sheet();
+            public unit_buy_sheet nations(String value) {
+                return set("nations", value);
+            }
+
+            public unit_buy_sheet addColumns(String value) {
+                return set("addColumns", value);
+            }
+
+            public unit_buy_sheet sheet(String value) {
                 return set("sheet", value);
             }
 
@@ -13403,16 +13619,8 @@ public class CM {
                     return set("graph", value);
                 }
 
-                public AlliancesDataByDay includeVM(String value) {
-                    return set("includeVM", value);
-                }
-
                 public AlliancesDataByDay includeApps(String value) {
                     return set("includeApps", value);
-                }
-
-                public AlliancesDataByDay skipCityData(String value) {
-                    return set("skipCityData", value);
                 }
 
                 }
@@ -13746,6 +13954,30 @@ public class CM {
 
             public mmrTierGraph snapshotDate(String value) {
                 return set("snapshotDate", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="NthBeigeLootByScoreRange")
+            public static class nth_loot_by_score extends CommandRef {
+                public static final nth_loot_by_score cmd = new nth_loot_by_score();
+            public nth_loot_by_score nations(String value) {
+                return set("nations", value);
+            }
+
+            public nth_loot_by_score n(String value) {
+                return set("n", value);
+            }
+
+            public nth_loot_by_score snapshotDate(String value) {
+                return set("snapshotDate", value);
+            }
+
+            public nth_loot_by_score attachCsv(String value) {
+                return set("attachCsv", value);
+            }
+
+            public nth_loot_by_score attachJson(String value) {
+                return set("attachJson", value);
             }
 
             }
@@ -14721,8 +14953,12 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="trademarginbyday")
             public static class marginByDay extends CommandRef {
                 public static final marginByDay cmd = new marginByDay();
-            public marginByDay numDays(String value) {
-                return set("numDays", value);
+            public marginByDay start(String value) {
+                return set("start", value);
+            }
+
+            public marginByDay end(String value) {
+                return set("end", value);
             }
 
             public marginByDay percent(String value) {
@@ -15017,8 +15253,12 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradetotalbyday")
             public static class totalByDay extends CommandRef {
                 public static final totalByDay cmd = new totalByDay();
-            public totalByDay numDays(String value) {
-                return set("numDays", value);
+            public totalByDay start(String value) {
+                return set("start", value);
+            }
+
+            public totalByDay end(String value) {
+                return set("end", value);
             }
 
             public totalByDay attachJson(String value) {
@@ -15074,8 +15314,12 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradevolumebyday")
             public static class volumebyday extends CommandRef {
                 public static final volumebyday cmd = new volumebyday();
-            public volumebyday numDays(String value) {
-                return set("numDays", value);
+            public volumebyday start(String value) {
+                return set("start", value);
+            }
+
+            public volumebyday end(String value) {
+                return set("end", value);
             }
 
             public volumebyday attachJson(String value) {
@@ -15547,6 +15791,22 @@ public class CM {
             }
         }
         public static class unit{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="unitBuySheet")
+            public static class buy_sheet extends CommandRef {
+                public static final buy_sheet cmd = new buy_sheet();
+            public buy_sheet nations(String value) {
+                return set("nations", value);
+            }
+
+            public buy_sheet addColumns(String value) {
+                return set("addColumns", value);
+            }
+
+            public buy_sheet sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="unitCost")
             public static class cost extends CommandRef {
                 public static final cost cmd = new cost();
@@ -16383,6 +16643,10 @@ public class CM {
 
                 public costSheet useLeader(String value) {
                     return set("useLeader", value);
+                }
+
+                public costSheet total(String value) {
+                    return set("total", value);
                 }
 
                 public costSheet sheet(String value) {

@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.menu.AppMenu;
+import link.locutus.discord.db.entities.menu.MenuState;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -40,7 +41,36 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import static link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.USER_MENU_STATE;
+
 public class DiscordBindings extends BindingHelper {
+    @Binding(examples = {"user", "message"}, value = "The name of a custom app menu")
+    public AppMenu menu(@Me IMessageIO io, @Me GuildDB db, @Me User user, String menu) {
+        AppMenu existing = USER_MENU_STATE.get(user.getIdLong());
+        if (existing != null && existing.title.equalsIgnoreCase(menu)) {
+            existing.lastUsedChannel = io.getIdLong();
+            return existing;
+        }
+        existing = db.getMenuManager().getAppMenu(menu);
+        if (existing == null) {
+            throw new IllegalArgumentException("No menu found for " + menu);
+        }
+        existing.lastUsedChannel = io.getIdLong();
+        USER_MENU_STATE.put(user.getIdLong(), existing);
+        return existing;
+    }
+
+    @Binding(value = "The context state of a custom app menu")
+    public MenuState menuState(String input) {
+        return emum(MenuState.class, input);
+    }
+
+    @Binding(value = "A button label for a custom menu")
+    @MenuLabel
+    public String menuLabel(@Me User user, String input) {
+        return input;
+    }
+
     @Binding(examples = {"@user", "borg"}, value = "A discord user mention, or if a nation name, id or url if they are registered")
     public static User user(@Me User selfUser, String name) {
         User user = DiscordUtil.getUser(name);
@@ -51,12 +81,6 @@ public class DiscordBindings extends BindingHelper {
             throw new IllegalArgumentException("No user found for: `" + name + "`");
         }
         return user;
-    }
-
-    @Binding(value = "A button label for a custom menu")
-    @MenuLabel
-    public String menuLabel(@Me User user, String input) {
-        return input;
     }
 
     @Binding(examples = {"@member", "borg"}, value = "A discord user mention, or if a nation name, id or url if they are registered")

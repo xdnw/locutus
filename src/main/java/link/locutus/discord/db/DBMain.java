@@ -240,7 +240,7 @@ public abstract class DBMain implements Closeable {
         {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
                 stmt.setFetchSize(10000);
-                withStmt.accept(stmt);
+                if (withStmt != null) withStmt.accept(stmt);
                 ResultSet rs = stmt.executeQuery();
                 rsq.accept(rs);
                 return rs != null;

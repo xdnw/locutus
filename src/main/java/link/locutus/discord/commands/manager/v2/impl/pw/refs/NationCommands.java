@@ -896,6 +896,14 @@ public class NationCommands {
             public static final getNetDepositsConverted cmd = new getNetDepositsConverted();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNextCityCost")
+        public static class getNextCityCost extends CommandRef {
+            public static final getNextCityCost cmd = new getNextCityCost();
+        public getNextCityCost costReduction(String value) {
+            return set("costReduction", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNukes")
         public static class getNukes extends CommandRef {
             public static final getNukes cmd = new getNukes();
@@ -1010,6 +1018,18 @@ public class NationCommands {
             public static final getRelativeStrength cmd = new getRelativeStrength();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getRemainingUnitBuy")
+        public static class getRemainingUnitBuy extends CommandRef {
+            public static final getRemainingUnitBuy cmd = new getRemainingUnitBuy();
+        public getRemainingUnitBuy unit(String value) {
+            return set("unit", value);
+        }
+
+        public getRemainingUnitBuy timeSince(String value) {
+            return set("timeSince", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders.class,method="getResource")
         public static class getResource extends CommandRef {
             public static final getResource cmd = new getResource();
@@ -1043,6 +1063,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getScore")
         public static class getScore extends CommandRef {
             public static final getScore cmd = new getScore();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getSheetUrl")
+        public static class getSheetUrl extends CommandRef {
+            public static final getSheetUrl cmd = new getSheetUrl();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getShipPct")
@@ -1418,6 +1443,11 @@ public class NationCommands {
         public hasProjects any(String value) {
             return set("any", value);
         }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="hasProvidedIdentity")
+        public static class hasProvidedIdentity extends CommandRef {
+            public static final hasProvidedIdentity cmd = new hasProvidedIdentity();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="hasTreasure")
