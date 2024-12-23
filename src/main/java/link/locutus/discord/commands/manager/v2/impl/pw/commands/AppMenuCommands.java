@@ -206,7 +206,7 @@ public class AppMenuCommands {
             menu.setState(MenuState.ADD_BUTTON);
             menu.lastPressedButton = label;
             String desc = "Enter the SLASH command for the button `" + label + "` as you would normally, within the same channel\n" +
-                    "You can use: `{user}`, `{message}` and `{content}` if the menu is from a user or message interaction" +
+                    "You can use: `{user}`, `{message}` and `{content}` if the menu is from a user or message interaction\n\n" +
                     "Note: Legacy commands are not supported\n\n" +
                     "Alternatively, cancel, and run " + CM.menu.button.add.cmd.toSlashMention() + " and specify the command";
             menu.message().buttons(true).cancel(true).description(desc).queue(io);
