@@ -170,49 +170,51 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
 
         int numDate = 0;
 
-        for (DBNation other : nations) {
-            this.projects |= other.getProjectBitMask();
-            this.wars_won += other.getWars_won();
-            this.wars_lost += other.getWars_lost();
-            this.last_active += cast(other.lastActiveMs()).longValue();
-            this.score += cast(other.getScore()).doubleValue();
-            this.cities += cast(other.getCities()).intValue();
-            this.soldiers += cast(other.getSoldiers()).intValue();
-            this.tanks += cast(other.getTanks()).intValue();
-            this.aircraft += cast(other.getAircraft()).intValue();
-            this.ships += cast(other.getShips()).intValue();
-            this.missiles += cast(other.getMissiles()).intValue();
-            this.nukes += cast(other.getNukes()).intValue();
-            if (other.getVm_turns() > 0) {
-                setLeaving_vm(TimeUtil.getTurn() + other.getVm_turns());
+        if (!nations.isEmpty()) {
+            for (DBNation other : nations) {
+                this.projects |= other.getProjectBitMask();
+                this.wars_won += other.getWars_won();
+                this.wars_lost += other.getWars_lost();
+                this.last_active += cast(other.lastActiveMs()).longValue();
+                this.score += cast(other.getScore()).doubleValue();
+                this.cities += cast(other.getCities()).intValue();
+                this.soldiers += cast(other.getSoldiers()).intValue();
+                this.tanks += cast(other.getTanks()).intValue();
+                this.aircraft += cast(other.getAircraft()).intValue();
+                this.ships += cast(other.getShips()).intValue();
+                this.missiles += cast(other.getMissiles()).intValue();
+                this.nukes += cast(other.getNukes()).intValue();
+                if (other.getVm_turns() > 0) {
+                    setLeaving_vm(TimeUtil.getTurn() + other.getVm_turns());
+                }
+                this.spies += cast(other.getSpies()).intValue();
+                this.wars_won += other.getWars_won();
+                this.wars_lost += other.getWars_lost();
+                if (other.getDate() != 0) {
+                    numDate++;
+                    this.date += cast(other.getDate()).longValue();
+                }
             }
-            this.spies += cast(other.getSpies()).intValue();
-            this.wars_won += other.getWars_won();
-            this.wars_lost += other.getWars_lost();
-            if (other.getDate() != 0) {
-                numDate++;
-                this.date += cast(other.getDate()).longValue();
-            }
-        }
-        if (average) {
-            this.last_active /= nations.size();
-            this.score /= nations.size();
-            this.cities /= nations.size();
-            this.soldiers /= nations.size();
-            this.tanks /= nations.size();
-            this.aircraft /= nations.size();
-            this.ships /= nations.size();
-            this.missiles /= nations.size();
-            this.nukes /= nations.size();
+            if (average) {
+                this.last_active /= nations.size();
+                this.score /= nations.size();
+                this.cities /= nations.size();
+                this.soldiers /= nations.size();
+                this.tanks /= nations.size();
+                this.aircraft /= nations.size();
+                this.ships /= nations.size();
+                this.missiles /= nations.size();
+                this.nukes /= nations.size();
 //            this.money /= nations.size();
-            this.spies /= nations.size();
-            this.date /= numDate;
-            this.wars_won /= nations.size();
-            this.wars_lost /= nations.size();
+                this.spies /= nations.size();
+                this.date /= numDate;
+                this.wars_won /= nations.size();
+                this.wars_lost /= nations.size();
 
-        } else {
-            long diffAvg = this.last_active / nations.size();
-            last_active = System.currentTimeMillis() - ((System.currentTimeMillis() - diffAvg) * nations.size());
+            } else {
+                long diffAvg = this.last_active / nations.size();
+                last_active = System.currentTimeMillis() - ((System.currentTimeMillis() - diffAvg) * nations.size());
+            }
         }
     }
 
