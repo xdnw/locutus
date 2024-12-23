@@ -87,15 +87,18 @@ public class CommandRef {
         return SlashCommandManager.getSlashCommand(path, arguments, backTicks);
     }
 
+    public Map<String, String> toMap() {
+        Map<String, String> data = new LinkedHashMap<>(arguments);
+        data.put("", path);
+        return data;
+    }
 
     public JSONObject toJson() {
-        return new JSONObject(toCommandArgs());
+        return new JSONObject(toMap());
     }
 
     public String toCommandArgs() {
-        Map<String, String> data = new HashMap<>(arguments);
-        data.put("", path);
-        return new JSONObject(data).toString();
+        return toJson().toString();
     }
 
     public ParametricCallable getCallable(boolean throwError) {

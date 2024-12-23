@@ -620,7 +620,6 @@ public class BankCommands {
 
     @Command(desc = "View a nation's taxability, in-game tax rate, and internal tax-rate")
     @IsAlliance
-    @UserCommand
     public String taxInfo(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, DBNation nation) {
         if (nation == null) nation = me;
         if (nation.getId() != me.getId()) {

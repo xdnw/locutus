@@ -59,6 +59,12 @@ public class WebOptions {
         return this;
     }
 
+    public WebOptions addSubtext(Object key, String subText) {
+        this.key().add(key);
+        this.subtext.add(subText);
+        return this;
+    }
+
     public WebOptions add(Object key, String text, String subtext) {
         this.key().add(key);
         this.text.add(text);

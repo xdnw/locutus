@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -12,7 +13,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.MenuLabel;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.menu.AppMenu;
+import link.locutus.discord.db.entities.menu.MenuState;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -71,6 +74,31 @@ public class DiscordCompleter extends BindingHelper {
     }
 
     @Autocomplete
+    @MenuLabel
+    @Binding(types = {String.class})
+    public List<String> appMenuLabel(@Me User user, String input) {
+        AppMenu menu = USER_MENU_STATE.get(user.getIdLong());
+        List<String> options = new ObjectArrayList<>(menu == null ? Collections.emptyList() : menu.buttons.keySet());
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Autocomplete
+    @Binding(types = {AppMenu.class})
+    public List<String> appMenu(@Me GuildDB db, String input) {
+        Set<String> menuKeys = new ObjectLinkedOpenHashSet<>(db.getMenuManager().getAppMenus().keySet());
+        menuKeys.add("user");
+        menuKeys.add("message");
+        List<String> options = new ObjectArrayList<>(menuKeys);
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Autocomplete
+    @Binding(types = {MenuState.class})
+    public List<String> MenuState(String input) {
+        return StringMan.completeEnum(input, MenuState.class);
+    }
+
+    @Autocomplete
     @Binding(types = {Category.class})
     public List<String> category(@Me Member member, @Me Guild guild, String input) {
         List<Category> categories = new ArrayList<>(guild.getCategories());
@@ -80,14 +108,6 @@ public class DiscordCompleter extends BindingHelper {
         }
 
         return categories.stream().map(Channel::getAsMention).collect(Collectors.toList());
-    }
-
-    @Autocomplete
-    @MenuLabel
-    @Binding(types = {String.class})
-    public List<String> appMenuLabel(@Me User user, String input) {
-        AppMenu menu = USER_MENU_STATE.get(user.getIdLong());
-        return menu == null ? Collections.emptyList() : new ObjectArrayList<>(menu.buttons.keySet());
     }
 
     @Autocomplete

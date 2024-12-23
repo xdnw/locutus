@@ -70,6 +70,13 @@ public class DiscordHookIO implements IMessageIO {
     @Override
     public void setMessageDeleted() {
         this.originalDeleted = true;
+        if (!originalDeleted) {
+            try {
+                RateLimitUtil.complete(hook.deleteOriginal());
+            } catch (ErrorResponseException | IllegalArgumentException ignore) {
+                ignore.printStackTrace();
+            }
+        }
     }
 
     public IModalCallback getModalCallback() {

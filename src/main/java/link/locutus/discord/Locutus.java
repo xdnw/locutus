@@ -957,9 +957,10 @@ public final class Locutus extends ListenerAdapter {
             }
 
             DiscordHookIO io = new DiscordHookIO(hook, null).setInteraction(true);
-
-            event.deferReply().queue();
-            Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), event.getUser(), event.getMessage(), io, pair[1], args, true);
+            String path = pair[1];
+            boolean ephemeral = getSlashCommands().isEphemeral(path);
+            event.deferReply(ephemeral).queue();
+            Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), event.getUser(), event.getMessage(), io, path, args, true);
         } catch (Throwable e) {
             e.printStackTrace();
         }

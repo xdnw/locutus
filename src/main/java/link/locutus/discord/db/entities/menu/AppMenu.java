@@ -1,10 +1,12 @@
 package link.locutus.discord.db.entities.menu;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.web.WebUtil;
@@ -25,6 +27,12 @@ public class AppMenu {
 
     public MenuState state;
     public String lastPressedButton;
+
+    // {user}
+    // {message}
+    public long targetUser;
+    public String targetMessage;
+    public String targetContent;
 
     public AppMenu(String title, String description, Map<String, String> buttons, long lastUsedChannel, MenuState state) {
         this.title = title;
@@ -86,7 +94,7 @@ public class AppMenu {
                 msg.description(desc).buttons(true).cancel(true);
             }
             case ADD_BUTTON -> {
-                msg.description("Enter the button label.").options(true).cancel(true);
+                msg.description("Select `Add button`, then enter the button label.").options(true).cancel(true);
             }
             case REMOVE_BUTTON -> {
                 msg.description("Select a button to remove.").buttons(true).cancel(true);
@@ -96,6 +104,47 @@ public class AppMenu {
             }
         }
         return msg.queue(io);
+    }
+
+    public String formatCommand(String cmd) {
+        if (cmd.startsWith("{") && cmd.endsWith("}")) {
+            try {
+                Map<String, String> map = new Object2ObjectLinkedOpenHashMap<>(WebUtil.GSON.fromJson(cmd, Map.class));
+                for (Map.Entry<String, String> entry : map.entrySet()) {
+                    String value = entry.getValue();
+                    if (!value.contains("{") || !value.contains("}")) continue;
+                    String newValue = formatValue(value);
+                    if (newValue != null) {
+                        entry.setValue(newValue);
+                    }
+                }
+                return WebUtil.GSON.toJson(map);
+            } catch (Exception ignore) {}
+        }
+        if (!cmd.contains("{") || !cmd.contains("}")) return cmd;
+        String newValue = formatValue(cmd);
+        return newValue != null ? newValue : cmd;
+    }
+
+    private String formatValue(String value) {
+        boolean replaced = false;
+        if (targetUser != 0 && value.contains("{user}")) {
+            value = value.replace("{user}", "<@" + targetUser + ">");
+            replaced = true;
+        }
+        if (targetMessage != null && value.contains("{message}")) {
+            value = value.replace("{message}", targetMessage);
+            replaced = true;
+        }
+        if (targetContent != null && value.contains("{content}")) {
+            value = value.replace("{content}", targetContent);
+            replaced = true;
+        }
+        return replaced ? value : null;
+    }
+
+    public boolean isDefault() {
+        return title.equalsIgnoreCase("user") || title.equalsIgnoreCase("message");
     }
 
     public class Send {
@@ -136,36 +185,72 @@ public class AppMenu {
             String desc = overrideDescription != null ? overrideDescription : description;
             IMessageBuilder msg = io.create().embed(title, desc);
             if (showButtons) {
-                for (Map.Entry<String, String> entry : buttons.entrySet()) {
-                    String label = entry.getKey();
-                    String command = entry.getValue();
-                    msg.commandButton(CommandBehavior.EPHEMERAL, label, command);
+                switch (state) {
+                    default -> {
+                        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+                            String label = entry.getKey();
+                            String command = formatCommand(entry.getValue());
+                            msg.commandButton(CommandBehavior.EPHEMERAL, command, label);
+                        }
+                        break;
+                    }
+                    case REORDER -> {
+                        CM.menu.button.swap cmd = CM.menu.button.swap.cmd;
+                        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+                            String label1 = entry.getKey();
+                            cmd = cmd.menu(title).label1(label1);
+                            if (lastPressedButton != null) {
+                                cmd = cmd.label2(lastPressedButton);
+                            }
+                            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, label1);
+                        }
+                        break;
+                    }
+                    case RENAME_BUTTON -> {
+                        CM.menu.button.rename cmd = CM.menu.button.rename.cmd;
+                        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+                            String label1 = entry.getKey();
+                            cmd = cmd.menu(title).label(label1).new_label("");
+                            msg.modal(CommandBehavior.EPHEMERAL, cmd, label1);
+                        }
+                        break;
+                    }
+                    case REMOVE_BUTTON -> {
+                        CM.menu.button.remove cmd = CM.menu.button.remove.cmd;
+                        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+                            String label1 = entry.getKey();
+                            cmd = cmd.menu(title).label(label1);
+                            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, label1);
+                        }
+                        break;
+                    }
                 }
             }
             if (showEditButton) {
-//                msg.commandButton(CommandBehavior.EPHEMERAL, "Edit", AppMenuCommands.EDIT_MENU.menu(title)); // TODO FIXME APP MENU COMMAND
+                msg.commandButton(CommandBehavior.EPHEMERAL, CM.menu.edit.cmd.menu(title), "Edit");
             }
             if (showEditOptions) {
-//                CommandRef renameModel = AppMenuCommands.RENAME_MENU.menu(title).name("");
-//                CommandRef describeModel = AppMenuCommands.DESCRIBE_MENU.menu(title).description("");
-//                CommandRef reorderCommand = AppMenuCommands.SET_MENU_STATE.menu(title).state(MenuState.REORDER.name());
-//                CommandRef addButtonCommand = AppMenuCommands.SET_MENU_STATE.menu(title).state(MenuState.ADD_BUTTON.name());
-//                CommandRef removeButtonCommand = AppMenuCommands.SET_MENU_STATE.menu(title).state(MenuState.REMOVE_BUTTON.name());
-//                CommandRef renameButtonCommand = AppMenuCommands.SET_MENU_STATE.menu(title).state(MenuState.RENAME_BUTTON.name());
-//                CommandRef deleteMenu = AppMenuCommands.DELETE_MENU.menu(title); // Don't force, let delete prompt for confirmation
-//
-//                msg.modal(CommandBehavior.EPHEMERAL, renameModel, "Rename Menu")
-//                   .modal(CommandBehavior.EPHEMERAL, describeModel, "Menu Description")
-//                   .commandButton(CommandBehavior.EPHEMERAL, reorderCommand, "Reorder Buttons")
-//                   .commandButton(CommandBehavior.EPHEMERAL, addButtonCommand, "Add Button")
-//                   .commandButton(CommandBehavior.EPHEMERAL, removeButtonCommand, "Remove Button")
-//                   .commandButton(CommandBehavior.EPHEMERAL, renameButtonCommand, "Rename Button")
-//                   .commandButton(CommandBehavior.EPHEMERAL, deleteMenu, "Delete Menu")
-//                   .send();
+                CommandRef renameModel = CM.menu.title.cmd.menu(title).name("");
+                CommandRef describeModel = CM.menu.description.cmd.menu(title).description("");
+                CommandRef reorderCommand = CM.menu.context.cmd.menu(title).state(MenuState.REORDER.name());
+                CommandRef addButtonModal = CM.menu.button.add.cmd.menu(title).label("");
+                CommandRef removeButtonCommand = CM.menu.context.cmd.menu(title).state(MenuState.REMOVE_BUTTON.name());
+                CommandRef renameButtonCommand = CM.menu.context.cmd.menu(title).state(MenuState.RENAME_BUTTON.name());
+                CommandRef deleteMenu = CM.menu.delete.cmd.menu(title);
+
+                msg.modal(CommandBehavior.EPHEMERAL, renameModel, "Rename Menu")
+                   .modal(CommandBehavior.EPHEMERAL, describeModel, "Menu Description")
+                   .commandButton(CommandBehavior.EPHEMERAL, reorderCommand, "Reorder Buttons")
+                   .modal(CommandBehavior.EPHEMERAL, addButtonModal, "Add Button")
+                   .commandButton(CommandBehavior.EPHEMERAL, removeButtonCommand, "Remove Button")
+                   .commandButton(CommandBehavior.EPHEMERAL, renameButtonCommand, "Rename Button")
+                   .commandButton(CommandBehavior.EPHEMERAL, deleteMenu, "Delete Menu");
             }
             if (showCancelButton) {
-//                msg.commandButton(CommandBehavior.EPHEMERAL, "Cancel", AppMenuCommands.CANCEL.menu(title));  // TODO FIXME APP MENU COMMAND
+                CM.menu.cancel cmd = CM.menu.cancel.cmd.menu(title);
+                msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "Cancel");
             }
+            io.setMessageDeleted();
             return msg.send();
         }
     }

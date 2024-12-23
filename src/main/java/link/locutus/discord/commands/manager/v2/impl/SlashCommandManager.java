@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -11,13 +12,17 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete.PrimitiveCompleter;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete.DiscordCompleter;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.GPTCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.SheetCompleter;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -38,10 +43,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.entities.sticker.Sticker;
-import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.*;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
@@ -144,6 +146,14 @@ public class SlashCommandManager extends ListenerAdapter {
         this.provider = provider;
     }
 
+    public Set<String> getUserCommandsOrNull() {
+        return userCommandsOrNull;
+    }
+
+    public Set<String> getMessageCommandsOrNull() {
+        return messageCommandsOrNull;
+    }
+
     private CommandManager2 getCommands() {
         if (commandsOrNull == null) {
             synchronized (this) {
@@ -169,23 +179,25 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     public Set<String> generateUserCommands(CommandGroup group) {
-        Set<String> userCommands = new ObjectOpenHashSet<>();
+        Set<String> cmds = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
             if (cmd.getAnnotation(UserCommand.class) != null) {
-                userCommands.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
+                cmds.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
         }
-        return userCommands;
+        cmds.add("more");
+        return cmds;
     }
 
     public Set<String> generateMessageCommands(CommandGroup group) {
-        Set<String> userCommands = new ObjectOpenHashSet<>();
+        Set<String> cmds = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
             if (cmd.getAnnotation(MessageCommand.class) != null) {
-                userCommands.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
+                cmds.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
         }
-        return userCommands;
+        cmds.add("more");
+        return cmds;
     }
 
     private boolean isAdmin(ParametricCallable cmd) {
@@ -869,7 +881,7 @@ public class SlashCommandManager extends ListenerAdapter {
             String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
                 isModal = false;
-                if (ephemeralOrNull.contains(path)) {
+                if (isEphemeral(path)) {
                     RateLimitUtil.complete(event.deferReply(true));
                     hook.setEphemeral(true);
                 } else {
@@ -898,8 +910,16 @@ public class SlashCommandManager extends ListenerAdapter {
         }
     }
 
+    public boolean isEphemeral(String path) {
+        return ephemeralOrNull.contains(path.toLowerCase(Locale.ROOT));
+    }
+
     @Override
     public void onUserContextInteraction(UserContextInteractionEvent event) {
+        handleContext(event, event.getTarget(), event.getTarget().getAsMention(), null, true);
+    }
+
+    public <T extends ISnowflake> void handleContext(GenericContextInteractionEvent event, T target, String mention, Supplier<String> getMsg, boolean isUser) {
         String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
         MessageChannel channel = event.getMessageChannel();
         InteractionHook hook = event.getHook();
@@ -909,28 +929,43 @@ public class SlashCommandManager extends ListenerAdapter {
         RateLimitUtil.complete(event.deferReply(true));
         hook.setEphemeral(true);
 
-        User target = event.getTarget();
-        String mention = target.getAsMention();
+        User user = event.getUser();
 
-        String fullCmdStr = path + " " + mention;
-        Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, fullCmdStr, true, true);
+        String fullCmdStr;
+        if (guild == null) {
+            fullCmdStr = path + " " + mention;
+        } else {
+            GuildDB db = Locutus.imp().getGuildDB(guild);
+            AppMenu menu = DiscordBindings.menu(io, db, user, isUser ? "user" : "message");
+
+            if (isUser) {
+                menu.targetUser = target.getIdLong();
+            }
+            else {
+                menu.targetMessage = mention;
+                menu.targetContent = getMsg.get();
+            }
+            fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
+            System.out.println("Get path " + path + " | " + fullCmdStr + " | " + menu.buttons);
+            if ((path.equalsIgnoreCase("more") && fullCmdStr == null) || "more".equalsIgnoreCase(fullCmdStr)) {
+                fullCmdStr = menu.formatCommand(CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
+            } else if (fullCmdStr == null) {
+                fullCmdStr = path + " " + mention;
+            }
+            fullCmdStr = menu.formatCommand(fullCmdStr);
+        }
+        Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, fullCmdStr, true, true);
     }
 
     @Override
     public void onMessageContextInteraction(MessageContextInteractionEvent event) {
-        String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
-        MessageChannel channel = event.getMessageChannel();
-        InteractionHook hook = event.getHook();
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
-
-        DiscordHookIO io = new DiscordHookIO(hook, event);
-        RateLimitUtil.complete(event.deferReply(true));
-        hook.setEphemeral(true);
-
-        Message target = event.getTarget();
-        String mention = target.getJumpUrl();
-
-        String fullCmdStr = path + " " + mention;
-        Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), target, io, fullCmdStr, true, true);
+        handleContext(event, event.getTarget(), event.getTarget().getJumpUrl(), () -> {
+            try {
+                return event.getTarget().getContentRaw();
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                return (String) null;
+            }
+        }, false);
     }
 }

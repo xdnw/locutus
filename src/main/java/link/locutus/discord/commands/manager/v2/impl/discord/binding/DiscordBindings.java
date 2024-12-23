@@ -45,7 +45,7 @@ import static link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuC
 
 public class DiscordBindings extends BindingHelper {
     @Binding(examples = {"user", "message"}, value = "The name of a custom app menu")
-    public AppMenu menu(@Me IMessageIO io, @Me GuildDB db, @Me User user, String menu) {
+    public static AppMenu menu(@Me IMessageIO io, @Me GuildDB db, @Me User user, String menu) {
         AppMenu existing = USER_MENU_STATE.get(user.getIdLong());
         if (existing != null && existing.title.equalsIgnoreCase(menu)) {
             existing.lastUsedChannel = io.getIdLong();

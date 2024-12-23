@@ -126,7 +126,6 @@ public class WebMessage extends AMessageBuilder {
 
     public Map<String, Object> build() {
         Map<String, Object> root = new LinkedHashMap<>();
-        System.out.println("BUttons " + buttons);
         addJson(root, false, true, true);
         if (!files.isEmpty()) {
             Map<String, String> dataByName = new LinkedHashMap<>();

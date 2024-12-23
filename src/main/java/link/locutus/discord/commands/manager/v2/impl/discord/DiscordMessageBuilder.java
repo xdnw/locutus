@@ -154,6 +154,10 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             String label = entry.getValue();
             if (id.startsWith("http://") || id.startsWith("https://")) {
                 buttonObjs.add(Button.link(id, label));
+            } else if (label.equalsIgnoreCase("edit")) {
+                buttonObjs.add(Button.success(id, label));
+            } else if (label.equalsIgnoreCase("cancel")) {
+                buttonObjs.add(Button.danger(id, label));
             } else {
                 buttonObjs.add(Button.primary(id, label));
             }
@@ -272,11 +276,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             command = id + "";
             remapLongCommands.put(command, cmdLong);
         }
-        if (message.equalsIgnoreCase("cancel") || message.equalsIgnoreCase("dismiss")) {
-            buttons.put(command, message);
-        } else {
-            buttons.put(command, message);
-        }
+        buttons.put(command, message);
         return this;
     }
 }
