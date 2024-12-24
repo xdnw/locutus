@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.menu;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -8,8 +9,11 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.sql.ResultSet;
@@ -103,17 +107,17 @@ public class AppMenu {
                 msg.description("Select a button to rename.").buttons(true).cancel(true);
             }
         }
-        return msg.queue(io);
+        return msg.queue(db.getGuild(), user, io);
     }
 
-    public String formatCommand(String cmd) {
+    public String formatCommand(Guild guild, User user, String cmd) {
         if (cmd.startsWith("{") && cmd.endsWith("}")) {
             try {
                 Map<String, String> map = new Object2ObjectLinkedOpenHashMap<>(WebUtil.GSON.fromJson(cmd, Map.class));
                 for (Map.Entry<String, String> entry : map.entrySet()) {
                     String value = entry.getValue();
                     if (!value.contains("{") || !value.contains("}")) continue;
-                    String newValue = formatValue(value);
+                    String newValue = formatValue(guild, user, value);
                     if (newValue != null) {
                         entry.setValue(newValue);
                     }
@@ -122,11 +126,11 @@ public class AppMenu {
             } catch (Exception ignore) {}
         }
         if (!cmd.contains("{") || !cmd.contains("}")) return cmd;
-        String newValue = formatValue(cmd);
+        String newValue = formatValue(guild, user, cmd);
         return newValue != null ? newValue : cmd;
     }
 
-    private String formatValue(String value) {
+    private String formatValue(Guild guild, User user, String value) {
         boolean replaced = false;
         if (targetUser != 0 && value.contains("{user}")) {
             value = value.replace("{user}", "<@" + targetUser + ">");
@@ -139,6 +143,13 @@ public class AppMenu {
         if (targetContent != null && value.contains("{content}")) {
             value = value.replace("{content}", targetContent);
             replaced = true;
+        }
+        long natUser = targetUser == 0 && user != null ? user.getIdLong() : targetUser;
+        if (natUser != 0 && value.contains("{") && value.contains("}")) {
+            DBNation nation = DiscordUtil.getNation(natUser);
+            if (nation != null) {
+                value = Locutus.cmd().getV2().getNationPlaceholders().format2(guild, null, user, value, nation, false);
+            }
         }
         return replaced ? value : null;
     }
@@ -181,7 +192,7 @@ public class AppMenu {
             return this;
         }
 
-        public CompletableFuture<IMessageBuilder> queue(IMessageIO io) {
+        public CompletableFuture<IMessageBuilder> queue(Guild guild, User user, IMessageIO io) {
             String desc = overrideDescription != null ? overrideDescription : description;
             IMessageBuilder msg = io.create().embed(title, desc);
             if (showButtons) {
@@ -189,7 +200,7 @@ public class AppMenu {
                     default -> {
                         for (Map.Entry<String, String> entry : buttons.entrySet()) {
                             String label = entry.getKey();
-                            String command = formatCommand(entry.getValue());
+                            String command = formatCommand(guild, user, entry.getValue());
                             msg.commandButton(CommandBehavior.EPHEMERAL, command, label);
                         }
                         break;

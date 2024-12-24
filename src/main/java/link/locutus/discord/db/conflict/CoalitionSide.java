@@ -362,7 +362,6 @@ public class CoalitionSide {
 
     private void trimTimeData(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData) {
         if (turnData.size() < 2) return;
-        // Return a new map that only includes values that are different from the previous turn
         Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> trimmed = new Long2ObjectArrayMap<>();
         List<Long> turnsSorted = new LongArrayList(turnData.keySet());
         turnsSorted.sort(Long::compareTo);
@@ -398,11 +397,44 @@ public class CoalitionSide {
                     for (Map.Entry<Byte, Long> cityEntry : currentByAlliance.entrySet()) {
                         Long currentValue = cityEntry.getValue();
                         Long previousValue = previousByAlliance.get(cityEntry.getKey());
-                        if (currentValue != null && !currentValue.equals(previousValue)) {
-                            previousByAlliance.put(cityEntry.getKey(), currentValue);
+                        if (currentValue != null) {
+                            if (!currentValue.equals(previousValue)) {
+                                previousByAlliance.put(cityEntry.getKey(), currentValue);
+                                trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
+                                        .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
+                                        .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
+                                        .put(cityEntry.getKey(), currentValue);
+                            }
+                        } else if (currentValue != 0) {
+                            previousByAlliance.put(cityEntry.getKey(), 0L);
                             trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
                                     .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                    .put(allianceEntry.getKey(), currentByAlliance);
+                                    .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
+                                    .put(cityEntry.getKey(), 0L);
+                        }
+                    }
+                    for (Map.Entry<Byte, Long> cityEntry : previousByAlliance.entrySet()) {
+                        if (cityEntry.getValue() != 0) {
+                            previousByAlliance.put(cityEntry.getKey(), 0L);
+                            trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
+                                    .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
+                                    .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
+                                    .put(cityEntry.getKey(), 0L);
+                        }
+                    }
+                }
+                for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : previousByMetric.entrySet()) {
+                    Map<Byte, Long> previousByAlliance = allianceEntry.getValue();
+                    Map<Byte, Long> currentByAlliance = currentByMetric.get(allianceEntry.getKey());
+                    if (currentByAlliance == null) {
+                        for (Map.Entry<Byte, Long> cityEntry : previousByAlliance.entrySet()) {
+                            if (cityEntry.getValue() != 0) {
+                                previousByAlliance.put(cityEntry.getKey(), 0L);
+                                trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
+                                        .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
+                                        .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
+                                        .put(cityEntry.getKey(), 0L);
+                            }
                         }
                     }
                 }

@@ -948,11 +948,11 @@ public class SlashCommandManager extends ListenerAdapter {
             fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
             System.out.println("Get path " + path + " | " + fullCmdStr + " | " + menu.buttons);
             if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
-                fullCmdStr = menu.formatCommand(CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
+                fullCmdStr = menu.formatCommand(guild, user, CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
             } else if (fullCmdStr == null) {
                 fullCmdStr = path + " " + mention;
             }
-            fullCmdStr = menu.formatCommand(fullCmdStr);
+            fullCmdStr = menu.formatCommand(guild, user, fullCmdStr);
         }
         Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, fullCmdStr, true, true);
     }

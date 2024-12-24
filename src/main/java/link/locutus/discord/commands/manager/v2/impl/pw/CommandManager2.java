@@ -265,6 +265,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
+        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");

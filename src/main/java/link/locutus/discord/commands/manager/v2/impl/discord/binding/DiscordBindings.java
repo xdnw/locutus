@@ -59,7 +59,7 @@ public class DiscordBindings extends BindingHelper {
         }
         AppMenu newMenu = db.getMenuManager().getAppMenu(menu);
         if (newMenu == null) {
-            throw new IllegalArgumentException("No menu found for " + menu);
+            throw new IllegalArgumentException("No menu found for `" + menu + "`. Options: " + db.getMenuManager().getAppMenus().keySet());
         }
         newMenu.lastUsedChannel = io.getIdLong();
         if (existing != null) {

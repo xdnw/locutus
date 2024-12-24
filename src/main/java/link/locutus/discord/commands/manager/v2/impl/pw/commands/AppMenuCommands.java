@@ -39,7 +39,7 @@ public class AppMenuCommands {
 //                        You are now in reordering mode. Click the buttons to swap their positions. Click the same button again to exit reordering mode.
 //                        Press `cancel` to exit.
 //                        """;
-//                menu.setState(MenuState.REORDER).message().buttons(true).cancel(true).description(msg).queue(io);
+//                menu.setState(MenuState.REORDER).message().buttons(true).cancel(true).description(msg).queue(db.getGuild(), user, io);
 //                break;
 //            case REMOVE_BUTTON:
 //                removeMenuButton(io, db, user, menu, buttonLabel);
@@ -89,24 +89,24 @@ public class AppMenuCommands {
         if (buttonLabel != null && buttonCommand != null) {
             menu.buttons.put(buttonLabel, buttonCommand);
             db.getMenuManager().saveMenu(menu);
-            menu.setState(MenuState.NONE).message().buttons(true).edit(menu.canEdit(db, user)).queue(io);
+            menu.setState(MenuState.NONE).message().buttons(true).edit(menu.canEdit(db, user)).queue(db.getGuild(), user, io);
             return true;
         }
 
         return false;
     }
 
-    @Command
+    @Command(desc = "Open a custom saved menu for the discord guild")
     @NoFormat
     @Ephemeral
     public void openMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
         menu.lastUsedChannel = io.getIdLong();
         menu.setState(MenuState.NONE);
         USER_MENU_STATE.put(user.getIdLong(), menu);
-        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(io);
+        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(db.getGuild(), user, io);
     }
 
-    @Command
+    @Command(desc = "Delete a custom discord menu set in the guild, with confirmation")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -124,7 +124,7 @@ public class AppMenuCommands {
         return "Menu deleted successfully.";
     }
 
-    @Command
+    @Command(desc = "Rename a custom discord menu set in the guild")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -134,10 +134,10 @@ public class AppMenuCommands {
         }
         menu.setState(MenuState.NONE);
         db.getMenuManager().renameMenu(menu, name);
-        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(io);
+        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(db.getGuild(), user, io);
     }
 
-    @Command
+    @Command(desc = "Set the description for a custom discord menu set in the guild")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -145,10 +145,11 @@ public class AppMenuCommands {
         menu.setState(MenuState.NONE);
         menu.description = description.replace("\\n", "\n");
         db.getMenuManager().saveMenu(menu);
-        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(io);
+        menu.message().edit(menu.canEdit(db, user)).buttons(true).queue(db.getGuild(), user, io);
     }
 
-    @Command
+    @Command(desc = "Set and display the temporary menu context for yourself\n" +
+            "This determines the buttons and their actions, for editing the menu, such as removing, renaming or swapping buttons")
     @NoFormat
     @Ephemeral
     public void setMenuState(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, MenuState state) {
@@ -158,17 +159,18 @@ public class AppMenuCommands {
         menu.messageState(io, db, user, state);
     }
 
-    @Command
+    @Command(desc = "Display the custom discord menu edit options for the guild")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
     public void editMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
         menu.setState(MenuState.NONE);
-        menu.message().options(true).cancel(true).queue(io);
+        menu.message().options(true).cancel(true).queue(db.getGuild(), user, io);
     }
 
 
-    @Command
+    @Command(desc = "Add a labelled button to the custom discord menu set in the guild\n" +
+            "Leave the command empty to enter the command in the next step")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -176,12 +178,12 @@ public class AppMenuCommands {
         label = label.toLowerCase(Locale.ROOT);
         if (label.equalsIgnoreCase("cancel") || label.equalsIgnoreCase("edit")) {
             menu.setState(MenuState.NONE);
-            menu.message().options(true).cancel(true).description("You cannot use `cancel` or `edit` as button labels. Please try again").queue(io);
+            menu.message().options(true).cancel(true).description("You cannot use `cancel` or `edit` as button labels. Please try again").queue(db.getGuild(), user, io);
             return;
         }
         if (!label.matches("^[-_\\p{L}\\p{N}\\p{sc=Deva}\\p{sc=Thai}]{1,32}$")) {
             menu.setState(MenuState.ADD_BUTTON);
-            menu.message().buttons(true).cancel(true).description("Button labels can only contain alphanumeric characters and spaces, not `" + label + "`.\n\nSelect a button to add.\nPress `cancel` to exit").queue(io);
+            menu.message().buttons(true).cancel(true).description("Button labels can only contain alphanumeric characters and spaces, not `" + label + "`.\n\nSelect a button to add.\nPress `cancel` to exit").queue(db.getGuild(), user, io);
             return;
         }
         String contains = null;
@@ -200,16 +202,17 @@ public class AppMenuCommands {
             db.getMenuManager().saveMenu(menu);
         } else if (menu.buttons.size() >= 25) {
             menu.setState(MenuState.NONE);
-            menu.message().options(true).cancel(true).description("You cannot add more than 25 buttons to a menu. Consider creating a new menu as a sub-menu for some of the buttons").queue(io);
+            menu.message().options(true).cancel(true).description("You cannot add more than 25 buttons to a menu. Consider creating a new menu as a sub-menu for some of the buttons").queue(db.getGuild(), user, io);
         }
         if (command == null || command.isEmpty()) {
             menu.setState(MenuState.ADD_BUTTON);
             menu.lastPressedButton = label;
             String desc = "Enter the SLASH command for the button `" + label + "` as you would normally, within the same channel\n" +
-                    "You can use: `{user}`, `{message}` and `{content}` if the menu is from a user or message interaction\n\n" +
+                    "You can use: `{user}`, `{message}` and `{content}` if the menu is from a user or message interaction\n" +
+                    "Or any nation placeholder if the `{user}` is registered\n\n" +
                     "Note: Legacy commands are not supported\n\n" +
                     "Alternatively, cancel, and run " + CM.menu.button.add.cmd.toSlashMention() + " and specify the command";
-            menu.message().buttons(true).cancel(true).description(desc).queue(io);
+            menu.message().buttons(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
         } else {
             String footer = "";
             if (menu.isDefault()) {
@@ -221,11 +224,11 @@ public class AppMenuCommands {
             db.getMenuManager().saveMenu(menu);
             String desc = "Button `" + label + "` added successfully.\n\n" +
                     "Press a button to remove it.\nPress `cancel` to exit" + footer;
-            menu.message().options(true).cancel(true).description(desc).queue(io);
+            menu.message().options(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
         }
     }
 
-    @Command
+    @Command(desc = "Remove a button from the custom discord menu set in the guild")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -240,13 +243,14 @@ public class AppMenuCommands {
 
             db.getMenuManager().saveMenu(menu);
             String desc = "Removed button `" + label + "`.\n\nPress a button to remove it.\nPress `cancel` to exit" + footer;
-            menu.message().buttons(true).cancel(true).description(desc).queue(io);
+            menu.message().buttons(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
         } else {
-            menu.message().buttons(true).cancel(true).description("Error: Button not found. Try again.\nPress a button to remove it.\nPress  `cancel` to exit").queue(io);
+            menu.message().buttons(true).cancel(true).description("Error: Button not found. Try again.\nPress a button to remove it.\nPress  `cancel` to exit").queue(db.getGuild(), user, io);
         }
     }
 
-    @Command
+    @Command(desc = "Swap the positions of two buttons in the custom discord menu set in the guild\n" +
+            "Leave the second button empty to prompt for the second button (via pressing it)")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -258,7 +262,7 @@ public class AppMenuCommands {
 
         if (label2 != null && label1.equals(label2)) {
             menu.clearState().message().options(true).description("Cancelled reordering (pressed button twice)\n\n" +
-                    "Select an edit option.\nPress `cancel` to exit").cancel(true).queue(io);
+                    "Select an edit option.\nPress `cancel` to exit").cancel(true).queue(db.getGuild(), user, io);
             return;
         }
         String command1 = menu.buttons.get(label1);
@@ -276,14 +280,14 @@ public class AppMenuCommands {
             String errorMsg = "Cannot find button(s): " + String.join(", ", cannotFind);
             String desc = errorMsg + "\n\nSelect a button to swap.\nPress `cancel` to exit.";
             menu.state = MenuState.REORDER;
-            menu.message().buttons(true).description(desc).cancel(true).queue(io);
+            menu.message().buttons(true).description(desc).cancel(true).queue(db.getGuild(), user, io);
             return;
         }
         if (label2 == null) {
             menu.state = MenuState.REORDER;
             menu.lastPressedButton = label1;
             String desc = "Selected `" + label1 + "`. Select a button to swap with.\nPress `cancel` to exit.";
-            menu.message().buttons(true).description(desc).cancel(true).queue(io);
+            menu.message().buttons(true).description(desc).cancel(true).queue(db.getGuild(), user, io);
             return;
         }
         String footer = "";
@@ -300,10 +304,10 @@ public class AppMenuCommands {
                 .options(true)
                 .description("Successfully swapped `" + label1 + "` and `" + label2 +
                         "`.\n\nSelect a button to swap.\nPress `cancel` to exit." + footer)
-                .cancel(true).queue(io);
+                .cancel(true).queue(db.getGuild(), user, io);
     }
 
-    @Command
+    @Command(desc = "Rename a button in the custom discord menu set in the guild")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -311,22 +315,22 @@ public class AppMenuCommands {
         label = label.toLowerCase(Locale.ROOT);
         if (!menu.buttons.containsKey(label)) {
             String desc = "Cannot find button: `" + label + "`.\n\nSelect a button to rename.\nPress `cancel` to exit.";
-            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
             return;
         }
         if (menu.buttons.containsKey(new_label)) {
             String desc = "Button with label `" + new_label + "` already exists. Pick another name.\n\nSelect a button to rename.\nPress `cancel` to exit.";
-            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
             return;
         }
         if (new_label.equalsIgnoreCase("cancel") || new_label.equalsIgnoreCase("edit")) {
             String desc = "You cannot use `cancel` or `edit` as button labels. Please try again.\n\nSelect a button to rename.\nPress `cancel` to exit.";
-            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
             return;
         }
         if (!new_label.matches("^[-_\\p{L}\\p{N}\\p{sc=Deva}\\p{sc=Thai}]{1,32}$")) {
             String desc = "Button labels can only contain alphanumeric characters and spaces, not `" + new_label + "`.\n\nSelect a button to rename.\nPress `cancel` to exit.";
-            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(io);
+            menu.setState(MenuState.RENAME_BUTTON).message().buttons(true).cancel(true).description(desc).queue(db.getGuild(), user, io);
             return;
         }
         String footer = "";
@@ -339,10 +343,10 @@ public class AppMenuCommands {
         db.getMenuManager().saveMenu(menu);
         String desc = "Successfully rename `" + label + "` to `" + new_label +
                 "`.\n\nSelect a button to rename.\nPress `cancel` to exit." + footer;
-        menu.setState(MenuState.RENAME_BUTTON).message().options(true).description(desc).cancel(true).queue(io);
+        menu.setState(MenuState.RENAME_BUTTON).message().options(true).description(desc).cancel(true).queue(db.getGuild(), user, io);
     }
 
-    @Command
+    @Command(desc = "Create a new custom discord menu set in the guild")
     @NoFormat
     @RolePermission(Roles.ADMIN)
     @Ephemeral
@@ -354,17 +358,48 @@ public class AppMenuCommands {
         AppMenu newMenu = new AppMenu(name, description, new ConcurrentHashMap<>(), 0, MenuState.NONE);
         USER_MENU_STATE.put(user.getIdLong(), newMenu);
         db.getMenuManager().saveMenu(newMenu);
-        newMenu.message().edit(true).cancel(true).queue(io);
+        newMenu.message().edit(true).cancel(true).queue(db.getGuild(), user, io);
     }
 
-    @Command
+    @Command(desc = "Cancel the current menu state and return to displaying the menu description and buttons")
     @NoFormat
     @Ephemeral
     public void cancel(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
         if (menu.state == MenuState.NONE) {
-            menu.clearState().message().buttons(true).edit(menu.canEdit(db, user)).queue(io);
+            menu.clearState().message().buttons(true).edit(menu.canEdit(db, user)).queue(db.getGuild(), user, io);
         } else {
-            menu.clearState().message().options(true).cancel(true).queue(io);
+            menu.clearState().message().options(true).cancel(true).queue(db.getGuild(), user, io);
         }
+    }
+
+    @Command(desc = "List all custom discord menus set in the guild")
+    @NoFormat
+    @Ephemeral
+    public String list(@Me GuildDB db) {
+        Map<String, AppMenu> menus = db.getMenuManager().getAppMenus();
+        StringBuilder sb = new StringBuilder();
+        for (AppMenu menu : menus.values()) {
+            sb.append("### " + menu.title).append("\n");
+            String[] descLines = menu.description.split("\n");
+            String desc = descLines[0] + (descLines.length > 1 ? "..." : "");
+            sb.append("> " + desc).append("\n");
+        }
+        sb.append("\nSee: TODO CM REF");
+        return sb.toString();
+    }
+
+    @Command(desc = "Display the information for a custom discord menu set in the guild")
+    @NoFormat
+    @Ephemeral
+    public void info(@Me IMessageIO io, AppMenu menu) {
+        String title = "Menu: " + menu.title;
+        StringBuilder body = new StringBuilder();
+        body.append("Description:\n```\n").append(menu.description).append("\n```\n");
+        body.append("Buttons:\n```\n");
+        for (Map.Entry<String, String> entry : menu.buttons.entrySet()) {
+            body.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+        }
+        body.append("```");
+        io.create().embed(title, body.toString()).send();
     }
 }
