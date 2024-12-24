@@ -117,8 +117,8 @@ public enum AttackType {
     public static Map.Entry<Double, Double> getAirInfraCasualties(int attAir, int defAir, boolean airVsInfra, SuccessType success, double infra) {
         int victoryType = success.ordinal();
         if (victoryType == 0) return Map.entry(0d, 0d);
-        double min = Math.max(Math.min(attAir - (defAir * 0.5) * 0.35353535 * 0.85 * (victoryType / 3d), infra + 100), 0);
-        double max = Math.max(Math.min(attAir - (defAir * 0.5) * 0.35353535 * 1.05 * (victoryType / 3d), infra + 100), 0);
+        double min = Math.max(Math.min((attAir - (defAir * 0.5)) * 0.35353535 * 0.85 * (victoryType / 3d), infra * 0.5 + 100), 0);
+        double max = Math.max(Math.min((attAir - (defAir * 0.5)) * 0.35353535 * 1.05 * (victoryType / 3d), infra * 0.5 + 100), 0);
         if (!airVsInfra) {
             min /= 3;
             max /= 3;
@@ -276,6 +276,7 @@ public enum AttackType {
 
                 attackerCasualties.put(MilitaryUnit.SHIP, Map.entry(attLossMin, attLossMax));
                 defenderCasualties.put(MilitaryUnit.SHIP, Map.entry(defLossMin, defLossMax));
+                break;
             }
             case GROUND -> {
                 if (victory != SuccessType.UTTER_FAILURE) {
@@ -375,6 +376,7 @@ public enum AttackType {
                 defenderCasualties.put(MilitaryUnit.TANK, Map.entry((int) Math.round(defTankLossMin), (int) Math.round(defTankLossMax)));
                 attackerCasualties.put(MilitaryUnit.SOLDIER, Map.entry((int) Math.round(attSoldierLossMin), (int) Math.round(attSoldierLossMax)));
                 attackerCasualties.put(MilitaryUnit.TANK, Map.entry((int) Math.round(attTankLossMin), (int) Math.round(attTankLossMax)));
+                break;
             }
             case NUKE -> {
                 if (victory == SuccessType.UTTER_FAILURE)
@@ -387,6 +389,7 @@ public enum AttackType {
                     max = Math.max(max, infraDamage.getValue());
                 }
                 defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
+                break;
             }
             case MISSILE -> {
                 attackerCasualties.put(MilitaryUnit.MISSILE, Map.entry(1, 1));
@@ -398,9 +401,11 @@ public enum AttackType {
                     max = Math.max(max, infraDamage.getValue());
                 }
                 defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
+                break;
             }
             case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT -> {
                 inputAirCasualties(attackerCasualties, defenderCasualties, attacker, defender, victory, infraFactor, attModifier, defModifier);
+                break;
             }
             default -> {
                 throw new IllegalArgumentException("Cannot get casualties for " + this);
