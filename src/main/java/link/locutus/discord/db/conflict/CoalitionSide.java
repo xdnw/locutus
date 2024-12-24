@@ -405,21 +405,18 @@ public class CoalitionSide {
                                         .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
                                         .put(cityEntry.getKey(), currentValue);
                             }
-                        } else if (currentValue != 0) {
-                            previousByAlliance.put(cityEntry.getKey(), 0L);
-                            trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
-                                    .put(cityEntry.getKey(), 0L);
                         }
                     }
                     for (Map.Entry<Byte, Long> cityEntry : previousByAlliance.entrySet()) {
                         if (cityEntry.getValue() != 0) {
-                            previousByAlliance.put(cityEntry.getKey(), 0L);
-                            trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
-                                    .put(cityEntry.getKey(), 0L);
+                            Long currentValue = currentByAlliance.get(cityEntry.getKey());
+                            if (currentValue == null) {
+                                previousByAlliance.put(cityEntry.getKey(), 0L);
+                                trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
+                                        .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
+                                        .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
+                                        .put(cityEntry.getKey(), 0L);
+                            }
                         }
                     }
                 }
