@@ -232,8 +232,8 @@ public enum AttackType {
                 int defShips = defender.getUnits(MilitaryUnit.SHIP);
                 if (victory != SuccessType.UTTER_FAILURE) {
                     double maxCityInfra = defender.maxCityInfra();
-                    double infraMin = Math.max(Math.min(attShips - (defShips * 0.5) * 2.625 * 0.85 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
-                    double infraMax = Math.max(Math.min(attShips - (defShips * 0.5) * 2.625 * 1.05 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
+                    double infraMin = Math.max(Math.min((attShips - (defShips * 0.5)) * 2.625 * 0.85 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
+                    double infraMax = Math.max(Math.min((attShips - (defShips * 0.5)) * 2.625 * 1.05 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
                     defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(infraMin * infraFactor), (int) Math.round(infraMax * infraFactor)));
                 }
                 int failures = 3 - victory.ordinal();
