@@ -58,6 +58,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public long _leavingVm() {
+        if (wrapper.header.vm_turns.getOffset() == -1) return 0;
         int vmTurns = wrapper.get(wrapper.header.vm_turns, offset);
         if (vmTurns > 0) return TimeUtil.getTurn(wrapper.date) + vmTurns;
         return 0;

@@ -196,7 +196,7 @@ public class Conflict {
                 for (Map.Entry<Integer, DBNation> nationEntry : nations.entrySet()) {
                     DBNation nation = nationEntry.getValue();
                     if (nation.getVm_turns() > 0 || nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
-                    if (nation instanceof DBNationSnapshot snap && !snap.hasCityData()) continue;
+                    if (nation instanceof DBNationSnapshot snap) continue;
                     int aaId = nation.getAlliance_id();
                     long startTurn = getStartTurn(aaId);
                     if (startTurn != turnStart && startTurn > dayEndTurn) continue;
