@@ -214,6 +214,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int getVm_turns() {
+        if (wrapper.header.vm_turns.getOffset() == -1) return 0;
         return wrapper.get(wrapper.header.vm_turns, offset);
     }
 
