@@ -10,6 +10,7 @@ public enum AllianceMeta {
     LAST_BLITZ_PCT,
     IS_WARRING,
     LAST_AT_WAR_TURN,
+    LAST_AT_WAR_ALLIANCES,
 
     OFFSHORE_PARENT,
 

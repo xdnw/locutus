@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -29,6 +30,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -1064,6 +1066,7 @@ public class WarUpdateProcessor {
             }
         }
 
+        Map<DBAlliance, Map<Integer, Integer>> notableMap = new HashMap<>();
         Map<DBAlliance, Boolean> isAtWar = new HashMap<>();
         Map<DBAlliance, String> warInfo = new HashMap<>();
 
@@ -1072,7 +1075,9 @@ public class WarUpdateProcessor {
             Set<DBNation> nations = alliance.getNations(f -> !f.isGray() && f.getPositionEnum().id > Rank.APPLICANT.id && f.active_m() <= 2000 && f.getVm_turns() == 0);
 
             Set<DBWar> active = alliance.getActiveWars();
-            Map<Integer, Integer> notableByAA = new HashMap<>();
+            Map<Integer, Integer> notableByAA = new Int2IntOpenHashMap();
+            notableMap.put(alliance, notableByAA);
+
             int max = 0;
 
             int planes = 0;
@@ -1113,7 +1118,8 @@ public class WarUpdateProcessor {
         }
 
         long currentTurn = TimeUtil.getTurn();
-        long warTurnThresheld = 7 * 12;
+        long warTurnThresheldSameAA = 7 * 12;
+        long warTurnThresholdDiffAA = 12;
 
         Set<DBAlliance> top = new HashSet<>(isAtWar.keySet());
         top.addAll(Locutus.imp().getNationDB().getAlliances(true, true, true, 80));
@@ -1122,6 +1128,15 @@ public class WarUpdateProcessor {
             ByteBuffer previousPctBuf = alliance.getMeta(AllianceMeta.LAST_BLITZ_PCT);
             ByteBuffer warringBuf = alliance.getMeta(AllianceMeta.IS_WARRING);
             ByteBuffer lastWarBuf = alliance.getMeta(AllianceMeta.LAST_AT_WAR_TURN);
+            ByteBuffer lastWarAlliances = alliance.getMeta(AllianceMeta.LAST_AT_WAR_ALLIANCES);
+            Map<Integer, Integer> lastNotable = new Int2IntOpenHashMap();
+            if (lastWarAlliances != null) {
+                while (lastWarAlliances.hasRemaining()) {
+                    int aa = lastWarAlliances.getInt();
+                    int amt = lastWarAlliances.getInt();
+                    lastNotable.put(aa, amt);
+                }
+            }
 
             long lastWarTurn = lastWarBuf == null ? 0 : lastWarBuf.getLong();
             double lastWarRatio = previousPctBuf == null ? 0 : previousPctBuf.getDouble();
@@ -1130,11 +1145,34 @@ public class WarUpdateProcessor {
             double currentRatio = warRatio.getOrDefault(alliance, 0d);
             boolean warring = isAtWar.getOrDefault(alliance, false);
             if (lastWarring && lastWarRatio > 0.2) warring = true;
+            Map<Integer, Integer> currentNotable = notableMap.getOrDefault(alliance, lastNotable);
+            // For keys that are in currentNotable, but not in lastNotable
+            Set<Integer> newNotable = new HashSet<>(currentNotable.keySet());
+            newNotable.removeAll(lastNotable.keySet());
+
+            Set<Integer> removedNotable = new HashSet<>(lastNotable.keySet());
+            removedNotable.removeAll(currentNotable.keySet());
+
+            Set<Integer> sameNotable = new HashSet<>(currentNotable.keySet());
+            sameNotable.retainAll(lastNotable.keySet());
 
             alliance.setMeta(AllianceMeta.LAST_BLITZ_PCT, currentRatio);
             alliance.setMeta(AllianceMeta.IS_WARRING, (byte) (warring ? 1 : 0));
-            if (warring) alliance.setMeta(AllianceMeta.LAST_AT_WAR_TURN, currentTurn);
+            if (warring) {
+                alliance.setMeta(AllianceMeta.LAST_AT_WAR_TURN, currentTurn);
+                { // write last war alliances
+                    ByteBuffer notableBuf = ByteBuffer.allocate(4 + 8 * currentNotable.size());
+                    notableBuf.putInt(currentNotable.size());
+                    for (Map.Entry<Integer, Integer> entry : currentNotable.entrySet()) {
+                        notableBuf.putInt(entry.getKey());
+                        notableBuf.putInt(entry.getValue());
+                    }
+                    alliance.setMeta(AllianceMeta.LAST_AT_WAR_ALLIANCES, notableBuf.array());
+                }
+            }
             String body = warInfo.get(alliance);
+
+            long warTurnThresheld = newNotable.size() > 0 && removedNotable.size() > 0 && sameNotable.size() < newNotable.size() ? warTurnThresholdDiffAA : warTurnThresheldSameAA;
 
             if (body != null && !lastWarring && warring && currentTurn - lastWarTurn > warTurnThresheld) {
                 String title = alliance.getName() + " is being Attacked";
