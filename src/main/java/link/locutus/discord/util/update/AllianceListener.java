@@ -197,7 +197,7 @@ public class AllianceListener {
             }
 
             double previousMil = milBuf.getDouble();
-            long previousMilDate = milDateBuf.remaining() == 4 ? milDateBuf.getInt() : milDateBuf.getLong();
+            long previousMilDate = milDateBuf == null ? 0 : milDateBuf.remaining() == 4 ? milDateBuf.getInt() : milDateBuf.getLong();
 
             double milGain = groundPctAvg - previousMil;
             if (milGain < thresholdFivedays) {

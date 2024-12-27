@@ -2299,14 +2299,16 @@ public class AdminCommands {
             int lon = (int) (b * 100);
             return MathMan.pairInt(lat, lon);
         };
-        Map<DBNation, List<Object>> data = new Object2ObjectOpenHashMap<>();
+        Map<Integer, List<Object>> data = new Int2ObjectOpenHashMap<>();
 
         Map<String, Integer> flagCounts = new Object2IntOpenHashMap<>();
 
         snapshot.withNationFile(lastDay, new ThrowingConsumer<NationsFile>() {
             @Override
             public void acceptThrows(NationsFile file) throws IOException {
-                file.reader().required(header -> List.of(header.nation_id,
+                System.out.println("Load snapshot: " + file.getDay());
+                file.reader().required(header -> List.of(
+                        header.nation_id,
                         header.continent,
                         header.latitude,
                         header.longitude,
@@ -2318,26 +2320,33 @@ public class AdminCommands {
                 )).read(new ThrowingConsumer<NationHeaderReader>() {
                     @Override
                     public void acceptThrows(NationHeaderReader r) {
-                        int nationId = r.header.nation_id.get();
+                        try {
+                            int nationId = r.header.nation_id.get();
 
-                        double lat = r.header.latitude.get();
-                        double lon = r.header.longitude.get();
-                        long pair = pairLocation.apply(lat, lon);
-                        Continent continent = r.header.continent.get();
-                        mostCommonLocationPairs.computeIfAbsent(continent, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(pair, k -> new AtomicInteger()).incrementAndGet();
-                        flagCounts.merge(r.header.flag_url.get(), 1, Integer::sum);
+                            double lat = r.header.latitude.get();
+                            double lon = r.header.longitude.get();
+                            long pair = pairLocation.apply(lat, lon);
+                            Continent continent = r.header.continent.get();
+                            mostCommonLocationPairs.computeIfAbsent(continent, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(pair, k -> new AtomicInteger()).incrementAndGet();
+                            flagCounts.merge(r.header.flag_url.get(), 1, Integer::sum);
 
-                        if (nationIds.contains(nationId)) {
-                            List<Object> row = new ArrayList<>();
-                            row.add(r.header.nation_id.get());
-                            row.add(r.header.continent.get());
-                            row.add(pair);
-                            row.add(r.header.currency.get());
-                            row.add(r.header.flag_url.get());
-                            row.add(r.header.portrait_url.get());
-                            row.add(r.header.leader_title.get());
-                            row.add(r.header.nation_title.get());
-                            data.put(DBNation.getById(nationId), row);
+                            System.out.println("Find " + nationId);
+                        if (nationIds.contains(nationId))
+                            {
+                                System.out.println("Add " + nationId);
+                                List<Object> row = new ArrayList<>();
+                                row.add(r.header.nation_id.get());
+                                row.add(r.header.continent.get());
+                                row.add(pair);
+                                row.add(r.header.currency.get());
+                                row.add(r.header.flag_url.get());
+                                row.add(r.header.portrait_url.get());
+                                row.add(r.header.leader_title.get());
+                                row.add(r.header.nation_title.get());
+                                data.put(nationId, row);
+                            }
+                        } catch (Throwable e) {
+                            e.printStackTrace();
                         }
                     }
                 });
@@ -2399,7 +2408,7 @@ public class AdminCommands {
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         for (DBNation nation : nations) {
-            List<Object> row = data.get(nation);
+            List<Object> row = data.get(nation.getNation_id());
             Long locationPair = row == null ? null : (Long) row.get(2);
             Continent continent = nation.getContinent();
             boolean isMostCommon = locationPair != null && mostCommonLocation.get(continent).equals(locationPair);
