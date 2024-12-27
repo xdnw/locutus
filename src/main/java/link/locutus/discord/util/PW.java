@@ -525,7 +525,8 @@ public final class PW {
             tracked = guildDB.getTrackedBanks();
         }
 
-        boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
+        long allowConversionDefaultCutoff = 1735265627000L;
+        boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE && start > allowConversionDefaultCutoff;
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
