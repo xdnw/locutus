@@ -525,6 +525,8 @@ public final class PW {
             tracked = guildDB.getTrackedBanks();
         }
 
+        boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
+
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
             Transaction2 record = entry.getValue();
@@ -532,7 +534,7 @@ public final class PW {
 
             boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
 
-            boolean allowConversion = record.tx_id != -1 && isOffshoreSender;
+            boolean allowConversion = allowConversionDefault || record.tx_id != -1 && isOffshoreSender;
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
             PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
