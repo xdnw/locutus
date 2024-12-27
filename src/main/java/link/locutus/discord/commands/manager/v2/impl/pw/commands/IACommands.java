@@ -1249,23 +1249,6 @@ public class IACommands {
         return response.toString();
     }
 
-    @Command(desc = "Ranking of nations by how many advertisements they have registered (WIP)")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
-    public String adRanking(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, @Switch("u") boolean uploadFile) {
-        Map<DBNation, Integer> rankings = new HashMap<>();
-
-        for (Member member : db.getGuild().getMembers()) {
-            DBNation nation = DiscordUtil.getNation(member.getUser());
-            if (nation == null) continue;
-            ByteBuffer countBuf = nation.getMeta(NationMeta.RECRUIT_AD_COUNT);
-            if (countBuf == null) continue;
-            rankings.put(nation, countBuf.getInt());
-        }
-        if (rankings.isEmpty()) return "No rankings founds";
-        new SummedMapRankBuilder<>(rankings).sort().nameKeys(DBNation::getName).build(author, io, command, "Most advertisements", uploadFile);
-        return null;
-    }
-
     @Command(desc = "Ranking of nations by how many incentives they have received\n" +
             "Settings: `REWARD_MENTOR` and `REWARD_REFERRAL`")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)

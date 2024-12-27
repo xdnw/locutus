@@ -5715,14 +5715,6 @@ public class CM {
             }
         }
         public static class interview{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="adRanking")
-            public static class adRanking extends CommandRef {
-                public static final adRanking cmd = new adRanking();
-            public adRanking uploadFile(String value) {
-                return set("uploadFile", value);
-            }
-
-            }
             public static class channel{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="renameInterviewChannels")
                 public static class auto_rename extends CommandRef {
