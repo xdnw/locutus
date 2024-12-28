@@ -41,6 +41,12 @@ public class SnapshotMultiData {
         return !natData.currency().equalsIgnoreCase("dollar");
     }
 
+    public boolean hasPickedLand(int nationId) {
+        MultiData natData = data.get(nationId);
+        if (natData == null) return false;
+        return mostCommonLocation.get(natData.continent()) != natData.location();
+    }
+
     public SnapshotMultiData() throws IOException, ParseException {
         Map<Continent, Map<Long, AtomicInteger>> mostCommonLocationPairs = new Object2ObjectOpenHashMap<>();
         DataDumpParser snapshot = Locutus.imp().getDataDumper(true);

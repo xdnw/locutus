@@ -53,32 +53,49 @@ public class MultiUpdater {
 
     private Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();
     private Map<Integer, Set<Long>> discordIds = new Int2ObjectOpenHashMap();
+
     private Map<Integer, Integer> nationSharesTime = new Int2IntOpenHashMap();
     private Map<Integer, Integer> allianceSharesTime = new Int2IntOpenHashMap();
 
+    private Map<Integer, Integer> sharesUidInAa = new Int2IntOpenHashMap();
+    private Map<Integer, Integer> sharesUidSimilarTime = new Int2IntOpenHashMap();
 
-    private double getAllianceWeight(DBAlliance alliance) {
-        Set<DBNation> members = alliance.getMemberDBNations();
+    private void init() {
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            // todo load alliance mmeber activity
 
-        int members1yNoDiscord = 0;
-        int membersNoDiscord = 0;
-        int similarTime = 0;
+            // todo initialize the maps above
 
-        for (DBNation nation : members) {
-            for (DBNation other : members) {
-                if (Math.abs(nation.active_m() - other.active_m()) < 15) {
-                    similarTime++;
-                    nationSharesTime.merge(nation.getNation_id(), 1, Integer::sum);
-                    allianceSharesTime.merge(alliance.getAlliance_id(), 1, Integer::sum);
+            // todo, only use this for calculating nation factor
+            Set<DBNation> members = alliance.getMemberDBNations();
+
+            int members1yNoDiscord = 0;
+            int membersNoDiscord = 0;
+            int similarTime = 0;
+
+            for (DBNation nation : members) {
+                double factor = 1;
+
+                for (DBNation other : members) {
+                    if (Math.abs(nation.active_m() - other.active_m()) < 15) {
+                        similarTime++;
+                        nationSharesTime.merge(nation.getNation_id(), 1, Integer::sum);
+                        allianceSharesTime.merge(alliance.getAlliance_id(), 1, Integer::sum);
+                    }
                 }
-            }
 
-            if (nation.isVerified() || nation.data()._discordStr() != null) {
-                if (nation.getAgeDays() < 365) {
-                    members1yNoDiscord++;
-                } else {
-                    membersNoDiscord++;
+                if (nation.isVerified() || nation.data()._discordStr() != null) {
+                    if (nation.getAgeDays() < 365) {
+                        members1yNoDiscord++;
+                    } else {
+                        membersNoDiscord++;
+                    }
                 }
+
+                boolean customFlag = snapshotData.hasCustomFlag(nation.getNation_id()); // 8
+                boolean pickedLand = snapshotData.hasPickedLand(nation.getNation_id()); // 4
+                boolean customCurrency = snapshotData.hasCustomCurrency(nation.getNation_id()); // 2
+                int customizationFactor = (customFlag ? 8 : 1) * (pickedLand ? 4 : 1) * (customCurrency ? 2 : 1);
             }
         }
     }
