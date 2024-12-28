@@ -2,6 +2,8 @@ package link.locutus.discord.util;
 
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.network.IProxy;
+import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
@@ -199,9 +201,15 @@ public final class FileUtil {
     }
 
     public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
+        return readStringFromURL(priority, urlStr, arguments, post, msCookieManager, PassthroughProxy.INSTANCE, apply);
+    }
+
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, IProxy proxy, Consumer<HttpURLConnection> apply) throws IOException {
+        IProxy finalProxy = proxy == null ? PassthroughProxy.INSTANCE : proxy;
         Supplier<String> jsoupTask = () -> {
             try {
-                Connection connection = Jsoup.connect(urlStr).method(post ? Connection.Method.POST : Connection.Method.GET)
+                Connection connection = finalProxy.connect(urlStr);
+                connection = connection.method(post ? Connection.Method.POST : Connection.Method.GET)
                         .ignoreContentType(true);
 
                 // Add arguments to the request

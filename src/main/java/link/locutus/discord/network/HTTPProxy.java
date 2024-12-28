@@ -1,9 +1,15 @@
 package link.locutus.discord.network;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+
+import java.io.IOException;
+import java.net.*;
+import java.util.Base64;
 
 public class HTTPProxy implements IProxy {
+    private final Proxy proxy;
     private String proxyHost;
     private int proxyPort;
     private String proxyUser;
@@ -14,6 +20,7 @@ public class HTTPProxy implements IProxy {
         this.proxyPort = proxyPort;
         this.proxyUser = proxyUser;
         this.proxyPass = proxyPass;
+        this.proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
     }
 
     public String getProxyHost() {
@@ -33,7 +40,12 @@ public class HTTPProxy implements IProxy {
     }
 
     @Override
-    public HttpURLConnection connect(URL url) {
-        return null;
+    public Connection connect(String url) throws IOException {
+        Connection connection = Jsoup.connect(url.toString()).proxy(proxy);
+        if (proxyUser != null && proxyPass != null) {
+            String encoded = Base64.getEncoder().encodeToString((proxyUser + ":" + proxyPass).getBytes());
+            connection.header("Proxy-Authorization", "Basic " + encoded);
+        }
+        return connection;
     }
 }

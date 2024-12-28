@@ -25,6 +25,7 @@ public class TimeUtil {
     public static final SimpleDateFormat MMDDYYYY_HH_MM_A = new SimpleDateFormat("MM/dd/yyyy h:mm a", Locale.ENGLISH);
     public static final SimpleDateFormat YYYY_MM_DD_HH_MM_SS = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
     public static final SimpleDateFormat YYYY_MM_DDTHH_MM_SSX = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssX", Locale.ENGLISH);
+    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_SS_A = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.ENGLISH);
 
     public static final SimpleDateFormat F_YYYY_MM_DD = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
 
@@ -46,6 +47,7 @@ public class TimeUtil {
         MMDDYYYY_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
         YYYY_MM_DD_HH_MM_SS.setTimeZone(TimeZone.getTimeZone("UTC"));
         YYYY_MM_DDTHH_MM_SSX.setTimeZone(TimeZone.getTimeZone("UTC"));
+        YYYY_MM_DD_HH_MM_SS_A.setTimeZone(TimeZone.getTimeZone("UTC"));
         YYYY_MM_DD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
         F_YYYY_MM_DD.setTimeZone(TimeZone.getTimeZone("UTC"));
         WAR_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));

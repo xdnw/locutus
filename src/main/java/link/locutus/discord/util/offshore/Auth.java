@@ -10,6 +10,8 @@ import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.network.IProxy;
+import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.FileUtil;
@@ -53,6 +55,7 @@ public class Auth {
     private String apiKey;
     private boolean valid;
     private CookieManager msCookieManager = new CookieManager();
+    private IProxy proxy;
 
     private final ReentrantLock lock = new ReentrantLock();
     private final int nationId;
@@ -62,6 +65,16 @@ public class Auth {
         this.password = password;
         this.nationId = nationId;
         this.valid = true;
+        this.proxy = PassthroughProxy.INSTANCE;
+    }
+
+    public void setProxy(IProxy proxy) {
+        this.proxy = proxy;
+    }
+
+    public Auth clone() {
+        Auth auth = new Auth(nationId, username, password);
+        return auth;
     }
 
     private boolean loggedIn = false;
@@ -80,11 +93,11 @@ public class Auth {
         synchronized (this)
         {
             login(false);
-            String result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
+            String result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, proxy, i -> {}));
             if (result.contains("<!--Logged Out-->")) {
                 msCookieManager.getCookieStore().removeAll();
                 login(true);
-                result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
+                result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, proxy, i -> {}));
                 if (result.contains("<!--Logged Out-->")) {
                     throw new IllegalArgumentException("Failed to login to PNW");
                 }

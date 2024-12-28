@@ -7,6 +7,7 @@ public interface DBNationGetter {
     int _nationId();
     String _nation();
     String _leader();
+    String _discordStr();
     int _allianceId();
     long _lastActiveMs();
     double _score();

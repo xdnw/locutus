@@ -7,6 +7,7 @@ public interface DBNationSetter {
     void setNation_id(int nation_id);
     void setNation(String nation);
     void setLeader(String leader);
+    void setDiscordStr(String discordStr);
     void setAlliance_id(int alliance_id);
     void setLast_active(long last_active);
     void setScore(double score);

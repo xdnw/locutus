@@ -33,6 +33,8 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.handlers.GuildCustomMessageHandler;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
+import link.locutus.discord.network.IProxy;
+import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -117,6 +119,7 @@ public final class Locutus extends ListenerAdapter {
     private final Object dataDumpParserLock = new Object();
 
     private PnwPusherShardManager pusher;
+    private ProxyHandler proxyHandler;
     private Guild server;
 
     public static synchronized Locutus create() {
@@ -358,6 +361,17 @@ public final class Locutus extends ListenerAdapter {
         Auth auth = getNationDB().getNationById(loader.getNationId()).getAuth(true);
         if (auth != null) auth.setApiKey(loader.getApiKey());
         return auth;
+    }
+
+    public ProxyHandler getProxy() {
+        if (proxyHandler == null) {
+            synchronized (this) {
+                if (proxyHandler == null) {
+                    proxyHandler = ProxyHandler.createFromSettings();
+                }
+            }
+        }
+        return proxyHandler;
     }
 
     public GuildDB getGuildDB(MessageReceivedEvent event) {

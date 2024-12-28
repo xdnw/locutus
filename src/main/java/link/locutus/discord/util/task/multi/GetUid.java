@@ -30,7 +30,6 @@ public class GetUid implements Callable<BigInteger> {
         String url = nation.getUrl();
         PagePriority pp = (priority ? PagePriority.NATION_UID_MANUAL : PagePriority.NATION_UID_AUTO);
         String html = FileUtil.readStringFromURL(pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);
-
         Document dom = Jsoup.parse(html);
         try {
             Elements uuidTd = dom.select("td:contains(Unique ID)");

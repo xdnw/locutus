@@ -47,6 +47,8 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
     private int tax_id;
     private double gni;
 
+    private String discord;
+
     private transient DBNationCache cache;
 
     public DBNationData(int nation_id, String nation, String leader, int alliance_id, long last_active, double score,
@@ -60,7 +62,8 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
                     long espionageFull, int dc_turn, int wars_won, int wars_lost,
                     int tax_id,
                     double gni,
-                    double gdp) {
+                    double gdp,
+                        String discord) {
         this.nation_id = nation_id;
         this.nation = nation;
         this.leader = leader;
@@ -97,6 +100,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
         this.wars_lost = wars_lost;
         this.tax_id = tax_id;
         this.gni = gni;
+        this.discord = discord;
     }
 
     public DBNationData() {
@@ -223,6 +227,16 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
     }
 
     // Getters and setters
+
+    @Override
+    public void setDiscordStr(String discordStr) {
+        this.discord = discordStr;
+    }
+
+    @Override
+    public String _discordStr() {
+        return discord;
+    }
 
     public int _nationId() {
         return nation_id;

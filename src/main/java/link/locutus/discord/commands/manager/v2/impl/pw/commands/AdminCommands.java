@@ -32,6 +32,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.multi.GetUid;
+import link.locutus.discord.util.task.multi.SnapshotMultiData;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.wiki.WikiGenHandler;
@@ -2241,32 +2242,17 @@ public class AdminCommands {
     @Command
     public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark) throws IOException, ParseException, GeneralSecurityException {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
-        List<Integer> nationIdsList = nations.stream().map(DBNation::getId).sorted().toList();
         Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();
         Map<Integer, Set<Long>> discordIds = new Int2ObjectOpenHashMap<>();
+
         for (DBNation nation : Locutus.imp().getNationDB().getAllNations()) {
             Long discordId = nation.getUserId();
             if (discordId != null) {
                 discordIds.computeIfAbsent(nation.getId(), k -> new LongOpenHashSet()).add(discordId);
             }
-        }
-
-        for (Nation nation : Locutus.imp().getV3().fetchNations(false, f -> {
-            if (nationIdsList.size() < 5000) f.setId(nationIdsList);
-            else f.setVmode(false);
-        }, r -> {
-            r.id();
-            r.discord();
-            r.discord_id();
-        })) {
-            Integer id = nation.getId();
-            String discordId = nation.getDiscord_id();
-            String discord = nation.getDiscord();
-            if (discord != null && !discord.isEmpty()) {
-                discords.put(id, discord);
-            }
-            if (discordId != null && !discordId.isEmpty()) {
-                discordIds.computeIfAbsent(id, k -> new LongOpenHashSet()).add(Long.parseLong(discordId));
+            String discordStr = nation.getDiscordString();
+            if (discordStr != null) {
+                discords.put(nation.getId(), discordStr);
             }
         }
 
@@ -2287,84 +2273,7 @@ public class AdminCommands {
             duplicateDiscordIds.entrySet().removeIf(e -> e.getValue().size() == 1);
         }
 
-        DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
-        snapshot.load();
-
-        List<Long> days = snapshot.getDays(true, false);
-        long lastDay = days.get(days.size() - 1);
-
-        Map<Continent, Map<Long, AtomicInteger>> mostCommonLocationPairs = new Object2ObjectOpenHashMap<>();
-        BiFunction<Double, Double, Long> pairLocation = (a, b) -> {
-            int lat = (int) (a * 100);
-            int lon = (int) (b * 100);
-            return MathMan.pairInt(lat, lon);
-        };
-        Map<Integer, List<Object>> data = new Int2ObjectOpenHashMap<>();
-
-        Map<String, Integer> flagCounts = new Object2IntOpenHashMap<>();
-
-        snapshot.withNationFile(lastDay, new ThrowingConsumer<NationsFile>() {
-            @Override
-            public void acceptThrows(NationsFile file) throws IOException {
-                System.out.println("Load snapshot: " + file.getDay());
-                file.reader().required(header -> List.of(
-                        header.nation_id,
-                        header.continent,
-                        header.latitude,
-                        header.longitude,
-                        header.currency,
-                        header.flag_url,
-                        header.portrait_url,
-                        header.leader_title,
-                        header.nation_title
-                )).read(new ThrowingConsumer<NationHeaderReader>() {
-                    @Override
-                    public void acceptThrows(NationHeaderReader r) {
-                        try {
-                            int nationId = r.header.nation_id.get();
-
-                            double lat = r.header.latitude.get();
-                            double lon = r.header.longitude.get();
-                            long pair = pairLocation.apply(lat, lon);
-                            Continent continent = r.header.continent.get();
-                            mostCommonLocationPairs.computeIfAbsent(continent, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(pair, k -> new AtomicInteger()).incrementAndGet();
-                            flagCounts.merge(r.header.flag_url.get(), 1, Integer::sum);
-
-                            System.out.println("Find " + nationId);
-                        if (nationIds.contains(nationId))
-                            {
-                                System.out.println("Add " + nationId);
-                                List<Object> row = new ArrayList<>();
-                                row.add(r.header.nation_id.get());
-                                row.add(r.header.continent.get());
-                                row.add(pair);
-                                row.add(r.header.currency.get());
-                                row.add(r.header.flag_url.get());
-                                row.add(r.header.portrait_url.get());
-                                row.add(r.header.leader_title.get());
-                                row.add(r.header.nation_title.get());
-                                data.put(nationId, row);
-                            }
-                        } catch (Throwable e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-            }
-        });
-
-        Map<Continent, Long> mostCommonLocation = new Object2LongOpenHashMap<>();
-        for (Map.Entry<Continent, Map<Long, AtomicInteger>> entry : mostCommonLocationPairs.entrySet()) {
-            long max = 0;
-            long maxPair = 0;
-            for (Map.Entry<Long, AtomicInteger> pair : entry.getValue().entrySet()) {
-                if (pair.getValue().get() > max) {
-                    max = pair.getValue().get();
-                    maxPair = pair.getKey();
-                }
-            }
-            mostCommonLocation.put(entry.getKey(), maxPair);
-        }
+        SnapshotMultiData orbisMultiData = new SnapshotMultiData();
 
         Map<BigInteger, Integer> uidCounts = new Object2IntOpenHashMap<>();
         Map<Integer, BigInteger> uidByNation = new Object2ObjectOpenHashMap<>();
@@ -2408,22 +2317,22 @@ public class AdminCommands {
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         for (DBNation nation : nations) {
-            List<Object> row = data.get(nation.getNation_id());
-            Long locationPair = row == null ? null : (Long) row.get(2);
+            SnapshotMultiData.MultiData data = orbisMultiData.data.get(nation.getNation_id());
+            Long locationPair = data == null ? null : (Long) data.location();
             Continent continent = nation.getContinent();
-            boolean isMostCommon = locationPair != null && mostCommonLocation.get(continent).equals(locationPair);
+            boolean isMostCommon = locationPair != null && orbisMultiData.mostCommonLocation.get(continent).equals(locationPair);
             String mostCommonMsg = locationPair == null ? "null" : (isMostCommon ? "Default" : "Custom");
 
-            String flagUrl = row == null ? null : (String) row.get(4);
-            String customFlagMsg = flagUrl == null ? "null" : (flagCounts.getOrDefault(flagUrl, 0) <= 1 ? "Custom" : "Default");
-            String currency = row == null ? "null" : (String) row.get(3);
-            String portrait = row == null ? "null" : (String) row.get(5);
-            String leaderTitle = row == null ? "null" : (String) row.get(6);
-            String nationTitle = row == null ? "null" : (String) row.get(7);
+            String flagUrl = data == null ? null : (String) data.flagUrl();
+            String customFlagMsg = flagUrl == null ? "null" : (orbisMultiData.flagCounts.getOrDefault(flagUrl, 0) <= 1 ? "Custom" : "Default");
+            String currency = data == null ? "null" : (String) data.currency();
+            String portrait = data == null ? "null" : (String) data.portraitUrl();
+            String leaderTitle = data == null ? "null" : (String) data.leaderTitle();
+            String nationTitle = data == null ? "null" : (String) data.nationTitle();
 
             String discord = discords.getOrDefault(nation.getId(), "null");
 
-            row = new ArrayList<>();
+            ArrayList<Object> row = new ArrayList<>();
 
             row.add(MarkupUtil.sheetUrl(nation.getName(), nation.getUrl()));
             row.add(nation.getLeader());

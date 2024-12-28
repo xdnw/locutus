@@ -130,7 +130,7 @@ dependencies {
 
     implementation('org.xerial:sqlite-jdbc:3.46.1.0')
     implementation 'com.google.code.gson:gson:2.8.9'
-    implementation 'org.jsoup:jsoup:1.12.1'
+    implementation 'org.jsoup:jsoup:1.18.3'
     implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
     implementation ('net.dv8tion:JDA:5.1.2') {
