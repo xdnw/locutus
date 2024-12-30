@@ -72,10 +72,6 @@ public class Auth {
         this.proxy = proxy;
     }
 
-    public Auth clone() {
-        return new Auth(nationId, username, password);
-    }
-
     private boolean loggedIn = false;
 
     public String getToken(PagePriority priority, String url) throws IOException {
