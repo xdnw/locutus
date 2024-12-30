@@ -1091,7 +1091,15 @@ public abstract class DBNation implements NationOrAlliance {
             Long thisUserId = getUserId();
             if (!newDiscordId.equals(thisUserId)) {
                 User user = Locutus.imp().getDiscordApi().getUserById(newDiscordId);
-                String name = user == null ? newDiscordId + "" : DiscordUtil.getFullUsername(user);
+                String name;
+                if (user != null) {
+                    name = DiscordUtil.getFullUsername(user);
+                } else {
+                    name = getDiscordString();
+                    if (name == null || name.isEmpty()) {
+                        name = newDiscordId + "";
+                    }
+                }
                 Locutus.imp().getDiscordDB().addUser(new PNWUser(data()._nationId(), newDiscordId, name));
                 if (eventConsumer != null) {
                     eventConsumer.accept(new NationRegisterEvent(data()._nationId(), null, user, thisUserId == null));
@@ -1108,7 +1116,10 @@ public abstract class DBNation implements NationOrAlliance {
             if (eventConsumer != null) eventConsumer.accept(new NationChangeLeaderEvent(copyOriginal, this));
             dirty = true;
         }
-
+        if (nation.getDiscord() != null && (this.data()._discordStr() == null || !this.data()._discordStr().equals(nation.getDiscord()))) {
+            this.edit().setDiscordStr(nation.getDiscord());
+            dirty = true;
+        }
         if (nation.getAlliance_id() != null && this.getAlliance_id() != (nation.getAlliance_id())) {
             this.setAlliance_id(nation.getAlliance_id());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeAllianceEvent(copyOriginal, this));
@@ -3637,7 +3648,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "The unverified discord string set in-game (snapshots only)")
     public String getDiscordString() {
-        throw new IllegalArgumentException("discordString is only supported for snapshots");
+        return data()._discordStr();
     }
 
     @Command(desc = "The registered discord user id")

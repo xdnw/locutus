@@ -1754,7 +1754,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 rs.getInt("wars_lost"),
                 rs.getInt("tax_id"),
                 rs.getLong("gdp") / 100d,
-                0d
+                0d,
+                rs.getString("discord")
         ));
     }
 
@@ -2310,12 +2311,15 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     .putColumn("wars_won", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_lost", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("gdp", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+                    .putColumn("gdp", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("discord", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
+                    ;
 
             nationTable.create(getDb());
 
             // add gdp column to NATIONS2 BIGINT NOT NULL default 0
             executeStmt("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE NATIONS2 ADD COLUMN `discord` TEXT", true);
             update("DROP TABLE IF EXISTS NATIONS_WAR_SNAPSHOT");
 
             TablePreset.create("POSITIONS")
@@ -3214,7 +3218,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 0,
                 0,
                 0,
-                0
+                0,
+                null
         ));
     }
 
@@ -4892,12 +4897,17 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt1.setInt(34, nation.getWars_lost());
             stmt1.setInt(35, nation.getTax_id());
             stmt1.setLong(36, Math.round(100 * nation.getGNI()));
+            if (nation.data()._discordStr() == null) {
+                stmt1.setNull(37, Types.INTEGER);
+            } else {
+                stmt1.setString(37, nation.data()._discordStr());
+            }
         };
     }
 
     public int[] saveNations(Collection<DBNation> nations) {
         if (nations.isEmpty()) return new int[0];
-        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id,gdp) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id,gdp,discord) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();

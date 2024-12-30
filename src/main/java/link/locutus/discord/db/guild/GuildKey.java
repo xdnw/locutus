@@ -1590,6 +1590,23 @@ public class GuildKey {
                     "Use `#cash` as the note when depositing or transferring funds";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
+
+    public static GuildSetting<Boolean> CONVERT_NEGATIVE_RSS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String CONVERT_NEGATIVE_RSS(@Me GuildDB db, @Me User user, boolean enabled) {
+            return CONVERT_NEGATIVE_RSS.setAndValidate(db, user, enabled);
+        }
+        @Override
+        public String help() {
+            return "If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
+                    "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
+                    "Resources are converted using market average\n" +
+                    "Use `#cash` as the note when depositing or transferring funds to convert to #cash";
+        }
+    }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
+
     public static GuildSetting<MessageChannel> TRADE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.TRADE) {
         @NoFormat
         @Command(descMethod = "help")

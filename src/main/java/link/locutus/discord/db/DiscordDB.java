@@ -2,7 +2,11 @@ package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.entities.ApiRecord;
@@ -26,6 +30,7 @@ import com.google.api.client.util.Sets;
 import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import link.locutus.discord.util.task.multi.MultiResult;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.codec.binary.Hex;
@@ -41,7 +46,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -81,6 +88,14 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
 
+        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow`(`id` INTEGER PRIMARY KEY, `lastAccessFromSharedIP` INTEGER NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` INTEGER NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `SameNetworkTrade`(`sellingNation` INTEGER NOT NULL, `buyingNation` INTEGER NOT NULL, `dateOffered` INTEGER NOT NULL, `resource` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `ppu` INTEGER NOT NULL, PRIMARY KEY (`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`))");
+        executeStmt("CREATE INDEX IF NOT EXISTS idx_sellingNation ON SameNetworkTrade(sellingNation)");
+        executeStmt("CREATE INDEX IF NOT EXISTS idx_buyingNation ON SameNetworkTrade(buyingNation)");
+
+        // last updated by id MultiReportLastUpdated int id, long date
+        executeStmt("CREATE TABLE IF NOT EXISTS `MultiReportLastUpdated`(`id` INTEGER PRIMARY KEY, `date` INTEGER NOT NULL)");
+
         for (String table : new String[]{"USERS", "CREDENTIALS2", "API_KEYS3"}) {
             if (getTableColumns(table).stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
                 executeStmt("ALTER TABLE " + table + " ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis(), true);
@@ -90,6 +105,132 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         setupApiKeys();
 
         createDeletionsTables();
+    }
+
+    public void addMultiReportLastUpdated(int id, long date) {
+        update("INSERT OR REPLACE INTO `MultiReportLastUpdated`(`id`, `date`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, id);
+            stmt.setLong(2, date);
+        });
+    }
+
+    public long getMultiReportLastUpdated(int id) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM MultiReportLastUpdated WHERE id = ?")) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("date");
+                }
+            }
+            return 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public Map<Integer, Long> getMultiReportLastUpdated(Predicate<Integer> allowId) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM MultiReportLastUpdated")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                Map<Integer, Long> map = new Int2LongOpenHashMap();
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    if (allowId.test(id)) {
+                        map.put(id, rs.getLong("date"));
+                    }
+                }
+                return map;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Map<Integer, MultiResult.NetworkRow> getNetworkRows(int nationId) {
+        Map<Integer, MultiResult.NetworkRow> map = new Int2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM NetworkRow WHERE id = ?")) {
+            stmt.setInt(1, nationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    MultiResult.NetworkRow row = new MultiResult.NetworkRow(
+                            rs.getInt("id"),
+                            rs.getInt("lastAccessFromSharedIP"),
+                            rs.getInt("numberOfSharedIPs"),
+                            rs.getInt("lastActiveMs"),
+                            rs.getInt("allianceId"),
+                            rs.getInt("dateCreated")
+                    );
+                    map.put(row.id, row);
+                }
+            }
+            return map;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public List<MultiResult.SameNetworkTrade> getSameNetworkTrades(int nationId) {
+        Set<MultiResult.SameNetworkTrade> list = new ObjectLinkedOpenHashSet<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM SameNetworkTrade WHERE sellingNation = ? OR buyingNation = ?")) {
+            stmt.setInt(1, nationId);
+            stmt.setInt(2, nationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    MultiResult.SameNetworkTrade trade = new MultiResult.SameNetworkTrade(
+                            rs.getInt("sellingNation"),
+                            rs.getInt("buyingNation"),
+                            rs.getInt("dateOffered"),
+                            ResourceType.values[rs.getInt("resource")],
+                            rs.getInt("amount"),
+                            rs.getInt("ppu")
+                    );
+                    list.add(trade);
+                }
+            }
+            return new ObjectArrayList<>(list);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void addNetworks(List<MultiResult.NetworkRow> data) {
+        String query = "INSERT OR REPLACE INTO `NetworkRow`(`id`, `lastAccessFromSharedIP`, `numberOfSharedIPs`, `lastActiveMs`, `allianceId`, `dateCreated`) VALUES (?, ?, ?, ?, ?, ?)";
+        executeBatch(data, query, new ThrowingBiConsumer<MultiResult.NetworkRow, PreparedStatement>() {
+            @Override
+            public void acceptThrows(MultiResult.NetworkRow row, PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, row.id);
+                stmt.setLong(2, row.lastAccessFromSharedIP);
+                stmt.setInt(3, row.numberOfSharedIPs);
+                stmt.setLong(4, row.lastActiveMs);
+                stmt.setInt(5, row.allianceId);
+                stmt.setLong(6, row.dateCreated);
+            }
+        });
+    }
+
+    public void addSameNetworkTrades(List<MultiResult.SameNetworkTrade> data) {
+        String query = "INSERT OR REPLACE INTO `SameNetworkTrade`(`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`) VALUES (?, ?, ?, ?, ?, ?)";
+        executeBatch(data, query, new ThrowingBiConsumer<MultiResult.SameNetworkTrade, PreparedStatement>() {
+            @Override
+            public void acceptThrows(MultiResult.SameNetworkTrade trade, PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, trade.sellingNation);
+                stmt.setInt(2, trade.buyingNation);
+                stmt.setLong(3, trade.dateOffered);
+                stmt.setInt(4, trade.resource.ordinal());
+                stmt.setInt(5, trade.amount);
+                stmt.setInt(6, trade.ppu);
+            }
+        });
+    }
+
+    public MultiResult getMultiResult(int nationId) {
+        long lastUpdated = getMultiReportLastUpdated(nationId);
+        Map<Integer, MultiResult.NetworkRow> networkRows = getNetworkRows(nationId);
+        List<MultiResult.SameNetworkTrade> sameNetworkTrades = getSameNetworkTrades(nationId);
+        return new MultiResult(nationId, networkRows, sameNetworkTrades).setDateFetched(lastUpdated);
     }
 
     public List<DiscordBan> getBans(long userId) {

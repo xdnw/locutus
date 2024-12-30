@@ -266,6 +266,11 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     }
 
     @Override
+    public String _discordStr() {
+        throw new IllegalArgumentException("Not supported for snapshots");
+    }
+
+    @Override
     public int _allianceId() {
         return wrapper.get(wrapper.header.alliance_id, offset);
     }

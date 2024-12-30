@@ -33,6 +33,8 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.handlers.GuildCustomMessageHandler;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
+import link.locutus.discord.network.IProxy;
+import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -46,6 +48,7 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
+import link.locutus.discord.util.task.multi.MultiUpdater;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
@@ -93,6 +96,7 @@ import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -117,7 +121,9 @@ public final class Locutus extends ListenerAdapter {
     private final Object dataDumpParserLock = new Object();
 
     private PnwPusherShardManager pusher;
+    private ProxyHandler proxyHandler;
     private Guild server;
+    private MultiUpdater multiUpdater;
 
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
@@ -360,6 +366,17 @@ public final class Locutus extends ListenerAdapter {
         return auth;
     }
 
+    public ProxyHandler getProxy() {
+        if (proxyHandler == null) {
+            synchronized (this) {
+                if (proxyHandler == null) {
+                    proxyHandler = ProxyHandler.createFromSettings();
+                }
+            }
+        }
+        return proxyHandler;
+    }
+
     public GuildDB getGuildDB(MessageReceivedEvent event) {
         return getGuildDB(event.isFromGuild() ? event.getGuild().getIdLong() : Settings.INSTANCE.ROOT_SERVER);
     }
@@ -522,6 +539,19 @@ public final class Locutus extends ListenerAdapter {
     private final Object warUpdateLock = new Object();
 
     public void initRepeatingTasks() {
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.PROXY) {
+            taskTrack.addTask("Proxy", () -> {
+                if (this.multiUpdater == null) {
+                    try {
+                        this.multiUpdater = new MultiUpdater();
+                    } catch (IOException | ParseException e) {
+                        System.err.println("[Error] Failed to create MultiUpdater");
+                        throw new RuntimeException(e);
+                    }
+                }
+                this.multiUpdater.run();
+            }, 1, TimeUnit.MINUTES);
+        }
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
             taskTrack.addTask("Turn Change", new CaughtTask() {

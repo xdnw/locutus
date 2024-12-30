@@ -2,6 +2,7 @@ package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.yaml.Config;
+import link.locutus.discord.network.ProxyHandler;
 
 import java.io.File;
 import java.util.*;
@@ -141,6 +142,9 @@ public class Settings extends Config {
 
         @Comment("If P&W events should be enabled")
         public boolean EVENTS = true;
+
+        @Comment("See proxy section")
+        public boolean PROXY = false;
 
         public void disableTasks() {
             CREATE_DATABASES_ON_STARTUP = false;
@@ -298,49 +302,51 @@ public class Settings extends Config {
             "- A proxy can aid multiple alliances performing actions concurrently"
     })
     public static class PROXY {
-//        public String USER = "username@example.com";
-//        public String PASSWORD = "12345678";
-//        @Comment({"The available hosts to use",
-//        "multiple hosts will be distributed amongst the clients used"})
-//        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
-//                "region.example.com"
-//        ));
-//        public int PORT = 1080;
-//
-//        public ProxyHandler createProxy(String host) {
-//            if (host == null) {
-//                host = HOSTS.get(0);
-//            }
-//            return new ProxyHandler(host, PORT, USER, PASSWORD);
-//        }
-//
-//        /**
-//         * Find a recommended host to use for the proxy.
-//         * The previous host will be used if it is valid.
-//         * A host least used in the local bucket, and (secondary) globally, is preferred
-//         * @param previousHost - the previous host used, or null
-//         * @param tier1avoid - a list of hosts used by the local bucket
-//         * @param tier2avoid - a list of hosts used globally
-//         * @return host
-//         */
-//        public String recommendHost(String previousHost, List<String> tier1avoid, List<String> tier2avoid) {
-//            if (previousHost != null && HOSTS.contains(previousHost)) return previousHost;
-//            if (HOSTS.size() == 1) return HOSTS.get(0);
-//            Map<String, Long> weighting = new HashMap<>();
-//            for (String host : tier1avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + Integer.MAX_VALUE);
-//            for (String host : tier2avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + 1);
-//
-//            long minVal = Long.MAX_VALUE;
-//            String minHost = null;
-//            for (String host : HOSTS) {
-//                Long val = weighting.getOrDefault(host, 0L);
-//                if (val < minVal) {
-//                    minVal = val;
-//                    minHost = host;
-//                }
-//            }
-//            return minHost;
-//        }
+        public String USER = "username@example.com";
+        public String PASSWORD = "12345678";
+
+        @Comment({"The type of proxy" +
+                "SOCKS = Socks5 proxy with authentication",
+                "HTTP = HTTP proxy with authentication",
+                "API = API proxy, use %username% %password% and %url% in the host string"})
+        public String TYPE = "SOCKS";
+
+        @Comment({"The available hosts to use",
+        "multiple hosts will be distributed amongst the clients used"})
+        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
+                "region.example.com"
+        ));
+
+        @Comment("The port to use for the proxy")
+        public int PORT = 1080;
+
+        /**
+         * Find a recommended host to use for the proxy.
+         * The previous host will be used if it is valid.
+         * A host least used in the local bucket, and (secondary) globally, is preferred
+         * @param previousHost - the previous host used, or null
+         * @param tier1avoid - a list of hosts used by the local bucket
+         * @param tier2avoid - a list of hosts used globally
+         * @return host
+         */
+        public String recommendHost(String previousHost, List<String> tier1avoid, List<String> tier2avoid) {
+            if (previousHost != null && HOSTS.contains(previousHost)) return previousHost;
+            if (HOSTS.size() == 1) return HOSTS.get(0);
+            Map<String, Long> weighting = new HashMap<>();
+            for (String host : tier1avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + Integer.MAX_VALUE);
+            for (String host : tier2avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + 1);
+
+            long minVal = Long.MAX_VALUE;
+            String minHost = null;
+            for (String host : HOSTS) {
+                Long val = weighting.getOrDefault(host, 0L);
+                if (val < minVal) {
+                    minVal = val;
+                    minHost = host;
+                }
+            }
+            return minHost;
+        }
     }
 
     public static class LEGACY_SETTINGS {

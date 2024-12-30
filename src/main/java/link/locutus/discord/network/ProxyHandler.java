@@ -1,18 +1,44 @@
 package link.locutus.discord.network;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.config.Settings;
+
+import java.util.*;
 
 public class ProxyHandler {
-    private final List<IProxy> proxies = new ArrayList<>();
-    private final IProxy passThrough = new PassthroughProxy();
+    private final List<IProxy> proxies = new ObjectArrayList<>();
     private int index = 0;
 
     public ProxyHandler() {
 
+    }
+
+    public static ProxyHandler createFromSettings() {
+        int port = Settings.INSTANCE.PROXY.PORT;
+        String user = Settings.INSTANCE.PROXY.USER;
+        String pass = Settings.INSTANCE.PROXY.PASSWORD;
+        List<String> hosts = Settings.INSTANCE.PROXY.HOSTS;
+        String type = Settings.INSTANCE.PROXY.TYPE;
+
+        ProxyHandler handler = new ProxyHandler();
+        for (String host : hosts) {
+            switch (type.toLowerCase(Locale.ROOT)) {
+                case "socks" -> {
+                    handler.proxies.add(new SocksProxy(host, port, user, pass));
+                    break;
+                }
+                case "http" -> {
+                    handler.proxies.add(new HTTPProxy(host, port, user, pass));
+                    break;
+                }
+                case "api" -> {
+                    host = host.replace("%user%", user).replace("%password%", pass);
+                    handler.proxies.add(new ApiProxy(host));
+                    break;
+                }
+            }
+        }
+        return handler;
     }
 
     public void addProxy(IProxy proxy) {
@@ -35,7 +61,7 @@ public class ProxyHandler {
     public IProxy recommendHost(IProxy previousHost, List<IProxy> tier1avoid, List<IProxy> tier2avoid, boolean allowPassthrough) {
         if (proxies.isEmpty()) {
             if (!allowPassthrough) throw new IllegalStateException("No proxies available");
-            return passThrough;
+            return PassthroughProxy.INSTANCE;
         }
         if (previousHost != null && proxies.contains(previousHost)) return previousHost;
         if (proxies.size() == 1) return proxies.get(0);
@@ -60,7 +86,7 @@ public class ProxyHandler {
     }
 
     public IProxy getNextProxy() {
-        if (proxies.size() == 0) return passThrough;
+        if (proxies.size() == 0) return PassthroughProxy.INSTANCE;
         synchronized (proxies) {
             IProxy proxy = proxies.get(index++);
             if (index >= proxies.size()) index = 0;
