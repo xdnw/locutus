@@ -3218,7 +3218,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 0,
                 0,
                 0,
-                0
+                0,
+                null
         ));
     }
 

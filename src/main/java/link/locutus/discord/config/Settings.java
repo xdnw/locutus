@@ -143,6 +143,9 @@ public class Settings extends Config {
         @Comment("If P&W events should be enabled")
         public boolean EVENTS = true;
 
+        @Comment("See proxy section")
+        public boolean PROXY = false;
+
         public void disableTasks() {
             CREATE_DATABASES_ON_STARTUP = false;
             REPEATING_TASKS = false;
@@ -313,6 +316,8 @@ public class Settings extends Config {
         public List<String> HOSTS = new ArrayList<>(Arrays.asList(
                 "region.example.com"
         ));
+
+        @Comment("The port to use for the proxy")
         public int PORT = 1080;
 
         /**

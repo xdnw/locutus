@@ -1091,7 +1091,15 @@ public abstract class DBNation implements NationOrAlliance {
             Long thisUserId = getUserId();
             if (!newDiscordId.equals(thisUserId)) {
                 User user = Locutus.imp().getDiscordApi().getUserById(newDiscordId);
-                String name = user == null ? newDiscordId + "" : DiscordUtil.getFullUsername(user);
+                String name;
+                if (user != null) {
+                    name = DiscordUtil.getFullUsername(user);
+                } else {
+                    name = getDiscordString();
+                    if (name == null || name.isEmpty()) {
+                        name = newDiscordId + "";
+                    }
+                }
                 Locutus.imp().getDiscordDB().addUser(new PNWUser(data()._nationId(), newDiscordId, name));
                 if (eventConsumer != null) {
                     eventConsumer.accept(new NationRegisterEvent(data()._nationId(), null, user, thisUserId == null));
@@ -1109,7 +1117,7 @@ public abstract class DBNation implements NationOrAlliance {
             dirty = true;
         }
         if (nation.getDiscord() != null && (this.data()._discordStr() == null || !this.data()._discordStr().equals(nation.getDiscord()))) {
-            this.data()._discordStr();
+            this.edit().setDiscordStr(nation.getDiscord());
             dirty = true;
         }
         if (nation.getAlliance_id() != null && this.getAlliance_id() != (nation.getAlliance_id())) {

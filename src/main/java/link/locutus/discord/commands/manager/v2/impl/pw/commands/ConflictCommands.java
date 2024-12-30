@@ -338,7 +338,7 @@ public class ConflictCommands {
         if (isCoalition1 && isCoalition2) {
             throw new IllegalArgumentException("Cannot specify both `isCoalition1` and `isCoalition2`");
         }
-        if (!name.matches("[a-zA-Z0-9_. ]+")) {
+        if (!name.matches("[a-zA-Z0-9_. &+/$-]+")) {
             throw new IllegalArgumentException("Conflict name must be alphanumeric (`" + name + "`)");
         }
         if (MathMan.isInteger(name)) {

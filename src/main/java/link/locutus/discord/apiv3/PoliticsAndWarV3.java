@@ -1250,6 +1250,9 @@ public class PoliticsAndWarV3 {
                 projection.leader_name(); // m
                 projection.spies();
 
+                projection.discord();
+                projection.discord_id();
+
                 projection.last_active();
                 projection.score();
                 projection.num_cities(); // TODO remove

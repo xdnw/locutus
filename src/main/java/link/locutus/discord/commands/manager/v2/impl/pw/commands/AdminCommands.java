@@ -1697,7 +1697,7 @@ public class AdminCommands {
             response.append("**" + locutusRole.name() + "**:\n");
             response.append("`" + locutusRole.getDesc() + "`\n");
             if (mapping.isEmpty()) {
-                response.append("No value set.");
+                response.append("> No value set.\n");
             } else {
                 response.append("```\n" + mappingToString(mapping) + "```\n");
             }
