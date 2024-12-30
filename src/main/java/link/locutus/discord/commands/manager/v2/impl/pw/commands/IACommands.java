@@ -1598,15 +1598,16 @@ public class IACommands {
     @IsAlliance
     public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalTaxRate) throws IOException {
         if (nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        String errorMsg = handleAddbalanceAllianceScope(author, db.getGuild(), (Set) nations);
-        if (errorMsg != null) return errorMsg;
-
         DBNation single = nations.size() == 1 ? nations.iterator().next() : null;
 
         boolean isGov = Roles.ECON_STAFF.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
             if (db.getOrNull(GuildKey.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + GuildKey.MEMBER_CAN_SET_BRACKET.getCommandMention() + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
+        }
+        if (!me.equals(single)) {
+            String errorMsg = handleAddbalanceAllianceScope(author, db.getGuild(), (Set) nations);
+            if (errorMsg != null) return errorMsg;
         }
         if (bracket != null) {
             Set<Integer> allowedTaxIds = GuildKey.ALLOWED_TAX_BRACKETS.getOrNull(db);

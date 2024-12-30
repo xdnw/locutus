@@ -1131,7 +1131,8 @@ public class WarUpdateProcessor {
             ByteBuffer lastWarAlliances = alliance.getMeta(AllianceMeta.LAST_AT_WAR_ALLIANCES);
             Map<Integer, Integer> lastNotable = new Int2IntOpenHashMap();
             if (lastWarAlliances != null) {
-                while (lastWarAlliances.hasRemaining()) {
+                int len = lastWarAlliances.getInt();
+                for (int i = 0; i < len; i++) {
                     int aa = lastWarAlliances.getInt();
                     int amt = lastWarAlliances.getInt();
                     lastNotable.put(aa, amt);

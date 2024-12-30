@@ -65,7 +65,7 @@ public class SetBracket extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         boolean isGov = Roles.ECON_STAFF.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
         if (!isGov) {
-            if (me != nation) return "You are only allowed to set your own tax rate";
+            if (me.getId() != nation.getId()) return "You are only allowed to set your own tax rate";
         }
         TaxRate taxBase = db.getHandler().getInternalTaxrate(nation.getNation_id());
         if (isGov) taxBase = new TaxRate(-1, -1);
@@ -73,12 +73,14 @@ public class SetBracket extends Command {
         DBAlliance alliance = nation.getAlliance();
         if (!db.isAllianceId(alliance.getId())) return nation.getNation() + " is not in " + alliance;
 
-        Long allowedAllianceId = Roles.ECON.hasAlliance(author, db.getGuild());
-        if (allowedAllianceId == null) {
-            throw new IllegalArgumentException("Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
-        }
-        if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
-            throw new IllegalArgumentException("You can only set bracket for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
+        if (nation.getId() != me.getId()) {
+            Long allowedAllianceId = Roles.ECON.hasAlliance(author, db.getGuild());
+            if (allowedAllianceId == null) {
+                throw new IllegalArgumentException("Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+            }
+            if (allowedAllianceId != 0L && allowedAllianceId != nation.getAlliance_id()) {
+                throw new IllegalArgumentException("You can only set bracket for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
+            }
         }
 
         Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(TimeUnit.MINUTES.toMillis(5));

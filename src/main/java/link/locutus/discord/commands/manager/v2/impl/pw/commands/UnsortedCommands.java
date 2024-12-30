@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -98,6 +99,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class UnsortedCommands {
@@ -1011,32 +1013,45 @@ public class UnsortedCommands {
     }
 
     public static String handleAddbalanceAllianceScope(User author, Guild guild, Set<NationOrAllianceOrGuildOrTaxid> accounts) {
-        Long allowedAAs = Roles.ECON.hasAlliance(author, guild);
-        if (allowedAAs == null) return "Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(guild);
+//        Long allowedAAs = Roles.ECON.hasAlliance(author, guild);
+        Map<Integer, Boolean> alliance = new Int2BooleanOpenHashMap();
+        Supplier<Boolean> hasGlobal = ArrayUtil.memorize(() -> {
+            return Roles.ECON.has(author, guild);
+        });
 
         Set<NationOrAllianceOrGuildOrTaxid> noPerms = new HashSet<>();
         for (NationOrAllianceOrGuildOrTaxid account : accounts) {
             if (account.isAlliance() || account.isGuild()) {
-                if (allowedAAs != 0L) noPerms.add(account);
+                if (!hasGlobal.get()) noPerms.add(account);
             } else if (account.isTaxid()) {
-                if (allowedAAs != 0L) {
+                if (!hasGlobal.get()) {
                     TaxBracket bracket = account.asBracket();
                     int aaId = bracket.getAlliance_id(true);
                     if (aaId == 0) return "Tax bracket " + bracket.getId() + " has no alliance (Are any nations assigned?)";
-                    if (allowedAAs != (long) aaId) noPerms.add(account);
+                    boolean has = alliance.computeIfAbsent(aaId, f -> Roles.ECON.has(author, guild, f));
+                    if (!has) noPerms.add(account);
                 }
             } else {
-                if (allowedAAs != 0L && allowedAAs != (long) account.asNation().getAlliance_id()) noPerms.add(account);
+                if (!hasGlobal.get()) {
+                    int aaId = account.asNation().getAlliance_id();
+                    boolean has = alliance.computeIfAbsent(aaId, f -> Roles.ECON.has(author, guild, f));
+                    if (!has) noPerms.add(account);
+                }
             }
         }
-        if (noPerms.size() > 25) {
-            return "You do not have permission to add balance to " + noPerms.size() + " accounts, only " + PW.getMarkdownUrl(allowedAAs.intValue(), true);
-        }
         if (!noPerms.isEmpty()) {
+            Set<Integer> allowedAA = alliance.entrySet().stream().filter(Map.Entry::getValue).map(Map.Entry::getKey).collect(Collectors.toSet());
+            Set<String> allowedAANames = allowedAA.stream().map(f -> PW.getMarkdownUrl(f, true)).collect(Collectors.toSet());
+            if (allowedAA.isEmpty()) {
+                return "Missing " + Roles.ECON.toDiscordRoleNameElseInstructions(guild);
+            }
+            if (noPerms.size() > 25) {
+                return "You do not have permission to add balance to " + noPerms.size() + " accounts, only for alliances: " + allowedAANames;
+            }
             return "You do not have permission to add balance to " + noPerms.stream()
                     .map(NationOrAllianceOrGuildOrTaxid::getQualifiedName)
                     .collect(Collectors.joining(", "))
-                    + ". Only " + PW.getMarkdownUrl(allowedAAs.intValue(), true);
+                    + ". Only " + allowedAANames;
         }
         return null;
     }
