@@ -708,13 +708,18 @@ public class AdminCommands {
     @Ephemeral
     @Command(desc = "Dump the URL requests to console")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String showFileQueue(@Me IMessageIO io,
+    public String showFileQueue(
+            @Me GuildDB db,
+            @Me IMessageIO io,
                                 @Arg("Specify a timestamp to attach a tallied log of requests over a timeframe\n" +
                                         "Instead of just a summary of current items in the queue")
                                 @Default @Timestamp Long timestamp,
                                 @Arg("The number of top results to include\n" +
                                         "Default: 25")
                                 @Switch("r") Integer numResults) throws URISyntaxException {
+        if (db != Locutus.imp().getRootDb()) {
+            throw new IllegalArgumentException("This command is only available in the root server");
+        }
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
         List<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 

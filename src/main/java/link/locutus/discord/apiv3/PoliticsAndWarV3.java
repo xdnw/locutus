@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -76,7 +77,7 @@ public class PoliticsAndWarV3 {
     public static int BANS_PER_PAGE = 500;
 
     private final String endpoint;
-    private final URL url;
+    private final URI url;
     private final String snapshotUrl;
     private final RestTemplate restTemplate;
     private final ObjectMapper jacksonObjectMapper;
@@ -86,8 +87,8 @@ public class PoliticsAndWarV3 {
         this.endpoint = url + "/graphql";
         this.snapshotUrl = url + "/subscriptions/v1/snapshot/";
         try {
-            this.url = new URL(endpoint);
-        } catch (MalformedURLException e) {
+            this.url = new URI(endpoint);
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
         this.restTemplate = new RestTemplate();
@@ -324,7 +325,7 @@ public class PoliticsAndWarV3 {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getUrl(pair.getKey());
             {
-                requestTracker.addRequest(queryUrlStub, this.url.getHost());
+                requestTracker.addRequest(queryUrlStub, this.url);
             }
             try {
                 restTemplate.acceptHeaderRequestCallback(String.class);

@@ -73,8 +73,7 @@ public class Auth {
     }
 
     public Auth clone() {
-        Auth auth = new Auth(nationId, username, password);
-        return auth;
+        return new Auth(nationId, username, password);
     }
 
     private boolean loggedIn = false;
