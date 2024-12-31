@@ -151,7 +151,7 @@ public class MultiUpdater {
     private double getNationWeight(DBNation nation, long now) {
         long requiredDiff = getRecommendedInterval(nation);
         long lastUpdated = this.lastUpdated.getOrDefault(nation.getNation_id(), 0L);
-        long diff = System.currentTimeMillis() - lastUpdated;
+        long diff = now - lastUpdated;
         if (nation.lastActiveMs() < lastUpdated) return -1;
         if (diff < requiredDiff) return -1;
 
@@ -325,6 +325,7 @@ public class MultiUpdater {
                 lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
                 report.update(auth);
                 lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
+                System.out.println("Updated Multi Buster: #" + updated + " | Remaining: #" + queue.size());
                 return true;
             } catch (Throwable e) {
                 failCount.merge(toUpdate.getNation_id(), 1, Integer::sum);
