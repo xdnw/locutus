@@ -53,9 +53,7 @@ import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.util.task.ia.IACheckup;
-import link.locutus.discord.util.task.mail.Mail;
-import link.locutus.discord.util.task.mail.ReadMailTask;
-import link.locutus.discord.util.task.mail.SearchMailTask;
+import link.locutus.discord.util.task.mail.*;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -2133,22 +2131,19 @@ public class IACommands {
 
             List<String> result = new ArrayList<>();
             if (!skipMail) {
-                try {
-                    String html;
-                    if (richBody != null) {
-                        html = richBody.toSimpleHtml(true, false);
-                    } else {
-                        html = MarkupUtil.markdownToHTML(body);
-                    }
-                    JsonObject json = nation.sendMail(keys, subject, html, false);
-                    result.add(json + "");
-                } catch (IOException e) {
+                String html;
+                if (richBody != null) {
+                    html = richBody.toSimpleHtml(true, false);
+                } else {
+                    html = MarkupUtil.markdownToHTML(body);
+                }
+                MailApiResponse json = nation.sendMail(keys, subject, html, false);
+                result.add(json.status() + " " + json.error());
+                if (json.status() != MailApiSuccess.SUCCESS) {
                     errors++;
                     if (errors > 50) {
                         throw new IllegalArgumentException(">50 Errors. Aborting at `" + nation.getNation() + "`");
                     }
-                    e.printStackTrace();
-                    result.add("IOException: " + e.getMessage());
                 }
             }
             if (dm) {

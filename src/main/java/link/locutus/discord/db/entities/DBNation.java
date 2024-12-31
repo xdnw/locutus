@@ -4586,14 +4586,14 @@ public abstract class DBNation implements NationOrAlliance {
                 if (generalMessage.equalsIgnoreCase("This API key cannot be used for this API endpoint, it will only work for API v3.")) {
                     return new MailApiResponse(MailApiSuccess.NON_MAIL_KEY, null);
                 }
-                return new MailApiResponse(MailApiSuccess.ERROR_MESSAGE, generalMessage);
+                return new MailApiResponse(MailApiSuccess.ERROR_MESSAGE, StringMan.stripApiKey(generalMessage));
             } catch (JsonSyntaxException e) {
                 Logg.text("Error sending mail to " + getNation_id() + " with key " + pair.getKey() + "\n\n---START BODY---\n" + result + "\n---END BODY---");
             }
-            return new MailApiResponse(MailApiSuccess.UNKNOWN_ERROR, result);
+            return new MailApiResponse(MailApiSuccess.UNKNOWN_ERROR, StringMan.stripApiKey(result));
         } catch (IOException e) {
             e.printStackTrace();
-            return new MailApiResponse(MailApiSuccess.UNKNOWN_ERROR, e.getMessage());
+            return new MailApiResponse(MailApiSuccess.UNKNOWN_ERROR, StringMan.stripApiKey(e.getMessage()));
         }
     }
 

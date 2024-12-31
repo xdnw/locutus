@@ -10,6 +10,8 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
@@ -85,27 +87,30 @@ public class CustomConditionMessage {
             public void run() {
                 MessageChannel output = GuildKey.RECRUIT_MESSAGE_OUTPUT.getOrNull(db);
                 if (output == null) return;
-                try {
-                    ApiKeyPool mailKey = db.getMailKey();
-                    if (mailKey == null) {
-                        RateLimitUtil.queue(output.sendMessage("No mail key set. See: " + CM.settings_default.registerApiKey.cmd.toSlashMention()));
-                        return;
-                    }
-                    NationPlaceholders ph = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-                    String subjectFormat = ph.format2(db.getGuild(), null, null, subject, nation, false);
-                    String bodyFormat = ph.format2(db.getGuild(), null, null, body, nation, false);
-                    String message = getTitle() + "\n- To: " + nation.getMarkdownUrl();
-                    if (sendEnabled) {
-                        JsonObject result = nation.sendMail(mailKey, subjectFormat, bodyFormat, false);
-                        message += "\n" + result.toString();
-                    } else {
-                        message += "\n- Sending disabled. `/admin queue custom_messages setmeta:True sendmessages:True run:true`";
-                    }
-                    RateLimitUtil.queue(output.sendMessage(message));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    RateLimitUtil.queue(output.sendMessage(StringMan.stripApiKey("Error (see console)")));
+                ApiKeyPool mailKey = db.getMailKey();
+                if (mailKey == null) {
+                    RateLimitUtil.queue(output.sendMessage("No mail key set. See: " + CM.settings_default.registerApiKey.cmd.toSlashMention()));
+                    return;
                 }
+                NationPlaceholders ph = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+                String subjectFormat = ph.format2(db.getGuild(), null, null, subject, nation, false);
+                String bodyFormat = ph.format2(db.getGuild(), null, null, body, nation, false);
+                String message = getTitle() + "\n- To: " + nation.getMarkdownUrl();
+                if (sendEnabled) {
+                    MailApiResponse result = nation.sendMail(mailKey, subjectFormat, bodyFormat, false);
+                    if (result.status() == MailApiSuccess.SUCCESS) {
+                        message += "\n- Sent: " + result.status();
+                    } else if (result.status() == MailApiSuccess.NON_MAIL_KEY) {
+                        message += "\n- Failed: " + result.status() + " " + result.error() + ". Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name()
+                                + "`. Set a new key, then See: " + CM.settings.delete.cmd.key(GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + " <@" + db.getGuild().getOwnerId() + ">");
+                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                    } else {
+                        message += "\n" + result.status() + " " + result.error();
+                    }
+                } else {
+                    message += "\n- Sending disabled. `/admin queue custom_messages setmeta:True sendmessages:True run:true`";
+                }
+                RateLimitUtil.queue(output.sendMessage(message));
             }
         });
     }

@@ -53,6 +53,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import com.google.common.eventbus.EventBus;
@@ -2199,7 +2200,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return !canRaid.apply(defender);
     }
 
-    public JsonObject sendRecruitMessage(DBNation to) throws IOException {
+    public MailApiResponse sendRecruitMessage(DBNation to) throws IOException {
         return getHandler().sendRecruitMessage(to);
     }
     public GuildDB getDelegateServer() {
