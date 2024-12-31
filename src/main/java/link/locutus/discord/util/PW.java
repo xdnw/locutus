@@ -5,6 +5,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -35,6 +36,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -66,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -519,6 +522,7 @@ public final class PW {
         long allowExpiryCutoff = 1635910300000L;
         Predicate<Transaction2> allowExpiry = transaction2 ->
                 allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
+
         if (forceIncludeExpired) allowExpiry = f -> false;
 
         if (tracked == null) {
@@ -527,6 +531,8 @@ public final class PW {
 
         long allowConversionDefaultCutoff = 1735265627000L;
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE && start > allowConversionDefaultCutoff;
+
+        Map<ResourceType, Double> rates = GuildKey.RSS_CONVERSION_RATES.getOrNull(guildDB);
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
@@ -538,7 +544,7 @@ public final class PW {
             boolean allowConversion = allowConversionDefault || record.tx_id != -1 && isOffshoreSender;
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rates);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
@@ -587,7 +593,7 @@ public final class PW {
         return result;
     }
 
-    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored) {
+    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored, Map<ResourceType, Double> rates) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
          */
@@ -691,17 +697,30 @@ public final class PW {
                 case "#cash":
                     if (allowConversion) {
                         Double cashValue = null;
+                        Set<Byte> convert = null;
+
+                        String rssNote = notes.get("rss");
+                        if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
+                            long rssId = Long.parseLong(rssNote);
+                            convert = new ByteOpenHashSet();
+                            for (ResourceType rss : ResourceType.values) {
+                                if ((rssId & (1 << rss.ordinal())) != 0) {
+                                    convert.add((byte) rss.ordinal());
+                                }
+                            }
+                        }
+
                         if (value != null) {
                             if (allowArbitraryConversion) {
                                 cashValue = MathMan.parseDouble(value);
                             }
                         }
                         if (cashValue == null) {
+                            Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
+                                    .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
+                                    .toString());
                             if (value != null) {
-                                String hash = Hashing.md5()
-                                        .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
-                                        .toString();
-
+                                String hash = getHash.get();
                                 if (record.note.contains(hash)) {
                                     cashValue = MathMan.parseDouble(value);
                                 }
@@ -720,6 +739,7 @@ public final class PW {
                                         cashValue += amt;
                                     } else {
                                         if (amt < 1) continue;
+                                        if (convert != null && !convert.contains((byte) resource.ordinal())) continue;
 
                                         List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
 
@@ -731,9 +751,7 @@ public final class PW {
                                 }
                                 {
                                     // set hash
-                                    String hash = Hashing.md5()
-                                            .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
-                                            .toString();
+                                    String hash = getHash.get();
                                     note = note.replaceAll(entry.getKey() + "[^ ]+", "#cash=" + MathMan.format(cashValue));
                                     note += " #" + hash;
                                     record.note = note;
@@ -741,8 +759,17 @@ public final class PW {
                                 }
                             }
                         }
-                        Arrays.fill(amount, 0);
-                        amount[0] = cashValue;
+                        if (cashValue != null) {
+                            if (convert == null) {
+                                Arrays.fill(amount, 0);
+                            } else {
+                                for (byte b : convert) {
+                                    ResourceType rss = ResourceType.values[b];
+                                    amount[rss.ordinal()] = 0;
+                                }
+                            }
+                            amount[0] = cashValue;
+                        }
                     }
                     continue;
             }
