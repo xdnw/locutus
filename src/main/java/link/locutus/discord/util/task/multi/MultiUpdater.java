@@ -41,11 +41,11 @@ public class MultiUpdater {
     private final Map<BigInteger, Set<Integer>> sharesUid;
     private final SnapshotMultiData snapshotData;
 
-    private Map<Integer, Integer> nationSharesUid = new Int2IntOpenHashMap();
-    private Map<Integer, Integer> nationSharesTimeAA = new Int2IntOpenHashMap();
-    private Map<Integer, Integer> nationSharesTimeUid = new Int2IntOpenHashMap();
-    private Map<Integer, Integer> nationSharesTimeUidAndAA = new Int2IntOpenHashMap();
-    private Map<Integer, Integer> allianceSharesTime = new Int2IntOpenHashMap();
+    private final Map<Integer, Integer> nationSharesUid = new Int2IntOpenHashMap();
+    private final Map<Integer, Integer> nationSharesTimeAA = new Int2IntOpenHashMap();
+    private final Map<Integer, Integer> nationSharesTimeUid = new Int2IntOpenHashMap();
+    private final Map<Integer, Integer> nationSharesTimeUidAndAA = new Int2IntOpenHashMap();
+    private final Map<Integer, Integer> allianceSharesTime = new Int2IntOpenHashMap();
 
     public MultiUpdater() throws IOException, ParseException {
         this.auth = new Auth(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
