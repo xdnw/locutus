@@ -19,6 +19,8 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.war.WarCard;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
@@ -292,10 +294,9 @@ public class WarRoomUtil {
                                     "\n\nCheck the war room for further details: " + channelUrl;
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body));
 
-                            try {
-                                attacker.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, mailBody, false);
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                            MailApiResponse result = attacker.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, mailBody, false);
+                            if (result.status() != MailApiSuccess.SUCCESS) {
+                                errorOutput.accept("Failed to send mail to " + attacker.getNation() + " | " + attacker.getAllianceName() + ": " + result.status() + " " + result.error());
                             }
                         }
 

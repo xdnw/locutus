@@ -1,10 +1,7 @@
 package link.locutus.discord.util.task.multi;
 
 import com.politicsandwar.graphql.model.Nation;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
@@ -97,10 +94,14 @@ public class MultiUpdater {
             }
         }
 
+        Map<Integer, Boolean> isRegisted = new Int2BooleanOpenHashMap();
         for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
             Set<DBNation> members = alliance.getMemberDBNations();
             for (DBNation nation : members) {
+                boolean nat1Reg = isRegisted.computeIfAbsent(nation.getNation_id(), f -> nation.isVerified());
                 for (DBNation other : members) {
+                    boolean nat2Reg = isRegisted.computeIfAbsent(other.getNation_id(), f -> other.isVerified());
+                    if (nat1Reg && nat2Reg) continue;
                     if (Math.abs(nation.active_m() - other.active_m()) < 15) {
                         nationSharesTimeAA.merge(nation.getNation_id(), 1, Integer::sum);
                         allianceSharesTime.merge(alliance.getAlliance_id(), 1, Integer::sum);
@@ -111,23 +112,36 @@ public class MultiUpdater {
     }
 
     private long getAgeBasedInterval(int ageDays) {
-        if (ageDays < 15) return TimeUnit.DAYS.toMillis(7);
-        if (ageDays < 60) return TimeUnit.DAYS.toMillis(15);
-        if (ageDays < 90) return TimeUnit.DAYS.toMillis(30);
-        if (ageDays < 180) return TimeUnit.DAYS.toMillis(90);
-        return TimeUnit.DAYS.toMillis(180);
+        if (ageDays < 60) return TimeUnit.DAYS.toMillis(29);
+        if (ageDays < 360) return TimeUnit.DAYS.toMillis(60);
+        if (ageDays < 730) return TimeUnit.DAYS.toMillis(180);
+        return TimeUnit.DAYS.toMillis(360);
     }
 
     public long getRecommendedInterval(DBNation nation) {
-        if (nation.active_m() > 10080 || verified.contains(nation.getNation_id())) {
+        if (nation.active_m() > 2880 || verified.contains(nation.getNation_id())) {
             return TimeUnit.DAYS.toMillis(365 * 10);
         }
-        long ageBased = getAgeBasedInterval(nation.getAgeDays());
-        if (nation.isVerified()) {
-            if (ageBased < TimeUnit.DAYS.toMillis(90)) {
-                ageBased *= 3;
+        int ageDays = nation.getAgeDays();
+        long ageBased = getAgeBasedInterval(ageDays);
+        if (ageDays > 60) {
+            if (nation.isVerified()) {
+                ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(360));
+            } else if (nation.getDiscordString() != null && !nation.getDiscordString().isEmpty()) {
+                ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(180));
+            } else {
+                boolean sharesUid = nationSharesUid.getOrDefault(nation.getNation_id(), 0) > 0;
+                if (!sharesUid) {
+                    if (snapshotData.hasCustomFlag(nation.getNation_id()) || snapshotData.hasCustomPortrait(nation.getNation_id())) {
+                        ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(180));
+                    } else {
+                        boolean sharesTime = nationSharesTimeAA.getOrDefault(nation.getNation_id(), 0) > 0;
+                        if (!sharesTime && snapshotData.hasCustomCurrency(nation.getNation_id()) && snapshotData.hasPickedLand(nation.getNation_id())) {
+                            ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(120));
+                        }
+                    }
+                }
             }
-            return Math.max(ageBased, TimeUnit.DAYS.toMillis(45));
         }
         return ageBased;
     }

@@ -18,6 +18,8 @@ import link.locutus.discord.util.StringMan;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import link.locutus.discord.util.task.mail.Mail;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -78,9 +80,8 @@ public class WebUtil {
         String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
                 MarkupUtil.htmlUrl(WebRoot.REDIRECT + " | Verify Login", authUrl);
 
-        JsonObject result = nation.sendMail(pool, title, body, true);
-        JsonElement success = result.get("success");
-        if (success != null && success.getAsBoolean()) {
+        MailApiResponse result = nation.sendMail(pool, title, body, true);
+        if (result.status() == MailApiSuccess.SUCCESS) {
             List<Mail> mails = new SearchMailTask(Locutus.imp().getRootAuth(), title, true, true, false, null).call();
             String mailUrl;
             if (mails.size() > 0) {
@@ -90,7 +91,7 @@ public class WebUtil {
             }
             return mailUrl;
         } else {
-            throw new IllegalArgumentException("Could not send mail to nation: " + nation.getNation_id() + " | " + result);
+            throw new IllegalArgumentException("Could not send mail to nation: " + nation.getNation_id() + " | " + result.status() + " | " + result.error());
         }
     }
 

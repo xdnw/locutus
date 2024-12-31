@@ -61,6 +61,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.task.mail.MailApiResponse;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
@@ -523,8 +524,8 @@ public class BankCommands {
             if (mailResults) {
                 String subject = "Deposit Resources/" + channelId;
                 try {
-                    JsonObject mailResult = nation.sendMail(key, subject, body.toString(), true);
-                    result.append("\n- **mail**: ").append("`" + mailResult + "`");
+                    MailApiResponse mailResult = nation.sendMail(key, subject, body.toString(), true);
+                    result.append("\n- **mail**: ").append("`" + mailResult.status() + " " + mailResult.error() + "`");
                     sentMail = true;
                 } catch (Throwable e) {
                     sentMailError = e.getMessage();

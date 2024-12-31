@@ -44,6 +44,8 @@ import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
@@ -583,14 +585,15 @@ public class GuildHandler {
                 return;
             }
         }
-
+        MessageChannel finalChannl = channel == null ? db.getNotifcationChannel() : channel;
         String finalTitle = title;
         String finalMsg = message;
         Locutus.imp().getExecutor().submit(() -> {
-            try {
-                nation.sendMail(mailKey, finalTitle, finalMsg, false);
-            } catch (IOException e) {
-                e.printStackTrace();
+            MailApiResponse result = nation.sendMail(mailKey, finalTitle, finalMsg, false);
+            if (finalChannl != null && result.status() == MailApiSuccess.NON_MAIL_KEY) {
+                String msg = result.status() + " "  + result.error() + ". Disabling `" + GuildKey.MAIL_NEW_APPLICANTS.name() + "`. <@" + db.getGuild().getOwnerId() + ">";
+                RateLimitUtil.queueMessage(finalChannl, msg, true, 60);
+
             }
         });
     }
@@ -746,7 +749,7 @@ public class GuildHandler {
         return new AbstractMap.SimpleEntry<>(subject, message);
     }
 
-    public JsonObject sendRecruitMessage(DBNation to) throws IOException {
+    public MailApiResponse sendRecruitMessage(DBNation to) throws IOException {
         MessageChannel output = getDb().getOrThrow(GuildKey.RECRUIT_MESSAGE_OUTPUT);
         Map.Entry<String, String> pair = getRecruitMessagePair(to);
         String subject = pair.getKey();
@@ -2314,10 +2317,11 @@ public class GuildHandler {
                 if (nation != null) {
                     ApiKeyPool keys = db.getMailKey();
                     if (keys != null) {
-                        try {
-                            nation.sendMail(keys, "Beige Cycle Violation", explanation, false);
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        MailApiResponse result = nation.sendMail(keys, "Beige Cycle Violation", explanation, false);
+                        if (result.status() == MailApiSuccess.NON_MAIL_KEY) {
+                            msg.clear().append(result.status() + " " + result.error()
+                                    + "\nDisabling `" + GuildKey.BEIGE_VIOLATION_MAIL.name() + "` <@" + db.getGuild().getOwnerId() + ">");
+                            db.deleteInfo(GuildKey.BEIGE_VIOLATION_MAIL);
                         }
                     }
                 }
@@ -2530,7 +2534,7 @@ public class GuildHandler {
                 if (members.isEmpty()) {
                     try {
                         RateLimitUtil.queueWhenFree(output.sendMessage("No active members found in the alliance.\n" +
-                                "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
+                                "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
@@ -2555,7 +2559,7 @@ public class GuildHandler {
                     if (membersWithRoles.isEmpty()) {
                         try {
                             RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.locutusRole(Roles.INTERNAL_AFFAIRS.name()).discordRole(null) + " and assign it to an active gov member\n" +
-                                    "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
+                                    "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
                             db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                         } catch (Throwable e) {
                             e.printStackTrace();
@@ -2580,7 +2584,7 @@ public class GuildHandler {
             if (!GuildKey.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
                 try {
                     RateLimitUtil.queueWhenFree(output.sendMessage("Only existant alliances can send messages\n" +
-                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
+                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
                     db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -2593,9 +2597,17 @@ public class GuildHandler {
                 @Override
                 public void runUnsafe() {
                     try {
-                        JsonObject response = db.sendRecruitMessage(current);
-                        sentNoIAMessage = false;
-                        RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
+                        MailApiResponse response = db.sendRecruitMessage(current);
+                        if (response.status() == MailApiSuccess.SUCCESS) {
+                            sentNoIAMessage = false;
+                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
+                        } else if (response.status() == MailApiSuccess.NON_MAIL_KEY) {
+                            String msg = response.error() + "\nDisabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`. Set a new key and enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention();
+                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + msg), true, 5 * 60);
+                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                        } else {
+                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
+                        }
                     } catch (Throwable e) {
                         try {
                             if (!guildsFailedMailSend.contains(db.getIdLong())) {

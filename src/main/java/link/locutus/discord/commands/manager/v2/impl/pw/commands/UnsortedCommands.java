@@ -76,6 +76,8 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
@@ -1773,9 +1775,9 @@ public class UnsortedCommands {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(keys, title, markdown, false);
+                    MailApiResponse response = nation.sendMail(keys, title, markdown, false);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
-                    resultMsg.append("\n" + userStr + ": " + response);
+                    resultMsg.append("\n" + userStr + ": " + response.status() + " " + response.error());
                 }
             } else {
                 resultMsg.append("All checks passed for " + nation.getNation());
@@ -2366,9 +2368,8 @@ public class UnsortedCommands {
                     failedToDM.add(nation.getNation_id());
                 }
                 if ((!result && sendDM) || sendMail) {
-                    try {
-                        nation.sendMail(keys, subject, personal, false);
-                    } catch (IllegalArgumentException | IOException e) {
+                    MailApiResponse mailStatus = nation.sendMail(keys, subject, personal, false);
+                    if (mailStatus.status() != MailApiSuccess.SUCCESS) {
                         failedToMail.add(nation.getNation_id());
                     }
                 }
