@@ -31,6 +31,7 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.mail.AlertMailTask;
+import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.task.multi.SnapshotMultiData;
 import link.locutus.discord.web.commands.WM;
@@ -1819,8 +1820,8 @@ public class AdminCommands {
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
-        JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
-        return response.toString();
+        MailApiResponse response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
+        return response.status() + " " + response.error();
     }
 
     @Command(desc = "Purge a category's channels older than the time specified")

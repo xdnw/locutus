@@ -79,7 +79,7 @@ public class GuildCustomMessageHandler implements Runnable {
             ApiKeyPool mailkey = db.getMailKey();
             if (mailkey == null) {
                 try {
-                    RateLimitUtil.queue(output.sendMessage("No mail key set with " + CM.settings_default.registerApiKey.cmd.toSlashMention() + ". Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`"));
+                    RateLimitUtil.queue(output.sendMessage("No mail key set with " + CM.settings_default.registerApiKey.cmd.toSlashMention() + ". Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`" + " <@" + db.getGuild().getOwnerId() + ">"));
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                 }
@@ -91,7 +91,7 @@ public class GuildCustomMessageHandler implements Runnable {
                     RateLimitUtil.queue(output.sendMessage("No permission. Disabling `" + GuildKey.TIMED_MESSAGES.name() + "`. Previous value:\n" +
                             "```json\n" +
                             GuildKey.TIMED_MESSAGES.toReadableString(db, messages) +
-                            "\n```"));
+                            "\n```" + "\n<@" + db.getGuild().getOwnerId() + ">"));
                 } catch (RuntimeException e) {
                     e.printStackTrace();
                 }

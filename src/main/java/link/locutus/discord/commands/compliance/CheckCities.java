@@ -24,6 +24,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.mail.MailApiResponse;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -179,9 +180,9 @@ public class CheckCities extends Command {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance.");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(keys, title, markdown, false);
+                    MailApiResponse response = nation.sendMail(keys, title, markdown, false);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
-                    channel.sendMessage(userStr + ": " + response);
+                    channel.sendMessage(userStr + ": " + response.status() + " " + response.error());
                 }
             } else {
                 channel.sendMessage("All checks passed for " + nation.getNation());

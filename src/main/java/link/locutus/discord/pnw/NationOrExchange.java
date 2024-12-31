@@ -109,11 +109,7 @@ public class NationOrExchange {
 
             if (receiver.isNation()) {
                 DBNation nation = receiver.getNation();
-                try {
-                    nation.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, body.toString(), false);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                nation.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, body.toString(), false);
             } else {
                 Exchange company = receiver.getExchange();
                 company.alert(title, MarkupUtil.htmlToMarkdown(body.toString()));
