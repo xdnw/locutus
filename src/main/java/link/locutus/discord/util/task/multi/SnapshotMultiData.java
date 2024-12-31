@@ -47,6 +47,13 @@ public class SnapshotMultiData {
         return mostCommonLocation.get(natData.continent()) != natData.location();
     }
 
+    public boolean hasCustomPortrait(int nationId) {
+        MultiData natData = data.get(nationId);
+        if (natData == null) return false;
+        if (natData.portraitUrl() == null || natData.portraitUrl().isEmpty()) return false;
+        return true;
+    }
+
     public SnapshotMultiData() throws IOException, ParseException {
         Map<Continent, Map<Long, AtomicInteger>> mostCommonLocationPairs = new Object2ObjectOpenHashMap<>();
         DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
