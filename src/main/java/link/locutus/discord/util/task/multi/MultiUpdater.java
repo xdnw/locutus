@@ -13,11 +13,14 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -58,6 +61,7 @@ public class MultiUpdater {
         this.sharesUid = new Object2ObjectOpenHashMap<>();
 
         init();
+        printMultiInfo();
     }
 
     private Map<Integer, Integer> sharesUidInAa = new Int2IntOpenHashMap();
@@ -290,6 +294,48 @@ public class MultiUpdater {
             System.out.println("Updated Multi Buster: #" + updated + " | Remaining: #" + queue.size());
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void printMultiInfo() throws IOException, ParseException {
+        System.out.println("STARTED LOCUTUS!!!");
+        System.out.println("STARTED MULTI UPDATER!!!");
+        updateQueue();
+        System.out.println("MULTI QUEUE CALCULATED!!!");
+
+        Set<DBNation> nations = getQueue().stream().map(Map.Entry::getKey).collect(Collectors.toSet());
+
+        double updatesPerDay = 0;
+        long oneDay = TimeUnit.DAYS.toMillis(1);
+        for (DBNation nation : nations) {
+            double days = ((double) getRecommendedInterval(nation) / oneDay);
+            updatesPerDay += 1d / days;
+        }
+        System.out.println("Updates per day: " + updatesPerDay + " | " + nations.size());
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
+
+        for (Map.Entry<DBNation, Double> entry : getQueue()) {
+            DBNation nation = entry.getKey();
+            double factor = entry.getValue();
+            List<String> row = new ArrayList<>();
+            row.add(nation.getSheetUrl());
+            DBAlliance aa = nation.getAlliance();
+            if (aa != null) {
+                row.add(aa.getSheetUrl());
+            } else {
+                row.add("");
+            }
+            row.add(nation.getPositionEnum().name());
+            row.add(nation.lastActiveMs() + "");
+            row.add(nation.getVm_turns() + "");
+            row.add(nation.getAgeDays() + "");
+            row.add(nation.getCities() + "");
+            row.add(nation.getDiscordString() + "");
+            row.add(nation.getUserDiscriminator() + "");
+            row.add(nation.isVerified() + "");
+            row.add(nation.hasProvidedIdentity(cacheStore) + "");
+            row.add(factor + "");
+            System.out.println(StringMan.join(row, "\t"));
         }
     }
 }

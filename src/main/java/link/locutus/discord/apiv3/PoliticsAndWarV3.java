@@ -365,14 +365,13 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 try {
                     HttpHeaders headers = e.getResponseHeaders();
-                    // Retry-After
                     long timeout = (60000L);
                     String retryAfter = null;
                     if (headers != null) {
                         retryAfter = headers.getFirst("Retry-After");
                         timeout = retryAfter != null ? Math.min(60, Long.parseLong(retryAfter)) * 1000L : timeout;
                     }
-                    Logg.text("Rate Limited On:\n" +
+                    Logg.text("Rate Limited On (3):\n" +
                             "- Request: " + graphQLRequest.getRequest() + "\n" +
                             "- Retry After: " + retryAfter);
                     Thread.sleep(timeout);
