@@ -699,12 +699,12 @@ public final class PW {
                         Double cashValue = null;
                         Set<Byte> convert = null;
 
-                        String rssNote = notes.get("rss");
+                        String rssNote = notes.get("#rss");
                         if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
                             long rssId = Long.parseLong(rssNote);
                             convert = new ByteOpenHashSet();
                             for (ResourceType rss : ResourceType.values) {
-                                if ((rssId & (1 << rss.ordinal())) != 0) {
+                                if ((rssId & (1L << rss.ordinal())) != 0) {
                                     convert.add((byte) rss.ordinal());
                                 }
                             }
