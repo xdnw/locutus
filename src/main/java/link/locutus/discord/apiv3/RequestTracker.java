@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -85,7 +86,8 @@ public class RequestTracker {
                     if (diff > 60000) {
                         diff = 60000;
                     }
-                    Logg.text("Rate Limited On:\n" +
+                    Logg.text("Rate Limited On (1):\n" +
+                            "- Domain: " + task.getUrl().getHost() + "\n" +
                             "- Request: " + task.getUrl() + "\n" +
                             "- Retry After: " + (retryMs - now) + "ms");
                     Thread.sleep(diff);
@@ -107,6 +109,7 @@ public class RequestTracker {
             }
             isRateLimited = true;
             retryAfter = e.getRetryAfter();
+            System.out.println("Retry After (1): " + retryAfter);
         } catch (HttpClientErrorException.TooManyRequests e) {
             if (depth > 3) {
                 task.completeExceptionally(strip(e));
@@ -120,6 +123,7 @@ public class RequestTracker {
                     retryAfter = Integer.parseInt(retryStr);
                 }
             }
+            System.out.println("Retry After (2): " + retryAfter + " | " + headers);
         } catch (Throwable e) {
             System.out.println("Error " + e.getMessage() + " on " + task.getUrl());
             task.completeExceptionally(strip(e));
@@ -131,7 +135,7 @@ public class RequestTracker {
                 // print rate limit when it hits (retry after, + how many requests on that domain + the domain)
                 {
                     int requestsPast2m = getDomainRequestsSince(domainId, now - TimeUnit.MINUTES.toMillis(2));
-                    Logg.text("Rate Limited On:\n" +
+                    Logg.text("Rate Limited On (2):\n" +
                             "- Domain: " + task.getUrl().getHost() + "\n" +
                             "- Retry After: " + retryAfter + "\n" +
                             "- Requests Past 2m: " + requestsPast2m + "\n" +
@@ -179,8 +183,8 @@ public class RequestTracker {
         return DOMAIN_MAP.computeIfAbsent(host, k -> DOMAIN_COUNTER.incrementAndGet());
     }
 
-    public void addRequest(String queryStr, String queryUrl) {
-        int domainId = getDomainId(queryUrl);
+    public void addRequest(String queryStr, URI url) {
+        int domainId = getDomainId(url);
         addRequest(domainId, queryStr);
     }
 
@@ -189,14 +193,13 @@ public class RequestTracker {
 
         synchronized (DOMAIN_REQUESTS) {
             DOMAIN_REQUESTS.computeIfAbsent(domainId, k -> new Object2ObjectOpenHashMap<>())
-                    .computeIfAbsent(url.toString(), k -> new ArrayList<>())
+                    .computeIfAbsent(url, k -> new ArrayList<>())
                     .add(currentTime);
         }
     }
 
     public void addRequest(URI url) {
-        int domainId = getDomainId(url);
-        addRequest(domainId, url.toString());
+        addRequest(url.toString(), url);
     }
 
     public void purgeRequests(long timestamp) {

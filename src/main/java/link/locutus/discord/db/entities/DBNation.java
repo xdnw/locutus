@@ -58,6 +58,8 @@ import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
@@ -4544,19 +4546,18 @@ public abstract class DBNation implements NationOrAlliance {
         return maxLand;
     }
 
-    public JsonObject sendMail(ApiKeyPool pool, String subject, String message, boolean priority) throws IOException {
-        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Locutus.loader().getApiKey())) {
-            Auth auth = Locutus.imp().getRootAuth();
-            if (auth != null) {
-                String result = new MailTask(auth, priority, this, subject, message, null).call();
-                if (result.contains("Message sent")) {
-                    return JsonParser.parseString("{\"success\":true,\"to\":\"" + data()._nationId() + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
+    public MailApiResponse sendMail(ApiKeyPool pool, String subject, String message, boolean priority) {
+        try {
+            if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Locutus.loader().getApiKey())) {
+                Auth auth = Locutus.imp().getRootAuth();
+                if (auth != null) {
+                    String result = new MailTask(auth, priority, this, subject, message, null).call();
+                    if (result.contains("Message sent")) {
+//                    return JsonParser.parseString("{\"success\":true,\"to\":\"" + data()._nationId() + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
+                        return new MailApiResponse(MailApiSuccess.SUCCESS, null);
+                    }
                 }
             }
-        }
-
-        JsonObject lastResult = null;
-        while (true) {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
             post.put("to", getNation_id() + "");
@@ -4567,13 +4568,14 @@ public abstract class DBNation implements NationOrAlliance {
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
                 pool.removeKey(pair);
+                return new MailApiResponse(MailApiSuccess.INVALID_KEY, null);
             } else {
                 String successStr = "success\":";
                 int successIndex = result.indexOf(successStr);
                 if (successIndex != -1) {
                     char tf = result.charAt(successIndex + successStr.length());
                     if (tf == 't') {
-                        return JsonParser.parseString(result).getAsJsonObject();
+                        return new MailApiResponse(MailApiSuccess.SUCCESS, null);
                     }
                 }
                 Logg.text("Invalid response\n\n---START BODY (5)---\n" + result + "\n---END BODY---");
@@ -4581,13 +4583,18 @@ public abstract class DBNation implements NationOrAlliance {
             try {
                 JsonObject obj = JsonParser.parseString(result).getAsJsonObject();
                 String generalMessage = obj.get("general_message").getAsString();
-                lastResult = obj;
+                if (generalMessage.equalsIgnoreCase("This API key cannot be used for this API endpoint, it will only work for API v3.")) {
+                    return new MailApiResponse(MailApiSuccess.NON_MAIL_KEY, null);
+                }
+                return new MailApiResponse(MailApiSuccess.ERROR_MESSAGE, generalMessage);
             } catch (JsonSyntaxException e) {
                 Logg.text("Error sending mail to " + getNation_id() + " with key " + pair.getKey() + "\n\n---START BODY---\n" + result + "\n---END BODY---");
             }
-            break;
+            return new MailApiResponse(MailApiSuccess.UNKNOWN_ERROR, result);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new MailApiResponse(MailApiSuccess.UNKNOWN_ERROR, e.getMessage());
         }
-        return lastResult;
     }
 
     public int estimateBeigeTime() {

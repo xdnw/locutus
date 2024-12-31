@@ -13,6 +13,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.network.ProxyHandler;
@@ -45,7 +46,7 @@ public class MultiUpdater {
     private Map<Integer, Integer> allianceSharesTime = new Int2IntOpenHashMap();
 
     public MultiUpdater() throws IOException, ParseException {
-        this.auth = Locutus.imp().getRootAuth().clone();
+        this.auth = new Auth(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
         ProxyHandler proxy = Locutus.imp().getProxy();
         auth.setProxy(proxy.getNextProxy());
 

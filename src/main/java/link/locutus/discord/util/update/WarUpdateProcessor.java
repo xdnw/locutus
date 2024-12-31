@@ -1132,10 +1132,14 @@ public class WarUpdateProcessor {
             Map<Integer, Integer> lastNotable = new Int2IntOpenHashMap();
             if (lastWarAlliances != null) {
                 int len = lastWarAlliances.getInt();
-                for (int i = 0; i < len; i++) {
-                    int aa = lastWarAlliances.getInt();
-                    int amt = lastWarAlliances.getInt();
-                    lastNotable.put(aa, amt);
+                if (len % 8 == 0) {
+                    for (int i = 0; i < len; i++) {
+                        if (lastWarAlliances.hasRemaining()) {
+                            int aa = lastWarAlliances.getInt();
+                            int amt = lastWarAlliances.getInt();
+                            lastNotable.put(aa, amt);
+                        }
+                    }
                 }
             }
 

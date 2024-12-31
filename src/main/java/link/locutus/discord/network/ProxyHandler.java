@@ -22,6 +22,7 @@ public class ProxyHandler {
 
         ProxyHandler handler = new ProxyHandler();
         for (String host : hosts) {
+            System.out.println("Adding proxy: " + type + "://" + "<redacted>" + ":" + "<redacted>" + "@" + host + ":" + port);
             switch (type.toLowerCase(Locale.ROOT)) {
                 case "socks" -> {
                     handler.proxies.add(new SocksProxy(host, port, user, pass));
