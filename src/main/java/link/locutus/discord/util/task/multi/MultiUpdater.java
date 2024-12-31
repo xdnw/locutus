@@ -28,7 +28,9 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MultiUpdater {
@@ -262,9 +264,15 @@ public class MultiUpdater {
 
     public void updateQueue() {
         if (queue.isEmpty()) {
+            long now = System.currentTimeMillis();
+            // 2h between queue update
+            if (now - lastUpdatedQueue < TimeUnit.HOURS.toMillis(2)) return;
+            lastUpdatedQueue = now;
             Set<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
             Map<DBNation, Double> weights = new Object2DoubleOpenHashMap<>();
             for (DBNation nation : nations) {
+                int fail = failCount.getOrDefault(nation.getNation_id(), 0);
+                if (fail >= 3) continue;
                 double weight = getNationWeight(nation, System.currentTimeMillis());
                 if (weight < 0) continue;
                 weights.put(nation, weight);
@@ -290,24 +298,76 @@ public class MultiUpdater {
         return turn1 != turn2;
     }
 
+    private Map<Integer, Integer> failCount = new Int2IntOpenHashMap();
     private int updated = 0;
+    private long lastUpdatedQueue = 0;
 
     public void run() {
         if (checkNearTc()) return;
-        updateQueue();
-        Map.Entry<DBNation, Double> next = queue.poll();
+        synchronized (this) {
+            updateQueue();
+        }
+        Map.Entry<DBNation, Double> next;
+        synchronized (this) {
+            next = queue.poll();
+        }
         updated++;
         if (next == null) return;
         DBNation toUpdate = next.getKey();
-        MultiResult report = Locutus.imp().getDiscordDB().getMultiResult(toUpdate.getId());
-        if (report == null) report = new MultiResult(toUpdate.getId());
-        try {
-            lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
-            report.update(auth);
-            lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
-            System.out.println("Updated Multi Buster: #" + updated + " | Remaining: #" + queue.size());
-        } catch (IOException | ParseException e) {
-            throw new RuntimeException(e);
+        update(toUpdate);
+    }
+
+    private boolean update(DBNation toUpdate) {
+        synchronized (auth) {
+            MultiResult report = Locutus.imp().getDiscordDB().getMultiResult(toUpdate.getId());
+            if (report == null) report = new MultiResult(toUpdate.getId());
+            try {
+                lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
+                report.update(auth);
+                lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
+                return true;
+            } catch (Throwable e) {
+                failCount.merge(toUpdate.getNation_id(), 1, Integer::sum);
+                e.printStackTrace();
+                return false;
+            }
+        }
+    }
+
+    public void forceUpdate(Set<DBNation> nations, BiConsumer<DBNation, Boolean> onEach, long delay, int retry) {
+        Set<Integer> nationIds = new IntOpenHashSet(nations.size());
+        for (DBNation nation : nations) nationIds.add(nation.getNation_id());
+        synchronized (this) {
+            queue.removeIf(f -> nationIds.contains(f.getKey().getNation_id()));
+        }
+        Runnable sleepCall = () -> {
+            if (delay > 0) {
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        List<DBNation> nationList = new ObjectArrayList<>(nations);
+        int currRetry = 0;
+        for (int i = 0; i < nationList.size(); i++) {
+            DBNation nation = nationList.get(i);
+            boolean result = update(nation);
+            if (!result) {
+                if (currRetry < retry) {
+                    i--;
+                    currRetry++;
+                    sleepCall.run();
+                    continue;
+                }
+            }
+            boolean sleep = i < nationList.size() - 1;
+            onEach.accept(nation, result);
+            if (sleep) {
+                sleepCall.run();
+            }
         }
     }
 
