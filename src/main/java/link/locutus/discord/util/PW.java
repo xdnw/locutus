@@ -533,6 +533,8 @@ public final class PW {
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
 
         Map<ResourceType, Double> rates = GuildKey.RSS_CONVERSION_RATES.getOrNull(guildDB);
+        Function<ResourceType, Double> rateFunc = rates == null ? _ -> 1d :
+                f -> rates.getOrDefault(f, 100d) * 0.01;
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
@@ -544,7 +546,7 @@ public final class PW {
             boolean allowConversion = (allowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rates);
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
@@ -593,7 +595,7 @@ public final class PW {
         return result;
     }
 
-    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored, Map<ResourceType, Double> rates) {
+    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored, Function<ResourceType, Double> rates) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
          */
@@ -715,6 +717,7 @@ public final class PW {
                                 cashValue = MathMan.parseDouble(value);
                             }
                         }
+
                         if (cashValue == null) {
                             Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
                                     .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
@@ -731,23 +734,36 @@ public final class PW {
                                 long start = date - oneWeek;
                                 TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
 
+                                Set<Byte> convertCached = null;
+                                boolean setConvert = false;
                                 cashValue = 0d;
                                 for (int i = 0; i < amount.length; i++) {
                                     ResourceType resource = ResourceType.values[i];
                                     double amt = amount[i];
+                                    if (amt < 1) continue;
                                     if (resource == ResourceType.MONEY) {
                                         cashValue += amt;
-                                    } else {
-                                        if (amt < 1) continue;
-                                        if (convert != null && !convert.contains((byte) resource.ordinal())) continue;
-
-                                        List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
-
-                                        Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
-                                        if (avg != null) {
-                                            cashValue += amt * avg;
-                                        }
+                                        continue;
                                     }
+                                    if (convert != null && !convert.contains((byte) resource.ordinal())) continue;
+                                    double rate = rates.apply(resource);
+                                    if (rate <= 0) {
+                                        setConvert = true;
+                                        continue;
+                                    }
+                                    if (convertCached == null) {
+                                        convertCached = new ByteOpenHashSet();
+                                    }
+                                    convertCached.add((byte) resource.ordinal());
+
+                                    List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
+                                    Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
+                                    if (avg != null) {
+                                        cashValue += amt * avg * rate;
+                                    }
+                                }
+                                if (setConvert) {
+                                    convert = convertCached;
                                 }
                                 {
                                     // set hash
