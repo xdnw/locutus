@@ -6,6 +6,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 
 import java.math.BigInteger;
@@ -111,6 +112,12 @@ public class AdvMultiReport {
 
             table.add(row);
         }
+
+        // print table
+        for (List<String> row : table) {
+            System.out.println(StringMan.join(row, "\t"));
+        }
+
     }
 
     public double getPercentReciprocal(int nat1, int nat2, MultiResult a, MultiResult b) {
