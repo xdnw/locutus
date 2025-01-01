@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 public class MultiUpdater {
     private final Auth auth;
-    private final Map<Integer, Long> lastUpdated;
+    private Map<Integer, Long> lastUpdated = new Int2LongOpenHashMap();
     private final Set<Integer> verified;
     private final Map<Integer, BigInteger> latestUids;
     private final Map<BigInteger, Set<Integer>> sharesUid;
@@ -52,7 +52,6 @@ public class MultiUpdater {
         ProxyHandler proxy = Locutus.imp().getProxy();
         auth.setProxy(proxy.getNextProxy());
 
-        this.lastUpdated = Locutus.imp().getDiscordDB().getMultiReportLastUpdated(f -> DBNation.getById(f) != null);
         this.verified = Locutus.imp().getDiscordDB().getVerified();
         this.latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
         this.snapshotData = new SnapshotMultiData();
@@ -264,6 +263,7 @@ public class MultiUpdater {
 
     public void updateQueue() {
         if (queue.isEmpty()) {
+            this.lastUpdated = Locutus.imp().getDiscordDB().getMultiReportLastUpdated(f -> DBNation.getById(f) != null);
             long now = System.currentTimeMillis();
             // 2h between queue update
             if (now - lastUpdatedQueue < TimeUnit.HOURS.toMillis(2)) return;
@@ -312,7 +312,7 @@ public class MultiUpdater {
             next = queue.poll();
         }
         updated++;
-        if (next == null) return;
+        if (next == null || !next.getKey().isValid()) return;
         DBNation toUpdate = next.getKey();
         update(toUpdate);
     }

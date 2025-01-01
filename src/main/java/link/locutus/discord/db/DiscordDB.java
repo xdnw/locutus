@@ -88,8 +88,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
 
-        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow2`(`id1` INTEGER NOT NULL, `id2` INTEGER NOT NULL, `lastAccessFromSharedIP` INTEGER NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` INTEGER NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL, PRIMARY KEY (`id1`, `id2`))");
-        executeStmt("DROP TABLE IF EXISTS `NetworkRow2`");
+        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow2` (`id1` INTEGER NOT NULL, `id2` INTEGER NOT NULL, `lastAccessFromSharedIP` INTEGER NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` INTEGER NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL, PRIMARY KEY (`id1`, `id2`))");
+        executeStmt("DROP TABLE IF EXISTS `NetworkRow`");
 //        executeStmt("DROP TABLE IF EXISTS `MultiReportLastUpdated`"); // todo remove
         executeStmt("CREATE TABLE IF NOT EXISTS `SameNetworkTrade`(`sellingNation` INTEGER NOT NULL, `buyingNation` INTEGER NOT NULL, `dateOffered` INTEGER NOT NULL, `resource` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `ppu` INTEGER NOT NULL, PRIMARY KEY (`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`))");
         executeStmt("CREATE INDEX IF NOT EXISTS idx_sellingNation ON SameNetworkTrade(sellingNation)");
