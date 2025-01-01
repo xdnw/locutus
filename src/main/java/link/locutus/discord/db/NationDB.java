@@ -820,7 +820,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         }
 
+        Set<Integer> toDeleteIds = toDelete.stream().map(Treaty::getId).collect(Collectors.toSet());
+        if (!toDeleteIds.isEmpty()) deleteTreatiesInDB(toDeleteIds);
+
         Map<Treaty, Treaty> modified = new Object2ObjectOpenHashMap<>();
+
         for (Treaty toAdd : added) {
             synchronized (treatiesByAlliance) {
                 Treaty prev1 = treatiesByAlliance.computeIfAbsent(toAdd.getFromId(), f -> new Int2ObjectOpenHashMap<>()).put(toAdd.getToId(), toAdd);
@@ -830,14 +834,30 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         }
 
-        if (eventConsumer != null) {
+        Set<Treaty> deletedOrExpired = new ObjectOpenHashSet<>();
+
+        for (Treaty treaty : toDelete) {
+            synchronized (treatiesByAlliance) {
+                Map<Integer, Treaty> treaties1 = treatiesByAlliance.get(treaty.getFromId());
+                if (treaties1 != null && treaties1.remove(treaty.getToId(), treaty)) {
+                    deletedOrExpired.add(treaty);
+                }
+
+                Map<Integer, Treaty> treaties2 = treatiesByAlliance.get(treaty.getToId());
+                if (treaties2 != null && treaties2.remove(treaty.getFromId(), treaty)) {
+                    deletedOrExpired.add(treaty);
+                }
+            }
+        }
+
+        if (eventConsumer != null && false) {
             for (Map.Entry<Treaty, Treaty> entry : modified.entrySet()) {
                 Treaty prev = entry.getKey();
                 Treaty current = entry.getValue();
 
                 DBAlliance fromAA = getAlliance(current.getFromId());
                 DBAlliance toAA = getAlliance(current.getToId());
-                if (fromAA == null || toAA == null) continue;
+                if (fromAA == null || toAA == null || fromAA.getMemberDBNations().isEmpty() || toAA.getMemberDBNations().isEmpty()) continue;
 
                 if (current.getType() != prev.getType()) {
                     if (current.getType().getStrength() > prev.getType().getStrength()) {
@@ -849,16 +869,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     eventConsumer.accept(new TreatyExtendEvent(prev, current));
                 }
             }
-            for (Treaty current : added) {
+            for (Treaty current : deletedOrExpired) {
                 DBAlliance fromAA = getAlliance(current.getFromId());
                 DBAlliance toAA = getAlliance(current.getToId());
-                if (fromAA == null || toAA == null) continue;
-                eventConsumer.accept(new TreatyCreateEvent(current));
+                if (fromAA == null || toAA == null || fromAA.getMemberDBNations().isEmpty() || toAA.getMemberDBNations().isEmpty()) continue;
+
+                if (current.getTurnEnds() <= turn + 1) {
+                    eventConsumer.accept(new TreatyExpireEvent(current));
+                } else {
+                    eventConsumer.accept(new TreatyCancelEvent(current));
+                }
             }
         }
 
         saveTreaties(added);
-        if (!toDelete.isEmpty()) deleteTreaties(toDelete, eventConsumer);
     }
 
 
