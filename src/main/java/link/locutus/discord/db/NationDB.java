@@ -810,6 +810,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
+            System.out.println("Treaty " + treaty.getId() + " " + treaty.getTurns_left() + " " + treaty.getApproved() + " | " + treaty.getAlliance1_id() + " -> " + treaty.getAlliance2_id());
             Treaty dbTreaty = new Treaty(treaty);
             toDelete.remove(dbTreaty);
 
@@ -850,6 +851,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
         }
 
+        saveTreaties(added);
+
         if (eventConsumer != null && false) {
             for (Map.Entry<Treaty, Treaty> entry : modified.entrySet()) {
                 Treaty prev = entry.getKey();
@@ -881,8 +884,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
         }
-
-        saveTreaties(added);
     }
 
 

@@ -289,7 +289,9 @@ public class FACommands {
             String from = PW.getMarkdownUrl(treaty.getFromId(), true);
             String to = PW.getMarkdownUrl(treaty.getToId(), true);
             TreatyType type = treaty.getType();
-
+            if (treaty.isPending()) {
+                response.append("[PENDING] ");
+            }
             response.append(from + " | " + type + " -> " + to);
             if (treaty.getTurnEnds() > turn) {
                 String expires = treaty.getExpiresString();
