@@ -43,8 +43,7 @@ public class RequestTracker {
     }
 
     public long getRetryAfter(URI url) {
-        Integer id = DOMAIN_MAP.get(url.getHost());
-        if (id == null) return 0;
+        int id = getDomainId(url);
         return getRetryAfter(id);
     }
 
@@ -53,8 +52,7 @@ public class RequestTracker {
     }
 
     private void setRetryAfter(URI url, int seconds) {
-        String domain = url.getHost();
-        int domainId = DOMAIN_MAP.computeIfAbsent(domain, k -> DOMAIN_COUNTER.incrementAndGet());
+        int domainId = getDomainId(url);
         long currentTime = System.currentTimeMillis();
         long expiresAt = currentTime + TimeUnit.SECONDS.toMillis(seconds);
         DOMAIN_RETRY_AFTER.put(domainId, expiresAt);
@@ -109,7 +107,7 @@ public class RequestTracker {
             }
             isRateLimited = true;
             retryAfter = e.getRetryAfter();
-            System.out.println("Retry After (1): " + retryAfter);
+            System.out.println("Retry After (1): " + retryAfter + " | " + e.getMessage());
         } catch (HttpClientErrorException.TooManyRequests e) {
             if (depth > 3) {
                 task.completeExceptionally(strip(e));
@@ -121,6 +119,20 @@ public class RequestTracker {
                 String retryStr = headers.getFirst("Retry-After");
                 if (MathMan.isInteger(retryStr)) {
                     retryAfter = Integer.parseInt(retryStr);
+                }
+                if (retryAfter == null) {
+                    String resetStr = headers.getFirst("X-RateLimit-Reset-After");
+                    if (MathMan.isInteger(resetStr)) {
+                        long reset = Long.parseLong(resetStr) * 1000L;
+                        long diff = reset - now;
+                        if (diff > 60000) {
+                            diff = 60000;
+                        } else if (diff < 0) {
+                            System.out.println("Invalid diff " + diff + " for " + task.getUrl() + " | " + resetStr + " | " + now);
+                            diff = 4000;
+                        }
+                        retryAfter = (int) ((diff + 999L) / 1000L);
+                    }
                 }
             }
             System.out.println("Retry After (2): " + retryAfter + " | " + headers);
@@ -136,6 +148,7 @@ public class RequestTracker {
                 {
                     int requestsPast2m = getDomainRequestsSince(domainId, now - TimeUnit.MINUTES.toMillis(2));
                     Logg.text("Rate Limited On (2):\n" +
+                            "- URL: " + task.getUrl() + "\n" +
                             "- Domain: " + task.getUrl().getHost() + "\n" +
                             "- Retry After: " + retryAfter + "\n" +
                             "- Requests Past 2m: " + requestsPast2m + "\n" +
@@ -176,10 +189,13 @@ public class RequestTracker {
     }
 
     public int getDomainId(URI url) {
-        return getDomainId(url.getHost());
-    }
-
-    private int getDomainId(String host) {
+        String urlStr = url.toString();
+        String host;
+        if (urlStr.contains("api.politicsandwar.com/subscriptions/")) {
+            host = "api.politicsandwar.com/subscriptions";
+        } else {
+            host = url.getHost();
+        }
         return DOMAIN_MAP.computeIfAbsent(host, k -> DOMAIN_COUNTER.incrementAndGet());
     }
 
@@ -253,8 +269,7 @@ public class RequestTracker {
     }
 
     public int getDomainRequestsSince(URI url, long timestamp) {
-        Integer id = DOMAIN_MAP.get(url.getHost());
-        if (id == null) return 0;
+        int id = getDomainId(url);
         return getDomainRequestsSince(id, timestamp);
     }
     private int getDomainRequestsSince(int id, long timestamp) {

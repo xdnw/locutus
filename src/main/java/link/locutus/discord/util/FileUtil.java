@@ -133,6 +133,20 @@ public final class FileUtil {
                 if (retry != null && MathMan.isInteger(retry)) {
                     retryAfter = Integer.parseInt(retry);
                 }
+                if (retryAfter == null) {
+                    String resetStr = http.getHeaderField("X-RateLimit-Reset");
+                    if (MathMan.isInteger(resetStr)) {
+                        long reset = Long.parseLong(resetStr) * 1000L;
+                        long diff = reset - System.currentTimeMillis();
+                        if (diff > 60000) {
+                            diff = 60000;
+                        } else if (diff < 0) {
+                            diff = 4000;
+                        }
+                        retryAfter = (int) ((diff + 999L) / 1000L);
+                    }
+                }
+                if (retryAfter == null) System.out.println("Headers for retry-after " + http.getHeaderFields());
                 throw new TooManyRequests("Too many requests", retryAfter);
             }
         }
@@ -246,37 +260,8 @@ public final class FileUtil {
             }
         };
 
-        PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(new Supplier<String>() {
-            @Override
-            public String get() {
-                int backoff = 4000;
-                while (true) {
-                    try {
-                        String result = jsoupTask.get();
-                        return result;
-                    } catch (RuntimeException e) {
-                        Throwable cause = e;
-                        while (cause.getCause() != null && cause != cause.getCause()) {
-                            cause = cause.getCause();
-                        }
-                        if (e.getMessage() != null && e.getMessage().contains("Server returned HTTP response code: 429")) {
-                            try {
-                                Thread.sleep(backoff);
-                                backoff += 4000;
-                            } catch (InterruptedException ex) {
-                                throw new RuntimeException(ex);
-                            }
-                            continue;
-                        }
-                        String stripped = StringMan.stripApiKey(e.getMessage());
-                        if (!Objects.equals(e.getMessage(), stripped)) {
-                            throw new RuntimeException(stripped);
-                        }
-                        throw e;
-                    }
-                }
-            }
-        }, getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
+        PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(jsoupTask,
+                getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
         return task;
     }
 

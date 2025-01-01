@@ -13,7 +13,7 @@ public class PassthroughProxy implements IProxy {
 
     @Override
     public Connection connect(String url) throws IOException {
-        return Jsoup.connect(url.toString());
+        return Jsoup.connect(url);
     }
 
     @Override

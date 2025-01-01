@@ -121,8 +121,7 @@ public class PageRequestQueue {
             if (!tracker.hasRateLimiting(task.getUrl())) {
                 return task;
             }
-            int domainId = tracker.getDomainId(task.getUrl());
-            long retry = tracker.getRetryAfter(domainId);
+            long retry = tracker.getRetryAfter(task.getUrl());
 
             if (retry > now) {
                 minWait = Math.min(minWait, retry);

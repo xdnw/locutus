@@ -108,6 +108,7 @@ public class Auth {
         if (!force && loggedIn) return;
         synchronized (this)
         {
+            System.out.println("Logging in to " + this.getUsername());
             Map<String, String> userPass = new HashMap<>();
             userPass.put("email", this.getUsername());
             userPass.put("password", this.getPassword());

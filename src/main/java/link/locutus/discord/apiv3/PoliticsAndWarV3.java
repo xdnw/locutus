@@ -159,6 +159,11 @@ public class PoliticsAndWarV3 {
         public RateLimit(int resetMs, int limit) {
             this.defaultResetMs = resetMs;
             this.defaultLimit = limit;
+
+            this.limit = limit;
+            this.intervalMs = resetMs;
+            this.remaining = limit;
+            this.resetMs = System.currentTimeMillis() + resetMs;
         }
 
         public void reset(long now) {

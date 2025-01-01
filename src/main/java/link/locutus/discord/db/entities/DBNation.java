@@ -5221,7 +5221,8 @@ public abstract class DBNation implements NationOrAlliance {
         return OnlineStatus.OFFLINE;
     }
 
-    @Command(desc = "If online ingame or discord")
+    @Command(desc = "If online ingame within 60m or currently online discord\n" +
+            "Discord activity requires being registered with the bot")
     public boolean isOnline() {
         if (active_m() < 60) return true;
         OnlineStatus status = getOnlineStatus();
