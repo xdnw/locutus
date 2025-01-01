@@ -160,7 +160,7 @@ public class MultiResult {
 
     private void saveNetwork(DiscordDB db, List<NetworkRow> networkRows) {
         if (db == null || networkRows.isEmpty()) return;
-        db.addNetworks(networkRows);
+        db.addNetworks(this.nationId, networkRows);
         List<NetworkRow> inverse = new ObjectArrayList<>();
         DBNation nation = DBNation.getById(nationId);
         if (nation == null) return;
@@ -170,7 +170,7 @@ public class MultiResult {
         for (NetworkRow row : networkRows) {
             inverse.add(new NetworkRow(nationId, row.lastAccessFromSharedIP, row.numberOfSharedIPs, lastActiveMs, aaId, dateCreated));
         }
-        db.addNetworks(inverse);
+//        db.addNetworks(inverse);
     }
 
     private static int parseIdFromLink(Element element) {
