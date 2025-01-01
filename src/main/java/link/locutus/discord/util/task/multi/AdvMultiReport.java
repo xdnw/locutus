@@ -44,6 +44,8 @@ public class AdvMultiReport {
 
         Map<Integer, MultiResult.NetworkRow> networks = data.getNetwork();
 
+        System.out.println("Found networks for " + nationId + ": " + networks.size());
+
         for (Map.Entry<Integer, MultiResult.NetworkRow> entry : networks.entrySet()) {
             List<String> row = new ArrayList<>();
 
