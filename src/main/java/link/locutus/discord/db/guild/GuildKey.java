@@ -1600,10 +1600,32 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
+            return "NOT IMPLEMENTED. If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
                     "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
                     "Resources are converted using market average\n" +
                     "Use `#cash` as the note when depositing or transferring funds to convert to #cash";
+        }
+    }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
+
+    public static GuildSetting<Map<ResourceType, Double>> RSS_CONVERSION_RATES = new GuildResourceSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String RSS_CONVERSION_RATES(@Me GuildDB db, @Me User user, Map<ResourceType, Double> prices) {
+            for (Map.Entry<ResourceType, Double> entry : prices.entrySet()) {
+                if (entry.getValue() > 0 || entry.getValue() <= 1 || entry.getValue() < 0 || entry.getValue() > 100) {
+                    throw new IllegalArgumentException("Invalid value for " + entry.getKey() + ": " + entry.getValue() + ". Conversion is between 0 and 100");
+                }
+            }
+            return RSS_CONVERSION_RATES.setAndValidate(db, user, prices);
+        }
+        @Override
+        public String help() {
+            return "Set the rate (as a percent of market value) each resource converts to cash\n" +
+                    "In the form: `{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
+                    "A value of 75 = 75%\n" +
+                    "Set to 0 to disable conversion for that resource\n" +
+                    "If no value is set for a resource it will default to 100% of weekly market average";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
@@ -2927,52 +2949,6 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requires(API_KEY).requires(MEMBER_CAN_SET_BRACKET).requireValidAlliance());
-
-    public static GuildSetting<Map<ICommand, LabelArgs>> USER_ACTIONS = new GuildSetting<Map<ICommand, LabelArgs>>(GuildSettingCategory.GUILD_MANAGEMENT, Key.of(Map.class, ICommand.class, LabelArgs.class)) {
-        @Override
-        public String toString(Map<ICommand, LabelArgs> value) {
-            List<Map<String, Object>> data = new ArrayList<>();
-            for (Map.Entry<ICommand, LabelArgs> entry : value.entrySet()) {
-                String cmd = entry.getKey().getFullPath();
-                LabelArgs labelArgs = entry.getValue();
-                String label = labelArgs.label();
-                Map<String, String> args = labelArgs.arguments();
-                Map<String, Object> map = new HashMap<>();
-                map.put("command", cmd);
-                map.put("label", label);
-                map.put("values", args);
-                data.add(map);
-            }
-            return WebUtil.GSON.toJson(data);
-        }
-
-        @Override
-        public Map<ICommand, LabelArgs> parse(GuildDB db, String input) {
-            Map<ICommand, LabelArgs> result = new LinkedHashMap<>();
-            List<Map<String, Object>> data = WebUtil.GSON.fromJson(input, new TypeToken<List<Map<String, Object>>>(){}.getType());
-
-            for (Map<String, Object> map : data) {
-                String cmdPath = (String) map.get("command");
-                String label = (String) map.get("label");
-                Map<String, String> args = (Map<String, String>) map.get("values");
-
-                try {
-                    ICommand command = PWBindings.slashCommand(cmdPath);
-                    if (command != null) {
-                        result.put(command, new LabelArgs(label, args));
-                    }
-                } catch (IllegalArgumentException e) {
-                    e.printStackTrace();
-                }
-            }
-            return result;
-        }
-
-        @Override
-        public String help() {
-            return "The #channel to post creation and deletion of war rooms in";
-        }
-    }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

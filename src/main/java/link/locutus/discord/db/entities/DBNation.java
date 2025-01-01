@@ -6468,4 +6468,6 @@ public abstract class DBNation implements NationOrAlliance {
         double[] rss = getRevenue(turns, !no_cities, !no_military, !no_trade_bonus, !no_new_bonus, no_food, no_power, treasure_bonus, false);
         return ResourceType.resourcesToMap(rss);
     }
+
+    // multi info placeholders
 }

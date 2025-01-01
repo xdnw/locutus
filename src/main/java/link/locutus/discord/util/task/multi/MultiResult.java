@@ -99,12 +99,12 @@ public class MultiResult {
                     long lastAccessFromSharedIP = parseDate(cols.get(1).text());
                     int numberOfSharedIPs = Integer.parseInt(cols.get(2).text());
                     long lastActiveMs = parseDate(cols.get(3).text());
-                    int nationId = Integer.parseInt(cols.get(0).text());
+                    int otherId = Integer.parseInt(cols.get(0).text());
                     int allianceId = parseIdFromLink(cols.get(6));
                     long dateCreated = parseDate(cols.get(7).text());
 
-                    NetworkRow networkRow = new NetworkRow(nationId, lastAccessFromSharedIP, numberOfSharedIPs, lastActiveMs, allianceId, dateCreated);
-                    NetworkRow previousNetwork = getNetwork().get(nationId);
+                    NetworkRow networkRow = new NetworkRow(otherId, lastAccessFromSharedIP, numberOfSharedIPs, lastActiveMs, allianceId, dateCreated);
+                    NetworkRow previousNetwork = getNetwork().get(otherId);
                     if (previousNetwork != null) {
                         if (networkRow.lastAccessFromSharedIP != -1) {
                             previousNetwork.lastAccessFromSharedIP = networkRow.lastAccessFromSharedIP;
@@ -124,7 +124,7 @@ public class MultiResult {
                     } else {
                         previousNetwork = networkRow;
                     }
-                    getNetwork().put(nationId, networkRow);
+                    getNetwork().put(otherId, networkRow);
                 }
 
                 Element sameNetworkTradesTable = tables.get(3);
@@ -170,6 +170,7 @@ public class MultiResult {
         for (NetworkRow row : networkRows) {
             inverse.add(new NetworkRow(nationId, row.lastAccessFromSharedIP, row.numberOfSharedIPs, lastActiveMs, aaId, dateCreated));
         }
+        db.addNetworks(inverse);
     }
 
     private static int parseIdFromLink(Element element) {

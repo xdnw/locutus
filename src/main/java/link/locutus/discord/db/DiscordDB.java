@@ -88,7 +88,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
 
-        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow`(`id` INTEGER PRIMARY KEY, `lastAccessFromSharedIP` INTEGER NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` INTEGER NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow2`(`id1` INTEGER NOT NULL, `id2` INTEGER NOT NULL, `lastAccessFromSharedIP` INTEGER NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` INTEGER NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL, PRIMARY KEY (`id1`, `id2`))");
+        executeStmt("DROP TABLE IF EXISTS `NetworkRow2`");
+        executeStmt("DROP TABLE IF EXISTS `MultiReportLastUpdated`"); // todo remove
         executeStmt("CREATE TABLE IF NOT EXISTS `SameNetworkTrade`(`sellingNation` INTEGER NOT NULL, `buyingNation` INTEGER NOT NULL, `dateOffered` INTEGER NOT NULL, `resource` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `ppu` INTEGER NOT NULL, PRIMARY KEY (`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`))");
         executeStmt("CREATE INDEX IF NOT EXISTS idx_sellingNation ON SameNetworkTrade(sellingNation)");
         executeStmt("CREATE INDEX IF NOT EXISTS idx_buyingNation ON SameNetworkTrade(buyingNation)");
@@ -149,12 +151,12 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public Map<Integer, MultiResult.NetworkRow> getNetworkRows(int nationId) {
         Map<Integer, MultiResult.NetworkRow> map = new Int2ObjectOpenHashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NetworkRow WHERE id = ?")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM NetworkRow2 WHERE id1 = ?")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     MultiResult.NetworkRow row = new MultiResult.NetworkRow(
-                            rs.getInt("id"),
+                            rs.getInt("id2"),
                             rs.getInt("lastAccessFromSharedIP"),
                             rs.getInt("numberOfSharedIPs"),
                             rs.getInt("lastActiveMs"),
@@ -196,17 +198,18 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public void addNetworks(List<MultiResult.NetworkRow> data) {
-        String query = "INSERT OR REPLACE INTO `NetworkRow`(`id`, `lastAccessFromSharedIP`, `numberOfSharedIPs`, `lastActiveMs`, `allianceId`, `dateCreated`) VALUES (?, ?, ?, ?, ?, ?)";
+    public void addNetworks(int nationId, List<MultiResult.NetworkRow> data) {
+        String query = "INSERT OR REPLACE INTO `NetworkRow2`(`id1`, `id2`, `lastAccessFromSharedIP`, `numberOfSharedIPs`, `lastActiveMs`, `allianceId`, `dateCreated`) VALUES (?, ?, ?, ?, ?, ?, ?)";
         executeBatch(data, query, new ThrowingBiConsumer<MultiResult.NetworkRow, PreparedStatement>() {
             @Override
             public void acceptThrows(MultiResult.NetworkRow row, PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, row.id);
-                stmt.setLong(2, row.lastAccessFromSharedIP);
-                stmt.setInt(3, row.numberOfSharedIPs);
-                stmt.setLong(4, row.lastActiveMs);
-                stmt.setInt(5, row.allianceId);
-                stmt.setLong(6, row.dateCreated);
+                stmt.setInt(1, nationId);
+                stmt.setInt(2, row.id);
+                stmt.setLong(3, row.lastAccessFromSharedIP);
+                stmt.setInt(4, row.numberOfSharedIPs);
+                stmt.setLong(5, row.lastActiveMs);
+                stmt.setInt(6, row.allianceId);
+                stmt.setLong(7, row.dateCreated);
             }
         });
     }

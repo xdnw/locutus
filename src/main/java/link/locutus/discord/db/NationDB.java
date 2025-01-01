@@ -801,79 +801,63 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, Predicate<Treaty> deleteMissing) {
-        Map<Integer, Map<Integer, Treaty>> treatiesByAACopy = new HashMap<>();
+        Set<Treaty> toDelete = new ObjectOpenHashSet<>();
+        Set<Treaty> allTreaties = this.getTreaties();
+        for (Treaty treaty : allTreaties) {
+            if (deleteMissing.test(treaty)) toDelete.add(treaty);
+        }
+        Set<Treaty> added = new ObjectOpenHashSet<>();
+
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
             Treaty dbTreaty = new Treaty(treaty);
+            toDelete.remove(dbTreaty);
+
             if (dbTreaty.isPending()) continue;
             if (dbTreaty.getTurnEnds() <= turn) continue;
-
-            DBAlliance fromAA = getAlliance(dbTreaty.getFromId());
-            DBAlliance toAA = getAlliance(dbTreaty.getToId());
-            if (fromAA == null || toAA == null) continue;
-            treatiesByAACopy.computeIfAbsent(fromAA.getId(), f -> new Int2ObjectOpenHashMap<>()).put(toAA.getId(), dbTreaty);
-            treatiesByAACopy.computeIfAbsent(toAA.getId(), f -> new Int2ObjectOpenHashMap<>()).put(fromAA.getId(), dbTreaty);
-        }
-
-        Set<Integer> allIds = new HashSet<>(treatiesByAACopy.keySet());
-        synchronized (treatiesByAlliance) {
-            allIds.addAll(treatiesByAlliance.keySet());
-        }
-        List<Treaty> dirtyTreaties = new ArrayList<>();
-        Set<Treaty> toDelete = new LinkedHashSet<>();
-
-        for (int aaId : allIds) {
-            Map<Integer, Treaty> previousMap = new HashMap<>(treatiesByAlliance.getOrDefault(aaId, Collections.EMPTY_MAP));
-            Map<Integer, Treaty> currentMap = treatiesByAACopy.getOrDefault(aaId, Collections.EMPTY_MAP);
-
-            for (Map.Entry<Integer, Treaty> entry : previousMap.entrySet()) {
-                Treaty previous = entry.getValue();
-                Treaty current = currentMap.get(entry.getKey());
-
-                int otherId = previous.getFromId() == aaId ? previous.getToId() : previous.getFromId();
-
-                if (current == null) {
-                    if (deleteMissing.test(previous)) toDelete.add(previous);
-                } else {
-                    synchronized (treatiesByAlliance) {
-                        treatiesByAlliance.computeIfAbsent(aaId, f -> new Int2ObjectOpenHashMap<>()).put(otherId, current);
-                    }
-                    if (!current.equals(previous)) {
-                        dirtyTreaties.add(current);
-                    }
-                    if (eventConsumer != null) {
-                        if (current.getType() != previous.getType()) {
-                            if (current.getType().getStrength() > previous.getType().getStrength()) {
-                                eventConsumer.accept(new TreatyUpgradeEvent(previous, current));
-                            } else {
-                                eventConsumer.accept(new TreatyDowngradeEvent(previous, current));
-                            }
-                        } else if (!previous.isPermanent() && current.getTurnEnds() > previous.getTurnEnds() + 2) {
-                            eventConsumer.accept(new TreatyExtendEvent(previous, current));
-                        }
-                    }
-                }
-            }
-
-            for (Map.Entry<Integer, Treaty> entry : currentMap.entrySet()) {
-                int otherAAId = entry.getKey();
-                Treaty treaty = entry.getValue();
-                if (!previousMap.containsKey(otherAAId)) {
-                    dirtyTreaties.add(treaty);
-
-                    synchronized (treatiesByAlliance) {
-                        treatiesByAlliance.computeIfAbsent(aaId, f -> new Int2ObjectOpenHashMap<>()).put(otherAAId, treaty);
-                    }
-                    // Only run event if it's the from alliance (so you dont double run treaty events)
-                    if (eventConsumer != null && treaty.getFromId() == aaId) {
-                        eventConsumer.accept(new TreatyCreateEvent(treaty));
-                    }
-                }
+            if (!allTreaties.contains(treaty)) {
+                added.add(dbTreaty);
             }
         }
 
-        saveTreaties(dirtyTreaties);
+        Map<Treaty, Treaty> modified = new Object2ObjectOpenHashMap<>();
+        for (Treaty toAdd : added) {
+            synchronized (treatiesByAlliance) {
+                Treaty prev1 = treatiesByAlliance.computeIfAbsent(toAdd.getFromId(), f -> new Int2ObjectOpenHashMap<>()).put(toAdd.getToId(), toAdd);
+                Treaty prev2 = treatiesByAlliance.computeIfAbsent(toAdd.getToId(), f -> new Int2ObjectOpenHashMap<>()).put(toAdd.getFromId(), toAdd);
+                if (prev1 != null) modified.put(prev1, toAdd);
+                if (prev2 != null) modified.put(prev2, toAdd);
+            }
+        }
 
+        if (eventConsumer != null) {
+            for (Map.Entry<Treaty, Treaty> entry : modified.entrySet()) {
+                Treaty prev = entry.getKey();
+                Treaty current = entry.getValue();
+
+                DBAlliance fromAA = getAlliance(current.getFromId());
+                DBAlliance toAA = getAlliance(current.getToId());
+                if (fromAA == null || toAA == null) continue;
+
+                if (current.getType() != prev.getType()) {
+                    if (current.getType().getStrength() > prev.getType().getStrength()) {
+                        eventConsumer.accept(new TreatyUpgradeEvent(prev, current));
+                    } else {
+                        eventConsumer.accept(new TreatyDowngradeEvent(prev, current));
+                    }
+                } else if (!prev.isPermanent() && current.getTurnEnds() > prev.getTurnEnds() + 2) {
+                    eventConsumer.accept(new TreatyExtendEvent(prev, current));
+                }
+            }
+            for (Treaty current : added) {
+                DBAlliance fromAA = getAlliance(current.getFromId());
+                DBAlliance toAA = getAlliance(current.getToId());
+                if (fromAA == null || toAA == null) continue;
+                eventConsumer.accept(new TreatyCreateEvent(current));
+            }
+        }
+
+        saveTreaties(added);
         if (!toDelete.isEmpty()) deleteTreaties(toDelete, eventConsumer);
     }
 
