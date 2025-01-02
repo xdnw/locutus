@@ -64,7 +64,7 @@ public class WarCostRanking extends Command {
                 int aaId = getGroup.applyAsInt(nation, war);
                 return citiesByAACache.computeIfAbsent(aaId, i -> {
                     DBAlliance alliance = DBAlliance.get(war.getAttacker_id() == nation ? war.getAttacker_aa() : war.getDefender_aa());
-                    if (alliance == null) return 1;
+                    if (alliance == null) return war.getCities(war.isAttacker(nation));
                     int total = 0;
                     for (DBNation n : alliance.getNations(true, 0, true)) {
                         total += n.getCities();
@@ -75,7 +75,12 @@ public class WarCostRanking extends Command {
         } else {
             getCities = (nation, war) -> {
                 int cities = war.getCities(war.isAttacker(nation));
-                return cities == 0 ? 1 : cities;
+                if (cities == 0) {
+                    DBNation obj = DBNation.getById(nation);
+                    if (obj != null) return obj.getCities();
+                    cities = 1;
+                }
+                return cities;
             };
         }
         ToIntBiFunction<Integer, DBWar> getWarsByGroup = warsByGroup == null ? null : (nation, war) -> warsByGroup.get(getGroup.applyAsInt(nation, war));
