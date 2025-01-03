@@ -86,7 +86,6 @@ public class CommandManager2 {
                     parsers.add(parser);
                 }
             }
-
         }
         Map<Key, Parser> p2 = htmlOptionsStore.getParsers();
         for (Map.Entry<Key, Parser> entry2 : p2.entrySet()) {
@@ -265,6 +264,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
