@@ -1876,6 +1876,7 @@ public class WarDB extends DBMainV2 {
 
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);
+            war.setCities(existing, true);
 
             if (handleNationStatus && existing == null && war.getDate() > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.isActive()) {
                 Locutus.imp().getNationDB().setNationActive(war.getAttacker_id(), war.getDate(), eventConsumer);

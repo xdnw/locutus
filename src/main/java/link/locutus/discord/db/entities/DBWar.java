@@ -36,6 +36,22 @@ public class DBWar {
     private final long date;
     private char attDefCities;
 
+    public void setCities(DBWar existing, boolean fetchIfNotExisting) {
+        if (existing != null) {
+            int attCities = existing.getAttCities();
+            int defCities = existing.getDefCities();
+            if (attCities > 0 && defCities > 0) {
+                setAttCities(attCities);
+                setDefCities(defCities);
+                return;
+            }
+        }
+        if (fetchIfNotExisting && (getAttCities() == 0 || getDefCities() == 0)) {
+            setAttCities(getCities(true));
+            setDefCities(getCities(false));
+        }
+    }
+
     public static final class DBWarKey {
         public final int id;
         public DBWarKey(int id) {
