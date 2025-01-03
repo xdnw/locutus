@@ -1600,29 +1600,50 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "NOT IMPLEMENTED. If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
+            return "If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
                     "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
                     "Resources are converted using market average\n" +
                     "Use `#cash` as the note when depositing or transferring funds to convert to #cash";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<Map<ResourceType, Double>> RSS_CONVERSION_RATES = new GuildResourceSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String RSS_CONVERSION_RATES(@Me GuildDB db, @Me User user, Map<ResourceType, Double> prices) {
+        public String ADD_RSS_CONVERSION_RATE(@Me GuildDB db, @Me User user, NationFilter filter, Map<ResourceType, Double> prices) {
             for (Map.Entry<ResourceType, Double> entry : prices.entrySet()) {
+                if (entry.getKey() == ResourceType.MONEY || entry.getKey() == ResourceType.CREDITS) {
+                    throw new IllegalArgumentException("Cannot set conversion rate for money or credits");
+                }
                 if (entry.getValue() > 0 || entry.getValue() <= 1 || entry.getValue() < 0 || entry.getValue() > 100) {
                     throw new IllegalArgumentException("Invalid value for " + entry.getKey() + ": " + entry.getValue() + ". Conversion is between 0 and 100");
                 }
             }
-            return RSS_CONVERSION_RATES.setAndValidate(db, user, prices);
+            Map<NationFilter, Map<ResourceType, Double>> existing = GuildKey.RSS_CONVERSION_RATES.getOrNull(db);
+            existing = existing == null ? new LinkedHashMap<>() : new LinkedHashMap<>(existing);
+            existing.entrySet().removeIf(e -> e.getKey().getFilter().equalsIgnoreCase(filter.getFilter()));
+            existing.put(filter, prices);
+
+            return RSS_CONVERSION_RATES.setAndValidate(db, user, existing);
         }
+
+        @Override
+        public String toString() {
+            StringBuilder result = new StringBuilder();
+
+        }
+
+        @Override
+        public Map<NationFilter, Map<ResourceType, Double>> parse(GuildDB db, String input) {
+
+        }
+
         @Override
         public String help() {
             return "Set the rate (as a percent of market value) each resource converts to cash\n" +
-                    "In the form: `{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
+                    "Conversion rates can be set for different nations or roles. Use `*` to apply to everyone" +
+                    "In the form: `*:{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
                     "A value of 75 = 75%\n" +
                     "Set to 0 to disable conversion for that resource\n" +
                     "If no value is set for a resource it will default to 100% of weekly market average";

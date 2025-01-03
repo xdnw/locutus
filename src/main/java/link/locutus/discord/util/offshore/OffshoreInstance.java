@@ -612,7 +612,6 @@ public class OffshoreInstance {
 
         DBNation bankerNation = DiscordUtil.getNation(banker);
         if (bankerNation == null) {
-//            return Map.entry(TransferStatus.AUTHORIZATION, "No nation found for: `" + banker.getName() + "`. See: " + CM.register.cmd.toSlashMention());
             return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("No nation found for: `" + banker.getName() + "`. See: " + CM.register.cmd.toSlashMention());
         }
 
@@ -620,22 +619,17 @@ public class OffshoreInstance {
         try {
             allowedIds = allowedIdsGet.get();
         } catch (IllegalArgumentException e) {
-//            return Map.entry(TransferStatus.AUTHORIZATION, e.getMessage());
             return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage(e.getMessage());
         }
         if (allowedIds.isEmpty()) {
-//            return Map.entry(TransferStatus.AUTHORIZATION, "You do not have permission to do a transfer (receiver: " + receiver.getQualifiedName() + ", channel: <#" + senderChannel + ">)");
             return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You do not have permission to do a transfer (receiver: " + receiver.getMarkdownUrl() + ", channel: <#" + senderChannel + ">)");
         }
 
         if (convertCash) {
             if (!receiver.isNation()) {
-//                return Map.entry(TransferStatus.INVALID_DESTINATION, "Cash conversion is only to alliances");
                 return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("Cash conversion is only to alliances");
             }
             if (senderDB.getOrNull(GuildKey.RESOURCE_CONVERSION) != Boolean.TRUE) {
-//                return Map.entry(TransferStatus.INVALID_NOTE, "Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()) +
-//                        "\nMembers do not have permission to convert resources to cash. See " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.RESOURCE_CONVERSION.name());
                 return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()),
                         "Members do not have permission to convert resources to cash. See " + CM.settings.info.cmd.toSlashMention() + " with key: `" + GuildKey.RESOURCE_CONVERSION.name() + "`");
             }
