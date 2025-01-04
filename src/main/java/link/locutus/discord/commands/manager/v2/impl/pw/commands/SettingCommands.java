@@ -1,12 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
@@ -16,9 +19,13 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
+import org.springframework.context.annotation.Role;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SettingCommands {
     private Map<SheetKey, String> getSheets(GuildDB db) {
@@ -191,5 +198,53 @@ public class SettingCommands {
             response.append(entry.getKey() + ": <" + entry.getValue()).append(">\n");
         }
         return response.toString();
+    }
+
+    @Command
+    @RolePermission(Roles.ADMIN)
+    public String importTransactions(@Me GuildDB db, @Me User user, @Me JSONObject command, @Me IMessageIO io,
+                                     Guild server, Set<DBNation> nations, @Switch("f") boolean force) {
+        if (nations.size() > 1000) {
+            throw new IllegalArgumentException("Too many nations to import. Max 1000");
+        }
+        if (!Roles.ADMIN.has(user, server)) {
+            throw new IllegalArgumentException("No permission to import from " + server + ". Missing " + Roles.ADMIN.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        GuildDB other = Locutus.imp().getGuildDB(server);
+        Set<Integer> nationIds = new IntOpenHashSet();
+        for (DBNation nation : nations) {
+            nationIds.add(nation.getId());
+        }
+        if (!force) {
+            String title = "Overwrite Existing Transactions?";
+            String body = "Are you sure you want to import and overwrite the transactions for " + nationIds.size() + " nations?";
+            io.create().confirmation(title, body, command).send();
+            return null;
+        }
+        List<Transaction2> toOverwrite = db.getTransactionsByIds(nationIds, 2);
+        StringBuilder tsv = new StringBuilder();
+        tsv.append("tx_id\ttx_datetime\tsender_id\tsender_type\treceiver_id\treceiver_type\tbanker_nation_id\tnote\n");
+        for (Transaction2 transaction : toOverwrite) {
+            tsv.append(transaction.tx_id).append("\t");
+            tsv.append(transaction.tx_datetime).append("\t");
+            tsv.append(transaction.sender_id).append("\t");
+            tsv.append(transaction.sender_type).append("\t");
+            tsv.append(transaction.receiver_id).append("\t");
+            tsv.append(transaction.receiver_type).append("\t");
+            tsv.append(transaction.banker_nation).append("\t");
+            tsv.append(transaction.note).append("\n");
+        }
+
+        io.create().append("Please wait...\nSee attached, the list of transactions being overwritten")
+                .file("transactions.tsv", tsv.toString()).send();
+        int numAdded = db.importNationTransactions(other, nationIds);
+        return "Done! Added " + numAdded + " transactions.\n" +
+                "See also " + CM.settings.info.cmd.key("") + " with:\n" +
+                "- `" + GuildKey.TAX_BASE.name() + "`\n" +
+                "- `" + GuildKey.ALLIANCE_ID.name() + "`\n" +
+                "And also see " + CM.coalition.add.cmd.coalitionName("").alliances("") + " with:\n" +
+                "- `" + Coalition.OFFSHORE + "`\n" +
+                "- `" + Coalition.TRACK_DEPOSITS + "`\n" +
+                "- `" + Coalition.UNTRACKED + "`";
     }
 }

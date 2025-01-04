@@ -899,9 +899,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type) {
         GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            return delegate.getTransactionsById(senderOrReceiverId, type);
-        }
+        if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type);
         List<Transaction2> list = new ArrayList<>();
 
         String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?))";
@@ -920,6 +918,42 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         });
         return list;
+    }
+
+    public List<Transaction2> getTransactionsByIds(Set<Integer> ids, int type) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) return delegate.getTransactionsByIds(ids, type);
+        List<Transaction2> list = new ArrayList<>();
+        StringBuilder query = new StringBuilder("select * FROM INTERNAL_TRANSACTIONS2 WHERE " +
+                "(sender_id IN " + StringMan.getString(ids) + " and sender_type = ?) OR " +
+                "(receiver_id IN " + StringMan.getString(ids) + " and receiver_type = ?)");
+        query(query.toString(), new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, type);
+                stmt.setInt(2, type);
+            }
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                list.add(new Transaction2(rs));
+            }
+        });
+        return list;
+    }
+
+    public void deleteTransactionsByIds(Set<Integer> ids, int type) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) delegate.deleteTransactionsByIds(ids, type);
+        StringBuilder query = new StringBuilder("DELETE FROM INTERNAL_TRANSACTIONS2 WHERE " +
+                "(sender_id IN " + StringMan.getString(ids) + " and sender_type = ?) OR " +
+                "(receiver_id IN " + StringMan.getString(ids) + " and receiver_type = ?)");
+        update(query.toString(), new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, type);
+                stmt.setInt(2, type);
+            }
+        });
     }
 
     public List<Transaction2> getTransactions(long minDateMs, boolean desc) {
@@ -1082,6 +1116,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             // war room cache
             executeStmt("CREATE TABLE IF NOT EXISTS `WAR_ROOM_CACHE_2` (`target` INT NOT NULL PRIMARY KEY, `channel` BIGINT NOT NULL)");
         }
+    }
+
+    public int importNationTransactions(GuildDB other, Set<Integer> nationIds) {
+        List<Transaction2> toDelete = other.getTransactionsByIds(nationIds, 1);
+        deleteTransactionsByIds(nationIds, 1);
+        addTransactions(toDelete);
+        return toDelete.size();
     }
 
     public void addWarRoomCache(int targetId, long channelId) {
