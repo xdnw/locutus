@@ -20,7 +20,6 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.*;
 import org.json.JSONObject;
@@ -130,7 +129,7 @@ public class TransferCommand extends Command {
         // String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks
         JSONObject command = CM.transfer.resources.cmd.receiver(
                 receiver.getUrl()).transfer(
-                ResourceType.resourcesToString(transfer)).depositType(
+                ResourceType.toString(transfer)).depositType(
                 depositType.toString()).nationAccount(
                 nationAccount != null ? nationAccount.getUrl() : null).senderAlliance(
                 allianceAccount != null ? allianceAccount.getUrl() : null).allianceAccount(

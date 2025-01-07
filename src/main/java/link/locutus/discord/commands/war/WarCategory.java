@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -21,8 +20,6 @@ import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -39,19 +36,13 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.PermissionOverride;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -59,7 +50,6 @@ import java.util.function.Function;
 
 import static link.locutus.discord.commands.war.WarCatReason.getActiveReason;
 import static link.locutus.discord.commands.war.WarCatReason.*;
-import static link.locutus.discord.commands.war.WarRoomUtil.getFilter;
 import static link.locutus.discord.commands.war.WarRoomUtil.getRangeFromCategory;
 import static link.locutus.discord.util.MathMan.max;
 
@@ -481,10 +471,10 @@ public class WarCategory {
                 } else {
                     room.setPlanning(false);
                 }
-                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : ResourceType.resourcesToString(attack.getLoot())) + " from " + name2;
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : ResourceType.toString(attack.getLoot())) + " from " + name2;
                 break;
             case A_LOOT:
-                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : ResourceType.resourcesToString(attack.getLoot())) + " from " + PW.getName(attack.getAllianceIdLooted(), true);
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : ResourceType.toString(attack.getLoot())) + " from " + PW.getName(attack.getAllianceIdLooted(), true);
                 break;
             case PEACE:
                 if (!room.hasOtherWar(filter, attack.getWar_id())) {

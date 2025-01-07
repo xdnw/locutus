@@ -12,7 +12,6 @@ import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
-import org.jooq.Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
@@ -42,7 +41,6 @@ import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
 import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
 import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
 import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
-import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class Transaction2 {
     public int tx_id;
@@ -374,7 +372,7 @@ public class Transaction2 {
                 " | sender: " + PW.getName(sender_id, sender_type == 2) +
                 " | receiver: " + PW.getName(receiver_id, receiver_type == 2) +
                 " | banker: " + PW.getName(banker_nation, false) +
-                " | " + ResourceType.resourcesToString(resources);
+                " | " + ResourceType.toString(resources);
     }
 
     @Override

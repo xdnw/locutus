@@ -16,11 +16,8 @@ import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -42,8 +39,6 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
@@ -51,8 +46,6 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -836,7 +829,7 @@ public class GuildKey {
 
         @Override
         public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
-            return ResourceType.resourcesToString(value);
+            return ResourceType.toString(value);
         }
 
         @Override
@@ -1629,14 +1622,31 @@ public class GuildKey {
         }
 
         @Override
-        public String toString() {
-            StringBuilder result = new StringBuilder();
-
+        public Map<NationFilter, Map<ResourceType, Double>> parse(GuildDB db, String input) {
+            Map<NationFilter, Map<ResourceType, Double>> map = new LinkedHashMap<>();
+            for (String line : input.split("\n")) {
+                int index = line.lastIndexOf(":");
+                if (index == -1) {
+                    continue;
+                }
+                String part1 = line.substring(0, index);
+                String part2 = line.substring(index + 1);
+                String filterStr = part1.trim();
+                NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), null, null);
+                Map<ResourceType, Double> prices = ResourceType.parseResources(part2);
+                map.put(filter, prices);
+            }
+            return map;
         }
 
         @Override
-        public Map<NationFilter, Map<ResourceType, Double>> parse(GuildDB db, String input) {
-
+        public String toString(Map<NationFilter, Map<ResourceType, Double>> value) {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : value.entrySet()) {
+                sb.append(entry.getKey().getFilter()).append(": ");
+                sb.append(ResourceType.toString(entry.getValue()));
+                sb.append("\n");
+            }
         }
 
         @Override

@@ -103,7 +103,7 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
-import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToString;
+import static link.locutus.discord.apiv1.enums.ResourceType.toString;
 
 public class BankCommands {
 
@@ -350,7 +350,7 @@ public class BankCommands {
             DBNation nation = entry.getKey();
 
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
-            String stockpileStr = stockpile == null ? null : ResourceType.resourcesToString(stockpile);
+            String stockpileStr = stockpile == null ? null : ResourceType.toString(stockpile);
             List<String> row = Arrays.asList(
                     nation.getName(),
                     nation.getUrl(),
@@ -457,13 +457,13 @@ public class BankCommands {
                         double[] rss = entry.getValue();
                         // stockpileStr
                         Map<ResourceType, Double> stockpile = stockpiles.get(nation);
-                        String stockpileStr = stockpile == null ? null : ResourceType.resourcesToString(stockpile);
+                        String stockpileStr = stockpile == null ? null : ResourceType.toString(stockpile);
 
                         List<String> row = Arrays.asList(
                                 nation.getName(),
                                 nation.getUrl(),
                                 "SEND",
-                                ResourceType.resourcesToString(rss),
+                                ResourceType.toString(rss),
                                 stockpileStr,
                                 toBankUrl.apply(rss, nation.getAlliance_id(), note == null ? null : note.toString()),
                                 (dm && nation.getUser() != null) + "",
@@ -481,9 +481,9 @@ public class BankCommands {
             }
 
             // total / worth
-            body.append("\n**Total:** `" + ResourceType.resourcesToString(total) + "` worth ~$" + MathMan.format(ResourceType.convertedTotal(total)) + "\n");
+            body.append("\n**Total:** `" + ResourceType.toString(total) + "` worth ~$" + MathMan.format(ResourceType.convertedTotal(total)) + "\n");
             // remaining / worth
-            body.append("\n**Remaining:** `" + ResourceType.resourcesToString(remainingTotal) + "` worth ~$" + MathMan.format(ResourceType.convertedTotal(remainingTotal)) + "\n");
+            body.append("\n**Remaining:** `" + ResourceType.toString(remainingTotal) + "` worth ~$" + MathMan.format(ResourceType.convertedTotal(remainingTotal)) + "\n");
             // errors
             if (!errorRows.isEmpty()) {
                 attachErrors.accept(msg, errorRows, "errors");
@@ -508,7 +508,7 @@ public class BankCommands {
             result.append("__**# " + nation.getNation() + "**__:\n");
             //  +"\t" + nation.getNationUrl()).append(" Can deposit: `").append(url).append(">");
             result.append("- **nation**: <" + nation.getUrl() + ">\n");
-            result.append("- **deposit amount**: `" + ResourceType.resourcesToString(resources) + "`\n");
+            result.append("- **deposit amount**: `" + ResourceType.toString(resources) + "`\n");
             result.append("- **deposit url**: <" + url + ">\n");
 
             StringBuilder body = new StringBuilder("Excess resources can be deposited in the alliance bank.\n");
@@ -565,7 +565,7 @@ public class BankCommands {
                         String noteStr = note != null ? note.toString() : "#deposit";
                         new PoliticsAndWarV3(ApiKeyPool.create(api)).depositIntoBank(resources, noteStr);
                         sentApi = true;
-                        result.append("\n- **api**: Deposited `" + ResourceType.resourcesToString(resources) + "` | `" + noteStr + "` into bank");
+                        result.append("\n- **api**: Deposited `" + ResourceType.toString(resources) + "` | `" + noteStr + "` into bank");
                     }
                 } catch (Throwable e) {
                     sentApi = false;
@@ -581,13 +581,13 @@ public class BankCommands {
             if (sentApiError != null) status += "Api: " + sentApiError + " ";
             if (status.isEmpty()) status = "SUCCESS";
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
-            String stockpileStr = stockpile == null ? null : ResourceType.resourcesToString(stockpile);
+            String stockpileStr = stockpile == null ? null : ResourceType.toString(stockpile);
 
             List<String> row = Arrays.asList(
                     nation.getName(),
                     nation.getUrl(),
                     status,
-                    ResourceType.resourcesToString(resources),
+                    ResourceType.toString(resources),
                     stockpileStr,
                     url,
                     sentDm + "",
@@ -1065,7 +1065,7 @@ public class BankCommands {
             for (double[] amount : amountToSetOrAdd.values()) {
                 ResourceType.add(total, amount);
             }
-            body.append("\nTotal " + verb + ":\n`" + ResourceType.resourcesToString(total) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(total)) + "\n");
+            body.append("\nTotal " + verb + ":\n`" + ResourceType.toString(total) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(total)) + "\n");
 
             if (expireAfter != null) {
                 body.append("\nSetting the expiry for all escrowed to " + DiscordUtil.timestamp(expireEpoch, null)).append("\n");
@@ -1136,7 +1136,7 @@ public class BankCommands {
                     continue;
                 }
                 db.setEscrowed(nation, newAmount, expireEpochNation);
-                response.add(nation.getName() + ": `" + ResourceType.resourcesToString(amount) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + " added to escrow. New escrowed: `" + ResourceType.resourcesToString(newAmount) + "`");
+                response.add(nation.getName() + ": `" + ResourceType.toString(amount) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + " added to escrow. New escrowed: `" + ResourceType.toString(newAmount) + "`");
             }
         }
 
@@ -1414,7 +1414,7 @@ public class BankCommands {
 
             JSONObject command = CM.transfer.resources.cmd.receiver(
                     nation.getUrl()).transfer(
-                    ResourceType.resourcesToString(transfer)).depositType(
+                    ResourceType.toString(transfer)).depositType(
                     bank_note.toString()).nationAccount(
                     nation_account != null ? nation_account.getUrl() : null).senderAlliance(
                     ingame_bank != null ? ingame_bank.getUrl() : null).allianceAccount(
@@ -1757,9 +1757,9 @@ public class BankCommands {
 
             header.set(6, MathMan.format(100 * (revenueIndividualValue / revenueValue)));
             header.set(7, MathMan.format(100 * (revenueAggregateValue / revenueValue)));
-            header.set(8, ResourceType.resourcesToString(lacking));
-            header.set(9, ResourceType.resourcesToString(excess));
-            header.set(10, ResourceType.resourcesToString(warchest));
+            header.set(8, ResourceType.toString(lacking));
+            header.set(9, ResourceType.toString(excess));
+            header.set(10, ResourceType.toString(warchest));
             header.set(11, MathMan.format(ResourceType.convertedTotal(lacking)));
             header.set(12, MathMan.format(ResourceType.convertedTotal(excess)));
 
@@ -1770,8 +1770,8 @@ public class BankCommands {
         sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();
-        response.append("Total Warchest: `" + ResourceType.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalWarchest)) + "\n");
-        response.append("Net Warchest Req (warchest- requirements): `" + ResourceType.resourcesToString(totalNet) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalNet)));
+        response.append("Total Warchest: `" + ResourceType.toString(totalWarchest) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalWarchest)) + "\n");
+        response.append("Net Warchest Req (warchest- requirements): `" + ResourceType.toString(totalNet) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalNet)));
 
         sheet.attach(io.create(), "warchest", response, false, 0).append(response.toString()).send();
         return null;
@@ -1884,7 +1884,7 @@ public class BankCommands {
             db.subBalance(now, nation, me.getNation_id(), noteFrom, toAdd);
         }
         db.addBalance(now, nation, me.getNation_id(), note, toAdd);
-        return "Shifted " + ResourceType.resourcesToString(toAdd) + " from " + from + " to " + to + " for " + nation.getNation();
+        return "Shifted " + ResourceType.toString(toAdd) + " from " + from + " to " + to + " for " + nation.getNation();
     }
 
     @Command(desc = "Resets a nations deposits to net zero (of the specific note categories)", groups = {
@@ -1924,7 +1924,7 @@ public class BankCommands {
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
                 ResourceType.round(deposits);
-                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.resourcesToString(deposits) + " #deposit`\n");
+                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(deposits) + " #deposit`\n");
                 ResourceType.subtract(totalDeposits, deposits);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
             }
@@ -1932,7 +1932,7 @@ public class BankCommands {
             double[] tax = depoByType.get(DepositType.TAX);
             if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
                 ResourceType.round(tax);
-                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.resourcesToString(tax) + " #tax`\n");
+                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(tax) + " #tax`\n");
                 ResourceType.subtract(totalTax, tax);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
             }
@@ -1940,7 +1940,7 @@ public class BankCommands {
             double[] loan = depoByType.get(DepositType.LOAN);
             if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
                 ResourceType.round(loan);
-                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.resourcesToString(loan) + " #loan`\n");
+                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(loan) + " #loan`\n");
                 ResourceType.subtract(totalLoan, loan);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
             }
@@ -1988,11 +1988,11 @@ public class BankCommands {
                         tx.tx_datetime = System.currentTimeMillis();
                         int sign = entry.getKey();
                         if (sign == 1) {
-                            response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.subtract(totalExpire, tx.resources);
                             if (force) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else if (sign == -1) {
-                            response.append("Adding `" + nation.getQualifiedId() + " " + ResourceType.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            response.append("Adding `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.add(totalExpire, tx.resources);
                             if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else {
@@ -2006,7 +2006,7 @@ public class BankCommands {
                 try {
                     Map.Entry<double[], Long> escrowedPair = db.getEscrowed(nation);
                     if (escrowedPair != null && !ResourceType.isZero(escrowedPair.getKey())) {
-                        response.append("Subtracting escrow: `" + nation.getQualifiedId() + " " + ResourceType.resourcesToString(escrowedPair.getKey()) + "`\n");
+                        response.append("Subtracting escrow: `" + nation.getQualifiedId() + " " + ResourceType.toString(escrowedPair.getKey()) + "`\n");
                         ResourceType.subtract(totalEscrow, escrowedPair.getKey());
                         if (force) db.setEscrowed(nation, null, 0);
                     }
@@ -2022,19 +2022,19 @@ public class BankCommands {
             String title = "Reset deposits for " + (name.length() > 100 ? nations.getNations().size() + " nations" : name);
             StringBuilder body = new StringBuilder();
             if (!ResourceType.isZero(totalDeposits)) {
-                body.append("Net Adding `" + name + " " + ResourceType.resourcesToString(totalDeposits) + " #deposit`\n");
+                body.append("Net Adding `" + name + " " + ResourceType.toString(totalDeposits) + " #deposit`\n");
             }
             if (!ResourceType.isZero(totalTax)) {
-                body.append("Net Adding `" + name + " " + ResourceType.resourcesToString(totalTax) + " #tax`\n");
+                body.append("Net Adding `" + name + " " + ResourceType.toString(totalTax) + " #tax`\n");
             }
             if (!ResourceType.isZero(totalLoan)) {
-                body.append("Net Adding `" + name + " " + ResourceType.resourcesToString(totalLoan) + " #loan`\n");
+                body.append("Net Adding `" + name + " " + ResourceType.toString(totalLoan) + " #loan`\n");
             }
             if (!ResourceType.isZero(totalExpire)) {
-                body.append("Net Adding `" + name + " " + ResourceType.resourcesToString(totalExpire) + " #expire`\n");
+                body.append("Net Adding `" + name + " " + ResourceType.toString(totalExpire) + " #expire`\n");
             }
             if (!ResourceType.isZero(totalEscrow)) {
-                body.append("Deleting Escrow: `" + name + " " + ResourceType.resourcesToString(totalEscrow) + "`\n");
+                body.append("Deleting Escrow: `" + name + " " + ResourceType.toString(totalEscrow) + "`\n");
             }
 
             double[] total = ResourceType.getBuffer();
@@ -2043,7 +2043,7 @@ public class BankCommands {
             total = ResourceType.add(total, totalLoan);
             total = ResourceType.add(total, totalExpire);
             total = ResourceType.subtract(total, totalEscrow);
-            body.append("Total Net: `" + name + " " + ResourceType.resourcesToString(total) + "`\n");
+            body.append("Total Net: `" + name + " " + ResourceType.toString(total) + "`\n");
             body.append("\n\nSee attached file for transaction details\n");
 
             io.create().confirmation(title, body.toString(), command)
@@ -2312,7 +2312,7 @@ public class BankCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
         // appent resource string and worth
-        sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + ResourceType.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalEscrowed))).send();
+        sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + ResourceType.toString(totalEscrowed) + "` | worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalEscrowed))).send();
         return null;
     }
 
@@ -2540,9 +2540,9 @@ public class BankCommands {
                 long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastSelfWithdrawal);
                 header.set(9, days);
             }
-            header.set(10, ResourceType.resourcesToString(internal));
-            header.set(11, ResourceType.resourcesToString(withdrawal));
-            header.set(12, ResourceType.resourcesToString(deposit));
+            header.set(10, ResourceType.toString(internal));
+            header.set(11, ResourceType.toString(withdrawal));
+            header.set(12, ResourceType.toString(deposit));
 
             int i = 13;
             for (ResourceType type : ResourceType.values) {
@@ -2604,8 +2604,8 @@ public class BankCommands {
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
                 }
                 String natDepTypes = noEscrowSheet ? "balances" : "balances (with escrow)";
-                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (without negative balances)**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalPositive)) + "\n`" + ResourceType.resourcesToString(aaTotalPositive) + "`");
-                footer.append("\n**Total " + type + "- nation " + natDepTypes + "**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalNet)) + "\n`" + ResourceType.resourcesToString(aaTotalNet) + "`");
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (without negative balances)**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalPositive)) + "\n`" + ResourceType.toString(aaTotalPositive) + "`");
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + "**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalNet)) + "\n`" + ResourceType.toString(aaTotalNet) + "`");
             } else {
                 footer.append("\n**No funds are currently " + type + "**");
             }
@@ -2799,7 +2799,7 @@ public class BankCommands {
         CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL()).note(note);
 
         String title = "Addbalance";
-        String body = "Total: \n`" + ResourceType.resourcesToString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total));
+        String body = "Total: \n`" + ResourceType.toString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total));
         String emoji = "Confirm";
 
 
@@ -3013,7 +3013,7 @@ public class BankCommands {
 
             StringBuilder desc = new StringBuilder();
             IMessageBuilder msg = io.create();
-            desc.append("Total: `" + ResourceType.resourcesToString(totalRss) + "`\n");
+            desc.append("Total: `" + ResourceType.toString(totalRss) + "`\n");
             desc.append("Note: `" + depositType + "`\n\n");
             if (escrow_mode != null && escrow_mode != EscrowMode.NEVER) {
                 desc.append("Escrow Mode: `" + escrow_mode + "`\n");
@@ -3043,7 +3043,7 @@ public class BankCommands {
                 Map<ResourceType, Double> amtA = approvedAmounts.getOrDefault(nationOrAlliance, Collections.emptyMap());
                 Map<ResourceType, Double> amtB = transfers.getOrDefault(nationOrAlliance, Collections.emptyMap());
                 if (!ResourceType.equals(amtA, amtB)) {
-                    return "The confirmed amount does not match (For " + nationOrAlliance.getMarkdownUrl() + " `" + ResourceType.resourcesToString(amtA) + "` != `" + ResourceType.resourcesToString(amtB) + "`)\n" +
+                    return "The confirmed amount does not match (For " + nationOrAlliance.getMarkdownUrl() + " `" + ResourceType.toString(amtA) + "` != `" + ResourceType.toString(amtB) + "`)\n" +
                             "Please try again, and avoid confirming multiple transfers at once";
                 }
             }
@@ -3137,7 +3137,7 @@ public class BankCommands {
         }
 
         msg.file("transfer-results.csv", output.toString())
-                .append("Done!\nTotal sent: `" + resourcesToString(totalSent) + "` worth: ~$" + MathMan.format(convertedTotal(totalSent)));
+                .append("Done!\nTotal sent: `" + ResourceType.toString(totalSent) + "` worth: ~$" + MathMan.format(convertedTotal(totalSent)));
 
         msg.send();
         return null;
@@ -3878,12 +3878,12 @@ public class BankCommands {
                     if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
                         Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
                         if (!excess.isEmpty()) {
-                            response.append("- Excess can be deposited: ```" + ResourceType.resourcesToString(excess) + "```\n");
+                            response.append("- Excess can be deposited: ```" + ResourceType.toString(excess) + "```\n");
                         }
                     }
                     Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
                     if (!needed.isEmpty()) {
-                        response.append("- Missing resources for the next 3 days: ```" + ResourceType.resourcesToString(needed) + "```\n");
+                        response.append("- Missing resources for the next 3 days: ```" + ResourceType.toString(needed) + "```\n");
                     }
 
                     if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
@@ -4349,7 +4349,7 @@ public class BankCommands {
                         body.append("**Resetting Accounts:**\n");
                         if (!ResourceType.isZero(depo)) {
                             body.append("- " + account.getQualifiedId() + " - worth: `~$" + MathMan.format(ResourceType.convertedTotal(depo)) + "`\n");
-                            body.append(" - Balance: `" + ResourceType.resourcesToString(depo) + "`\n");
+                            body.append(" - Balance: `" + ResourceType.toString(depo) + "`\n");
                         }
                     }
 
@@ -4389,7 +4389,7 @@ public class BankCommands {
 
                             MessageChannel output = offshoreDB.getResourceChannel(0);
                             if (output != null) {
-                                String msg = "Added " + ResourceType.resourcesToString(amount) + " to " + account.getTypePrefix() + ":" + account.getName() + "/" + account.getIdLong();
+                                String msg = "Added " + ResourceType.toString(amount) + " to " + account.getTypePrefix() + ":" + account.getName() + "/" + account.getIdLong();
                                 RateLimitUtil.queue(output.sendMessage(msg));
                                 response.append("Reset deposit for " + root.getGuild() + "\n");
                             }

@@ -886,32 +886,32 @@ public final class PW {
         if (showCategories) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
                 response.append("**`#DEPOSIT`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.DEPOSIT))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.DEPOSIT))).append("```\n");
             }
             if (categorized.containsKey(DepositType.TAX)) {
                 response.append("**`#TAX`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.TAX))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.TAX))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.TAX))).append("```\n");
             } else if (nationOrAllianceOrGuild.isNation()) {
                 footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
                 response.append("**`#LOAN/#GRANT`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.LOAN))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.LOAN))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.LOAN))).append("```\n");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
                 response.append("**`#EXPIRE`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.GRANT))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.GRANT))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.GRANT))).append("```\n");
             }
             if (hasEscrowed) {
                 response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(ResourceType.convertedTotal(escrowed)));
                 if (escrowExpire > 0) {
                     response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
                 }
-                response.append("\n```").append(ResourceType.resourcesToString(escrowed)).append("``` ");
+                response.append("\n```").append(ResourceType.toString(escrowed)).append("``` ");
             }
             if (categorized.size() > 1) {
                 response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(ResourceType.convertedTotal(balance)) + ")");
-                response.append("\n```").append(ResourceType.resourcesToString(balance)).append("``` ");
+                response.append("\n```").append(ResourceType.toString(balance)).append("``` ");
             }
         } else {
             String prefix = condenseFormat ? "**" : "## ";
@@ -919,7 +919,7 @@ public final class PW {
             response.append(prefix + "Balance:" + suffix);
             if (condenseFormat) {
                 response.append(" worth: `$" + MathMan.format(ResourceType.convertedTotal(balance)) + "`\n");
-                response.append("```" + ResourceType.resourcesToString(balance) + "``` ");
+                response.append("```" + ResourceType.toString(balance) + "``` ");
             } else {
                 response.append("\n").append(ResourceType.resourcesToFancyString(balance)).append("\n");
             }
@@ -930,7 +930,7 @@ public final class PW {
                 response.append("\n" + prefix + CM.escrow.withdraw.cmd.toSlashMention() + ":" + suffix);
                 if (condenseFormat) {
                     response.append(" worth: `$" + MathMan.format(ResourceType.convertedTotal(escrowed)) + "`\n");
-                    response.append("```" + ResourceType.resourcesToString(escrowed) + "``` ");
+                    response.append("```" + ResourceType.toString(escrowed) + "``` ");
                 } else {
                     response.append("\n").append(ResourceType.resourcesToFancyString(escrowed)).append("\n");
                 }
@@ -942,7 +942,7 @@ public final class PW {
             if (!ResourceType.isZero(nonBalance)) {
                 response.append("\n" + prefix + "Expiring Debt:" + suffix + "\n");
                 response.append("In addition to your balance, you owe the following:\n");
-                response.append("```\n" + ResourceType.resourcesToString(nonBalance)).append("```\n- worth: $" + MathMan.format(ResourceType.convertedTotal(nonBalance)) + "\n");
+                response.append("```\n" + ResourceType.toString(nonBalance)).append("```\n- worth: $" + MathMan.format(ResourceType.convertedTotal(nonBalance)) + "\n");
             }
         }
         return Map.entry(balance, response.toString());

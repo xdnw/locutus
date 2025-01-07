@@ -346,7 +346,7 @@ public class JavaCity implements ICity {
         int i = 0;
         response.append(++i+". Ensure you have the following resources:");
         Map<ResourceType, Double> totalMap = ResourceType.resourcesToMap(total);
-        if (!totalMap.isEmpty()) response.append('\n').append("```" + ResourceType.resourcesToString(totalMap) + "```");
+        if (!totalMap.isEmpty()) response.append('\n').append("```" + ResourceType.toString(totalMap) + "```");
         if (!infraPurchases.isEmpty()) {
             for (Map.Entry<Integer, Double> entry : infraPurchases.entrySet()) {
                 if (entry.getValue() > 0) {

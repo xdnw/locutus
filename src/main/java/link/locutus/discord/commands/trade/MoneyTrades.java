@@ -97,13 +97,13 @@ public class MoneyTrades extends Command {
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + ResourceType.resourcesToString(entry.getValue()) + " #deposit```");
+                response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + ResourceType.toString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
                     response.append(String.format("%16s", client.getAllianceName()));
                 }
-                response.append(String.format("%16s", ResourceType.resourcesToString(entry.getValue())))
+                response.append(String.format("%16s", ResourceType.toString(entry.getValue())))
                         .append("```");
             }
 

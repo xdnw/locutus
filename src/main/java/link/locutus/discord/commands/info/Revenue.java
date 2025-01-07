@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.info;
 
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -17,13 +15,9 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -193,7 +187,7 @@ public class Revenue extends Command {
         }
 
         response.append("Daily city revenue:")
-                .append("```").append(ResourceType.resourcesToString(cityProfit)).append("```");
+                .append("```").append(ResourceType.toString(cityProfit)).append("```");
 
         if (!showTradeAndMilitary) {
             response.append(String.format("Converted total: $" + MathMan.format(ResourceType.convertedTotal(cityProfit))));
@@ -201,7 +195,7 @@ public class Revenue extends Command {
 
         if (showTradeAndMilitary) {
             response.append('\n').append("Military upkeep:")
-                    .append("```").append(ResourceType.resourcesToString(milUp)).append("```");
+                    .append("```").append(ResourceType.toString(milUp)).append("```");
 
             response.append('\n').append("Color Bonus: ```").append(MathMan.format(tradeBonus)).append("```");
 
@@ -209,7 +203,7 @@ public class Revenue extends Command {
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + tradeBonus);
 
             response.append('\n').append("Combined Total:")
-                    .append("```").append(ResourceType.resourcesToString(total)).append("```").append("Converted total: $").append(MathMan.format(ResourceType.convertedTotal(total)));
+                    .append("```").append(ResourceType.toString(total)).append("```").append("Converted total: $").append(MathMan.format(ResourceType.convertedTotal(total)));
         }
 
         {

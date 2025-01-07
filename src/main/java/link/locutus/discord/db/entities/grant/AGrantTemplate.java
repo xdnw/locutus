@@ -210,7 +210,7 @@ public abstract class AGrantTemplate<T> {
         if (sender != null && receiver != null) {
             double[] cost = getCost(db, sender, receiver, parsed);
             if (cost != null) {
-                data.append("Cost: `").append(ResourceType.resourcesToString(cost)).append("`\n");
+                data.append("Cost: `").append(ResourceType.toString(cost)).append("`\n");
             }
             List<Grant.Requirement> requirements = getDefaultRequirements(db, sender, receiver, parsed, false);
             Set<Grant.Requirement> failedFinal = new HashSet<>();

@@ -697,7 +697,7 @@ public class WarCommands {
                 value = 16;
             } else if (escrowed != null) {
                 value = 15;
-                request = new AbstractMap.SimpleEntry<>(0L, "Funds wanted: " + ResourceType.resourcesToString(escrowed));
+                request = new AbstractMap.SimpleEntry<>(0L, "Funds wanted: " + ResourceType.toString(escrowed));
             } else if (request != null) {
                 value = 10;
             } else {

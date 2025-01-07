@@ -128,7 +128,7 @@ public class TransferResult {
     }
 
     public String toLineString() {
-        String msg = "Transfer: `" + status.name() + "` to " + receiver.getMarkdownUrl() + " for `" + ResourceType.resourcesToString(amount) + "` using note `" + note + "`";
+        String msg = "Transfer: `" + status.name() + "` to " + receiver.getMarkdownUrl() + " for `" + ResourceType.toString(amount) + "` using note `" + note + "`";
         if (!resultMessage.isEmpty()) {
             msg += "\n" + getMessageJoined(true);
         }
@@ -151,7 +151,7 @@ public class TransferResult {
             }
         }
         body.append("\n");
-        body.append("**Amount:** `").append(ResourceType.resourcesToString(amount)).append("`\n");
+        body.append("**Amount:** `").append(ResourceType.toString(amount)).append("`\n");
         body.append(" - worth: `$" + MathMan.format(ResourceType.convertedTotal(amount)) + "`\n");
         body.append("**Note:** `").append(note).append("`\n");
         if (status != OffshoreInstance.TransferStatus.SUCCESS) {

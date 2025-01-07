@@ -40,7 +40,7 @@ public class GrantPages {
         for (Grant grant : grants) {
             grant.getNote();
             grant.getInstructions();
-            ResourceType.resourcesToString(grant.cost());
+            ResourceType.toString(grant.cost());
 
             boolean allowed = true;
             for (Grant.Requirement requirement : grant.getRequirements()) {

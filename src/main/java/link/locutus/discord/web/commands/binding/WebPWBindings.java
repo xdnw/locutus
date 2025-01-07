@@ -1221,9 +1221,9 @@ public class WebPWBindings extends WebBindingHelper {
             names.add(obj.name());
             String sub;
             if (obj.getOutput() != null) {
-                sub = obj.getOutput() + "- " + ResourceType.resourcesToString(obj.cost());
+                sub = obj.getOutput() + "- " + ResourceType.toString(obj.cost());
             } else {
-                sub = ResourceType.resourcesToString(obj.cost());
+                sub = ResourceType.toString(obj.cost());
             }
             subtext.add(sub);
         });

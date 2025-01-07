@@ -180,7 +180,7 @@ public class WarCostAB extends Command {
                 break;
         }
 
-        String totalStr = ResourceType.resourcesToString(total);
+        String totalStr = ResourceType.toString(total);
 
         String note = "#counter=" + warUrl.warId;
         List<Transaction2> transactions = db.getTransactionsByNote(note, false);

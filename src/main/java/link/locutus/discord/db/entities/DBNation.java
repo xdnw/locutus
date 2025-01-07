@@ -26,7 +26,6 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlacehold
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -112,8 +111,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static com.ibm.icu.impl.ValidIdentifiers.Datatype.unit;
 
 public abstract class DBNation implements NationOrAlliance {
     public static DBNation getByUser(User user) {
@@ -4030,7 +4027,7 @@ public abstract class DBNation implements NationOrAlliance {
             }
 
             if (ResourceType.isZero(toDeposit)) {
-                response.append("\n- No trades to deposit " + ResourceType.resourcesToString(toDeposit));
+                response.append("\n- No trades to deposit " + ResourceType.toString(toDeposit));
                 return Map.entry(ResourceType.getBuffer(), response.toString());
             }
             double[] depositPositive = ResourceType.max(toDeposit.clone(), ResourceType.getBuffer());
@@ -4038,9 +4035,9 @@ public abstract class DBNation implements NationOrAlliance {
             try {
                 Bankrec deposit = receiverApi.depositIntoBank(depositPositive, "#ignore");
                 double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
-                response.append("\nDeposited: `" + ResourceType.resourcesToString(amt) + "`");
+                response.append("\nDeposited: `" + ResourceType.toString(amt) + "`");
                 if (!ResourceType.equals(depositPositive, amt)) {
-                    response.append("\n- Error Depositing: " + ResourceType.resourcesToString(depositPositive) + " != " + ResourceType.resourcesToString(amt));
+                    response.append("\n- Error Depositing: " + ResourceType.toString(depositPositive) + " != " + ResourceType.toString(amt));
                     return Map.entry(ResourceType.getBuffer(), response.toString());
                 }
                 receiverId = deposit.getReceiver_id();
@@ -4071,10 +4068,10 @@ public abstract class DBNation implements NationOrAlliance {
             response.append("\nAdding deposits:");
 
             offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), getNation_id(), note, toDeposit);
-            response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
+            response.append("\n- Added " + ResourceType.toString(toDeposit) + " to " + currentDB.getGuild());
             // add balance to expectedNation
             currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, getNation_id(), note, toDeposit);
-            response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
+            response.append("\n- Added " + ResourceType.toString(toDeposit) + " to " + senderNation.getUrl());
 
             MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
@@ -4427,7 +4424,7 @@ public abstract class DBNation implements NationOrAlliance {
         double[] revenue = getRevenue();
         body.append("**Revenue:**");
         body.append(" worth: `$").append(MathMan.format(ResourceType.convertedTotal(revenue))).append("`");
-        body.append("\n```json\n").append(ResourceType.resourcesToString(revenue)).append("\n``` ");
+        body.append("\n```json\n").append(ResourceType.toString(revenue)).append("\n``` ");
         //
         body.append("\n");
         //Projects: 5/10 | [Projects] (bold VDS and ID)

@@ -2,20 +2,14 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import com.opencsv.CSVWriter;
-import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -28,20 +22,14 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.commands.manager.v2.table.imp.AlliancesNationMetricByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.MetricByGroup;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricMode;
-import link.locutus.discord.db.entities.metric.CountNationMetric;
-import link.locutus.discord.db.entities.metric.IAllianceMetric;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
@@ -49,15 +37,12 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
-import link.locutus.discord.util.scheduler.TriConsumer;
-import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -65,10 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.*;
-import java.util.stream.Collectors;
 
 public class AllianceMetricCommands {
 
@@ -291,13 +274,13 @@ public class AllianceMetricCommands {
 
         // print output
         System.out.println("Total annual revenue:");
-        System.out.println("Total " + ResourceType.resourcesToString(revenueTotal));
-        System.out.println("Taxable " + ResourceType.resourcesToString(revenueTaxable));
+        System.out.println("Total " + ResourceType.toString(revenueTotal));
+        System.out.println("Taxable " + ResourceType.toString(revenueTaxable));
 
         // print totals
         System.out.println("\n\n");
-        System.out.println("Old " + ResourceType.resourcesToString(totalOld));
-        System.out.println("New " + ResourceType.resourcesToString(totalNew));
+        System.out.println("Old " + ResourceType.toString(totalOld));
+        System.out.println("New " + ResourceType.toString(totalNew));
         System.out.println("City " + MathMan.format(cityTotal.get()));
         // Note: Revenue may be innaccurate
 
@@ -313,8 +296,8 @@ public class AllianceMetricCommands {
             System.out.println(i + "\t" + ResourceType.convertedTotal(oldCost) + "\t" +
                     ResourceType.convertedTotal(newCost) + "\t" +
                     citiesByTier.getOrDefault(i, 0D) + "\t" +
-                    ResourceType.resourcesToString(oldCost) + "\t" +
-                    ResourceType.resourcesToString(newCost));
+                    ResourceType.toString(oldCost) + "\t" +
+                    ResourceType.toString(newCost));
         }
 
         // print
