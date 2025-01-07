@@ -167,14 +167,10 @@ public class MultiUpdater {
             weight *= 0.05;
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 registered");
-
         boolean isMember = nation.getPositionEnum().id > Rank.APPLICANT.id;
         if (!isMember) {
             weight *= 0.8;
         }
-
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 isMember");
 
         double ageFactor = Math.pow(300d / (nation.getAgeDays() + 300d), 0.75);
 
@@ -183,8 +179,6 @@ public class MultiUpdater {
             weight *= ageFactor;
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 lowCities | " + nation.getAgeDays() + " | " + 300 / (nation.getAgeDays() + 300));
-
         SnapshotMultiData.MultiData data = snapshotData.data.get(nation.getNation_id());
         if (data != null) {
             if (data.portraitUrl() != null && !data.portraitUrl().isEmpty()) {
@@ -192,70 +186,51 @@ public class MultiUpdater {
             }
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 portrait");
-
         boolean customFlag = snapshotData.hasCustomFlag(nation.getNation_id());
         if (customFlag) {
             weight *= 0.6;
         }
-
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 customFlag");
 
         boolean pickedLand = snapshotData.hasPickedLand(nation.getNation_id());
         if (pickedLand) {
             weight *= 0.7;
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 pickedLand");
-
         boolean customCurrency = snapshotData.hasCustomCurrency(nation.getNation_id());
         if (customCurrency) {
             weight *= 0.8;
         }
-
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 customCurrency");
 
         String discStr = nation.getDiscordString();
         if (discStr != null && !discStr.isEmpty()) {
             weight *= 0.2;
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 discord");
-
         int sharesUid = nationSharesUid.getOrDefault(nation.getNation_id(), 0);
         if (sharesUid > 0) {
             weight = weight * (1 + (Math.pow(0.2, sharesUid + 4) - 1) * 20);
         }
-
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 shares uid");
 
         int timeAA = nationSharesTimeAA.getOrDefault(nation.getNation_id(), 0);
         if (timeAA > 0) {
             weight = weight * (1 + (Math.pow(0.2, timeAA + 4) - 1) * 5);
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 shares timeAA");
-
         int timeUid = nationSharesTimeUid.getOrDefault(nation.getNation_id(), 0);
         if (timeUid > 0) {
             weight = weight * (1 + (Math.pow(0.2, timeUid + 4) - 1) * 40);
         }
-
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 shares timeUid");
 
         int timeUidAndAA = nationSharesTimeUidAndAA.getOrDefault(nation.getNation_id(), 0);
         if (timeUidAndAA > 0) {
             weight = weight * (1 + (Math.pow(0.2, timeUidAndAA + 4) - 1) * 40);
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 shares timeUidAndAA");
-
         int allianceSharesTime = this.allianceSharesTime.getOrDefault(nation.getAlliance_id(), 0);
         if (allianceSharesTime > 0) {
             weight = weight * (1 + (Math.pow(0.2, allianceSharesTime + 4) - 1) * 10);
         }
 
-        if (weight == 0) throw new IllegalArgumentException(nation.getNation() + " weight 0 shares time");
         return weight;
     }
 

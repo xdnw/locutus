@@ -810,13 +810,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
-            System.out.println("Treaty " + treaty.getId() + " " + treaty.getTurns_left() + " " + treaty.getApproved() + " | " + treaty.getAlliance1_id() + " -> " + treaty.getAlliance2_id());
             Treaty dbTreaty = new Treaty(treaty);
             toDelete.remove(dbTreaty);
 
             if (dbTreaty.isPending()) continue;
             if (dbTreaty.getTurnEnds() <= turn) continue;
-            if (!allTreaties.contains(treaty)) {
+            if (!allTreaties.contains(dbTreaty)) {
                 added.add(dbTreaty);
             }
         }
@@ -825,6 +824,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (!toDeleteIds.isEmpty()) deleteTreatiesInDB(toDeleteIds);
 
         Map<Treaty, Treaty> modified = new Object2ObjectOpenHashMap<>();
+        Set<Treaty> newTreaties = new ObjectOpenHashSet<>();
 
         for (Treaty toAdd : added) {
             synchronized (treatiesByAlliance) {
@@ -832,6 +832,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 Treaty prev2 = treatiesByAlliance.computeIfAbsent(toAdd.getToId(), f -> new Int2ObjectOpenHashMap<>()).put(toAdd.getFromId(), toAdd);
                 if (prev1 != null) modified.put(prev1, toAdd);
                 if (prev2 != null) modified.put(prev2, toAdd);
+                if (prev1 == null && prev2 == null) newTreaties.add(toAdd);
             }
         }
 
@@ -853,7 +854,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         saveTreaties(added);
 
-        if (eventConsumer != null && false) {
+        if (eventConsumer != null) {
             for (Map.Entry<Treaty, Treaty> entry : modified.entrySet()) {
                 Treaty prev = entry.getKey();
                 Treaty current = entry.getValue();
@@ -882,6 +883,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 } else {
                     eventConsumer.accept(new TreatyCancelEvent(current));
                 }
+            }
+            for (Treaty current : newTreaties) {
+                DBAlliance fromAA = getAlliance(current.getFromId());
+                DBAlliance toAA = getAlliance(current.getToId());
+                if (fromAA == null || toAA == null || fromAA.getMemberDBNations().isEmpty() || toAA.getMemberDBNations().isEmpty()) continue;
+                eventConsumer.accept(new TreatyCreateEvent(current));
             }
         }
     }

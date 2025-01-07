@@ -78,7 +78,7 @@ public class AllianceListener {
 
                 ByteBuffer dateBuf = alliance.getMeta(AllianceMeta.OFFSHORE_PARENT_DATE);
                 ByteBuffer iterationBuf = alliance.getMeta(AllianceMeta.OFFSHORE_PARENT_ITERATION);
-                long date = System.currentTimeMillis() - (dateBuf == null ? 0 : dateBuf.getLong());
+                long date = System.currentTimeMillis() - (dateBuf == null || dateBuf.remaining() != 8 ? 0 : dateBuf.getLong());
                 int iteration = iterationBuf == null ? 1 : iterationBuf.getInt();
 
                 long requiredWait = TimeUnit.HOURS.toMillis(2) + (TimeUnit.DAYS.toMillis((long) Math.pow(2, iteration)));
