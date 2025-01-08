@@ -825,6 +825,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
     }
 
+    public void updateNote(int id, String note) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.updateNote(id, note);
+            return;
+        }
+        update("UPDATE INTERNAL_TRANSACTIONS2 set note = ? where tx_id = ?", new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setString(1, note);
+                stmt.setInt(2, id);
+            }
+        });
+    }
+
     public List<GuildSetting> listInaccessibleChannelKeys() {
         List<GuildSetting> inaccessible = new ArrayList<>();
         for (GuildSetting key : GuildKey.values()) {
@@ -1553,7 +1568,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Map.Entry<Integer, Transaction2>> offset = getDepositOffsetTransactionsTaxId(taxId);
         if (!offset.isEmpty()) {
             Set<Long> allowedIdsLong = allowedAAIds.stream().map(f -> (long) f).collect(Collectors.toSet());
-            Map<DepositType, double[]> sum = PW.sumNationTransactions(this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
+            Map<DepositType, double[]> sum = PW.sumNationTransactions(null, this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
             for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
                 ResourceType.add(result.computeIfAbsent(entry.getKey(), f -> ResourceType.getBuffer()), entry.getValue());
             }

@@ -1584,12 +1584,41 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 
-    public static GuildSetting<Boolean> CONVERT_NEGATIVE_RSS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Long> FORCE_RSS_CONVERSION = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String CONVERT_NEGATIVE_RSS(@Me GuildDB db, @Me User user, boolean enabled) {
-            return CONVERT_NEGATIVE_RSS.setAndValidate(db, user, enabled);
+        public String FORCE_RSS_CONVERSION(@Me GuildDB db, @Me User user, boolean enabled) {
+            if (enabled) {
+                long now = System.currentTimeMillis();
+                return FORCE_RSS_CONVERSION.setAndValidate(db, user, now);
+            } else {
+                Long previous = db.getOrNull(FORCE_RSS_CONVERSION);
+                db.deleteInfo(FORCE_RSS_CONVERSION);
+                return "Deleted `" + FORCE_RSS_CONVERSION.name() + "`\n" +
+                        "Previous value: `" + previous + "`";
+            }
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Long value) {
+            if (value != null && value > 0) return "after:" + value + " (" + TimeUtil.YYYY_MM_DD_HH_MM_SS_A.format(value) + ")";
+            return super.toReadableString(db, value);
+        }
+
+        @Override
+        public String help() {
+            return "If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note\n" +
+                    "This is performed when deposits are checked";
+        }
+    }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
+
+    public static GuildSetting<Boolean> ALLOW_NEGATIVE_RESOURCES = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ALLOW_NEGATIVE_RESOURCES(@Me GuildDB db, @Me User user, boolean enabled) {
+            return ALLOW_NEGATIVE_RESOURCES.setAndValidate(db, user, enabled);
         }
         @Override
         public String help() {
@@ -1600,7 +1629,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS, Map.class, NationFilter.class, Map.class, Double.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1647,6 +1676,7 @@ public class GuildKey {
                 sb.append(ResourceType.toString(entry.getValue()));
                 sb.append("\n");
             }
+            return sb.toString().trim();
         }
 
         @Override
@@ -1654,9 +1684,11 @@ public class GuildKey {
             return "Set the rate (as a percent of market value) each resource converts to cash\n" +
                     "Conversion rates can be set for different nations or roles. Use `*` to apply to everyone" +
                     "In the form: `*:{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
+                    "See: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>\n" +
                     "A value of 75 = 75%\n" +
                     "Set to 0 to disable conversion for that resource\n" +
-                    "If no value is set for a resource it will default to 100% of weekly market average";
+                    "If no value is set for a resource it will default to 100% of weekly market average\n" +
+                    "**It is recommended to set both a default `*` and a specific value for each resource**";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 

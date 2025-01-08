@@ -761,10 +761,6 @@ public enum ResourceType {
         return fancy ? resourcesToFancyString(resources) : toString(resources);
     }
 
-    public static String toString(double[] resources) {
-        return toString(resources);
-    }
-
     public double[] toArray(double amt) {
         double[] result = getBuffer();
         result[ordinal()] = amt;

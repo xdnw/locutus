@@ -2487,7 +2487,7 @@ public class BankCommands {
             double[] withdrawal = FlowType.WITHDRAWAL.getTotal(flowTransfers, nation.getId());
             double[] deposit = FlowType.DEPOSIT.getTotal(flowTransfers, nation.getId());
 
-            Map<DepositType, double[]> deposits = PW.sumNationTransactions(db, tracked, transactions, includeExpired, includeIgnored, f -> true);
+            Map<DepositType, double[]> deposits = PW.sumNationTransactions(nation, db, tracked, transactions, includeExpired, includeIgnored, f -> true);
             double[] buffer = ResourceType.getBuffer();
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));

@@ -2278,7 +2278,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (filter != null) {
             transactions.removeIf(f -> !filter.test(f.getValue()));
         }
-        Map<DepositType, double[]> sum = PW.sumNationTransactions(db, null, transactions, includeExpired, includeIgnored, filter);
+        Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, null, transactions, includeExpired, includeIgnored, filter);
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
             if (excludeTypes != null && excludeTypes.contains(entry.getKey())) continue;
@@ -2354,7 +2354,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
     public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
         List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
-        Map<DepositType, double[]> sum = PW.sumNationTransactions(db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
+        Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         return sum;
     }
 

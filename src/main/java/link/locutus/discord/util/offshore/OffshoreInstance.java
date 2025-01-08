@@ -678,6 +678,17 @@ public class OffshoreInstance {
         }
 
         boolean rssConversion = senderDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
+        if (rssConversion) {
+            Role role = Roles.RESOURCE_CONVERSION.toRole2(senderDB);
+            if (role != null) {
+                rssConversion = false;
+                Member member = senderDB.getGuild().getMember(banker);
+                if (member != null) {
+                    rssConversion = member.getRoles().contains(role);
+                }
+            }
+        }
+        boolean allowNegative = senderDB.getOrNull(GuildKey.ALLOW_NEGATIVE_RESOURCES) == Boolean.TRUE;
         boolean ignoreGrants = senderDB.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
         double txValue = ResourceType.convertedTotal(amount);
 
@@ -725,23 +736,24 @@ public class OffshoreInstance {
                     myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L, true);
                     double[] myDepositsNormalized = PW.normalize(myDeposits);
                     double myDepoValue = ResourceType.convertedTotal(myDepositsNormalized, false);
+                    double[] depoArr = (myDepoValue < txValue ? myDepositsNormalized : myDeposits);
 
                     double[] missing = null;
 
                     for (ResourceType type : ResourceType.values) {
-                        if (Math.round(myDepositsNormalized[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                        if (Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                             if (missing == null) {
                                 missing = ResourceType.getBuffer();
                             }
-                            missing[type.ordinal()] = amount[type.ordinal()] - myDepositsNormalized[type.ordinal()];
+                            missing[type.ordinal()] = amount[type.ordinal()] - depoArr[type.ordinal()];
                         }
                     }
                     if (missing != null) {
-                        if (!rssConversion) {
+                        if (!allowNegative) {
                             String[] msg = {nationAccount.getMarkdownUrl() + " is missing `" + ResourceType.toString(missing) + "`. (see " +
                                     CM.deposits.check.cmd.nationOrAllianceOrGuild(nationAccount.getUrl()) +
-                                    " ).", "RESOURCE_CONVERSION is disabled (see " +
-                                    GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
+                                    " ).", "ALLOW_NEGATIVE_RESOURCES is disabled (see " +
+                                    GuildKey.ALLOW_NEGATIVE_RESOURCES.getCommandObj(senderDB, true) +
                                     ")"};
                             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                             if (allowedIds.isEmpty()) {
@@ -785,21 +797,22 @@ public class OffshoreInstance {
                     double[] taxDeposits = bracketDeposits.get(DepositType.TAX);
                     double[] taxDepositsNormalized = PW.normalize(taxDeposits);
                     double taxDepoValue = ResourceType.convertedTotal(taxDepositsNormalized);
+                    double[] depoArr = (taxDepoValue < txValue ? taxDepositsNormalized : taxDeposits);
                     double[] missing = null;
                     for (ResourceType type : ResourceType.values) {
-                        if (Math.round(taxDepositsNormalized[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                        if (Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                             if (missing == null) {
                                 missing = ResourceType.getBuffer();
                             }
-                            missing[type.ordinal()] = amount[type.ordinal()] - taxDepositsNormalized[type.ordinal()];
+                            missing[type.ordinal()] = amount[type.ordinal()] - depoArr[type.ordinal()];
                         }
                     }
                     if (missing != null) {
-                        if (!rssConversion) {
+                        if (!allowNegative) {
                             String[] msg = {taxAccount.getQualifiedId() + " is missing `" + ResourceType.toString(missing) + "`. (see " +
                                     CM.deposits.check.cmd.nationOrAllianceOrGuild(taxAccount.getQualifiedId()) +
-                                    " ).", "RESOURCE_CONVERSION is disabled (see " +
-                                    GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
+                                    " ).", "ALLOW_NEGATIVE_RESOURCES is disabled (see " +
+                                    GuildKey.ALLOW_NEGATIVE_RESOURCES.getCommandObj(senderDB, true) +
                                     ")"};
                             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                             if (allowedIds.isEmpty()) {
