@@ -1629,7 +1629,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS, Map.class, NationFilter.class, Map.class, Double.class) {
+    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS, Map.class, NationFilter.class, Map.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
