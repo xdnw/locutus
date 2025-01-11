@@ -719,8 +719,8 @@ public class ConflictManager {
                 if (war == null) continue;
                 int allianceId = rs.getInt("alliance");
                 DBWar copy = new DBWar(war);
-                if (war.getAttacker_aa() == 0) war.setAttacker_aa(allianceId);
-                else if (war.getDefender_aa() == 0) war.setDefender_aa(allianceId);
+                if (war.getAttacker_aa() == 0) copy.setAttacker_aa(allianceId);
+                else if (war.getDefender_aa() == 0) copy.setDefender_aa(allianceId);
                 result.add(copy);
             }
         });
