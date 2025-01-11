@@ -697,7 +697,7 @@ public class ConflictManager {
         }
     }
 
-    private Set<DBWar> loadManualWars(Set<Conflict> conflicts) {
+    private Set<DBWar> loadManualWars(Collection<Conflict> conflicts) {
         List<Integer> conflictIds = null;
         if (conflicts != null && conflicts.size() != conflictById.size()) {
             conflictIds = new ArrayList<>();
