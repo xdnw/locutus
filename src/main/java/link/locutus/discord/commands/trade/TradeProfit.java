@@ -157,16 +157,16 @@ public class TradeProfit extends Command {
         StringBuilder response = new StringBuilder();
         response
             .append('\n').append("Buy (PPU):```")
-            .append(String.format("%16s", ResourceType.resourcesToString(ppuBuy)))
+            .append(String.format("%16s", ResourceType.toString(ppuBuy)))
             .append("```")
             .append(' ').append("Sell (PPU):```")
-            .append(String.format("%16s", ResourceType.resourcesToString(ppuSell)))
+            .append(String.format("%16s", ResourceType.toString(ppuSell)))
             .append("```")
             .append(' ').append("Net inflows:```")
-            .append(String.format("%16s", ResourceType.resourcesToString(netOutflows)))
+            .append(String.format("%16s", ResourceType.toString(netOutflows)))
             .append("```")
             .append(' ').append("Total Volume:```")
-            .append(String.format("%16s", ResourceType.resourcesToString(totalVolume)))
+            .append(String.format("%16s", ResourceType.toString(totalVolume)))
             .append("```");
         response.append("Profit total: $").append(MathMan.format(profitTotal) + " (" + numTrades + " trades)");
         return response.toString().trim();

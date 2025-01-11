@@ -744,8 +744,8 @@ public class IACheckup {
         if (nation.getOff() > 0 || nation.getDef() > 0) return null;
 
         String message = "It is important to be able to fight a war with your military\n" +
-                "The alliance recommends keeping the following on your nation: `" + ResourceType.resourcesToString(required) + "`\n" +
-                "You are lacking: `" + ResourceType.resourcesToString(lacking) + "`";
+                "The alliance recommends keeping the following on your nation: `" + ResourceType.toString(required) + "`\n" +
+                "You are lacking: `" + ResourceType.toString(lacking) + "`";
         return new AbstractMap.SimpleEntry<>(lacking, message);
     }
 
@@ -1048,7 +1048,7 @@ public class IACheckup {
             }
         }
         if (!toSend.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>(toSend, "Requires: " + ResourceType.resourcesToString(toSend));
+            return new AbstractMap.SimpleEntry<>(toSend, "Requires: " + ResourceType.toString(toSend));
         }
         return null;
     }
@@ -1087,8 +1087,8 @@ public class IACheckup {
         if (excessTotal > 1000000L * nation.getCities()) {
             if (nation.isBlockaded()) return null;
             String url = nation.getAllianceUrl() + "&display=bank";
-            String message = "Excess resources can be deposited so you don't lose it in a war or attract pirates: `" + ResourceType.resourcesToString(resources) + "` @ <" + url + ">";
-            return new AbstractMap.SimpleEntry<>(ResourceType.resourcesToString(resources), message);
+            String message = "Excess resources can be deposited so you don't lose it in a war or attract pirates: `" + ResourceType.toString(resources) + "` @ <" + url + ">";
+            return new AbstractMap.SimpleEntry<>(ResourceType.toString(resources), message);
         }
         return null;
     }
@@ -1510,7 +1510,7 @@ public class IACheckup {
             if (response.length() > 0) response.append("\n\n");
             response.append("The following cities are unpowered (insufficient resources) " + StringMan.getString(unpowered) +
                     "\nPlease ensure you have the resources to power your city for several days. " +
-                    "You currently consume the following each day:\n" + ResourceType.resourcesToString(revenue));
+                    "You currently consume the following each day:\n" + ResourceType.toString(revenue));
         }
         return new AbstractMap.SimpleEntry<>(unpowered, response.toString());
     }

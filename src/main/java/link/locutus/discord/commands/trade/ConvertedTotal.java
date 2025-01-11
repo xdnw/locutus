@@ -84,7 +84,7 @@ public class ConvertedTotal extends Command {
             }
         }
 
-        StringBuilder result = new StringBuilder("```" + ResourceType.resourcesToString(transfer) + "```");
+        StringBuilder result = new StringBuilder("```" + ResourceType.toString(transfer) + "```");
 
         double value = ResourceType.convertedTotal(transfer);
         if (flags.contains('b') || flags.contains('s')) {

@@ -16,11 +16,8 @@ import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -42,8 +39,6 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
@@ -51,8 +46,6 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -836,7 +829,7 @@ public class GuildKey {
 
         @Override
         public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
-            return ResourceType.resourcesToString(value);
+            return ResourceType.toString(value);
         }
 
         @Override
@@ -1591,41 +1584,112 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 
-    public static GuildSetting<Boolean> CONVERT_NEGATIVE_RSS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Long> FORCE_RSS_CONVERSION = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String CONVERT_NEGATIVE_RSS(@Me GuildDB db, @Me User user, boolean enabled) {
-            return CONVERT_NEGATIVE_RSS.setAndValidate(db, user, enabled);
+        public String FORCE_RSS_CONVERSION(@Me GuildDB db, @Me User user, boolean enabled) {
+            if (enabled) {
+                long now = System.currentTimeMillis();
+                return FORCE_RSS_CONVERSION.setAndValidate(db, user, now);
+            } else {
+                Long previous = db.getOrNull(FORCE_RSS_CONVERSION);
+                db.deleteInfo(FORCE_RSS_CONVERSION);
+                return "Deleted `" + FORCE_RSS_CONVERSION.name() + "`\n" +
+                        "Previous value: `" + previous + "`";
+            }
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Long value) {
+            if (value != null && value > 0) return "after:" + value + " (" + TimeUtil.YYYY_MM_DD_HH_MM_SS_A.format(value) + ")";
+            return super.toReadableString(db, value);
+        }
+
+        @Override
+        public String help() {
+            return "If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note\n" +
+                    "This is performed when deposits are checked, and only to new deposits\n" +
+                    "Requires resource conversion to be enabled for the nation";
+        }
+    }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
+
+    public static GuildSetting<Boolean> ALLOW_NEGATIVE_RESOURCES = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ALLOW_NEGATIVE_RESOURCES(@Me GuildDB db, @Me User user, boolean enabled) {
+            return ALLOW_NEGATIVE_RESOURCES.setAndValidate(db, user, enabled);
         }
         @Override
         public String help() {
-            return "NOT IMPLEMENTED. If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
+            return "If members can withdraw resources they don't have, so long as the total value of their balance is positive.\n" +
                     "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
                     "Resources are converted using market average\n" +
                     "Use `#cash` as the note when depositing or transferring funds to convert to #cash";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<Map<ResourceType, Double>> RSS_CONVERSION_RATES = new GuildResourceSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS, Map.class, NationFilter.class, Map.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String RSS_CONVERSION_RATES(@Me GuildDB db, @Me User user, Map<ResourceType, Double> prices) {
+        public String ADD_RSS_CONVERSION_RATE(@Me GuildDB db, @Me User user, NationFilter filter, Map<ResourceType, Double> prices) {
             for (Map.Entry<ResourceType, Double> entry : prices.entrySet()) {
+                if (entry.getKey() == ResourceType.MONEY || entry.getKey() == ResourceType.CREDITS) {
+                    throw new IllegalArgumentException("Cannot set conversion rate for money or credits");
+                }
                 if (entry.getValue() > 0 || entry.getValue() <= 1 || entry.getValue() < 0 || entry.getValue() > 100) {
                     throw new IllegalArgumentException("Invalid value for " + entry.getKey() + ": " + entry.getValue() + ". Conversion is between 0 and 100");
                 }
             }
-            return RSS_CONVERSION_RATES.setAndValidate(db, user, prices);
+            Map<NationFilter, Map<ResourceType, Double>> existing = GuildKey.RSS_CONVERSION_RATES.getOrNull(db);
+            existing = existing == null ? new LinkedHashMap<>() : new LinkedHashMap<>(existing);
+            existing.entrySet().removeIf(e -> e.getKey().getFilter().equalsIgnoreCase(filter.getFilter()));
+            existing.put(filter, prices);
+
+            return RSS_CONVERSION_RATES.setAndValidate(db, user, existing);
         }
+
+        @Override
+        public Map<NationFilter, Map<ResourceType, Double>> parse(GuildDB db, String input) {
+            Map<NationFilter, Map<ResourceType, Double>> map = new LinkedHashMap<>();
+            for (String line : input.split("\n")) {
+                int index = line.lastIndexOf(":");
+                if (index == -1) {
+                    continue;
+                }
+                String part1 = line.substring(0, index);
+                String part2 = line.substring(index + 1);
+                String filterStr = part1.trim();
+                NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), null, null);
+                Map<ResourceType, Double> prices = ResourceType.parseResources(part2);
+                map.put(filter, prices);
+            }
+            return map;
+        }
+
+        @Override
+        public String toString(Map<NationFilter, Map<ResourceType, Double>> value) {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : value.entrySet()) {
+                sb.append(entry.getKey().getFilter()).append(": ");
+                sb.append(ResourceType.toString(entry.getValue()));
+                sb.append("\n");
+            }
+            return sb.toString().trim();
+        }
+
         @Override
         public String help() {
             return "Set the rate (as a percent of market value) each resource converts to cash\n" +
-                    "In the form: `{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
+                    "Conversion rates can be set for different nations or roles. Use `*` to apply to everyone" +
+                    "In the form: `*:{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
+                    "See: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>\n" +
                     "A value of 75 = 75%\n" +
                     "Set to 0 to disable conversion for that resource\n" +
-                    "If no value is set for a resource it will default to 100% of weekly market average";
+                    "If no value is set for a resource it will default to 100% of weekly market average\n" +
+                    "**It is recommended to set both a default `*` and a specific value for each resource**";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 

@@ -60,7 +60,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.warchest.cmd.name(name).allowedRecipients(
                 allowedRecipients).allowancePerCity(
-                allowancePerCity == null ? null : ResourceType.resourcesToString(allowancePerCity)).trackDays(
+                allowancePerCity == null ? null : ResourceType.toString(allowancePerCity)).trackDays(
                 trackDays <= 0 ? null : trackDays + "").subtractExpenditure(
                 subtractExpenditure ? "true" : null).overdrawPercent(
                 overdrawPercentCents <= 0 ? null : overdrawPercentCents + "").econRole(
@@ -83,7 +83,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         StringBuilder result = new StringBuilder();
         // add the fields as "key: value"
         if (allowancePerCity != null) {
-            result.append("allowance per city: " + ResourceType.resourcesToString(allowancePerCity));
+            result.append("allowance per city: " + ResourceType.toString(allowancePerCity));
         }
         if (trackDays > 0) {
             result.append("track days: " + trackDays);
@@ -142,7 +142,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         }
         if (allowancePerCity != null) {
             result.append(" | city=");
-            result.append(ResourceType.resourcesToString(allowancePerCity));
+            result.append(ResourceType.toString(allowancePerCity));
         }
         return result.toString();
     }
@@ -185,7 +185,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         List<Grant.Requirement> list = new ArrayList<>();
 
         if (template == null || parsed != null) {
-            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (parsed == null ? "{amount}" : ResourceType.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (parsed == null ? "{amount}" : ResourceType.toString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     if (parsed == null) return true;
@@ -204,7 +204,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
             } else {
                 allowance = null;
             }
-            list.add(new Grant.Requirement("Amount must NOT exceed remaining allowance: `" + (template == null ? "{amount}" : ResourceType.resourcesToString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
+            list.add(new Grant.Requirement("Amount must NOT exceed remaining allowance: `" + (template == null ? "{amount}" : ResourceType.toString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
                     allowanceStr, false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
@@ -274,9 +274,9 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         }
 
         if (debugOutput != null) {
-            debugOutput.append("[Allowance: `" + ResourceType.resourcesToString(allowance) + "`, ");
-            debugOutput.append("Received: `" + ResourceType.resourcesToString(received) + "`, ");
-            debugOutput.append("Spent: `" + ResourceType.resourcesToString(spent) + "`]");
+            debugOutput.append("[Allowance: `" + ResourceType.toString(allowance) + "`, ");
+            debugOutput.append("Received: `" + ResourceType.toString(received) + "`, ");
+            debugOutput.append("Spent: `" + ResourceType.toString(spent) + "`]");
         }
 
         double[] canSend = ResourceType.builder(allowance).subtract(received).add(spent).min(allowance).build();

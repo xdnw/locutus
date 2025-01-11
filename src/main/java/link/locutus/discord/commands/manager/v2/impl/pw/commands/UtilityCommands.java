@@ -10,7 +10,6 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -989,7 +988,7 @@ public class UtilityCommands {
             result.append("\n- " + project.name());
         }
         result.append("\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(value)));
-        result.append("\n`" + ResourceType.resourcesToString(value) + "`");
+        result.append("\n`" + ResourceType.toString(value) + "`");
         return result.toString();
     }
 
@@ -1111,20 +1110,20 @@ public class UtilityCommands {
 
         StringBuilder response = new StringBuilder();
 
-        response.append("Total Stored: ```" + ResourceType.resourcesToString(totalStored) + "``` ");
+        response.append("Total Stored: ```" + ResourceType.toString(totalStored) + "``` ");
         if (nationLoot != null) {
-            response.append("Nation Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(nationLoot)) + "): ```" + ResourceType.resourcesToString(nationLoot) + "``` ");
+            response.append("Nation Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(nationLoot)) + "): ```" + ResourceType.toString(nationLoot) + "``` ");
             ResourceType.add(total, nationLoot);
         }
         if (allianceLoot != null) {
-            response.append("Alliance Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(allianceLoot)) + "): ```" + ResourceType.resourcesToString(allianceLoot) + "``` ");
+            response.append("Alliance Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(allianceLoot)) + "): ```" + ResourceType.toString(allianceLoot) + "``` ");
             ResourceType.add(total, allianceLoot);
         }
         if (revenue != null) {
-            response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(ResourceType.convertedTotal(revenue)) + ") ```" + ResourceType.resourcesToString(revenue) + "``` ");
+            response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(ResourceType.convertedTotal(revenue)) + ") ```" + ResourceType.toString(revenue) + "``` ");
             ResourceType.add(total, revenue);
         }
-        response.append("Total Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(total)) + "): ```" + ResourceType.resourcesToString(total) + "``` ");
+        response.append("Total Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(total)) + "): ```" + ResourceType.toString(total) + "``` ");
         if (!extraInfo.isEmpty()) response.append("\n`notes:`\n`- " + StringMan.join(extraInfo, "`\n`- ") +"`");
 
         CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
@@ -1177,10 +1176,10 @@ public class UtilityCommands {
                     cost = PW.multiply(cost, 1 - factor);
                 }
                 costs = ResourceType.add(costs, cost);
-                response.append(project.name() + ":\n```" + ResourceType.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(cost)) + "\n");
+                response.append(project.name() + ":\n```" + ResourceType.toString(cost) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(cost)) + "\n");
             }
             if (projectsList.size() > 1) {
-                response.append("Total:\n```" + ResourceType.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(costs)) + "\n");
+                response.append("Total:\n```" + ResourceType.toString(costs) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(costs)) + "\n");
             }
             return response.toString();
         } else {
@@ -1246,7 +1245,7 @@ public class UtilityCommands {
                 header.set(3, nationCopy.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? "true" : "false");
                 header.set(4, nationCopy.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) ? "true" : "false");
                 header.set(5, nationCopy.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) ? "true" : "false");
-                header.set(6, ResourceType.resourcesToString(nationCost));
+                header.set(6, ResourceType.toString(nationCost));
                 header.set(7, MathMan.format(ResourceType.convertedTotal(nationCost)));
                 header.set(8, StringMan.join(errors, ","));
                 for (int i = 0; i < projectsList.size(); i++) {
@@ -1261,7 +1260,7 @@ public class UtilityCommands {
             sheet.attach(msg, "projects");
 
             counts = ArrayUtil.sortMap(counts, false);
-            response.append("\nTotal:\n```" + ResourceType.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(costs)) + "\n");
+            response.append("\nTotal:\n```" + ResourceType.toString(costs) + "```\nworth: ~$" + MathMan.format(ResourceType.convertedTotal(costs)) + "\n");
             // append counts
             response.append("# Bought: `" + StringMan.getString(counts) + "`\n");
             // Add total cost
@@ -1273,7 +1272,7 @@ public class UtilityCommands {
                 ArrayUtil.sortMap(costByProjectValue, false);
                 for (Map.Entry<Project, Double> entry : costByProjectValue.entrySet()) {
                     if (entry.getValue() == 0) continue;
-                    response.append(entry.getKey().name() + ": ~$" + MathMan.format(entry.getValue()) + "\n- `" + ResourceType.resourcesToString(costByProject.get(entry.getKey())) + "`\n");
+                    response.append(entry.getKey().name() + ": ~$" + MathMan.format(entry.getValue()) + "\n- `" + ResourceType.toString(costByProject.get(entry.getKey())) + "`\n");
                 }
             }
             response.append("\nSee " + CM.transfer.bulk.cmd.toSlashMention());
@@ -2082,7 +2081,7 @@ public class UtilityCommands {
         StringBuilder result = new StringBuilder();
         sheet.attach(msg, "interest", result, false, 0);
 
-        result.append("Total: `" + ResourceType.resourcesToString(total) + "`" +
+        result.append("Total: `" + ResourceType.toString(total) + "`" +
                 "\nWorth: $" + MathMan.format(ResourceType.convertedTotal(total)));
         result.append("\n\nUse " + CM.transfer.bulk.cmd.toSlashMention());
         result.append("\nOr press \uD83C\uDFE6 to run " + cmd.toSlashCommand() + "");
@@ -2148,7 +2147,7 @@ public class UtilityCommands {
         Locutus.imp().runEventsAsync(events ->
                 LootEntry.forNation(nation.getNation_id(), System.currentTimeMillis(), rssArr, type)
                         .save(events));
-        return "Set " + nation.getNation() + " to " + ResourceType.resourcesToString(resources) + " worth: ~$" + ResourceType.convertedTotal(resources);
+        return "Set " + nation.getNation() + " to " + ResourceType.toString(resources) + " worth: ~$" + ResourceType.convertedTotal(resources);
     }
 
     @Command(desc = "Rank alliances by their new members over a timeframe\n" +
@@ -2227,11 +2226,11 @@ public class UtilityCommands {
             ResourceType.add(cost, unitCost);
             ResourceType.add(upkeep, unitUpkeep);
         }
-        response.append("Cost:\n```" + ResourceType.resourcesToString(cost) + "``` ");
+        response.append("Cost:\n```" + ResourceType.toString(cost) + "``` ");
         if (ResourceType.resourcesToMap(cost).size() > 1) {
             response.append("Worth: ~$" + MathMan.format(ResourceType.convertedTotal(cost))).append("\n");
         }
-        response.append("\nUpkeep:\n```" + ResourceType.resourcesToString(upkeep) + "``` ");
+        response.append("\nUpkeep:\n```" + ResourceType.toString(upkeep) + "``` ");
         if (ResourceType.resourcesToMap(upkeep).size() > 1) {
             response.append("Worth: ~$" + MathMan.format(ResourceType.convertedTotal(upkeep))).append("\n");
         }
@@ -2587,10 +2586,10 @@ public class UtilityCommands {
         response.append("**Infra**: $" + MathMan.format(infraCost));
         response.append("\n").append("**Land**: $" + MathMan.format(landCost));
         response.append("\n").append("**Cities**: $" + MathMan.format(cityCost));
-        response.append("\n").append("**Projects**: $" + MathMan.format(ResourceType.convertedTotal(projectCost)) + "\n`" + ResourceType.resourcesToString(projectCost) + "`");
-        response.append("\n").append("**Military**: $" + MathMan.format(ResourceType.convertedTotal(militaryCost)) + "\n`" + ResourceType.resourcesToString(militaryCost) + "`");
-        response.append("\n").append("**Buildings**: $" + MathMan.format(ResourceType.convertedTotal(buildingCost)) + "\n`" + ResourceType.resourcesToString(buildingCost) + "`");
-        response.append("\n").append("**Total**: $" + MathMan.format(ResourceType.convertedTotal(total)) + "\n`" + ResourceType.resourcesToString(total) + "`");
+        response.append("\n").append("**Projects**: $" + MathMan.format(ResourceType.convertedTotal(projectCost)) + "\n`" + ResourceType.toString(projectCost) + "`");
+        response.append("\n").append("**Military**: $" + MathMan.format(ResourceType.convertedTotal(militaryCost)) + "\n`" + ResourceType.toString(militaryCost) + "`");
+        response.append("\n").append("**Buildings**: $" + MathMan.format(ResourceType.convertedTotal(buildingCost)) + "\n`" + ResourceType.toString(buildingCost) + "`");
+        response.append("\n").append("**Total**: $" + MathMan.format(ResourceType.convertedTotal(total)) + "\n`" + ResourceType.toString(total) + "`");
 
         channel.create().embed(title, response.toString()).send();
         return null;
@@ -2618,7 +2617,7 @@ public class UtilityCommands {
         response.append("**Buildings:**\n```json\n" + buildings + "\n```");
         // append cost
         response.append("\n**Cost:** ~$" + MathMan.format(ResourceType.convertedTotal(cost)));
-        response.append("\n```json\n" + ResourceType.resourcesToString(cost) + "\n```");
+        response.append("\n```json\n" + ResourceType.toString(cost) + "\n```");
         return response.toString();
     }
 

@@ -992,10 +992,10 @@ public class Auth {
                     response.append("\nAdding deposits:");
 
                     offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
+                    response.append("\n- Added " + ResourceType.toString(toDeposit) + " to " + currentDB.getGuild());
                     // add balance to expectedNation
                     currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n- Added " + ResourceType.resourcesToString(toDeposit) + " to " + senderNation.getUrl());
+                    response.append("\n- Added " + ResourceType.toString(toDeposit) + " to " + senderNation.getUrl());
 
                     MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
                     if (logChannel != null) {

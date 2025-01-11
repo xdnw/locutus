@@ -315,7 +315,7 @@ public class ROI extends Command {
                 header.add(String.format("%.2f", result.roi));
                 header.add(String.format("%.2f", result.profit));
                 header.add(String.format("%.2f", result.costConverted));
-                header.add(ResourceType.resourcesToString(result.cost));
+                header.add(ResourceType.toString(result.cost));
 
                 sheet.addRow(header);
             }

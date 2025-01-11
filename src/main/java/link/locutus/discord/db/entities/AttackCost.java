@@ -391,17 +391,17 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
             totalA = ResourceType.add(totalA, Collections.singletonMap(ResourceType.MONEY, getInfraLost(true)));
         }
         if (consumption) {
-            response.append("Consumption: ```" + ResourceType.resourcesToString(getConsumption(true))).append("```");
+            response.append("Consumption: ```" + ResourceType.toString(getConsumption(true))).append("```");
             totalA = ResourceType.add(totalA, getConsumption(true));
         }
         if (loot) {
-            response.append("Loot: ```" + ResourceType.resourcesToString(getLoot(true))).append("```");
+            response.append("Loot: ```" + ResourceType.toString(getLoot(true))).append("```");
             totalA = ResourceType.add(totalA, getLoot(true));
         }
         if (buildings) {
             response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(true))).append("```");
         }
-        response.append("Total: ```" + ResourceType.resourcesToString(totalA)).append("```");
+        response.append("Total: ```" + ResourceType.toString(totalA)).append("```");
         response.append("Converted Total: `$" + MathMan.format(ResourceType.convertedTotal(totalA))).append("`\n\n");
 
 
@@ -416,17 +416,17 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
             totalB = ResourceType.add(totalB, Collections.singletonMap(ResourceType.MONEY, getInfraLost(false)));
         }
         if (consumption) {
-            response.append("Consumption: ```" + ResourceType.resourcesToString(getConsumption(false))).append("```");
+            response.append("Consumption: ```" + ResourceType.toString(getConsumption(false))).append("```");
             totalB = ResourceType.add(totalB, getConsumption(false));
         }
         if (loot) {
-            response.append("Loot: ```" + ResourceType.resourcesToString(getLoot(false))).append("```");
+            response.append("Loot: ```" + ResourceType.toString(getLoot(false))).append("```");
             totalB = ResourceType.add(totalB, getLoot(false));
         }
         if (buildings) {
             response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(false))).append("```");
         }
-        response.append("Total: ```" + ResourceType.resourcesToString(totalB)).append("```");
+        response.append("Total: ```" + ResourceType.toString(totalB)).append("```");
         response.append("Converted Total: `$" + MathMan.format(ResourceType.convertedTotal(totalB))).append("`\n");
 
         return response.toString();

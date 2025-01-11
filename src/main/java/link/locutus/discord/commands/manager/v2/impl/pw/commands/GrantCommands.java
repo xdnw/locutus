@@ -14,7 +14,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
@@ -36,13 +35,10 @@ import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
-import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -2835,7 +2831,7 @@ public class GrantCommands {
                 newEscrowed[type.ordinal()] = newAmtCents * 0.01;
             }
             StringBuilder message = new StringBuilder();
-            message.append("Deducted `"  + ResourceType.resourcesToString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
+            message.append("Deducted `"  + ResourceType.toString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
             if (!hasEscrowed) {
                 db.setEscrowed(receiver, null, escrowDate);
             } else {
@@ -2852,9 +2848,9 @@ public class GrantCommands {
                         // add amount deducted
                         message.append("Funds were deducted but the in-game transfer was aborted\n");
                         message.append("Econ gov may need to correct your escrow balance via " + CM.escrow.add.cmd.toSlashMention() + "\n");
-                        message.append("Original escrowed: `" + ResourceType.resourcesToString(escrowedPair.getKey()) + "`\n");
-                        message.append("Expected escrowed: `" + ResourceType.resourcesToString(newEscrowed) + "`\n");
-                        message.append("Current escrowed: `" + ResourceType.resourcesToString(checkEscrowed) + "`\n");
+                        message.append("Original escrowed: `" + ResourceType.toString(escrowedPair.getKey()) + "`\n");
+                        message.append("Expected escrowed: `" + ResourceType.toString(newEscrowed) + "`\n");
+                        message.append("Current escrowed: `" + ResourceType.toString(checkEscrowed) + "`\n");
                         message.append("The `expected` and `new` should match, but something went wrong when deducting the balance.\n");
                         // econ role mention
                         Role role = Roles.ECON.toRole2(db);
@@ -2899,7 +2895,7 @@ public class GrantCommands {
                 case CONFIRMATION: {
                     // add balance back
                     db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
-                    result.addMessage("Adding back `" + ResourceType.resourcesToString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
+                    result.addMessage("Adding back `" + ResourceType.toString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
                     channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
                     return null;
                 }
@@ -3142,11 +3138,11 @@ public class GrantCommands {
             headers.set(7, MathMan.format(infraCost));
             headers.set(8, MathMan.format(landCost));
             headers.set(9, StringMan.join(projectsBought, ","));
-            headers.set(10, ResourceType.resourcesToString(projectCost));
+            headers.set(10, ResourceType.toString(projectCost));
             headers.set(11, MathMan.format(ResourceType.convertedTotal(projectCost)));
             double[] total = projectCost.clone();
             total[0] += cityCost + infraCost + landCost;
-            headers.set(12, ResourceType.resourcesToString(total));
+            headers.set(12, ResourceType.toString(total));
             headers.set(13, MathMan.format(ResourceType.convertedTotal(total)));
 
             sheet.addRow(headers);
@@ -3163,7 +3159,7 @@ public class GrantCommands {
         StringBuilder body = new StringBuilder();
         int numAlliances = new SimpleNationList(receivers).getAllianceIds().size();
         body.append("Nations: `").append(receivers.size()).append("` in `").append(numAlliances).append("` alliances\n");
-        body.append("Total: `~$").append(MathMan.format(totalConverted)).append("`\n").append("```\n" + ResourceType.resourcesToString(allNationCost) + "\n```\n");
+        body.append("Total: `~$").append(MathMan.format(totalConverted)).append("`\n").append("```\n" + ResourceType.toString(allNationCost) + "\n```\n");
         body.append("Projects: `~$").append(MathMan.format(ResourceType.convertedTotal(allNationProjectCost))).append("`\n");
         body.append("Infra: `~$").append(MathMan.format(allNationInfra)).append("`\n");
         body.append("Land: `~$").append(MathMan.format(allNationLand)).append("`\n");

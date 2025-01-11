@@ -514,12 +514,12 @@ public class SimulatedWarNode {
 
         response.append('\n').append('\n').append("**").append(aggressor.getNation().getNation() + " consumption: ").append("**")
                 .append("```")
-                .append(ResourceType.resourcesToString(ResourceType.roundResources(attUse)))
+                .append(ResourceType.toString(ResourceType.roundResources(attUse)))
                 .append("```");
 
         response.append("**").append(defender.getNation().getNation() + " consumption: ").append("**")
                 .append("```")
-                .append(ResourceType.resourcesToString(ResourceType.roundResources(defUse)))
+                .append(ResourceType.toString(ResourceType.roundResources(defUse)))
                 .append("```");
 
         return builder.setDescription(response).build();

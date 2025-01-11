@@ -691,7 +691,7 @@ public class GuildHandler {
                 double[] depoTotal = current.getNetDeposits(db, false);
                 body.append("\n\nPlease check the following:\n" +
                         "- Discord roles\n" +
-                        "- Deposits: `" + ResourceType.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(depoTotal)));
+                        "- Deposits: `" + ResourceType.toString(depoTotal) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(depoTotal)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -2379,7 +2379,7 @@ public class GuildHandler {
             String note = "#deposit #incentive=" + meta.name();
             if (!Arrays.equals(amt, ResourceType.getBuffer())) {
                 getDb().addBalance(System.currentTimeMillis(), referrer, referred.getNation_id(), note, amt);
-                message += "\n- Added `" + ResourceType.resourcesToString(amt) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
+                message += "\n- Added `" + ResourceType.toString(amt) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
             }
             MessageChannel output = getDb().getResourceChannel(0);
             if (output != null) {
@@ -2793,7 +2793,7 @@ public class GuildHandler {
 
                     IMessageIO io = new DiscordChannelIO(channel);
                     IMessageBuilder msg = io.create().embed(title, body);
-                    msg = msg.commandButton(CM.escrow.withdraw.cmd.receiver(receiver.getQualifiedId()).amount(ResourceType.resourcesToString(escrowed)).force("true"), "send");
+                    msg = msg.commandButton(CM.escrow.withdraw.cmd.receiver(receiver.getQualifiedId()).amount(ResourceType.toString(escrowed)).force("true"), "send");
                     if (!mentions.isEmpty()) {
                         msg = msg.append(StringMan.join(mentions, ", "));
                     }

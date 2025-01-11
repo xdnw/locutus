@@ -151,6 +151,7 @@ public enum Roles {
 
     ENEMY_ALERT_OFFLINE(42, false, "Able to receive enemy alerts when offline or invisible on discord (unless opt out, or player setting overrides)", GuildKey.BEIGE_ALERT_CHANNEL),
 
+    RESOURCE_CONVERSION(43, false, "Set a required role for accessing resource conversion (if enabled). If no role is set, then all members have access", GuildKey.RESOURCE_CONVERSION),
 
     ;
 

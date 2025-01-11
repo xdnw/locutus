@@ -82,7 +82,7 @@
     <p class="lead">It is recommended to safekeep funds you aren't using, as to avoid becoming a target and taking unnecessary losses.</p>
     <p>
         <b>Your deposits: </b>
-        ${ResourceType.resourcesToString(PW.normalize(deposits))}
+        ${ResourceType.toString(PW.normalize(deposits))}
     </p>
     <a href="${WebRoot.REDIRECT}/command/withdraw"  class="btn btn-primary btn">&#128279; Withdraw Funds</a>
     <a href="https://politicsandwar.com/alliance/id=${nation.getAlliance_id()}&display=bank" class="btn btn-primary btn">Deposit Funds <i class="bi bi-box-arrow-up-right text-light"></i></a>

@@ -23,7 +23,9 @@ import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
@@ -35,11 +37,15 @@ import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -504,8 +510,8 @@ public final class PW {
         return "sphere:" + getName(sphereId, true);
     }
 
-    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
-        return sumNationTransactions(guildDB, tracked, transactionsEntries, false, false, f -> true);
+    public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
+        return sumNationTransactions(nation, guildDB, tracked, transactionsEntries, false, false, f -> true);
     }
 
     /**
@@ -514,7 +520,7 @@ public final class PW {
      * @param transactionsEntries
      * @return
      */
-    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
+    public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
         long start = System.currentTimeMillis();
         Map<DepositType, double[]> result = new EnumMap<>(DepositType.class);
 
@@ -528,13 +534,57 @@ public final class PW {
         if (tracked == null) {
             tracked = guildDB.getTrackedBanks();
         }
-
+        long forceRssConversionAfter = 0;
         long allowConversionDefaultCutoff = 1735265627000L;
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
+        if (allowConversionDefault && nation != null) {
+            Role role = Roles.RESOURCE_CONVERSION.toRole2(guildDB);
+            if (role != null) {
+                allowConversionDefault = false;
+                User user = nation.getUser();
+                if (user != null) {
+                    Member member = guildDB.getGuild().getMember(user);
+                    if (member != null) {
+                        if (member.getRoles().contains(role)) {
+                            allowConversionDefault = true;
+                        }
+                    }
+                }
+            }
+            if (allowConversionDefault) {
+                Long convertDate = GuildKey.FORCE_RSS_CONVERSION.getOrNull(guildDB);
+                if (convertDate != null) forceRssConversionAfter = convertDate;
+            }
+        }
 
-        Map<ResourceType, Double> rates = GuildKey.RSS_CONVERSION_RATES.getOrNull(guildDB);
-        Function<ResourceType, Double> rateFunc = rates == null ? _ -> 1d :
-                f -> rates.getOrDefault(f, 100d) * 0.01;
+        Map<NationFilter, Map<ResourceType, Double>> rates = GuildKey.RSS_CONVERSION_RATES.getOrNull(guildDB);
+        Function<ResourceType, Double> rateFunc;
+        if (rates == null) {
+            rateFunc = _ -> 1d;
+        } else {
+            Map<ResourceType, Double> rate = null;
+            if (nation != null) {
+                for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
+                    if (entry.getKey().test(nation)) {
+                        rate = entry.getValue();
+                        break;
+                    }
+                }
+            } else {
+                // get where nationfilter.getFiler() is *
+                for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
+                    if (entry.getKey().getFilter().equals("*")) {
+                        rate = entry.getValue();
+                        break;
+                    }
+                }
+            }
+            if (rate == null) rateFunc = f -> 1d;
+            else {
+                Map<ResourceType, Double> rateFinal = rate;
+                rateFunc = f -> rateFinal.getOrDefault(f, 100d) * 0.01;
+            }
+        }
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
@@ -546,7 +596,7 @@ public final class PW {
             boolean allowConversion = (allowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc);
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
@@ -595,7 +645,21 @@ public final class PW {
         return result;
     }
 
-    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored, Function<ResourceType, Double> rates) {
+    public static void processDeposit(Transaction2 record,
+                                      GuildDB guildDB,
+                                      Set<Long> tracked,
+                                      int sign,
+                                      Map<DepositType, double[]> result,
+                                      double[] amount,
+                                      String note,
+                                      long date,
+                                      Predicate<Transaction2> allowExpiry,
+                                      boolean allowConversion,
+                                      boolean allowArbitraryConversion,
+                                      boolean ignoreMarkedDeposits,
+                                      boolean includeIgnored,
+                                      Function<ResourceType, Double> rates,
+                                      long forceConvertRssAfter) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
          */
@@ -698,97 +762,14 @@ public final class PW {
                 }
                 case "#cash":
                     if (allowConversion) {
-                        Double cashValue = null;
-                        Set<Byte> convert = null;
-
-                        String rssNote = notes.get("#rss");
-                        if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
-                            long rssId = Long.parseLong(rssNote);
-                            convert = new ByteOpenHashSet();
-                            for (ResourceType rss : ResourceType.values) {
-                                if ((rssId & (1L << rss.ordinal())) != 0) {
-                                    convert.add((byte) rss.ordinal());
-                                }
-                            }
-                        }
-
-                        if (value != null) {
-                            if (allowArbitraryConversion) {
-                                cashValue = MathMan.parseDouble(value);
-                            }
-                        }
-
-                        if (cashValue == null) {
-                            Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
-                                    .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
-                                    .toString());
-                            if (value != null) {
-                                String hash = getHash.get();
-                                if (record.note.contains(hash)) {
-                                    cashValue = MathMan.parseDouble(value);
-                                }
-                            }
-
-                            if (cashValue == null) {
-                                long oneWeek = TimeUnit.DAYS.toMillis(7);
-                                long start = date - oneWeek;
-                                TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
-
-                                Set<Byte> convertCached = null;
-                                boolean setConvert = false;
-                                cashValue = 0d;
-                                for (int i = 0; i < amount.length; i++) {
-                                    ResourceType resource = ResourceType.values[i];
-                                    double amt = amount[i];
-                                    if (amt < 1) continue;
-                                    if (resource == ResourceType.MONEY) {
-                                        cashValue += amt;
-                                        continue;
-                                    }
-                                    if (convert != null && !convert.contains((byte) resource.ordinal())) continue;
-                                    double rate = rates.apply(resource);
-                                    if (rate <= 0) {
-                                        setConvert = true;
-                                        continue;
-                                    }
-                                    if (convertCached == null) {
-                                        convertCached = new ByteOpenHashSet();
-                                    }
-                                    convertCached.add((byte) resource.ordinal());
-
-                                    List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
-                                    Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
-                                    if (avg != null) {
-                                        cashValue += amt * avg * rate;
-                                    }
-                                }
-                                if (setConvert) {
-                                    convert = convertCached;
-                                }
-                                {
-                                    // set hash
-                                    String hash = getHash.get();
-                                    note = note.replaceAll(entry.getKey() + "[^ ]+", "#cash=" + MathMan.format(cashValue));
-                                    note += " #" + hash;
-                                    record.note = note;
-                                    Locutus.imp().getBankDB().addTransaction(record, false);
-                                }
-                            }
-                        }
-                        if (cashValue != null) {
-                            if (convert == null) {
-                                Arrays.fill(amount, 0);
-                            } else {
-                                for (byte b : convert) {
-                                    ResourceType rss = ResourceType.values[b];
-                                    amount[rss.ordinal()] = 0;
-                                }
-                            }
-                            amount[0] = cashValue;
-                        }
+                        applyCashConversion(guildDB, allowArbitraryConversion, notes, amount, value, record, date, rates);
+                        allowConversion = false;
                     }
                     continue;
             }
+        }
+        if (allowConversion && forceConvertRssAfter > 0 && forceConvertRssAfter > date) {
+            applyCashConversion(guildDB, allowArbitraryConversion, notes, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
         if (sign == 1 && decayFactor == 1) {
@@ -800,6 +781,121 @@ public final class PW {
             for (int i = 0; i < rss.length; i++) {
                 rss[i] += amount[i] * factor;
             }
+        }
+    }
+
+    private static void applyCashConversion(GuildDB guildDB,
+            boolean allowArbitraryConversion,
+            Map<String, String> notes,
+            double[] amount,
+            String valueStr,
+            Transaction2 record,
+            long date,
+            Function<ResourceType, Double> rates) {
+        if (valueStr != null && valueStr.equals("0")) return;
+
+        boolean hasNonCashRss = false;
+        for (ResourceType rss : ResourceType.values) {
+            if (rss == ResourceType.MONEY || rss == ResourceType.CREDITS) continue;
+            if (amount[rss.ordinal()] >= 1) {
+                hasNonCashRss = true;
+                break;
+            }
+        }
+        if (!hasNonCashRss) return;
+        Double cashValue = null;
+        Set<Byte> convert = null;
+
+        String rssNote = notes.get("#rss");
+        if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
+            long rssId = Long.parseLong(rssNote);
+            convert = new ByteOpenHashSet();
+            for (ResourceType rss : ResourceType.values) {
+                if ((rssId & (1L << rss.ordinal())) != 0) {
+                    convert.add((byte) rss.ordinal());
+                }
+            }
+        }
+
+        if (valueStr != null) {
+            if (allowArbitraryConversion) {
+                cashValue = MathMan.parseDouble(valueStr);
+            }
+        }
+
+        if (cashValue == null) {
+            Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
+                    .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
+                    .toString());
+            if (valueStr != null) {
+                String hash = getHash.get();
+                if (record.note.contains(hash)) {
+                    cashValue = MathMan.parseDouble(valueStr);
+                }
+            }
+
+            if (cashValue == null) {
+                long oneWeek = TimeUnit.DAYS.toMillis(7);
+                long start = date - oneWeek;
+                TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
+
+                Set<Byte> convertCached = null;
+                boolean setConvert = false;
+                cashValue = 0d;
+                for (int i = 0; i < amount.length; i++) {
+                    ResourceType resource = ResourceType.values[i];
+                    double amt = amount[i];
+                    if (amt < 1) continue;
+                    if (resource == ResourceType.MONEY) {
+                        cashValue += amt;
+                        continue;
+                    }
+                    if (convert != null && !convert.contains((byte) resource.ordinal())) continue;
+                    double rate = rates.apply(resource);
+                    if (rate <= 0) {
+                        setConvert = true;
+                        continue;
+                    }
+                    if (convertCached == null) {
+                        convertCached = new ByteOpenHashSet();
+                    }
+                    convertCached.add((byte) resource.ordinal());
+
+                    List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
+                    Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
+                    if (avg != null) {
+                        cashValue += amt * avg * rate;
+                    }
+                }
+                if (setConvert) {
+                    convert = convertCached;
+                }
+                {
+                    // set hash
+                    String hash = getHash.get();
+                    String note = record.note;
+                    note = note.replaceAll("#cash[^ ]+", "#cash=" + MathMan.format(cashValue));
+                    note += " #" + hash;
+                    record.note = note;
+
+                    if (record.isInternal()) {
+                        guildDB.updateNote(record.original_id, record.note);
+                    } else {
+                        Locutus.imp().getBankDB().addTransaction(record, false);
+                    }
+                }
+            }
+        }
+        if (cashValue != null) {
+            if (convert == null) {
+                Arrays.fill(amount, 0);
+            } else {
+                for (byte b : convert) {
+                    ResourceType rss = ResourceType.values[b];
+                    amount[rss.ordinal()] = 0;
+                }
+            }
+            amount[0] = cashValue;
         }
     }
 
@@ -886,32 +982,32 @@ public final class PW {
         if (showCategories) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
                 response.append("**`#DEPOSIT`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.DEPOSIT))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.DEPOSIT))).append("```\n");
             }
             if (categorized.containsKey(DepositType.TAX)) {
                 response.append("**`#TAX`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.TAX))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.TAX))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.TAX))).append("```\n");
             } else if (nationOrAllianceOrGuild.isNation()) {
                 footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
                 response.append("**`#LOAN/#GRANT`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.LOAN))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.LOAN))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.LOAN))).append("```\n");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
                 response.append("**`#EXPIRE`** worth $" + MathMan.format(ResourceType.convertedTotal(categorized.get(DepositType.GRANT))));
-                response.append("\n```").append(ResourceType.resourcesToString(categorized.get(DepositType.GRANT))).append("```\n");
+                response.append("\n```").append(ResourceType.toString(categorized.get(DepositType.GRANT))).append("```\n");
             }
             if (hasEscrowed) {
                 response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(ResourceType.convertedTotal(escrowed)));
                 if (escrowExpire > 0) {
                     response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
                 }
-                response.append("\n```").append(ResourceType.resourcesToString(escrowed)).append("``` ");
+                response.append("\n```").append(ResourceType.toString(escrowed)).append("``` ");
             }
             if (categorized.size() > 1) {
                 response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(ResourceType.convertedTotal(balance)) + ")");
-                response.append("\n```").append(ResourceType.resourcesToString(balance)).append("``` ");
+                response.append("\n```").append(ResourceType.toString(balance)).append("``` ");
             }
         } else {
             String prefix = condenseFormat ? "**" : "## ";
@@ -919,7 +1015,7 @@ public final class PW {
             response.append(prefix + "Balance:" + suffix);
             if (condenseFormat) {
                 response.append(" worth: `$" + MathMan.format(ResourceType.convertedTotal(balance)) + "`\n");
-                response.append("```" + ResourceType.resourcesToString(balance) + "``` ");
+                response.append("```" + ResourceType.toString(balance) + "``` ");
             } else {
                 response.append("\n").append(ResourceType.resourcesToFancyString(balance)).append("\n");
             }
@@ -930,7 +1026,7 @@ public final class PW {
                 response.append("\n" + prefix + CM.escrow.withdraw.cmd.toSlashMention() + ":" + suffix);
                 if (condenseFormat) {
                     response.append(" worth: `$" + MathMan.format(ResourceType.convertedTotal(escrowed)) + "`\n");
-                    response.append("```" + ResourceType.resourcesToString(escrowed) + "``` ");
+                    response.append("```" + ResourceType.toString(escrowed) + "``` ");
                 } else {
                     response.append("\n").append(ResourceType.resourcesToFancyString(escrowed)).append("\n");
                 }
@@ -942,7 +1038,7 @@ public final class PW {
             if (!ResourceType.isZero(nonBalance)) {
                 response.append("\n" + prefix + "Expiring Debt:" + suffix + "\n");
                 response.append("In addition to your balance, you owe the following:\n");
-                response.append("```\n" + ResourceType.resourcesToString(nonBalance)).append("```\n- worth: $" + MathMan.format(ResourceType.convertedTotal(nonBalance)) + "\n");
+                response.append("```\n" + ResourceType.toString(nonBalance)).append("```\n- worth: $" + MathMan.format(ResourceType.convertedTotal(nonBalance)) + "\n");
             }
         }
         return Map.entry(balance, response.toString());
@@ -954,28 +1050,15 @@ public final class PW {
 
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
-        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
-
-        long day = TimeUtil.getDay(snapshotDate);
-        boolean loadCities = true;
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
-        ValueStore store = ph.createLocals(guild, null, null);
-        Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
+
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
+        long day = TimeUtil.getDay(snapshotDate);
         try {
-            Map<Integer, DBNationSnapshot> nationMap = dumper.load().getNations(day);
-            Set<DBNation> result = new ObjectOpenHashSet<>();
-            if (filter != null) {
-                for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
-                    DBNationSnapshot snapshot = entry.getValue();
-                    if (filter.test(snapshot)) {
-                        result.add(snapshot);
-                    }
-                }
-            } else {
-                for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
-                    result.add(entry.getValue());
-                }
-            }
+            ValueStore store = ph.createLocals(guild, null, null);
+            NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);
+            Set<DBNation> result = ph.parseSet(store, filterStr, snapshot, true);
+            System.out.println("Result " + result.size());
             return result;
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);

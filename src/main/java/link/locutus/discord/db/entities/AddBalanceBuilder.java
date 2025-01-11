@@ -327,7 +327,7 @@ public class AddBalanceBuilder {
                         double[] amount = entry2.getValue();
                         db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
                         totalAdded = ResourceType.add(totalAdded, amount);
-                        response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender);
+                        response.add("Added " + ResourceType.toString(amount) + " to " + sender);
                     }
                 }
             } else {
@@ -344,7 +344,7 @@ public class AddBalanceBuilder {
                         double[] amount = entry2.getValue();
                         db.addTransfer(tx_datetime, sender.getIdLong(), sender.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
                         totalAdded = ResourceType.add(totalAdded, amount);
-                        response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender.getGuild());
+                        response.add("Added " + ResourceType.toString(amount) + " to " + sender.getGuild());
                     }
                 }
             } else {
@@ -360,7 +360,7 @@ public class AddBalanceBuilder {
 
                 db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
                 totalAdded = ResourceType.add(totalAdded, amount);
-                response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender.getUrl());
+                response.add("Added " + ResourceType.toString(amount) + " to " + sender.getUrl());
             }
 
         }
@@ -373,14 +373,14 @@ public class AddBalanceBuilder {
 
                 db.addBalanceTaxId(tx_datetime, sender.taxId, 0, banker, note, amount);
                 totalAdded = ResourceType.add(totalAdded, amount);
-                response.add("Added " + ResourceType.resourcesToString(amount) + " to " + sender.getQualifiedId());
+                response.add("Added " + ResourceType.toString(amount) + " to " + sender.getQualifiedId());
             }
 
         }
 
         return "Done:\n- " +
                 StringMan.join(response, "\n- ") +
-                "\nTotal added: `" + ResourceType.resourcesToString(totalAdded) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalAdded));
+                "\nTotal added: `" + ResourceType.toString(totalAdded) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalAdded));
     }
 
     public AddBalanceBuilder add(Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, String note) {

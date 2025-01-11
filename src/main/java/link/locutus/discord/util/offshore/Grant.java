@@ -582,7 +582,7 @@ public class Grant {
                 }
 
                 if (!grant.hasInstructions()) {
-                    grant.setInstructions(type.getDescription() + "\nFor `" + ResourceType.resourcesToString(resources) + "`");
+                    grant.setInstructions(type.getDescription() + "\nFor `" + ResourceType.toString(resources) + "`");
                 }
                 grantByReceiver.put(receiver, grant);
 
@@ -610,7 +610,7 @@ public class Grant {
                     }
                     row.add(grant.getInstructions());
                     row.add(ResourceType.convertedTotal(costApplyMissing));
-                    row.add(ResourceType.resourcesToString(costApplyMissing));
+                    row.add(ResourceType.toString(costApplyMissing));
                     row.add(note.toString());
                 }
 
@@ -644,7 +644,7 @@ public class Grant {
             JSONObject command = CM.transfer.resources.cmd
                     .receiver(receiver.getUrl())
                     .depositType(typeStr)
-                    .transfer(ResourceType.resourcesToString(resources))
+                    .transfer(ResourceType.toString(resources))
                     .nationAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
                     .senderAlliance(useAllianceBank != null ? useAllianceBank.getQualifiedId() : null)
                     .allianceAccount(useOffshoreAccount != null ? useOffshoreAccount.getQualifiedId() : null)
@@ -659,7 +659,7 @@ public class Grant {
                     .force(force ? "true" : null)
                     .toJson();
             StringBuilder msg = new StringBuilder();
-            msg.append(ResourceType.resourcesToString(resources)).append("\n")
+            msg.append(ResourceType.toString(resources)).append("\n")
                     .append("Current values for: " + receiver.getNation()).append('\n')
                     .append("Cities: " + receiver.getCities()).append('\n')
                     .append("Infra: " + receiver.getAvg_infra()).append('\n')

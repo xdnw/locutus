@@ -349,7 +349,7 @@ public enum ResourceType {
             if (amt != null) out.append(String.format(leftAlignFormat, type.name(), MathMan.format(amt)));
         }
         out.append("```\n");
-        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(convertedTotal(resources)) + "\n```" + resourcesToString(resources) + "``` ");
+        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(convertedTotal(resources)) + "\n```" + toString(resources) + "``` ");
         return out.toString();
     }
 
@@ -426,11 +426,11 @@ public enum ResourceType {
         return result;
     }
 
-    public static String resourcesToString(double[] values) {
-        return resourcesToString(resourcesToMap(values));
+    public static String toString(double[] values) {
+        return toString(resourcesToMap(values));
     }
 
-    public static String resourcesToString(Map<ResourceType, ? extends Number> resources) {
+    public static String toString(Map<ResourceType, ? extends Number> resources) {
         Map<ResourceType, String> newMap = new LinkedHashMap<>();
         for (ResourceType resourceType : values()) {
             if (resources.containsKey(resourceType)) {
@@ -761,10 +761,6 @@ public enum ResourceType {
         return fancy ? resourcesToFancyString(resources) : toString(resources);
     }
 
-    public static String toString(double[] resources) {
-        return resourcesToString(resources);
-    }
-
     public double[] toArray(double amt) {
         double[] result = getBuffer();
         result[ordinal()] = amt;
@@ -827,7 +823,7 @@ public enum ResourceType {
         private double[] resources = null;
 
         public String toString() {
-            return resourcesToString(build());
+            return ResourceType.toString(build());
         }
 
         public double convertedTotal() {

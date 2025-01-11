@@ -175,11 +175,11 @@ public class LootEstimateTracker {
 
 
         StringBuilder result = new StringBuilder();
-        result.append("min:" + ResourceType.resourcesToString(min));
-        result.append(" offset:" + ResourceType.resourcesToString(requiredOffset));
-        result.append(" max:" + ResourceType.resourcesToString(max));
-        result.append(" actual:" + ResourceType.resourcesToString(actual));
-        result.append(" currentDiff:" + ResourceType.resourcesToString(currentDiff));
+        result.append("min:" + ResourceType.toString(min));
+        result.append(" offset:" + ResourceType.toString(requiredOffset));
+        result.append(" max:" + ResourceType.toString(max));
+        result.append(" actual:" + ResourceType.toString(actual));
+        result.append(" currentDiff:" + ResourceType.toString(currentDiff));
         result.append(" taxId:" + taxId);
         result.append(" diffByTaxId:" + StringMan.getString(diffByTaxId) + "\n");
 

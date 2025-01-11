@@ -534,7 +534,7 @@ public class BankDB extends DBMainV3 {
 
         @Command(desc = "Get the resources json")
         public String getResourcesJson() {
-            return ResourceType.resourcesToString(resources);
+            return ResourceType.toString(resources);
         }
 
         @Command(desc = "Get the internal money rate")
