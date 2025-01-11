@@ -21,7 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
-import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToString;
+import static link.locutus.discord.apiv1.enums.ResourceType.toString;
 
 public class DepositsSheet extends Command {
     public DepositsSheet() {

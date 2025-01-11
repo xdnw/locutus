@@ -3,7 +3,6 @@ package link.locutus.discord.db.guild;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.User;
 
@@ -35,7 +34,7 @@ public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType
 
     @Override
     public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
-        return ResourceType.resourcesToString(value);
+        return ResourceType.toString(value);
     }
 
     @Override

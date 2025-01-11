@@ -276,6 +276,10 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
     public Set<DBNation> parseSet(ValueStore store2, String input, String modifier, boolean allowDeleted) {
         INationSnapshot snapshot = getSnapshot(modifier);
+        return parseSet(store2, input, snapshot, allowDeleted);
+    }
+
+    public Set<DBNation> parseSet(ValueStore store2, String input, INationSnapshot snapshot, boolean allowDeleted) {
         input = wrapHashLegacy(store2, input);
         return ArrayUtil.resolveQuery(input,
                 f -> {

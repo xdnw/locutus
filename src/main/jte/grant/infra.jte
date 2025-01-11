@@ -19,7 +19,7 @@
 @param List<String> override
 @param UUID grantToken
 
-!{var costFull = ResourceType.resourcesToString(grant.cost());}
+!{var costFull = ResourceType.toString(grant.cost());}
 !{var costWorth = MathMan.format(ResourceType.convertedTotal(grant.cost()));}
 
 <div class="row p-2 m-3 guild-icon guild-entry bg-light" style="border-radius:10px">

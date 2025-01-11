@@ -277,9 +277,9 @@ public class ReportCommands {
             String url = loan.isAlliance ? PW.getAllianceUrl(loan.nationOrAllianceId) : PW.getNationUrl(loan.nationOrAllianceId);
             String receiverMarkup = sheetUrl(name, url);
             header.set(3, receiverMarkup + "");
-            header.set(4, ResourceType.resourcesToString(loan.principal) + "");
-            header.set(4, ResourceType.resourcesToString(loan.paid) + "");
-            header.set(5, ResourceType.resourcesToString(loan.remaining) + "");
+            header.set(4, ResourceType.toString(loan.principal) + "");
+            header.set(4, ResourceType.toString(loan.paid) + "");
+            header.set(5, ResourceType.toString(loan.remaining) + "");
             header.set(6, loan.status.name());
             header.set(7, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.dueDate)));
             header.set(8, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.loanDate)));
@@ -295,7 +295,7 @@ public class ReportCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "loans")
-                .append("Total on loan: `" + ResourceType.resourcesToString(total) + "` worth `$" + MathMan.format(ResourceType.convertedTotal(total)) + "`")
+                .append("Total on loan: `" + ResourceType.toString(total) + "` worth `$" + MathMan.format(ResourceType.convertedTotal(total)) + "`")
                 .send();
         return null;
     }
@@ -376,13 +376,13 @@ public class ReportCommands {
                 body.append("**Status:** ").append(status.name()).append("\n");
             }
             if (principal != null) {
-                body.append("**Principal:** ").append(ResourceType.resourcesToString(principal)).append("\n");
+                body.append("**Principal:** ").append(ResourceType.toString(principal)).append("\n");
             }
             if (remaining != null) {
-                body.append("**Remaining:** ").append(ResourceType.resourcesToString(remaining)).append("\n");
+                body.append("**Remaining:** ").append(ResourceType.toString(remaining)).append("\n");
             }
             if (amountPaid != null) {
-                body.append("**Amount Paid:** ").append(ResourceType.resourcesToString(amountPaid)).append("\n");
+                body.append("**Amount Paid:** ").append(ResourceType.toString(amountPaid)).append("\n");
             }
 
             // If loan already exists to nation from this guild, prompt to update it

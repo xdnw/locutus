@@ -576,10 +576,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         body.append("mmr[build]: " + nation.getMMRBuildingStr() + "\n");
         body.append("mmr[unit]: " + nation.getMMR() + "\n\n");
 
-        body.append("**Deposits:**\n`" + ResourceType.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(deposits)) + "\n");
+        body.append("**Deposits:**\n`" + ResourceType.toString(deposits) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
 
-        body.append("**To Withdraw:**\n`" + ResourceType.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalPair.getKey())) + "\n");
+        body.append("**To Withdraw:**\n`" + ResourceType.toString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(totalPair.getKey())) + "\n");
         if (totalPair.getValue() > 0) {
             body.append("Expires: " + DiscordUtil.timestamp(totalPair.getValue(), null) + "\n");
         }
@@ -823,6 +823,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 ignore.printStackTrace();
             }
         }
+    }
+
+    public void updateNote(int id, String note) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.updateNote(id, note);
+            return;
+        }
+        update("UPDATE INTERNAL_TRANSACTIONS2 set note = ? where tx_id = ?", new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setString(1, note);
+                stmt.setInt(2, id);
+            }
+        });
     }
 
     public List<GuildSetting> listInaccessibleChannelKeys() {
@@ -1553,7 +1568,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Map.Entry<Integer, Transaction2>> offset = getDepositOffsetTransactionsTaxId(taxId);
         if (!offset.isEmpty()) {
             Set<Long> allowedIdsLong = allowedAAIds.stream().map(f -> (long) f).collect(Collectors.toSet());
-            Map<DepositType, double[]> sum = PW.sumNationTransactions(this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
+            Map<DepositType, double[]> sum = PW.sumNationTransactions(null, this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
             for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
                 ResourceType.add(result.computeIfAbsent(entry.getKey(), f -> ResourceType.getBuffer()), entry.getValue());
             }
@@ -1890,7 +1905,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public Map<NationOrAllianceOrGuild, double[]> subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, int banker, String offshoreNote) {
         for (int i = 0; i < amount.length; i++) {
-            if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + ResourceType.resourcesToString(amount));
+            if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + ResourceType.toString(amount));
         }
 
         double[] amountLeft = amount.clone();
@@ -1918,7 +1933,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         }
         if (!ResourceType.isZero(amountLeft)) {
-            throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + ResourceType.resourcesToString(amountLeft));
+            throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + ResourceType.toString(amountLeft));
         }
         return ammountEach;
     }

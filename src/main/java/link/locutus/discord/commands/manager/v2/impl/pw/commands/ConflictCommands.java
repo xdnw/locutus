@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -960,5 +961,41 @@ public class ConflictCommands {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Importing from " + file.getName() + "...");
         manager.importFromExternal(file);
         return "Done! A restart is required to load the new data.";
+    }
+    @Command(desc = "Add all wars declared from none to a conflict if the opposing alliance matches a conflict's participants")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String addManualWars(ConflictManager manager, Conflict conflict, DBNation nation, DBAlliance mark_as_alliance) {
+        long start = conflict.getStartMS();
+        long end = conflict.getEndMS();
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= end);
+
+        CoalitionSide side1 = conflict.getSide(true);
+        CoalitionSide side2 = conflict.getSide(false);
+        CoalitionSide markSide = null;
+        if (side1.hasAlliance(mark_as_alliance.getId())) {
+            markSide = side1;
+        } else if (side2.hasAlliance(mark_as_alliance.getId())) {
+            markSide = side2;
+        }
+        if (markSide == null) {
+            throw new IllegalArgumentException("Alliance " + mark_as_alliance.getMarkdownUrl() + " is not a participant in the conflict");
+        }
+        CoalitionSide other = markSide == side1 ? side2 : side1;
+
+        List<DBWar> toAdd = new ObjectArrayList<>();
+        for (DBWar war : wars) {
+            if (war.getAttacker_aa() == 0 && war.getDefender_aa() == 0) continue;
+            if (war.getAttacker_aa() != 0 && war.getDefender_aa() != 0) continue;
+            int aaId = war.getAttacker_aa() == 0 ? war.getDefender_aa() : war.getAttacker_aa();
+            if (!other.hasAlliance(aaId)) continue;
+            toAdd.add(war);
+        }
+        if (toAdd.isEmpty()) {
+            throw new IllegalArgumentException("No wars found to add");
+        }
+        manager.addManualWar(conflict.getId(), toAdd, mark_as_alliance.getId());
+        return "Added " + toAdd.size() + " wars to the conflict.\n" +
+                "Note: this does not push the data to the site\n" +
+                "See: " + CM.conflict.sync.website.cmd.toSlashMention();
     }
 }

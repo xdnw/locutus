@@ -300,7 +300,7 @@ public interface NationList extends NationFilter {
                 body.append("`No taxable revenue`\n");
             } else {
                 body.append("\n**Taxable Nation Revenue:**");
-                body.append("`").append(ResourceType.resourcesToString(revenue)).append("`\n");
+                body.append("`").append(ResourceType.toString(revenue)).append("`\n");
                 body.append("- worth: `$" + MathMan.format(ResourceType.convertedTotal(revenue)) + "`\n");
             }
         }

@@ -125,6 +125,9 @@ public class ConflictManager {
 
         // attack_subtypes attack id int primary key, subtype int not null
         db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
+
+        // create table if not exists MANUAL_WARS war_id, conflict_id, int alliance, primary key (war_id)
+        db.executeStmt("CREATE TABLE IF NOT EXISTS MANUAL_WARS (war_id INT PRIMARY KEY, conflict_id INT NOT NULL, alliance INT NOT NULL)");
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
@@ -613,7 +616,6 @@ public class ConflictManager {
             }
 
             Set<DBWar> wars = new ObjectOpenHashSet<>();
-            long currentTurn = TimeUtil.getTurn();
             for (DBWar war : this.db.getWars()) {
                 if (war.getDate() >= startMs && war.getDate() <= endMs) {
                     if (updateWar(null, war, allowedConflicts)) {
@@ -624,6 +626,8 @@ public class ConflictManager {
                     }
                 }
             }
+
+            wars.addAll(loadManualWars(conflicts));
 
             if (!wars.isEmpty()) {
                 Map<Integer, Byte> subTypes = loadSubTypes();
@@ -691,6 +695,45 @@ public class ConflictManager {
         } catch (Throwable e) {
             e.printStackTrace();
         }
+    }
+
+    private Set<DBWar> loadManualWars(Set<Conflict> conflicts) {
+        List<Integer> conflictIds = null;
+        if (conflicts != null && conflicts.size() != conflictById.size()) {
+            conflictIds = new ArrayList<>();
+            for (Conflict conflict : conflicts) {
+                conflictIds.add(conflict.getId());
+            }
+            conflictIds.sort(Integer::compareTo);
+        }
+        Set<DBWar> result = new ObjectOpenHashSet<>();
+        String query = "SELECT * FROM MANUAL_WARS";
+        if (conflictIds != null) {
+            query += " WHERE conflict_id IN " + StringMan.getString(conflictIds);
+        }
+        db.query(query, stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int warId = rs.getInt("war_id");
+                DBWar war = db.getWar(warId);
+                if (war == null) continue;
+                int allianceId = rs.getInt("alliance");
+                DBWar copy = new DBWar(war);
+                if (war.getAttacker_aa() == 0) war.setAttacker_aa(allianceId);
+                else if (war.getDefender_aa() == 0) war.setDefender_aa(allianceId);
+                result.add(copy);
+            }
+        });
+        return result;
+    }
+
+    public void addManualWar(int conflictId, List<DBWar> wars, int allianceId) {
+        String query = "INSERT INTO MANUAL_WARS (war_id, conflict_id, alliance) VALUES (?, ?, ?)";
+        db.executeBatch(wars, query, (ThrowingBiConsumer<DBWar, PreparedStatement>) (war, stmt) -> {
+            stmt.setInt(1, war.getWarId());
+            stmt.setInt(2, conflictId);
+            stmt.setInt(3, allianceId);
+        });
     }
 
     private Map<String, Integer> getDefaultNames() {

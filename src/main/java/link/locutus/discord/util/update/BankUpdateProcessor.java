@@ -174,7 +174,7 @@ public class BankUpdateProcessor {
         body.append("\n").append("To: " + PW.getBBUrl((int) transfer.receiver_id, transfer.isReceiverAA()));
         body.append("\n").append("Banker: " + PW.getBBUrl(transfer.banker_nation, false));
         body.append("\n").append("Date: " + TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(transfer.tx_datetime)));
-        body.append("\n").append(ResourceType.resourcesToString(transfer.resources));
+        body.append("\n").append(ResourceType.toString(transfer.resources));
 
         return new AbstractMap.SimpleEntry<>(title, body.toString());
     }

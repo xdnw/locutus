@@ -532,7 +532,7 @@ public class UnsortedCommands {
 //                totals.put(type, sign * transfer.getAmount() + totals.getOrDefault(type, 0d));
             }
 
-            message.append(ResourceType.resourcesToString(totals));
+            message.append(ResourceType.toString(totals));
 
 //            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
 //            Message msg = PW.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
@@ -1156,21 +1156,21 @@ public class UnsortedCommands {
         double equilibriumTaxrate = 100 * ResourceType.getEquilibrium(total);
 
         response.append("Daily city revenue:")
-                .append("```").append(ResourceType.resourcesToString(cityProfit)).append("```");
+                .append("```").append(ResourceType.toString(cityProfit)).append("```");
 
         response.append(String.format("Converted total: $" + MathMan.format(ResourceType.convertedTotal(cityProfit))));
 
         response.append("\nMilitary upkeep:")
-                .append("```").append(ResourceType.resourcesToString(milUp)).append("```");
+                .append("```").append(ResourceType.toString(milUp)).append("```");
 
         response.append("\nTrade bonus: ```" + MathMan.format(tradeBonusTotal) + "```");
 
         if (!ResourceType.isZero(warsCost)) {
-            response.append("\nWar cost: ```" + ResourceType.resourcesToString(warsCost) + "```");
+            response.append("\nWar cost: ```" + ResourceType.toString(warsCost) + "```");
         }
 
         response.append("\nCombined Total:")
-                .append("```").append(ResourceType.resourcesToString(total)).append("```")
+                .append("```").append(ResourceType.toString(total)).append("```")
                 .append("Converted total: $" + MathMan.format(ResourceType.convertedTotal(total)));
 
         if (equilibriumTaxrate >= 0) {
@@ -1224,7 +1224,7 @@ public class UnsortedCommands {
         JavaCity.Metrics metrics = jCity.getMetrics(nation::hasProject);
         IMessageBuilder msg = channel.create()
                 .append("Daily city revenue ```" + city.toString() + "```")
-                .append("```").append(ResourceType.resourcesToString(revenue)).append("```")
+                .append("```").append(ResourceType.toString(revenue)).append("```")
                 .append("Converted total: $" + MathMan.format(ResourceType.convertedTotal(revenue)));
         if (metrics.powered != null && !metrics.powered) {
             msg.append("\n**UNPOWERED**");

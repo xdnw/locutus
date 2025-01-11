@@ -264,10 +264,10 @@ public class WarDB extends DBMainV2 {
                 Logg.text("Money looted mismatch " + legacy.getAttack_type() + " " + legacy.getMoney_looted() + " | " + cursor.getMoney_looted());
                 Logg.text("Loot : " + (legacy.loot != null) + " | " + (cursor.getLoot() != null));
                 if (legacy.loot != null) {
-                    Logg.text("loot l " + ResourceType.resourcesToString(legacy.loot));
+                    Logg.text("loot l " + ResourceType.toString(legacy.loot));
                 }
                 if (cursor.getLoot() != null) {
-                    Logg.text("loot c " + ResourceType.resourcesToString(cursor.getLoot()));
+                    Logg.text("loot c " + ResourceType.toString(cursor.getLoot()));
                 }
                 throw new IllegalArgumentException("Money looted mismatch");
             }
@@ -289,11 +289,11 @@ public class WarDB extends DBMainV2 {
             Logg.text("Loot percent mismatch " + legacy.getAttack_type() + " " + legacy.getLootPercent() + " | " + cursor.getLootPercent());
             if (legacy.loot != null) {
                 // print
-                Logg.text("loot l " + ResourceType.resourcesToString(legacy.loot));
+                Logg.text("loot l " + ResourceType.toString(legacy.loot));
             }
             if (cursor.getLoot() != null) {
                 // print
-                Logg.text("loot c " + ResourceType.resourcesToString(cursor.getLoot()));
+                Logg.text("loot c " + ResourceType.toString(cursor.getLoot()));
             }
             // print count by type (or 0)
             throw new IllegalArgumentException("Loot percent mismatch");
@@ -2671,10 +2671,10 @@ public class WarDB extends DBMainV2 {
                 victory.looted = ResourceType.add(victory.looted, loot);
                 modified = true;
             } else {
-                Logg.text("Unable to add loot to attack in war " + warId + " - " + attack.getClass().getSimpleName() + ": " + ResourceType.resourcesToString(loot));
+                Logg.text("Unable to add loot to attack in war " + warId + " - " + attack.getClass().getSimpleName() + ": " + ResourceType.toString(loot));
             }
             if (modified) {
-                Logg.text("Added loot to attack in war " + warId + ": " + ResourceType.resourcesToString(loot));
+                Logg.text("Added loot to attack in war " + warId + ": " + ResourceType.toString(loot));
                 return attackCursorFactory.toBytes(attack);
             }
             if (!modified) {

@@ -12,7 +12,6 @@ import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
-import org.jooq.Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
@@ -42,9 +41,10 @@ import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
 import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
 import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
 import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
-import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class Transaction2 {
+    public int original_id;
+
     public int tx_id;
     public long tx_datetime;
     public long sender_id;
@@ -135,6 +135,8 @@ public class Transaction2 {
                 record.getNote(),
                 ResourceType.getBuffer()
         );
+        tx.original_id = record.getTxId();
+
         tx.resources[MONEY.ordinal()] = record.getMoney() / 100d;
         tx.resources[FOOD.ordinal()] = record.getFood() / 100d;
         tx.resources[COAL.ordinal()] = record.getCoal() / 100d;
@@ -152,6 +154,8 @@ public class Transaction2 {
 
     public Transaction2(ResultSet rs) throws SQLException {
         tx_id = rs.getInt("tx_id");
+        original_id = tx_id;
+
         tx_datetime = rs.getLong("tx_datetime");
         sender_id = rs.getLong("sender_id");
         sender_type = rs.getInt("sender_type");
@@ -374,7 +378,7 @@ public class Transaction2 {
                 " | sender: " + PW.getName(sender_id, sender_type == 2) +
                 " | receiver: " + PW.getName(receiver_id, receiver_type == 2) +
                 " | banker: " + PW.getName(banker_nation, false) +
-                " | " + ResourceType.resourcesToString(resources);
+                " | " + ResourceType.toString(resources);
     }
 
     @Override
@@ -435,5 +439,9 @@ public class Transaction2 {
         record.setMunitions((long) (resources[ResourceType.MUNITIONS.ordinal()] * 100d));
         record.setSteel((long) (resources[ResourceType.STEEL.ordinal()] * 100d));
         record.setAluminum((long) (resources[ResourceType.ALUMINUM.ordinal()] * 100d));
+    }
+
+    public boolean isInternal() {
+        return tx_id == -1 && original_id != -1;
     }
 }

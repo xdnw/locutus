@@ -102,7 +102,7 @@ public class DBLoan {
         }
         if (status != Status.DEFAULTED && status != Status.CLOSED) {
             if (remaining != null && !ResourceType.isZero(remaining)) {
-                response.append(" | " + ResourceType.resourcesToString(remaining));
+                response.append(" | " + ResourceType.toString(remaining));
             }
             if (dueDate != 0) {
                 response.append(" | next: " + DiscordUtil.timestamp(dueDate, null));

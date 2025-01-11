@@ -98,7 +98,7 @@ public class Warchest extends Command {
         }
 
         if (args.size() < 3) {
-            return usage("Current warchest (per city): " + ResourceType.resourcesToString(guildDb.getPerCityWarchest(me)), channel);
+            return usage("Current warchest (per city): " + ResourceType.toString(guildDb.getPerCityWarchest(me)), channel);
         }
 
 

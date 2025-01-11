@@ -640,7 +640,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             body.append("`No taxable revenue`\n");
         } else {
             body.append("\n**Taxable Nation Revenue:**");
-            body.append("`").append(ResourceType.resourcesToString(revenue)).append("`\n");
+            body.append("`").append(ResourceType.toString(revenue)).append("`\n");
             body.append("- worth: `$" + MathMan.format(ResourceType.convertedTotal(revenue)) + "`\n");
         }
         // Last loot
@@ -651,7 +651,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             body.append("\n**Last Resources:** (from ")
                     .append(lootEntry.getType().name()).append(" ")
                     .append(DiscordUtil.timestamp(lootEntry.getDate(), null)).append(")\n");
-            body.append("`").append(ResourceType.resourcesToString(lootEntry.getTotal_rss())).append("`\n");
+            body.append("`").append(ResourceType.toString(lootEntry.getTotal_rss())).append("`\n");
             body.append("- worth: `$").append(MathMan.format(lootEntry.convertedTotal())).append("`\n");
         }
         return body.toString();

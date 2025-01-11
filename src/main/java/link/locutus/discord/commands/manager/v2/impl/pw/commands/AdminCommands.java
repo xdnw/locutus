@@ -1,18 +1,11 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import java.util.function.BiFunction;
-
-import com.politicsandwar.graphql.model.Nation;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv3.csv.DataDumpParser;
-import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -29,7 +22,6 @@ import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.*;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.multi.GetUid;
@@ -82,7 +74,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.update.AllianceListener;
-import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.util.update.WarUpdateProcessor;
@@ -114,7 +105,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -2046,7 +2036,7 @@ public class AdminCommands {
                 } else {
                     depo = offshore.getDeposits((int) id, false);
                 }
-                response.append("\n- Deposits: `" + ResourceType.resourcesToString(depo) + "` worth: `$" + MathMan.format(ResourceType.convertedTotal(depo)) + "`");
+                response.append("\n- Deposits: `" + ResourceType.toString(depo) + "` worth: `$" + MathMan.format(ResourceType.convertedTotal(depo)) + "`");
             }
             response.append("\n\n");
         }

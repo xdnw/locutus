@@ -6,12 +6,10 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
-import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
@@ -193,7 +191,7 @@ public class SendInternalTask {
                     if (receiverAlliance != null && !Objects.equals(senderAlliance, receiverAlliance))
                         message.append(" AA:" + receiverAlliance.getName());
                     if (receiverNation != null) message.append(" " + receiverNation.getName());
-                    message.append(": " + ResourceType.resourcesToString(amount) + ", note: `#deposit`");
+                    message.append(": " + ResourceType.toString(amount) + ", note: `#deposit`");
                     RateLimitUtil.queueMessage(receiverChannel, message.toString(), true);
                 }
             } catch (Throwable e) {
@@ -290,7 +288,7 @@ public class SendInternalTask {
         body.append("\n");
 
         String note = "#deposit";
-        body.append("**Amount:** `" + ResourceType.resourcesToString(amount) + "`\n- worth: ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + "\n");
+        body.append("**Amount:** `" + ResourceType.toString(amount) + "`\n- worth: ~$" + MathMan.format(ResourceType.convertedTotal(amount)) + "\n");
         body.append("**Sender**: " + toMarkdown(senders, true) + "\n");
         body.append("**Receiver**: " + receiverName + "\n");
         body.append("**Note**: `" + note + "`\n");
@@ -369,7 +367,7 @@ public class SendInternalTask {
         for (int i = 0; i < amount.length; i++) {
             if (Math.round((diff[i] - amount[i]) * 100) > 1) {
                 String name = account.isGuild() ? account.asGuild().getGuild().toString() : account.isAlliance() ? account.asAlliance().getMarkdownUrl() : account.asNation().getMarkdownUrl();
-                String[] message = {"Internal error: " + ResourceType.resourcesToString(diff) + " != " + ResourceType.resourcesToString(amount),
+                String[] message = {"Internal error: " + ResourceType.toString(diff) + " != " + ResourceType.toString(amount),
                         "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.nationOrAllianceOrGuild(account.getQualifiedId()) + " in " + senderOffshore.getGuildDB()};
                 return new TransferResult(OffshoreInstance.TransferStatus.OTHER, account, amount, "#deposit").addMessage(message);
             }
@@ -502,7 +500,7 @@ public class SendInternalTask {
     private void checkNotGreater(double[] amount, long maxValue) {
         double value = ResourceType.convertedTotal(amount);
         if (value > maxValue + 1) {
-            throw new IllegalArgumentException("Cannot send more than $" + MathMan.format(maxValue) + " worth in a single transfer. (`" + ResourceType.resourcesToString(amount) + "` is worth ~$" + MathMan.format(value) + ")");
+            throw new IllegalArgumentException("Cannot send more than $" + MathMan.format(maxValue) + " worth in a single transfer. (`" + ResourceType.toString(amount) + "` is worth ~$" + MathMan.format(value) + ")");
         }
     }
 

@@ -231,7 +231,7 @@ public class StockCommands {
             double rssValue = ResourceType.convertedTotal(resourceShares);
             total += rssValue;
             response.append("**Resources**: worth: ~$").append(MathMan.format(rssValue)).append("\n");
-            response.append(ResourceType.resourcesToString(resourceShares)).append("\n");
+            response.append(ResourceType.toString(resourceShares)).append("\n");
         }
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         for (Map.Entry<Exchange, Long> entry : myShares.entrySet()) {
@@ -665,7 +665,7 @@ public class StockCommands {
 
         if (!force) {
             String title = "Confirm transfer worth: $" + MathMan.format(ResourceType.convertedTotal(resources));
-            String body = "Amount: " + ResourceType.resourcesToString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAllianceName();
+            String body = "Amount: " + ResourceType.toString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAllianceName();
 
             channel.create().confirmation(title, body, command).send();
             return null;
@@ -730,7 +730,7 @@ public class StockCommands {
     public String withdrawAA(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Me DBNation me, DBAlliance alliance, Map<ResourceType, Double> resources, @Switch("f") boolean force) {
         if (!force) {
             String title = "Confirm transfer worth: $" + MathMan.format(ResourceType.convertedTotal(resources));
-            String body = "Amount: " + ResourceType.resourcesToString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";
+            String body = "Amount: " + ResourceType.toString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";
 
             channel.create().confirmation(title, body, command).send();
             return null;

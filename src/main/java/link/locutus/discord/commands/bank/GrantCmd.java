@@ -234,7 +234,7 @@ public class GrantCmd extends Command {
                     Grant grant = generateGrant(typeArg, guildDb, nation, num, flags, false, ignore);
                     row.add(grant.getInstructions());
                     row.add(ResourceType.convertedTotal(grant.cost()));
-                    row.add(ResourceType.resourcesToString(grant.cost()));
+                    row.add(ResourceType.toString(grant.cost()));
 
                     total = ResourceType.add(total, ResourceType.resourcesToMap(grant.cost()));
                     if (factor != null) {
@@ -250,7 +250,7 @@ public class GrantCmd extends Command {
 
             sheet.updateWrite();
 
-            String totalStr = ResourceType.resourcesToString(total) + " worth ~$" + MathMan.format(ResourceType.convertedTotal(total));
+            String totalStr = ResourceType.toString(total) + " worth ~$" + MathMan.format(ResourceType.convertedTotal(total));
             sheet.attach(channel.create().append(totalStr), "grant", null, false, 0).send();
             return null;
         }
@@ -284,7 +284,7 @@ public class GrantCmd extends Command {
 
         JSONObject command = CM.transfer.resources.cmd.receiver(
                 me.getUrl()).transfer(
-                ResourceType.resourcesToString(resources)).depositType(
+                ResourceType.toString(resources)).depositType(
                 grant.getType().toString()).nationAccount(
                 (nationAccount == null ? me : nationAccount).getUrl()).senderAlliance(
                 allianceAccount != null ? allianceAccount.getUrl() : null).allianceAccount(
@@ -301,7 +301,7 @@ public class GrantCmd extends Command {
                 "false"
         ).toJson();
         StringBuilder msg = new StringBuilder();
-        msg.append(ResourceType.resourcesToString(resources)).append("\n")
+        msg.append(ResourceType.toString(resources)).append("\n")
                 .append("Current values for: " + me.getNation()).append('\n')
                 .append("Cities: " + me.getCities()).append('\n')
                 .append("Infra: " + me.getAvg_infra()).append('\n')

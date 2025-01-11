@@ -325,10 +325,10 @@ public class ExchangeCommands {
         }
         StringBuilder response = new StringBuilder();
         if (!added.isEmpty()) {
-            response.append("Added: ").append(ResourceType.resourcesToString(added)).append("\n");
+            response.append("Added: ").append(ResourceType.toString(added)).append("\n");
         }
         if (!failed.isEmpty()) {
-            response.append("Failed: ").append(ResourceType.resourcesToString(failed)).append("\n");
+            response.append("Failed: ").append(ResourceType.toString(failed)).append("\n");
         }
         return response.toString().trim();
     }

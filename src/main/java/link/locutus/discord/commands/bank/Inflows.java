@@ -179,7 +179,7 @@ public class Inflows extends Command {
                 totals = ResourceType.add(totals, ResourceType.resourcesToMap(rss));
             }
 
-            message.append(ResourceType.resourcesToString(totals));
+            message.append(ResourceType.toString(totals));
 
             result.append(title).append(": ").append(message).append("\n");
         }
