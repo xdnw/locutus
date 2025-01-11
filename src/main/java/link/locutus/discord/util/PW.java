@@ -23,6 +23,7 @@ import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
+import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -1049,28 +1050,15 @@ public final class PW {
 
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
-        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
-
-        long day = TimeUtil.getDay(snapshotDate);
-        boolean loadCities = true;
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
-        ValueStore store = ph.createLocals(guild, null, null);
-        Predicate<DBNation> filter = ph.parseFilter(store, filterStr);
+
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
+        long day = TimeUtil.getDay(snapshotDate);
         try {
-            Map<Integer, DBNationSnapshot> nationMap = dumper.load().getNations(day);
-            Set<DBNation> result = new ObjectOpenHashSet<>();
-            if (filter != null) {
-                for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
-                    DBNationSnapshot snapshot = entry.getValue();
-                    if (filter.test(snapshot)) {
-                        result.add(snapshot);
-                    }
-                }
-            } else {
-                for (Map.Entry<Integer, DBNationSnapshot> entry : nationMap.entrySet()) {
-                    result.add(entry.getValue());
-                }
-            }
+            ValueStore store = ph.createLocals(guild, null, null);
+            NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);
+            Set<DBNation> result = ph.parseSet(store, filterStr, snapshot, true);
+            System.out.println("Result " + result.size());
             return result;
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);

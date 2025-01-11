@@ -2503,6 +2503,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Minutes since last active in-game")
     public int getActive_m(@Default @Timestamp Long time) {
+        if (time == null) time = getSnapshot();
         long now = System.currentTimeMillis();
         if (time != null) {
             if (time < now - TimeUnit.MINUTES.toMillis(15)) {

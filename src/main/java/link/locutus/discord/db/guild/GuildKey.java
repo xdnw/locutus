@@ -1609,7 +1609,8 @@ public class GuildKey {
         @Override
         public String help() {
             return "If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note\n" +
-                    "This is performed when deposits are checked";
+                    "This is performed when deposits are checked, and only to new deposits\n" +
+                    "Requires resource conversion to be enabled for the nation";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
