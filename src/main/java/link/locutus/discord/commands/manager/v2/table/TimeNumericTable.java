@@ -453,6 +453,9 @@ public abstract class TimeNumericTable<T> {
     }
 
     public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long origin) throws IOException {
+        if (type == GraphType.HORIZONTAL_BAR || type == GraphType.STACKED_BAR || type == GraphType.SIDE_BY_SIDE_BAR) {
+            isBar = true;
+        }
         XYPlot plot = getTable(timeFormat, numberFormat, origin);
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

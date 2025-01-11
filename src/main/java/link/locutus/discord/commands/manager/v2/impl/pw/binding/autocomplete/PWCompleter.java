@@ -80,6 +80,13 @@ public class PWCompleter extends BindingHelper {
     public List<String> NationMeta(String input) {
         return StringMan.completeEnum(input, NationMeta.class);
     }
+
+    @Autocomplete
+    @Binding(types={WarCostByDayMode.class})
+    public List<String> WarCostByDayMode(String input) {
+        return StringMan.completeEnum(input, WarCostByDayMode.class);
+    }
+
     @Autocomplete
     @Binding(types={Font.class})
     public List<String> Font(String input) {
