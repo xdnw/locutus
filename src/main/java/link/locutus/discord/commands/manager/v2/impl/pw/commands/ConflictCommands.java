@@ -962,6 +962,7 @@ public class ConflictCommands {
         manager.importFromExternal(file);
         return "Done! A restart is required to load the new data.";
     }
+
     @Command(desc = "Add all wars declared from none to a conflict if the opposing alliance matches a conflict's participants")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String addManualWars(ConflictManager manager, Conflict conflict, DBNation nation, DBAlliance mark_as_alliance) {

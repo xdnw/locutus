@@ -627,7 +627,12 @@ public class ConflictManager {
                 }
             }
 
-            wars.addAll(loadManualWars(conflicts));
+            Set<DBWar> manualWars = loadManualWars(conflicts);
+            for (DBWar war : manualWars) {
+                if (updateWar(null, war, allowedConflicts)) {
+                    wars.add(war);
+                }
+            }
 
             if (!wars.isEmpty()) {
                 Map<Integer, Byte> subTypes = loadSubTypes();
