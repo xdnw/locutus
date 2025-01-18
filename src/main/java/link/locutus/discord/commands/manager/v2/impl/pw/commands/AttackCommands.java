@@ -1,10 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -46,14 +42,13 @@ public class AttackCommands {
             }
         }
 
+        int reqUnarmedIT = (int) Math.ceil(defStr * 3.4);
+        int reqArmedIT = (int) Math.ceil(defStr * 3.4 / 1.7_5);
 
-        int reqUnarmedIT = (int) Math.ceil(defStr * 2.5);
-        int reqArmedIT = (int) Math.ceil(defStr * 2.5 / 1.7_5);
+        int reqUnarmedUF = (int) Math.ceil(defStr / 3.4);
+        int reqArmedUF = (int) Math.ceil(defStr / (3.4 * 1.7_5));
 
-        int reqUnarmedUF = (int) Math.ceil(defStr * 0.4);
-        int reqArmedUF = (int) Math.ceil(defStr * 0.4 / 1.7_5);
-
-        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.7_5 Unarmed\n" + "- Guaranteed IT needs 3.4x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
+        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" + "- Guaranteed IT needs 3.4x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.29x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
 
         return response.toString();
     }
@@ -96,6 +91,8 @@ public class AttackCommands {
                             @Switch("ac") boolean attAirControl,
                             @Switch("dac") boolean defAirControl,
 
+                            @Switch("agc") boolean att_ground_control,
+
                             @Switch("s") boolean selfIsDefender,
 
                             @Switch("ua") boolean unequipAttackerSoldiers,
@@ -104,6 +101,9 @@ public class AttackCommands {
                             @Switch("ap") Set<Project> attackerProjects,
                             @Switch("dp") Set<Project> defenderProjects
     ) {
+        if (att_ground_control && attack != AttackType.GROUND) {
+            throw new IllegalArgumentException("Ground control can only be used with ground attacks, not " + attack.name());
+        }
         DBNation attacker = (selfIsDefender ? enemy : me).copy();
         DBNation defender = (selfIsDefender ? me : enemy).copy();
         if (attackerMilitary != null) {
@@ -153,6 +153,11 @@ public class AttackCommands {
             String avgStr = avg + " worth $" + avgValue;
             return ("- " + entry.getKey().name()) + ("=") + ("`[" + entry.getValue().getKey()) + ("- ") + (entry.getValue().getValue()) + ("] (avg:" + avgStr + ")`\n");
         };
+        Map<ResourceType, Double> attConsume = attack.getConsumption(attacker::getUnits, !unequipAttackerSoldiers);
+        double attConsumeValue = attConsume.entrySet().stream().mapToDouble(e -> e.getValue() * e.getKey().getMarketValue()).sum();
+        response.append("Attacker Consumption (worth: ~$" + MathMan.format(attConsumeValue) + "):\n" +
+                "`" + ResourceType.toString(attConsume) + "`\n");
+
         switch (attack) {
             case MISSILE, NUKE: {
                 response.append("\n");
@@ -161,7 +166,7 @@ public class AttackCommands {
                     response.append("Defender has project " + Projects.IRON_DOME.name() + " (30% interception)\n");
                 }
                 Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
-                        = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
+                        = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers, att_ground_control);
                 response.append("Attacker losses: ");
                 for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
                     response.append(getAvgStr.apply(entry));
@@ -202,7 +207,7 @@ public class AttackCommands {
                     response.append("\n").append(success.name()).append("=").append(pctStr).append("\n");
 
                     Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
-                            = attack.getCasualties(attacker, defender, success, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
+                            = attack.getCasualties(attacker, defender, success, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers, att_ground_control);
                     response.append("Attacker losses: ");
                     for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
                         response.append(getAvgStr.apply(entry));

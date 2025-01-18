@@ -351,14 +351,13 @@ Soldiers is rand (88, 110) / 100 * Soldiers
             double factor = 0;
             switch (victory) {
                 case 3:
-                    factor = 0.0075;
+                    factor = 0.005025;
                     break;
                 case 2:
-                    factor = 0.005;
+                    factor = 0.00335;
                     break;
                 case 1:
-                    factor = 0.0025;
-
+                    factor = 0.001675;
             }
             double defAirLosses = tanks * factor;
             enemy.setAircraft((int) Math.max(0, enemy.getAircraft() - defAirLosses));

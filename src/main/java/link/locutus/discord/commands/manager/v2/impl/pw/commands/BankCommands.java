@@ -3616,8 +3616,12 @@ public class BankCommands {
                            @Arg("Include transfers marked as ignore")
                            @Switch("i") boolean includeIgnored,
                            @Switch("z") boolean allowCheckDeleted,
-                           @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed
+                           @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed,
+                           @Switch("s") boolean show_expiring_records
     ) throws IOException {
+        if (show_expiring_records && !nationOrAllianceOrGuild.isNation()) {
+            throw new IllegalArgumentException("Only nations can show expiring records");
+        }
         boolean condensedFormat = GuildKey.DISPLAY_CONDENSED_DEPOSITS.getOrNull(db) == Boolean.TRUE;
         if (!nationOrAllianceOrGuild.isNation() && !nationOrAllianceOrGuild.isTaxid()) {
             showCategories = false;
@@ -3680,8 +3684,13 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild) && !Roles.ECON_STAFF.has(author, guild)) return "You do not have permission to check other nation's deposits";
-            // txList
-            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeExpired, includeIgnored, f -> true, true);
+            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, true);
+            accountDeposits = PW.sumNationTransactions(nation, db, offshoreIds, transactions, includeExpired, includeIgnored, f -> true);
+
+            if (show_expiring_records) {
+
+            }
+
             if (!hideEscrowed) {
                 Map.Entry<double[], Long> escoredPair = db.getEscrowed(nation);
                 if (escoredPair != null) {

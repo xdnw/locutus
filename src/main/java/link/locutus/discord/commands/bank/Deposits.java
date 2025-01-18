@@ -46,7 +46,8 @@ public class Deposits extends Command {
                 "Add `-t` to show taxes separately (See flag: `-b` and `!synctaxes`)\n\n" +
                 "Note: Use `" + Settings.commandPrefix(true) + "synctaxes` to update tax records\n" +
                 "Add `-d` to show results in dm\n" +
-                "Add `-h` to hide escrow balance";
+                "Add `-h` to hide escrow balance\n" +
+                "Add `-r` to show expiring records";
     }
 
     @Override
@@ -104,7 +105,8 @@ public class Deposits extends Command {
                 includeExpired,
                 includeIgnored,
                 false,
-                flags.contains('h')
+                flags.contains('h'),
+                flags.contains('r')
         );
 //
 //        Map<String, Map<DepositType, double[]>> accountDeposits = new HashMap<>();

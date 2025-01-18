@@ -772,9 +772,9 @@ public class CommandManager {
                 response.append("- ").append(commandRef.toSlashMention()).append("\n");
             }
         }
-        response.append("You can still message Locutus with the command, e.g. `@locutus ").append(ref.get(0).toSlashCommand(false)).append("`\n");
+        response.append("You can still message the bot with the command, e.g. `@Locutus ").append(ref.get(0).toSlashCommand(false)).append("`\n");
         response.append("Specifying arguments is optional, here's an example:\n");
-        response.append("`/who Borg` versus `/who nationoralliances: Borg`\n");
+        response.append("`/who Danzek` versus `/who nationoralliances: Danzek`\n");
         response.append("- When arguments have spaces in them you must either use quotes, or specify the argument\n");
         if (Roles.ADMIN.has(user, guild)) {
             response.append("_To hide this message: " + CM.settings.info.cmd.key(GuildKey.HIDE_LEGACY_NOTICE.name()).value("true") + "_");
