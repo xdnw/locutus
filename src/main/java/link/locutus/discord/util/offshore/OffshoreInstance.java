@@ -741,7 +741,7 @@ public class OffshoreInstance {
                     double[] missing = null;
 
                     for (ResourceType type : ResourceType.values) {
-                        if (Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                        if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                             if (missing == null) {
                                 missing = ResourceType.getBuffer();
                             }
@@ -800,7 +800,7 @@ public class OffshoreInstance {
                     double[] depoArr = (taxDepoValue < txValue ? taxDepositsNormalized : taxDeposits);
                     double[] missing = null;
                     for (ResourceType type : ResourceType.values) {
-                        if (Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                        if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                             if (missing == null) {
                                 missing = ResourceType.getBuffer();
                             }
