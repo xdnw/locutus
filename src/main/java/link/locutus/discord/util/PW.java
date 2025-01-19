@@ -596,7 +596,8 @@ public final class PW {
             boolean allowConversion = (allowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
+            Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : f -> false;
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {

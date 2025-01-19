@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
@@ -3641,6 +3642,8 @@ public class BankCommands {
         long escrowExpire = 0;
 
         List<String> footers = new ArrayList<>();
+        IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null) : channel;
+        IMessageBuilder msg = output.create();
 
         if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
@@ -3677,7 +3680,6 @@ public class BankCommands {
             if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild())) {
                 return "You do not have permission to check another guild's deposits";
             }
-            // txList
             double[] deposits = offshore.getDeposits(otherDb);
             accountDeposits.put(DepositType.DEPOSIT, deposits);
 
@@ -3688,7 +3690,72 @@ public class BankCommands {
             accountDeposits = PW.sumNationTransactions(nation, db, offshoreIds, transactions, includeExpired, includeIgnored, f -> true);
 
             if (show_expiring_records) {
+                long now = System.currentTimeMillis();
+                double[] perDay = ResourceType.getBuffer();
 
+                List<List<Object>> rows = new ObjectArrayList<>();
+                List<Object> header = new ObjectArrayList<>(Arrays.asList(
+                        "sign",
+                        "end_date",
+                        "created",
+                        "initial_value",
+                        "decay_value/day",
+                        "decay/day",
+                        "initial",
+                        "remaining"
+                ));
+                rows.add(header);
+
+                for (Map.Entry<Integer, Transaction2> entry : transactions) {
+                    Transaction2 record = entry.getValue();
+                    if (record.note == null || record.note.isEmpty()) continue;
+                    boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
+                    if (!isOffshoreSender && !record.isInternal()) continue;
+                    int sign = entry.getKey();
+
+                    Map<String, String> notes = PW.parseTransferHashNotes(record.note);
+                    String expireVal = notes.get("#expire");
+                    String decayVal = notes.get("#decay");
+                    if (expireVal == null && decayVal == null) continue;
+                    String dateStr = decayVal != null ? decayVal : expireVal;
+                    long expireDate = TimeUtil.timeToSec_BugFix1(dateStr, record.tx_datetime) * 1000L;
+                    if (expireDate + record.tx_datetime <= now) continue;
+
+                    List<Object> row = new ObjectArrayList<>();
+                    row.add(sign);
+                    row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(expireDate + record.tx_datetime));
+                    row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(record.tx_datetime));
+                    row.add(ResourceType.convertedTotal(record.resources));
+
+                    if (decayVal != null) {
+                        double[] principal = record.resources.clone();
+                        double decayFactor = 1 - (now - record.tx_datetime) / (double) expireDate;
+                        double[] remaining = PW.multiply(principal.clone(), decayFactor);
+                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / expireDate;
+                        double[] decayPerDay = ResourceType.getBuffer();
+                        for (int i = 0; i < principal.length; i++) {
+                            decayPerDay[i] = Math.min(remaining[i], principal[i] * decayFactorPerDay);
+                        }
+                        double decayValuePerDay = ResourceType.convertedTotal(decayPerDay);
+
+                        row.add(MathMan.format(decayValuePerDay));
+                        row.add(ResourceType.toString(decayPerDay));
+                        row.add(ResourceType.toString(principal));
+                        row.add(ResourceType.toString(remaining));
+                    } else {
+                        row.add("");
+                        row.add("");
+                        row.add(ResourceType.toString(record.resources));
+                        row.add(ResourceType.toString(record.resources));
+                    }
+                }
+                if (rows.size() > 1) {
+                    String title = "expire_records.csv";
+                    String csv = StringMan.join(rows, "\n", f -> StringMan.join(f, "\t"));
+                    msg.file(title, csv);
+                } else {
+                    footers.add("No remaining expiring records found");
+                }
             }
 
             if (!hideEscrowed) {
@@ -3861,9 +3928,7 @@ public class BankCommands {
             }
         }
 
-        IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null) : channel;
-
-        IMessageBuilder msg = output.create().embed(title, response.toString());
+        msg.embed(title, response.toString());
         for (Map.Entry<String, Map.Entry<CommandRef, Boolean>> entry : buttons.entrySet()) {
             String label = entry.getKey();
             CommandRef cmd = entry.getValue().getKey();
