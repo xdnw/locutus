@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -42,7 +43,7 @@ public class TaxRecordCategorizer2 {
     private final Predicate<Integer> acceptsNation;
 
     private final Map<Integer, TaxBracket> brackets;
-    private final List<BankDB.TaxDeposit> taxes;
+    private final List<TaxDeposit> taxes;
     private final Map<Integer, TaxBracket> bracketsByNation;
     private final Map<Integer, List<DBNation>> nationsByBracket;
     private final List<DBNation> allNations;
@@ -116,7 +117,7 @@ public class TaxRecordCategorizer2 {
         return copy;
     }
 
-    public Map<TaxRecordCategorizer2.TransactionType, double[][]> sumTransfersByCategoryByTurn(long turnStart, long turnEnd, List<BankDB.TaxDeposit> taxRecords, List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>> transfers) {
+    public Map<TaxRecordCategorizer2.TransactionType, double[][]> sumTransfersByCategoryByTurn(long turnStart, long turnEnd, List<TaxDeposit> taxRecords, List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>> transfers) {
         int len = (int) (turnEnd - turnStart + 1);
 
         double[][] totalGrantsByTurn = new double[len][ResourceType.values.length];
@@ -125,7 +126,7 @@ public class TaxRecordCategorizer2 {
         double[][] totalTaxByTurn = new double[len][ResourceType.values.length];
         double[][] totalDepositsByTurn = new double[len][ResourceType.values.length];
 
-        for (BankDB.TaxDeposit record : taxRecords) {
+        for (TaxDeposit record : taxRecords) {
             long turn = record.getTurn();
             int turnRel = (int) (turn - turnStart);
             if (turnRel >= totalTaxByTurn.length || turnRel < 0) continue;
@@ -216,7 +217,7 @@ public class TaxRecordCategorizer2 {
 
         this.brackets = new HashMap<>(db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(60)));
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
-            BankDB.TaxDeposit tax = getTaxes().get(i);
+            TaxDeposit tax = getTaxes().get(i);
             if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {
                 TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, "", tax.moneyRate, tax.resourceRate, System.currentTimeMillis());
                 brackets.put(tax.tax_id, bracket);
@@ -246,13 +247,13 @@ public class TaxRecordCategorizer2 {
             }
         }
 
-        Map<Integer, List<BankDB.TaxDeposit>> depositsByBracket = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<TaxDeposit>> depositsByBracket = new Int2ObjectOpenHashMap<>();
 
         Map<Integer, Map<Long, Integer>> nationToBracketByTimeMap = new Int2ObjectOpenHashMap<>();
         this.allNationDepositCount = new Int2ObjectOpenHashMap<>();
         this.bracketToNationDepositCount = new Int2ObjectOpenHashMap<>();
 
-        for (BankDB.TaxDeposit tax : getTaxes()) {
+        for (TaxDeposit tax : getTaxes()) {
             if (tax.tax_id <= 0) {
                 TaxBracket currentBracket = getBracketsByNation().get(tax.nationId);
                 if (currentBracket != null && currentBracket.moneyRate == tax.moneyRate && currentBracket.rssRate == tax.resourceRate) {
@@ -414,10 +415,10 @@ public class TaxRecordCategorizer2 {
 
 
         int[] internalTaxRate = new int[2];
-        for (Map.Entry<Integer, List<BankDB.TaxDeposit>> entry : depositsByBracket.entrySet()) {
+        for (Map.Entry<Integer, List<TaxDeposit>> entry : depositsByBracket.entrySet()) {
             int taxId = entry.getKey();
-            List<BankDB.TaxDeposit> records = entry.getValue();
-            for (BankDB.TaxDeposit tax : records) {
+            List<TaxDeposit> records = entry.getValue();
+            for (TaxDeposit tax : records) {
                 if (tax.internalMoneyRate > 0) internalTaxRate[0] = tax.internalMoneyRate;
                 else internalTaxRate[0] = taxBase.money;
                 if (tax.internalResourceRate > 0) internalTaxRate[1] = tax.internalResourceRate;
@@ -481,7 +482,7 @@ public class TaxRecordCategorizer2 {
         return brackets;
     }
 
-    public List<BankDB.TaxDeposit> getTaxes() {
+    public List<TaxDeposit> getTaxes() {
         return taxes;
     }
 

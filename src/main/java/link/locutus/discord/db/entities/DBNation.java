@@ -33,6 +33,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.DBNationGetter;
 import link.locutus.discord.db.entities.nation.DBNationSetter;
@@ -2375,7 +2376,7 @@ public abstract class DBNation implements NationOrAlliance {
             transactions.addAll(offsets);
         }
 
-        List<BankDB.TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id()) : new ArrayList<>();
+        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id()) : new ArrayList<>();
 
         Set<Long> finalTracked = tracked;
         taxes.removeIf(f -> !finalTracked.contains((long) f.allianceId));
@@ -2389,7 +2390,7 @@ public abstract class DBNation implements NationOrAlliance {
             defTaxBase = new int[]{0, 0};
         }
 
-        for (BankDB.TaxDeposit deposit : taxes) {
+        for (TaxDeposit deposit : taxes) {
             if (deposit.date < cutOff) continue;
             int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
             int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
@@ -4914,11 +4915,16 @@ public abstract class DBNation implements NationOrAlliance {
             "soldiers tanks aircraft ships\n" +
             "Maximum is: 5553")
     public String getMMR() {
-        int soldiers = (int) Math.round(getSoldiers() / ((double) data()._cities() * Buildings.BARRACKS.getUnitCap()));
-        int tanks = (int) Math.round(getTanks() / ((double) data()._cities() * Buildings.FACTORY.getUnitCap()));
-        int aircraft = (int) Math.round(getAircraft() / ((double) data()._cities() * Buildings.HANGAR.getUnitCap()));
-        int ships = (int) Math.round(getShips() / ((double) data()._cities() * Buildings.DRYDOCK.getUnitCap()));
-        return soldiers + "" + tanks + "" + aircraft + "" + ships;
+        double[] arr = getMMRUnitArr();
+        return Math.round(arr[0]) + "" + Math.round(arr[1]) + "" + Math.round(arr[2]) + "" + Math.round(arr[3]);
+    }
+
+    public double[] getMMRUnitArr() {
+        double soldiers = getSoldiers() / ((double) data()._cities() * Buildings.BARRACKS.getUnitCap());
+        double tanks = getTanks() / ((double) data()._cities() * Buildings.FACTORY.getUnitCap());
+        double aircraft = getAircraft() / ((double) data()._cities() * Buildings.HANGAR.getUnitCap());
+        double ships = getShips() / ((double) data()._cities() * Buildings.DRYDOCK.getUnitCap());
+        return new double[]{soldiers, tanks, aircraft, ships};
     }
 
     @Command(desc = "Total monetary value of military units")

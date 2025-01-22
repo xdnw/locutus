@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
@@ -60,8 +61,8 @@ public class EconPages {
         long turnEnd = TimeUtil.getTurn(end);
         if (turnEnd - turnStart > 365 * 12) return "Timeframe is too large";
 
-        Map<Integer, List<BankDB.TaxDeposit>> taxRecordsByBracket = new HashMap<>();
-        for (BankDB.TaxDeposit tax : categorized.getTaxes()) {
+        Map<Integer, List<TaxDeposit>> taxRecordsByBracket = new HashMap<>();
+        for (TaxDeposit tax : categorized.getTaxes()) {
             long turn = tax.getTurn();
             long turnRel = turn - turnStart;
             taxRecordsByBracket.computeIfAbsent(tax.tax_id, f -> new ArrayList<>()).add(tax);
@@ -71,8 +72,8 @@ public class EconPages {
 
         Map<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> categorizedByTurnByBracket = new HashMap<>();
 
-        for (Map.Entry<Integer, List<BankDB.TaxDeposit>> entry : taxRecordsByBracket.entrySet()) {
-            List<BankDB.TaxDeposit> taxRecords = entry.getValue();
+        for (Map.Entry<Integer, List<TaxDeposit>> entry : taxRecordsByBracket.entrySet()) {
+            List<TaxDeposit> taxRecords = entry.getValue();
             List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>> transfers = txsByType.getOrDefault(entry.getKey(), Collections.emptyList());
 
             Map<TaxRecordCategorizer2.TransactionType, double[][]> result = categorized.sumTransfersByCategoryByTurn(turnStart, turnEnd, taxRecords, transfers);
@@ -134,12 +135,30 @@ public class EconPages {
         }
         TaxRecordCategorizer2 categorized = new TaxRecordCategorizer2(db, start, end, dontRequireGrant, dontRequireTagged, dontRequireExpiry, includeDeposits, allowedNations, errors::add);
         return WebStore.render(f -> JtetaxexpensesGenerated.render(f, null, ws,
-                db, categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
-                categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
-                categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),
-                categorized.getIncomeTotal(), categorized.getIncomeByBracket(), categorized.getIncomeByNation(), categorized.getIncomeByNationByBracket(),
-                categorized.getTransactionsByNation(), categorized.getTransactionsByBracket(), categorized.getTransactionsByNationByBracket(), categorized.getExpenseTransfers(),
-                categorized.getExpenseTotal(), categorized.getExpensesByBracket(), categorized.getExpensesByNation(), categorized.getExpensesByNationByBracket()
+                db,
+                categorized.getAlliances(),
+                !dontRequireGrant,
+                !dontRequireExpiry,
+                !dontRequireTagged,
+                categorized.getBrackets(),
+                categorized.getTaxes(),
+                categorized.getBracketsByNation(),
+                categorized.getNationsByBracket(),
+                categorized.getAllNations(),
+                categorized.getBracketToNationDepositCount(),
+                categorized.getAllNationDepositCount(),
+                categorized.getIncomeTotal(),
+                categorized.getIncomeByBracket(),
+                categorized.getIncomeByNation(),
+                categorized.getIncomeByNationByBracket(),
+                categorized.getTransactionsByNation(),
+                categorized.getTransactionsByBracket(),
+                categorized.getTransactionsByNationByBracket(),
+                categorized.getExpenseTransfers(),
+                categorized.getExpenseTotal(),
+                categorized.getExpensesByBracket(),
+                categorized.getExpensesByNation(),
+                categorized.getExpensesByNationByBracket()
         ));
     }
 }

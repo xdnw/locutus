@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -25,8 +24,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
@@ -3407,7 +3406,7 @@ public class BankCommands {
         if (startDate == null) startDate = 0L;
         if (endDate == null) endDate = Long.MAX_VALUE;
 
-        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        List<TaxDeposit> taxes = new ArrayList<>();
         for (int allianceId : allianceIds) {
             taxes.addAll(Locutus.imp().getBankDB().getTaxesByAA(allianceId));
         }
@@ -3416,7 +3415,7 @@ public class BankCommands {
         int[] baseArr = baseTaxRate == null ? null : baseTaxRate.toArray();
         TaxRate aaBase = db.getOrNull(GuildKey.TAX_BASE);
 
-        for (BankDB.TaxDeposit tax : taxes) {
+        for (TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
             DBNation nation = DBNation.getById(tax.nationId);
             if (!nations.contains(nation)) continue;
@@ -3457,7 +3456,7 @@ public class BankCommands {
         if (startDate == null) startDate = 0L;
         if (endDate == null) endDate = Long.MAX_VALUE;
 
-        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        List<TaxDeposit> taxes = new ArrayList<>();
         for (int aaId : aaIds) {
             taxes.addAll(Locutus.imp().getBankDB().getTaxesPaid(nation.getNation_id(), aaId));
         }
@@ -3470,7 +3469,7 @@ public class BankCommands {
         }
         sheet.setHeader(header);
 
-        for (BankDB.TaxDeposit tax : taxes) {
+        for (TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(tax.date)));

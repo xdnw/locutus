@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
@@ -126,7 +127,7 @@ public class SyncTaxes extends Command {
                     if (aaList == null) {
                         return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
                     }
-                    List<BankDB.TaxDeposit> taxes = aaList.updateTaxes(startDate);
+                    List<TaxDeposit> taxes = aaList.updateTaxes(startDate);
                     return "Updated " + taxes.size() + " records.";
                 }
             }
@@ -144,7 +145,7 @@ public class SyncTaxes extends Command {
 
         ResourceType[] resources = {ResourceType.MONEY, ResourceType.FOOD, ResourceType.COAL, ResourceType.OIL, ResourceType.URANIUM, ResourceType.LEAD, ResourceType.IRON, ResourceType.BAUXITE, ResourceType.GASOLINE, ResourceType.MUNITIONS, ResourceType.STEEL, ResourceType.ALUMINUM};
 
-        List<BankDB.TaxDeposit> records = new ArrayList<>();
+        List<TaxDeposit> records = new ArrayList<>();
 
         for (Iterator<List<Object>> iter = rows.iterator(); iter.hasNext();) {
             List<Object> row = iter.next();
@@ -187,7 +188,7 @@ public class SyncTaxes extends Command {
             }
 
             TaxRate internal = guildDb.getHandler().getInternalTaxrate(nationId);
-            BankDB.TaxDeposit taxRecord = new BankDB.TaxDeposit(allianceId, date, 0, taxId, nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
+            TaxDeposit taxRecord = new TaxDeposit(allianceId, date, 0, taxId, nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
             records.add(taxRecord);
         }
 
@@ -195,9 +196,9 @@ public class SyncTaxes extends Command {
             return "Please pin, and update this sheet: " + sheet.getURL(false, false);
         }
 
-        Collections.sort(records, new Comparator<BankDB.TaxDeposit>() {
+        Collections.sort(records, new Comparator<TaxDeposit>() {
             @Override
-            public int compare(BankDB.TaxDeposit o1, BankDB.TaxDeposit o2) {
+            public int compare(TaxDeposit o1, TaxDeposit o2) {
                 if (o1.date == o2.date) {
                     return Integer.compare(o1.nationId, o2.nationId);
                 }
@@ -205,9 +206,9 @@ public class SyncTaxes extends Command {
             }
         });
 
-        Iterator<BankDB.TaxDeposit> iter = records.iterator();
-        BankDB.TaxDeposit prev = null;
-        BankDB.TaxDeposit curr = null;
+        Iterator<TaxDeposit> iter = records.iterator();
+        TaxDeposit prev = null;
+        TaxDeposit curr = null;
         while (iter.hasNext()) {
             prev = curr;
             curr = iter.next();
@@ -219,7 +220,7 @@ public class SyncTaxes extends Command {
         bank.clearTaxDeposits(aaId);
 
         for (int i = 0; i < records.size(); i++) {
-            BankDB.TaxDeposit record = records.get(i);
+            TaxDeposit record = records.get(i);
             record.index = i;
             bank.addTaxDeposit(record);
         }
@@ -240,9 +241,9 @@ public class SyncTaxes extends Command {
 
         sheet.setHeader(header);
 
-        List<BankDB.TaxDeposit> byTurn = Locutus.imp().getBankDB().getTaxesByTurn(aaId);
+        List<TaxDeposit> byTurn = Locutus.imp().getBankDB().getTaxesByTurn(aaId);
 
-        for (BankDB.TaxDeposit deposit : byTurn) {
+        for (TaxDeposit deposit : byTurn) {
             header.clear();
             double total = ResourceType.convertedTotal(deposit.resources);
             double totalScaled = 0;

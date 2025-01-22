@@ -45,7 +45,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(SetGuild.class)
-    public Object set_guild(Context context, Guild guild, @Me @Default DBAuthRecord auth) {
+    public SetGuild set_guild(Context context, Guild guild, @Me @Default DBAuthRecord auth) {
         String id = guild.getId();
         String name = guild.getName();
         String icon = guild.getIconUrl();
@@ -55,7 +55,7 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(WebSuccess.class)
-    public Object unset_guild(Context context) {
+    public WebSuccess unset_guild(Context context) {
         String removeCookieStrings = GUILD_ID.getCookieId() + "=; Max-Age=0; Path=/; HttpOnly";
         context.header("Set-Cookie", removeCookieStrings);
         return success();

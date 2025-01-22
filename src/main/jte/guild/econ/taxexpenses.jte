@@ -9,6 +9,7 @@
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
 @import link.locutus.discord.db.BankDB
 @import link.locutus.discord.db.GuildDB
+@import link.locutus.discord.db.TaxDeposit
 @import link.locutus.discord.db.entities.Coalition
 @import link.locutus.discord.db.entities.TaxBracket
 @import link.locutus.discord.util.PW
@@ -38,7 +39,7 @@
 @param boolean requireExpiry
 @param boolean requireTagged
 @param Map<Integer, TaxBracket> brackets
-@param List<BankDB.TaxDeposit> taxes
+@param List<TaxDeposit> taxes
 @param Map<Integer, TaxBracket> bracketsByNation
 @param Map<Integer, List<DBNation>> nationsByBracket
 @param List<DBNation> nations

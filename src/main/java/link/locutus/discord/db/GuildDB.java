@@ -1531,7 +1531,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long cutOff, boolean includeExpired, boolean includeIgnored) {
-        List<BankDB.TaxDeposit> records;
+        List<TaxDeposit> records;
         if (cutOff == 0) {
             records = Locutus.imp().getBankDB().getTaxesByBracket(taxId);
         } else {
@@ -1546,7 +1546,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (aaBase == null) aaBase = new TaxRate(100, 100);
         int[] baseBuffer = new int[2];
 
-        for (BankDB.TaxDeposit record : records) {
+        for (TaxDeposit record : records) {
             if (!allowedAAIds.contains(record.allianceId)) {
                 throw new IllegalArgumentException("Cannot view taxes for another alliance: " + record.allianceId + ". Guild is registered to: " + StringMan.getString(allowedAAIds));
             }
