@@ -273,14 +273,20 @@ public class CoalitionSide {
     }
 
     private void applyAttackerStats(int allianceId, int nationId, int cities, long day, Consumer<DamageStatGroup> onEach) {
-        allianceIdByNation.putIfAbsent(nationId, allianceId);
+        Integer existing = allianceIdByNation.get(nationId);
+        if (existing == null || existing > allianceId) {
+            allianceIdByNation.put(nationId, allianceId);
+        }
         onEach.accept(getDamageStats(false, allianceId, true));
         onEach.accept(getDamageStats(false, nationId, false));
         onEach.accept(getAllianceDamageStatsByDay(false, allianceId, cities, day));
     }
 
     private void applyDefenderStats(int allianceId, int nationId, int cities, long day, Consumer<DamageStatGroup> onEach) {
-        allianceIdByNation.putIfAbsent(nationId, allianceId);
+        Integer existing = allianceIdByNation.get(nationId);
+        if (existing == null || existing > allianceId) {
+            allianceIdByNation.put(nationId, allianceId);
+        }
         onEach.accept(getDamageStats(true, allianceId, true));
         onEach.accept(getDamageStats(true, nationId, false));
         onEach.accept(getAllianceDamageStatsByDay(true, allianceId, cities, day));
@@ -316,8 +322,6 @@ public class CoalitionSide {
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack, int attackerAA, int nationId, int cities, long day, boolean isAttacker, AttackTypeSubCategory subCategory) {
-        allianceIdByNation.putIfAbsent(nationId, attackerAA);
-
         Map.Entry<DamageStatGroup, DamageStatGroup> aaDamage = damageByAlliance.computeIfAbsent(attackerAA,
                 k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
         Map.Entry<DamageStatGroup, DamageStatGroup> nationDamage = damageByNation.computeIfAbsent(nationId,
