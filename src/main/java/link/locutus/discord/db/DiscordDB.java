@@ -890,6 +890,26 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         });
     }
 
+    public void addUsers(Collection<PNWUser> users) {
+        List<PNWUser> usersFiltered = users.stream().filter(f -> f.getDiscordId() != Settings.INSTANCE.ADMIN_USER_ID && f.getNationId() != Settings.INSTANCE.NATION_ID).collect(Collectors.toList());
+        updateUserCache();
+        // remove if it matches the cache value
+        usersFiltered.removeIf(f -> {
+            PNWUser existing = userNationCache.get(f.getNationId());
+            return existing != null && existing.getDiscordId() == f.getDiscordId();
+        });
+        if (usersFiltered.isEmpty()) return;
+        executeBatch(usersFiltered, "INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`, `date_updated`) VALUES(?, ?, ?, ?)", new ThrowingBiConsumer<PNWUser, PreparedStatement>() {
+            @Override
+            public void acceptThrows(PNWUser user, PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, user.getNationId());
+                stmt.setLong(2, user.getDiscordId());
+                stmt.setString(3, user.getDiscordName());
+                stmt.setLong(4, System.currentTimeMillis());
+            }
+        });
+    }
+
     public Map<Long, PNWUser> getCachedUsers() {
         updateUserCache();
         return Collections.unmodifiableMap(userCache);
@@ -980,6 +1000,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         List<PNWUser> secondary = null;
         for (Map.Entry<Long, PNWUser> entry : cached.entrySet()) {
             PNWUser user = entry.getValue();
+            if (user.getNationId() == 662750 || user.getDiscordId() == 1222954792033452098L) {
+                System.out.println("IS VALID ? USER " + user.getDiscordId() + " | " + user.getNationId() + " | " + user.getDiscordName() + " | " + name + " | " + nameWithDesc);
+            }
 
             if (nameWithDesc != null && nameWithDesc.equalsIgnoreCase(user.getDiscordName())) {
                 user.setDiscordId(user.getDiscordId());

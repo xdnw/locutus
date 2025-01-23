@@ -879,7 +879,7 @@ public class DiscordUtil {
 
     public static Integer parseNationId(INationSnapshot snapshot, String arg) {
         if (arg.isEmpty()) return null;
-        boolean checkUser = false;
+        boolean checkUser = true;
         if (arg.charAt(0) == '"' && arg.charAt(arg.length() - 1) == '"') {
             arg = arg.substring(1, arg.length() - 1);
         }
@@ -894,7 +894,6 @@ public class DiscordUtil {
                 arg = split[1].replaceAll("/", "");
             }
         } else if (arg.charAt(0) == '@') {
-            checkUser = true;
             String idStr = arg.substring(1);
             if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
             if (MathMan.isInteger(idStr)) {
@@ -903,7 +902,6 @@ public class DiscordUtil {
                 if (user != null) {
                     return user.getNationId();
                 }
-
             }
         }
         if (MathMan.isInteger(arg)) {

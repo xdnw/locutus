@@ -850,6 +850,8 @@ public class AdminCommands {
         // split into lines
         String[] lines = csvTabSeparated.split("\n");
         // iterate each line
+        List<PNWUser> toAdd = new ArrayList<>();
+
         for (String line : lines) {
             String[] columns = line.split("\t");
             int nationId = Integer.parseInt(columns[0]);
@@ -870,8 +872,9 @@ public class AdminCommands {
 
             // register the user
             count++;
-            Locutus.imp().getDiscordDB().addUser(new PNWUser(nationId, discordId, username));
+            toAdd.add(new PNWUser(nationId, discordId, username));
         }
+        Locutus.imp().getDiscordDB().addUsers(toAdd);
         return "Done! Imported " + count + "/" + lines.length + " users from " + url;
     }
 
