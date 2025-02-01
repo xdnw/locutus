@@ -139,11 +139,13 @@ public class GraphEndpoints {
     @ReturnType(WebGraph.class)
     public WebGraph allianceMetricsCompareByTurn(AllianceMetric metric, Set<DBAlliance> alliances,
                                                  @Arg("Date to start from")
-                                                 @Timestamp long time) throws IOException {
-        long turnStart = TimeUtil.getTurn(time);
+                                                 @Timestamp long start,
+                                                 @Timestamp @Default Long end) throws IOException {
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
-        MultiCoalitionMetricGraph table = MultiCoalitionMetricGraph.create(metric, turnStart, coalitionNames, coalitions);
+        MultiCoalitionMetricGraph table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalitions);
         return table.toHtmlJson();
     }
 
@@ -151,9 +153,11 @@ public class GraphEndpoints {
     @ReturnType(WebGraph.class)
     public WebGraph allianceMetricsAB(AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                       @Arg("Date to start from")
-                                      @Timestamp long time) throws IOException {
-        long turnStart = TimeUtil.getTurn(time);
-        MultiCoalitionMetricGraph table = MultiCoalitionMetricGraph.create(metric, turnStart, null, coalition1, coalition2);
+                                      @Timestamp long start,
+                                      @Timestamp @Default Long end) throws IOException {
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
+        MultiCoalitionMetricGraph table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, null, coalition1, coalition2);
         return table.toHtmlJson();
     }
 
@@ -161,10 +165,12 @@ public class GraphEndpoints {
     @ReturnType(WebGraph.class)
     public WebGraph allianceMetricsByTurn(AllianceMetric metric, Set<DBAlliance> coalition,
                                           @Arg("Date to start from")
-                                          @Timestamp long time) throws IOException {
-        long turnStart = TimeUtil.getTurn(time);
+                                          @Timestamp long start,
+                                          @Timestamp @Default Long end) throws IOException {
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         List<String> coalitionNames = List.of(metric.name());
-        MultiCoalitionMetricGraph table = MultiCoalitionMetricGraph.create(metric, turnStart, coalitionNames, coalition);
+        MultiCoalitionMetricGraph table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalition);
         return table.toHtmlJson();
     }
 

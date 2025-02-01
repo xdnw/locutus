@@ -217,7 +217,7 @@ public class BankCommands {
             throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         if (dm && !Roles.MAIL.hasOnRoot(author) && isOther) {
-            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
         }
         if (useApi && isOther && !Roles.ECON.has(author, db.getGuild())) {
             throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
@@ -285,8 +285,18 @@ public class BankCommands {
             }
         }
 
+        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait..."));
+        long start = System.currentTimeMillis();
+
+        IMessageBuilder updateMsg = null;
         Map<DBNation, Map<ResourceType, Double>> stockpiles = allianceList.getMemberStockpile(remainingNations::contains);
+        int i = 0;
         for (DBNation nation : remainingNations) {
+            i++;
+            if (System.currentTimeMillis() - start > 10000) {
+                updateMsg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + remainingNations.size() + ")");
+                start = System.currentTimeMillis();
+            }
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
             if (stockpile == null) {
                 statuses.put(nation, OffshoreInstance.TransferStatus.ALLIANCE_ACCESS);
@@ -617,6 +627,11 @@ public class BankCommands {
             msg.append(result.toString());
             msg.send();
         }
+
+        if (updateMsg != null && updateMsg.getId() > 0) {
+            io.delete(updateMsg.getId());
+        }
+
         return null;
     }
 

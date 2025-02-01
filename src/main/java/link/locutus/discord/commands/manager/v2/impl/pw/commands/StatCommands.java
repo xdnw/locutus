@@ -1331,12 +1331,15 @@ public class StatCommands {
     @Command(desc = "Compare the metric over time between multiple alliances")
     public String allianceMetricsCompareByTurn(@Me IMessageIO channel, AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
-                                               @Timestamp long time, @Switch("j") boolean attachJson,
+                                               @Timestamp long start,
+                                               @Timestamp @Default Long end,
+                                               @Switch("j") boolean attachJson,
                                                @Switch("c") boolean attachCsv) throws IOException {
-        long turnStart = TimeUtil.getTurn(time);
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
-        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, coalitionNames, coalitions);
+        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalitions);
         table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done!";
     }
@@ -1359,10 +1362,13 @@ public class StatCommands {
     @Command(desc = "Graph an alliance metric over time for two coalitions")
     public String allianceMetricsAB(@Me IMessageIO channel, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
-                                    @Timestamp long time, @Switch("j") boolean attachJson,
+                                    @Timestamp long start,
+                                    @Timestamp @Default Long end,
+                                    @Switch("j") boolean attachJson,
                                     @Switch("c") boolean attachCsv) throws IOException {
-        long turnStart = TimeUtil.getTurn(time);
-        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, null, coalition1, coalition2);
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
+        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, null, coalition1, coalition2);
         table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done!";
     }
@@ -1458,11 +1464,14 @@ public class StatCommands {
     @Command(desc = "Graph the metric over time for a coalition")
     public String allianceMetricsByTurn(@Me IMessageIO channel, @Me User user, AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
-                                        @Timestamp long time, @Switch("j") boolean attachJson,
+                                        @Timestamp long start,
+                                        @Timestamp @Default Long end,
+                                        @Switch("j") boolean attachJson,
                                         @Switch("c") boolean attachCsv) throws IOException {
-        long turnStart = TimeUtil.getTurn(time);
+        long turnStart = TimeUtil.getTurn(start);
+        long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         List<String> coalitionNames = List.of(metric.name());
-        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, coalitionNames, coalition);
+        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalition);
         table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv);
         return "Done! " + user.getAsMention();
     }
