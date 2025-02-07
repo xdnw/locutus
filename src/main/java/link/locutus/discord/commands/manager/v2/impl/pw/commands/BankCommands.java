@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -25,8 +24,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
@@ -217,7 +216,7 @@ public class BankCommands {
             throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         if (dm && !Roles.MAIL.hasOnRoot(author) && isOther) {
-            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
         }
         if (useApi && isOther && !Roles.ECON.has(author, db.getGuild())) {
             throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
@@ -285,8 +284,18 @@ public class BankCommands {
             }
         }
 
+        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait..."));
+        long start = System.currentTimeMillis();
+
+        IMessageBuilder updateMsg = null;
         Map<DBNation, Map<ResourceType, Double>> stockpiles = allianceList.getMemberStockpile(remainingNations::contains);
+        int i = 0;
         for (DBNation nation : remainingNations) {
+            i++;
+            if (System.currentTimeMillis() - start > 10000) {
+                updateMsg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + remainingNations.size() + ")");
+                start = System.currentTimeMillis();
+            }
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
             if (stockpile == null) {
                 statuses.put(nation, OffshoreInstance.TransferStatus.ALLIANCE_ACCESS);
@@ -617,6 +626,11 @@ public class BankCommands {
             msg.append(result.toString());
             msg.send();
         }
+
+        if (updateMsg != null && updateMsg.getId() > 0) {
+            io.delete(updateMsg.getId());
+        }
+
         return null;
     }
 
@@ -3407,7 +3421,7 @@ public class BankCommands {
         if (startDate == null) startDate = 0L;
         if (endDate == null) endDate = Long.MAX_VALUE;
 
-        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        List<TaxDeposit> taxes = new ArrayList<>();
         for (int allianceId : allianceIds) {
             taxes.addAll(Locutus.imp().getBankDB().getTaxesByAA(allianceId));
         }
@@ -3416,7 +3430,7 @@ public class BankCommands {
         int[] baseArr = baseTaxRate == null ? null : baseTaxRate.toArray();
         TaxRate aaBase = db.getOrNull(GuildKey.TAX_BASE);
 
-        for (BankDB.TaxDeposit tax : taxes) {
+        for (TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
             DBNation nation = DBNation.getById(tax.nationId);
             if (!nations.contains(nation)) continue;
@@ -3457,7 +3471,7 @@ public class BankCommands {
         if (startDate == null) startDate = 0L;
         if (endDate == null) endDate = Long.MAX_VALUE;
 
-        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        List<TaxDeposit> taxes = new ArrayList<>();
         for (int aaId : aaIds) {
             taxes.addAll(Locutus.imp().getBankDB().getTaxesPaid(nation.getNation_id(), aaId));
         }
@@ -3470,7 +3484,7 @@ public class BankCommands {
         }
         sheet.setHeader(header);
 
-        for (BankDB.TaxDeposit tax : taxes) {
+        for (TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(tax.date)));

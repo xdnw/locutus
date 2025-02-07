@@ -1483,9 +1483,9 @@ public final class PW {
         double b2 = defStrength;
 
         // Skip formula for common cases (for performance)
-        if (attStrength <= 0) return 0;
+        if (attStrength <= 0) return success == 0 ? 1 : 0;
         if (defStrength * 2.5 <= attStrength) return success == 3 ? 1 : 0;
-        if (a2 <= b1 || b2 <= a1) return 0;
+        if (a2 <= b1 || b2 <= a1) return success == 0 ? 1 : 0;
 
         double sampleSpace = (a2 - a1) * (b2 - b1);
         double overlap = Math.min(a2, b2) - Math.max(a1, b1);

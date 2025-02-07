@@ -60,7 +60,7 @@ public class GuildShardManager {
         List<User> users = new ArrayList<>();
         for (JDA jda : instances) {
             List<User> toAdd = jda.getUsersByName(username, ignoreCase);
-            if (toAdd != null && !toAdd.isEmpty()) {
+            if (!toAdd.isEmpty()) {
                 users.addAll(toAdd);
             }
         }

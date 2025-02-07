@@ -3,8 +3,8 @@ package link.locutus.discord.util.task.deprecated;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-public class GetTaxesTask implements Callable<List<BankDB.TaxDeposit>> {
+public class GetTaxesTask implements Callable<List<TaxDeposit>> {
     private final long cutOff;
     private final Auth auth;
 
@@ -31,20 +31,20 @@ public class GetTaxesTask implements Callable<List<BankDB.TaxDeposit>> {
     }
 
     @Override
-    public synchronized List<BankDB.TaxDeposit> call()  {
+    public synchronized List<TaxDeposit> call()  {
         int allianceId = auth.getAllianceId();
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
         String taxUrl = String.format("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s&display=banktaxes", allianceId);
 
         ResourceType[] resources = {ResourceType.MONEY, ResourceType.FOOD, ResourceType.COAL, ResourceType.OIL, ResourceType.URANIUM, ResourceType.LEAD, ResourceType.IRON, ResourceType.BAUXITE, ResourceType.GASOLINE, ResourceType.MUNITIONS, ResourceType.STEEL, ResourceType.ALUMINUM};
 
-        return PW.withLogin(new Callable<List<BankDB.TaxDeposit>>() {
+        return PW.withLogin(new Callable<List<TaxDeposit>>() {
             @Override
-            public List<BankDB.TaxDeposit> call() throws Exception {
+            public List<TaxDeposit> call() throws Exception {
                 try {
                     Map<Integer, TaxRate> internalTaxRates = new HashMap<>();
 
-                    List<BankDB.TaxDeposit> records = new ArrayList<>();
+                    List<TaxDeposit> records = new ArrayList<>();
                     GetPageTask task = new GetPageTask(PagePriority.TAXES_GET_LEGACY, auth, taxUrl, -1);
                     task.consume(element -> {
                         Elements row = element.getElementsByTag("td");
@@ -106,7 +106,7 @@ public class GetTaxesTask implements Callable<List<BankDB.TaxDeposit>> {
                             }
                         }
 
-                        BankDB.TaxDeposit taxRecord = new BankDB.TaxDeposit(allianceId, date, 0, taxId, nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
+                        TaxDeposit taxRecord = new TaxDeposit(allianceId, date, 0, taxId, nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
                         records.add(taxRecord);
 
                         return false;

@@ -345,9 +345,6 @@ public class WarCommands {
         long minutesInactive = activeTimeCutoff == null ? 10000 : TimeUnit.MILLISECONDS.toMinutes(activeTimeCutoff);
         double score = nationScore == null ? me.getScore() : nationScore;
 
-        if (nationScore != null && !Roles.MILCOM.has(user, guild)) {
-            return "You do not have permission to specify a score";
-        }
         Set<Integer> ignoreAlliances = new HashSet<>();
         boolean includeAlliances = false;
         double minLoot = Double.NEGATIVE_INFINITY;

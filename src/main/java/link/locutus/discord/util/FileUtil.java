@@ -11,6 +11,7 @@ import org.eclipse.jetty.util.UrlEncoded;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.springframework.web.client.HttpClientErrorException;
+import java.nio.channels.Channels;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
@@ -29,6 +30,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -175,14 +178,16 @@ public final class FileUtil {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
                     try {
-                        try (BufferedReader in = new BufferedReader(
-                                new InputStreamReader(connection.getInputStream()))) {
-
+                        try (ReadableByteChannel channel = Channels.newChannel(connection.getInputStream())) {
+                            ByteBuffer buffer = ByteBuffer.allocate(1024);
                             StringBuilder response = new StringBuilder();
-                            String inputLine;
 
-                            while ((inputLine = in.readLine()) != null) {
-                                response.append(inputLine);
+                            while (channel.read(buffer) != -1) {
+                                buffer.flip();
+                                while (buffer.hasRemaining()) {
+                                    response.append((char) buffer.get());
+                                }
+                                buffer.clear();
                             }
                             return response.toString();
                         }

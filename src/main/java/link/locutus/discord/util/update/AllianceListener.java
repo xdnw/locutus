@@ -190,7 +190,7 @@ public class AllianceListener {
 
             double groundPctAvg = groundPctTotal / count;
 
-            if (milBuf == null) {
+            if (milBuf == null || milBuf.remaining() != 8) {
                 alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, 0L);
                 alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
                 continue;
